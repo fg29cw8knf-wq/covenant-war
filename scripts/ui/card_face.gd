@@ -235,7 +235,7 @@ static func draw_card(ci: CanvasItem, rect: Rect2, card_id: String, opts: Dictio
 	var d: Dictionary = SigilDB.CARDS[card_id]
 	var compact: bool = opts.get("compact", rect.size.x < COMPACT_BELOW)
 	if compact:
-		_draw_compact(ci, rect, card_id, d)
+		_draw_compact(ci, rect, card_id, d, opts)
 		return
 	var s := rect.size.x / W
 	var o := rect.position
@@ -528,7 +528,7 @@ static func _draw_energy(ci: CanvasItem, o: Vector2, s: float, _card_id: String,
 
 
 ## A simplified face for small sizes (hand, bench): art, name, HP and element.
-static func _draw_compact(ci: CanvasItem, rect: Rect2, card_id: String, d: Dictionary) -> void:
+static func _draw_compact(ci: CanvasItem, rect: Rect2, card_id: String, d: Dictionary, opts: Dictionary = {}) -> void:
 	var s := rect.size.x / W
 	var o := rect.position
 	var tier := int(d.get("tier", 1))
@@ -553,13 +553,14 @@ static func _draw_compact(ci: CanvasItem, rect: Rect2, card_id: String, d: Dicti
 			draw_art(ci, inner, card_id, el, 0.4)
 			orb(ci, _P(o, s, 206, 44), 30 * s, el)
 			if d.kind == "totem":
-				text(ci, font("display_bold"), _P(o, s, 18, 64), str(int(d.hp)), _fs(s, 50), Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 8))
+				if not opts.get("hide_hp", false):
+					text(ci, font("display_bold"), _P(o, s, 18, 64), str(int(d.hp)), _fs(s, 50), Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 8))
 			else:
 				box(ci, _R(o, s, 16, 18, 120, 36), 18 * s, Color(metal(tier, 1), 0.95))
 				text_in(ci, font("bold"), _R(o, s, 16, 18, 120, 36), "SUMMON", _fs(s, 22), INK)
 			if int(d.get("stage", 0)) > 0:
 				box(ci, _R(o, s, 18, 76, 58, 30), 15 * s, Color(0, 0, 0, 0.6), Color(GOLD, 0.8), maxf(1.0, 2 * s))
-				text_in(ci, font("bold"), _R(o, s, 18, 76, 58, 30), "AW %d" % int(d.stage), _fs(s, 22), GOLD)
+				text_in(ci, font("bold"), _R(o, s, 18, 76, 58, 30), ["I", "II", "III", "IV"][clampi(int(d.stage), 0, 3)], _fs(s, 22), GOLD)
 	# name band
 	vgrad_rect(ci, _R(o, s, 9, 250, 232, 91), Color(0, 0, 0, 0), Color(0, 0, 0, 0.85))
 	var nm: String = d.name if d.kind != "energy" else Lore.element_name(el)

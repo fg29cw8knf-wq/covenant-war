@@ -19,6 +19,8 @@ const CAM_OFFSET := Vector3(0, 8.2, 11.5)
 const CAM_FOV := 32.0
 
 var duel_handler: Callable
+var attract := false       # title-screen mode: no player control, a slow camera drift
+var _attract_t := 0.0
 var area_id := "solhaven"
 var area: GDScript
 var hud: WorldHUD
@@ -51,6 +53,15 @@ func _ready() -> void:
 	for def in area.npcs():
 		_spawn_npc(def)
 	_build_camera()
+	if attract:
+		var ca := cam.attributes as CameraAttributesPractical
+		ca.dof_blur_far_distance = 52.0
+		ca.dof_blur_far_transition = 30.0
+		ca.dof_blur_near_enabled = false
+		player.visible = false
+		player.process_mode = Node.PROCESS_MODE_DISABLED
+		set_physics_process(false)
+		return
 	hud = WorldHUD.new()
 	add_child(hud)
 	hud.tapped.connect(_on_tap)
@@ -247,6 +258,13 @@ func _physics_process(delta: float) -> void:
 
 func _process(delta: float) -> void:
 	if cam == null:
+		return
+	if attract:
+		_attract_t += delta
+		var a := -0.35 + sin(_attract_t * 0.06) * 0.5
+		var target := Vector3(0, 3.0, -12.0)
+		cam.global_position = target + Vector3(sin(a) * 30.0, 9.0 + sin(_attract_t * 0.11) * 1.5, cos(a) * 30.0)
+		cam.look_at(target + Vector3(0, 2.5, 0), Vector3.UP)
 		return
 	_focus = _focus.lerp(_cam_focus_target(), minf(1.0, delta * 5.0))
 	_place_camera()

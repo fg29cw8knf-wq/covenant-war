@@ -23,13 +23,13 @@ var _toast: Label
 func _ready() -> void:
 	layer = 10
 	_root = Control.new()
-	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.theme = UITheme.make()
 	add_child(_root)
 
 	var vignette := ColorRect.new()
-	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()
 	sh.code = "shader_type canvas_item;\nuniform float strength = 0.42;\nvoid fragment() {\n\tvec2 uv = UV - 0.5;\n\tfloat d = length(uv * vec2(1.0, 0.75));\n\tCOLOR = vec4(0.06, 0.035, 0.02, smoothstep(0.38, 0.8, d) * strength);\n}\n"
@@ -39,7 +39,7 @@ func _ready() -> void:
 	_root.add_child(vignette)
 
 	pad = TouchPad.new()
-	pad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pad.tapped.connect(func(p: Vector2) -> void: tapped.emit(p))
 	_root.add_child(pad)
 
@@ -100,7 +100,7 @@ func _ready() -> void:
 
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
-	_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fade.modulate.a = 0.0
 	_root.add_child(_fade)
@@ -154,7 +154,7 @@ func fade(to_alpha: float, duration: float = 0.45) -> void:
 func show_card_reward(card_id: String) -> void:
 	var overlay := CardReveal.new()
 	overlay.card_id = card_id
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(overlay)
 	await overlay.closed
 	overlay.queue_free()
@@ -195,7 +195,7 @@ func _make_title() -> Control:
 func _make_menu() -> Control:
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim.visible = false
 	var box := VBoxContainer.new()
 	box.name = "Box"

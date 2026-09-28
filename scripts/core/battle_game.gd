@@ -78,7 +78,7 @@ func _setup_phase() -> void:
 		first_player = 1
 		_log("%s is swift enough to strike first." % players[1].player_name)
 	else:
-		var heads := await flip(0, "Coin toss - heads: %s go first" % players[0].player_name, false)
+		var heads := await flip(0, "Coin toss - heads: %s goes first" % players[0].player_name, false)
 		first_player = 0 if heads else 1
 	_log("%s will go first." % players[first_player].player_name)
 
