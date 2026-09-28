@@ -41,6 +41,9 @@ const SHAPES := {
 	"crown_sigil": "<path fill='#fff' fill-rule='evenodd' d='M50 2 L98 50 L50 98 L2 50 Z M50 18 L82 50 L50 82 L18 50 Z'/><path fill='#fff' d='M30 58 L36 40 L44 50 L50 34 L56 50 L64 40 L70 58 Z'/>",
 	"prize": "<path fill='#fff' d='M50 4 L63 36 L97 38 L70 60 L80 94 L50 74 L20 94 L30 60 L3 38 L37 36 Z'/>",
 	"deck": "<path fill='#fff' d='M24 10 H76 C80 10 82 12 82 16 V84 C82 88 80 90 76 90 H24 C20 90 18 88 18 84 V16 C18 12 20 10 24 10 Z'/><path fill='#000' fill-opacity='0.3' fill-rule='evenodd' d='M50 28 L66 50 L50 72 L34 50 Z M50 38 L58 50 L50 62 L42 50 Z'/>",
+	"talk": "<path fill='#fff' d='M14 14 H86 C92 14 96 18 96 24 V62 C96 68 92 72 86 72 H46 L24 90 L28 72 H14 C8 72 4 68 4 62 V24 C4 18 8 14 14 14 Z'/><circle fill='#000' fill-opacity='0.35' cx='30' cy='43' r='7'/><circle fill='#000' fill-opacity='0.35' cx='50' cy='43' r='7'/><circle fill='#000' fill-opacity='0.35' cx='70' cy='43' r='7'/>",
+	"duel": "<g fill='#fff'><path d='M20 18 H56 C59 18 61 20 61 23 V77 C61 80 59 82 56 82 H20 C17 82 15 80 15 77 V23 C15 20 17 18 20 18 Z' transform='rotate(-16 38 50)'/><path d='M44 18 H80 C83 18 85 20 85 23 V77 C85 80 83 82 80 82 H44 C41 82 39 80 39 77 V23 C39 20 41 18 44 18 Z' transform='rotate(16 62 50)'/></g><path fill='#000' fill-opacity='0.3' d='M62 34 L70 50 L62 66 L54 50 Z' transform='rotate(16 62 50)'/>",
+	"menu": "<g fill='#fff'><rect x='12' y='18' width='76' height='12' rx='6'/><rect x='12' y='44' width='76' height='12' rx='6'/><rect x='12' y='70' width='76' height='12' rx='6'/></g>",
 	"coin": "<circle fill='#fff' cx='50' cy='50' r='44'/><circle fill='#000' fill-opacity='0.25' cx='50' cy='50' r='34'/><path fill='#fff' d='M50 22 L58 42 L78 44 L62 58 L68 78 L50 66 L32 78 L38 58 L22 44 L42 42 Z'/>",
 }
 
