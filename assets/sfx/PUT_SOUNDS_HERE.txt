@@ -1,0 +1,3 @@
+Put sound effects here to replace the built-in beeps.
+Names: card, click, hit, coin, ko, heal, energy, turn, win, lose, evolve  (.ogg or .wav)
+Example: hit.ogg
