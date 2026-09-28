@@ -98,7 +98,24 @@ image AI:
   lighting" (cobblestone, grass, sandstone, roof tiles). Square, 1024 × 1024.
   Save to `assets/art/textures/`.
 
-## 4. The card list
+## 4. Story scenes
+
+The prologue is told over full-screen paintings. Wide 16:9 (for example
+1920 × 1080), no text. Until a painting exists the game draws a simple
+stand-in.
+
+| File (assets/art/story/) | Scene |
+| --- | --- |
+| `sigilfall.png` | Night over a small farming village; streaks of many-coloured light fall from a torn sky like meteors |
+| `card.png` | Close-up: a blank, glowing card lying in the grass at night, light pouring from it |
+| `heralds.png` | Dawn; eight tall banners on a hill, seven in the colours of the gods and one plain white |
+| `fire.png` | The village burning at night; hooded hunters' silhouettes against the flames |
+| `road.png` | A lonely road through hills at dusk; an old innkeeper and a young traveller walking east |
+
+**Style prompt:** "cinematic fantasy painting, painterly, dramatic lighting, rich
+colour, wide establishing shot, no text, no watermark".
+
+## 5. The card list
 
 Each card's subject is below. Build a prompt as:
 **subject** + **rarity feel** + **style prompt** (with the element colour).
