@@ -5,6 +5,7 @@ extends Node
 signal changed
 
 const SAVE_PATH := "user://save.json"
+const SETTINGS_PATH := "user://settings.json"
 const SAVE_VERSION := 1
 
 var player_name := "Ash"
@@ -129,6 +130,18 @@ func load_settings_only() -> void:
 	var data := _read_save()
 	if not data.is_empty():
 		settings.merge(data.get("settings", {}), true)
+	if FileAccess.file_exists(SETTINGS_PATH):
+		var f := FileAccess.open(SETTINGS_PATH, FileAccess.READ)
+		var parsed = JSON.parse_string(f.get_as_text()) if f != null else null
+		if parsed is Dictionary:
+			settings.merge(parsed, true)
+
+
+## Settings are also kept on their own, so they survive without a save game.
+func save_settings() -> void:
+	var f := FileAccess.open(SETTINGS_PATH, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(settings, "\t"))
 
 
 func save_summary() -> String:

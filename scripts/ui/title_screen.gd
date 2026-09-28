@@ -4,6 +4,7 @@ extends CanvasLayer
 
 signal new_game
 signal continue_game
+signal watch_opening
 
 var _root: Control
 var _t := 0.0
@@ -46,7 +47,7 @@ void fragment() {
 	box.anchor_bottom = 1.0
 	box.offset_left = 120
 	box.offset_right = 620
-	box.offset_top = -470
+	box.offset_top = -560
 	box.offset_bottom = -120
 	box.alignment = BoxContainer.ALIGNMENT_END
 	box.add_theme_constant_override("separation", 22)
@@ -63,6 +64,9 @@ void fragment() {
 	box.add_child(ng)
 	if not Game.has_save():
 		ng.grab_focus.call_deferred()
+	var movie := UITheme.button("Watch the opening", false, 500)
+	movie.pressed.connect(func() -> void: watch_opening.emit())
+	box.add_child(movie)
 
 	var ver := UITheme.label("Early build %s" % ProjectSettings.get_setting("application/config/version", ""), 22, Color(1, 1, 1, 0.4))
 	ver.anchor_left = 1.0

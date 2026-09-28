@@ -8,7 +8,18 @@ var _world: World = null
 
 func _ready() -> void:
 	get_tree().root.theme = UITheme.make()
+	if not Game.settings.get("seen_opening", false):
+		await play_opening()
 	show_title()
+
+
+## The opening movie; returns when it ends or is skipped.
+func play_opening() -> void:
+	var movie := OpeningMovie.new()
+	add_child(movie)
+	await movie.finished
+	Game.settings["seen_opening"] = true
+	Game.save_settings()
 
 
 func _swap(n: Node) -> void:
@@ -32,6 +43,8 @@ func show_title() -> void:
 	holder.add_child(title)
 	title.new_game.connect(_on_new_game)
 	title.continue_game.connect(_on_continue)
+	title.watch_opening.connect(func() -> void:
+		await play_opening())
 	_swap(holder)
 	_world = null
 
