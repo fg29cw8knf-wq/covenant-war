@@ -605,6 +605,8 @@ func _act_call(pi: int, card: DuelCard, slot: int) -> void:
 	_spend(p, c)
 	p.hand.erase(card)
 	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
+	if p.free_shift:
+		t.hasted = true   # Ixara's Tempest
 	p.slots[slot] = t
 	p.totems_called += 1
 	p.stats.totems_called += 1

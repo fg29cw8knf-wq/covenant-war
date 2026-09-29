@@ -18,6 +18,30 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `assets/sfx/` | Sound effects. |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
+## The Duel Lab (new duel rules, v1)
+
+The card battle is being rebuilt to the v1 rules (three Totem slots a side,
+Life, Essence, Fate dice, Wards, Ascension). It lives in its own folders and
+can be played from the title screen's **Duel Lab** button, or straight away with:
+
+```sh
+godot -- --lab
+```
+
+| Folder | What's in it |
+| --- | --- |
+| `scripts/duel/` | The v1 rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`) and the computer duellist (`duel_ai.gd`). No graphics code. |
+| `scripts/duel_ui/` | The Duel Lab set-up screen, the duel screen, card faces and the pieces they're built from. |
+
+```sh
+godot --headless --script res://tests/duel_sim.gd -- 2000            # balance: every deck vs every deck
+godot --headless --script res://tests/duel_sim.gd -- 2000 --cards    # plus win rate when each card is played
+godot --headless --script res://tests/duel_log.gd -- emberstorm veilwild 3   # the full log of one duel
+godot --headless res://tests/duel_monkey.tscn -- 6                   # random taps through the duel screen
+```
+
+The story's duels still use the older rules below until the v1 duel is signed off.
+
 ## Running the tests
 
 ```sh

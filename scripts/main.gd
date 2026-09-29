@@ -8,6 +8,10 @@ var _world: World = null
 
 func _ready() -> void:
 	get_tree().root.theme = UITheme.make()
+	var args := OS.get_cmdline_user_args()
+	if "--lab" in args or "--lab-watch" in args:
+		show_lab()
+		return
 	if not Game.settings.get("seen_opening", false):
 		await play_opening()
 	show_title()
@@ -45,6 +49,7 @@ func show_title() -> void:
 	title.continue_game.connect(_on_continue)
 	title.watch_opening.connect(func() -> void:
 		await play_opening())
+	title.open_lab.connect(show_lab)
 	_swap(holder)
 	_world = null
 
@@ -63,6 +68,14 @@ func _on_new_game() -> void:
 	story.queue_free()
 	_current = null
 	go_world("solhaven", "gate")
+
+
+# -------------------------------------------------------------- duel lab ---
+
+func show_lab() -> void:
+	var lab := DuelLab.new()
+	lab.closed.connect(show_title)
+	_swap(lab)
 
 
 # ---------------------------------------------------------------- world ---

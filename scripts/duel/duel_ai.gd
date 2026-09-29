@@ -573,6 +573,8 @@ func _gift_option(game: DuelGame, pi: int) -> Dictionary:
 			v = v if v >= 60.0 else 0.0
 		"tempest":
 			v = _flask_value(game, pi, DuelRules.tempest_essence) * 1.5
+			if not p.hand_basics().is_empty() and not p.empty_slots().is_empty():
+				v += 15.0
 		"whisper":
 			v = 22.0 + foe.wards.size() * 5.0 if foe.hand.size() >= 3 else 0.0
 		"foresight":

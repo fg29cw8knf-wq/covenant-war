@@ -222,7 +222,11 @@ const CARDS := {
 		"hp": 60, "affinity": "cunning", "keywords": ["burrow"],
 		"moves": [
 			{"name": "Dig Strike", "cost": 0, "damage": 20},
-			{"name": "Tunnel Ambush", "cost": 1, "damage": 30},
+			{"name": "Tunnel Ambush", "cost": 1, "damage": 0, "fate": [
+				{"to": 1, "damage": 0, "text": "Miss"},
+				{"to": 10, "damage": 20},
+				{"to": 19, "damage": 40},
+				{"to": 99, "damage": 60, "effects": [{"op": "status", "status": "stun"}]}]},
 		],
 		"art": "a mole in a battered miner's helmet with a glowing lamp, huge digging claws, clods of earth flying",
 	},
@@ -279,8 +283,9 @@ const CARDS := {
 		"hp": 60, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Psy Nip", "cost": 0, "damage": 10},
-			{"name": "Hypnotic Gaze", "cost": 1, "damage": 10, "target": "foe_totem",
-				"effects": [{"op": "status", "status": "sleep"}]},
+			{"name": "Hypnotic Gaze", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
+				{"to": 5, "damage": 10},
+				{"to": 99, "damage": 10, "effects": [{"op": "status", "status": "sleep"}]}]},
 		],
 		"art": "a slender pink fox with two misty tails and half-closed dreamy eyes, bubbles of illusion floating around it",
 	},
@@ -337,7 +342,10 @@ const CARDS := {
 		"moves": [
 			{"name": "Venom Bite", "cost": 0, "damage": 10, "target": "foe_totem",
 				"effects": [{"op": "status", "status": "poison"}]},
-			{"name": "Web Snare", "cost": 1, "damage": 20, "effects": [{"op": "status", "status": "stun"}]},
+			{"name": "Web Snare", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
+				{"to": 7, "damage": 10},
+				{"to": 16, "damage": 20, "effects": [{"op": "status", "status": "stun"}]},
+				{"to": 99, "damage": 30, "effects": [{"op": "status", "status": "stun"}, {"op": "status", "status": "poison"}]}]},
 		],
 		"art": "a swamp spider with an iridescent violet abdomen, legs dripping luminous venom, sitting in a dewy web over a bog",
 	},
@@ -548,7 +556,7 @@ static func gift_text(g: String) -> String:
 		"dawns_mercy": return "Heal %d damage from one of your Totems and clear its conditions." % DuelRules.mercy_heal
 		"wrath": return "Your Totems deal %d more damage this turn." % DuelRules.wrath_bonus
 		"stillness": return "Stun up to two enemy Totems."
-		"tempest": return "Gain %d Essence this turn, and Shifting is free." % DuelRules.tempest_essence
+		"tempest": return "Gain %d Essence this turn. Totems you call this turn are Swift, and Shifting is free." % DuelRules.tempest_essence
 		"whisper": return "See your opponent's hand and Wards, then discard two cards from their hand."
 		"foresight": return "Draw 3 cards. Your next Fate roll counts as a natural 20."
 		"recall": return "Return up to 2 cards from your discard pile to your hand."

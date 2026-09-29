@@ -49,16 +49,16 @@ class TotemView:
 			accept_event()
 
 	func art_rect() -> Rect2:
-		var w := size.x * 0.66
-		var h := size.y * 0.62
+		var w := size.x * 0.6
+		var h := size.y * 0.56
 		var bob := sin(_t * 1.6 + slot * 1.3) * 3.0 if totem != null and not totem.asleep else 0.0
-		return Rect2(Vector2((size.x - w) * 0.5, size.y * 0.06 + bob), Vector2(w, h))
+		return Rect2(Vector2((size.x - w) * 0.5, size.y * 0.04 + bob), Vector2(w, h))
 
 	func _draw() -> void:
 		var c := Vector2(size.x * 0.5, size.y * 0.5)
 		draw_set_transform(c + offset, 0.0, Vector2(pop, pop))
 		var o := -c
-		var plat := Rect2(o + Vector2(size.x * 0.1, size.y * 0.66), Vector2(size.x * 0.8, size.y * 0.2))
+		var plat := Rect2(o + Vector2(size.x * 0.1, size.y * 0.53), Vector2(size.x * 0.8, size.y * 0.14))
 		var el := "any" if totem == null else totem.element()
 		var ecol := Lore.color(el, 1)
 		# platform
@@ -102,11 +102,11 @@ class TotemView:
 		if totem.stage() > 0:
 			_chip(Rect2(ar.position + Vector2(-14, -6), Vector2(54, 30)), ["", "II", "III"][totem.stage()], UITheme.GOLD, Color("2a1d05"))
 		# name + HP bar
-		var ny := plat.position.y + plat.size.y * 0.1
+		var ny := o.y + size.y * 0.75
 		var nm := totem.card_name()
 		var nsz := CardFace.fit_size(CardFace.font("display_bold"), nm, 26, size.x - 20)
-		CardFace.text(self, CardFace.font("display_bold"), Vector2(o.x, ny + 4), nm, nsz, Color(UITheme.TEXT, fade), HORIZONTAL_ALIGNMENT_CENTER, size.x, 6)
-		_draw_hp(Rect2(o + Vector2(size.x * 0.14, ny + 14), Vector2(size.x * 0.72, 34)))
+		CardFace.text(self, CardFace.font("display_bold"), Vector2(o.x, ny), nm, nsz, Color(UITheme.TEXT, fade), HORIZONTAL_ALIGNMENT_CENTER, size.x, 6)
+		_draw_hp(Rect2(Vector2(o.x + size.x * 0.14, ny + 12), Vector2(size.x * 0.72, 34)))
 		# conditions + keywords, stacked on the left of the art
 		var y := ar.position.y + 30
 		for cnd in totem.conditions():
