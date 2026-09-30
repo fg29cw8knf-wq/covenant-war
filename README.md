@@ -40,6 +40,10 @@ godot --headless --script res://tests/duel_log.gd -- emberstorm veilwild 3   # t
 godot --headless res://tests/duel_monkey.tscn -- 6                   # random taps through the duel screen
 ```
 
+**Play it on a phone:** https://fg29cw8knf-wq.github.io/covenant-war/ (turn the phone sideways; in
+Safari use Share > Add to Home Screen for a full-screen app icon). Rebuild it with `tools/build_web.sh`
+and push `build/web` to the `gh-pages` branch.
+
 The story's duels still use the older rules below until the v1 duel is signed off.
 
 ## Running the tests
