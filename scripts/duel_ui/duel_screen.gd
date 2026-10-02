@@ -15,11 +15,19 @@ signal finished(result: String)
 
 const DESIGN := Vector2(1920, 1080)
 const SLOT_SIZE := Vector2(340, 330)
-const SLOT_X := [370.0, 760.0, 1150.0]
-const ROW_Y := [430.0, 60.0]           # [me, rival] once `me` is known (see _row_y)
-const HAND_Y := 800.0
+const FIELD_CX := 1000.0
+## Slot centres. The rival's row is further away: closer together and smaller.
+const MY_X := [610.0, 1000.0, 1390.0]
+const RIVAL_X := [672.0, 1000.0, 1328.0]
+const MY_PLAT_Y := 652.0
+const RIVAL_PLAT_Y := 300.0
+const RIVAL_DEPTH := 0.8
+const HAND_Y := 822.0
 const HAND_CARD := Vector2(176, 246)
-const RIGHT_X := 1548.0
+const DETAIL_POS := Vector2(1598, 96)
+const DETAIL_SIZE := Vector2(298, 418)
+## Where Cancel and notes sit while you pick a target.
+const DOCK_POS := Vector2(1560, 536)
 const LOG_MAX := 200
 ## The colour of the drifting light in each arena.
 const ARENA_MOTES := {
@@ -43,10 +51,27 @@ var panels := []               # [side] -> PlayerPanel
 var hand_views: Array = []
 var detail: DetailCard
 var actions: VBoxContainer
-var hint: Label
+var hint: DuelViews.HintView
 var turn_label: Label
-var end_btn: Button
-var gift_btn: Button
+var end_btn: DuelViews.EmblemButton
+var gift_btn: DuelViews.GiftButton
+var ward_zones := []           # [side] -> WardZone
+var rival_hand: DuelViews.HandBacks
+var _menu_anchor := Vector2(-1, -1)
+var _place_queued := false
+var _stage_base := Vector2.ZERO
+var _shake := 0.0
+var _base_k := 1.0
+var _zoom := 0.0
+var _zoom_at := Vector2(1000, 476)
+var _started := false
+## On screens wider than 16:9 the side columns move out to the screen's edges.
+var _edge := 0.0
+var _left_nodes := []          # [Control, design position]
+var _right_nodes := []
+var _arena: Arena
+var _strike := {}              # the attack in flight: {attacker, melee}
+var _last_hit_pos := Vector2.ZERO
 var log_panel: PanelContainer
 var log_text: RichTextLabel
 var lab_panel: PanelContainer
@@ -80,6 +105,7 @@ func _ready() -> void:
 	add_child(sfx)
 	sfx.volume_db = linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)))) - 8.0
 	var bg := Arena.new()
+	_arena = bg
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var arena_name: String = spec.get("arena", "")
 	if arena_name == "":
@@ -111,8 +137,59 @@ func _ready() -> void:
 
 func _fit() -> void:
 	var k := minf(size.x / DESIGN.x, size.y / DESIGN.y)
+	_base_k = k
 	stage.scale = Vector2(k, k)
-	stage.position = ((size - DESIGN * k) * 0.5).floor()
+	_stage_base = ((size - DESIGN * k) * 0.5).floor()
+	stage.position = _stage_base
+	_edge = maxf(0.0, (size.x / k - DESIGN.x) * 0.5) * 0.85
+	_apply_edges()
+
+
+## Pins a control to the left (or right) column so it hugs the screen edge.
+func _pin(n: Control, pos: Vector2, right: bool) -> void:
+	(_right_nodes if right else _left_nodes).append([n, pos])
+	n.position = pos + Vector2(_edge if right else -_edge, 0)
+
+
+func _apply_edges() -> void:
+	for e in _left_nodes:
+		e[0].position = e[1] - Vector2(_edge, 0)
+	for e in _right_nodes:
+		e[0].position = e[1] + Vector2(_edge, 0)
+	if _arena != null:
+		_arena.edge = _edge
+
+
+func _detail_pos() -> Vector2:
+	return DETAIL_POS + Vector2(_edge, 0)
+
+
+func _process(delta: float) -> void:
+	if stage == null:
+		return
+	if _shake <= 0.0 and _zoom <= 0.0:
+		if stage.position != _stage_base:
+			stage.position = _stage_base
+			stage.scale = Vector2(_base_k, _base_k)
+		return
+	_shake = move_toward(_shake, 0.0, delta * 60.0)
+	_zoom = move_toward(_zoom, 0.0, delta * 0.1)
+	var k := _base_k * (1.0 + _zoom)
+	stage.scale = Vector2(k, k)
+	var jolt := Vector2(randf_range(-1, 1), randf_range(-1, 1)) * _shake * _base_k
+	stage.position = _stage_base - _zoom_at * _base_k * _zoom + jolt
+
+
+## A quick push of the camera towards a big moment.
+func punch(at: Vector2, amount: float = 0.03) -> void:
+	if amount > _zoom:
+		_zoom = amount
+		_zoom_at = at
+
+
+## Shakes the whole field (big hits, knockouts).
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
 
 
 ## "Wren's", or "Your" for a duellist called You.
@@ -120,11 +197,19 @@ func _whose(player_name: String) -> String:
 	return "Your" if player_name == "You" else "%s's" % player_name
 
 
-func _row_y(side: int) -> float:
-	return 430.0 if side == me else 60.0
+## Where a slot's view goes on the stage.
+func _slot_pos(side: int, slot: int) -> Vector2:
+	if side == me:
+		return Vector2(MY_X[slot] - SLOT_SIZE.x * 0.5, MY_PLAT_Y - SLOT_SIZE.y * 0.6)
+	return Vector2(RIVAL_X[slot] - SLOT_SIZE.x * 0.5, RIVAL_PLAT_Y - SLOT_SIZE.y * 0.6)
 
 
 func _build() -> void:
+	# the rival's hand, face down along the top
+	rival_hand = DuelViews.HandBacks.new()
+	rival_hand.position = Vector2(FIELD_CX - 300, 0)
+	rival_hand.size = Vector2(600, 90)
+	stage.add_child(rival_hand)
 	# the Circle's slots
 	for side in 2:
 		views[side] = []
@@ -136,56 +221,63 @@ func _build() -> void:
 			v.tapped.connect(_on_slot_tapped)
 			stage.add_child(v)
 			views[side].append(v)
-	# duellist panels
+	# Ward zones and Life plates down the left
+	for side in 2:
+		var wz := DuelViews.WardZone.new()
+		wz.size = Vector2(400, 126)
+		stage.add_child(wz)
+		ward_zones.append(wz)
 	for side in 2:
 		var p := DuelViews.PlayerPanel.new()
-		p.size = Vector2(300, 400)
+		p.size = Vector2(412, 250)
 		p.tapped.connect(_on_panel_tapped)
 		stage.add_child(p)
 		panels.append(p)
-	# hint and turn line
-	hint = UITheme.label("", 30, UITheme.GOLD, "bold", 6)
-	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	hint.position = Vector2(340, 392)
-	hint.size = Vector2(1180, 40)
+	# aiming arrows while a target is being picked
+	var arrows := TargetArrows.new()
+	arrows.screen = self
+	arrows.size = DESIGN
+	stage.add_child(arrows)
+	# guidance across the middle, and the turn count on the left
+	hint = DuelViews.HintView.new()
+	hint.position = Vector2(440, 450)
+	hint.size = Vector2(1120, 54)
 	stage.add_child(hint)
-	turn_label = UITheme.label("", 24, UITheme.TEXT_DIM, "bold", 4)
-	turn_label.position = Vector2(340, 16)
-	turn_label.size = Vector2(1180, 34)
-	turn_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	turn_label = UITheme.label("", 24, UITheme.TEXT_DIM, "bold", 5)
+	_pin(turn_label, Vector2(26, 456), false)
+	turn_label.size = Vector2(390, 44)
 	stage.add_child(turn_label)
-	# right column: detail card, actions, gift, end turn
-	var top := HBoxContainer.new()
-	top.position = Vector2(RIGHT_X, 14)
-	top.size = Vector2(356, 72)
-	top.add_theme_constant_override("separation", 12)
-	stage.add_child(top)
-	var log_btn := _small_button("Log")
-	log_btn.pressed.connect(func() -> void: log_panel.visible = not log_panel.visible)
-	top.add_child(log_btn)
-	var lab_btn := _small_button("Lab")
-	lab_btn.pressed.connect(func() -> void: lab_panel.visible = not lab_panel.visible)
-	top.add_child(lab_btn)
+	# the card being looked at (shown when something is tapped)
 	detail = DetailCard.new()
-	detail.position = Vector2(RIGHT_X + 43, 96)
-	detail.size = Vector2(270, 378)
+	detail.position = _detail_pos()
+	detail.size = DETAIL_SIZE
+	detail.visible = false
 	stage.add_child(detail)
+	# moves and card actions pop up beside what was tapped
 	actions = VBoxContainer.new()
-	actions.position = Vector2(RIGHT_X, 488)
-	actions.size = Vector2(356, 366)
-	actions.add_theme_constant_override("separation", 10)
+	actions.add_theme_constant_override("separation", 8)
+	actions.position = DOCK_POS
 	stage.add_child(actions)
-	gift_btn = UITheme.button("Divine Gift", false, 356)
-	gift_btn.position = Vector2(RIGHT_X, 866)
-	gift_btn.size = Vector2(356, 88)
-	gift_btn.add_theme_font_size_override("font_size", 26)
+	# patron medallion and End Turn, bottom right
+	gift_btn = DuelViews.GiftButton.new()
+	_pin(gift_btn, Vector2(1546, 842), true)
+	gift_btn.size = Vector2(150, 196)
 	gift_btn.pressed.connect(_on_gift)
 	stage.add_child(gift_btn)
-	end_btn = UITheme.button("End Turn", true, 356)
-	end_btn.position = Vector2(RIGHT_X, 966)
-	end_btn.size = Vector2(356, 96)
+	end_btn = DuelViews.EmblemButton.new()
+	_pin(end_btn, Vector2(1690, 836), true)
+	end_btn.size = Vector2(228, 228)
 	end_btn.pressed.connect(_on_end_turn)
 	stage.add_child(end_btn)
+	var menu := DuelViews.IconButton.new()
+	_pin(menu, Vector2(1838, 10), true)
+	menu.size = Vector2(74, 74)
+	menu.pressed.connect(func() -> void:
+		sfx.play("click")
+		lab_panel.visible = not lab_panel.visible
+		if not lab_panel.visible:
+			log_panel.visible = false)
+	stage.add_child(menu)
 	_build_log()
 	_build_lab()
 
@@ -200,8 +292,8 @@ func _small_button(t: String) -> Button:
 func _build_log() -> void:
 	log_panel = PanelContainer.new()
 	log_panel.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.07, 0.96), UITheme.GOLD_DIM, 18, 2, 18))
-	log_panel.position = Vector2(RIGHT_X - 520, 96)
-	log_panel.size = Vector2(876, 680)
+	log_panel.position = Vector2(440, 96)
+	log_panel.size = Vector2(860, 700)
 	log_panel.visible = false
 	stage.add_child(log_panel)
 	log_text = RichTextLabel.new()
@@ -215,14 +307,17 @@ func _build_log() -> void:
 func _build_lab() -> void:
 	lab_panel = PanelContainer.new()
 	lab_panel.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.07, 0.97), UITheme.GOLD_DIM, 18, 2, 24))
-	lab_panel.position = Vector2(RIGHT_X - 200, 96)
-	lab_panel.size = Vector2(556, 600)
+	_pin(lab_panel, Vector2(1330, 96), true)
+	lab_panel.size = Vector2(570, 640)
 	lab_panel.visible = false
 	stage.add_child(lab_panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 14)
 	lab_panel.add_child(box)
-	box.add_child(UITheme.label("Duel Lab", 34, UITheme.GOLD, "display_bold"))
+	box.add_child(UITheme.label("Menu", 34, UITheme.GOLD, "display_bold"))
+	var lg := UITheme.button("Duel log", false, 500)
+	lg.pressed.connect(func() -> void: log_panel.visible = not log_panel.visible)
+	box.add_child(lg)
 	box.add_child(UITheme.label("Animation speed", 24, UITheme.TEXT_DIM))
 	var sp := HBoxContainer.new()
 	sp.add_theme_constant_override("separation", 10)
@@ -241,6 +336,7 @@ func _build_lab() -> void:
 	rv.toggled.connect(func(on: bool) -> void:
 		reveal_rival = on
 		panels[rival].reveal_wards = on
+		ward_zones[rival].reveal = on
 		_refresh())
 	box.add_child(rv)
 	var again := UITheme.button("Restart this duel", false, 500)
@@ -285,12 +381,17 @@ func _start() -> void:
 	for side in 2:
 		for v in views[side]:
 			v.mine = side == me
-			v.position = Vector2(SLOT_X[v.slot], _row_y(side))
-	panels[rival].position = Vector2(20, 20)
-	panels[me].position = Vector2(20, 660)
+			v.depth = 1.0 if side == me else RIVAL_DEPTH
+			v.position = _slot_pos(side, v.slot)
+	_pin(panels[rival], Vector2(6, 6), false)
+	_pin(panels[me], Vector2(6, 822), false)
+	_pin(ward_zones[rival], Vector2(20, 262), false)
+	_pin(ward_zones[me], Vector2(20, 690), false)
 	for side in 2:
 		panels[side].player = game.players[side]
 		panels[side].mine = side == me
+		ward_zones[side].player = game.players[side]
+		ward_zones[side].mine = side == me
 	_refresh()
 	await game.run()
 	if mode == "over":
@@ -322,21 +423,27 @@ func _refresh() -> void:
 		panels[side].active = game.current == side and not game.over
 	_layout_hand()
 	_update_highlights()
+	rival_hand.count = game.players[rival].hand.size()
+	rival_hand.queue_redraw()
 	var cur: DuelPlayer = game.players[game.current]
+	var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
 	if game.turn > 0:
-		var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
-		if cur.player_name == "You":
-			whose = "Your turn"
-		turn_label.text = "Turn %d  ·  %s" % [game.turn, whose]
+		turn_label.text = "TURN %d  ·  %s" % [game.turn, whose]
 	var my_turn := mode == "main"
-	end_btn.disabled = not my_turn
-	var mp: DuelPlayer = game.players[me]
-	gift_btn.text = "%s%s" % [Lore.GIFTS[mp.gift()].name, "  (used)" if mp.gift_used else ""]
-	gift_btn.disabled = not my_turn or game.gift_problem(me) != ""
-	if my_turn and not game.can_do_anything_but_end(me) and pending == "":
-		end_btn.modulate = Color(1.2, 1.1, 0.8)
+	if game.over:
+		end_btn.state = "off"
+	elif my_turn:
+		end_btn.state = "glow" if not game.can_do_anything_but_end(me) and pending == "" else "on"
 	else:
-		end_btn.modulate = Color.WHITE
+		end_btn.state = "wait"
+	end_btn.wait_label = "WATCHING" if _watching() else ("%s TURN" % _whose(cur.player_name)).to_upper()
+	if game.current == me and not _watching():
+		end_btn.wait_label = "PLEASE WAIT"
+	var mp: DuelPlayer = game.players[me]
+	gift_btn.god = mp.patron()
+	gift_btn.gift_name = Lore.GIFTS[mp.gift()].name
+	gift_btn.used = mp.gift_used
+	gift_btn.enabled = my_turn and game.gift_problem(me) == ""
 
 
 func _watching() -> bool:
@@ -355,31 +462,51 @@ func _layout_hand() -> void:
 		if hv == null:
 			hv = DuelViews.HandCard.new(c)
 			hv.size = HAND_CARD
+			hv.pivot_offset = Vector2(HAND_CARD.x * 0.5, HAND_CARD.y)
 			hv.tapped.connect(_on_hand_tapped)
 			stage.add_child(hv)
-			hv.position = Vector2(930, 1100)
+			hv.position = Vector2(1500, 1120)
+			hv.rotation = 0.5
 		keep.erase(c)
 		fresh.append(hv)
 	for c in keep:
 		keep[c].queue_free()
 	hand_views = fresh
+	# fan the cards in an arc
 	var n := hand_views.size()
-	var area_w := 1160.0
-	var step := minf(HAND_CARD.x + 12, (area_w - HAND_CARD.x) / maxf(1.0, n - 1))
-	var total := step * (n - 1) + HAND_CARD.x
-	var x0 := 340.0 + (area_w - total) * 0.5 + 10
+	var step := minf(HAND_CARD.x * 0.86, 820.0 / maxf(1.0, n - 1))
+	var tilt := minf(3.2, 26.0 / maxf(1.0, n - 1))
 	for i in n:
 		var hv: DuelViews.HandCard = hand_views[i]
-		var target := Vector2(x0 + i * step, HAND_Y)
-		if hv.position.distance_to(target) > 2:
-			var tw := hv.create_tween()
-			tw.tween_property(hv, "position", target, 0.22 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		var off := i - (n - 1) * 0.5
+		var target := Vector2(FIELD_CX + off * step - HAND_CARD.x * 0.5, HAND_Y + off * off * 2.4)
+		var rot := deg_to_rad(off * tilt)
+		var sc := 1.0
 		hv.z_index = i
+		if hv.card == sel_card:
+			target.y -= 74
+			rot = 0.0
+			sc = 1.1
+			hv.z_index = 40
+		if hv.position.distance_to(target) > 2 or absf(hv.rotation - rot) > 0.01 or absf(hv.scale.x - sc) > 0.01:
+			var tw := hv.create_tween().set_parallel(true)
+			tw.tween_property(hv, "position", target, 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(hv, "rotation", rot, 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+			tw.tween_property(hv, "scale", Vector2(sc, sc), 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		hv.attrs = p.attributes()
 		hv.cost_shown = _card_cost(hv.card)
 		hv.state = _hand_state(hv.card)
 		if _watching():
 			hv.state = "normal"
+
+
+## The top centre of a hand card once it has risen out of the fan.
+func _hand_anchor(hv) -> Vector2:
+	var i := hand_views.find(hv)
+	var n := hand_views.size()
+	var step := minf(HAND_CARD.x * 0.86, 820.0 / maxf(1.0, n - 1))
+	var off := i - (n - 1) * 0.5
+	return Vector2(FIELD_CX + off * step, HAND_Y - 74 - 32)
 
 
 func _card_cost(c: DuelCard) -> int:
@@ -443,7 +570,7 @@ func _has_usable_move(t: DuelTotem) -> bool:
 func begin_main() -> void:
 	mode = "main"
 	_clear_selection()
-	_set_hint("Your turn. Tap a card or one of your Totems.")
+	_hide_detail()
 	_refresh()
 	_show_actions_default()
 
@@ -461,6 +588,7 @@ func _respond(value) -> void:
 	_clear_selection()
 	_set_hint("")
 	_clear_actions()
+	_hide_detail()
 	_refresh()
 	human.responded.emit(value)
 
@@ -486,7 +614,9 @@ func _on_gift() -> void:
 	var g: String = game.players[me].gift()
 	_clear_selection()
 	_clear_actions()
-	_add_note("Your Divine Gift can be used once per duel.")
+	_hide_detail()
+	_menu_anchor = Vector2(-1, -1)
+	_add_note("%s: %s Once per duel." % [Lore.GIFTS[g].name, DuelCards.gift_text(g)])
 	if ts.is_empty():
 		_add_action("Use %s" % Lore.GIFTS[g].name, DuelCards.gift_text(g), 0, true,
 			func() -> void: _respond({"type": "gift"}))
@@ -508,13 +638,14 @@ func _on_panel_tapped(panel) -> void:
 
 func _on_hand_tapped(hv) -> void:
 	var c: DuelCard = hv.card
-	detail.show_card(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c)})
+	_show_detail(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c)})
 	if mode != "main":
 		return
 	sfx.play("select")
 	if sel_card == c:
 		_clear_selection()
-		_set_hint("Your turn. Tap a card or one of your Totems.")
+		_hide_detail()
+		_clear_actions()
 		_show_actions_default()
 		_refresh()
 		return
@@ -522,6 +653,7 @@ func _on_hand_tapped(hv) -> void:
 	sel_card = c
 	var p: DuelPlayer = game.players[me]
 	_clear_actions()
+	_menu_anchor = _hand_anchor(hv)
 	match c.kind():
 		"totem":
 			if c.is_basic_totem():
@@ -578,9 +710,9 @@ func _on_hand_tapped(hv) -> void:
 
 
 func _on_slot_tapped(v) -> void:
-	if v.totem != null:
+	if v.totem != null and not (pending != "" and targets.has(v.totem)):
 		var opts := {"hp_left": v.totem.hp_left(), "attrs": v.totem.attrs}
-		detail.show_card(v.totem.id(), opts)
+		_show_detail(v.totem.id(), opts)
 	if mode == "pick_slot":
 		if v.side == pick_side and v.totem == null and targets.has(v.slot):
 			var s: int = v.slot
@@ -633,7 +765,8 @@ func _cancel_pending() -> void:
 	if t != null:
 		_select_totem(t)
 		return
-	_set_hint("Your turn. Tap a card or one of your Totems.")
+	_hide_detail()
+	_clear_actions()
 	_show_actions_default()
 	_refresh()
 
@@ -642,8 +775,10 @@ func _select_totem(t: DuelTotem) -> void:
 	sfx.play("select")
 	_clear_selection()
 	sel_totem = t
-	detail.show_card(t.id(), {"hp_left": t.hp_left(), "attrs": t.attrs})
+	_show_detail(t.id(), {"hp_left": t.hp_left(), "attrs": t.attrs})
 	_clear_actions()
+	var tv: DuelViews.TotemView = views[me][t.slot]
+	_menu_anchor = tv.position + tv.body_point() - Vector2(0, 118)
 	var ready := game.ready_problem(me, t)
 	if ready != "":
 		_add_note(ready)
@@ -671,6 +806,7 @@ func _select_totem(t: DuelTotem) -> void:
 			targets = range(DuelRules.SLOTS).filter(func(s): return s != t.slot)
 			_set_hint("Tap the slot to shift %s to." % t.card_name())
 			_clear_actions()
+			_menu_anchor = Vector2(-1, -1)
 			_show_cancel()
 			_refresh())
 	_set_hint("%s: choose a move." % t.card_name())
@@ -696,6 +832,7 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 	else:
 		_set_hint("Choose an enemy Totem.")
 	_clear_actions()
+	_menu_anchor = Vector2(-1, -1)
 	_show_cancel()
 	_refresh()
 
@@ -704,36 +841,45 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 
 func _clear_actions() -> void:
 	for c in actions.get_children():
+		actions.remove_child(c)
 		c.queue_free()
+	actions.size = Vector2.ZERO
 
 
 func _show_actions_default() -> void:
 	_clear_actions()
+	_menu_anchor = Vector2(-1, -1)
 	var p: DuelPlayer = game.players[me]
 	var any := false
 	for t in p.totems():
 		if _has_usable_move(t):
 			any = true
 	if any:
-		_add_note("Glowing Totems are ready to attack. Tap one to choose a move.")
+		_set_hint("Tap a glowing Totem to attack, or a glowing card to play it.")
 	elif game.can_do_anything_but_end(me):
-		_add_note("Tap a glowing card in your hand to play it.")
+		_set_hint("Tap a glowing card in your hand to play it.")
 	else:
-		_add_note("Nothing left to do. End your turn.")
+		_set_hint("Nothing left to do: end your turn.")
 
 
 func _show_cancel() -> void:
-	var b := UITheme.button("Cancel", false, 356)
-	b.custom_minimum_size = Vector2(356, 80)
+	_menu_anchor = Vector2(-1, -1)
+	var b := UITheme.button("Cancel", false, 300)
+	b.custom_minimum_size = Vector2(340, 76)
 	b.pressed.connect(_cancel_pending)
 	actions.add_child(b)
+	_queue_place()
 
 
 func _add_note(t: String) -> void:
-	var l := UITheme.label(t, 25, UITheme.TEXT_DIM)
+	var pc := PanelContainer.new()
+	pc.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.035, 0.07, 0.94), UITheme.GOLD_DIM, 14, 2, 14))
+	var l := UITheme.label(t, 23, UITheme.TEXT)
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(356, 0)
-	actions.add_child(l)
+	l.custom_minimum_size = Vector2(340, 0)
+	pc.add_child(l)
+	actions.add_child(pc)
+	_queue_place()
 
 
 func _add_action(title: String, sub: String, cost: int, enabled: bool, cb: Callable) -> void:
@@ -742,11 +888,59 @@ func _add_action(title: String, sub: String, cost: int, enabled: bool, cb: Calla
 	b.sub = sub
 	b.cost = cost
 	b.enabled = enabled
-	b.custom_minimum_size = Vector2(356, 108)
+	b.custom_minimum_size = Vector2(384, 96)
 	b.pressed.connect(func() -> void:
 		if b.enabled:
 			cb.call())
 	actions.add_child(b)
+	_queue_place()
+
+
+func _queue_place() -> void:
+	if not _place_queued:
+		_place_queued = true
+		_place_actions.call_deferred()
+
+
+## Puts the command buttons above what was tapped (or docks them on the right
+## while a target is being picked) and pops them in.
+func _place_actions() -> void:
+	_place_queued = false
+	if actions.get_child_count() == 0:
+		return
+	actions.size = Vector2.ZERO
+	var sz := actions.get_combined_minimum_size()
+	actions.size = sz
+	if _menu_anchor.x < 0.0:
+		actions.position = DOCK_POS + Vector2(_edge, 0)
+		actions.pivot_offset = Vector2(sz.x * 0.5, 0)
+	else:
+		var x := clampf(_menu_anchor.x - sz.x * 0.5, 432.0, 1572.0 - sz.x)
+		var y := maxf(92.0, _menu_anchor.y - sz.y)
+		actions.position = Vector2(x, y)
+		actions.pivot_offset = Vector2(sz.x * 0.5, sz.y)
+	actions.scale = Vector2(0.86, 0.86)
+	actions.modulate.a = 0.0
+	var tw := actions.create_tween().set_parallel(true)
+	tw.tween_property(actions, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(actions, "modulate:a", 1.0, 0.12)
+
+
+func _show_detail(id: String, opts: Dictionary = {}) -> void:
+	var was := detail.visible
+	detail.show_card(id, opts)
+	detail.visible = true
+	if not was:
+		detail.position = _detail_pos() + Vector2(60, 0)
+		detail.modulate.a = 0.0
+		var tw := detail.create_tween().set_parallel(true)
+		tw.tween_property(detail, "position", _detail_pos(), 0.2).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(detail, "modulate:a", 1.0, 0.15)
+
+
+func _hide_detail() -> void:
+	detail.visible = false
+	detail.card_id = ""
 
 
 # =========================================================== human pickers ===
@@ -806,8 +1000,8 @@ func preview_ai_action(pi: int, a: Dictionary) -> void:
 			panels[1 - pi].targetable = false
 		"call", "rite", "summon", "ascend":
 			var c: DuelCard = a.card
-			detail.show_card(c.id, {"cost": c.cost()})
-			await pause(0.25)
+			_show_detail(c.id, {"cost": c.cost()})
+			await pause(0.35)
 
 
 # ================================================================ effects ===
@@ -817,7 +1011,19 @@ func _view(t: DuelTotem) -> DuelViews.TotemView:
 
 
 func _center(v: Control) -> Vector2:
+	if v is DuelViews.TotemView:
+		return v.position + v.body_point()
 	return v.position + v.size * Vector2(0.5, 0.36)
+
+
+func _foot(v: DuelViews.TotemView) -> Vector2:
+	return v.position + v.foot_point()
+
+
+## Where Life damage numbers pop: just right of the Life plate.
+func _life_number_pos(pi: int) -> Vector2:
+	var p: DuelViews.PlayerPanel = panels[pi]
+	return p.position + Vector2(p.size.x + 120, 96)
 
 
 func _life_center(pi: int) -> Vector2:
@@ -826,19 +1032,30 @@ func _life_center(pi: int) -> Vector2:
 
 
 func fx_start() -> void:
-	await _banner("DUEL!", UITheme.GOLD, 0.8)
+	await pause(0.1)
 
 
 func fx_rolloff(r0: int, r1: int) -> void:
+	if not _started:
+		_started = true
+		sfx.play("turn")
+		await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
 	var names: Array = spec.get("names", ["You", "Rival"])
-	await _banner("%s %d  ·  %s %d" % [names[0], r0, names[1], r1], UITheme.TEXT, 1.0, 44)
+	if r0 == r1:
+		await _banner("A TIE", UITheme.TEXT, 0.7, 72, "", "Both rolled %d. Roll again!" % r0)
+		return
+	var first: String = names[0] if r0 > r1 else names[1]
+	var head := "YOU GO FIRST" if first == "You" else "%s GOES FIRST" % first.to_upper()
+	await _banner(head, UITheme.GOLD, 1.0, 72, "", "Fate roll:  %s %d   ·   %s %d" % [names[0], r0, names[1], r1])
 
 
 func fx_turn(pi: int) -> void:
+	_hide_detail()
+	_strike = {}
 	_refresh()
 	sfx.play("turn")
 	var t := "YOUR TURN" if pi == me and not _watching() else ("%s turn" % _whose(game.players[pi].player_name)).to_upper()
-	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.7)
+	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.6, 96, "", "TURN %d" % game.turn)
 
 
 func fx_draw(pi: int, cards: Array) -> void:
@@ -847,59 +1064,105 @@ func fx_draw(pi: int, cards: Array) -> void:
 		sfx.play("card")
 		for hv in hand_views:
 			if cards.has(hv.card):
-				hv.position = panels[me].position + Vector2(100, 200)
+				hv.position = Vector2(1560 + _edge, 1100)
+				hv.rotation = 0.6
 		_layout_hand()
 		await pause(0.3)
 
 
 func fx_call(t: DuelTotem) -> void:
+	_hide_detail()
 	var v := _view(t)
 	v.set_totem(t)
-	v.pop = 0.2
 	v.fade = 0.0
+	v.pop = 0.3
+	var foot := _foot(v)
+	var col := DuelFX.light(t.element())
+	sfx.play("card")
+	_layout_hand()
+	var from := Vector2(FIELD_CX, HAND_Y + 80) if t.owner == me else Vector2(FIELD_CX, 30)
+	await _fly_card(t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
+	sfx.play("energy")
+	DuelFX.flash(fx_layer, foot, col, 260.0 * v.depth, 0.5 / speed)
+	DuelFX.shockwave(fx_layer, foot, col, 240.0 * v.depth, 0.55 / speed, 0.3, 9.0)
+	DuelFX.pillar(fx_layer, foot, col, 190.0 * v.depth, 560.0 * v.depth, 0.8 / speed)
+	DuelFX.burst(fx_layer, foot - Vector2(0, 30), col, 40, 520.0, 15.0, 0.8, Vector2(0, 320), 70.0, Vector2.UP, speed)
 	v.flash = 1.0
 	v.flash_color = Color(1, 1, 0.9)
-	sfx.play("energy")
-	_layout_hand()
-	_beam(_center(v), Lore.color(t.element(), 0))
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(v, "pop", 1.0, 0.4 / speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(v, "fade", 1.0, 0.25 / speed)
-	tw.tween_property(v, "flash", 0.0, 0.5 / speed)
-	await pause(0.45)
+	tw.tween_property(v, "pop", 1.0, 0.45 / speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(v, "fade", 1.0, 0.18 / speed)
+	tw.tween_property(v, "flash", 0.0, 0.7 / speed)
+	if t.tier() >= 3:
+		shake(9.0)
+	await pause(0.5)
 
 
 func fx_ascend(t: DuelTotem) -> void:
+	_hide_detail()
 	var v := _view(t)
 	v.set_totem(t)
-	v.flash = 1.0
-	v.flash_color = UITheme.GOLD
+	var foot := _foot(v)
+	var c := _center(v)
 	sfx.play("evolve")
 	_layout_hand()
-	DuelViews.float_text(fx_layer, _center(v), "ASCENDED!", UITheme.GOLD, 44, 1.1 / speed)
+	DuelFX.pillar(fx_layer, foot, UITheme.GOLD, 240.0 * v.depth, 760.0 * v.depth, 1.0 / speed)
+	DuelFX.rise(fx_layer, foot - Vector2(0, 20), UITheme.GOLD, 220.0 * v.depth, 60, 1.2, speed)
+	await pause(0.25)
+	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.8), 330.0 * v.depth, 0.6 / speed)
+	DuelFX.shockwave(fx_layer, foot, UITheme.GOLD, 300.0 * v.depth, 0.6 / speed, 0.32, 12.0)
+	DuelFX.burst(fx_layer, c, UITheme.GOLD, 50, 700.0, 18.0, 0.9, Vector2(0, 200), 180.0, Vector2.UP, speed)
+	shake(10.0)
+	punch(c, 0.04)
+	v.flash = 1.0
+	v.flash_color = UITheme.GOLD
+	DuelFX.number(fx_layer, c + Vector2(0, -150 * v.depth), "ASCENDED!", UITheme.GOLD, 64, 1.3 / speed)
+	v.pop = 1.25
 	var tw := create_tween().set_parallel(true)
-	v.pop = 1.18
-	tw.tween_property(v, "pop", 1.0, 0.45 / speed).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
-	tw.tween_property(v, "flash", 0.0, 0.6 / speed)
-	await pause(0.6)
+	tw.tween_property(v, "pop", 1.0, 0.55 / speed).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(v, "flash", 0.0, 0.8 / speed)
+	await pause(0.7)
 
 
-func fx_rite(pi: int, card: DuelCard, _target) -> void:
+func fx_rite(pi: int, card: DuelCard, target) -> void:
+	_hide_detail()
 	sfx.play("card")
 	_layout_hand()
-	await _show_card_big(card.id, "RITE", DuelCardFace.RITE_COL, 0.7 if pi != me else 0.35)
+	var from := Vector2(FIELD_CX, HAND_Y + 80) if pi == me else Vector2(FIELD_CX, 30)
+	var c := await _show_card_big(card.id, "RITE", DuelCardFace.RITE_COL, 0.75 if pi != me else 0.45, from)
+	var col := DuelFX.light(card.element())
+	if target is DuelTotem:
+		var to := _center(_view(target))
+		var b := DuelFX.projectile(fx_layer, c, to, col, 0.3 / speed, 30.0, 60.0)
+		await b.arrived
+		DuelFX.flash(fx_layer, to, col, 180.0, 0.4 / speed)
+		DuelFX.burst(fx_layer, to, col, 22, 420.0, 14.0, 0.6, Vector2(0, 200), 180.0, Vector2.UP, speed)
+	else:
+		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
+		DuelFX.burst(fx_layer, c, col, 30, 520.0, 14.0, 0.7, Vector2(0, 200), 180.0, Vector2.UP, speed)
+	await pause(0.1)
 
 
 func fx_ward_set(pi: int, _card: DuelCard) -> void:
 	sfx.play("card")
 	_layout_hand()
-	DuelViews.float_text(fx_layer, panels[pi].position + Vector2(150, 330), "Ward set", Color("d9a6f0"), 34, 0.9 / speed)
-	await pause(0.3)
+	var wz: DuelViews.WardZone = ward_zones[pi]
+	var wr: Rect2 = wz.card_rect(maxi(0, game.players[pi].wards.size() - 1))
+	var to: Vector2 = wz.position + wr.get_center()
+	var from := Vector2(FIELD_CX, HAND_Y + 80) if pi == me else Vector2(FIELD_CX, 30)
+	await _fly_card("", from, to, 0.3 / speed, Vector2(0.44, 0.44))
+	DuelFX.flash(fx_layer, to, DuelCardFace.WARD_COL, 140.0, 0.5 / speed)
+	DuelFX.burst(fx_layer, to, Color("d9a6f0"), 16, 260.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
+	await pause(0.15)
 
 
-func fx_ward_spring(_pi: int, card: DuelCard, _ctx: Dictionary) -> void:
+func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 	sfx.play("gift")
-	await _show_card_big(card.id, "WARD!", DuelCardFace.WARD_COL, 0.9)
+	var wz: DuelViews.WardZone = ward_zones[pi]
+	var from: Vector2 = wz.position + wz.card_rect(0).get_center()
+	var c := await _show_card_big(card.id, "WARD!", DuelCardFace.WARD_COL, 0.9, from)
+	DuelFX.shockwave(fx_layer, c, Color("d9a6f0"), 380.0, 0.6 / speed, 1.0, 10.0)
+	shake(6.0)
 
 
 func fx_shift(_pi: int) -> void:
@@ -907,29 +1170,106 @@ func fx_shift(_pi: int) -> void:
 	for side in 2:
 		for v in views[side]:
 			v.set_totem(game.players[side].slots[v.slot])
+			if v.totem != null:
+				DuelFX.shockwave(fx_layer, _foot(v), DuelFX.light(v.totem.element()), 160.0 * v.depth, 0.4 / speed, 0.3, 6.0)
 	await pause(0.25)
 
 
-func fx_attack(t: DuelTotem, i: int, target) -> void:
-	var v := _view(t)
-	var src := _center(v)
-	var dest := src + Vector2(0, -120 if t.owner == me else 120)
+## Melee moves charge in and strike; everything else is thrown, breathed or cast.
+func _is_melee(move_name: String) -> bool:
+	var n := move_name.to_lower()
+	for w in ["nip", "bite", "fang", "rush", "whip", "claw", "headbutt", "charge", "lash", "slam", "ram", "smash",
+			"bash", "tackle", "gnaw", "strike", "grasp", "blade", "ambush"]:
+		if n.contains(w):
+			return true
+	return false
+
+
+func _target_point(t: DuelTotem, target) -> Vector2:
 	if target is DuelTotem:
-		dest = _center(_view(target))
-	elif target is String and target == DuelGame.LIFE:
-		dest = _life_center(1 - t.owner)
-	DuelViews.float_text(fx_layer, src + Vector2(0, -150), String(t.move(i).name), UITheme.GOLD, 36, 0.9 / speed)
-	var d := (dest - src) * 0.3
+		return _center(_view(target))
+	if target is String and target == DuelGame.LIFE:
+		return _life_center(1 - t.owner)
+	return _center(_view(t)) + Vector2(0, -120 if t.owner == me else 120)
+
+
+func fx_attack(t: DuelTotem, i: int, target) -> void:
+	_hide_detail()
+	var v := _view(t)
+	var mv := t.move(i)
+	var col := DuelFX.light(t.element())
+	var src := _center(v)
+	var dest := _target_point(t, target)
+	_strike = {"attacker": t, "melee": _is_melee(String(mv.name))}
+	sfx.play("select", 0.9)
+	_move_label(src + Vector2(0, -150 * v.depth), String(mv.name), col)
+	# gather power: a glow, sparks drawn in, and a step back
+	v.flash = 0.7
+	v.flash_color = col
+	create_tween().tween_property(v, "flash", 0.0, 0.45 / speed)
+	DuelFX.flash(fx_layer, src, col, 170.0 * v.depth, 0.45 / speed)
+	var back := -(dest - src).normalized() * 28.0
 	var tw := create_tween()
-	tw.tween_property(v, "offset", d, 0.14 / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-	tw.tween_property(v, "offset", Vector2.ZERO, 0.22 / speed).set_ease(Tween.EASE_OUT)
-	await pause(0.16)
+	tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+	if not _strike.melee:
+		tw.tween_property(v, "offset", Vector2.ZERO, 0.16 / speed).set_ease(Tween.EASE_IN_OUT)
+	await pause(0.26)
+	if (target is String and target == DuelGame.NONE) or (target is DuelTotem and target.owner == t.owner):
+		# a self or ally move: no strike to deliver
+		_strike = {}
+		tw = create_tween()
+		tw.tween_property(v, "offset", Vector2.ZERO, 0.15 / speed)
+
+
+## Sends the attack across the field once its damage is known.
+func _deliver(att: DuelTotem, to: Vector2) -> void:
+	var v := _view(att)
+	var from := _center(v) - v.offset
+	var col := DuelFX.light(att.element())
+	if _strike.get("melee", false):
+		var tw := create_tween()
+		tw.tween_property(v, "offset", (to - from) * 0.8, 0.12 / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		await tw.finished
+		var ang := randf_range(-0.9, -0.4)
+		if to.x < from.x:
+			ang = PI - ang
+		DuelFX.slash(fx_layer, to, col, 150.0, ang, 0.26 / speed)
+		DuelFX.slash(fx_layer, to + Vector2(10, 14), Color.WHITE, 120.0, ang + 0.25, 0.22 / speed)
+		var back := create_tween()
+		back.tween_property(v, "offset", Vector2.ZERO, 0.32 / speed).set_delay(0.08 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		return
+	match att.element():
+		"storm":
+			DuelFX.flash(fx_layer, from, col, 140.0, 0.3 / speed)
+			DuelFX.lightning(fx_layer, from, to, col, 0.36 / speed, 10.0)
+			DuelFX.lightning(fx_layer, from, to, Color.WHITE, 0.22 / speed, 4.0)
+			await pause(0.1)
+		"psychic", "mystic", "spirit":
+			var b := DuelFX.projectile(fx_layer, from, to, col, 0.34 / speed, 30.0, 40.0)
+			for k in 2:
+				DuelFX.shockwave(fx_layer, from, col, 120.0 + k * 60.0, 0.4 / speed, 1.0, 5.0)
+			await b.arrived
+			for k in 3:
+				DuelFX.shockwave(fx_layer, to, col, 90.0 + k * 70.0, (0.3 + k * 0.1) / speed, 1.0, 6.0)
+		_:
+			var b := DuelFX.projectile(fx_layer, from, to, col, 0.3 / speed, 34.0, 110.0)
+			await b.arrived
+
+
+## The flash, sparks and shake where a hit lands.
+func _impact(pos: Vector2, col: Color, amount: int) -> void:
+	var big := amount >= 50
+	DuelFX.flash(fx_layer, pos, col, 230.0 if big else 170.0, 0.4 / speed)
+	DuelFX.flash(fx_layer, pos, Color.WHITE, 90.0 if big else 70.0, 0.2 / speed)
+	DuelFX.burst(fx_layer, pos, col, 34 if big else 22, 620.0 if big else 480.0, 16.0, 0.65, Vector2(0, 420), 180.0, Vector2.UP, speed)
+	DuelFX.shockwave(fx_layer, pos + Vector2(0, 50), col, 200.0 if big else 150.0, 0.45 / speed, 0.4, 9.0)
+	shake(5.0 + minf(float(amount), 100.0) * 0.12)
 
 
 func fx_roll(_pi: int, info: Dictionary) -> void:
 	var dv := DuelViews.DiceView.new()
 	dv.info = info
-	dv.position = Vector2(340, 300)
+	dv.position = Vector2(FIELD_CX - 590, 276)
 	dv.size = Vector2(1180, 400)
 	fx_layer.add_child(dv)
 	var steps := int(14 / maxf(1.0, speed * 0.7))
@@ -942,8 +1282,14 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	dv.spin = 0.0
 	dv.landed = true
 	sfx.play("coin")
+	var c := dv.position + dv.die_center()
+	var col := UITheme.GOLD if int(info.roll) == 20 else (Color("ff6a5a") if int(info.roll) == 1 else Color(0.7, 0.6, 1.0))
+	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
+	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	await pause(1.2)
-	dv.queue_free()
+	var tw := dv.create_tween()
+	tw.tween_property(dv, "modulate:a", 0.0, 0.15 / speed)
+	tw.tween_callback(dv.queue_free)
 
 
 func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
@@ -951,67 +1297,114 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	if v.totem != t:
 		v.set_totem(t)
 	var c := _center(v)
+	var att = info.get("attacker")
+	var src: String = info.get("source", "")
+	if att != null and src == "" and not _strike.is_empty() and _strike.get("attacker") == att:
+		await _deliver(att, c)
+	elif src == "thorns" or src == "recoil":
+		DuelFX.burst(fx_layer, c, Color("9be15d") if src == "thorns" else Color(1, 0.6, 0.4), 14, 300.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	var absorbed := int(info.get("absorbed", 0))
 	if absorbed > 0:
-		DuelViews.float_text(fx_layer, c + Vector2(90, -30), "◈ -%d" % absorbed, Color("9fe8ff"), 40, 0.9 / speed)
+		DuelFX.shockwave(fx_layer, c, Color("9fe8ff"), 150.0 * v.depth, 0.4 / speed, 1.0, 8.0)
+		DuelFX.number(fx_layer, c + Vector2(110, -40), "◈ -%d" % absorbed, Color("9fe8ff"), 46, 0.9 / speed)
+	_last_hit_pos = c
 	if amount <= 0:
 		await pause(0.2)
 		return
 	sfx.play("hit")
+	var col := Color(1.0, 0.45, 0.35)
+	if att != null:
+		col = DuelFX.light(att.element())
+	elif src == "burn":
+		col = Color(1.0, 0.55, 0.2)
+	elif src == "poison":
+		col = Color(0.65, 1.0, 0.3)
+	_impact(c, col, amount)
+	if amount >= 40:
+		punch(c, 0.025 + minf(float(amount), 120.0) * 0.0002)
 	v.flash = 1.0
-	v.flash_color = Color(1, 0.25, 0.2)
-	var weak := t.weak_to(info.get("attacker").element()) if info.get("attacker") != null else false
-	DuelViews.float_text(fx_layer, c, "-%d" % amount, Color("ff6a5a"), 64, 1.0 / speed)
-	if weak:
-		DuelViews.float_text(fx_layer, c + Vector2(0, 60), "Weak!", Color("ffd166"), 30, 0.9 / speed)
+	v.flash_color = Color(1, 0.3, 0.25)
+	var weak: bool = att != null and t.weak_to(att.element())
+	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80, 1.1 / speed, "WEAK!  ×1.5" if weak else "")
+	# knocked back, then settles
+	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
+	if att != null and _strike.get("melee", false):
+		push = (c - _center(_view(att))).normalized() * 22.0
 	var tw := create_tween()
-	for k in 4:
-		tw.tween_property(v, "offset", Vector2(randf_range(-14, 14), randf_range(-6, 6)), 0.04 / speed)
-	tw.tween_property(v, "offset", Vector2.ZERO, 0.05 / speed)
-	create_tween().tween_property(v, "flash", 0.0, 0.4 / speed)
-	await pause(0.38)
+	tw.tween_property(v, "offset", push, 0.05 / speed)
+	for k in 3:
+		tw.tween_property(v, "offset", push * 0.5 + Vector2(randf_range(-10, 10), randf_range(-4, 4)), 0.04 / speed)
+	tw.tween_property(v, "offset", Vector2.ZERO, 0.12 / speed)
+	create_tween().tween_property(v, "flash", 0.0, 0.45 / speed)
+	await pause(0.08)
+	await pause(0.36)
 
 
 func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	var p: DuelViews.PlayerPanel = panels[pi]
+	var to := _life_center(pi)
+	var att = info.get("attacker")
+	if info.get("spill", false):
+		var b := DuelFX.projectile(fx_layer, _last_hit_pos, to, Color(1, 0.35, 0.4), 0.28 / speed, 26.0, 80.0)
+		await b.arrived
+	elif att != null and not _strike.is_empty() and _strike.get("attacker") == att:
+		await _deliver(att, to)
 	sfx.play("hit", 0.7)
 	p.flash = 1.0
-	p.shake = 8.0
-	var label := "-%d" % amount
-	if info.get("spill", false):
-		label += " spill-over"
-	DuelViews.float_text(fx_layer, _life_center(pi) + Vector2(0, -10), label, Color("ff4d6a"), 56 if not info.get("spill", false) else 44, 1.1 / speed)
+	p.shake = 10.0
+	var col := Color(1, 0.3, 0.4)
+	DuelFX.flash(fx_layer, to, col, 220.0, 0.45 / speed)
+	DuelFX.burst(fx_layer, to, col, 26, 520.0, 14.0, 0.6, Vector2(0, 300), 180.0, Vector2.UP, speed)
+	shake(8.0 + minf(float(amount), 100.0) * 0.1)
+	punch(Vector2(FIELD_CX, 476), 0.02)
+	DuelFX.number(fx_layer, _life_number_pos(pi), "-%d" % amount, Color("ff4d6a"), 88 if not info.get("spill", false) else 70, 1.2 / speed, "SPILL-OVER" if info.get("spill", false) else "")
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(p, "flash", 0.0, 0.5 / speed)
-	tw.tween_property(p, "shake", 0.0, 0.4 / speed)
+	tw.tween_property(p, "shake", 0.0, 0.45 / speed)
 	if pi == me:
-		_screen_flash(Color(1, 0, 0, 0.25))
-	await pause(0.45)
+		_vignette(Color(1, 0.05, 0.1))
+	await pause(0.5)
 
 
 func fx_heal(t: DuelTotem, amount: int) -> void:
 	var v := _view(t)
 	sfx.play("heal")
+	var col := Color(0.45, 1.0, 0.55)
 	v.flash = 0.8
-	v.flash_color = Color("7ee08a")
-	create_tween().tween_property(v, "flash", 0.0, 0.5 / speed)
-	DuelViews.float_text(fx_layer, _center(v), "+%d" % amount, Color("7ee08a"), 52, 1.0 / speed)
-	await pause(0.3)
+	v.flash_color = col
+	create_tween().tween_property(v, "flash", 0.0, 0.6 / speed)
+	DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 10), col, 200.0 * v.depth, 34, 1.1, speed)
+	DuelFX.shockwave(fx_layer, _foot(v), col, 180.0 * v.depth, 0.5 / speed, 0.3, 7.0)
+	DuelFX.number(fx_layer, _center(v), "+%d" % amount, Color("7ee08a"), 76, 1.0 / speed)
+	await pause(0.35)
 
 
 func fx_life_gain(pi: int, amount: int) -> void:
 	sfx.play("heal")
+	var to := _life_center(pi)
+	DuelFX.rise(fx_layer, to + Vector2(0, 40), Color(0.45, 1.0, 0.55), 260.0, 30, 1.0, speed)
 	if amount > 0:
-		DuelViews.float_text(fx_layer, _life_center(pi), "+%d" % amount, Color("7ee08a"), 52, 1.0 / speed)
+		DuelFX.number(fx_layer, _life_number_pos(pi), "+%d" % amount, Color("7ee08a"), 76, 1.0 / speed)
 	else:
-		DuelViews.float_text(fx_layer, _life_center(pi), "Survived!", UITheme.GOLD, 46, 1.2 / speed)
+		DuelFX.number(fx_layer, _life_number_pos(pi), "SURVIVED!", UITheme.GOLD, 56, 1.3 / speed)
 	await pause(0.35)
 
 
 func fx_status(t: DuelTotem, status: String) -> void:
 	var v := _view(t)
-	var col: Color = {"burn": Color("ff9a4a"), "poison": Color("9be15d"), "stun": Color("ffe066"), "sleep": Color("b9a4ff")}[status]
-	DuelViews.float_text(fx_layer, _center(v) + Vector2(0, 50), DuelCards.STATUS_NAMES[status] + "!", col, 36, 0.9 / speed)
+	var col: Color = DuelViews.STATUS_COL.get(status, Color.WHITE)
+	var c := _center(v)
+	match status:
+		"burn":
+			DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(1.0, 0.5, 0.15), 160.0 * v.depth, 30, 0.9, speed)
+		"poison":
+			DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(0.6, 1.0, 0.3), 160.0 * v.depth, 24, 1.1, speed)
+		"stun":
+			DuelFX.burst(fx_layer, c + Vector2(0, -60), Color(1.0, 0.9, 0.3), 18, 300.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
+		_:
+			DuelFX.rise(fx_layer, c, Color(0.7, 0.6, 1.0), 120.0 * v.depth, 16, 1.2, speed)
+	DuelFX.flash(fx_layer, c, col, 150.0 * v.depth, 0.4 / speed)
+	DuelFX.number(fx_layer, c + Vector2(0, 60), DuelCards.STATUS_NAMES[status].to_upper() + "!", col, 44, 0.9 / speed)
 	sfx.play("select", 0.8)
 	await pause(0.3)
 
@@ -1019,13 +1412,25 @@ func fx_status(t: DuelTotem, status: String) -> void:
 func fx_ko(t: DuelTotem) -> void:
 	var v: DuelViews.TotemView = views[t.owner][t.slot]
 	v.set_totem(t)
+	var c := _center(v)
+	var foot := _foot(v)
+	var col := DuelFX.light(t.element())
 	v.flash = 1.0
 	v.flash_color = Color(1, 1, 1)
 	sfx.play("ko")
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(v, "pop", 0.55, 0.45 / speed).set_ease(Tween.EASE_IN)
-	tw.tween_property(v, "fade", 0.0, 0.45 / speed)
-	await pause(0.5)
+	shake(12.0)
+	punch(c, 0.045)
+	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
+	DuelFX.burst(fx_layer, c, col, 46, 720.0, 18.0, 0.9, Vector2(0, 300), 180.0, Vector2.UP, speed)
+	DuelFX.rise(fx_layer, foot - Vector2(0, 50), col, 190.0 * v.depth, 50, 1.3, speed)
+	DuelFX.shockwave(fx_layer, foot, col, 260.0 * v.depth, 0.6 / speed, 0.3, 10.0)
+	DuelFX.number(fx_layer, c + Vector2(0, -70), "KNOCKED OUT", Color("ff4d6a"), 54, 1.2 / speed)
+	var tw := create_tween()
+	tw.tween_property(v, "pop", 1.12, 0.08 / speed)
+	tw.set_parallel(true)
+	tw.tween_property(v, "pop", 0.35, 0.42 / speed).set_ease(Tween.EASE_IN).set_delay(0.08 / speed)
+	tw.tween_property(v, "fade", 0.0, 0.42 / speed).set_delay(0.08 / speed)
+	await pause(0.55)
 	v.pop = 1.0
 	v.fade = 1.0
 	v.flash = 0.0
@@ -1033,6 +1438,7 @@ func fx_ko(t: DuelTotem) -> void:
 
 
 func fx_summon(pi: int, card: DuelCard) -> void:
+	_hide_detail()
 	_layout_hand()
 	sfx.play("summon")
 	var cine := SummonCine.new()
@@ -1047,13 +1453,20 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	tw.tween_property(cine, "t", 1.0, (3.2 if cine.has_art() else 1.9) / minf(speed, 2.0))
 	await tw.finished
 	cine.queue_free()
+	var col := DuelFX.light(card.element())
+	DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
+	shake(14.0)
+	punch(Vector2(FIELD_CX, 476), 0.05)
 
 
 func fx_gift(pi: int, g: String) -> void:
 	sfx.play("gift")
 	var p: DuelPlayer = game.players[pi]
 	var god: String = "the Unsworn" if p.patron() == "" else Lore.GODS[p.patron()].name
-	await _banner("%s  ·  %s" % [Lore.GIFTS[g].name.to_upper(), god], UITheme.GOLD, 1.1, 50, p.patron())
+	var at: Vector2 = panels[pi].position + panels[pi].portrait_center()
+	DuelFX.flash(fx_layer, at, UITheme.GOLD, 260.0, 0.6 / speed)
+	DuelFX.rise(fx_layer, at + Vector2(0, 40), UITheme.GOLD, 160.0, 40, 1.2, speed)
+	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), "A Divine Gift from %s" % god)
 	_refresh()
 
 
@@ -1069,70 +1482,101 @@ func fx_game_over(winner: int, _reason: String) -> void:
 
 # --------------------------------------------------------- effect helpers ---
 
-func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: String = "") -> void:
-	var band := ColorRect.new()
-	band.color = Color(0, 0, 0, 0.65)
-	band.position = Vector2(0, 340)
-	band.size = Vector2(DESIGN.x, 150)
-	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	fx_layer.add_child(band)
-	var l := UITheme.label(text, size_px, col, "display_bold", 10)
-	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	l.size = band.size
-	band.add_child(l)
-	if DuelArt.god(god) != null:
-		# the patron's face beside the words
-		var tw_px := CardFace.font("display_bold").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
-		var face := GodFace.new()
-		face.god = god
-		face.position = Vector2(DESIGN.x * 0.5 - tw_px * 0.5 - 150, -20)
-		face.size = Vector2(190, 190)
-		l.add_child(face)
-	band.modulate.a = 0.0
-	l.position.x = -120
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(band, "modulate:a", 1.0, 0.15 / speed)
-	tw.tween_property(l, "position:x", 0.0, 0.25 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
-	await pause(hold)
-	var tw2 := create_tween()
-	tw2.tween_property(band, "modulate:a", 0.0, 0.2 / speed)
-	tw2.tween_callback(band.queue_free)
-	await pause(0.1)
+func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: String = "", sub: String = "") -> void:
+	var b := Banner.new()
+	b.text = text
+	b.sub = sub
+	b.col = col
+	b.size_px = size_px
+	b.god = god
+	b.edge = _edge
+	b.position = Vector2(0, 476)
+	b.size = Vector2(DESIGN.x, 1)
+	fx_layer.add_child(b)
+	var total := (hold + 0.55) / speed
+	var tw := b.create_tween()
+	tw.tween_property(b, "t", 1.0, total)
+	tw.tween_callback(b.queue_free)
+	await pause(hold + 0.45)
+
+
+func _move_label(pos: Vector2, text: String, col: Color) -> void:
+	var m := MoveLabel.new()
+	m.text = text
+	m.col = col
+	m.position = pos
+	fx_layer.add_child(m)
+	var tw := m.create_tween()
+	tw.tween_property(m, "t", 1.0, 1.0 / speed)
+	tw.tween_callback(m.queue_free)
 
 
 func _toast(text: String) -> void:
-	DuelViews.float_text(fx_layer, Vector2(930, 400), text, UITheme.TEXT, 34, 1.6)
+	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 470), text, UITheme.TEXT, 34, 1.6)
 
 
-func _show_card_big(id: String, tag: String, col: Color, hold: float) -> void:
+## Flips a card up in the middle of the Circle, flying in from `from`.
+## Returns the card's centre.
+func _show_card_big(id: String, tag: String, col: Color, hold: float, from := Vector2(-1, -1)) -> Vector2:
 	var cv := BigCard.new()
 	cv.card_id = id
 	cv.tag = tag
 	cv.tag_col = col
 	cv.size = Vector2(300, 420)
-	cv.position = Vector2(930 - 150, 190)
+	var home := Vector2(FIELD_CX - 150, 170)
 	cv.pivot_offset = cv.size * 0.5
-	cv.scale = Vector2(0.05, 1.0)
 	fx_layer.add_child(cv)
-	var tw := create_tween()
-	tw.tween_property(cv, "scale", Vector2(1, 1), 0.18 / speed).set_ease(Tween.EASE_OUT)
-	await pause(hold + 0.18)
-	var tw2 := create_tween()
+	if from.x >= 0.0:
+		cv.position = from - cv.size * 0.5
+		cv.scale = Vector2(0.35, 0.35)
+		cv.rotation = 0.3
+		var tw0 := create_tween().set_parallel(true)
+		tw0.tween_property(cv, "position", home, 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw0.tween_property(cv, "scale", Vector2(1, 1), 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw0.tween_property(cv, "rotation", 0.0, 0.24 / speed)
+	else:
+		cv.position = home
+		cv.scale = Vector2(0.05, 1.0)
+		var tw := create_tween()
+		tw.tween_property(cv, "scale", Vector2(1, 1), 0.18 / speed).set_ease(Tween.EASE_OUT)
+	var c := home + cv.size * 0.5
+	await pause(0.22)
+	DuelFX.flash(fx_layer, c, col.lightened(0.3), 300.0, 0.5 / speed)
+	DuelFX.burst(fx_layer, c, col.lightened(0.4), 24, 520.0, 12.0, 0.7, Vector2.ZERO, 180.0, Vector2.UP, speed)
+	await pause(hold)
+	var tw2 := create_tween().set_parallel(true)
 	tw2.tween_property(cv, "modulate:a", 0.0, 0.2 / speed)
-	tw2.tween_callback(cv.queue_free)
-	await pause(0.12)
+	tw2.tween_property(cv, "scale", Vector2(1.15, 1.15), 0.2 / speed)
+	tw2.chain().tween_callback(cv.queue_free)
+	await pause(0.1)
+	return c
 
 
-func _beam(at: Vector2, col: Color) -> void:
-	var b := Beam.new()
-	b.col = col
-	b.position = Vector2(at.x - 90, at.y - 330)
-	b.size = Vector2(180, 460)
-	fx_layer.add_child(b)
-	var tw := b.create_tween()
-	tw.tween_property(b, "modulate:a", 0.0, 0.6 / speed).set_delay(0.1 / speed)
-	tw.tween_callback(b.queue_free)
+## A card flying across the field, shrinking as it goes (to a slot or a Ward zone).
+## An empty id flies a face-down card.
+func _fly_card(id: String, from: Vector2, to: Vector2, dur: float, end_scale := Vector2(0.5, 0.2)) -> void:
+	var fc := FlyCard.new()
+	fc.card_id = id
+	fc.size = HAND_CARD
+	fc.pivot_offset = HAND_CARD * 0.5
+	fc.position = from - HAND_CARD * 0.5
+	fx_layer.add_child(fc)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(fc, "position", to - HAND_CARD * 0.5, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(fc, "scale", end_scale, dur).set_ease(Tween.EASE_IN)
+	tw.tween_property(fc, "rotation", randf_range(-0.15, 0.15), dur)
+	await tw.finished
+	fc.queue_free()
+
+
+func _vignette(col: Color) -> void:
+	var r := Vignette.new()
+	r.col = col
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(r)
+	var tw := r.create_tween()
+	tw.tween_property(r, "modulate:a", 0.0, 0.6)
+	tw.tween_callback(r.queue_free)
 
 
 func _screen_flash(col: Color) -> void:
@@ -1166,28 +1610,30 @@ func _on_log(text: String, who: int) -> void:
 # ================================================================== result ===
 
 func _show_result(r: String) -> String:
-	var box := PanelContainer.new()
-	box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.96), UITheme.GOLD, 26, 3, 48))
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(dim)
-	overlay.add_child(box)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 20)
-	box.add_child(v)
 	var title: String = {"won": "VICTORY", "lost": "DEFEAT", "draw": "DRAW"}[r]
 	if _watching():
 		title = "%s WINS" % String(game.players[game.winner].player_name).to_upper() if game.winner in [0, 1] else "DRAW"
-	var tl := UITheme.label(title, 96, UITheme.GOLD if r == "won" else UITheme.TEXT, "display_bold", 12)
-	tl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	v.add_child(tl)
-	var why := UITheme.label(game.win_reason, 30, UITheme.TEXT_DIM)
+	var col := UITheme.GOLD if r == "won" or _watching() else (Color("c7cbe0") if r == "draw" else Color("e06070"))
+	var burst := ResultBurst.new()
+	burst.col = col
+	burst.title = title
+	burst.won = r == "won" or _watching()
+	burst.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	overlay.add_child(burst)
+	var bt := burst.create_tween()
+	bt.tween_property(burst, "t", 1.0, 0.7)
+	var box := PanelContainer.new()
+	box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.92), UITheme.GOLD_DIM, 26, 2, 36))
+	overlay.add_child(box)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 18)
+	box.add_child(v)
+	var why := UITheme.label(game.win_reason, 30, UITheme.TEXT)
 	why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(why)
 	var p: DuelPlayer = game.players[me]
 	var q: DuelPlayer = game.players[rival]
-	var st := UITheme.label("%d turns  ·  your Life %d  ·  their Life %d  ·  knockouts %d – %d" % [game.turn, maxi(0, p.life), maxi(0, q.life), p.stats.kos, q.stats.kos], 26, UITheme.TEXT)
+	var st := UITheme.label("%d turns  ·  your Life %d  ·  their Life %d  ·  knockouts %d – %d" % [game.turn, maxi(0, p.life), maxi(0, q.life), p.stats.kos, q.stats.kos], 26, UITheme.TEXT_DIM)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(st)
 	var hb := HBoxContainer.new()
@@ -1201,8 +1647,11 @@ func _show_result(r: String) -> String:
 	var picked := [""]
 	again.pressed.connect(func() -> void: picked[0] = "again")
 	back.pressed.connect(func() -> void: picked[0] = r if r != "draw" else "draw")
+	box.modulate.a = 0.0
 	await get_tree().process_frame
-	box.position = (overlay.size - box.size) * 0.5
+	box.position = Vector2((overlay.size.x - box.size.x) * 0.5, overlay.size.y * 0.62)
+	var tw := box.create_tween()
+	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
 	while picked[0] == "":
 		await get_tree().process_frame
 	return picked[0]
@@ -1215,6 +1664,7 @@ func _show_result(r: String) -> String:
 class Arena:
 	extends Control
 	var stage: Control
+	var edge := 0.0
 	var tex: Texture2D = null
 	var mote_col := Color(1.0, 0.8, 0.45)
 	var _t := 0.0
@@ -1222,7 +1672,7 @@ class Arena:
 	## Where the painted Circle sits: this point of the picture (0-1)...
 	const ART_ANCHOR := Vector2(0.5, 0.55)
 	## ...lands on this point of the stage, with the picture at least this wide.
-	const STAGE_ANCHOR := Vector2(930, 470)
+	const STAGE_ANCHOR := Vector2(1000, 486)
 	const MIN_WIDTH := 1.22
 
 	func _init() -> void:
@@ -1241,7 +1691,7 @@ class Arena:
 			return
 		var k := stage.scale.x
 		var o := stage.position
-		var c := o + Vector2(930, 400) * k
+		var c := o + Vector2(1000, 476) * k
 		var rx := 640.0 * k
 		var ry := 380.0 * k
 		for i in 6:
@@ -1253,10 +1703,7 @@ class Arena:
 			var p := c + Vector2(cos(a) * rx * 0.965, sin(a) * ry * 0.965)
 			draw_circle(p, 3.5 * k, Color(UITheme.GOLD, 0.35))
 		# the line between the two sides
-		draw_line(o + Vector2(360, 400) * k, o + Vector2(1500, 400) * k, Color(UITheme.GOLD, 0.18), 2.0 * k)
-		# lanes
-		for x in [540.0, 930.0, 1320.0]:
-			draw_line(o + Vector2(x, 110) * k, o + Vector2(x, 690) * k, Color(1, 1, 1, 0.022), 70.0 * k)
+		draw_line(o + Vector2(430, 476) * k, o + Vector2(1570, 476) * k, Color(UITheme.GOLD, 0.18), 2.0 * k)
 
 	func _draw_art() -> void:
 		var k := stage.scale.x
@@ -1280,8 +1727,8 @@ class Arena:
 		var hand_top := o.y + 740.0 * k
 		CardFace.vgrad_rect(self, Rect2(Vector2(0, hand_top), Vector2(size.x, size.y - hand_top)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.82))
 		CardFace.vgrad_rect(self, Rect2(Vector2.ZERO, Vector2(size.x, o.y + 120.0 * k)), Color(0.01, 0.01, 0.03, 0.55), Color(0.01, 0.01, 0.03, 0.0))
-		_hgrad(Rect2(Vector2.ZERO, Vector2(o.x + 360.0 * k, size.y)), Color(0.01, 0.01, 0.03, 0.62), Color(0.01, 0.01, 0.03, 0.0))
-		var rx := o.x + 1500.0 * k
+		_hgrad(Rect2(Vector2.ZERO, Vector2(o.x + (440.0 - edge) * k, size.y)), Color(0.01, 0.01, 0.03, 0.66), Color(0.01, 0.01, 0.03, 0.0))
+		var rx := o.x + (1560.0 + edge) * k
 		_hgrad(Rect2(Vector2(rx, 0), Vector2(size.x - rx, size.y)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.7))
 		# drifting motes of light
 		for i in 34:
@@ -1289,7 +1736,7 @@ class Arena:
 			var fx := absf(fmod(sin(sd) * 43758.5453, 1.0))
 			var rise := 14.0 + 22.0 * absf(fmod(sin(sd * 1.7) * 9631.2, 1.0))
 			var y := fmod(_t * rise + float(i) * 97.0, 1080.0)
-			var p := o + Vector2(360.0 + fx * 1140.0 + sin(_t * 0.7 + i) * 18.0, 1000.0 - y) * k
+			var p := o + Vector2(440.0 + fx * 1120.0 + sin(_t * 0.7 + i) * 18.0, 1000.0 - y) * k
 			var life := sin(y / 1080.0 * PI)
 			draw_circle(p, (2.0 + float(i % 3)) * k, Color(mote_col, 0.35 * life))
 
@@ -1310,6 +1757,233 @@ class Arena:
 			var a := TAU * i / 96.0
 			pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
 		draw_polyline(pts, col, w, true)
+
+
+## The band that sweeps across the field for turns, the duel's start and Gifts.
+class Banner:
+	extends Control
+	var text := ""
+	var sub := ""
+	var col := Color.WHITE
+	var size_px := 72
+	var god := ""
+	var edge := 0.0
+	var t := 0.0:
+		set(v):
+			t = v
+			queue_redraw()
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var tin := clampf(t / 0.16, 0.0, 1.0)
+		var tout := clampf((t - 0.84) / 0.16, 0.0, 1.0)
+		var e_in := 1.0 - pow(1.0 - tin, 3.0)
+		var h := (200.0 if sub != "" else 180.0) * e_in * (1.0 - tout)
+		if h < 1.0:
+			return
+		var x0 := -edge - 40.0
+		var x1 := 1920.0 + edge + 40.0
+		var top := -h * 0.5
+		var mid := Color(0.01, 0.01, 0.03, 0.84)
+		var clear := Color(0.01, 0.01, 0.03, 0.0)
+		CardFace.vgrad_rect(self, Rect2(Vector2(x0, top), Vector2(x1 - x0, h * 0.25)), clear, mid)
+		draw_rect(Rect2(Vector2(x0, top + h * 0.25), Vector2(x1 - x0, h * 0.5)), mid)
+		CardFace.vgrad_rect(self, Rect2(Vector2(x0, top + h * 0.75), Vector2(x1 - x0, h * 0.25)), mid, clear)
+		DuelFX.draw_glow(self, Vector2(960, 0), Vector2(900, h * 0.6), Color(col, 0.2))
+		var lw := 980.0 * e_in
+		var la := 0.85 * (1.0 - tout)
+		draw_line(Vector2(960 - lw, top + 16), Vector2(960 + lw, top + 16), Color(col, la), 2.5)
+		draw_line(Vector2(960 - lw, -top - 16), Vector2(960 + lw, -top - 16), Color(col, la), 2.5)
+		draw_line(Vector2(960 - lw * 0.7, top + 22), Vector2(960 + lw * 0.7, top + 22), Color(col, la * 0.4), 1.0)
+		draw_line(Vector2(960 - lw * 0.7, -top - 22), Vector2(960 + lw * 0.7, -top - 22), Color(col, la * 0.4), 1.0)
+		# a streak of light sweeping across
+		var sx := lerpf(x0, x1, clampf((t - 0.04) / 0.5, 0.0, 1.0))
+		DuelFX.draw_glow(self, Vector2(sx, 0), Vector2(300, h * 0.45), Color(1, 1, 1, 0.3 * (1.0 - tout)))
+		# the words slide in, settle, then slip away
+		var slide := (1.0 - e_in) * 240.0 - tout * 180.0
+		var a := clampf(t / 0.1, 0.0, 1.0) * (1.0 - tout)
+		var fnt := CardFace.font("display_bold")
+		var fs := CardFace.fit_size(fnt, text, size_px, 1400)
+		var k := 1.0 + 0.22 * (1.0 - e_in)
+		var y := fs * 0.34 - (16.0 if sub != "" else 0.0)
+		draw_set_transform(Vector2(960 + slide, 0), 0.0, Vector2(k, k))
+		CardFace.text(self, fnt, Vector2(-900, y), text, fs, Color(col.lightened(0.3), a), HORIZONTAL_ALIGNMENT_CENTER, 1800, maxi(6, fs / 9), Color(0, 0, 0, 0.85 * a))
+		if sub != "":
+			CardFace.text(self, CardFace.font("bold"), Vector2(-900, y + 48), sub, 28, Color(1, 1, 1, 0.85 * a), HORIZONTAL_ALIGNMENT_CENTER, 1800, 4)
+		draw_set_transform(Vector2.ZERO)
+		if god != "" and DuelArt.god(god) != null and a > 0.05:
+			var tw_px := fnt.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+			var gc := Vector2(960 + slide - tw_px * 0.5 - 120, 0)
+			draw_circle(gc, 86, Color(0, 0, 0, 0.6 * a))
+			DuelFX.draw_glow(self, gc, Vector2(150, 150), Color(UITheme.GOLD, 0.35 * a))
+			DuelArt.god_medallion(self, gc, 76.0 * e_in * (1.0 - tout * 0.5), god, UITheme.GOLD)
+
+
+## A move's name, flashed above the creature using it.
+class MoveLabel:
+	extends Node2D
+	var text := ""
+	var col := Color.WHITE
+	var t := 0.0:
+		set(v):
+			t = v
+			queue_redraw()
+
+	func _draw() -> void:
+		var fnt := CardFace.font("display_bold")
+		var fs := 34
+		var w := fnt.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 64
+		var k := 1.0 + 0.35 * (1.0 - clampf(t / 0.12, 0.0, 1.0))
+		var a := clampf((1.0 - t) / 0.25, 0.0, 1.0)
+		draw_set_transform(Vector2(0, -t * 30.0), 0.0, Vector2(k, k))
+		var r := Rect2(Vector2(-w * 0.5, -28), Vector2(w, 56))
+		CardFace.box(self, Rect2(r.position + Vector2(0, 4), r.size), 28, Color(0, 0, 0, 0.45 * a))
+		CardFace.vgrad(self, r, 28, Color(0.12, 0.12, 0.2, 0.95 * a), Color(0.02, 0.02, 0.05, 0.95 * a))
+		CardFace.box(self, r, 28, Color(0, 0, 0, 0), Color(col, a), 3.0)
+		CardFace.text_in(self, fnt, r, text, fs, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 4)
+		draw_set_transform(Vector2.ZERO)
+
+
+## A card in flight (from hand to slot, or into a Ward zone).
+class FlyCard:
+	extends Control
+	var card_id := ""
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		DuelFX.draw_glow(self, size * 0.5, size * 0.9, Color(1, 0.95, 0.8, 0.45))
+		if card_id == "":
+			CardFace.draw_back(self, r)
+		else:
+			DuelCardFace.draw_card(self, r, card_id, {"compact": true})
+
+
+## A wash of colour around the screen's edges (you've been hit).
+class Vignette:
+	extends Control
+	var col := Color.RED
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var w := size.x * 0.22
+		var h := size.y * 0.3
+		var c0 := Color(col, 0.55)
+		var c1 := Color(col, 0.0)
+		_quad(Rect2(Vector2.ZERO, Vector2(w, size.y)), c0, c1, true)
+		_quad(Rect2(Vector2(size.x - w, 0), Vector2(w, size.y)), c1, c0, true)
+		_quad(Rect2(Vector2.ZERO, Vector2(size.x, h)), c0, c1, false)
+		_quad(Rect2(Vector2(0, size.y - h), Vector2(size.x, h)), c1, c0, false)
+
+	func _quad(r: Rect2, a: Color, b: Color, horizontal: bool) -> void:
+		var pts := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+		if horizontal:
+			draw_polygon(pts, PackedColorArray([a, b, b, a]))
+		else:
+			draw_polygon(pts, PackedColorArray([a, a, b, b]))
+
+
+## Curved, flowing arrows from the attacking Totem to everything it can hit.
+class TargetArrows:
+	extends Control
+	var screen: DuelScreen
+	var _t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		material = DuelFX.additive()
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if screen == null or screen.mode != "main" or screen.sel_totem == null:
+			return
+		if screen.pending != "move" and screen.pending != "gift":
+			return
+		var from := screen._center(screen._view(screen.sel_totem))
+		for tg in screen.targets:
+			var to: Vector2
+			if tg is DuelTotem:
+				if tg == screen.sel_totem:
+					continue
+				to = screen._center(screen._view(tg))
+			elif tg is String and tg == DuelGame.LIFE:
+				to = screen._life_center(screen.rival)
+			else:
+				continue
+			_arrow(from, to, UITheme.GOLD if not (tg is DuelTotem and tg.owner == screen.me) else Color(0.5, 1.0, 0.6))
+
+	func _arrow(a: Vector2, b: Vector2, col: Color) -> void:
+		var mid := (a + b) * 0.5 + Vector2(0, -minf(220.0, a.distance_to(b) * 0.35))
+		var pts := PackedVector2Array()
+		var n := 40
+		for i in n + 1:
+			var k := float(i) / n
+			pts.append(a.lerp(mid, k).lerp(mid.lerp(b, k), k))
+		# trim the ends so the arrow sits between the two
+		var start := 6
+		var stop := n - 5
+		var body := pts.slice(start, stop + 1)
+		draw_polyline(body, Color(col, 0.2), 24.0, true)
+		draw_polyline(body, Color(col, 0.45), 8.0, true)
+		# pulses flowing along it
+		for j in 4:
+			var f := fmod(_t * 0.9 + j * 0.25, 1.0)
+			var idx := int(lerpf(start, stop, f))
+			DuelFX.draw_glow(self, pts[idx], Vector2(22, 22), Color(col, 0.9 * sin(f * PI)))
+		# the head
+		var tip := pts[stop]
+		var dir := (pts[stop] - pts[stop - 2]).normalized()
+		var nn := Vector2(-dir.y, dir.x)
+		var head := PackedVector2Array([tip + dir * 26, tip - dir * 10 + nn * 20, tip - dir * 10 - nn * 20])
+		draw_colored_polygon(head, Color(col, 0.85))
+		DuelFX.draw_glow(self, tip, Vector2(40, 40), Color(col, 0.6))
+
+
+## The end of the duel: rays, a burst of light and the big word.
+class ResultBurst:
+	extends Control
+	var col := Color.WHITE
+	var title := ""
+	var won := true
+	var _time := 0.0
+	var t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _process(delta: float) -> void:
+		_time += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var e := 1.0 - pow(1.0 - clampf(t, 0.0, 1.0), 3.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.7 * e))
+		var k := minf(size.x / 1920.0, size.y / 1080.0)
+		var c := Vector2(size.x * 0.5, size.y * 0.4)
+		if won:
+			for i in 24:
+				var a := TAU * i / 24.0 + _time * 0.15
+				var d := Vector2(cos(a), sin(a))
+				var nn := Vector2(-d.y, d.x)
+				var L := size.length() * e
+				draw_colored_polygon(PackedVector2Array([c + nn * 4, c + d * L + nn * L * 0.09, c + d * L - nn * L * 0.09, c - nn * 4]), Color(col, 0.06 + 0.03 * sin(_time * 2.0 + i)))
+		DuelFX.draw_glow(self, c, Vector2(700, 300) * k * e, Color(col, 0.35))
+		var fnt := CardFace.font("display_bold")
+		var fs := int(150 * k * (0.7 + 0.3 * e))
+		fs = CardFace.fit_size(fnt, title, fs, size.x - 100)
+		var lw := 700.0 * k * e
+		draw_line(c + Vector2(-lw, fs * 0.55), c + Vector2(lw, fs * 0.55), Color(col, 0.8), 3.0)
+		draw_line(c + Vector2(-lw, -fs * 0.85), c + Vector2(lw, -fs * 0.85), Color(col, 0.8), 3.0)
+		CardFace.text(self, fnt, Vector2(0, c.y + fs * 0.32), title, fs, Color(col.lightened(0.25), e), HORIZONTAL_ALIGNMENT_CENTER, size.x, maxi(8, fs / 10), Color(0, 0, 0, 0.85 * e))
 
 
 ## A patron's face in a gold ring.
@@ -1348,6 +2022,8 @@ class DetailCard:
 			return
 		var o := opts.duplicate()
 		o["compact"] = false
+		DuelFX.draw_glow(self, size * 0.5, size * 0.75, Color(0.55, 0.75, 1.0, 0.25))
+		CardFace.box(self, Rect2(Vector2(8, 14), size), 16, Color(0, 0, 0, 0.55))
 		DuelCardFace.draw_card(self, Rect2(Vector2.ZERO, size), card_id, o)
 
 
@@ -1361,7 +2037,18 @@ class BigCard:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	func _process(_d: float) -> void:
+		queue_redraw()
+
 	func _draw() -> void:
+		var c := size * 0.5
+		var tt := Time.get_ticks_msec() / 1000.0
+		for i in 16:
+			var a := TAU * i / 16.0 + tt * 0.35
+			var d := Vector2(cos(a), sin(a))
+			var nn := Vector2(-d.y, d.x)
+			draw_colored_polygon(PackedVector2Array([c + nn * 6, c + d * 520 + nn * 60, c + d * 520 - nn * 60, c - nn * 6]), Color(tag_col.lightened(0.3), 0.07))
+		DuelFX.draw_glow(self, c, size * 0.95, Color(tag_col.lightened(0.3), 0.5))
 		CardFace.box(self, Rect2(Vector2(-10, -10), size + Vector2(20, 20)), 22, Color(0, 0, 0, 0.5))
 		DuelCardFace.draw_card(self, Rect2(Vector2.ZERO, size), card_id, {"compact": false})
 		var r := Rect2(Vector2(size.x * 0.5 - 90, -34), Vector2(180, 52))
@@ -1503,17 +2190,23 @@ class ActionButton:
 
 	func _draw() -> void:
 		var r := Rect2(Vector2.ZERO, size)
-		var bg := Color("1a2036") if enabled else Color("14182a")
+		CardFace.box(self, Rect2(r.position + Vector2(0, 5), r.size), 16, Color(0, 0, 0, 0.5))
+		var top := Color("27325a") if enabled else Color("1a1d2a")
+		var bot := Color("0d1226") if enabled else Color("0e1018")
 		if _hover and enabled:
-			bg = Color("242b48")
-		CardFace.box(self, r, 14, bg, UITheme.GOLD_DIM if enabled else Color("2a2e44"), 2.0)
-		var x := 18.0
+			top = Color("33427a")
+		CardFace.vgrad(self, r, 16, top, bot)
+		CardFace.vgrad(self, Rect2(r.position + Vector2(4, 3), Vector2(r.size.x - 8, r.size.y * 0.45)), 13, Color(1, 1, 1, 0.1 if enabled else 0.03), Color(1, 1, 1, 0.0))
+		CardFace.box(self, r, 16, Color(0, 0, 0, 0), UITheme.GOLD if enabled else Color("3a3e54"), 2.5)
+		CardFace.box(self, r.grow(-5), 12, Color(0, 0, 0, 0), Color(UITheme.GOLD, 0.18 if enabled else 0.05), 1.0)
+		var x := 20.0
 		if cost > 0:
-			DuelCardFace.essence_gem(self, Vector2(38, size.y * 0.5), 22, cost, not enabled)
-			x = 70.0
+			DuelCardFace.essence_gem(self, Vector2(42, size.y * 0.5), 24, cost, not enabled)
+			x = 76.0
 		var fnt := CardFace.font("display_bold")
-		var col := UITheme.TEXT if enabled else Color("6a6d82")
-		CardFace.text(self, fnt, Vector2(x, 44), title, CardFace.fit_size(fnt, title, 28, size.x - x - 14), col)
+		var col := Color.WHITE if enabled else Color("6a6d82")
+		var ty := 44.0 if sub != "" else size.y * 0.5 + 11.0
+		CardFace.text(self, fnt, Vector2(x, ty), title, CardFace.fit_size(fnt, title, 29, size.x - x - 16), col, HORIZONTAL_ALIGNMENT_LEFT, -1, 4)
 		if sub != "":
 			var body := CardFace.font("body")
-			CardFace.text(self, body, Vector2(x, 82), sub, CardFace.fit_size(body, sub, 21, size.x - x - 14, 12), UITheme.TEXT_DIM if enabled else Color("5a5d72"))
+			CardFace.text(self, body, Vector2(x, 78), sub, CardFace.fit_size(body, sub, 20, size.x - x - 16, 12), Color("b9c2e0") if enabled else Color("5a5d72"))

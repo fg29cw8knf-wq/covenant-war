@@ -5,6 +5,8 @@ extends Node
 ## play:  you are player 1; the test taps a hand card and a Totem to show the menus.
 ## lab:   the Duel Lab set-up screen.
 ## summon: the Summon cinematic for each of the four Summons.
+## film:  the computer plays both sides at normal speed for `shots` seconds
+##        (run with --write-movie out.avi --fixed-fps 30 to record it).
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -26,7 +28,8 @@ func _ready() -> void:
 	var p0 := Lore.new_profile("You", "pyrrhane", 4)
 	var p1 := Lore.new_profile("Rival", "oriel", 4)
 	var screen := DuelScreen.new().configure({"decks": ["emberstorm", "veilwild"], "names": ["You", "Wren"],
-		"profiles": [p0, p1], "ai": [how == "watch", true], "seed": 11, "speed": 2.0 if how == "watch" else 4.0})
+		"profiles": [p0, p1], "ai": [how == "watch" or how == "film", true], "seed": int(args[5]) if args.size() > 5 else 11,
+		"speed": 1.0 if how == "film" else (2.0 if how == "watch" else 4.0)})
 	add_child(screen)
 	screen.finished.connect(func(_r) -> void: get_tree().quit())
 	if how == "play":
@@ -52,11 +55,23 @@ func _ready() -> void:
 					await get_tree().create_timer(0.4).timeout
 					await _shot(out + "/play_%d_%s.png" % [shot_i, tag])
 					shot_i += 1
+					# pick the first usable move and show the aiming arrows
+					var acts: Array = screen.actions.get_children().filter(func(n): return n is DuelScreen.ActionButton and n.enabled)
+					if not acts.is_empty():
+						acts[0].pressed.emit()
+						await get_tree().create_timer(0.5).timeout
+						if screen.pending == "move":
+							await _shot(out + "/aim_%d_%s.png" % [shot_i, tag])
+							screen._cancel_pending()
 					if shot_i >= shots:
 						break
 					screen._on_end_turn()
 				else:
 					screen._on_end_turn()
+		get_tree().quit()
+		return
+	if how == "film":
+		await get_tree().create_timer(float(shots)).timeout
 		get_tree().quit()
 		return
 	if how == "summon":
