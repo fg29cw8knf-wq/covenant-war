@@ -742,7 +742,7 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	if target is DuelTotem:
 		what = " on %s" % target.card_name()
 	elif target is String and target == LIFE:
-		what = " straight at %s's Life" % foe.player_name
+		what = " straight at %s Life" % whose(foe.player_name, true)
 	_log("%s uses %s%s." % [t.card_name(), mv.name, what], pi)
 	await _fx("fx_attack", [t, i, target])
 
@@ -779,7 +779,7 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 		var amt := attack_amount(t, i, base, null) - int(res.reduce_life)
 		if amt > 0:
 			if res.blocked_life:
-				_log("The Ward blocks the hit on %s's Life." % foe.player_name, pi)
+				_log("The Ward blocks the hit on %s Life." % whose(foe.player_name, true), pi)
 			else:
 				dealt = await _hit_life(1 - pi, amt, {"attacker": t, "pierce": pierce})
 	elif tk == "all_foes":
@@ -963,7 +963,7 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 			"essence_max":
 				p.essence_max = mini(DuelRules.essence_cap + 2, p.essence_max + int(e.amount))
 				p.essence += int(e.amount)
-				_log("%s's Essence limit rises to %d." % [p.player_name, p.essence_max], pi)
+				_log("%s Essence limit rises to %d." % [whose(p.player_name), p.essence_max], pi)
 			"life":
 				await _gain_life(pi, int(e.amount))
 			"drain":
@@ -1029,7 +1029,7 @@ func _bounce(t: DuelTotem) -> void:
 	owner.slots[t.slot] = null
 	for c in t.stack:
 		owner.hand.append(c)
-	_log("%s is swept back to %s's hand." % [t.card_name(), owner.player_name], t.owner)
+	_log("%s is swept back to %s hand." % [t.card_name(), whose(owner.player_name, true)], t.owner)
 	await _fx("fx_ko", [t])
 
 
@@ -1089,7 +1089,7 @@ func _check_life(pi: int) -> void:
 		return
 	await _spring_wards(pi, "lethal", {})
 	if p.life <= 0:
-		_finish(1 - pi, "%s's Life ran out. %s wins!" % [p.player_name, players[1 - pi].player_name])
+		_finish(1 - pi, "%s Life ran out. %s!" % [whose(p.player_name), "You win" if players[1 - pi].player_name == "You" else players[1 - pi].player_name + " wins"])
 
 
 func _heal(t: DuelTotem, amount: int) -> void:
@@ -1160,7 +1160,7 @@ func _spring_wards(owner_pi: int, trigger: String, ctx: Dictionary) -> Dictionar
 		p.discard.append(w)
 		res.fired = true
 		p.stats.wards_sprung += 1
-		_log("%s's Ward springs: %s!" % [p.player_name, w.card_name()], owner_pi)
+		_log("%s Ward springs: %s!" % [whose(p.player_name), w.card_name()], owner_pi)
 		await _fx("fx_ward_spring", [owner_pi, w, ctx])
 		for e in w.def.effects:
 			match e.op:
@@ -1243,6 +1243,13 @@ func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dicti
 	return band
 
 
+## "Wren's", or "Your" for a duellist called You ("your" mid-sentence).
+static func whose(player_name: String, mid_sentence := false) -> String:
+	if player_name == "You":
+		return "your" if mid_sentence else "Your"
+	return "%s's" % player_name
+
+
 ## A duellist's Fate modifier for a card with this affinity.
 func fate_mod(pi: int, affinity: String) -> int:
 	var p: DuelPlayer = players[pi]
@@ -1301,7 +1308,7 @@ func _draw(p: DuelPlayer, n: int) -> Array:
 	var out := []
 	for i in n:
 		if p.deck.is_empty():
-			_log("%s's deck is empty!" % p.player_name, p.index)
+			_log("%s deck is empty!" % whose(p.player_name), p.index)
 			await _hit_life(p.index, DuelRules.fatigue, {"no_guard": true, "source": "fatigue"})
 			if over:
 				break

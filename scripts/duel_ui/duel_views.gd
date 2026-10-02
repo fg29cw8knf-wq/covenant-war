@@ -75,20 +75,25 @@ class TotemView:
 			return
 		var ar := art_rect()
 		ar.position += o
-		# the creature: art in an arched window with the element's rim
-		var pts := _arch(ar)
 		var mod := Color(1, 1, 1, fade)
 		if highlight == "dim":
 			mod = Color(0.55, 0.55, 0.6, fade)
-		draw_colored_polygon(pts, Color(0, 0, 0, 0.6 * fade))
-		var tex := CardFace.art(totem.id())
-		_draw_art_clipped(ar, pts, tex, mod)
-		var closed := pts.duplicate()
-		closed.append(pts[0])
-		var rim := CardFace.metal(totem.tier(), 0)
-		draw_polyline(closed, Color(rim, 0.9 * fade), 4.0, true)
-		if flash > 0.0:
-			draw_colored_polygon(pts, Color(flash_color, flash * 0.6))
+		var cut := DuelArt.creature(totem.id())
+		var pts := PackedVector2Array()
+		if cut != null:
+			ar = _draw_cutout(cut, plat, o, mod)
+		else:
+			# no cut-out yet: the card's painting in an arched window
+			pts = _arch(ar)
+			draw_colored_polygon(pts, Color(0, 0, 0, 0.6 * fade))
+			var tex := CardFace.art(totem.id())
+			_draw_art_clipped(ar, pts, tex, mod)
+			var closed := pts.duplicate()
+			closed.append(pts[0])
+			var rim := CardFace.metal(totem.tier(), 0)
+			draw_polyline(closed, Color(rim, 0.9 * fade), 4.0, true)
+			if flash > 0.0:
+				draw_colored_polygon(pts, Color(flash_color, flash * 0.6))
 		if totem.asleep:
 			CardFace.text(self, CardFace.font("display_bold"), ar.position + Vector2(ar.size.x - 30, 40 + sin(_t * 2.0) * 6.0), "z", 34, Color("c9b8ff", 0.9 * fade), HORIZONTAL_ALIGNMENT_LEFT, -1, 5)
 			CardFace.text(self, CardFace.font("display_bold"), ar.position + Vector2(ar.size.x - 12, 14 + sin(_t * 2.0 + 1.0) * 6.0), "Z", 26, Color("c9b8ff", 0.7 * fade), HORIZONTAL_ALIGNMENT_LEFT, -1, 5)
@@ -123,7 +128,9 @@ class TotemView:
 			Glyphs.draw(self, glyph, Vector2(kx + 14, ky), 11, Color(UITheme.GOLD, fade))
 			ky += 42
 		# highlights
-		if highlight == "target" or highlight == "selected":
+		if cut != null:
+			pass   # drawn on the platform, under the creature (see _draw_cutout)
+		elif highlight == "target" or highlight == "selected":
 			var a := 0.6 + 0.4 * sin(_t * 5.0)
 			var col := UITheme.GOLD if highlight == "target" else UITheme.MINE
 			var big := _arch(ar.grow(8))
@@ -134,6 +141,56 @@ class TotemView:
 			big.append(big[0])
 			draw_polyline(big, Color(UITheme.MINE, 0.35 + 0.25 * sin(_t * 2.4)), 4.0, true)
 		draw_set_transform(Vector2.ZERO)
+
+	## How big a creature stands: little Sparks are small, evolved and rare ones loom.
+	func _size_factor() -> float:
+		if totem.stage() >= 2 or totem.tier() >= 3:
+			return 1.0
+		if totem.stage() == 1:
+			return 0.9
+		return 0.84 if totem.tier() == 2 else 0.76
+
+	## Draws the transparent battlefield creature standing on its platform and
+	## returns the rectangle it fills (for the overlays drawn on top).
+	func _draw_cutout(tex: Texture2D, plat: Rect2, o: Vector2, mod: Color) -> Rect2:
+		var ts := Vector2(tex.get_width(), tex.get_height())
+		var sf := _size_factor()
+		var box := Vector2(size.x * 0.86, size.y * 0.64) * sf
+		var k := minf(box.x / ts.x, box.y / ts.y)
+		var w := ts.x * k
+		var h := ts.y * k
+		var fly := DuelArt.FLYERS.has(totem.id())
+		var foot := plat.get_center() + Vector2(0, plat.size.y * 0.12)
+		if fly:
+			foot.y -= 22.0 + sin(_t * 1.8 + slot) * 7.0
+		# highlight rings on the platform, under the creature
+		if highlight == "target" or highlight == "selected":
+			var a := 0.6 + 0.4 * sin(_t * 5.0)
+			var col := UITheme.GOLD if highlight == "target" else UITheme.MINE
+			_ellipse(plat.get_center(), plat.size * 0.62, Color(col, 0.16 * fade))
+			_ellipse_ring(plat.get_center(), plat.size * 0.62, Color(col, a * fade), 6.0)
+		elif highlight == "ready":
+			_ellipse_ring(plat.get_center(), plat.size * 0.58, Color(UITheme.MINE, (0.35 + 0.25 * sin(_t * 2.4)) * fade), 4.0)
+		# shadow
+		_ellipse(plat.get_center() + Vector2(0, plat.size.y * 0.1), Vector2(w * 0.36, plat.size.y * 0.28), Color(0, 0, 0, (0.28 if fly else 0.5) * fade))
+		# the creature, breathing; the rival's side faces the other way
+		var breathe := sin(_t * 2.1 + slot * 1.7)
+		var sx := 1.0 - 0.006 * breathe
+		var sy := 1.0 + 0.014 * breathe
+		if totem.asleep:
+			sy = 1.0 + 0.02 * sin(_t * 1.1)
+		var flip := 1.0 if mine else -1.0
+		var m := Color(mod)
+		if flash > 0.0:
+			m = Color(1, 1, 1, mod.a).lerp(Color(flash_color.r * 2.0, flash_color.g * 2.0, flash_color.b * 2.0, mod.a), clampf(flash * 0.6, 0.0, 1.0))
+			if highlight == "dim":
+				m = m * Color(0.55, 0.55, 0.6, 1)
+		var base := Transform2D(0.0, Vector2(pop, pop), 0.0, size * 0.5 + offset)
+		draw_set_transform_matrix(base * Transform2D(0.0, Vector2(sx * flip, sy), 0.0, foot))
+		draw_texture_rect(tex, Rect2(Vector2(-w * 0.5, -h), Vector2(w, h)), false, m)
+		draw_set_transform_matrix(base)
+		var top := foot.y - h * sy
+		return Rect2(Vector2(foot.x - w * 0.5, maxf(o.y + 4.0, top)), Vector2(w, foot.y - maxf(o.y + 4.0, top)))
 
 	func _draw_hp(r: Rect2) -> void:
 		var mx := float(totem.max_hp())
@@ -307,7 +364,7 @@ class PlayerPanel:
 		if patron == "":
 			draw_arc(pc, 32, 0, TAU, 48, Color(UITheme.TEXT_DIM, 0.8), 3.0, true)
 			Glyphs.draw(self, "crown_sigil", pc, 18, UITheme.TEXT_DIM)
-		else:
+		elif not DuelArt.god_medallion(self, pc, 31, patron, UITheme.GOLD):
 			CardFace.orb(self, pc, 30, Lore.GODS[patron].element)
 		var nm := player.player_name
 		CardFace.text(self, CardFace.font("display_bold"), Vector2(96, 42), nm, CardFace.fit_size(CardFace.font("display_bold"), nm, 30, size.x - 110), UITheme.TEXT)

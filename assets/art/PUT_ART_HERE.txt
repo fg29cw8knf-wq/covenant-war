@@ -1,2 +1,0 @@
-Put finished artwork here, named after the card id (see scripts/core/card_db.gd).
-Example: emberpup.png  -> replaces the placeholder Emberpup picture everywhere.

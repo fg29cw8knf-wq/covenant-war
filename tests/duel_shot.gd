@@ -4,6 +4,7 @@ extends Node
 ## watch: the computer plays both sides, screenshots every `interval` seconds.
 ## play:  you are player 1; the test taps a hand card and a Totem to show the menus.
 ## lab:   the Duel Lab set-up screen.
+## summon: the Summon cinematic for each of the four Summons.
 
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -56,6 +57,16 @@ func _ready() -> void:
 					screen._on_end_turn()
 				else:
 					screen._on_end_turn()
+		get_tree().quit()
+		return
+	if how == "summon":
+		await get_tree().create_timer(1.5).timeout
+		for id in ["pyraxis", "somnara", "thalassa", "grondmaw"]:
+			screen.fx_summon(0, DuelCard.new(900, id, 0))
+			for f in [0.3, 1.0, 2.2]:
+				await get_tree().create_timer(f - (0.0 if f == 0.3 else (0.3 if f == 1.0 else 1.0))).timeout
+				await _shot(out + "/summon_%s_%s_%s.png" % [id, str(f), tag])
+			await get_tree().create_timer(1.6).timeout
 		get_tree().quit()
 		return
 	for i in shots:

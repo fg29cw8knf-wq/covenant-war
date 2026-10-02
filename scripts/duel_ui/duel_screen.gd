@@ -21,6 +21,11 @@ const HAND_Y := 800.0
 const HAND_CARD := Vector2(176, 246)
 const RIGHT_X := 1548.0
 const LOG_MAX := 200
+## The colour of the drifting light in each arena.
+const ARENA_MOTES := {
+	"solhaven": Color(1.0, 0.9, 0.6), "emberforge": Color(1.0, 0.55, 0.25), "tidegrove": Color(0.6, 1.0, 0.85),
+	"ironstone": Color(1.0, 0.8, 0.45), "veilwild": Color(0.75, 0.55, 1.0),
+}
 
 var spec: Dictionary = {}
 var game: DuelGame
@@ -69,12 +74,19 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.make()
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	speed = float(spec.get("speed", Game.settings.get("duel_speed", 1.0)))
 	sfx = Sfx.new()
 	add_child(sfx)
 	sfx.volume_db = linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)))) - 8.0
 	var bg := Arena.new()
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var arena_name: String = spec.get("arena", "")
+	if arena_name == "":
+		var decks: Array = spec.get("decks", ["emberstorm", "tidegrove"])
+		arena_name = DuelArt.arena_for_deck(decks[1] if decks.size() > 1 else "")
+	bg.tex = DuelArt.arena(arena_name)
+	bg.mote_col = ARENA_MOTES.get(arena_name, bg.mote_col)
 	add_child(bg)
 	stage = Control.new()
 	stage.size = DESIGN
@@ -85,10 +97,12 @@ func _ready() -> void:
 	fx_layer = Control.new()
 	fx_layer.size = DESIGN
 	fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fx_layer.z_index = 50          # above the fanned hand (which uses z_index for its order)
 	stage.add_child(fx_layer)
 	overlay = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 100
 	add_child(overlay)
 	resized.connect(_fit)
 	_fit()
@@ -99,6 +113,11 @@ func _fit() -> void:
 	var k := minf(size.x / DESIGN.x, size.y / DESIGN.y)
 	stage.scale = Vector2(k, k)
 	stage.position = ((size - DESIGN * k) * 0.5).floor()
+
+
+## "Wren's", or "Your" for a duellist called You.
+func _whose(player_name: String) -> String:
+	return "Your" if player_name == "You" else "%s's" % player_name
 
 
 func _row_y(side: int) -> float:
@@ -305,7 +324,7 @@ func _refresh() -> void:
 	_update_highlights()
 	var cur: DuelPlayer = game.players[game.current]
 	if game.turn > 0:
-		var whose := "Your turn" if game.current == me and not _watching() else "%s's turn" % cur.player_name
+		var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
 		if cur.player_name == "You":
 			whose = "Your turn"
 		turn_label.text = "Turn %d  ·  %s" % [game.turn, whose]
@@ -818,7 +837,7 @@ func fx_rolloff(r0: int, r1: int) -> void:
 func fx_turn(pi: int) -> void:
 	_refresh()
 	sfx.play("turn")
-	var t := "YOUR TURN" if pi == me and not _watching() else "%s'S TURN" % String(game.players[pi].player_name).to_upper()
+	var t := "YOUR TURN" if pi == me and not _watching() else ("%s turn" % _whose(game.players[pi].player_name)).to_upper()
 	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.7)
 
 
@@ -1019,10 +1038,13 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	var cine := SummonCine.new()
 	cine.card_id = card.id
 	cine.mine = pi == me
+	cine.scene = DuelArt.summon_scene(card.id)
+	cine.figure = DuelArt.summon(card.id)
 	cine.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	overlay.add_child(cine)
 	var tw := create_tween()
-	tw.tween_property(cine, "t", 1.0, 1.9 / minf(speed, 2.0))
+	cine.tween = tw
+	tw.tween_property(cine, "t", 1.0, (3.2 if cine.has_art() else 1.9) / minf(speed, 2.0))
 	await tw.finished
 	cine.queue_free()
 
@@ -1031,7 +1053,7 @@ func fx_gift(pi: int, g: String) -> void:
 	sfx.play("gift")
 	var p: DuelPlayer = game.players[pi]
 	var god: String = "the Unsworn" if p.patron() == "" else Lore.GODS[p.patron()].name
-	await _banner("%s  ·  %s" % [Lore.GIFTS[g].name.to_upper(), god], UITheme.GOLD, 1.1, 50)
+	await _banner("%s  ·  %s" % [Lore.GIFTS[g].name.to_upper(), god], UITheme.GOLD, 1.1, 50, p.patron())
 	_refresh()
 
 
@@ -1047,7 +1069,7 @@ func fx_game_over(winner: int, _reason: String) -> void:
 
 # --------------------------------------------------------- effect helpers ---
 
-func _banner(text: String, col: Color, hold: float, size_px: int = 72) -> void:
+func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: String = "") -> void:
 	var band := ColorRect.new()
 	band.color = Color(0, 0, 0, 0.65)
 	band.position = Vector2(0, 340)
@@ -1059,6 +1081,14 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72) -> void:
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	l.size = band.size
 	band.add_child(l)
+	if DuelArt.god(god) != null:
+		# the patron's face beside the words
+		var tw_px := CardFace.font("display_bold").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size_px).x
+		var face := GodFace.new()
+		face.god = god
+		face.position = Vector2(DESIGN.x * 0.5 - tw_px * 0.5 - 150, -20)
+		face.size = Vector2(190, 190)
+		l.add_child(face)
 	band.modulate.a = 0.0
 	l.position.x = -120
 	var tw := create_tween().set_parallel(true)
@@ -1180,11 +1210,20 @@ func _show_result(r: String) -> String:
 
 # ============================================================ inner views ===
 
-## The painted backdrop: a dark hall with the glowing duelling Circle.
+## The backdrop: the painted arena (dimmed so the cards stay readable) or,
+## without art, a dark hall with a drawn duelling Circle.
 class Arena:
 	extends Control
 	var stage: Control
+	var tex: Texture2D = null
+	var mote_col := Color(1.0, 0.8, 0.45)
 	var _t := 0.0
+
+	## Where the painted Circle sits: this point of the picture (0-1)...
+	const ART_ANCHOR := Vector2(0.5, 0.55)
+	## ...lands on this point of the stage, with the picture at least this wide.
+	const STAGE_ANCHOR := Vector2(930, 470)
+	const MIN_WIDTH := 1.22
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1194,6 +1233,9 @@ class Arena:
 		queue_redraw()
 
 	func _draw() -> void:
+		if tex != null and stage != null:
+			_draw_art()
+			return
 		CardFace.vgrad_rect(self, Rect2(Vector2.ZERO, size), Color("141a33"), Color("06070d"))
 		if stage == null:
 			return
@@ -1216,6 +1258,45 @@ class Arena:
 		for x in [540.0, 930.0, 1320.0]:
 			draw_line(o + Vector2(x, 110) * k, o + Vector2(x, 690) * k, Color(1, 1, 1, 0.022), 70.0 * k)
 
+	func _draw_art() -> void:
+		var k := stage.scale.x
+		var o := stage.position
+		# the screen in stage units, so the picture covers it on any shape of screen
+		var tl := -o / k
+		var br := (size - o) / k
+		var ax := STAGE_ANCHOR
+		var w := MIN_WIDTH * 1920.0
+		var aspect := float(tex.get_height()) / float(tex.get_width())
+		w = maxf(w, (ax.x - tl.x) / ART_ANCHOR.x)
+		w = maxf(w, (br.x - ax.x) / (1.0 - ART_ANCHOR.x))
+		w = maxf(w, (ax.y - tl.y) / (ART_ANCHOR.y * aspect))
+		w = maxf(w, (br.y - ax.y) / ((1.0 - ART_ANCHOR.y) * aspect))
+		var sz := Vector2(w, w * aspect)
+		var r := Rect2(o + (ax - sz * ART_ANCHOR) * k, sz * k)
+		draw_texture_rect(tex, r, false)
+		# dim it so the cards and numbers stay the brightest things on screen
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.07, 0.38))
+		# darker under the hand, behind the side columns and at the very top
+		var hand_top := o.y + 740.0 * k
+		CardFace.vgrad_rect(self, Rect2(Vector2(0, hand_top), Vector2(size.x, size.y - hand_top)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.82))
+		CardFace.vgrad_rect(self, Rect2(Vector2.ZERO, Vector2(size.x, o.y + 120.0 * k)), Color(0.01, 0.01, 0.03, 0.55), Color(0.01, 0.01, 0.03, 0.0))
+		_hgrad(Rect2(Vector2.ZERO, Vector2(o.x + 360.0 * k, size.y)), Color(0.01, 0.01, 0.03, 0.62), Color(0.01, 0.01, 0.03, 0.0))
+		var rx := o.x + 1500.0 * k
+		_hgrad(Rect2(Vector2(rx, 0), Vector2(size.x - rx, size.y)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.7))
+		# drifting motes of light
+		for i in 34:
+			var sd := float(i) * 12.9898
+			var fx := absf(fmod(sin(sd) * 43758.5453, 1.0))
+			var rise := 14.0 + 22.0 * absf(fmod(sin(sd * 1.7) * 9631.2, 1.0))
+			var y := fmod(_t * rise + float(i) * 97.0, 1080.0)
+			var p := o + Vector2(360.0 + fx * 1140.0 + sin(_t * 0.7 + i) * 18.0, 1000.0 - y) * k
+			var life := sin(y / 1080.0 * PI)
+			draw_circle(p, (2.0 + float(i % 3)) * k, Color(mote_col, 0.35 * life))
+
+	func _hgrad(r: Rect2, a: Color, b: Color) -> void:
+		var pts := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])
+		draw_polygon(pts, PackedColorArray([a, b, b, a]))
+
 	func _ellipse(c: Vector2, r: Vector2, col: Color) -> void:
 		var pts := PackedVector2Array()
 		for i in 64:
@@ -1229,6 +1310,21 @@ class Arena:
 			var a := TAU * i / 96.0
 			pts.append(c + Vector2(cos(a) * r.x, sin(a) * r.y))
 		draw_polyline(pts, col, w, true)
+
+
+## A patron's face in a gold ring.
+class GodFace:
+	extends Control
+	var god := ""
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var c := size * 0.5
+		var rad := minf(size.x, size.y) * 0.5 - 6
+		draw_circle(c, rad + 10, Color(UITheme.GOLD, 0.15))
+		DuelArt.god_medallion(self, c, rad, god, UITheme.GOLD)
 
 
 ## The big card in the right column.
@@ -1293,6 +1389,9 @@ class SummonCine:
 	extends Control
 	var card_id := ""
 	var mine := true
+	var tween: Tween = null
+	var scene: Texture2D = null
+	var figure: Texture2D = null
 	var t := 0.0:
 		set(v):
 			t = v
@@ -1301,7 +1400,59 @@ class SummonCine:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 
+	## A tap hurries the cinematic along.
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.pressed and tween != null and tween.is_valid():
+			tween.set_speed_scale(4.0)
+			accept_event()
+
+	func has_art() -> bool:
+		return scene != null and figure != null
+
 	func _draw() -> void:
+		if has_art():
+			_draw_painted()
+		else:
+			_draw_plain()
+
+	func _draw_painted() -> void:
+		var d: Dictionary = DuelCards.CARDS[card_id]
+		var col := Lore.color(d.element, 0)
+		var a := clampf(t * 7.0, 0.0, 1.0) * clampf((1.0 - t) * 7.0, 0.0, 1.0)
+		var k := minf(size.x / 1920.0, size.y / 1080.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.9 * a))
+		# the opened heavens, drifting slowly closer
+		var zoom := 1.1 - 0.1 * t
+		var sr := Rect2(size * 0.5 - size * zoom * 0.5, size * zoom)
+		DuelArt.cover(self, sr, scene, Vector2(0.5, 0.5), Color(1, 1, 1, a))
+		# the Demigod comes down the beam and lands in the Circle
+		var land := clampf((t - 0.08) / 0.42, 0.0, 1.0)
+		var eo := 1.0 - pow(1.0 - land, 3.0)
+		var fa := clampf((t - 0.06) * 6.0, 0.0, 1.0) * clampf((1.0 - t) * 7.0, 0.0, 1.0)
+		var fh := size.y * 0.74 * (0.82 + 0.18 * eo)
+		var fs := Vector2(fh * figure.get_width() / float(figure.get_height()), fh)
+		var foot := Vector2(size.x * 0.5, size.y * 0.86 + (1.0 - eo) * -size.y * 0.95)
+		if land >= 1.0:
+			foot.y += sin(t * 9.0) * 6.0 * k
+		var halo := foot - Vector2(0, fs.y * 0.5)
+		for i in 7:
+			draw_circle(halo, fs.y * (0.62 - i * 0.07), Color(col.lightened(0.3), 0.05 * fa))
+		draw_texture_rect(figure, Rect2(foot - Vector2(fs.x * 0.5, fs.y), fs), false, Color(1, 1, 1, fa))
+		# the flash as it lands
+		var flash := clampf(1.0 - absf(t - 0.5) * 9.0, 0.0, 1.0)
+		if flash > 0.0:
+			draw_rect(Rect2(Vector2.ZERO, size), Color(col.lightened(0.6), 0.55 * flash))
+		# the name
+		var ta := clampf((t - 0.48) * 6.0, 0.0, 1.0) * clampf((1.0 - t) * 7.0, 0.0, 1.0)
+		if ta > 0.0:
+			CardFace.vgrad_rect(self, Rect2(Vector2(0, size.y * 0.72), Vector2(size.x, size.y * 0.28)), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.8 * ta))
+			var fnt := CardFace.font("display_bold")
+			var nm := String(d.name).to_upper()
+			var fsz := CardFace.fit_size(fnt, nm, int(84 * k), size.x - 80)
+			CardFace.text(self, CardFace.font("bold"), Vector2(0, size.y - 150 * k), "SUMMON", int(34 * k), Color(col.lightened(0.4), ta), HORIZONTAL_ALIGNMENT_CENTER, size.x, int(6 * k))
+			CardFace.text(self, fnt, Vector2(0, size.y - 60 * k), nm, fsz, Color(UITheme.GOLD, ta), HORIZONTAL_ALIGNMENT_CENTER, size.x, int(12 * k))
+
+	func _draw_plain() -> void:
 		var a := clampf(t * 4.0, 0.0, 1.0) * clampf((1.0 - t) * 5.0, 0.0, 1.0)
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0, 0, 0, 0.85 * a))
 		var d: Dictionary = DuelCards.CARDS[card_id]

@@ -576,6 +576,13 @@ static func _draw_compact(ci: CanvasItem, rect: Rect2, card_id: String, d: Dicti
 static func draw_back(ci: CanvasItem, rect: Rect2) -> void:
 	var s := rect.size.x / W
 	var o := rect.position
+	var painted := DuelArt.card_back()
+	if painted != null:
+		DuelArt.rounded(ci, rect, 13 * s, painted)
+		var edge := round_rect_points(rect, 13 * s)
+		edge.append(edge[0])
+		ci.draw_polyline(edge, Color(0, 0, 0, 0.6), maxf(1.0, 2.0 * s), true)
+		return
 	box(ci, rect, 13 * s, Color("0c0e18"))
 	vgrad(ci, _R(o, s, 5, 5, W - 10, H - 10), 9 * s, Color("1d2450"), Color("0a0d22"))
 	var inner := _R(o, s, 13, 13, W - 26, H - 26)
