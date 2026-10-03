@@ -1,8 +1,26 @@
 class_name Sfx
 extends Node
-## Tiny synthesised sound effects, generated in code so there are no audio
-## files yet. Replace any of them by putting a .wav/.ogg in assets/sfx/ with
-## the same name (e.g. assets/sfx/hit.ogg) - it will be used instead.
+## Sound effects. Each one is a file in assets/sfx/<name>.ogg (or .wav/.mp3);
+## extra takes named <name>_2, <name>_3 are picked at random. Until a file
+## exists, the sound falls back to a tiny synthesised placeholder (see
+## FALLBACK and _synth), or stays silent. The names are listed in the
+## "Sound & Music Plan" doc.
+
+## Placeholder used for each named sound until its file arrives ("" = silent).
+const FALLBACK := {
+	"ui_tap": "click", "ui_select": "select", "ui_back": "click", "ui_error": "", "ui_menu": "click",
+	"end_turn": "click", "duel_start": "turn", "turn_mine": "turn", "turn_rival": "turn",
+	"card_draw": "card", "card_lift": "select", "card_fly": "card", "card_flip": "card", "shuffle": "",
+	"ward_set": "card", "ward_spring": "gift", "rite_cast": "",
+	"call_totem": "energy", "ascend": "evolve", "shift": "select", "essence_gain": "",
+	"attack_charge": "select", "melee_whoosh": "", "slash": "",
+	"cast_fire": "", "cast_storm": "", "cast_tide": "", "cast_verdant": "", "cast_earth": "",
+	"cast_metal": "", "cast_psychic": "", "cast_venom": "", "cast_mystic": "",
+	"hit_light": "hit", "hit_heavy": "hit", "hit_weak": "hit", "shield_block": "select", "life_hit": "hit",
+	"miss": "", "status_burn": "select", "status_poison": "select", "status_stun": "select",
+	"status_sleep": "select", "dice_roll": "", "dice_land": "coin", "dice_crit": "gift", "dice_fumble": "lose",
+	"summon_boom": "", "gift": "gift", "heal": "heal", "ko": "ko",
+}
 
 const RATE := 22050
 static var _cache := {}
@@ -20,7 +38,7 @@ func _ready() -> void:
 
 
 func play(sound: String, pitch: float = 1.0) -> void:
-	var stream := get_stream(sound)
+	var stream := get_stream(_take(sound))
 	if stream == null:
 		return
 	for p in _players:
@@ -31,16 +49,42 @@ func play(sound: String, pitch: float = 1.0) -> void:
 			return
 
 
+## True when a real recording exists for this sound.
+static func has_file(sound: String) -> bool:
+	return _file(sound) != ""
+
+
+static func _file(sound: String) -> String:
+	for ext in ["ogg", "wav", "mp3"]:
+		var path := "res://assets/sfx/%s.%s" % [sound, ext]
+		if ResourceLoader.exists(path):
+			return path
+	return ""
+
+
+## Picks one of the recorded takes (name, name_2, name_3...) at random.
+static func _take(sound: String) -> String:
+	if not has_file(sound + "_2"):
+		return sound
+	var takes := [sound]
+	var i := 2
+	while has_file("%s_%d" % [sound, i]):
+		takes.append("%s_%d" % [sound, i])
+		i += 1
+	return takes[randi() % takes.size()]
+
+
 static func get_stream(sound: String) -> AudioStream:
 	if _cache.has(sound):
 		return _cache[sound]
 	var s: AudioStream = null
-	for ext in ["ogg", "wav", "mp3"]:
-		var path := "res://assets/sfx/%s.%s" % [sound, ext]
-		if ResourceLoader.exists(path):
-			s = load(path)
-			break
-	if s == null:
+	var path := _file(sound)
+	if path != "":
+		s = load(path)
+	elif FALLBACK.has(sound):
+		var fb: String = FALLBACK[sound]
+		s = null if fb == "" else get_stream(fb)
+	else:
 		s = _synth(sound)
 	_cache[sound] = s
 	return s

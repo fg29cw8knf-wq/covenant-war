@@ -14,6 +14,7 @@ var _logo: Control
 
 func _ready() -> void:
 	layer = 5
+	Music.play(["menu_theme"], 1.5, true)
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.theme = UITheme.make()

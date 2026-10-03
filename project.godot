@@ -18,6 +18,7 @@ boot_splash/fullsize=false
 [autoload]
 
 Game="*res://scripts/game/game_state.gd"
+Music="*res://scripts/ui/music.gd"
 
 [display]
 

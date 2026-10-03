@@ -1,3 +1,2 @@
-Put sound effects here to replace the built-in beeps.
-Names: card, click, hit, coin, ko, heal, energy, turn, win, lose, evolve  (.ogg or .wav)
-Example: hit.ogg
+Put sound effects here as <name>.ogg or .wav, named as in the Sound & Music Plan doc
+(e.g. hit_light.ogg, slash.ogg, slash_2.ogg). Anything missing uses a built-in placeholder.

@@ -65,6 +65,8 @@ var _base_k := 1.0
 var _zoom := 0.0
 var _zoom_at := Vector2(1000, 476)
 var _started := false
+var _arena_name := "solhaven"
+var _pinch := false
 ## On screens wider than 16:9 the side columns move out to the screen's edges.
 var _edge := 0.0
 var _left_nodes := []          # [Control, design position]
@@ -111,6 +113,7 @@ func _ready() -> void:
 	if arena_name == "":
 		var decks: Array = spec.get("decks", ["emberstorm", "tidegrove"])
 		arena_name = DuelArt.arena_for_deck(decks[1] if decks.size() > 1 else "")
+	_arena_name = arena_name
 	bg.tex = DuelArt.arena(arena_name)
 	bg.mote_col = ARENA_MOTES.get(arena_name, bg.mote_col)
 	add_child(bg)
@@ -273,7 +276,7 @@ func _build() -> void:
 	_pin(menu, Vector2(1838, 10), true)
 	menu.size = Vector2(74, 74)
 	menu.pressed.connect(func() -> void:
-		sfx.play("click")
+		sfx.play("ui_menu")
 		lab_panel.visible = not lab_panel.visible
 		if not lab_panel.visible:
 			log_panel.visible = false)
@@ -376,6 +379,8 @@ func _start() -> void:
 	game.setup(spec.get("decks", ["emberstorm", "tidegrove"]), spec.get("names", ["You", "Rival"]),
 		controllers, spec.get("profiles", []), int(spec.get("seed", -1)))
 	game.presenter = self
+	sfx.play("shuffle")
+	Music.play(["arena_" + _arena_name, "duel_alt" if randf() < 0.5 else "duel_main", "duel_main", "duel_alt"])
 	game.logged.connect(_on_log)
 	game.state_changed.connect(_refresh)
 	for side in 2:
@@ -425,6 +430,12 @@ func _refresh() -> void:
 	_update_highlights()
 	rival_hand.count = game.players[rival].hand.size()
 	rival_hand.queue_redraw()
+	if not _pinch and not game.over and game.turn > 0:
+		for pl in game.players:
+			if pl.life > 0 and pl.life <= pl.max_life * 0.3 and Music.has("duel_pinch"):
+				_pinch = true
+				Music.play(["duel_pinch"], 0.6)
+				break
 	var cur: DuelPlayer = game.players[game.current]
 	var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
 	if game.turn > 0:
@@ -599,7 +610,7 @@ func _set_hint(t: String) -> void:
 
 func _on_end_turn() -> void:
 	if mode == "main":
-		sfx.play("click")
+		sfx.play("end_turn")
 		_respond({"type": "end"})
 
 
@@ -641,7 +652,7 @@ func _on_hand_tapped(hv) -> void:
 	_show_detail(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c)})
 	if mode != "main":
 		return
-	sfx.play("select")
+	sfx.play("card_lift")
 	if sel_card == c:
 		_clear_selection()
 		_hide_detail()
@@ -759,7 +770,7 @@ func _resolve(target) -> void:
 
 
 func _cancel_pending() -> void:
-	sfx.play("click")
+	sfx.play("ui_back")
 	var t := sel_totem
 	_clear_selection()
 	if t != null:
@@ -772,7 +783,7 @@ func _cancel_pending() -> void:
 
 
 func _select_totem(t: DuelTotem) -> void:
-	sfx.play("select")
+	sfx.play("ui_select")
 	_clear_selection()
 	sel_totem = t
 	_show_detail(t.id(), {"hp_left": t.hp_left(), "attrs": t.attrs})
@@ -818,7 +829,7 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 	if ts.size() == 1 and ts[0] is String and ts[0] == DuelGame.NONE:
 		_respond({"type": "attack", "attacker": t, "move": i, "target": DuelGame.NONE})
 		return
-	sfx.play("select")
+	sfx.play("ui_tap")
 	sel_totem = t
 	sel_move = i
 	pending = "move"
@@ -891,7 +902,10 @@ func _add_action(title: String, sub: String, cost: int, enabled: bool, cb: Calla
 	b.custom_minimum_size = Vector2(384, 96)
 	b.pressed.connect(func() -> void:
 		if b.enabled:
-			cb.call())
+			sfx.play("ui_tap")
+			cb.call()
+		else:
+			sfx.play("ui_error"))
 	actions.add_child(b)
 	_queue_place()
 
@@ -1038,7 +1052,7 @@ func fx_start() -> void:
 func fx_rolloff(r0: int, r1: int) -> void:
 	if not _started:
 		_started = true
-		sfx.play("turn")
+		sfx.play("duel_start")
 		await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
 	var names: Array = spec.get("names", ["You", "Rival"])
 	if r0 == r1:
@@ -1053,15 +1067,17 @@ func fx_turn(pi: int) -> void:
 	_hide_detail()
 	_strike = {}
 	_refresh()
-	sfx.play("turn")
+	sfx.play("turn_mine" if pi == me else "turn_rival")
 	var t := "YOUR TURN" if pi == me and not _watching() else ("%s turn" % _whose(game.players[pi].player_name)).to_upper()
 	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.6, 96, "", "TURN %d" % game.turn)
+	if pi == me:
+		sfx.play("essence_gain")
 
 
 func fx_draw(pi: int, cards: Array) -> void:
 	_refresh()
 	if pi == me:
-		sfx.play("card")
+		sfx.play("card_draw")
 		for hv in hand_views:
 			if cards.has(hv.card):
 				hv.position = Vector2(1560 + _edge, 1100)
@@ -1078,11 +1094,11 @@ func fx_call(t: DuelTotem) -> void:
 	v.pop = 0.3
 	var foot := _foot(v)
 	var col := DuelFX.light(t.element())
-	sfx.play("card")
+	sfx.play("card_fly")
 	_layout_hand()
 	var from := Vector2(FIELD_CX, HAND_Y + 80) if t.owner == me else Vector2(FIELD_CX, 30)
 	await _fly_card(t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
-	sfx.play("energy")
+	sfx.play("call_totem")
 	DuelFX.flash(fx_layer, foot, col, 260.0 * v.depth, 0.5 / speed)
 	DuelFX.shockwave(fx_layer, foot, col, 240.0 * v.depth, 0.55 / speed, 0.3, 9.0)
 	DuelFX.pillar(fx_layer, foot, col, 190.0 * v.depth, 560.0 * v.depth, 0.8 / speed)
@@ -1104,7 +1120,7 @@ func fx_ascend(t: DuelTotem) -> void:
 	v.set_totem(t)
 	var foot := _foot(v)
 	var c := _center(v)
-	sfx.play("evolve")
+	sfx.play("ascend")
 	_layout_hand()
 	DuelFX.pillar(fx_layer, foot, UITheme.GOLD, 240.0 * v.depth, 760.0 * v.depth, 1.0 / speed)
 	DuelFX.rise(fx_layer, foot - Vector2(0, 20), UITheme.GOLD, 220.0 * v.depth, 60, 1.2, speed)
@@ -1126,10 +1142,11 @@ func fx_ascend(t: DuelTotem) -> void:
 
 func fx_rite(pi: int, card: DuelCard, target) -> void:
 	_hide_detail()
-	sfx.play("card")
+	sfx.play("card_fly")
 	_layout_hand()
 	var from := Vector2(FIELD_CX, HAND_Y + 80) if pi == me else Vector2(FIELD_CX, 30)
 	var c := await _show_card_big(card.id, "RITE", DuelCardFace.RITE_COL, 0.75 if pi != me else 0.45, from)
+	sfx.play("rite_cast")
 	var col := DuelFX.light(card.element())
 	if target is DuelTotem:
 		var to := _center(_view(target))
@@ -1144,7 +1161,8 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 
 
 func fx_ward_set(pi: int, _card: DuelCard) -> void:
-	sfx.play("card")
+	sfx.play("card_fly")
+	get_tree().create_timer(0.3 / speed).timeout.connect(func() -> void: sfx.play("ward_set"))
 	_layout_hand()
 	var wz: DuelViews.WardZone = ward_zones[pi]
 	var wr: Rect2 = wz.card_rect(maxi(0, game.players[pi].wards.size() - 1))
@@ -1157,7 +1175,7 @@ func fx_ward_set(pi: int, _card: DuelCard) -> void:
 
 
 func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
-	sfx.play("gift")
+	sfx.play("ward_spring")
 	var wz: DuelViews.WardZone = ward_zones[pi]
 	var from: Vector2 = wz.position + wz.card_rect(0).get_center()
 	var c := await _show_card_big(card.id, "WARD!", DuelCardFace.WARD_COL, 0.9, from)
@@ -1166,7 +1184,7 @@ func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 
 
 func fx_shift(_pi: int) -> void:
-	sfx.play("select")
+	sfx.play("shift")
 	for side in 2:
 		for v in views[side]:
 			v.set_totem(game.players[side].slots[v.slot])
@@ -1201,7 +1219,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	var src := _center(v)
 	var dest := _target_point(t, target)
 	_strike = {"attacker": t, "melee": _is_melee(String(mv.name))}
-	sfx.play("select", 0.9)
+	sfx.play("attack_charge")
 	_move_label(src + Vector2(0, -150 * v.depth), String(mv.name), col)
 	# gather power: a glow, sparks drawn in, and a step back
 	v.flash = 0.7
@@ -1227,9 +1245,11 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 	var from := _center(v) - v.offset
 	var col := DuelFX.light(att.element())
 	if _strike.get("melee", false):
+		sfx.play("melee_whoosh")
 		var tw := create_tween()
 		tw.tween_property(v, "offset", (to - from) * 0.8, 0.12 / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
 		await tw.finished
+		sfx.play("slash")
 		var ang := randf_range(-0.9, -0.4)
 		if to.x < from.x:
 			ang = PI - ang
@@ -1238,7 +1258,9 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 		var back := create_tween()
 		back.tween_property(v, "offset", Vector2.ZERO, 0.32 / speed).set_delay(0.08 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		return
-	match att.element():
+	var el := att.element()
+	sfx.play("cast_mystic" if el == "spirit" or el == "mystic" else "cast_" + el)
+	match el:
 		"storm":
 			DuelFX.flash(fx_layer, from, col, 140.0, 0.3 / speed)
 			DuelFX.lightning(fx_layer, from, to, col, 0.36 / speed, 10.0)
@@ -1273,15 +1295,28 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	dv.size = Vector2(1180, 400)
 	fx_layer.add_child(dv)
 	var steps := int(14 / maxf(1.0, speed * 0.7))
+	var rattle := Sfx.has_file("dice_roll")
+	if rattle:
+		sfx.play("dice_roll")
 	for k in steps:
 		dv.face = randi_range(1, 20)
 		dv.spin += 0.5
-		sfx.play("click", 1.4 + randf() * 0.3)
+		if not rattle:
+			sfx.play("click", 1.4 + randf() * 0.3)
 		await pause(0.05)
 	dv.face = int(info.roll)
 	dv.spin = 0.0
 	dv.landed = true
-	sfx.play("coin")
+	if int(info.roll) == 20:
+		sfx.play("dice_crit")
+	elif int(info.roll) == 1:
+		sfx.play("dice_fumble")
+	else:
+		sfx.play("dice_land")
+	var bands: Array = info.get("bands", [])
+	var bi := int(info.get("index", -1))
+	if bi >= 0 and bi < bands.size() and int(bands[bi].get("damage", 0)) == 0 and String(bands[bi].get("text", "")) == "Miss":
+		sfx.play("miss")
 	var c := dv.position + dv.die_center()
 	var col := UITheme.GOLD if int(info.roll) == 20 else (Color("ff6a5a") if int(info.roll) == 1 else Color(0.7, 0.6, 1.0))
 	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
@@ -1305,13 +1340,14 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		DuelFX.burst(fx_layer, c, Color("9be15d") if src == "thorns" else Color(1, 0.6, 0.4), 14, 300.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	var absorbed := int(info.get("absorbed", 0))
 	if absorbed > 0:
+		sfx.play("shield_block")
 		DuelFX.shockwave(fx_layer, c, Color("9fe8ff"), 150.0 * v.depth, 0.4 / speed, 1.0, 8.0)
 		DuelFX.number(fx_layer, c + Vector2(110, -40), "◈ -%d" % absorbed, Color("9fe8ff"), 46, 0.9 / speed)
 	_last_hit_pos = c
 	if amount <= 0:
 		await pause(0.2)
 		return
-	sfx.play("hit")
+	sfx.play("hit_weak" if att != null and t.weak_to(att.element()) else ("hit_heavy" if amount >= 40 else "hit_light"))
 	var col := Color(1.0, 0.45, 0.35)
 	if att != null:
 		col = DuelFX.light(att.element())
@@ -1349,7 +1385,7 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 		await b.arrived
 	elif att != null and not _strike.is_empty() and _strike.get("attacker") == att:
 		await _deliver(att, to)
-	sfx.play("hit", 0.7)
+	sfx.play("life_hit")
 	p.flash = 1.0
 	p.shake = 10.0
 	var col := Color(1, 0.3, 0.4)
@@ -1405,7 +1441,7 @@ func fx_status(t: DuelTotem, status: String) -> void:
 			DuelFX.rise(fx_layer, c, Color(0.7, 0.6, 1.0), 120.0 * v.depth, 16, 1.2, speed)
 	DuelFX.flash(fx_layer, c, col, 150.0 * v.depth, 0.4 / speed)
 	DuelFX.number(fx_layer, c + Vector2(0, 60), DuelCards.STATUS_NAMES[status].to_upper() + "!", col, 44, 0.9 / speed)
-	sfx.play("select", 0.8)
+	sfx.play("status_" + status)
 	await pause(0.3)
 
 
@@ -1440,7 +1476,8 @@ func fx_ko(t: DuelTotem) -> void:
 func fx_summon(pi: int, card: DuelCard) -> void:
 	_hide_detail()
 	_layout_hand()
-	sfx.play("summon")
+	if not Music.stinger("summon_" + card.id):
+		sfx.play("summon")
 	var cine := SummonCine.new()
 	cine.card_id = card.id
 	cine.mine = pi == me
@@ -1455,6 +1492,7 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	cine.queue_free()
 	var col := DuelFX.light(card.element())
 	DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
+	sfx.play("summon_boom")
 	shake(14.0)
 	punch(Vector2(FIELD_CX, 476), 0.05)
 
@@ -1476,7 +1514,10 @@ func fx_message(text: String) -> void:
 
 
 func fx_game_over(winner: int, _reason: String) -> void:
-	sfx.play("win" if winner == me else "lose")
+	Music.stop(0.4)
+	var won := winner == me or (_watching() and winner in [0, 1])
+	if not Music.stinger("victory" if won else "defeat", false):
+		sfx.play("win" if won else "lose")
 	await pause(0.6)
 
 
@@ -1541,6 +1582,7 @@ func _show_card_big(id: String, tag: String, col: Color, hold: float, from := Ve
 		tw.tween_property(cv, "scale", Vector2(1, 1), 0.18 / speed).set_ease(Tween.EASE_OUT)
 	var c := home + cv.size * 0.5
 	await pause(0.22)
+	sfx.play("card_flip")
 	DuelFX.flash(fx_layer, c, col.lightened(0.3), 300.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, c, col.lightened(0.4), 24, 520.0, 12.0, 0.7, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	await pause(hold)

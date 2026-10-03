@@ -29,6 +29,7 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.make()
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	Music.play(["menu_theme"], 1.0, true)
 	var saved = Game.settings.get("duel_lab", {})
 	if saved is Dictionary:
 		for k in saved:
@@ -324,6 +325,7 @@ func _play(watch: bool) -> void:
 	var r: String = await _screen.finished
 	layer.queue_free()
 	_screen = null
+	Music.play(["menu_theme"], 1.5, true)
 	if r == "again":
 		_play(watch)
 
