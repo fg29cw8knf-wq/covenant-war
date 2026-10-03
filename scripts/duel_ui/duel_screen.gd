@@ -1111,6 +1111,13 @@ func _foot3(t: DuelTotem) -> Vector3:
 	return field.foot_world(t.owner, t.slot)
 
 
+## Plays a model clip on a Totem's slot (nothing happens for cut-outs).
+func _clip(t: DuelTotem, want: String, speed_scale: float = 1.0) -> float:
+	if field == null or t == null:
+		return 0.0
+	return field.play_clip(t.owner, t.slot, want, speed_scale)
+
+
 ## Where Life damage numbers pop: just right of the Life plate.
 func _life_number_pos(pi: int) -> Vector2:
 	var p: DuelViews.PlayerPanel = panels[pi]
@@ -1198,7 +1205,8 @@ func fx_call(t: DuelTotem) -> void:
 	tw.tween_property(v, "flash", 0.0, 0.7 / speed)
 	if t.tier() >= 3:
 		shake(9.0)
-	await pause(0.5)
+	var clip_len := _clip(t, "summon", speed)
+	await pause(maxf(0.5, clip_len * 0.8))
 	if field != null:
 		field.cam_home(0.5 / speed)
 
@@ -1232,6 +1240,7 @@ func fx_ascend(t: DuelTotem) -> void:
 	v.flash = 1.0
 	v.flash_color = UITheme.GOLD
 	DuelFX.number(fx_layer, c + Vector2(0, -150 * v.depth), "ASCENDED!", UITheme.GOLD, 64, 1.3 / speed)
+	_clip(t, "summon", speed)
 	v.pop = 1.25
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(v, "pop", 1.0, 0.55 / speed).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
@@ -1328,6 +1337,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	var dest := _target_point(t, target)
 	_strike = {"attacker": t, "melee": _is_melee(String(mv.name))}
 	sfx.play("attack_charge")
+	_strike["clip_len"] = _clip(t, "attack", speed)
 	if field != null:
 		var aim: Vector3 = _body3(target) if target is DuelTotem else (field.life_world(1 - t.owner) if (target is String and target == DuelGame.LIFE) else _body3(t))
 		field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
@@ -1511,6 +1521,7 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		await pause(0.2)
 		return
 	sfx.play("hit_weak" if att != null and t.weak_to(att.element()) else ("hit_heavy" if amount >= 40 else "hit_light"))
+	_clip(t, "hit", speed)
 	var col := Color(1.0, 0.45, 0.35)
 	if att != null:
 		col = DuelFX.light(att.element())
@@ -1589,6 +1600,7 @@ func fx_heal(t: DuelTotem, amount: int) -> void:
 	var col := Color(0.45, 1.0, 0.55)
 	v.flash = 0.8
 	v.flash_color = col
+	_clip(t, "victory", speed)
 	create_tween().tween_property(v, "flash", 0.0, 0.6 / speed)
 	if field != null:
 		field.rise(_foot3(t), col, 40, 1.2, 1.4)
@@ -1654,6 +1666,7 @@ func fx_ko(t: DuelTotem) -> void:
 	sfx.play("ko")
 	shake(12.0)
 	punch(c, 0.045)
+	var ko_len := _clip(t, "ko", speed)
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
 	if field != null:
 		field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
@@ -1669,9 +1682,10 @@ func fx_ko(t: DuelTotem) -> void:
 	var tw := create_tween()
 	tw.tween_property(v, "pop", 1.12, 0.08 / speed)
 	tw.set_parallel(true)
-	tw.tween_property(v, "pop", 0.35, 0.42 / speed).set_ease(Tween.EASE_IN).set_delay(0.08 / speed)
-	tw.tween_property(v, "fade", 0.0, 0.42 / speed).set_delay(0.08 / speed)
-	await pause(0.55)
+	var ko_hold: float = maxf(0.42, ko_len * 0.9)
+	tw.tween_property(v, "pop", 0.35 if ko_len <= 0.0 else 1.0, ko_hold).set_ease(Tween.EASE_IN).set_delay(0.08 / speed)
+	tw.tween_property(v, "fade", 0.0, ko_hold).set_ease(Tween.EASE_IN).set_delay(0.08 / speed)
+	await pause(ko_hold + 0.13)
 	v.pop = 1.0
 	v.fade = 1.0
 	v.flash = 0.0

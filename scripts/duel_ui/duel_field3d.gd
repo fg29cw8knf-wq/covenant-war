@@ -52,7 +52,8 @@ class Slot:
 	var sprite: Sprite3D
 	var model: Node3D = null        # a real 3D model, when one exists (assets/models/...)
 	var anim: AnimationPlayer = null
-	var model_h := 1.0              # the model's natural height, for scaling
+	var model_h := 1.0              # the model's natural size, for scaling
+	var model_floor := 0.0          # the model's lowest point (its feet)
 	var lamp: OmniLight3D
 	var shadow: MeshInstance3D
 	var card_id := ""
@@ -491,10 +492,11 @@ func sync(v) -> void:
 		m = m.lerp(Color(fc.r * 2.5, fc.g * 2.5, fc.b * 2.5, v.fade), clampf(v.flash * 0.75, 0.0, 1.0))
 	s.sprite.modulate = m
 	if s.model != null:
-		var k: float = s.creature_h * 0.85 / maxf(0.01, s.model_h) * v.pop
+		var k: float = s.creature_h * 1.05 / maxf(0.01, s.model_h) * v.pop
 		s.model.scale = Vector3(k, k, k)
-		s.model.rotation.y = 0.0 if s.mine else PI
-		s.model.position = Vector3(off.x, 0.06 + hover, off.z)
+		# models face +Z; turn them to face the rival, angled a little towards the camera
+		s.model.rotation.y = PI * 0.38 if s.mine else -PI * 0.38
+		s.model.position = Vector3(off.x, 0.06 + hover - s.model_floor * k, off.z)
 		s.model.visible = v.fade > 0.02
 		_tint_model(s, m)
 		_drive_anim(s, v)
@@ -526,15 +528,23 @@ func _load_model(s: Slot, id: String) -> void:
 	s.add_child(inst)
 	# measure its height so it can be scaled to the slot
 	var aabb := _merged_aabb(inst)
-	s.model_h = maxf(0.01, aabb.size.y)
-	# stand it on its feet
-	inst.position.y = -aabb.position.y * (s.creature_h / s.model_h)
+	# Models are scaled so their body (the bigger of height and length) fills
+	# the slot; a raised tail or wings shouldn't shrink the creature.
+	s.model_h = maxf(0.01, maxf(aabb.size.y, aabb.size.z * 0.8))
+	s.model_floor = aabb.position.y
 	s.anim = _find_anim(inst)
 	if s.anim != null:
-		s.anim.playback_default_blend_time = 0.2
-		if s.anim.has_animation("idle"):
-			s.anim.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
-			s.anim.play("idle")
+		s.anim.playback_default_blend_time = 0.15
+		for nm in ["idle", "run", "victory"]:
+			var real := _clip_name(s, nm)
+			if real != "":
+				s.anim.get_animation(real).loop_mode = Animation.LOOP_LINEAR
+		# when a one-shot clip ends, settle back into idle
+		s.anim.animation_finished.connect(func(_done: StringName) -> void:
+			var idle := _clip_name(s, "idle")
+			if idle != "" and s.anim.current_animation != idle:
+				s.anim.play(idle, 0.25))
+		play_clip(s.side, s.index, "idle")
 	# mesh shadows and sharper textures
 	for mi in inst.find_children("*", "MeshInstance3D", true, false):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
@@ -595,24 +605,46 @@ func _tint_model(s: Slot, m: Color) -> void:
 			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0
 
 
-## Keeps the model's clip in step with what the 2D view is doing.
-func _drive_anim(s: Slot, v) -> void:
+## Clip names the game asks for, and what a model may call them instead.
+const CLIP_ALIASES := {
+	"idle": ["idle", "breathe", "breathing"],
+	"attack": ["attack", "bite", "pounce", "strike", "lunge"],
+	"hit": ["hit", "hurt", "damage", "recoil", "stagger"],
+	"ko": ["ko", "defeat", "death", "die", "collapse", "faint"],
+	"summon": ["summon", "spawn", "appear", "rise", "enter"],
+	"victory": ["victory", "win", "cheer", "celebrate"],
+	"run": ["run", "charge", "walk", "dash"],
+}
+
+
+static func _clip_name(s: Slot, want: String) -> String:
 	if s.anim == null:
-		return
-	var want := "idle"
-	if v.flash > 0.5 and v.flash_color.r > v.flash_color.g:
-		want = "hit"
-	elif v.offset.length() > 20.0:
-		want = "attack"
-	elif v.fade < 0.9 and v.pop < 0.9:
-		want = "ko"
-	elif v.pop < 0.95 and v.fade < 1.0:
-		want = "summon"
-	if want != "idle" and s.anim.has_animation(want):
-		if s.anim.current_animation != want:
-			s.anim.play(want)
-	elif s.anim.has_animation("idle") and not s.anim.is_playing():
-		s.anim.play("idle")
+		return ""
+	for nm in CLIP_ALIASES.get(want, [want]):
+		if s.anim.has_animation(nm):
+			return nm
+		for existing in s.anim.get_animation_list():
+			if String(existing).to_lower() == nm:
+				return String(existing)
+	return ""
+
+
+## Plays a clip on a slot's model (no-op without a model). Returns the clip's
+## length in seconds, or 0.
+func play_clip(side: int, slot: int, want: String, speed_scale: float = 1.0) -> float:
+	var s: Slot = slots[side][slot]
+	if s.anim == null:
+		return 0.0
+	var nm := _clip_name(s, want)
+	if nm == "":
+		return 0.0
+	s.anim.speed_scale = speed_scale
+	s.anim.play(nm, 0.12 if want != "idle" else 0.25)
+	return s.anim.get_animation(nm).length / maxf(0.01, speed_scale)
+
+
+func _drive_anim(_s: Slot, _v) -> void:
+	pass   # clips are driven explicitly by the screen's effects (play_clip)
 
 
 func _ring_state(s: Slot, h: String, base: Color, a: float) -> void:
