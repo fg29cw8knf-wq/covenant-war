@@ -1,0 +1,2 @@
+Put 3D creature models here as <card id>.glb (see the 3D Creature Models Plan doc).
+Until a model exists the game uses the creature's cut-out picture.

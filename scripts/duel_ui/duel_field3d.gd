@@ -50,6 +50,9 @@ class Slot:
 	var card_vp: SubViewport
 	var card_face: Control
 	var sprite: Sprite3D
+	var model: Node3D = null        # a real 3D model, when one exists (assets/models/...)
+	var anim: AnimationPlayer = null
+	var model_h := 1.0              # the model's natural height, for scaling
 	var lamp: OmniLight3D
 	var shadow: MeshInstance3D
 	var card_id := ""
@@ -432,6 +435,10 @@ func sync(v) -> void:
 	var id: String = "" if t == null else t.id()
 	if id != s.card_id:
 		s.card_id = id
+		if s.model != null:
+			s.model.queue_free()
+			s.model = null
+			s.anim = null
 		if id == "":
 			s.card.visible = false
 			s.sprite.visible = false
@@ -454,6 +461,7 @@ func sync(v) -> void:
 				s.sprite.offset = Vector2(0, tex.get_height() * 0.5)
 			s.fly = DuelArt.FLYERS.has(id)
 			s.lamp.light_color = DuelFX.light(t.element())
+			_load_model(s, id)
 	if t == null:
 		_ring_state(s, v.highlight, Color(0.55, 0.65, 1.0), 0.35 * v.fade)
 		return
@@ -482,10 +490,129 @@ func sync(v) -> void:
 		var fc: Color = v.flash_color
 		m = m.lerp(Color(fc.r * 2.5, fc.g * 2.5, fc.b * 2.5, v.fade), clampf(v.flash * 0.75, 0.0, 1.0))
 	s.sprite.modulate = m
+	if s.model != null:
+		var k: float = s.creature_h * 0.85 / maxf(0.01, s.model_h) * v.pop
+		s.model.scale = Vector3(k, k, k)
+		s.model.rotation.y = 0.0 if s.mine else PI
+		s.model.position = Vector3(off.x, 0.06 + hover, off.z)
+		s.model.visible = v.fade > 0.02
+		_tint_model(s, m)
+		_drive_anim(s, v)
 	s.lamp.light_energy = (0.55 + 0.1 * sin(_t * 3.0 + v.slot)) * v.fade + v.flash * 3.0
 	s.lamp.light_color = col if v.flash <= 0.0 else col.lerp(v.flash_color, v.flash)
 	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade)
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
+
+
+## Loads assets/models/creatures/<id>.glb (or summons/) when it exists and
+## hides the cut-out behind it.
+func _load_model(s: Slot, id: String) -> void:
+	var path := ""
+	for sub in ["creatures", "summons"]:
+		var p := "res://assets/models/%s/%s.glb" % [sub, id]
+		if ResourceLoader.exists(p):
+			path = p
+			break
+	if path == "":
+		return
+	var scene: PackedScene = load(path)
+	if scene == null:
+		return
+	var inst := scene.instantiate()
+	if not inst is Node3D:
+		inst.queue_free()
+		return
+	s.model = inst
+	s.add_child(inst)
+	# measure its height so it can be scaled to the slot
+	var aabb := _merged_aabb(inst)
+	s.model_h = maxf(0.01, aabb.size.y)
+	# stand it on its feet
+	inst.position.y = -aabb.position.y * (s.creature_h / s.model_h)
+	s.anim = _find_anim(inst)
+	if s.anim != null:
+		s.anim.playback_default_blend_time = 0.2
+		if s.anim.has_animation("idle"):
+			s.anim.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
+			s.anim.play("idle")
+	# mesh shadows and sharper textures
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	s.sprite.visible = false
+	s.shadow.visible = true
+
+
+static func _merged_aabb(n: Node3D) -> AABB:
+	var out := AABB()
+	var first := true
+	for mi in n.find_children("*", "MeshInstance3D", true, false):
+		var b: AABB = (mi as MeshInstance3D).get_aabb()
+		b = (mi as Node3D).transform * b
+		var p := mi.get_parent()
+		while p != null and p != n and p is Node3D:
+			b = (p as Node3D).transform * b
+			p = p.get_parent()
+		if first:
+			out = b
+			first = false
+		else:
+			out = out.merge(b)
+	return out
+
+
+static func _find_anim(n: Node) -> AnimationPlayer:
+	var found := n.find_children("*", "AnimationPlayer", true, false)
+	return found[0] if not found.is_empty() else null
+
+
+func _tint_model(s: Slot, m: Color) -> void:
+	# Only flashes and dimming change the model's look: a white flash lifts
+	# the emission, dimming darkens the albedo. Otherwise the model's own
+	# materials are left alone.
+	var flash := maxf(0.0, maxf(m.r, maxf(m.g, m.b)) - 1.0)
+	var dim := minf(1.0, minf(m.r, minf(m.g, m.b)))
+	for mi in s.model.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		for i in mesh.mesh.get_surface_count() if mesh.mesh != null else 0:
+			var src := mesh.get_active_material(i)
+			if not src is BaseMaterial3D:
+				continue
+			var key := "_base_%d" % i
+			if not mesh.has_meta(key):
+				mesh.set_meta(key, src)
+			var base: BaseMaterial3D = mesh.get_meta(key)
+			if flash <= 0.001 and dim >= 0.999:
+				if mesh.get_surface_override_material(i) != null:
+					mesh.set_surface_override_material(i, null)
+				continue
+			var ov: BaseMaterial3D = mesh.get_surface_override_material(i)
+			if ov == null or ov == base:
+				ov = base.duplicate()
+				mesh.set_surface_override_material(i, ov)
+			ov.albedo_color = base.albedo_color * Color(dim, dim, dim, 1.0)
+			ov.emission_enabled = true
+			ov.emission = Color(m.r, m.g, m.b).lerp(base.emission if base.emission_enabled else Color.BLACK, 0.0) * 0.5 if flash > 0.001 else (base.emission if base.emission_enabled else Color.BLACK)
+			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0
+
+
+## Keeps the model's clip in step with what the 2D view is doing.
+func _drive_anim(s: Slot, v) -> void:
+	if s.anim == null:
+		return
+	var want := "idle"
+	if v.flash > 0.5 and v.flash_color.r > v.flash_color.g:
+		want = "hit"
+	elif v.offset.length() > 20.0:
+		want = "attack"
+	elif v.fade < 0.9 and v.pop < 0.9:
+		want = "ko"
+	elif v.pop < 0.95 and v.fade < 1.0:
+		want = "summon"
+	if want != "idle" and s.anim.has_animation(want):
+		if s.anim.current_animation != want:
+			s.anim.play(want)
+	elif s.anim.has_animation("idle") and not s.anim.is_playing():
+		s.anim.play("idle")
 
 
 func _ring_state(s: Slot, h: String, base: Color, a: float) -> void:
