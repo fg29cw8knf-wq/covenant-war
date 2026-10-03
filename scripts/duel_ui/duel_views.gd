@@ -71,6 +71,8 @@ class TotemView:
 	var flash := 0.0
 	var flash_color := Color(1, 0.25, 0.2)
 	var rise := 0.0            # 0-1: the creature rising out of its card when called
+	var field3d := false       # the creature is drawn by the 3D field; this view draws the nameplate
+	var body_rect_3d := Rect2()  # where the 3D creature is on screen (set by the screen)
 	var shown_hp := -1.0
 	var lag_hp := -1.0
 	var _t := 0.0
@@ -135,8 +137,9 @@ class TotemView:
 		return Rect2(Vector2(p.position.x, p.get_center().y - h), Vector2(p.size.x, h))
 
 	func _draw() -> void:
+		_zone.visible = not field3d
 		var c := size * 0.5
-		draw_set_transform(c, 0.0, Vector2(pop, pop))
+		draw_set_transform(c, 0.0, Vector2(1.0, 1.0) if field3d else Vector2(pop, pop))
 		var o := -c
 		var plat := plat_rect()
 		plat.position += o
@@ -149,12 +152,20 @@ class TotemView:
 		var mod := Color(1, 1, 1, fade)
 		if highlight == "dim":
 			mod = Color(0.55, 0.55, 0.6, fade)
-		var cut := DuelArt.creature(totem.id())
 		var ar: Rect2
-		if cut != null:
-			ar = _draw_cutout(cut, plat, o, mod)
+		if field3d:
+			# the creature stands in the 3D field; only the plaque and badges are drawn here.
+			# body_rect_3d is in stage coordinates; this transform's origin is the view's centre.
+			if body_rect_3d.size.x > 0:
+				ar = Rect2(body_rect_3d.position - position - c, body_rect_3d.size)
+			else:
+				ar = Rect2(plat.get_center() - Vector2(90, 220), Vector2(180, 200))
 		else:
-			ar = _draw_window(plat, mod)
+			var cut := DuelArt.creature(totem.id())
+			if cut != null:
+				ar = _draw_cutout(cut, plat, o, mod)
+			else:
+				ar = _draw_window(plat, mod)
 		if totem.asleep:
 			CardFace.text(self, CardFace.font("display_bold"), ar.position + Vector2(ar.size.x - 30, 40 + sin(_t * 2.0) * 6.0), "z", 34, Color("c9b8ff", 0.9 * fade), HORIZONTAL_ALIGNMENT_LEFT, -1, 5)
 			CardFace.text(self, CardFace.font("display_bold"), ar.position + Vector2(ar.size.x - 12, 14 + sin(_t * 2.0 + 1.0) * 6.0), "Z", 26, Color("c9b8ff", 0.7 * fade), HORIZONTAL_ALIGNMENT_LEFT, -1, 5)

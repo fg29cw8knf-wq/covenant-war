@@ -57,6 +57,16 @@ static func god(id: String) -> Texture2D:
 	return _load("res://assets/art/gods/" + id, ["jpg", "webp", "png"])
 
 
+## The arena seen from above, for the 3D field's floor.
+static func mat(name: String) -> Texture2D:
+	return _load("res://assets/art/mats/mat_" + name, ["jpg", "webp", "png"])
+
+
+## The scenery behind the far edge of the 3D field.
+static func backdrop(name: String) -> Texture2D:
+	return _load("res://assets/art/mats/back_" + name, ["jpg", "webp", "png"])
+
+
 static func card_back() -> Texture2D:
 	return _load("res://assets/art/card_back", ["jpg", "webp", "png"])
 

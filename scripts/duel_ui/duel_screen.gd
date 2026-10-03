@@ -58,6 +58,7 @@ var gift_btn: DuelViews.GiftButton
 var ward_zones := []           # [side] -> WardZone
 var rival_hand: DuelViews.HandBacks
 var _menu_anchor := Vector2(-1, -1)
+var _menu_beside := 0            # 0: above the anchor; -1 / 1: to that side of it (3D field)
 var _place_queued := false
 var _stage_base := Vector2.ZERO
 var _shake := 0.0
@@ -67,13 +68,15 @@ var _zoom_at := Vector2(1000, 476)
 var _started := false
 var _arena_name := "solhaven"
 var _pinch := false
+var field: DuelField3D = null    # the 3D field, when the 3D setting is on
 ## On screens wider than 16:9 the side columns move out to the screen's edges.
 var _edge := 0.0
 var _left_nodes := []          # [Control, design position]
 var _right_nodes := []
 var _arena: Arena
-var _strike := {}              # the attack in flight: {attacker, melee}
+var _strike := {}              # the attack in flight: {attacker, melee, to3}
 var _last_hit_pos := Vector2.ZERO
+var _impact3 := Vector3.ZERO     # where the last hit landed in the 3D field
 var log_panel: PanelContainer
 var log_text: RichTextLabel
 var lab_panel: PanelContainer
@@ -106,15 +109,21 @@ func _ready() -> void:
 	sfx = Sfx.new()
 	add_child(sfx)
 	sfx.volume_db = linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)))) - 8.0
-	var bg := Arena.new()
-	_arena = bg
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	var arena_name: String = spec.get("arena", "")
 	if arena_name == "":
 		var decks: Array = spec.get("decks", ["emberstorm", "tidegrove"])
 		arena_name = DuelArt.arena_for_deck(decks[1] if decks.size() > 1 else "")
 	_arena_name = arena_name
-	bg.tex = DuelArt.arena(arena_name)
+	var use3d: bool = spec.get("field3d", Game.settings.get("duel_3d", true))
+	if use3d:
+		field = DuelField3D.new()
+		add_child(field)
+		field.setup(arena_name)
+	var bg := Arena.new()
+	_arena = bg
+	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	bg.overlay_only = use3d
+	bg.tex = null if use3d else DuelArt.arena(arena_name)
 	bg.mote_col = ARENA_MOTES.get(arena_name, bg.mote_col)
 	add_child(bg)
 	stage = Control.new()
@@ -122,6 +131,8 @@ func _ready() -> void:
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(stage)
 	bg.stage = stage
+	if field != null:
+		field.stage = stage
 	_build()
 	fx_layer = Control.new()
 	fx_layer.size = DESIGN
@@ -146,6 +157,8 @@ func _fit() -> void:
 	stage.position = _stage_base
 	_edge = maxf(0.0, (size.x / k - DESIGN.x) * 0.5) * 0.85
 	_apply_edges()
+	if field != null:
+		field.fit_to_stage(_stage_base, k, size)
 
 
 ## Pins a control to the left (or right) column so it hugs the screen edge.
@@ -170,6 +183,11 @@ func _detail_pos() -> Vector2:
 func _process(delta: float) -> void:
 	if stage == null:
 		return
+	if field != null:
+		_sync_field()
+		for side in 2:
+			for v in views[side]:
+				v.queue_redraw()
 	if _shake <= 0.0 and _zoom <= 0.0:
 		if stage.position != _stage_base:
 			stage.position = _stage_base
@@ -185,6 +203,9 @@ func _process(delta: float) -> void:
 
 ## A quick push of the camera towards a big moment.
 func punch(at: Vector2, amount: float = 0.03) -> void:
+	if field != null:
+		field.cam_punch(amount * 1.6)
+		return
 	if amount > _zoom:
 		_zoom = amount
 		_zoom_at = at
@@ -192,7 +213,23 @@ func punch(at: Vector2, amount: float = 0.03) -> void:
 
 ## Shakes the whole field (big hits, knockouts).
 func shake(amount: float) -> void:
+	if field != null:
+		field.cam_shake(amount)
+		return
 	_shake = maxf(_shake, amount)
+
+
+## Keeps each 2D slot view sitting on its 3D slot, and the 3D slot showing
+## what the view knows (the Totem, highlights, nudges, flashes).
+func _sync_field() -> void:
+	if game == null:
+		return
+	for side in 2:
+		for v in views[side]:
+			field.sync(v)
+			var foot: Vector2 = field.foot_stage(side, v.slot)
+			v.position = foot - Vector2(v.size.x * 0.5, v.size.y * 0.6)
+			v.body_rect_3d = Rect2(field.body_stage(side, v.slot) - Vector2(90, 110), Vector2(180, 220)) if v.totem != null else Rect2()
 
 
 ## "Wren's", or "Your" for a duellist called You.
@@ -221,6 +258,7 @@ func _build() -> void:
 			v.side = side
 			v.slot = s
 			v.size = SLOT_SIZE
+			v.field3d = field != null
 			v.tapped.connect(_on_slot_tapped)
 			stage.add_child(v)
 			views[side].append(v)
@@ -333,6 +371,14 @@ func _build_lab() -> void:
 			Game.settings["duel_speed"] = v
 			Game.save_settings())
 		sp.add_child(b)
+	var d3 := CheckButton.new()
+	d3.text = "3D field (restart the duel to apply)"
+	d3.button_pressed = Game.settings.get("duel_3d", true)
+	d3.add_theme_font_size_override("font_size", 24)
+	d3.toggled.connect(func(on: bool) -> void:
+		Game.settings["duel_3d"] = on
+		Game.save_settings())
+	box.add_child(d3)
 	var rv := CheckButton.new()
 	rv.text = "Show the rival's hand and Wards"
 	rv.add_theme_font_size_override("font_size", 24)
@@ -388,6 +434,8 @@ func _start() -> void:
 			v.mine = side == me
 			v.depth = 1.0 if side == me else RIVAL_DEPTH
 			v.position = _slot_pos(side, v.slot)
+	if field != null:
+		field.set_rows(me)
 	_pin(panels[rival], Vector2(6, 6), false)
 	_pin(panels[me], Vector2(6, 822), false)
 	_pin(ward_zones[rival], Vector2(20, 262), false)
@@ -627,6 +675,7 @@ func _on_gift() -> void:
 	_clear_actions()
 	_hide_detail()
 	_menu_anchor = Vector2(-1, -1)
+	_menu_beside = 0
 	_add_note("%s: %s Once per duel." % [Lore.GIFTS[g].name, DuelCards.gift_text(g)])
 	if ts.is_empty():
 		_add_action("Use %s" % Lore.GIFTS[g].name, DuelCards.gift_text(g), 0, true,
@@ -665,6 +714,7 @@ func _on_hand_tapped(hv) -> void:
 	var p: DuelPlayer = game.players[me]
 	_clear_actions()
 	_menu_anchor = _hand_anchor(hv)
+	_menu_beside = 0
 	match c.kind():
 		"totem":
 			if c.is_basic_totem():
@@ -789,7 +839,11 @@ func _select_totem(t: DuelTotem) -> void:
 	_show_detail(t.id(), {"hp_left": t.hp_left(), "attrs": t.attrs})
 	_clear_actions()
 	var tv: DuelViews.TotemView = views[me][t.slot]
-	_menu_anchor = tv.position + tv.body_point() - Vector2(0, 118)
+	if field != null:
+		_menu_anchor = _center(tv)
+		_menu_beside = -1 if t.slot == 2 else 1
+	else:
+		_menu_anchor = _center(tv) - Vector2(0, 118)
 	var ready := game.ready_problem(me, t)
 	if ready != "":
 		_add_note(ready)
@@ -818,6 +872,7 @@ func _select_totem(t: DuelTotem) -> void:
 			_set_hint("Tap the slot to shift %s to." % t.card_name())
 			_clear_actions()
 			_menu_anchor = Vector2(-1, -1)
+			_menu_beside = 0
 			_show_cancel()
 			_refresh())
 	_set_hint("%s: choose a move." % t.card_name())
@@ -844,6 +899,7 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 		_set_hint("Choose an enemy Totem.")
 	_clear_actions()
 	_menu_anchor = Vector2(-1, -1)
+	_menu_beside = 0
 	_show_cancel()
 	_refresh()
 
@@ -860,6 +916,7 @@ func _clear_actions() -> void:
 func _show_actions_default() -> void:
 	_clear_actions()
 	_menu_anchor = Vector2(-1, -1)
+	_menu_beside = 0
 	var p: DuelPlayer = game.players[me]
 	var any := false
 	for t in p.totems():
@@ -875,6 +932,7 @@ func _show_actions_default() -> void:
 
 func _show_cancel() -> void:
 	_menu_anchor = Vector2(-1, -1)
+	_menu_beside = 0
 	var b := UITheme.button("Cancel", false, 300)
 	b.custom_minimum_size = Vector2(340, 76)
 	b.pressed.connect(_cancel_pending)
@@ -928,6 +986,12 @@ func _place_actions() -> void:
 	if _menu_anchor.x < 0.0:
 		actions.position = DOCK_POS + Vector2(_edge, 0)
 		actions.pivot_offset = Vector2(sz.x * 0.5, 0)
+	elif _menu_beside != 0:
+		var x := _menu_anchor.x + 150.0 if _menu_beside > 0 else _menu_anchor.x - 150.0 - sz.x
+		x = clampf(x, 432.0, 1572.0 - sz.x)
+		var y := clampf(_menu_anchor.y - sz.y * 0.5, 92.0, 770.0 - sz.y)
+		actions.position = Vector2(x, y)
+		actions.pivot_offset = Vector2(0.0 if _menu_beside > 0 else sz.x, sz.y * 0.5)
 	else:
 		var x := clampf(_menu_anchor.x - sz.x * 0.5, 432.0, 1572.0 - sz.x)
 		var y := maxf(92.0, _menu_anchor.y - sz.y)
@@ -1026,12 +1090,25 @@ func _view(t: DuelTotem) -> DuelViews.TotemView:
 
 func _center(v: Control) -> Vector2:
 	if v is DuelViews.TotemView:
+		if field != null:
+			return field.body_stage(v.side, v.slot)
 		return v.position + v.body_point()
 	return v.position + v.size * Vector2(0.5, 0.36)
 
 
 func _foot(v: DuelViews.TotemView) -> Vector2:
+	if field != null:
+		return field.foot_stage(v.side, v.slot)
 	return v.position + v.foot_point()
+
+
+## 3D positions for the field's effects (zero when the field is 2D).
+func _body3(t: DuelTotem) -> Vector3:
+	return field.body_world(t.owner, t.slot)
+
+
+func _foot3(t: DuelTotem) -> Vector3:
+	return field.foot_world(t.owner, t.slot)
 
 
 ## Where Life damage numbers pop: just right of the Life plate.
@@ -1066,6 +1143,8 @@ func fx_rolloff(r0: int, r1: int) -> void:
 func fx_turn(pi: int) -> void:
 	_hide_detail()
 	_strike = {}
+	if field != null:
+		field.cam_home(0.8 / speed)
 	_refresh()
 	sfx.play("turn_mine" if pi == me else "turn_rival")
 	var t := "YOUR TURN" if pi == me and not _watching() else ("%s turn" % _whose(game.players[pi].player_name)).to_upper()
@@ -1097,12 +1176,20 @@ func fx_call(t: DuelTotem) -> void:
 	sfx.play("card_fly")
 	_layout_hand()
 	var from := Vector2(FIELD_CX, HAND_Y + 80) if t.owner == me else Vector2(FIELD_CX, 30)
+	if field != null:
+		field.cam_focus(_foot3(t), 0.3, 0.4 / speed)
 	await _fly_card(t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
 	sfx.play("call_totem")
-	DuelFX.flash(fx_layer, foot, col, 260.0 * v.depth, 0.5 / speed)
-	DuelFX.shockwave(fx_layer, foot, col, 240.0 * v.depth, 0.55 / speed, 0.3, 9.0)
-	DuelFX.pillar(fx_layer, foot, col, 190.0 * v.depth, 560.0 * v.depth, 0.8 / speed)
-	DuelFX.burst(fx_layer, foot - Vector2(0, 30), col, 40, 520.0, 15.0, 0.8, Vector2(0, 320), 70.0, Vector2.UP, speed)
+	if field != null:
+		field.pillar(_foot3(t), col, 5.5, 1.8, 0.9 / speed)
+		field.floor_wave(_foot3(t), col, 3.6, 0.6 / speed)
+		field.burst(_foot3(t) + Vector3(0, 0.3, 0), col, 40, 7.0, 0.8)
+		DuelFX.flash(fx_layer, foot, col, 200.0, 0.4 / speed)
+	else:
+		DuelFX.flash(fx_layer, foot, col, 260.0 * v.depth, 0.5 / speed)
+		DuelFX.shockwave(fx_layer, foot, col, 240.0 * v.depth, 0.55 / speed, 0.3, 9.0)
+		DuelFX.pillar(fx_layer, foot, col, 190.0 * v.depth, 560.0 * v.depth, 0.8 / speed)
+		DuelFX.burst(fx_layer, foot - Vector2(0, 30), col, 40, 520.0, 15.0, 0.8, Vector2(0, 320), 70.0, Vector2.UP, speed)
 	v.flash = 1.0
 	v.flash_color = Color(1, 1, 0.9)
 	var tw := create_tween().set_parallel(true)
@@ -1112,6 +1199,8 @@ func fx_call(t: DuelTotem) -> void:
 	if t.tier() >= 3:
 		shake(9.0)
 	await pause(0.5)
+	if field != null:
+		field.cam_home(0.5 / speed)
 
 
 func fx_ascend(t: DuelTotem) -> void:
@@ -1122,12 +1211,22 @@ func fx_ascend(t: DuelTotem) -> void:
 	var c := _center(v)
 	sfx.play("ascend")
 	_layout_hand()
-	DuelFX.pillar(fx_layer, foot, UITheme.GOLD, 240.0 * v.depth, 760.0 * v.depth, 1.0 / speed)
-	DuelFX.rise(fx_layer, foot - Vector2(0, 20), UITheme.GOLD, 220.0 * v.depth, 60, 1.2, speed)
+	if field != null:
+		field.cam_focus(_foot3(t), 0.45, 0.5 / speed)
+		field.pillar(_foot3(t), UITheme.GOLD, 8.0, 2.4, 1.2 / speed)
+		field.rise(_foot3(t), UITheme.GOLD, 70, 1.4, 1.6)
+	else:
+		DuelFX.pillar(fx_layer, foot, UITheme.GOLD, 240.0 * v.depth, 760.0 * v.depth, 1.0 / speed)
+		DuelFX.rise(fx_layer, foot - Vector2(0, 20), UITheme.GOLD, 220.0 * v.depth, 60, 1.2, speed)
 	await pause(0.25)
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.8), 330.0 * v.depth, 0.6 / speed)
-	DuelFX.shockwave(fx_layer, foot, UITheme.GOLD, 300.0 * v.depth, 0.6 / speed, 0.32, 12.0)
-	DuelFX.burst(fx_layer, c, UITheme.GOLD, 50, 700.0, 18.0, 0.9, Vector2(0, 200), 180.0, Vector2.UP, speed)
+	if field != null:
+		field.floor_wave(_foot3(t), UITheme.GOLD, 5.0, 0.7 / speed)
+		field.burst(_body3(t), UITheme.GOLD, 60, 9.0, 1.0, 0.14, 0.0)
+		field.flash_light(_body3(t), Color(1, 0.95, 0.8), 10.0, 0.6 / speed)
+	else:
+		DuelFX.shockwave(fx_layer, foot, UITheme.GOLD, 300.0 * v.depth, 0.6 / speed, 0.32, 12.0)
+		DuelFX.burst(fx_layer, c, UITheme.GOLD, 50, 700.0, 18.0, 0.9, Vector2(0, 200), 180.0, Vector2.UP, speed)
 	shake(10.0)
 	punch(c, 0.04)
 	v.flash = 1.0
@@ -1138,6 +1237,8 @@ func fx_ascend(t: DuelTotem) -> void:
 	tw.tween_property(v, "pop", 1.0, 0.55 / speed).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	tw.tween_property(v, "flash", 0.0, 0.8 / speed)
 	await pause(0.7)
+	if field != null:
+		field.cam_home(0.6 / speed)
 
 
 func fx_rite(pi: int, card: DuelCard, target) -> void:
@@ -1153,7 +1254,11 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 		var b := DuelFX.projectile(fx_layer, c, to, col, 0.3 / speed, 30.0, 60.0)
 		await b.arrived
 		DuelFX.flash(fx_layer, to, col, 180.0, 0.4 / speed)
-		DuelFX.burst(fx_layer, to, col, 22, 420.0, 14.0, 0.6, Vector2(0, 200), 180.0, Vector2.UP, speed)
+		if field != null:
+			field.burst(_body3(target), col, 30, 5.0, 0.6, 0.1, 0.0)
+			field.flash_light(_body3(target), col, 6.0, 0.4 / speed)
+		else:
+			DuelFX.burst(fx_layer, to, col, 22, 420.0, 14.0, 0.6, Vector2(0, 200), 180.0, Vector2.UP, speed)
 	else:
 		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
 		DuelFX.burst(fx_layer, c, col, 30, 520.0, 14.0, 0.7, Vector2(0, 200), 180.0, Vector2.UP, speed)
@@ -1189,7 +1294,10 @@ func fx_shift(_pi: int) -> void:
 		for v in views[side]:
 			v.set_totem(game.players[side].slots[v.slot])
 			if v.totem != null:
-				DuelFX.shockwave(fx_layer, _foot(v), DuelFX.light(v.totem.element()), 160.0 * v.depth, 0.4 / speed, 0.3, 6.0)
+				if field != null:
+					field.floor_wave(field.foot_world(side, v.slot), DuelFX.light(v.totem.element()), 2.6, 0.45 / speed)
+				else:
+					DuelFX.shockwave(fx_layer, _foot(v), DuelFX.light(v.totem.element()), 160.0 * v.depth, 0.4 / speed, 0.3, 6.0)
 	await pause(0.25)
 
 
@@ -1220,6 +1328,10 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	var dest := _target_point(t, target)
 	_strike = {"attacker": t, "melee": _is_melee(String(mv.name))}
 	sfx.play("attack_charge")
+	if field != null:
+		var aim: Vector3 = _body3(target) if target is DuelTotem else (field.life_world(1 - t.owner) if (target is String and target == DuelGame.LIFE) else _body3(t))
+		field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
+		field.flash_light(_body3(t), col, 4.0, 0.5 / speed, 5.0)
 	_move_label(src + Vector2(0, -150 * v.depth), String(mv.name), col)
 	# gather power: a glow, sparks drawn in, and a step back
 	v.flash = 0.7
@@ -1237,6 +1349,8 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		_strike = {}
 		tw = create_tween()
 		tw.tween_property(v, "offset", Vector2.ZERO, 0.15 / speed)
+		if field != null:
+			field.cam_home(0.6 / speed)
 
 
 ## Sends the attack across the field once its damage is known.
@@ -1244,6 +1358,9 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 	var v := _view(att)
 	var from := _center(v) - v.offset
 	var col := DuelFX.light(att.element())
+	if field != null:
+		await _deliver3(att, to)
+		return
 	if _strike.get("melee", false):
 		sfx.play("melee_whoosh")
 		var tw := create_tween()
@@ -1278,13 +1395,57 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 			await b.arrived
 
 
+## The attack crossing the 3D field. `to` is where it lands on the stage;
+## `_strike_to3` says where that is in the world.
+func _deliver3(att: DuelTotem, to: Vector2) -> void:
+	var v := _view(att)
+	var col := DuelFX.light(att.element())
+	var a3 := _body3(att)
+	var b3: Vector3 = _strike.get("to3", a3)
+	if _strike.get("melee", false):
+		sfx.play("melee_whoosh")
+		var tw := create_tween()
+		tw.tween_property(v, "offset", (to - _center(v)) * 0.8, 0.12 / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		await tw.finished
+		sfx.play("slash")
+		var ang := randf_range(-0.9, -0.4)
+		if to.x < _center(v).x:
+			ang = PI - ang
+		DuelFX.slash(fx_layer, to, col, 150.0, ang, 0.26 / speed)
+		DuelFX.slash(fx_layer, to + Vector2(10, 14), Color.WHITE, 120.0, ang + 0.25, 0.22 / speed)
+		var back := create_tween()
+		back.tween_property(v, "offset", Vector2.ZERO, 0.32 / speed).set_delay(0.08 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		return
+	var el := att.element()
+	sfx.play("cast_mystic" if el == "spirit" or el == "mystic" else "cast_" + el)
+	match el:
+		"storm":
+			field.lightning(a3 + Vector3(0, 0.6, 0), b3, col, 0.36 / speed, 0.18)
+			field.lightning(a3 + Vector3(0, 0.6, 0), b3, Color.WHITE, 0.22 / speed, 0.07)
+			await pause(0.1)
+		"psychic", "mystic", "spirit":
+			var b := field.bolt(a3, b3, col, 0.34 / speed, 0.9, 0.6)
+			field.floor_wave(_foot3(att), col, 2.4, 0.4 / speed)
+			await b.arrived
+			for k in 3:
+				field.floor_wave(b3 * Vector3(1, 0, 1), col, 2.0 + k * 1.2, (0.3 + k * 0.1) / speed)
+		_:
+			var b := field.bolt(a3, b3, col, 0.3 / speed, 1.0, 1.4)
+			await b.arrived
+
+
 ## The flash, sparks and shake where a hit lands.
 func _impact(pos: Vector2, col: Color, amount: int) -> void:
 	var big := amount >= 50
 	DuelFX.flash(fx_layer, pos, col, 230.0 if big else 170.0, 0.4 / speed)
 	DuelFX.flash(fx_layer, pos, Color.WHITE, 90.0 if big else 70.0, 0.2 / speed)
-	DuelFX.burst(fx_layer, pos, col, 34 if big else 22, 620.0 if big else 480.0, 16.0, 0.65, Vector2(0, 420), 180.0, Vector2.UP, speed)
-	DuelFX.shockwave(fx_layer, pos + Vector2(0, 50), col, 200.0 if big else 150.0, 0.45 / speed, 0.4, 9.0)
+	if field != null and _impact3 != Vector3.ZERO:
+		field.burst(_impact3, col, 46 if big else 30, 8.0 if big else 6.0, 0.7, 0.13, 0.0)
+		field.flash_light(_impact3, col, 9.0 if big else 6.0, 0.4 / speed)
+		field.floor_wave(_impact3 * Vector3(1, 0, 1), col, 3.2 if big else 2.4, 0.45 / speed)
+	else:
+		DuelFX.burst(fx_layer, pos, col, 34 if big else 22, 620.0 if big else 480.0, 16.0, 0.65, Vector2(0, 420), 180.0, Vector2.UP, speed)
+		DuelFX.shockwave(fx_layer, pos + Vector2(0, 50), col, 200.0 if big else 150.0, 0.45 / speed, 0.4, 9.0)
 	shake(5.0 + minf(float(amount), 100.0) * 0.12)
 
 
@@ -1334,7 +1495,9 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	var c := _center(v)
 	var att = info.get("attacker")
 	var src: String = info.get("source", "")
+	_impact3 = _body3(t) if field != null else Vector3.ZERO
 	if att != null and src == "" and not _strike.is_empty() and _strike.get("attacker") == att:
+		_strike["to3"] = _impact3
 		await _deliver(att, c)
 	elif src == "thorns" or src == "recoil":
 		DuelFX.burst(fx_layer, c, Color("9be15d") if src == "thorns" else Color(1, 0.6, 0.4), 14, 300.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
@@ -1374,17 +1537,33 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	create_tween().tween_property(v, "flash", 0.0, 0.45 / speed)
 	await pause(0.08)
 	await pause(0.36)
+	if field != null and att != null:
+		field.cam_home(0.7 / speed)
 
 
 func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	var p: DuelViews.PlayerPanel = panels[pi]
 	var to := _life_center(pi)
 	var att = info.get("attacker")
+	var land3: Vector3 = field.life_world(pi) if field != null else Vector3.ZERO
 	if info.get("spill", false):
-		var b := DuelFX.projectile(fx_layer, _last_hit_pos, to, Color(1, 0.35, 0.4), 0.28 / speed, 26.0, 80.0)
-		await b.arrived
+		if field != null and _impact3 != Vector3.ZERO:
+			var b3 := field.bolt(_impact3, land3, Color(1, 0.35, 0.4), 0.28 / speed, 0.7, 1.0)
+			await b3.arrived
+		else:
+			var b := DuelFX.projectile(fx_layer, _last_hit_pos, to, Color(1, 0.35, 0.4), 0.28 / speed, 26.0, 80.0)
+			await b.arrived
 	elif att != null and not _strike.is_empty() and _strike.get("attacker") == att:
-		await _deliver(att, to)
+		_strike["to3"] = land3
+		if field != null:
+			await _deliver(att, field.world_to_stage(land3))
+		else:
+			await _deliver(att, to)
+	if field != null:
+		_impact3 = land3
+		field.burst(land3, Color(1, 0.35, 0.4), 40, 7.0, 0.7, 0.13, 0.0)
+		field.flash_light(land3, Color(1, 0.3, 0.4), 9.0, 0.5 / speed)
+		field.floor_wave(land3 * Vector3(1, 0, 1), Color(1, 0.35, 0.4), 4.0, 0.5 / speed)
 	sfx.play("life_hit")
 	p.flash = 1.0
 	p.shake = 10.0
@@ -1400,6 +1579,8 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	if pi == me:
 		_vignette(Color(1, 0.05, 0.1))
 	await pause(0.5)
+	if field != null:
+		field.cam_home(0.7 / speed)
 
 
 func fx_heal(t: DuelTotem, amount: int) -> void:
@@ -1409,8 +1590,13 @@ func fx_heal(t: DuelTotem, amount: int) -> void:
 	v.flash = 0.8
 	v.flash_color = col
 	create_tween().tween_property(v, "flash", 0.0, 0.6 / speed)
-	DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 10), col, 200.0 * v.depth, 34, 1.1, speed)
-	DuelFX.shockwave(fx_layer, _foot(v), col, 180.0 * v.depth, 0.5 / speed, 0.3, 7.0)
+	if field != null:
+		field.rise(_foot3(t), col, 40, 1.2, 1.4)
+		field.floor_wave(_foot3(t), col, 2.8, 0.5 / speed)
+		field.flash_light(_body3(t), col, 5.0, 0.6 / speed)
+	else:
+		DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 10), col, 200.0 * v.depth, 34, 1.1, speed)
+		DuelFX.shockwave(fx_layer, _foot(v), col, 180.0 * v.depth, 0.5 / speed, 0.3, 7.0)
 	DuelFX.number(fx_layer, _center(v), "+%d" % amount, Color("7ee08a"), 76, 1.0 / speed)
 	await pause(0.35)
 
@@ -1430,15 +1616,27 @@ func fx_status(t: DuelTotem, status: String) -> void:
 	var v := _view(t)
 	var col: Color = DuelViews.STATUS_COL.get(status, Color.WHITE)
 	var c := _center(v)
-	match status:
-		"burn":
-			DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(1.0, 0.5, 0.15), 160.0 * v.depth, 30, 0.9, speed)
-		"poison":
-			DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(0.6, 1.0, 0.3), 160.0 * v.depth, 24, 1.1, speed)
-		"stun":
-			DuelFX.burst(fx_layer, c + Vector2(0, -60), Color(1.0, 0.9, 0.3), 18, 300.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
-		_:
-			DuelFX.rise(fx_layer, c, Color(0.7, 0.6, 1.0), 120.0 * v.depth, 16, 1.2, speed)
+	if field != null:
+		match status:
+			"burn":
+				field.rise(_foot3(t), Color(1.0, 0.5, 0.15), 36, 0.9, 1.2)
+			"poison":
+				field.rise(_foot3(t), Color(0.6, 1.0, 0.3), 28, 1.1, 1.2)
+			"stun":
+				field.burst(_body3(t) + Vector3(0, 0.8, 0), Color(1.0, 0.9, 0.3), 20, 3.0, 0.6, 0.1, 0.0)
+			_:
+				field.rise(_body3(t), Color(0.7, 0.6, 1.0), 16, 1.3, 0.8)
+		field.flash_light(_body3(t), col, 4.0, 0.4 / speed)
+	else:
+		match status:
+			"burn":
+				DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(1.0, 0.5, 0.15), 160.0 * v.depth, 30, 0.9, speed)
+			"poison":
+				DuelFX.rise(fx_layer, _foot(v) - Vector2(0, 20), Color(0.6, 1.0, 0.3), 160.0 * v.depth, 24, 1.1, speed)
+			"stun":
+				DuelFX.burst(fx_layer, c + Vector2(0, -60), Color(1.0, 0.9, 0.3), 18, 300.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
+			_:
+				DuelFX.rise(fx_layer, c, Color(0.7, 0.6, 1.0), 120.0 * v.depth, 16, 1.2, speed)
 	DuelFX.flash(fx_layer, c, col, 150.0 * v.depth, 0.4 / speed)
 	DuelFX.number(fx_layer, c + Vector2(0, 60), DuelCards.STATUS_NAMES[status].to_upper() + "!", col, 44, 0.9 / speed)
 	sfx.play("status_" + status)
@@ -1457,9 +1655,16 @@ func fx_ko(t: DuelTotem) -> void:
 	shake(12.0)
 	punch(c, 0.045)
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
-	DuelFX.burst(fx_layer, c, col, 46, 720.0, 18.0, 0.9, Vector2(0, 300), 180.0, Vector2.UP, speed)
-	DuelFX.rise(fx_layer, foot - Vector2(0, 50), col, 190.0 * v.depth, 50, 1.3, speed)
-	DuelFX.shockwave(fx_layer, foot, col, 260.0 * v.depth, 0.6 / speed, 0.3, 10.0)
+	if field != null:
+		field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
+		field.burst(_body3(t), col, 70, 9.0, 1.0, 0.15, 0.0)
+		field.rise(_foot3(t), col, 60, 1.5, 1.6)
+		field.floor_wave(_foot3(t), col, 4.5, 0.7 / speed)
+		field.flash_light(_body3(t), Color(1, 0.95, 0.9), 12.0, 0.6 / speed)
+	else:
+		DuelFX.burst(fx_layer, c, col, 46, 720.0, 18.0, 0.9, Vector2(0, 300), 180.0, Vector2.UP, speed)
+		DuelFX.rise(fx_layer, foot - Vector2(0, 50), col, 190.0 * v.depth, 50, 1.3, speed)
+		DuelFX.shockwave(fx_layer, foot, col, 260.0 * v.depth, 0.6 / speed, 0.3, 10.0)
 	DuelFX.number(fx_layer, c + Vector2(0, -70), "KNOCKED OUT", Color("ff4d6a"), 54, 1.2 / speed)
 	var tw := create_tween()
 	tw.tween_property(v, "pop", 1.12, 0.08 / speed)
@@ -1471,6 +1676,8 @@ func fx_ko(t: DuelTotem) -> void:
 	v.fade = 1.0
 	v.flash = 0.0
 	v.set_totem(game.players[t.owner].slots[t.slot])
+	if field != null:
+		field.cam_home(0.7 / speed)
 
 
 func fx_summon(pi: int, card: DuelCard) -> void:
@@ -1493,6 +1700,11 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	var col := DuelFX.light(card.element())
 	DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
 	sfx.play("summon_boom")
+	if field != null:
+		field.pillar(Vector3(0, 0, -0.2), col, 12.0, 5.0, 1.2 / speed)
+		field.floor_wave(Vector3(0, 0, -0.2), col, 9.0, 0.9 / speed)
+		field.burst(Vector3(0, 1.5, -0.2), col, 90, 12.0, 1.2, 0.18, 0.0)
+		field.flash_light(Vector3(0, 2, -0.2), col, 16.0, 1.0 / speed, 14.0)
 	shake(14.0)
 	punch(Vector2(FIELD_CX, 476), 0.05)
 
@@ -1707,6 +1919,7 @@ class Arena:
 	extends Control
 	var stage: Control
 	var edge := 0.0
+	var overlay_only := false       # 3D field underneath: only draw the HUD shading and motes
 	var tex: Texture2D = null
 	var mote_col := Color(1.0, 0.8, 0.45)
 	var _t := 0.0
@@ -1725,6 +1938,9 @@ class Arena:
 		queue_redraw()
 
 	func _draw() -> void:
+		if overlay_only and stage != null:
+			_draw_overlay()
+			return
 		if tex != null and stage != null:
 			_draw_art()
 			return
@@ -1781,6 +1997,21 @@ class Arena:
 			var p := o + Vector2(440.0 + fx * 1120.0 + sin(_t * 0.7 + i) * 18.0, 1000.0 - y) * k
 			var life := sin(y / 1080.0 * PI)
 			draw_circle(p, (2.0 + float(i % 3)) * k, Color(mote_col, 0.35 * life))
+
+	## Over the 3D field: shade the HUD columns and the hand so they read.
+	func _draw_overlay() -> void:
+		var k := stage.scale.x
+		var o := stage.position
+		# letterbox above and below the field on tall screens
+		if o.y > 0.5:
+			draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, o.y)), Color(0.02, 0.02, 0.04))
+			draw_rect(Rect2(Vector2(0, o.y + 1080.0 * k), Vector2(size.x, size.y)), Color(0.02, 0.02, 0.04))
+		var hand_top := o.y + 760.0 * k
+		CardFace.vgrad_rect(self, Rect2(Vector2(0, hand_top), Vector2(size.x, size.y - hand_top)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.75))
+		CardFace.vgrad_rect(self, Rect2(Vector2.ZERO, Vector2(size.x, o.y + 110.0 * k)), Color(0.01, 0.01, 0.03, 0.5), Color(0.01, 0.01, 0.03, 0.0))
+		_hgrad(Rect2(Vector2.ZERO, Vector2(o.x + (440.0 - edge) * k, size.y)), Color(0.01, 0.01, 0.03, 0.6), Color(0.01, 0.01, 0.03, 0.0))
+		var rx := o.x + (1560.0 + edge) * k
+		_hgrad(Rect2(Vector2(rx, 0), Vector2(size.x - rx, size.y)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.65))
 
 	func _hgrad(r: Rect2, a: Color, b: Color) -> void:
 		var pts := PackedVector2Array([r.position, Vector2(r.end.x, r.position.y), r.end, Vector2(r.position.x, r.end.y)])

@@ -23,7 +23,7 @@ func _ready() -> void:
 		p0["fortune"] = 2
 		var p1 := Lore.new_profile("Rival", patrons[(d + 3) % 8], 4)
 		screen = DuelScreen.new().configure({"decks": [a, b], "names": ["You", "Rival"], "profiles": [p0, p1],
-			"ai": [false, true], "seed": 100 + d, "speed": 50.0})
+			"ai": [false, true], "seed": 100 + d, "speed": 50.0, "field3d": OS.get_cmdline_user_args().has("--3d")})
 		add_child(screen)
 		var done := [false]
 		screen.finished.connect(func(_r) -> void: done[0] = true)
