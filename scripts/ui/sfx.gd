@@ -81,7 +81,7 @@ static func get_stream(sound: String) -> AudioStream:
 	var path := _file(sound)
 	if path != "":
 		s = load(path)
-	elif FALLBACK.has(sound):
+	elif FALLBACK.has(sound) and FALLBACK[sound] != sound:
 		var fb: String = FALLBACK[sound]
 		s = null if fb == "" else get_stream(fb)
 	else:
