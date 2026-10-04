@@ -545,9 +545,20 @@ func _load_model(s: Slot, id: String) -> void:
 			if idle != "" and s.anim.current_animation != idle:
 				s.anim.play(idle, 0.25))
 		play_clip(s.side, s.index, "idle")
-	# mesh shadows and sharper textures
+	# mesh shadows, and push emissive parts (fire, eyes) so they glow through the bloom
 	for mi in inst.find_children("*", "MeshInstance3D", true, false):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var mesh := mi as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var mat := mesh.get_active_material(i)
+			if mat is BaseMaterial3D:
+				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
+				if m2.emission_enabled:
+					m2.emission_energy_multiplier = maxf(m2.emission_energy_multiplier, 1.0) * 3.5
+				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
+				mesh.set_meta("_base_%d" % i, m2)
 	s.sprite.visible = false
 	s.shadow.visible = true
 
