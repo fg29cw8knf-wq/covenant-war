@@ -84,9 +84,9 @@ func _ready() -> void:
 ## (so wide phones get more arena, never black bars).
 func fit_to_stage(stage_pos: Vector2, stage_scale: float, screen: Vector2) -> void:
 	var h := 1080.0 * stage_scale
-	position = Vector2(0, stage_pos.y)
-	size = Vector2(screen.x, h)
-	vp.size = Vector2i(int(size.x), int(size.y))
+	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	set_deferred("position", Vector2(0, stage_pos.y))
+	set_deferred("size", Vector2(screen.x, h))
 
 
 # ================================================================== build ===
