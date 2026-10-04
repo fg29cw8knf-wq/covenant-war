@@ -556,7 +556,7 @@ func _load_model(s: Slot, id: String) -> void:
 			if mat is BaseMaterial3D:
 				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
 				if m2.emission_enabled:
-					m2.emission_energy_multiplier = maxf(m2.emission_energy_multiplier, 1.0) * 3.5
+					m2.emission_energy_multiplier = maxf(m2.emission_energy_multiplier, 1.0) * 0.8
 				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
 				mesh.set_meta("_base_%d" % i, m2)
 	s.sprite.visible = false
