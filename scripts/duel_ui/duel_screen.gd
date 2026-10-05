@@ -1340,6 +1340,10 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	_strike["clip_len"] = _clip(t, "attack", speed)
 	if field != null:
 		var aim: Vector3 = _body3(target) if target is DuelTotem else (field.life_world(1 - t.owner) if (target is String and target == DuelGame.LIFE) else _body3(t))
+		if target is DuelTotem or (target is String and target == DuelGame.LIFE):
+			field.face_at(t.owner, t.slot, aim, 1.8 / speed)
+			if target is DuelTotem and target.owner != t.owner:
+				field.face_at(target.owner, target.slot, _body3(t), 1.8 / speed)
 		field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
 		field.flash_light(_body3(t), col, 4.0, 0.5 / speed, 5.0)
 	_move_label(src + Vector2(0, -150 * v.depth), String(mv.name), col)

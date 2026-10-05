@@ -60,6 +60,9 @@ class Slot:
 	var creature_h := 2.0
 	var fly := false
 	var spin := 0.0
+	var yaw := 0.0                 # the model's current turn
+	var yaw_target := 0.0
+	var yaw_until := 0.0           # when a temporary turn (facing a target) ends
 
 
 func _init() -> void:
@@ -494,8 +497,13 @@ func sync(v) -> void:
 	if s.model != null:
 		var k: float = s.creature_h * 1.05 / maxf(0.01, s.model_h) * v.pop
 		s.model.scale = Vector3(k, k, k)
-		# models face +Z; turn them to face the rival, angled a little towards the camera
-		s.model.rotation.y = PI * 0.38 if s.mine else -PI * 0.38
+		# models face +Z: at rest they stand three-quarters to the camera so their
+		# faces show; during a strike they turn to face their target (face_at)
+		if s.yaw_until > 0.0 and _t > s.yaw_until:
+			s.yaw_until = 0.0
+			s.yaw_target = home_yaw(s)
+		s.yaw = lerp_angle(s.yaw, s.yaw_target, 1.0 - pow(0.001, get_process_delta_time()))
+		s.model.rotation.y = s.yaw
 		s.model.position = Vector3(off.x, 0.06 + hover - s.model_floor * k, off.z)
 		s.model.visible = v.fade > 0.02
 		_tint_model(s, m)
@@ -504,6 +512,21 @@ func sync(v) -> void:
 	s.lamp.light_color = col if v.flash <= 0.0 else col.lerp(v.flash_color, v.flash)
 	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade)
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
+
+
+static func home_yaw(s: Slot) -> float:
+	return PI * 0.24 if s.mine else -PI * 0.27
+
+
+## Turns a slot's model to face a point on the field for `hold` seconds
+## (then it settles back to its resting pose).
+func face_at(side: int, slot: int, target: Vector3, hold: float = 1.5) -> void:
+	var s: Slot = slots[side][slot]
+	var d := target - s.position
+	if d.length_squared() < 0.01:
+		return
+	s.yaw_target = atan2(d.x, d.z)
+	s.yaw_until = _t + hold
 
 
 ## Loads assets/models/creatures/<id>.glb (or summons/) when it exists and
@@ -526,6 +549,9 @@ func _load_model(s: Slot, id: String) -> void:
 		return
 	s.model = inst
 	s.add_child(inst)
+	s.yaw = home_yaw(s)
+	s.yaw_target = s.yaw
+	s.yaw_until = 0.0
 	# measure its height so it can be scaled to the slot
 	var aabb := _merged_aabb(inst)
 	# Models are scaled so their body (the bigger of height and length) fills
