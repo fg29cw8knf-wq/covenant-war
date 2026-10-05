@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/grondmaw_atlas.png-664cb506f52f101d9af400a1d3
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.85
+compress/lossy_quality=0.75
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1

@@ -17,7 +17,7 @@ dest_files=["res://.godot/imported/brassback_atlas.png-9518a45eb0bafb5164a1d885f
 
 compress/mode=1
 compress/high_quality=false
-compress/lossy_quality=0.85
+compress/lossy_quality=0.75
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
