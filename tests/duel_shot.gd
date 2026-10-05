@@ -28,7 +28,7 @@ func _ready() -> void:
 	var p0 := Lore.new_profile("You", "pyrrhane", 4)
 	var p1 := Lore.new_profile("Rival", "oriel", 4)
 	var screen := DuelScreen.new().configure({"decks": ["emberstorm", "veilwild"], "names": ["You", "Wren"],
-		"profiles": [p0, p1], "ai": [how == "watch" or how == "film", true], "seed": int(args[5]) if args.size() > 5 else 11,
+		"profiles": [p0, p1], "ai": [how == "watch" or how == "film", how != "roster"], "seed": int(args[5]) if args.size() > 5 else 11,
 		"speed": 1.0 if how == "film" else (2.0 if how == "watch" else 4.0)})
 	add_child(screen)
 	screen.finished.connect(func(_r) -> void: get_tree().quit())
@@ -74,14 +74,50 @@ func _ready() -> void:
 		await get_tree().create_timer(float(shots)).timeout
 		get_tree().quit()
 		return
+	if how == "roster":
+		# every Totem in turn, six to a screen, to check the 3D models
+		await get_tree().create_timer(1.0).timeout
+		var ids: Array = []
+		for id in DuelCards.CARDS:
+			if DuelCards.CARDS[id].kind == "totem":
+				ids.append(id)
+		var only: PackedStringArray = args[6].split(",") if args.size() > 6 else PackedStringArray()
+		var page := 0
+		while page * 6 < ids.size():
+			if not only.is_empty() and not only.has(str(page)):
+				page += 1
+				continue
+			for k in 6:
+				var side := 0 if k < 3 else 1
+				var slot := k % 3
+				var p: DuelPlayer = screen.game.players[side]
+				var t: DuelTotem = null
+				if page * 6 + k < ids.size():
+					t = DuelTotem.new(DuelCard.new(900 + k, ids[page * 6 + k], 0), side, slot, 1, p.attributes())
+				p.slots[slot] = t
+				screen.views[side][slot].set_totem(t)
+			await get_tree().create_timer(interval).timeout
+			for d in screen.overlay.get_children():
+				if d is DuelViews.Dialog:
+					d.answered.emit(true)
+					await get_tree().create_timer(0.3).timeout
+			await _shot(out + "/roster_%d_%s.png" % [page, tag])
+			page += 1
+		get_tree().quit()
+		return
 	if how == "summon":
 		await get_tree().create_timer(1.5).timeout
 		for id in ["pyraxis", "somnara", "thalassa", "grondmaw"]:
-			screen.fx_summon(0, DuelCard.new(900, id, 0))
-			for f in [0.3, 1.0, 2.2]:
-				await get_tree().create_timer(f - (0.0 if f == 0.3 else (0.3 if f == 1.0 else 1.0))).timeout
-				await _shot(out + "/summon_%s_%s_%s.png" % [id, str(f), tag])
-			await get_tree().create_timer(1.6).timeout
+			var st := {"done": false}
+			var runner := func() -> void:
+				await screen.fx_summon(0, DuelCard.new(900, id, 0))
+				st.done = true
+			runner.call()
+			var n := 0
+			while not st.done and n < 14:
+				await get_tree().create_timer(0.45).timeout
+				await _shot(out + "/summon_%s_%02d_%s.png" % [id, n, tag])
+				n += 1
 		get_tree().quit()
 		return
 	for i in shots:

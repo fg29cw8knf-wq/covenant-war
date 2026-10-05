@@ -2,19 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgmqjasg14eco"
-path="res://.godot/imported/cinderpup_Cinderpup single colour atlas.png-568069e9e21a04d4ba6592d0b8d2b1ed.ctex"
+uid="uid://cahkraj752k5e"
+path="res://.godot/imported/boulderox_atlas.png-16dd958fb589f2db41dcd3249923cce5.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "b41206e2300c7950a5b51cb9587af12c"
 }
 
 [deps]
 
-source_file="res://assets/models/creatures/cinderpup_Cinderpup single colour atlas.png"
-dest_files=["res://.godot/imported/cinderpup_Cinderpup single colour atlas.png-568069e9e21a04d4ba6592d0b8d2b1ed.ctex"]
+source_file="res://assets/models/creatures/boulderox_atlas.png"
+dest_files=["res://.godot/imported/boulderox_atlas.png-16dd958fb589f2db41dcd3249923cce5.ctex"]
 
 [params]
 
@@ -40,4 +37,4 @@ process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
-detect_3d/compress_to=1
+detect_3d/compress_to=0

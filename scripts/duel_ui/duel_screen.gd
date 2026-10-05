@@ -1712,15 +1712,24 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	await tw.finished
 	cine.queue_free()
 	var col := DuelFX.light(card.element())
-	DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
-	sfx.play("summon_boom")
-	if field != null:
-		field.pillar(Vector3(0, 0, -0.2), col, 12.0, 5.0, 1.2 / speed)
-		field.floor_wave(Vector3(0, 0, -0.2), col, 9.0, 0.9 / speed)
-		field.burst(Vector3(0, 1.5, -0.2), col, 90, 12.0, 1.2, 0.18, 0.0)
-		field.flash_light(Vector3(0, 2, -0.2), col, 16.0, 1.0 / speed, 14.0)
-	shake(14.0)
-	punch(Vector2(FIELD_CX, 476), 0.05)
+	var landing := func() -> void:
+		DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
+		sfx.play("summon_boom")
+		if field != null:
+			field.pillar(Vector3(0, 0, -0.8), col, 12.0, 5.0, 1.2 / speed)
+			field.floor_wave(Vector3(0, 0, -0.8), col, 9.0, 0.9 / speed)
+			field.burst(Vector3(0, 1.5, -0.8), col, 90, 12.0, 1.2, 0.18, 0.0)
+			field.flash_light(Vector3(0, 2, -0.8), col, 16.0, 1.0 / speed, 14.0)
+		shake(14.0)
+		punch(Vector2(FIELD_CX, 476), 0.05)
+	if field != null and DuelField3D.has_summon_model(card.id):
+		# the Demigod itself comes down onto the field
+		var hint_was := hint.visible
+		hint.visible = false
+		await field.summon_descend(card.id, col, minf(speed, 2.0), landing)
+		hint.visible = hint_was
+	else:
+		landing.call()
 
 
 func fx_gift(pi: int, g: String) -> void:

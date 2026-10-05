@@ -555,12 +555,33 @@ func _load_model(s: Slot, id: String) -> void:
 			var mat := mesh.get_active_material(i)
 			if mat is BaseMaterial3D:
 				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
-				if m2.emission_enabled:
-					m2.emission_energy_multiplier = maxf(m2.emission_energy_multiplier, 1.0) * 0.8
+				_dress_material(m2)
 				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
 				mesh.set_meta("_base_%d" % i, m2)
 	s.sprite.visible = false
 	s.shadow.visible = true
+
+
+## The model packs name their magic surfaces: fire, mist, veil, water, fin and
+## glow. Fire and mist are light, not paint, so they're drawn additively and
+## unlit; everything else keeps the artist's materials with a gentle emission.
+static func _dress_material(m: BaseMaterial3D) -> void:
+	var nm := m.resource_name.to_lower()
+	var blended := m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA
+	if nm.contains("fire") and blended:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.emission_energy_multiplier = 0.9
+		m.albedo_color = Color(0.9, 0.9, 0.9)
+	elif (nm.contains("mist") or nm.contains("veil")) and blended:
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.emission_energy_multiplier = 0.6
+		m.albedo_color = Color(0.7, 0.7, 0.7)
+	elif m.emission_enabled:
+		m.emission_energy_multiplier = maxf(m.emission_energy_multiplier, 1.0) * 0.8
 
 
 static func _merged_aabb(n: Node3D) -> AABB:
@@ -629,15 +650,109 @@ const CLIP_ALIASES := {
 
 
 static func _clip_name(s: Slot, want: String) -> String:
-	if s.anim == null:
+	return _clip_in(s.anim, want)
+
+
+static func _clip_in(anim: AnimationPlayer, want: String) -> String:
+	if anim == null:
 		return ""
 	for nm in CLIP_ALIASES.get(want, [want]):
-		if s.anim.has_animation(nm):
+		if anim.has_animation(nm):
 			return nm
-		for existing in s.anim.get_animation_list():
+		for existing in anim.get_animation_list():
 			if String(existing).to_lower() == nm:
 				return String(existing)
 	return ""
+
+
+## Whether a Summon has a 3D model to descend with.
+static func has_summon_model(id: String) -> bool:
+	return ResourceLoader.exists("res://assets/models/summons/%s.glb" % id)
+
+
+## The Demigod comes down onto the middle of the field, lands with a shock,
+## roars its attack, then lifts away. Awaitable; `on_land` is called at the
+## moment it touches down so the screen can fire its own effects.
+func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callable = Callable()) -> void:
+	var scene: PackedScene = load("res://assets/models/summons/%s.glb" % id)
+	if scene == null:
+		return
+	var god := scene.instantiate() as Node3D
+	if god == null:
+		return
+	var holder := Node3D.new()
+	var at := Vector3(0, 0, -0.8)
+	holder.position = at
+	_fx_parent().add_child(holder)
+	holder.add_child(god)
+	var aabb := _merged_aabb(god)
+	var h := maxf(0.01, aabb.size.y)
+	var want_h := 4.8
+	var k := want_h / h
+	if aabb.size.x * k > 9.0:
+		k = 9.0 / aabb.size.x
+	god.scale = Vector3(k, k, k)
+	god.rotation.y = 0.12
+	god.position = Vector3(0, -aabb.position.y * k, 0)
+	var anim := _find_anim(god)
+	for mi in god.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var mat := mesh.get_active_material(i)
+			if mat is BaseMaterial3D:
+				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
+				_dress_material(m2)
+				mesh.mesh.surface_set_material(i, m2)
+	# a light of its element at its heart
+	var lamp := OmniLight3D.new()
+	lamp.light_color = col
+	lamp.light_energy = 0.0
+	lamp.omni_range = 11.0
+	lamp.position = Vector3(0, want_h * 0.45, 0.5)
+	holder.add_child(lamp)
+	# down the beam
+	var drop := 1.1 / speed
+	holder.position.y = 9.0
+	pillar(at, col, 14.0, 3.2, drop + 0.4)
+	rise(at, col, 60, drop + 0.6, 4.0)
+	if anim != null:
+		var sp := _clip_in(anim, "summon")
+		if sp != "":
+			anim.play(sp)
+			anim.speed_scale = maxf(0.6, anim.get_animation(sp).length / drop)
+	# the camera lifts its gaze to take the Demigod in
+	_cam_to(_home_pos + Vector3(0, 0.4, 0.6), Vector3(at.x, want_h * 0.42, at.z), drop)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(holder, "position:y", 0.0, drop).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	tw.tween_property(lamp, "light_energy", 2.6, drop)
+	await tw.finished
+	if on_land.is_valid():
+		on_land.call()
+	cam_shake(16.0)
+	cam_punch(0.06)
+	# the roar
+	var hold := 1.4 / speed
+	if anim != null:
+		var atk := _clip_in(anim, "attack")
+		if atk != "":
+			anim.speed_scale = 1.0 * speed
+			anim.play(atk, 0.1)
+			hold = anim.get_animation(atk).length / speed + 0.3 / speed
+	await get_tree().create_timer(hold).timeout
+	# and away, back up the beam
+	var lift := 0.9 / speed
+	pillar(at, col, 14.0, 2.4, lift + 0.3)
+	flash_light(at + Vector3(0, 3, 0), col, 10.0, lift, 14.0)
+	cam_home(lift)
+	var tw2 := create_tween().set_parallel(true)
+	tw2.tween_property(holder, "position:y", 11.0, lift).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw2.tween_property(god, "scale", Vector3(k * 0.4, k * 0.4, k * 0.4), lift).set_ease(Tween.EASE_IN)
+	tw2.tween_property(lamp, "light_energy", 0.0, lift)
+	await tw2.finished
+	holder.queue_free()
 
 
 ## Plays a clip on a slot's model (no-op without a model). Returns the clip's

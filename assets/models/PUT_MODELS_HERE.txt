@@ -1,2 +1,13 @@
-Put 3D creature models here as <card id>.glb (see the 3D Creature Models Plan doc).
-Until a model exists the game uses the creature's cut-out picture.
+3D creature models live here as creatures/<card id>.glb and summons/<card id>.glb
+(see the 3D Creature Models Plan doc). Until a model exists the game uses the
+creature's cut-out picture.
+
+Each model's colour atlas sits next to it as <card id>_atlas.png (2048x2048),
+referenced from the GLB by file name rather than embedded, so Godot imports
+the texture once with the settings in <card id>_atlas.png.import (lossy, with
+mipmaps). To add or replace a model from a pack with an embedded 4K texture,
+split it first:  python3 tools/split_glb.py <pack>/<id>.glb assets/models/creatures
+
+Models face +Z with their feet at Y=0 and carry the clips idle, attack, hit,
+defeat, spawn, run and victory. Material names drive the in-game shading:
+surfaces called "fire", "mist" or "veil" are drawn additively as light.
