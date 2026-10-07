@@ -46,6 +46,22 @@ and push `build/web` to the `gh-pages` branch.
 
 The story's duels still use the older rules below until the v1 duel is signed off.
 
+## Story mode: Ashford
+
+New Game starts the Prologue in Ashford, the player's village, on the last
+night of the Age (`scripts/world/areas/ashford.gd`): Bram's errands, the Lantern
+Duel against Corin on the v1 rules, then midnight, the Sigilfall and the
+marking, before the rest of the Prologue plays as story scenes and the player
+arrives in Solhaven. The village itself (`scripts/world/ashford_village.gd`) is
+built from the look test in `lookdev/ashford`, with lighter settings on the
+phone and web renderers. Its shaders live in `assets/shaders/village/`.
+
+```sh
+xvfb-run -a godot --resolution 1280x720 --fixed-fps 8 res://tests/ashford_test.tscn -- /tmp/ash 24            # play it all, with screenshots
+xvfb-run -a godot --resolution 1280x720 --fixed-fps 8 res://tests/ashford_test.tscn -- /tmp/ash 10 midnight   # just the duel and midnight
+godot --headless --script res://tests/lantern_sim.gd -- 80 1.0 0.25                                          # Lantern Duel balance
+```
+
 ## Running the tests
 
 ```sh

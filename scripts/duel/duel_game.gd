@@ -41,6 +41,8 @@ var presenter = null
 var log_lines: Array = []
 
 var _next_uid := 1
+## Above 0, both duellists start on this Life instead of their attribute total (story tutorials).
+var start_life := 0
 
 
 # ------------------------------------------------------------------ setup ---
@@ -83,7 +85,7 @@ func _setup_phase() -> void:
 	phase = "setup"
 	_log("The duelling circle ignites.")
 	for p in players:
-		p.max_life = DuelRules.life_for(p.attributes())
+		p.max_life = start_life if start_life > 0 else DuelRules.life_for(p.attributes())
 		p.life = p.max_life
 		p.fortune_left = mini(2, int(p.profile.get("fortune", 0)))
 	# Both roll a d20; Swiftness adds its Fate modifier, so the swifter

@@ -14,6 +14,13 @@ static func play(story: StoryScreen, main) -> void:
 		{"text": "One of them landed at your feet. A card with nothing on it. Warm as a heartbeat."},
 		{"text": "When you picked it up, a mark burned itself into the back of your hand."},
 	])
+	await play_after_marking(story, main, false)
+
+
+## From the heralds onward: what follows the marking played in Ashford.
+static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
+	if faded:
+		await story.fade(1.0, 0.01)
 	await story.scene("heralds", [
 		{"text": "At dawn, the heralds of Morrowen, witness of the Covenant, rode into every town in Veyl."},
 		{"text": "They named the Champions of the Trial of Ages. Seven gods. Seven Champions. Then they read an eighth name, with no god behind it."},

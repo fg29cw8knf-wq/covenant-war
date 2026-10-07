@@ -8,9 +8,12 @@ extends Node3D
 ## duel is decided by a quick AI-vs-AI simulation.
 
 signal exit_to_title
+## The area's story has moved on to something outside the walkable world.
+signal story_next(what: String)
 
 const AREAS := {
 	"solhaven": preload("res://scripts/world/areas/solhaven.gd"),
+	"ashford": preload("res://scripts/world/areas/ashford.gd"),
 }
 
 const SPEED := 5.4
@@ -34,6 +37,8 @@ var _talk_target = null    # npc dict to talk to on arrival
 var _near = null           # npc dict in range
 var _focus := Vector3.ZERO
 var _stuck_time := 0.0
+var cine := false          # a cutscene is driving the camera
+var _shake := 0.0
 
 
 func setup(p_area: String, spawn: String) -> World:
@@ -91,6 +96,8 @@ func _arrive() -> void:
 # ============================================================ building ===
 
 func _build_environment() -> void:
+	if area.get_script_constant_map().has("CUSTOM_ENV"):
+		return
 	var e: Dictionary = area.ENV
 	var we := WorldEnvironment.new()
 	var env := Environment.new()
@@ -266,6 +273,12 @@ func _process(delta: float) -> void:
 		cam.global_position = target + Vector3(sin(a) * 30.0, 9.0 + sin(_attract_t * 0.11) * 1.5, cos(a) * 30.0)
 		cam.look_at(target + Vector3(0, 2.5, 0), Vector3.UP)
 		return
+	if _shake > 0.0:
+		_shake = maxf(0.0, _shake - delta)
+		cam.h_offset = randf_range(-1, 1) * _shake * 0.25
+		cam.v_offset = randf_range(-1, 1) * _shake * 0.25
+	if cine:
+		return
 	_focus = _focus.lerp(_cam_focus_target(), minf(1.0, delta * 5.0))
 	_place_camera()
 
@@ -410,6 +423,9 @@ func run_steps(steps: Array, npc) -> void:
 			await run_steps(st.get("win", []) if won else st.get("lose", []), npc)
 		elif st.has("end_slice"):
 			await _end_of_slice()
+		elif st.has("scene"):
+			hud.dialogue.close()
+			await area.scene(st.scene, self)
 	_refresh_markers()
 
 
@@ -452,6 +468,8 @@ func _fmt(s: String) -> String:
 # ================================================================= duels ===
 
 func _duel(spec: Dictionary) -> bool:
+	if spec.get("v1", false) and area.get_script_constant_map().has("PLAYER_DECK"):
+		spec = area.duel_spec(spec)
 	await hud.fade(1.0, 0.5)
 	var won := false
 	if duel_handler.is_valid():
@@ -464,6 +482,12 @@ func _duel(spec: Dictionary) -> bool:
 
 
 func _simulate_duel(spec: Dictionary) -> bool:
+	if spec.has("decks"):
+		var g := DuelGame.new()
+		g.setup(spec.decks, spec.names, [DuelAI.new(), DuelAI.new()], spec.get("profiles", []))
+		g.start_life = int(spec.get("life", 0))
+		await g.run()
+		return g.winner == 0
 	var game := BattleGame.new()
 	var opp_profile := Game.npc_profile(spec.name, spec.get("patron", ""), spec.get("attrs", {}))
 	game.setup([Game.deck, spec.deck], [Game.player_name, spec.name],
@@ -491,3 +515,44 @@ func _on_menu(action: String) -> void:
 			hud.close_menu()
 			Game.save_game()
 			exit_to_title.emit()
+
+
+# ============================================================== cutscenes ===
+
+## Glides the camera to `pos`, looking at `look`, over `secs` seconds.
+func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
+	cine = true
+	var from_pos := cam.global_position
+	var from_look := from_pos + (-cam.global_transform.basis.z) * 10.0
+	var tw := create_tween()
+	tw.tween_method(func(u: float) -> void:
+		var e := u * u * (3.0 - 2.0 * u)
+		cam.global_position = from_pos.lerp(pos, e)
+		cam.look_at(from_look.lerp(look, e), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
+	await tw.finished
+
+
+## Hands the camera back to the player.
+func end_cine() -> void:
+	cine = false
+
+
+func shake(amount: float) -> void:
+	_shake = maxf(_shake, amount)
+
+
+## A full-screen flash of `col`: in over `t_in`, out over `t_out`.
+func flash(col: Color, t_in: float, t_out: float) -> void:
+	var layer := CanvasLayer.new()
+	layer.layer = 15
+	var r := ColorRect.new()
+	r.color = Color(col, 0.0)
+	r.set_anchors_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(r)
+	add_child(layer)
+	var tw := create_tween()
+	tw.tween_property(r, "color:a", 0.95, t_in)
+	tw.tween_property(r, "color:a", 0.0, t_out)
+	await tw.finished
+	layer.queue_free()

@@ -424,6 +424,7 @@ func _start() -> void:
 	game = DuelGame.new()
 	game.setup(spec.get("decks", ["emberstorm", "tidegrove"]), spec.get("names", ["You", "Rival"]),
 		controllers, spec.get("profiles", []), int(spec.get("seed", -1)))
+	game.start_life = int(spec.get("life", 0))
 	game.presenter = self
 	sfx.play("shuffle")
 	Music.play(["arena_" + _arena_name, "duel_alt" if randf() < 0.5 else "duel_main", "duel_main", "duel_alt"])
@@ -1921,8 +1922,10 @@ func _show_result(r: String) -> String:
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 24)
 	v.add_child(hb)
-	var again := UITheme.button("Duel again", true, 340)
-	var back := UITheme.button("Back to the Lab", false, 340)
+	var story: bool = spec.get("story", false)
+	var again := UITheme.button("Try again" if story else "Duel again", not story or r != "won", 340)
+	var back := UITheme.button("Continue" if story else "Back to the Lab", story and r == "won", 340)
+	again.visible = not (story and r == "won")
 	hb.add_child(again)
 	hb.add_child(back)
 	var picked := [""]

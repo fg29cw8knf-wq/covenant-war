@@ -62,9 +62,18 @@ func _on_continue() -> void:
 
 
 func _on_new_game() -> void:
+	# Ashford first: the festival and the Sigilfall are played in the village.
+	# The player's real name is asked later, when the herald reads it out.
+	Game.new_game("Sprout", "emberstorm")
+	go_world("ashford", "green")
+
+
+## The rest of the Prologue after the marking: the heralds, the fire, the deck
+## choice and the road duel, then on to Solhaven.
+func _after_marking() -> void:
 	var story := StoryScreen.new()
 	_swap(story)
-	await Prologue.play(story, self)
+	await Prologue.play_after_marking(story, self)
 	story.queue_free()
 	_current = null
 	go_world("solhaven", "gate")
@@ -84,6 +93,9 @@ func go_world(area: String, spawn: String) -> void:
 	var w := World.new().setup(area, spawn)
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)
+	w.story_next.connect(func(what: String) -> void:
+		if what == "prologue_heralds":
+			_after_marking())
 	_swap(w)
 	Game.save_game()
 
@@ -100,9 +112,22 @@ func run_duel(spec: Dictionary) -> bool:
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
-	var screen := BattleScreen.new().configure(spec)
-	layer.add_child(screen)
-	var won: bool = await screen.finished
+	var won := false
+	if spec.has("decks"):
+		# a duel on the v1 rules
+		var ds := DuelScreen.new().configure(spec)
+		layer.add_child(ds)
+		var r: String = await ds.finished
+		while r == "again":
+			ds.queue_free()
+			ds = DuelScreen.new().configure(spec)
+			layer.add_child(ds)
+			r = await ds.finished
+		won = r == "won"
+	else:
+		var screen := BattleScreen.new().configure(spec)
+		layer.add_child(screen)
+		won = await screen.finished
 	layer.queue_free()
 	if hidden_world != null and is_instance_valid(hidden_world):
 		hidden_world.visible = true

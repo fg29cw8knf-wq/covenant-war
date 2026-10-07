@@ -155,6 +155,18 @@ const CARDS := {
 		],
 		"art": "a sturdy turtle with a coral-covered shell and a calm wise face, water droplets beading on its shell",
 	},
+	# ================================================================= SPIRIT
+	"lantern_moth": {
+		"kind": "totem", "name": "Lantern Moth", "element": "spirit", "tier": 1, "stage": 0, "cost": 1,
+		"hp": 40, "affinity": "insight", "keywords": ["channel"], "attuned": {"min": 5, "hp": 10},
+		"moves": [
+			{"name": "Glimmer", "cost": 0, "damage": 10},
+			{"name": "Dazzle", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
+				{"to": 10, "damage": 20},
+				{"to": 99, "damage": 20, "effects": [{"op": "status", "status": "sleep"}]}]},
+		],
+		"art": "a plump spirit moth whose round furry body glows warm amber like a paper festival lantern, translucent teal and silver wings patterned like lantern ribs",
+	},
 	# ================================================================ VERDANT
 	"mossling": {
 		"kind": "totem", "name": "Mossling", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,

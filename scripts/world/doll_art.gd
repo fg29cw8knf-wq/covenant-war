@@ -14,8 +14,11 @@ const WORLD_HEIGHT := 2.0
 ## Placeholder looks: skin, hair colour and style, outfit, trim, legs,
 ## cloak (optional) and extras (hood, helm, beard, eyepatch, armor, robe).
 const LOOKS := {
-	"player": {"skin": "f1c7a3", "hair": "4a3426", "style": "short", "outfit": "3f5f8a", "trim": "d9b25f", "legs": "3a2f2a", "cloak": "6b7c93"},
-	"bram": {"skin": "e8b894", "hair": "c9c3b8", "style": "bald", "outfit": "7a4a2a", "trim": "c69a52", "legs": "3b2a20", "extras": ["beard", "eyepatch"]},
+	"player": {"skin": "f0c4a0", "hair": "6e2f1e", "style": "long", "outfit": "d6c6a2", "trim": "6b4a2e", "legs": "3e5a3a"},
+	"bram": {"skin": "e8b894", "hair": "c9c3b8", "style": "short", "outfit": "6b4a2e", "trim": "e8dcc4", "legs": "4a5a3a", "extras": ["beard"]},
+	"corin": {"skin": "f2c6a6", "hair": "c4602c", "style": "short", "outfit": "b5552e", "trim": "6b4a2e", "legs": "4a3426"},
+	"farmer": {"skin": "d8a37e", "hair": "5a4632", "style": "short", "outfit": "8a7a52", "trim": "5a4a32", "legs": "3a3226", "extras": ["beard"]},
+	"fiddler": {"skin": "e9bf9b", "hair": "d8d4cc", "style": "bald", "outfit": "3f5f8a", "trim": "c9a24a", "legs": "3a2f2a", "extras": ["beard"]},
 	"wren": {"skin": "f3cfae", "hair": "b5552e", "style": "short", "outfit": "3f6b3f", "trim": "a58a4a", "legs": "2d3a2a", "cloak": "2f5a34", "extras": ["hood"]},
 	"aldric": {"skin": "efc19c", "hair": "e3c26a", "style": "short", "outfit": "e8dcc0", "trim": "e0b040", "legs": "b9a36a", "cloak": "f2f0e6", "extras": ["armor"]},
 	"guard": {"skin": "e2b18c", "hair": "5a4030", "style": "short", "outfit": "d8d2c0", "trim": "d1a43c", "legs": "8a8a92", "extras": ["helm", "armor"]},
