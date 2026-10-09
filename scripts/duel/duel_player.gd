@@ -30,6 +30,13 @@ var free_shift := false
 var gift_used := false
 var fortune_left := 0
 var foresight := false
+var pending_essence := 0      # Essence drained from the opponent, gained next turn
+var guard_bonus := 0          # Hethrin's Blessing
+var guard_double := false     # Forged Guard, until this duellist's next Dawn
+var extra_ward_slots := 0     # Nocthra's Law
+var fate_bonus := 0           # Star Chart, for the rest of this turn
+var rite_recalled := false    # Aldrith's Blessing, once a duel
+var fallen: Array = []        # the stage of each of this duellist's Totems knocked out (for Resonance)
 var survived := false
 
 # statistics for the balance tests
@@ -63,11 +70,12 @@ func gift() -> String:
 
 
 func guard() -> int:
-	return DuelRules.guard_for(attributes())
+	var g := DuelRules.guard_for(attributes()) + guard_bonus
+	return g * 2 if guard_double else g
 
 
 func ward_slots() -> int:
-	return DuelRules.ward_slots + (1 if DuelRules.has_perk(attributes(), "cunning") else 0)
+	return DuelRules.ward_slots + extra_ward_slots + (1 if DuelRules.has_perk(attributes(), "cunning") else 0)
 
 
 func totems() -> Array:

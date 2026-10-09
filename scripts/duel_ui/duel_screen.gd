@@ -379,6 +379,14 @@ func _build_lab() -> void:
 		Game.settings["duel_3d"] = on
 		Game.save_settings())
 	box.add_child(d3)
+	var vio := CheckButton.new()
+	vio.text = "Full violence (blood when Totems fall)"
+	vio.button_pressed = String(Game.settings.get("violence", "full")) == "full"
+	vio.add_theme_font_size_override("font_size", 24)
+	vio.toggled.connect(func(on: bool) -> void:
+		Game.settings["violence"] = "full" if on else "reduced"
+		Game.save_settings())
+	box.add_child(vio)
 	var rv := CheckButton.new()
 	rv.text = "Show the rival's hand and Wards"
 	rv.add_theme_font_size_override("font_size", 24)
@@ -425,6 +433,7 @@ func _start() -> void:
 	game.setup(spec.get("decks", ["emberstorm", "tidegrove"]), spec.get("names", ["You", "Rival"]),
 		controllers, spec.get("profiles", []), int(spec.get("seed", -1)))
 	game.start_life = int(spec.get("life", 0))
+	game.law = String(spec.get("law", ""))
 	game.presenter = self
 	sfx.play("shuffle")
 	Music.play(["arena_" + _arena_name, "duel_alt" if randf() < 0.5 else "duel_main", "duel_main", "duel_alt"])
@@ -1139,6 +1148,9 @@ func fx_rolloff(r0: int, r1: int) -> void:
 		_started = true
 		sfx.play("duel_start")
 		await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
+		if game.law != "":
+			var god: String = game.law if Lore.GODS.has(game.law) else ""
+			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
 	var names: Array = spec.get("names", ["You", "Rival"])
 	if r0 == r1:
 		await _banner("A TIE", UITheme.TEXT, 0.7, 72, "", "Both rolled %d. Roll again!" % r0)
@@ -1630,8 +1642,10 @@ func fx_life_gain(pi: int, amount: int) -> void:
 
 
 func fx_status(t: DuelTotem, status: String) -> void:
+	if status == "":
+		return   # a condition was cleared; the nameplate redraws by itself
 	var v := _view(t)
-	var col: Color = DuelViews.STATUS_COL.get(status, Color.WHITE)
+	var col: Color = DuelConditions.color(status)
 	var c := _center(v)
 	if field != null:
 		match status:
@@ -1655,8 +1669,11 @@ func fx_status(t: DuelTotem, status: String) -> void:
 			_:
 				DuelFX.rise(fx_layer, c, Color(0.7, 0.6, 1.0), 120.0 * v.depth, 16, 1.2, speed)
 	DuelFX.flash(fx_layer, c, col, 150.0 * v.depth, 0.4 / speed)
-	DuelFX.number(fx_layer, c + Vector2(0, 60), DuelCards.STATUS_NAMES[status].to_upper() + "!", col, 44, 0.9 / speed)
-	sfx.play("status_" + status)
+	DuelFX.number(fx_layer, c + Vector2(0, 60), DuelConditions.display_name(status).to_upper() + "!", col, 44, 0.9 / speed)
+	var snd := status
+	if not status in ["burn", "poison", "stun", "sleep"]:
+		snd = {"body": "poison", "mind": "stun", "soul": "sleep"}.get(DuelConditions.kind_of(status), "stun")
+	sfx.play("status_" + snd)
 	await pause(0.3)
 
 
@@ -1673,14 +1690,21 @@ func fx_ko(t: DuelTotem) -> void:
 	punch(c, 0.045)
 	var ko_len := _clip(t, "ko", speed)
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
+	# Violence setting: Full spills blood as it falls; Reduced bursts into crystal and light.
+	var gore: bool = String(Game.settings.get("violence", "full")) == "full"
 	if field != null:
 		field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
 		field.burst(_body3(t), col, 70, 9.0, 1.0, 0.15, 0.0)
+		if gore:
+			field.burst(_body3(t), Color(0.55, 0.02, 0.03), 46, 5.0, 0.9, 0.3, 0.0)
+			field.rise(_foot3(t), Color(0.35, 0.0, 0.02), 20, 0.4, 0.8)
 		field.rise(_foot3(t), col, 60, 1.5, 1.6)
 		field.floor_wave(_foot3(t), col, 4.5, 0.7 / speed)
 		field.flash_light(_body3(t), Color(1, 0.95, 0.9), 12.0, 0.6 / speed)
 	else:
 		DuelFX.burst(fx_layer, c, col, 46, 720.0, 18.0, 0.9, Vector2(0, 300), 180.0, Vector2.UP, speed)
+		if gore:
+			DuelFX.burst(fx_layer, c, Color(0.6, 0.02, 0.04), 34, 520.0, 14.0, 0.8, Vector2(0, 900), 120.0, Vector2.UP, speed)
 		DuelFX.rise(fx_layer, foot - Vector2(0, 50), col, 190.0 * v.depth, 50, 1.3, speed)
 		DuelFX.shockwave(fx_layer, foot, col, 260.0 * v.depth, 0.6 / speed, 0.3, 10.0)
 	DuelFX.number(fx_layer, c + Vector2(0, -70), "KNOCKED OUT", Color("ff4d6a"), 54, 1.2 / speed)
@@ -1918,6 +1942,13 @@ func _show_result(r: String) -> String:
 	var st := UITheme.label("%d turns  ·  your Life %d  ·  their Life %d  ·  knockouts %d – %d" % [game.turn, maxi(0, p.life), maxi(0, q.life), p.stats.kos, q.stats.kos], 26, UITheme.TEXT_DIM)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(st)
+	if r == "won" and not _watching():
+		for line in _reward_lines():
+			var rl := UITheme.label(line, 28, UITheme.GOLD)
+			rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			rl.custom_minimum_size = Vector2(1100, 0)
+			v.add_child(rl)
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 24)
@@ -1939,6 +1970,42 @@ func _show_result(r: String) -> String:
 	while picked[0] == "":
 		await get_tree().process_frame
 	return picked[0]
+
+
+## What the win earned (v2 Resonance and Rank). In a story duel the
+## player's progress is updated; in the Lab it only says what it's worth.
+func _reward_lines() -> Array:
+	var rw: Dictionary = spec.get("rewards", {})
+	var kind: String = rw.get("opponent", "kingdom")
+	if rw.is_empty() or not spec.get("story", false):
+		var res := DuelRewards.resonance(game, me, kind, bool(rw.get("thick", false)), false)
+		return ["This win makes %d Resonance (%s)." % [res.total, _resonance_why(res)]]
+	var out := Game.record_win(game, me, kind, bool(rw.get("thick", false)), false)
+	var lines := ["+%d Resonance  (%s)" % [out.resonance.total, _resonance_why(out.resonance)]]
+	var target: String = out.get("target", "")
+	if not out.made.is_empty():
+		lines.append("%s crystallises in your hand!" % DuelCards.CARDS[out.made[0]].name)
+	elif target != "":
+		lines.append("Building towards %s: %d / %d Resonance" % [DuelCards.CARDS[target].name, out.banked_after, DuelRewards.card_cost(target)])
+	if int(out.overflow) > 0:
+		lines.append("+%d to your Attunement pool" % out.overflow)
+	if int(out.ranks_gained) > 0:
+		lines.append("Sigil Rank %d!  +%d attribute points to place" % [out.rank_after, int(out.ranks_gained) * DuelRewards.POINTS_PER_RANK])
+	elif out.capped:
+		lines.append("Sigil Rank %d: earn a Seal to rise higher" % out.rank_after)
+	else:
+		lines.append("Sigil Rank %d  ·  %d / %d to Rank %d" % [out.rank_after, out.xp_after, out.xp_next, out.rank_after + 1])
+	return lines
+
+
+static func _resonance_why(res: Dictionary) -> String:
+	var parts := []
+	for l in res.lines:
+		if l.has("add"):
+			parts.append("%s %+d" % [l.text, l.add])
+		else:
+			parts.append("%s ×%s" % [l.text, str(l.mult)])
+	return ", ".join(parts)
 
 
 # ============================================================ inner views ===

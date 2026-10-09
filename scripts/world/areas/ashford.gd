@@ -192,6 +192,7 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 		"arena": arena,
 		"life": 80,
 		"story": true,
+		"rewards": {"opponent": "village"},
 	}
 
 

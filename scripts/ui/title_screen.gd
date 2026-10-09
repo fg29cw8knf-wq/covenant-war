@@ -116,6 +116,6 @@ class Logo:
 		draw_arc(c, r, 0, TAU, 96, Color(gold, 0.55), 3.0, true)
 		for i in 7:
 			var a := _t * 0.2 + TAU * i / 7.0
-			var god: String = Lore.GODS.keys()[i]
+			var god: String = Lore.GREAT_GODS[i]
 			CardFace.orb(self, c + Vector2(cos(a), sin(a)) * r, 16, Lore.GODS[god].element)
 		Glyphs.draw(self, "crown_sigil", c, 46, gold)

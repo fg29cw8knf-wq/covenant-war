@@ -80,7 +80,7 @@ const CARDS := {
 			{"name": "Crackle", "cost": 1, "damage": 0, "fate": [
 				{"to": 1, "damage": 0, "text": "Miss"},
 				{"to": 11, "damage": 20},
-				{"to": 19, "damage": 30, "effects": [{"op": "status", "status": "stun"}]},
+				{"to": 19, "damage": 30, "effects": [{"op": "status", "status": "shocked"}]},
 				{"to": 99, "damage": 50, "effects": [{"op": "status", "status": "stun"}]}]},
 		],
 		"art": "a small indigo fox kit with crackling yellow lightning along its ears and a bolt-shaped tail",
@@ -175,7 +175,7 @@ const CARDS := {
 			{"name": "Sap", "cost": 0, "damage": 10, "effects": [{"op": "heal", "who": "self", "amount": 10}]},
 			{"name": "Vine Snare", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
 				{"to": 10, "damage": 20},
-				{"to": 99, "damage": 20, "effects": [{"op": "status", "status": "stun"}]}]},
+				{"to": 99, "damage": 20, "effects": [{"op": "status", "status": "rooted"}]}]},
 		],
 		"art": "a small round forest creature covered in soft moss, a sprout growing from its head, big gentle eyes",
 	},
@@ -276,7 +276,7 @@ const CARDS := {
 		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Guard Bite", "cost": 0, "damage": 20},
-			{"name": "Shield Bash", "cost": 1, "damage": 40},
+			{"name": "Shield Bash", "cost": 1, "damage": 30, "effects": [{"op": "status", "status": "bleed"}]},
 		],
 		"art": "a loyal hound wearing a small steel breastplate and helm, a sun crest on its collar, standing guard",
 	},
@@ -297,6 +297,7 @@ const CARDS := {
 			{"name": "Psy Nip", "cost": 0, "damage": 10},
 			{"name": "Hypnotic Gaze", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
 				{"to": 5, "damage": 10},
+				{"to": 12, "damage": 10, "effects": [{"op": "status", "status": "confused"}]},
 				{"to": 99, "damage": 10, "effects": [{"op": "status", "status": "sleep"}]}]},
 		],
 		"art": "a slender pink fox with two misty tails and half-closed dreamy eyes, bubbles of illusion floating around it",
@@ -306,7 +307,7 @@ const CARDS := {
 		"ascends_from": "dreamfox", "cost": 2, "hp": 100, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Mind Lash", "cost": 0, "damage": 30},
-			{"name": "Mirage", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "stun"}]},
+			{"name": "Mirage", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "confused"}]},
 		],
 		"art": "an elegant fox with four translucent veil-like tails, a glowing third eye, surrounded by shifting mirages",
 	},
@@ -383,7 +384,7 @@ const CARDS := {
 		"art": "a titanic stone giant tearing itself free of a mountain range, glowing magma heart visible through cracked ribs, fists like boulders",
 	},
 	"somnara": {
-		"kind": "summon", "name": "Somnara, the Dreaming Veil", "element": "psychic", "tier": 6, "cost": 6,
+		"kind": "summon", "name": "Somnyx, the Dreaming Veil", "element": "psychic", "tier": 6, "cost": 6,
 		"affinity": "insight",
 		"move": {"name": "Endless Dream", "damage": 30, "target": "all_foes",
 			"effects": [{"op": "status", "status": "sleep"}]},
@@ -402,7 +403,7 @@ const CARDS := {
 	},
 	"healing_draught": {
 		"kind": "rite", "name": "Healing Draught", "element": "any", "tier": 1, "cost": 1, "target": "ally",
-		"effects": [{"op": "heal", "who": "target", "amount": 50}, {"op": "cure", "who": "target"}],
+		"effects": [{"op": "heal", "who": "target", "amount": 50}, {"op": "cure", "who": "target", "kind": "body"}],
 		"art": "a glass flask of glowing rose-red liquid with a cork stopper, tiny bubbles rising",
 	},
 	"travellers_pack": {
@@ -427,7 +428,7 @@ const CARDS := {
 	},
 	"thunderclap": {
 		"kind": "rite", "name": "Thunderclap", "element": "storm", "tier": 2, "cost": 3, "target": "all_foes",
-		"damage": 20,
+		"damage": 20, "effects": [{"op": "status", "status": "shocked"}],
 		"art": "a single enormous lightning bolt striking the centre of a duelling circle, a ring of thunder rippling outward",
 	},
 	"tidal_surge": {
@@ -465,6 +466,137 @@ const CARDS := {
 		"damage": 30, "effects": [{"op": "drain"}],
 		"art": "a dark stone rune tile with a glowing violet symbol draining light into itself",
 	},
+	# ------------------------------------------ v2 condition and boon Rites ---
+	"frostbind": {
+		"kind": "rite", "name": "Frostbind", "element": "frost", "tier": 2, "cost": 2, "target": "foe_totem",
+		"damage": 10, "effects": [{"op": "status", "status": "frozen"}],
+		"art": "a creature caught mid-leap inside a block of blue glacial ice, frost runes spiralling across the surface",
+	},
+	"gust_shove": {
+		"kind": "rite", "name": "Gust Shove", "element": "wind", "tier": 1, "cost": 1, "target": "foe_totem",
+		"damage": 20, "effects": [{"op": "status", "status": "staggered"}],
+		"art": "a fist of swirling pale-green wind slamming into a creature's flank, leaves and dust whipping past",
+	},
+	"corrosive_spit": {
+		"kind": "rite", "name": "Corrosive Spit", "element": "venom", "tier": 1, "cost": 1, "target": "foe_totem",
+		"damage": 10, "effects": [{"op": "status", "status": "corroded"}],
+		"art": "a gob of glowing yellow-green acid hissing as it eats through a metal plate, smoke curling up",
+	},
+	"jagged_shards": {
+		"kind": "rite", "name": "Jagged Shards", "element": "metal", "tier": 1, "cost": 1, "target": "foe_totem",
+		"damage": 20, "effects": [{"op": "status", "status": "bleed"}],
+		"art": "a burst of razor-edged steel shards flying through the air, glinting red in firelight",
+	},
+	"drowning_rain": {
+		"kind": "rite", "name": "Drowning Rain", "element": "tide", "tier": 1, "cost": 2, "target": "all_foes",
+		"effects": [{"op": "status", "status": "soaked"}],
+		"art": "a heavy sheet of blue-green rain pouring onto a duelling circle, water pooling between the runes",
+	},
+	"strangling_roots": {
+		"kind": "rite", "name": "Strangling Roots", "element": "verdant", "tier": 1, "cost": 1, "target": "foe_totem",
+		"damage": 10, "effects": [{"op": "status", "status": "rooted"}],
+		"art": "thick green roots bursting from the earth and coiling around a creature's legs, pinning it in place",
+	},
+	"stone_gaze": {
+		"kind": "rite", "name": "Stone Gaze", "element": "earth", "tier": 2, "cost": 2, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "petrified"}],
+		"art": "an ancient carved stone eye glowing amber, a creature before it slowly turning to grey stone from the feet up",
+	},
+	"blinding_flare": {
+		"kind": "rite", "name": "Blinding Flare", "element": "fire", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "blinded"}],
+		"art": "a white-gold flash of fire exploding in a creature's face, it reels back with eyes shut tight",
+	},
+	"goading_ember": {
+		"kind": "rite", "name": "Goading Ember", "element": "fire", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "enraged"}],
+		"art": "a single taunting ember flicked at a beast, the beast snarling with red rage lines around it",
+	},
+	"confounding_chime": {
+		"kind": "rite", "name": "Confounding Chime", "element": "psychic", "tier": 1, "cost": 1, "target": "foe_totem",
+		"damage": 10, "effects": [{"op": "status", "status": "confused"}],
+		"art": "a crystal chime ringing out rippling pink-violet sound rings, a creature spinning dizzily in them",
+	},
+	"heart_lure": {
+		"kind": "rite", "name": "Heart Lure", "element": "psychic", "tier": 2, "cost": 2, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "charmed"}],
+		"art": "a floating rose-pink heart of light on a silver thread, drawing a fierce beast forward in a daze",
+	},
+	"dread_howl": {
+		"kind": "rite", "name": "Dread Howl", "element": "spirit", "tier": 2, "cost": 2, "target": "all_foes",
+		"effects": [{"op": "status", "status": "terrified"}],
+		"art": "a spectral teal wolf throwing back its head in a howl, shadowy creatures cowering before the sound",
+	},
+	"silence_rune": {
+		"kind": "rite", "name": "Silence Rune", "element": "mystic", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "silenced"}],
+		"art": "an indigo rune seal pressed over a creature's mouth like a glowing gag, its power muffled",
+	},
+	"puppet_rune": {
+		"kind": "rite", "name": "Puppet Rune", "element": "mystic", "tier": 3, "cost": 3, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "possessed"}],
+		"art": "glowing violet threads of rune-light hooked into a creature's limbs, a ghostly hand above working them like a puppet",
+	},
+	"hex_mark": {
+		"kind": "rite", "name": "Hex Mark", "element": "mystic", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "hexed"}],
+		"art": "a crooked violet sigil burning onto a creature's hide, chains of tiny runes trailing from it",
+	},
+	"grave_curse": {
+		"kind": "rite", "name": "Grave Curse", "element": "spirit", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "cursed"}],
+		"art": "a cold grey-green hand of mist rising from a grave, its finger touching a creature's brow",
+	},
+	"hunters_mark": {
+		"kind": "rite", "name": "Hunter's Mark", "element": "any", "tier": 1, "cost": 1, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "marked"}],
+		"art": "a glowing red target sigil painted on a creature's shoulder, a hunter's arrow fletching in the foreground",
+	},
+	"soul_siphon": {
+		"kind": "rite", "name": "Soul Siphon", "element": "spirit", "tier": 2, "cost": 2, "target": "foe_totem",
+		"damage": 20, "effects": [{"op": "status", "status": "drained"}],
+		"art": "a ribbon of pale teal soul-light being drawn out of a creature into an open hand",
+	},
+	"doom_sigil": {
+		"kind": "rite", "name": "Doom Sigil", "element": "mystic", "tier": 4, "cost": 4, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "doomed"}],
+		"art": "a black sigil like a slowly closing eye hanging over a creature, three candles beneath it, one already out",
+	},
+	"clarity_tonic": {
+		"kind": "rite", "name": "Clarity Tonic", "element": "any", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "heal", "who": "target", "amount": 20}, {"op": "cure", "who": "target", "kind": "mind"}],
+		"art": "a slim blue glass vial of clear sparkling water, a soft halo of light around it",
+	},
+	"cleansing_bell": {
+		"kind": "rite", "name": "Cleansing Bell", "element": "any", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "heal", "who": "target", "amount": 20}, {"op": "cure", "who": "target", "kind": "soul"}],
+		"art": "a silver temple bell ringing, rings of white light washing away dark smoke",
+	},
+	"war_paint": {
+		"kind": "rite", "name": "War Paint", "element": "any", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "boon", "who": "target", "boon": "empowered"}],
+		"art": "a clay pot of glowing red-ochre war paint, three fingers of paint smeared across a beast's brow",
+	},
+	"verdant_balm": {
+		"kind": "rite", "name": "Verdant Balm", "element": "verdant", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "boon", "who": "target", "boon": "regenerating"}],
+		"art": "a wooden bowl of green moss balm glowing softly, tiny leaves sprouting from it",
+	},
+	"shadow_cloak": {
+		"kind": "rite", "name": "Shadow Cloak", "element": "psychic", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "boon", "who": "target", "boon": "veiled"}],
+		"art": "a cloak of shimmering violet mist settling over a creature until only its eyes show",
+	},
+	"sanctify": {
+		"kind": "rite", "name": "Sanctify", "element": "any", "tier": 2, "cost": 1, "target": "ally",
+		"effects": [{"op": "boon", "who": "target", "boon": "blessed"}],
+		"art": "a ring of golden sunlight descending onto a creature, motes of light settling on it like snow",
+	},
+	"quicken": {
+		"kind": "rite", "name": "Quicken", "element": "storm", "tier": 1, "cost": 1, "target": "ally",
+		"effects": [{"op": "boon", "who": "target", "boon": "hastened"}],
+		"art": "crackling yellow lightning streaks wrapping a creature's legs, after-images trailing behind it",
+	},
 	# ================================================================== WARDS
 	"ambush_snare": {
 		"kind": "ward", "name": "Ambush Snare", "element": "any", "tier": 1, "cost": 1, "trigger": "foe_call",
@@ -500,6 +632,16 @@ const CARDS := {
 		"kind": "ward", "name": "Poison Trap", "element": "venom", "tier": 1, "cost": 1, "trigger": "foe_attack",
 		"effects": [{"op": "status_attacker", "status": "poison"}],
 		"art": "a patch of innocent flowers hiding needle-thorns that drip glowing violet poison",
+	},
+	"static_field": {
+		"kind": "ward", "name": "Static Field", "element": "storm", "tier": 1, "cost": 1, "trigger": "foe_attack",
+		"effects": [{"op": "status_attacker", "status": "shocked"}],
+		"art": "a dome of crackling static over a duelling circle, a lunging beast jolted rigid by sparks",
+	},
+	"frost_snare": {
+		"kind": "ward", "name": "Frost Snare", "element": "frost", "tier": 2, "cost": 2, "trigger": "foe_call",
+		"effects": [{"op": "status_called", "status": "frozen"}],
+		"art": "frost runes flashing up from the ground and freezing a newly summoned creature's feet to the stone",
 	},
 	"last_stand": {
 		"kind": "ward", "name": "Last Stand", "element": "any", "tier": 4, "cost": 2, "trigger": "lethal",
@@ -543,9 +685,22 @@ const DECKS := {
 		"attributes": {"cunning": 2, "insight": 2},
 		"cards": {"dreamfox": 3, "veilfox": 2, "somnowl": 2, "thought_eater": 1,
 			"blightrat": 3, "plague_asp": 2, "mirewidow": 3,
-			"mind_fog": 2, "toxic_mist": 1, "seekers_compass": 1, "siphon_rune": 1, "travellers_pack": 1,
+			"mind_fog": 2, "toxic_mist": 1, "seekers_compass": 1, "siphon_rune": 1, "puppet_rune": 1,
 			"mirror_veil": 2, "counter_rune": 1, "poison_trap": 2, "somnara": 1,
 			"essence_flask": 1, "healing_draught": 1},
+	},
+}
+
+## Decks the story's duellists play (not offered as starters or in the Lab).
+const NPC_DECKS := {
+	"dask_hounds": {
+		"name": "Ironvault Hounds", "elements": ["metal", "earth", "venom"], "mascot": "shieldhound",
+		"desc": "Hunter Dask's pack: metal hounds, burrowers, poison and traps.",
+		"attributes": {"cunning": 1},
+		"cards": {"shieldhound": 3, "brassback": 3, "ironhide": 2, "burrowmole": 2, "pebblit": 3, "boulderox": 1,
+			"blightrat": 3, "plague_asp": 1,
+			"jagged_shards": 2, "hunters_mark": 1, "forge_edge": 1, "healing_draught": 1, "essence_flask": 2,
+			"poison_trap": 2, "ambush_snare": 2, "iron_bastion": 1},
 	},
 }
 
@@ -560,7 +715,7 @@ const KEYWORDS := {
 	"burrow": {"name": "Burrow", "text": "Can attack Life even when the slot opposite is filled."},
 }
 
-const STATUS_NAMES := {"burn": "Burned", "poison": "Poisoned", "stun": "Stunned", "sleep": "Asleep"}
+const STATUS_NAMES := DuelConditions.NAMES
 
 ## Divine Gift wording for the v1 duel (numbers come from DuelRules).
 static func gift_text(g: String) -> String:
@@ -573,6 +728,12 @@ static func gift_text(g: String) -> String:
 		"foresight": return "Draw 3 cards. Your next Fate roll counts as a natural 20."
 		"recall": return "Return up to 2 cards from your discard pile to your hand."
 		"unbound": return "Draw 3 cards."
+		"contagion": return "Poison up to two enemy Totems."
+		"regrowth": return "Heal 30 damage from every one of your Totems."
+		"undertow": return "Return one enemy Totem to its owner's hand; any Ascension cards on it are discarded."
+		"star_chart": return "Choose which of your top 5 cards you draw next. +2 on your Fate rolls this turn."
+		"forged_guard": return "Your Guard is doubled until your next Dawn."
+		"unveil": return "Turn every enemy Ward face up, then destroy one."
 	return ""
 
 
@@ -590,7 +751,7 @@ const TRIGGER_TEXT := {
 
 static func card_list(deck_id: String) -> Array:
 	var out := []
-	var d: Dictionary = DECKS[deck_id]
+	var d: Dictionary = DECKS[deck_id] if DECKS.has(deck_id) else NPC_DECKS[deck_id]
 	for id in d.cards:
 		for i in int(d.cards[id]):
 			out.append(id)
@@ -680,6 +841,10 @@ static func effect_text(e: Dictionary) -> String:
 	match e.op:
 		"status":
 			return STATUS_NAMES.get(e.status, e.status)
+		"boon":
+			return STATUS_NAMES.get(e.boon, e.boon)
+		"cure":
+			return "clear %s conditions" % _kind_word(e.get("kind", "all"))
 		"heal":
 			match e.get("who", "self"):
 				"self": return "heal itself %d" % e.amount
@@ -739,7 +904,14 @@ static func _rite_text(d: Dictionary) -> String:
 			"essence": parts.append("Gain %d Essence this turn" % e.amount)
 			"essence_max": parts.append("Your Essence limit rises by %d for the rest of the duel" % e.amount)
 			"heal": parts.append("Heal %d damage from one of your Totems" % e.amount)
-			"cure": parts.append("clear its conditions")
+			"cure":
+				var kw := _kind_word(e.get("kind", "all"))
+				parts.append("clear its conditions" if kw == "all" else "clear its %s conditions" % kw)
+			"boon":
+				if e.get("who", "target") == "allies":
+					parts.append("Your Totems become %s" % STATUS_NAMES[e.boon])
+				else:
+					parts.append("One of your Totems becomes %s (%s)" % [STATUS_NAMES[e.boon], DuelConditions.describe(e.boon).trim_suffix(".").to_lower()])
 			"draw": parts.append("Draw %d cards" % e.count)
 			"search_totem": parts.append("Search your deck for a Basic Totem and put it in your hand")
 			"move_foe": parts.append("Move an enemy Totem to an empty slot on their side")
@@ -750,6 +922,8 @@ static func _rite_text(d: Dictionary) -> String:
 			"status":
 				if d.target == "all_foes":
 					parts.append("Every enemy Totem is %s" % STATUS_NAMES[e.status])
+				elif dmg > 0:
+					parts.append("and it is %s" % STATUS_NAMES[e.status])
 				else:
 					parts.append("An enemy Totem is %s" % STATUS_NAMES[e.status])
 			"drain": parts.append("gain Life equal to the damage dealt")
@@ -764,12 +938,19 @@ static func _ward_text(d: Dictionary) -> String:
 			"bounce_called": parts.append("return that Totem to their hand")
 			"damage_attacker": parts.append("deal %d damage to the attacker" % e.amount)
 			"status_attacker": parts.append("the attacker is %s" % STATUS_NAMES[e.status])
+			"status_called": parts.append("that Totem is %s" % STATUS_NAMES[e.status])
 			"negate": parts.append("cancel the attack")
 			"block_life": parts.append("prevent all damage to your Life from it")
 			"shield_target": parts.append("the attack deals %d less damage" % e.amount)
 			"cancel_rite": parts.append("cancel it")
 			"survive": parts.append("you survive with %d Life" % e.life)
 	return " and ".join(parts)
+
+
+static func _kind_word(kind: String) -> String:
+	if kind == "" or kind == "all":
+		return "all"
+	return DuelConditions.KIND_NAMES.get(kind, kind)
 
 
 static func _cap(s: String) -> String:

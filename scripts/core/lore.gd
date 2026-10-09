@@ -72,7 +72,23 @@ const GODS := {
 		"attribute": "insight", "gift": "foresight"},
 	"aldrith": {"name": "Aldrith", "title": "the Runeweaver", "element": "mystic",
 		"attribute": "intellect", "gift": "recall"},
+	# challengers' gods (v2 story): they hold no Dominion when the story begins
+	"vexa": {"name": "Vexa", "title": "the Plague Saint", "element": "venom",
+		"attribute": "cunning", "gift": "contagion"},
+	"verdanthe": {"name": "Verdanthe", "title": "the Rootmother", "element": "verdant",
+		"attribute": "resolve", "gift": "regrowth"},
+	"maerith": {"name": "Maerith", "title": "the Tide Mother", "element": "tide",
+		"attribute": "swiftness", "gift": "undertow"},
+	"aster": {"name": "Aster", "title": "the Starwatcher", "element": "astral",
+		"attribute": "insight", "gift": "star_chart"},
+	"hethrin": {"name": "Hethrin", "title": "the Forgefather", "element": "metal",
+		"attribute": "intellect", "gift": "forged_guard"},
+	"ysolde": {"name": "Ysolde", "title": "the Unveiling Flame", "element": "fire",
+		"attribute": "presence", "gift": "unveil"},
 }
+
+## The seven great gods of the opening, in their usual order.
+const GREAT_GODS := ["solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
 
 ## Extra damage from Pyrrhane's Wrath.
 const WRATH_BONUS := 30
@@ -88,6 +104,12 @@ const GIFTS := {
 	"foresight": {"name": "Foresight", "text": "Draw 2 cards. Your next coin flip this duel lands on heads."},
 	"recall": {"name": "Rune of Recall", "text": "Put up to 2 cards from your discard pile into your hand."},
 	"unbound": {"name": "Unbound Will", "text": "Draw 3 cards. (The gift of the Unsworn, who kneel to no god.)"},
+	"contagion": {"name": "Contagion", "text": "Poison up to two enemy Totems."},
+	"regrowth": {"name": "Regrowth", "text": "Heal 30 damage from every one of your Totems."},
+	"undertow": {"name": "Undertow", "text": "Return one enemy Totem to its owner's hand."},
+	"star_chart": {"name": "Star Chart", "text": "Choose which of your top 5 cards comes next; +2 on your Fate rolls this turn."},
+	"forged_guard": {"name": "Forged Guard", "text": "Your Guard is doubled until your next Dawn."},
+	"unveil": {"name": "Unveil", "text": "Turn every enemy Ward face up, then destroy one."},
 }
 
 const TIER_NAMES := ["", "Spark", "Glimmer", "Crystal", "Relic", "Legend", "Demigod", "Divine"]

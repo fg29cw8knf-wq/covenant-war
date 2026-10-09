@@ -194,6 +194,7 @@ func _attack_score(game: DuelGame, pi: int, t: DuelTotem, i: int, target, lethal
 	var s := 0.0
 	var outcomes := _outcomes(game, pi, t, i)   # [{p, damage, effects}]
 	var tk := t.move_target(i)
+	var odds := _attack_odds(t)
 	if tk == "ally":
 		if not (target is DuelTotem):
 			return -INF
@@ -220,8 +221,9 @@ func _attack_score(game: DuelGame, pi: int, t: DuelTotem, i: int, target, lethal
 		if _ward_risk(game, pi, "foe_direct") or _ward_risk(game, pi, "foe_attack"):
 			s *= 0.8
 		s *= 1.1 + (0.6 if foe.life < 120 else 0.0)
+		s *= odds
 		if lethal:
-			s += 500.0
+			s += 500.0 * odds
 		if s <= 0.0:
 			return -INF
 		return s - cost * ESSENCE_VALUE
@@ -230,13 +232,14 @@ func _attack_score(game: DuelGame, pi: int, t: DuelTotem, i: int, target, lethal
 			s += _hit_value(game, pi, t, i, f, outcomes)
 		if _ward_risk(game, pi, "foe_attack"):
 			s *= 0.85
-		return s - cost * ESSENCE_VALUE
+		return s * odds - cost * ESSENCE_VALUE
 	if target is DuelTotem:
 		s = _hit_value(game, pi, t, i, target, outcomes)
 		if target.has_keyword("thorns"):
 			s -= DuelRules.thorns_damage * 0.6
 		if _ward_risk(game, pi, "foe_attack"):
 			s *= 0.85
+		s *= odds
 		if lethal:
 			s *= 0.3   # finish them instead
 		# a Totem with nothing better to do should still swing
@@ -286,21 +289,99 @@ func _outcomes(_game: DuelGame, pi: int, t: DuelTotem, i: int) -> Array:
 
 
 func _status_value(game: DuelGame, f: DuelTotem, status: String) -> float:
+	if f == null or f.boons.has("blessed") or f.has_status(status):
+		return 0.0
+	if f.is_boss and status in DuelConditions.BOSS_IMMUNE:
+		return 0.0
+	if status == "burn" and f.has_status("soaked"):
+		return 0.0
+	var thr := _threat(game, f.owner, f)
+	var v := 0.0
 	match status:
-		"burn":
-			return 0.0 if f.burn_turns > 0 else DuelRules.burn_damage * 1.4
-		"poison":
-			return 0.0 if f.poisoned else DuelRules.poison_damage * 2.5
-		"stun":
-			return 0.0 if f.stunned else _threat(game, f.owner, f) * 0.8
-		"sleep":
-			return 0.0 if f.asleep else _threat(game, f.owner, f) * 1.0
+		"burn": v = DuelRules.burn_damage * 1.4
+		"poison": v = DuelRules.poison_damage * 2.5
+		"corroded": v = DuelRules.corroded_bonus * 2.5
+		"bleed": v = DuelRules.bleed_damage * 2.0
+		"frozen": v = thr * 1.1
+		"shocked": v = thr * 0.7
+		"soaked": v = 10.0
+		"rooted": v = 12.0 + thr * 0.2
+		"petrified": v = thr * 1.0 - 20.0
+		"staggered": v = thr * 0.5
+		"blinded": v = thr * 0.5
+		"sleep": v = thr * 1.0
+		"stun": v = thr * 0.8
+		"confused": v = thr * 0.7 + 10.0
+		"charmed": v = thr * 0.5
+		"terrified": v = thr * 0.6
+		"enraged": v = 5.0
+		"silenced": v = maxf(0.0, thr - _strike_threat(f)) * 0.9
+		"possessed": v = thr * 1.0 + 25.0
+		"hexed": v = 12.0
+		"cursed": v = 12.0
+		"marked": v = DuelRules.marked_bonus * 1.0
+		"drained": v = 18.0
+		"doomed": v = _totem_value(game, f.owner, f) * 0.7
+	# replacing a condition of the same kind loses the old one
+	var old: Dictionary = f.cond(DuelConditions.kind_of(status))
+	if not old.is_empty():
+		v -= _status_value_plain(game, f, old.id) * 0.8
+	return maxf(0.0, v)
+
+
+## The value of a condition ignoring what it would replace.
+func _status_value_plain(game: DuelGame, f: DuelTotem, status: String) -> float:
+	var held: Dictionary = f.cond(DuelConditions.kind_of(status))
+	f.conds.erase(DuelConditions.kind_of(status))
+	var v := _status_value(game, f, status)
+	if not held.is_empty():
+		f.conds[DuelConditions.kind_of(status)] = held
+	return v
+
+
+## The damage of its free Strike, roughly.
+func _strike_threat(t: DuelTotem) -> float:
+	if t.moves().is_empty():
+		return 0.0
+	return float(t.move(0).get("damage", 0)) + t.damage_bonus(0)
+
+
+## The chance an attack by this Totem lands at all.
+func _attack_odds(t: DuelTotem) -> float:
+	var ok := 1.0
+	if t.has_status("shocked"):
+		ok *= 1.0 - DuelRules.shock_fail / 20.0
+	if t.has_status("blinded"):
+		ok *= 1.0 - DuelRules.blind_fail / 20.0
+	if t.has_status("confused"):
+		ok *= 1.0 - DuelRules.confuse_fail / 20.0
+	return ok
+
+
+func _boon_value(game: DuelGame, pi: int, t: DuelTotem, boon: String) -> float:
+	if t == null or t.has_boon(boon):
+		return 0.0
+	match boon:
+		"shielded":
+			return DuelRules.shielded_amount * (0.6 if _threatened(game, pi, t) else 0.25)
+		"empowered":
+			return DuelRules.empowered_bonus * (1.0 if game.ready_problem(pi, t) == "" else 0.6)
+		"regenerating":
+			return minf(float(t.damage) + 10.0, DuelRules.regen_heal * 3.0) * 0.6
+		"veiled":
+			return 14.0 if _threatened(game, pi, t) else 5.0
+		"blessed":
+			return 10.0
+		"hastened":
+			return 8.0
 	return 0.0
 
 
 ## Roughly how much damage this Totem will deal on its owner's next turn.
 func _threat(_game: DuelGame, _owner: int, t: DuelTotem) -> float:
 	var best := 0.0
+	if t.has_status("possessed") or t.has_status("petrified"):
+		return 0.0
 	for i in t.moves().size():
 		var mv := t.move(i)
 		var d := float(mv.get("damage", 0))
@@ -439,10 +520,22 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 				v += maxf(0.0, (DuelRules.essence_cap - p.essence_max) * 6.0)
 			"heal":
 				if target is DuelTotem:
-					v += minf(float(e.amount), float(target.damage)) * 0.8
+					if target.has_status("cursed") and e.get("who", "target") == "target":
+						v -= float(e.amount)
+					else:
+						v += minf(float(e.amount), float(target.damage)) * 0.8
 			"cure":
-				if target is DuelTotem and target.has_condition():
-					v += 18.0
+				if target is DuelTotem:
+					var kind: String = e.get("kind", "all")
+					for k in target.conds:
+						if kind == "all" or kind == k:
+							v += 18.0 + (20.0 if target.conds[k].id in ["doomed", "possessed", "frozen"] else 0.0)
+			"boon":
+				if e.get("who", "target") == "allies":
+					for t in p.totems():
+						v += _boon_value(game, pi, t, e.boon)
+				elif target is DuelTotem:
+					v += _boon_value(game, pi, target, e.boon)
 			"draw":
 				v += 14.0 * int(e.count) * (1.4 if p.hand.size() <= 3 else 1.0)
 			"search_totem":
@@ -587,6 +680,42 @@ func _gift_option(game: DuelGame, pi: int) -> Dictionary:
 			v = 36.0 if good >= 2 and p.hand.size() <= 4 else 0.0
 		"unbound":
 			v = 45.0 if p.hand.size() <= 2 else 0.0
+		"contagion":
+			var vals := []
+			for t in game.targetable(foe.totems()):
+				vals.append(_status_value(game, t, "poison"))
+			vals.sort()
+			vals.reverse()
+			v = 0.0
+			for i in mini(2, vals.size()):
+				v += vals[i]
+			v = v if v >= 40.0 else 0.0
+		"regrowth":
+			v = 0.0
+			for t in p.totems():
+				v += minf(30.0, float(t.damage))
+			v = v if v >= 50.0 else 0.0
+		"undertow":
+			v = 0.0
+			for t in game.targetable(foe.totems()):
+				v = maxf(v, _totem_value(game, 1 - pi, t) * 0.7 + (t.stack.size() - 1) * 18.0 + t.damage * 0.3)
+			v = v if v >= 45.0 else 0.0
+		"star_chart":
+			v = 0.0
+			for t in p.totems():
+				for i in t.moves().size():
+					if t.move(i).has("fate") and game.move_problem(pi, t, i) == "":
+						v += 10.0
+			v += 8.0
+			v = v if v >= 25.0 else 0.0
+		"forged_guard":
+			var attackers := 0
+			for t in foe.totems():
+				attackers += 1
+			v = p.guard() * attackers * 2.5 if foe.life > p.life else p.guard() * attackers * 1.5
+			v = v if v >= 25.0 else 0.0
+		"unveil":
+			v = 26.0 + foe.wards.size() * 6.0
 	if v <= 0.0:
 		return {}
 	var action := {"type": "gift"}

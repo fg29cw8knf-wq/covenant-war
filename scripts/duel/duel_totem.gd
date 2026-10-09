@@ -12,11 +12,22 @@ var damage := 0
 var shield := 0                # prevents this much damage, then breaks
 var bonus_hp := 0              # from the Resolve 7+ perk
 
-var burn_turns := 0
-var poisoned := false
-var asleep := false
-var stunned := false
-var stun_turn := 0             # the game turn the stun was applied
+## Conditions, one per kind (DuelConditions.KINDS): kind -> {id, left,
+## applied (the game turn it was put on), src_uid, src_owner, dawns}.
+var conds := {}
+## Boons: id -> {left, applied}. Shielded is the `shield` number above.
+var boons := {}
+var is_boss := false           # bosses shrug off some conditions
+
+## Read-only shortcuts kept for the duel screen and older code.
+var asleep: bool:
+	get: return has_status("sleep")
+var stunned: bool:
+	get: return has_status("stun")
+var poisoned: bool:
+	get: return has_status("poison")
+var burn_turns: int:
+	get: return int(conds.get("body", {}).get("left", 0)) if has_status("burn") else 0
 
 var called_turn := 0
 var ascended_turn := -1
@@ -122,6 +133,10 @@ func move_cost(i: int) -> int:
 	var c := int(move(i).get("cost", 0))
 	if c > 0:
 		c = maxi(1, c - attuned_value("cost"))
+		if has_boon("hastened"):
+			c = maxi(1, c - 1)
+		if has_status("hexed"):
+			c += 1
 	return c
 
 
@@ -139,6 +154,10 @@ func damage_bonus(i: int) -> int:
 	var b := attuned_value("damage") + buff
 	if is_strike(i) and DuelRules.has_perk(attrs, "might"):
 		b += DuelRules.might_strike_bonus
+	if has_status("enraged"):
+		b += DuelRules.enraged_bonus
+	if has_boon("empowered"):
+		b += DuelRules.empowered_bonus
 	return b
 
 
@@ -146,28 +165,84 @@ func weak_to(attack_element: String) -> bool:
 	return Lore.weak_to(element()).has(attack_element)
 
 
+## The ids of the conditions it carries (Body, then Mind, then Soul).
 func conditions() -> Array:
 	var out := []
-	if burn_turns > 0:
-		out.append("burn")
-	if poisoned:
-		out.append("poison")
-	if stunned:
-		out.append("stun")
-	if asleep:
-		out.append("sleep")
+	for k in DuelConditions.KINDS:
+		if conds.has(k):
+			out.append(conds[k].id)
 	return out
 
 
 func has_condition() -> bool:
-	return not conditions().is_empty()
+	return not conds.is_empty()
 
 
-func clear_conditions() -> void:
-	burn_turns = 0
-	poisoned = false
-	asleep = false
-	stunned = false
+func has_status(id: String) -> bool:
+	var k := DuelConditions.kind_of(id)
+	return k != "" and conds.has(k) and conds[k].id == id
+
+
+## The condition of one kind ({} if none).
+func cond(kind: String) -> Dictionary:
+	return conds.get(kind, {})
+
+
+func condition_of(id: String) -> Dictionary:
+	if not has_status(id):
+		return {}
+	return conds[DuelConditions.kind_of(id)]
+
+
+## Puts a condition on, replacing any other of the same kind.
+func set_status(id: String, game_turn: int, src_uid: int = -1, src_owner: int = -1) -> void:
+	var k := DuelConditions.kind_of(id)
+	if k == "":
+		return
+	conds[k] = {"id": id, "left": DuelConditions.turns(id), "applied": game_turn,
+		"src_uid": src_uid, "src_owner": src_owner, "dawns": 0}
+
+
+func remove_status(id: String) -> void:
+	if has_status(id):
+		conds.erase(DuelConditions.kind_of(id))
+
+
+## Clears every condition, or just one kind ("body", "mind" or "soul").
+func clear_conditions(kind: String = "") -> void:
+	if kind == "" or kind == "all":
+		conds.clear()
+	else:
+		conds.erase(kind)
+
+
+func has_boon(id: String) -> bool:
+	if id == "shielded":
+		return shield > 0
+	return boons.has(id)
+
+
+func add_boon(id: String, game_turn: int) -> void:
+	if id == "shielded":
+		shield += DuelRules.shielded_amount
+		return
+	boons[id] = {"left": DuelConditions.turns(id), "applied": game_turn}
+
+
+func remove_boon(id: String) -> void:
+	if id == "shielded":
+		shield = 0
+	boons.erase(id)
+
+
+## Boons it carries, for the nameplate.
+func boon_list() -> Array:
+	var out := []
+	if shield > 0:
+		out.append("shielded")
+	for b in boons:
+		out.append(b)
+	return out
 
 
 func all_cards() -> Array:

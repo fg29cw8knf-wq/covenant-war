@@ -389,7 +389,7 @@ class ShotView:
 		for i in 8:
 			var ang := _t * 0.4 + TAU * i / 8.0
 			var p := c + Vector2(cos(ang) * r.size.x * 0.3, sin(ang) * r.size.y * 0.12) + Vector2(0, 30)
-			var el := "any" if i == 7 else String(Lore.GODS[Lore.GODS.keys()[i]].element)
+			var el := "any" if i == 7 else String(Lore.GODS[Lore.GREAT_GODS[i]].element)
 			var col := Color.WHITE if i == 7 else Lore.color(el, 0)
 			draw_circle(p, 16, Color(col, 0.18 * a))
 			draw_circle(p, 6, Color(col, 0.95 * a))

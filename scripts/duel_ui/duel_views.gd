@@ -292,7 +292,9 @@ class TotemView:
 		# conditions and shield, in a row above the plaque
 		var x := pr.position.x + (70.0 if totem.stage() > 0 else 28.0)
 		for cnd in totem.conditions():
-			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), DuelViews.STATUS_SHORT.get(cnd, cnd.to_upper()), Color(DuelViews.STATUS_COL.get(cnd, Color.WHITE), 0.95 * f), Color("140f18"), 14, 22) + 5
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), DuelConditions.short_name(cnd), Color(DuelConditions.color(cnd), 0.95 * f), Color("140f18"), 14, 22) + 5
+		for bn in totem.boons:
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "+" + DuelConditions.short_name(bn), Color("140f18", 0.92 * f), DuelConditions.color(bn), 14, 22) + 5
 		if totem.shield > 0:
 			DuelViews.pill(self, Vector2(pr.end.x - 78, pr.position.y - 14), "◈ %d" % totem.shield, Color("9fe8ff", 0.95 * f), Color("0b2a3a"), 14, 22)
 

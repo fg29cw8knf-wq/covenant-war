@@ -43,6 +43,10 @@ var log_lines: Array = []
 var _next_uid := 1
 ## Above 0, both duellists start on this Life instead of their attribute total (story tutorials).
 var start_life := 0
+## The Dominion Law this duel is fought under (a god's id, "ironvault" or ""). See DuelLaws.
+var law := ""
+## Ward card uids that lie face up (Ysolde's Unveiling, or the Unveil Gift).
+var face_up := {}
 
 
 # ------------------------------------------------------------------ setup ---
@@ -88,6 +92,12 @@ func _setup_phase() -> void:
 		p.max_life = start_life if start_life > 0 else DuelRules.life_for(p.attributes())
 		p.life = p.max_life
 		p.fortune_left = mini(2, int(p.profile.get("fortune", 0)))
+		if law == "hethrin" and blessed(p.index):
+			p.guard_bonus = DuelLaws.ironworks_guard
+		if law == "nocthra":
+			p.extra_ward_slots = 1
+	if law != "":
+		_log("This duel is fought under %s: %s" % [DuelLaws.law_name(law), DuelLaws.describe(law)])
 	# Both roll a d20; Swiftness adds its Fate modifier, so the swifter
 	# duellist goes first more often (but not always).
 	while true:
@@ -130,12 +140,18 @@ func _take_turn() -> void:
 	p.free_shift = false
 	p.totems_called = 0
 	p.wrath = false
+	p.fate_bonus = 0
+	p.guard_double = false
 	for t in p.totems():
 		t.attacked = false
 		t.buff = 0
 	if p.essence_max < DuelRules.essence_cap:
 		p.essence_max += 1
 	p.essence = p.essence_max
+	if p.pending_essence > 0:
+		p.essence += p.pending_essence
+		_log("%s gains %d drained Essence." % [p.player_name, p.pending_essence], current)
+		p.pending_essence = 0
 	_log("Turn %d - %s" % [turn, p.player_name], -2)
 	await _fx("fx_turn", [current])
 	if turn > 1:
@@ -153,6 +169,9 @@ func _take_turn() -> void:
 		if not keep:
 			p.deck.insert(0, p.deck.pop_back())
 			_log("%s sends the top card of their deck to the bottom." % p.player_name, current)
+	await _possessed_strikes(p)
+	if over:
+		return
 
 	var actions := 0
 	while not over:
@@ -173,24 +192,106 @@ func _take_turn() -> void:
 
 
 func _dawn_conditions(p: DuelPlayer) -> void:
+	await _dawn_law(p)
+	if over:
+		return
 	for t in p.totems():
-		if t.burn_turns > 0:
+		if t.is_knocked_out():
+			continue
+		if t.boons.has("veiled"):
+			t.remove_boon("veiled")
+			_log("%s steps out of the veil." % t.card_name(), p.index)
+		if t.boons.has("regenerating"):
+			await _heal(t, DuelRules.regen_heal)
+		if t.has_status("burn"):
 			_log("%s burns." % t.card_name(), p.index)
 			await _damage_totem(t, DuelRules.burn_damage, {"source": "burn"})
-			t.burn_turns -= 1
-		if t.poisoned and not t.is_knocked_out():
+		if t.has_status("poison") and not t.is_knocked_out():
 			_log("%s suffers from poison." % t.card_name(), p.index)
-			await _damage_totem(t, DuelRules.poison_damage, {"source": "poison"})
-		if t.asleep and not t.is_knocked_out():
-			var r := rng.randi_range(1, 20)
-			await _fx("fx_roll", [p.index, {"label": "%s tries to wake" % t.card_name(), "roll": r, "mod": 0,
-				"total": r, "index": 1 if r >= DuelRules.wake_roll else 0, "bands": [], "text": "wakes" if r >= DuelRules.wake_roll else "sleeps on"}])
-			if r >= DuelRules.wake_roll:
-				t.asleep = false
-				_log("%s rolls %d and wakes up." % [t.card_name(), r], p.index)
+			await _damage_totem(t, DuelLaws.plague_poison if law == "vexa" else DuelRules.poison_damage, {"source": "poison"})
+		if t.has_status("drained") and not t.is_knocked_out():
+			var dc: Dictionary = t.condition_of("drained")
+			if p.essence > 0:
+				p.essence -= 1
+			var drainer := int(dc.get("src_owner", 1 - p.index))
+			if drainer < 0:
+				drainer = 1 - p.index
+			if drainer != p.index:
+				players[drainer].pending_essence += 1
+			_log("%s is drained: %s loses 1 Essence." % [t.card_name(), p.player_name], p.index)
+		if t.has_status("doomed") and not t.is_knocked_out():
+			var dd: Dictionary = t.condition_of("doomed")
+			dd.dawns = int(dd.get("dawns", 0)) + 1
+			if int(dd.dawns) >= DuelRules.doom_dawns:
+				_log("Doom claims %s!" % t.card_name(), p.index)
+				t.damage = t.max_hp()
+				await _fx("fx_totem_hit", [t, 0, {"source": "doom"}])
 			else:
-				_log("%s rolls %d and sleeps on." % [t.card_name(), r], p.index)
+				_log("%s is Doomed: %d Dawn%s left." % [t.card_name(), DuelRules.doom_dawns - int(dd.dawns),
+					"" if DuelRules.doom_dawns - int(dd.dawns) == 1 else "s"], p.index)
+		if t.is_knocked_out():
+			continue
+		# breaking free: Sleep, Frozen and Possessed
+		for id in t.conditions():
+			if not DuelConditions.breaks_free(id):
+				continue
+			var kind := DuelConditions.kind_of(id)
+			var mod := DuelRules.fate_mod(int(t.attrs.get(DuelConditions.KIND_ATTR[kind], 0)))
+			var r := rng.randi_range(1, 20)
+			var need := DuelRules.wake_roll
+			if id == "sleep" and law == "vaelith" and not blessed(p.index):
+				need = DuelLaws.winter_wake
+			var ok := r + mod >= need or r == 20
+			var verb: String = {"sleep": ["wakes", "sleeps on"], "frozen": ["thaws", "stays frozen"],
+				"possessed": ["breaks free", "stays possessed"]}.get(id, ["breaks free", "is held"])[0 if ok else 1]
+			await _fx("fx_roll", [p.index, {"label": "%s tries to break free" % t.card_name(), "roll": r, "mod": mod,
+				"total": r + mod, "index": 1 if ok else 0, "bands": [], "text": verb}])
+			_log("%s rolls %d%s and %s." % [t.card_name(), r, (" +%d" % mod) if mod > 0 else "", verb], p.index)
+			if ok:
+				t.remove_status(id)
+				await _fx("fx_status", [t, ""])
 	await _resolve_knockouts()
+
+
+## The Law's own effects at the start of a duellist's turn.
+func _dawn_law(p: DuelPlayer) -> void:
+	match law:
+		"solmaris":
+			var worst: DuelTotem = null
+			for t in p.totems():
+				if t.damage > 0 and (worst == null or t.damage > worst.damage):
+					worst = t
+			if worst != null:
+				await _heal(worst, DuelLaws.dawnlight_blessed_heal if blessed(p.index) else DuelLaws.dawnlight_heal)
+		"maerith":
+			var mine := p.totems().size()
+			var theirs := opponent(p.index).totems().size()
+			if mine < theirs or (mine == theirs and blessed(p.index)):
+				_log("The High Tide brings %s an extra card." % p.player_name, p.index)
+				var drawn := await _draw(p, 1)
+				if not drawn.is_empty():
+					await _fx("fx_draw", [p.index, drawn])
+		"oriel":
+			if not p.deck.is_empty():
+				var keep: bool = await p.controller.choose_scry(self, p.index, p.deck[-1])
+				if not keep:
+					p.deck.insert(0, p.deck.pop_back())
+					_log("%s sends the top card of their deck to the bottom." % p.player_name, p.index)
+			if blessed(p.index) and not opponent(p.index).deck.is_empty():
+				_log("Oriel shows %s the top of their opponent's deck: %s." % [p.player_name,
+					opponent(p.index).deck[-1].card_name()], p.index)
+		"aldrith":
+			if blessed(p.index) and not p.rite_recalled:
+				var rites := p.discard.filter(func(c): return c.is_rite())
+				if not rites.is_empty():
+					var chosen: Array = await p.controller.choose_cards(self, p.index,
+						"Runebound Blessing: return a Rite to your hand?", rites, 0, 1, {"reason": "recall"})
+					for c in chosen.slice(0, 1):
+						if p.discard.has(c):
+							p.discard.erase(c)
+							p.hand.append(c)
+							p.rite_recalled = true
+							_log("%s returns %s to their hand." % [p.player_name, c.card_name()], p.index)
 
 
 func _dusk(p: DuelPlayer) -> void:
@@ -204,12 +305,37 @@ func _dusk(p: DuelPlayer) -> void:
 				p.discard.append(c)
 		while p.hand.size() > DuelRules.hand_limit:
 			p.discard.append(p.hand.pop_back())
+	if law == "pyrrhane" and not blessed(p.index):
+		for t in p.totems():
+			await _damage_totem(t, DuelLaws.forge_heat, {"source": "heat"})
+		await _resolve_knockouts()
+		if over:
+			return
 	for t in p.totems():
-		if t.stunned and turn > t.stun_turn:
-			t.stunned = false
+		_count_down(t)
 		t.buff = 0
 	p.wrath = false
 	_changed()
+
+
+## At its owner's Dusk every timed condition and boon ticks down one turn
+## (one put on during this very turn doesn't count it).
+func _count_down(t: DuelTotem) -> void:
+	for k in t.conds.keys():
+		var c: Dictionary = t.conds[k]
+		if int(c.left) <= 0 or int(c.applied) == turn:
+			continue
+		c.left = int(c.left) - 1
+		if int(c.left) <= 0:
+			t.conds.erase(k)
+			_log("%s is no longer %s." % [t.card_name(), DuelConditions.display_name(c.id)], t.owner)
+	for b in t.boons.keys():
+		var bd: Dictionary = t.boons[b]
+		if int(bd.left) <= 0 or int(bd.applied) == turn:
+			continue
+		bd.left = int(bd.left) - 1
+		if int(bd.left) <= 0:
+			t.boons.erase(b)
 
 
 func _finish(w: int, reason: String) -> void:
@@ -289,14 +415,40 @@ func opponent(pi: int) -> DuelPlayer:
 
 func call_cost(pi: int, card: DuelCard) -> int:
 	var p: DuelPlayer = players[pi]
-	var c := card.cost()
+	var c := card_cost(pi, card)
 	if p.totems_called == 0 and DuelRules.has_perk(p.attributes(), "presence"):
 		c = maxi(0, c - DuelRules.presence_discount)
 	return c
 
 
-func summon_cost(_pi: int, card: DuelCard) -> int:
-	return card.cost()
+func summon_cost(pi: int, card: DuelCard) -> int:
+	return card_cost(pi, card)
+
+
+## A card's Essence cost under this duel's Law (never below 1 for a card
+## that costs anything).
+func card_cost(_pi: int, card: DuelCard) -> int:
+	var c := card.cost()
+	if c <= 0 or law == "":
+		return c
+	var el := card.element()
+	var d := 0
+	match law:
+		"pyrrhane":
+			if el == "fire": d -= 1
+		"verdanthe":
+			if el == "verdant": d -= 1
+		"aldrith":
+			if card.is_rite(): d -= 1
+		"hethrin":
+			if el == "metal": d -= 1
+			if card.is_ward(): d += 1
+	return maxi(1, c + d)
+
+
+## True if this duellist is sworn to the god whose Law this duel follows.
+func blessed(pi: int) -> bool:
+	return law != "" and law != "ironvault" and players[pi].patron() == law
 
 
 func call_problem(pi: int, card: DuelCard, slot: int = -1) -> String:
@@ -320,9 +472,18 @@ func ascend_targets(pi: int, card: DuelCard) -> Array:
 	if card == null or not card.is_ascension():
 		return out
 	for t in players[pi].totems():
-		if t.id() == card.def.ascends_from and t.called_turn < turn and t.ascended_turn != turn:
+		if t.id() == card.def.ascends_from and t.called_turn < turn and t.ascended_turn != turn \
+				and not t.has_status("possessed"):
 			out.append(t)
 	return out
+
+
+## Essence to Ascend this Totem (a Hexed Totem pays 1 more).
+func ascend_cost(card: DuelCard, target = null) -> int:
+	var c := card_cost(card.owner, card)
+	if target is DuelTotem and target.has_status("hexed"):
+		c += 1
+	return c
 
 
 func ascend_problem(pi: int, card: DuelCard, target = null) -> String:
@@ -342,8 +503,9 @@ func ascend_problem(pi: int, card: DuelCard, target = null) -> String:
 		return "Needs %s in play." % DuelCards.CARDS[card.def.ascends_from].name
 	if target != null and not targets.has(target):
 		return "That Totem can't Ascend into %s." % card.card_name()
-	if card.cost() > p.essence:
-		return "Needs %d Essence." % card.cost()
+	var tg = target if target != null else targets[0]
+	if ascend_cost(card, tg) > p.essence:
+		return "Needs %d Essence." % ascend_cost(card, tg)
 	return ""
 
 
@@ -352,8 +514,13 @@ func rite_targets(pi: int, card: DuelCard) -> Array:
 		"ally":
 			return players[pi].totems()
 		"foe_totem":
-			return opponent(pi).totems()
+			return targetable(opponent(pi).totems())
 	return []
+
+
+## Enemy Totems that can be singled out (Veiled ones can't).
+func targetable(totems: Array) -> Array:
+	return totems.filter(func(t): return not t.boons.has("veiled"))
 
 
 func rite_needs_target(card: DuelCard) -> bool:
@@ -367,8 +534,8 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 		return "That card isn't in your hand."
 	if not card.is_rite():
 		return "That isn't a Rite."
-	if card.cost() > p.essence:
-		return "Needs %d Essence." % card.cost()
+	if card_cost(pi, card) > p.essence:
+		return "Needs %d Essence." % card_cost(pi, card)
 	var tk: String = card.def.get("target", "none")
 	if rite_needs_target(card):
 		var ts := rite_targets(pi, card)
@@ -406,16 +573,16 @@ func ward_problem(pi: int, card: DuelCard) -> String:
 		return "That isn't a Ward."
 	if p.wards.size() >= p.ward_slots():
 		return "Your Ward slots are full."
-	if card.cost() > p.essence:
-		return "Needs %d Essence." % card.cost()
+	if card_cost(pi, card) > p.essence:
+		return "Needs %d Essence." % card_cost(pi, card)
 	return ""
 
 
 func shift_cost(pi: int) -> int:
 	var p: DuelPlayer = players[pi]
-	if p.free_shift or DuelRules.has_perk(p.attributes(), "swiftness"):
+	if p.free_shift or DuelRules.has_perk(p.attributes(), "swiftness") or law == "ixara":
 		return 0
-	return DuelRules.shift_cost
+	return DuelRules.shift_cost + (1 if law == "vaelith" else 0)
 
 
 func shift_problem(pi: int, totem, slot: int) -> String:
@@ -425,6 +592,9 @@ func shift_problem(pi: int, totem, slot: int) -> String:
 		return "You've already shifted this turn."
 	if totem == null or not (totem is DuelTotem) or totem.owner != pi or not p.totems().has(totem):
 		return "Choose one of your Totems."
+	for id in ["frozen", "rooted", "enraged", "possessed"]:
+		if totem.has_status(id):
+			return "%s is %s and can't Shift." % [totem.card_name(), DuelConditions.display_name(id)]
 	if slot < 0 or slot >= p.slots.size() or slot == totem.slot:
 		return "Choose a different slot."
 	if shift_cost(pi) > p.essence:
@@ -446,6 +616,12 @@ func ready_problem(pi: int, t) -> String:
 		return "%s is asleep." % t.card_name()
 	if t.stunned:
 		return "%s is stunned." % t.card_name()
+	if t.has_status("frozen"):
+		return "%s is frozen solid." % t.card_name()
+	if t.has_status("petrified"):
+		return "%s is turned to stone." % t.card_name()
+	if t.has_status("possessed"):
+		return "%s is possessed and won't obey you." % t.card_name()
 	return ""
 
 
@@ -461,19 +637,43 @@ func can_hit_life(pi: int, t: DuelTotem) -> bool:
 ## Everything this move could be aimed at: DuelTotems, LIFE or NONE.
 func attack_targets(pi: int, t: DuelTotem, i: int) -> Array:
 	var foe := opponent(pi)
+	var out: Array = []
 	match t.move_target(i):
 		"foe":
-			var out: Array = foe.totems()
+			out = targetable(foe.totems())
 			if can_hit_life(pi, t):
 				out.append(LIFE)
-			return out
 		"foe_totem":
-			return foe.totems()
+			out = targetable(foe.totems())
 		"ally":
-			return players[pi].totems()
+			return [] if t.has_status("enraged") else players[pi].totems()
 		"all_foes":
 			return [NONE] if not foe.totems().is_empty() else []
-	return [NONE]
+		_:
+			return [] if t.has_status("enraged") else [NONE]
+	return _restrict_targets(pi, t, out)
+
+
+## Rooted, Charmed, Terrified and Enraged narrow what a Totem may single out.
+func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
+	var foe := opponent(pi)
+	if t.has_status("rooted"):
+		out = out.filter(func(x): return (x is String and x == LIFE) or (x is DuelTotem and x.slot == t.slot))
+	for id in ["charmed", "terrified"]:
+		if t.has_status(id):
+			var c: Dictionary = t.condition_of(id)
+			var src := int(c.get("src_uid", -1))
+			out = out.filter(func(x): return not (x is DuelTotem and x.uid == src))
+			if id == "charmed" and int(c.get("src_owner", foe.index)) != pi:
+				out = out.filter(func(x): return not (x is String and x == LIFE))
+	if t.has_status("enraged"):
+		var foes := out.filter(func(x): return x is DuelTotem)
+		if not foes.is_empty():
+			var top := 0
+			for f in foes:
+				top = maxi(top, f.hp_left())
+			out = foes.filter(func(f): return f.hp_left() == top)
+	return out
 
 
 func move_problem(pi: int, t, i: int, target = null, check_target: bool = false) -> String:
@@ -482,6 +682,8 @@ func move_problem(pi: int, t, i: int, target = null, check_target: bool = false)
 		return r
 	if i < 0 or i >= t.moves().size():
 		return "Unknown move."
+	if t.has_status("silenced") and int(t.move(i).get("cost", 0)) > 0:
+		return "%s is silenced and can only Strike." % t.card_name()
 	var c: int = t.move_cost(i)
 	if c > players[pi].essence:
 		return "Needs %d Essence." % c
@@ -513,7 +715,7 @@ func summon_problem(pi: int, card: DuelCard, target = null) -> String:
 		return "Needs %d Essence." % summon_cost(pi, card)
 	var tk: String = card.def.move.get("target", "foe_totem")
 	if tk == "foe_totem":
-		var ts := opponent(pi).totems()
+		var ts := targetable(opponent(pi).totems())
 		if ts.is_empty():
 			return "There's no enemy Totem to strike."
 		if target != null and not ts.has(target):
@@ -529,6 +731,8 @@ func gift_problem(pi: int, target = null) -> String:
 	var p: DuelPlayer = players[pi]
 	if p.gift_used:
 		return "You've already used your Divine Gift this duel."
+	if law == "ironvault":
+		return "Ironvault's Ledger Law forbids Divine Gifts."
 	var foe := opponent(pi)
 	match p.gift():
 		"dawns_mercy":
@@ -549,6 +753,23 @@ func gift_problem(pi: int, target = null) -> String:
 		"recall":
 			if _recallable(p).is_empty():
 				return "Your discard pile is empty."
+		"contagion", "undertow":
+			if targetable(foe.totems()).is_empty():
+				return "Your opponent has no Totems you can single out."
+		"regrowth":
+			if not p.totems().any(func(t): return t.damage > 0):
+				return "None of your Totems need healing."
+		"star_chart":
+			if p.deck.is_empty():
+				return "Your deck is empty."
+		"forged_guard":
+			if p.guard() <= 0:
+				return "You have no Guard to double."
+		"unveil":
+			if foe.wards.is_empty():
+				return "Your opponent has no Wards."
+			if law == "nocthra" and blessed(foe.index):
+				return "Nocthra's Blessing hides their Wards."
 	return ""
 
 
@@ -609,6 +830,10 @@ func _act_call(pi: int, card: DuelCard, slot: int) -> void:
 	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
 	if p.free_shift:
 		t.hasted = true   # Ixara's Tempest
+	if law == "ixara" and blessed(pi) and p.totems_called == 0:
+		t.hasted = true   # Open Sky's Blessing
+	if law == "verdanthe" and blessed(pi):
+		t.bonus_hp += DuelLaws.spring_hp_bonus
 	p.slots[slot] = t
 	p.totems_called += 1
 	p.stats.totems_called += 1
@@ -631,7 +856,7 @@ func _act_ascend(pi: int, card: DuelCard, target: DuelTotem) -> void:
 	var p: DuelPlayer = players[pi]
 	if target == null:
 		target = ascend_targets(pi, card)[0]
-	_spend(p, card.cost())
+	_spend(p, ascend_cost(card, target))
 	p.hand.erase(card)
 	var from := target.card_name()
 	target.stack.append(card)
@@ -645,11 +870,15 @@ func _act_ascend(pi: int, card: DuelCard, target: DuelTotem) -> void:
 
 func _act_ward(pi: int, card: DuelCard) -> void:
 	var p: DuelPlayer = players[pi]
-	_spend(p, card.cost())
+	_spend(p, card_cost(pi, card))
 	p.hand.erase(card)
 	p.wards.append(card)
 	p.note_played(card.id)
-	_log("%s sets a Ward face down." % p.player_name, pi)
+	if law == "ysolde" and not blessed(pi):
+		face_up[card.uid] = true
+		_log("%s sets %s face up, as the Unveiling demands." % [p.player_name, card.card_name()], pi)
+	else:
+		_log("%s sets a Ward face down." % p.player_name, pi)
 	await _fx("fx_ward_set", [pi, card])
 
 
@@ -669,13 +898,18 @@ func _act_shift(pi: int, t: DuelTotem, slot: int) -> void:
 	else:
 		_log("%s shifts %s to another slot." % [p.player_name, t.card_name()], pi)
 	await _fx("fx_shift", [pi])
+	if t.has_status("confused"):
+		t.remove_status("confused")
+		_log("%s shakes off its confusion." % t.card_name(), pi)
+	await _bleed(t)
+	await _resolve_knockouts()
 
 
 # ----------------------------------------------------------------- rites ---
 
 func _act_rite(pi: int, card: DuelCard, target) -> void:
 	var p: DuelPlayer = players[pi]
-	_spend(p, card.cost())
+	_spend(p, card_cost(pi, card))
 	p.hand.erase(card)
 	p.stats.rites += 1
 	p.note_played(card.id)
@@ -696,14 +930,14 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 	if d.get("target", "none") == "all_foes":
 		for f in opponent(pi).totems():
 			if dmg > 0:
-				dealt += await _damage_totem(f, _scaled(dmg, f, card.element()), {"spill": true})
+				dealt += await _damage_totem(f, _scaled(dmg, f, card.element()), {"spill": true, "element": card.element()})
 			for e in effects:
 				if e.op == "status":
-					await _apply_status(f, e.status)
+					await _apply_status(f, e.status, null, pi)
 		effects = effects.filter(func(e): return e.op != "status")
 	elif target is DuelTotem and dmg > 0:
-		dealt = await _damage_totem(target, _scaled(dmg, target, card.element()), {"spill": true})
-	await _apply_effects(pi, null, target, effects, dealt)
+		dealt = await _damage_totem(target, _scaled(dmg, target, card.element()), {"spill": true, "element": card.element()})
+	await _apply_effects(pi, null, target, effects, dealt, true)
 	p.discard.append(card)
 	await _resolve_knockouts()
 
@@ -717,6 +951,10 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 	var amt := base + att.damage_bonus(i)
 	if players[att.owner].wrath:
 		amt += DuelRules.wrath_bonus
+	if att.has_status("terrified"):
+		amt = _half(amt)
+	if att.has_status("staggered"):
+		amt = _half(amt)
 	if defn is DuelTotem:
 		for e in effects:
 			if e.op == "bonus_if_status" and defn.conditions().has(e.status):
@@ -725,11 +963,28 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 	return amt
 
 
-## Applies the weakness multiplier (rounded to the nearest 10).
+## Applies the weakness multiplier (rounded to the nearest 10), then the
+## defender's conditions: Corroded, Marked and Soaked add to the hit and
+## Petrified halves it.
 func _scaled(amount: int, defn: DuelTotem, element: String) -> int:
-	if amount > 0 and defn != null and defn.weak_to(element):
-		return int(round(amount * DuelRules.weakness_mult / 10.0)) * 10
+	if amount <= 0 or defn == null:
+		return amount
+	if defn.weak_to(element):
+		amount = int(round(amount * DuelRules.weakness_mult / 10.0)) * 10
+	if defn.has_status("corroded"):
+		amount += DuelRules.corroded_bonus
+	if defn.has_status("marked"):
+		amount += DuelRules.marked_bonus
+	if defn.has_status("soaked") and (element == "storm" or element == "frost"):
+		amount += DuelRules.soaked_bonus
+	if defn.has_status("petrified"):
+		amount = _half(amount)
 	return amount
+
+
+## Half, rounded up to the next 10.
+static func _half(amount: int) -> int:
+	return int(ceil(amount / 20.0)) * 10
 
 
 func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
@@ -738,8 +993,31 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	var mv := t.move(i)
 	_spend(p, t.move_cost(i))
 	t.attacked = true
+	if t.boons.has("veiled"):
+		t.remove_boon("veiled")
 	if target == null:
 		target = NONE
+	# Confused: it may lash out at its own side instead
+	if t.has_status("confused"):
+		var cr := rng.randi_range(1, 20)
+		if cr <= DuelRules.confuse_fail:
+			_log("%s is confused (rolled %d) and strikes its own side!" % [t.card_name(), cr], pi)
+			await _fx("fx_roll", [pi, {"label": "%s is confused" % t.card_name(), "roll": cr, "mod": 0, "total": cr,
+				"index": 0, "bands": [], "text": "hits its own side"}])
+			await _strike_own_side(t, -1)
+			await _after_attack(t)
+			return
+	for fail_id in ["shocked", "blinded"]:
+		if t.has_status(fail_id):
+			var limit := DuelRules.shock_fail if fail_id == "shocked" else DuelRules.blind_fail
+			var fr := rng.randi_range(1, 20)
+			if fr <= limit:
+				_log("%s is %s (rolled %d): the attack %s." % [t.card_name(), DuelConditions.display_name(fail_id).to_lower(), fr,
+					"fails" if fail_id == "shocked" else "misses"], pi)
+				await _fx("fx_roll", [pi, {"label": "%s is %s" % [t.card_name(), DuelConditions.display_name(fail_id)],
+					"roll": fr, "mod": 0, "total": fr, "index": 0, "bands": [], "text": "fails" if fail_id == "shocked" else "misses"}])
+				await _after_attack(t)
+				return
 	var what := ""
 	if target is DuelTotem:
 		what = " on %s" % target.card_name()
@@ -763,7 +1041,7 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	if res.negated or t.is_knocked_out():
 		if res.negated:
 			_log("The attack is cancelled.", pi)
-		await _resolve_knockouts()
+		await _after_attack(t)
 		return
 
 	var base := int(mv.get("damage", 0))
@@ -788,22 +1066,89 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 		for f in foe.totems():
 			var amt := attack_amount(t, i, base, f, effects)
 			if amt > 0:
-				dealt += await _damage_totem(f, amt, {"attacker": t, "spill": true, "pierce": pierce})
+				dealt += await _damage_totem(f, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
 			for e in effects:
 				if e.op == "status":
-					await _apply_status(f, e.status)
+					await _apply_status(f, e.status, t)
 		effects = effects.filter(func(e): return e.op != "status")
 	elif target is DuelTotem and target.owner != pi:
 		var amt := attack_amount(t, i, base, target, effects)
 		if amt > 0:
-			dealt = await _damage_totem(target, amt, {"attacker": t, "spill": true, "pierce": pierce})
+			dealt = await _damage_totem(target, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
 			if target.has_keyword("thorns") and not t.is_knocked_out():
 				_log("%s is pricked by thorns." % t.card_name(), pi)
 				await _damage_totem(t, DuelRules.thorns_damage, {"source": "thorns", "attacker": target})
 	if over:
 		return
 	await _apply_effects(pi, t, target, effects, dealt)
+	await _after_attack(t)
+
+
+## What every attack leaves behind: Staggered and Empowered are used up, and
+## a Bleeding Totem bleeds.
+func _after_attack(t: DuelTotem) -> void:
+	if t.has_status("staggered"):
+		t.remove_status("staggered")
+	if t.boons.has("empowered"):
+		t.remove_boon("empowered")
+	await _bleed(t)
 	await _resolve_knockouts()
+
+
+func _bleed(t: DuelTotem) -> void:
+	if t != null and not t.is_knocked_out() and t.has_status("bleed"):
+		_log("%s bleeds." % t.card_name(), t.owner)
+		await _damage_totem(t, DuelRules.bleed_damage, {"source": "bleed"})
+
+
+## A Totem turned against its own side makes its free Strike at one of its
+## owner's other Totems, or its owner's Life if it stands alone. `chooser`
+## picks the target (-1: chosen at random, as when Confused).
+func _strike_own_side(t: DuelTotem, chooser: int) -> void:
+	var owner: DuelPlayer = players[t.owner]
+	var mv := t.move(0)
+	var base := int(mv.get("damage", 0))
+	var tk: String = mv.get("target", "foe")
+	if base <= 0 or not (tk == "foe" or tk == "foe_totem" or tk == "all_foes"):
+		_log("%s stands dazed." % t.card_name(), t.owner)
+		return
+	var others: Array = owner.totems().filter(func(x): return x != t and not x.is_knocked_out())
+	var target = LIFE
+	if not others.is_empty():
+		if chooser < 0:
+			target = others[rng.randi_range(0, others.size() - 1)]
+		else:
+			var picked: Array = await players[chooser].controller.choose_totems(self, chooser,
+				"Choose which of their Totems the possessed %s strikes." % t.card_name(), others, 1, 1)
+			target = picked[0] if not picked.is_empty() and others.has(picked[0]) else others[0]
+	await _fx("fx_attack", [t, 0, target])
+	if target is DuelTotem:
+		var amt := attack_amount(t, 0, base, target, mv.get("effects", []))
+		await _damage_totem(target, amt, {"attacker": t, "spill": false, "element": t.element()})
+		for e in mv.get("effects", []):
+			if e.op == "status":
+				await _apply_status(target, e.status, t)
+	else:
+		await _hit_life(t.owner, attack_amount(t, 0, base, null), {"attacker": t})
+	await _resolve_knockouts()
+
+
+## At the start of their owner's turn, Possessed Totems strike where their
+## possessor tells them to.
+func _possessed_strikes(p: DuelPlayer) -> void:
+	for t in p.totems():
+		if over:
+			return
+		if t.is_knocked_out() or not t.has_status("possessed"):
+			continue
+		var c: Dictionary = t.condition_of("possessed")
+		var who := int(c.get("src_owner", 1 - p.index))
+		if who < 0 or who == p.index:
+			who = 1 - p.index
+		_log("The possessed %s turns on its own side!" % t.card_name(), p.index)
+		await _strike_own_side(t, who)
+		await _bleed(t)
+		await _resolve_knockouts()
 
 
 func _act_summon(pi: int, card: DuelCard, target) -> void:
@@ -827,18 +1172,18 @@ func _act_summon(pi: int, card: DuelCard, target) -> void:
 	if mv.get("target", "foe_totem") == "all_foes":
 		for f in opponent(pi).totems():
 			if base > 0:
-				dealt += await _damage_totem(f, _scaled(base, f, card.element()), {"spill": true, "pierce": pierce})
+				dealt += await _damage_totem(f, _scaled(base, f, card.element()), {"spill": true, "pierce": pierce, "element": card.element()})
 			for e in effects:
 				if e.op == "status":
-					await _apply_status(f, e.status)
+					await _apply_status(f, e.status, null, pi)
 		effects = effects.filter(func(e): return e.op != "status")
 	elif target is DuelTotem:
 		if base > 0:
-			dealt = await _damage_totem(target, _scaled(base, target, card.element()), {"spill": true, "pierce": pierce})
+			dealt = await _damage_totem(target, _scaled(base, target, card.element()), {"spill": true, "pierce": pierce, "element": card.element()})
 		if effects.any(func(e): return e.op == "stun_others"):
 			for f in opponent(pi).totems():
 				if f != target:
-					await _apply_status(f, "stun")
+					await _apply_status(f, "stun", null, pi)
 	await _apply_effects(pi, null, target, effects, dealt)
 	p.spent.append(card)
 	_log("%s returns to the heavens." % card.card_name(), pi)
@@ -860,18 +1205,19 @@ func _act_gift(pi: int, target) -> void:
 				target = gift_targets(pi)[0]
 			await _heal(target, DuelRules.mercy_heal)
 			target.clear_conditions()
+			await _fx("fx_status", [target, ""])
 		"wrath":
 			p.wrath = true
 		"stillness":
 			var chosen: Array = await p.controller.choose_totems(self, pi, "Choose up to two enemy Totems to Stun.",
 				foe.totems(), 1, 2)
 			for t in chosen.slice(0, 2):
-				await _apply_status(t, "stun")
+				await _apply_status(t, "stun", null, pi)
 		"tempest":
 			p.essence += DuelRules.tempest_essence
 			p.free_shift = true
 		"whisper":
-			if not foe.wards.is_empty():
+			if not foe.wards.is_empty() and not (law == "nocthra" and blessed(foe.index)):
 				var names := []
 				for w in foe.wards:
 					names.append(w.card_name())
@@ -902,21 +1248,87 @@ func _act_gift(pi: int, target) -> void:
 			var drawn := await _draw(p, 3)
 			if not drawn.is_empty():
 				await _fx("fx_draw", [pi, drawn])
+		"contagion":
+			var chosen: Array = await p.controller.choose_totems(self, pi, "Choose up to two enemy Totems to Poison.",
+				targetable(foe.totems()), 1, 2)
+			for t in chosen.slice(0, 2):
+				await _apply_status(t, "poison", null, pi)
+		"regrowth":
+			for t in p.totems():
+				await _heal(t, 30)
+		"undertow":
+			var chosen: Array = await p.controller.choose_totems(self, pi, "Choose an enemy Totem for the undertow.",
+				targetable(foe.totems()), 1, 1)
+			for t in chosen.slice(0, 1):
+				await _undertow(t)
+		"star_chart":
+			var top: Array = p.deck.slice(maxi(0, p.deck.size() - 5))
+			top.reverse()
+			var chosen: Array = await p.controller.choose_cards(self, pi, "Choose the card you draw next.", top, 1, 1,
+				{"reason": "star_chart"})
+			for c in chosen.slice(0, 1):
+				if p.deck.has(c):
+					p.deck.erase(c)
+					p.deck.append(c)
+			p.fate_bonus = 2
+			_log("The stars align: +2 on %s Fate rolls this turn." % whose(p.player_name, true), pi)
+		"forged_guard":
+			p.guard_double = true
+			_log("%s Guard is doubled to %d until their next Dawn." % [whose(p.player_name), p.guard()], pi)
+		"unveil":
+			var names := []
+			for w in foe.wards:
+				face_up[w.uid] = true
+				names.append(w.card_name())
+			_log("Every Ward is unveiled: %s." % ", ".join(names), pi)
+			var chosen: Array = await p.controller.choose_cards(self, pi, "Choose a Ward to burn away.", foe.wards.duplicate(), 1, 1,
+				{"reason": "unveil"})
+			for w in chosen.slice(0, 1):
+				if foe.wards.has(w):
+					foe.wards.erase(w)
+					foe.discard.append(w)
+					_log("%s burns away." % w.card_name(), pi)
 	await _resolve_knockouts()
+
+
+## Maerith's Undertow: the Basic goes back to its owner's hand and any
+## Ascension cards on it are discarded.
+func _undertow(t: DuelTotem) -> void:
+	var owner: DuelPlayer = players[t.owner]
+	if not owner.totems().has(t):
+		return
+	owner.slots[t.slot] = null
+	owner.hand.append(t.stack[0])
+	for c in t.stack.slice(1):
+		owner.discard.append(c)
+	_log("%s is dragged back to %s hand." % [t.stack[0].card_name(), whose(owner.player_name, true)], t.owner)
+	await _fx("fx_ko", [t])
 
 
 # ================================================================ effects ===
 
-func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: int) -> void:
+func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: int, from_rite := false) -> void:
 	var p: DuelPlayer = players[pi]
 	var foe := opponent(pi)
+	var heal_bonus := DuelLaws.spring_heal_bonus if from_rite and law == "verdanthe" else 0
 	for e in effects:
 		if over:
 			return
 		match e.op:
 			"status":
 				if target is DuelTotem:
-					await _apply_status(target, e.status)
+					await _apply_status(target, e.status, source, pi)
+			"boon":
+				var who: Array = []
+				match e.get("who", "target"):
+					"self":
+						who = [source] if source != null else []
+					"allies":
+						who = p.totems()
+					_:
+						who = [target] if target is DuelTotem else []
+				for w in who:
+					await _give_boon(w, e.boon)
 			"heal":
 				match e.get("who", "self"):
 					"self":
@@ -924,13 +1336,14 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 							await _heal(source, int(e.amount))
 					"target":
 						if target is DuelTotem:
-							await _heal(target, int(e.amount))
+							await _heal(target, int(e.amount) + heal_bonus)
 					"allies":
 						for t in p.totems():
-							await _heal(t, int(e.amount))
+							await _heal(t, int(e.amount) + heal_bonus)
 			"cure":
 				if target is DuelTotem:
-					target.clear_conditions()
+					target.clear_conditions(e.get("kind", "all"))
+					await _fx("fx_status", [target, ""])
 			"splash_random":
 				var others := []
 				for f in foe.totems():
@@ -1007,21 +1420,39 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 					await _bounce(target)
 
 
-func _apply_status(t: DuelTotem, status: String) -> void:
-	if t == null or t.is_knocked_out():
+## Puts a condition on a Totem. `source` is the Totem that caused it (for
+## Charmed and Terrified) and `src_owner` the duellist behind it.
+func _apply_status(t: DuelTotem, status: String, source = null, src_owner: int = -1) -> void:
+	if t == null or t.is_knocked_out() or not DuelConditions.is_condition(status):
 		return
-	match status:
-		"burn":
-			t.burn_turns = DuelRules.burn_turns
-		"poison":
-			t.poisoned = true
-		"stun":
-			t.stunned = true
-			t.stun_turn = turn
-		"sleep":
-			t.asleep = true
-	_log("%s is %s." % [t.card_name(), DuelCards.STATUS_NAMES[status]], t.owner)
+	if t.boons.has("blessed"):
+		_log("%s is Blessed and shrugs off being %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
+		return
+	if t.is_boss and status in DuelConditions.BOSS_IMMUNE:
+		_log("%s can't be %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
+		return
+	if status == "burn" and t.has_status("soaked"):
+		_log("%s is too wet to burn." % t.card_name(), t.owner)
+		return
+	if status == "poison" and law == "vexa" and blessed(t.owner):
+		_log("Vexa's Blessing keeps %s from the plague." % t.card_name(), t.owner)
+		return
+	var src_uid := -1
+	if source is DuelTotem:
+		src_uid = source.uid
+		if src_owner < 0:
+			src_owner = source.owner
+	t.set_status(status, turn, src_uid, src_owner)
+	_log("%s is %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
 	await _fx("fx_status", [t, status])
+
+
+func _give_boon(t: DuelTotem, boon: String) -> void:
+	if t == null or t.is_knocked_out() or not DuelConditions.is_boon(boon):
+		return
+	t.add_boon(boon, turn)
+	_log("%s is %s." % [t.card_name(), DuelConditions.display_name(boon)], t.owner)
+	await _fx("fx_status", [t, boon])
 
 
 func _bounce(t: DuelTotem) -> void:
@@ -1053,9 +1484,12 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 		if att != null:
 			t.last_hit_by = att
 		var src: String = info.get("source", "")
-		if t.asleep and src != "burn" and src != "poison":
-			t.asleep = false
+		if t.asleep and not src in ["burn", "poison", "bleed", "curse", "doom"]:
+			t.remove_status("sleep")
 			_log("%s wakes up." % t.card_name(), t.owner)
+		if t.has_status("frozen") and info.get("element", "") == "fire":
+			t.remove_status("frozen")
+			_log("The fire thaws %s." % t.card_name(), t.owner)
 		_log("%s takes %d damage." % [t.card_name(), amount], t.owner)
 	await _fx("fx_totem_hit", [t, amount, info.merged({"absorbed": absorbed})])
 	var overflow := amount - before
@@ -1097,6 +1531,10 @@ func _check_life(pi: int) -> void:
 func _heal(t: DuelTotem, amount: int) -> void:
 	if t == null or t.is_knocked_out():
 		return
+	if t.has_status("cursed"):
+		_log("The curse turns %s's healing into harm!" % t.card_name(), t.owner)
+		await _damage_totem(t, amount, {"source": "curse"})
+		return
 	var h := mini(amount, t.damage)
 	if h <= 0:
 		return
@@ -1125,6 +1563,7 @@ func _resolve_knockouts() -> void:
 					continue
 				found = true
 				p.slots[t.slot] = null
+				p.fallen.append(t.stage())
 				for c in t.stack:
 					p.discard.append(c)
 				_log("%s is knocked out!" % t.card_name(), pi)
@@ -1171,7 +1610,9 @@ func _spring_wards(owner_pi: int, trigger: String, ctx: Dictionary) -> Dictionar
 				"damage_attacker":
 					await _damage_totem(ctx.get("attacker"), int(e.amount), {"source": "ward"})
 				"status_attacker":
-					await _apply_status(ctx.get("attacker"), e.status)
+					await _apply_status(ctx.get("attacker"), e.status, null, owner_pi)
+				"status_called":
+					await _apply_status(ctx.get("called"), e.status, null, owner_pi)
 				"damage_called":
 					await _damage_totem(ctx.get("called"), int(e.amount), {"source": "ward"})
 				"bounce_called":
@@ -1202,7 +1643,7 @@ func _ward_applies(w: DuelCard, ctx: Dictionary) -> bool:
 				var a = ctx.get("attacker")
 				if a == null or not (a is DuelTotem) or a.is_knocked_out():
 					return false
-			"damage_called", "bounce_called":
+			"damage_called", "bounce_called", "status_called":
 				var c = ctx.get("called")
 				if c == null or not (c is DuelTotem) or c.is_knocked_out():
 					return false
@@ -1223,6 +1664,8 @@ func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dicti
 		p.foresight = false
 	else:
 		roll = rng.randi_range(1, 20)
+		if roll == 19 and law == "aster" and blessed(pi):
+			roll = 20
 	var info := band_for(bands, roll, mod)
 	info["label"] = label
 	info["bands"] = bands
@@ -1258,7 +1701,9 @@ func fate_mod(pi: int, affinity: String) -> int:
 	var m := DuelRules.fate_mod(p.attribute(affinity)) if affinity != "" else 0
 	if DuelRules.has_perk(p.attributes(), "insight"):
 		m += 1
-	return m
+	if law == "aster":
+		m += 1
+	return m + p.fate_bonus
 
 
 ## Which band a roll lands in. A natural 1 is always the lowest band and a

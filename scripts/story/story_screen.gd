@@ -93,12 +93,9 @@ func ask_name(default_name: String = "Ash") -> String:
 	return n if n != "" else default_name
 
 
-## Show the three starter decks; returns the chosen deck id.
+## Bram's chest: the four starter decks (v2 rules). Returns the chosen deck id.
 func choose_starter() -> String:
-	var ids: Array = []
-	for id in SigilDB.DECKS:
-		if SigilDB.DECKS[id].get("starter", false):
-			ids.append(id)
+	var ids: Array = DuelCards.DECKS.keys()
 	var holder := Control.new()
 	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(holder)
@@ -110,54 +107,61 @@ func choose_starter() -> String:
 	head.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
 	head.offset_left = -800
 	head.offset_right = 800
-	head.offset_top = 40
-	head.offset_bottom = 120
+	head.offset_top = 30
+	head.offset_bottom = 110
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	holder.add_child(head)
 	var row := HBoxContainer.new()
 	row.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
-	row.offset_left = -900
-	row.offset_right = 900
-	row.offset_top = -380
-	row.offset_bottom = 460
+	row.offset_left = -930
+	row.offset_right = 930
+	row.offset_top = -400
+	row.offset_bottom = 470
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 50)
+	row.add_theme_constant_override("separation", 26)
 	holder.add_child(row)
 	var chosen := [""]
 	for id in ids:
-		var d: Dictionary = SigilDB.DECKS[id]
+		var d: Dictionary = DuelCards.DECKS[id]
 		var col := VBoxContainer.new()
-		col.custom_minimum_size = Vector2(500, 0)
-		col.add_theme_constant_override("separation", 14)
+		col.custom_minimum_size = Vector2(440, 0)
+		col.add_theme_constant_override("separation", 12)
 		row.add_child(col)
-		var card := BattleWidgets.HandCard.new()
-		card.card = Card.new(0, d.mascot, 0)
-		card.custom_minimum_size = Vector2(330, 462)
+		var card := StarterCard.new()
+		card.card_id = d.mascot
+		card.custom_minimum_size = Vector2(300, 420)
 		card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		card.playable = true
 		col.add_child(card)
-		var nm := UITheme.label(d.name.to_upper(), 44, UITheme.GOLD, "display_bold")
+		var nm := UITheme.label(d.name.to_upper(), 40, UITheme.GOLD, "display_bold")
 		nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		col.add_child(nm)
 		var els := ElementRow.new()
 		els.elements = d.elements
 		els.custom_minimum_size = Vector2(0, 50)
 		col.add_child(els)
-		var desc := UITheme.label(d.desc, 28, UITheme.TEXT)
+		var desc := UITheme.label(d.desc, 24, UITheme.TEXT)
 		desc.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		desc.custom_minimum_size = Vector2(480, 0)
+		desc.custom_minimum_size = Vector2(420, 0)
 		col.add_child(desc)
-		var pick := UITheme.button("Choose " + d.name, true, 420)
+		var pick := UITheme.button("Choose " + d.name, true, 380)
 		pick.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		var deck_id: String = id
 		pick.pressed.connect(func() -> void: chosen[0] = deck_id)
-		card.tapped.connect(func(_v) -> void: _zoom(d.mascot))
 		col.add_child(pick)
 	while chosen[0] == "":
 		await get_tree().process_frame
 	holder.queue_free()
 	return chosen[0]
+
+
+## A v2 card face, for Bram's chest.
+class StarterCard:
+	extends Control
+	var card_id := ""
+
+	func _draw() -> void:
+		DuelCardFace.draw_card(self, Rect2(Vector2.ZERO, size), card_id, {"compact": false})
 
 
 func _zoom(id: String) -> void:
@@ -241,7 +245,7 @@ class StoryBG:
 				var cx := r.size.x * 0.5
 				for i in 8:
 					var x := cx + (i - 3.5) * r.size.x * 0.1
-					var el := "any" if i == 7 else String(Lore.GODS[Lore.GODS.keys()[i]].element)
+					var el := "any" if i == 7 else String(Lore.GODS[Lore.GREAT_GODS[i]].element)
 					draw_rect(Rect2(x - 26, base - 260, 52, 260), Color("1a1320"))
 					var bc := Lore.color(el, 1).darkened(0.2) if i < 7 else Color("d8d4c8")
 					draw_colored_polygon(PackedVector2Array([Vector2(x - 40, base - 250), Vector2(x + 40, base - 250), Vector2(x + 40, base - 110), Vector2(x, base - 80), Vector2(x - 40, base - 110)]), bc)

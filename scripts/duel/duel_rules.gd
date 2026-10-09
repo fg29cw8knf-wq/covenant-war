@@ -28,8 +28,22 @@ static var weakness_mult := 1.5
 static var burn_damage := 20
 static var burn_turns := 2
 static var poison_damage := 10
-static var wake_roll := 11            # a sleeping Totem wakes on this or higher
+static var wake_roll := 11            # breaking free (Sleep, Frozen, Possessed) needs this or higher
 static var thorns_damage := 10
+# v2 conditions (see DuelConditions)
+static var corroded_bonus := 10       # every hit on a Corroded Totem
+static var bleed_damage := 10         # each time a Bleeding Totem attacks or Shifts
+static var shock_fail := 8            # a Shocked Totem's attack fails on 1 to this
+static var blind_fail := 10           # a Blinded Totem's attack misses on 1 to this
+static var confuse_fail := 7          # a Confused Totem hits its own side on 1 to this
+static var soaked_bonus := 20         # Storm and Frost hits on a Soaked Totem
+static var enraged_bonus := 20
+static var marked_bonus := 20
+static var doom_dawns := 3            # a Doomed Totem falls at its owner's third Dawn
+# boons
+static var shielded_amount := 30
+static var empowered_bonus := 20
+static var regen_heal := 10
 
 # --- attribute perks (the "7+" column) ------------------------------------------
 static var perk_level := 7
@@ -54,7 +68,8 @@ static var _defaults := {}
 static func tunables() -> Array:
 	return ["life_base", "life_per_attribute", "guard_min_hit", "fatigue", "essence_cap",
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
-		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal"]
+		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
+		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns"]
 
 
 static func snapshot() -> Dictionary:
@@ -80,6 +95,20 @@ static func get_value(key: String):
 		"shift_cost": return shift_cost
 		"wrath_bonus": return wrath_bonus
 		"mercy_heal": return mercy_heal
+		"corroded_bonus": return corroded_bonus
+		"bleed_damage": return bleed_damage
+		"shock_fail": return shock_fail
+		"blind_fail": return blind_fail
+		"confuse_fail": return confuse_fail
+		"soaked_bonus": return soaked_bonus
+		"enraged_bonus": return enraged_bonus
+		"marked_bonus": return marked_bonus
+		"doom_dawns": return doom_dawns
+		"shielded_amount": return shielded_amount
+		"empowered_bonus": return empowered_bonus
+		"regen_heal": return regen_heal
+		"wake_roll": return wake_roll
+		"burn_turns": return burn_turns
 	return null
 
 
@@ -101,6 +130,20 @@ static func set_value(key: String, v) -> void:
 		"shift_cost": shift_cost = int(v)
 		"wrath_bonus": wrath_bonus = int(v)
 		"mercy_heal": mercy_heal = int(v)
+		"corroded_bonus": corroded_bonus = int(v)
+		"bleed_damage": bleed_damage = int(v)
+		"shock_fail": shock_fail = int(v)
+		"blind_fail": blind_fail = int(v)
+		"confuse_fail": confuse_fail = int(v)
+		"soaked_bonus": soaked_bonus = int(v)
+		"enraged_bonus": enraged_bonus = int(v)
+		"marked_bonus": marked_bonus = int(v)
+		"doom_dawns": doom_dawns = int(v)
+		"shielded_amount": shielded_amount = int(v)
+		"empowered_bonus": empowered_bonus = int(v)
+		"regen_heal": regen_heal = int(v)
+		"wake_roll": wake_roll = int(v)
+		"burn_turns": burn_turns = int(v)
 
 
 static func reset() -> void:

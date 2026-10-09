@@ -7,7 +7,8 @@ extends Control
 signal closed
 
 const DESIGN := Vector2(1920, 1080)
-const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
+const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith",
+	"vexa", "verdanthe", "maerith", "aster", "hethrin", "ysolde"]
 const LEVELS := {"Easy": 0.45, "Normal": 0.8, "Hard": 1.0}
 
 var cfg := {
@@ -15,6 +16,7 @@ var cfg := {
 	"patron": ["", "solmaris"],
 	"level": [4, 4],
 	"difficulty": "Normal",
+	"law": "",
 }
 var stage: Control
 var _side_boxes := [null, null]
@@ -72,7 +74,7 @@ func _build() -> void:
 	var t := UITheme.label("Duel Lab", 54, UITheme.GOLD, "display_bold", 8)
 	t.position = Vector2(60, 18)
 	stage.add_child(t)
-	var sub := UITheme.label("Test the v1 duel rules. Pick decks, tweak the numbers, then duel the computer or watch it play itself.", 26, UITheme.TEXT_DIM)
+	var sub := UITheme.label("Test the v2 duel rules. Pick decks, patrons and a Kingdom Law, then duel the computer or watch it play itself.", 26, UITheme.TEXT_DIM)
 	sub.position = Vector2(64, 88)
 	stage.add_child(sub)
 	for side in 2:
@@ -87,6 +89,7 @@ func _build() -> void:
 		_side_boxes[side] = box
 		_fill_side(side)
 	_build_tuning()
+	_build_law()
 	var row := HBoxContainer.new()
 	row.position = Vector2(60, 956)
 	row.add_theme_constant_override("separation", 20)
@@ -262,7 +265,7 @@ func _build_tuning() -> void:
 		DuelRules.reset()
 		_refresh_tuning())
 	head.add_child(reset)
-	for key in DuelRules.tunables():
+	for key in TUNE_LABELS:
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 8)
 		v.add_child(row)
@@ -285,6 +288,52 @@ func _build_tuning() -> void:
 		row.add_child(p)
 		_tune_rows[key] = val
 	_refresh_tuning()
+
+
+## The Kingdom Law both duellists fight under (v2 rules).
+func _build_law() -> void:
+	var row := HBoxContainer.new()
+	row.position = Vector2(1320, 848)
+	row.size = Vector2(540, 70)
+	row.add_theme_constant_override("separation", 12)
+	stage.add_child(row)
+	var l := UITheme.label("Kingdom Law", 24, UITheme.TEXT_DIM, "bold")
+	row.add_child(l)
+	var pick := OptionButton.new()
+	pick.custom_minimum_size = Vector2(360, 62)
+	pick.add_theme_font_size_override("font_size", 22)
+	var ids: Array = [""] + DuelLaws.ids()
+	for i in ids.size():
+		var id: String = ids[i]
+		var label := "None (open ground)" if id == "" else "%s · %s" % [DuelLaws.law_name(id), DuelLaws.LAWS[id].place]
+		pick.add_item(label, i)
+		if id == cfg.get("law", ""):
+			pick.select(i)
+	pick.item_selected.connect(func(i: int) -> void:
+		cfg.law = ids[i]
+		_changed(0)
+		_show_law())
+	row.add_child(pick)
+	_law_text = UITheme.label("", 19, UITheme.TEXT)
+	_law_text.position = Vector2(1324, 912)
+	_law_text.size = Vector2(536, 40)
+	_law_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stage.add_child(_law_text)
+	_show_law()
+
+
+var _law_text: Label
+
+
+func _show_law() -> void:
+	if _law_text == null:
+		return
+	var id: String = cfg.get("law", "")
+	if id == "":
+		_law_text.text = ""
+		return
+	var bl := DuelLaws.describe_blessing(id)
+	_law_text.text = DuelLaws.describe(id) + (("  Sworn to %s: %s" % [Lore.GODS[id].name, bl]) if bl != "" and Lore.GODS.has(id) else "")
 
 
 func _nudge(key: String, dir: int) -> void:
@@ -320,6 +369,7 @@ func _play(watch: bool) -> void:
 		"profiles": [profile(0), profile(1)],
 		"ai": [watch, true],
 		"difficulty": LEVELS.get(cfg.difficulty, 0.8),
+		"law": cfg.get("law", ""),
 	})
 	layer.add_child(_screen)
 	var r: String = await _screen.finished
@@ -340,6 +390,7 @@ func _run_tests() -> void:
 	var first := 0
 	for g in n:
 		var game := DuelGame.new()
+		game.law = cfg.get("law", "")
 		game.setup(cfg.deck.duplicate(), ["A", "B"], [DuelAI.new(1.0, g * 2 + 1), DuelAI.new(LEVELS.get(cfg.difficulty, 0.8), g * 2 + 2)],
 			[profile(0), profile(1)], 7000 + g)
 		await game.run()
