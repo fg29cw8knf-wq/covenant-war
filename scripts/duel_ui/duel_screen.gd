@@ -416,6 +416,10 @@ func _leave(result: String) -> void:
 # ================================================================== start ===
 
 func _start() -> void:
+	if Game.settings.get("debug_autoplay", false) and spec.get("story", false):
+		spec["ai"] = [true, true]   # automated tests: the computer plays the player's side too
+		spec["speed"] = 20.0
+		speed = 20.0
 	var ai_flags: Array = spec.get("ai", [false, true])
 	me = 0
 	rival = 1
@@ -1942,7 +1946,7 @@ func _show_result(r: String) -> String:
 	var st := UITheme.label("%d turns  ·  your Life %d  ·  their Life %d  ·  knockouts %d – %d" % [game.turn, maxi(0, p.life), maxi(0, q.life), p.stats.kos, q.stats.kos], 26, UITheme.TEXT_DIM)
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(st)
-	if r == "won" and not _watching():
+	if r == "won" and (not _watching() or Game.settings.get("debug_autoplay", false)):
 		for line in _reward_lines():
 			var rl := UITheme.label(line, 28, UITheme.GOLD)
 			rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER

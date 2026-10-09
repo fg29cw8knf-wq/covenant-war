@@ -302,19 +302,19 @@ func _status_value(game: DuelGame, f: DuelTotem, status: String) -> float:
 		"poison": v = DuelRules.poison_damage * 2.5
 		"corroded": v = DuelRules.corroded_bonus * 2.5
 		"bleed": v = DuelRules.bleed_damage * 2.0
-		"frozen": v = thr * 1.1
+		"frozen": v = thr * 1.4
 		"shocked": v = thr * 0.7
 		"soaked": v = 10.0
 		"rooted": v = 12.0 + thr * 0.2
 		"petrified": v = thr * 1.0 - 20.0
 		"staggered": v = thr * 0.5
-		"blinded": v = thr * 0.5
+		"blinded": v = thr * 0.8
 		"sleep": v = thr * 1.0
 		"stun": v = thr * 0.8
 		"confused": v = thr * 0.7 + 10.0
-		"charmed": v = thr * 0.5
+		"charmed": v = thr * 0.8
 		"terrified": v = thr * 0.6
-		"enraged": v = 5.0
+		"enraged": v = 14.0 - thr * 0.1
 		"silenced": v = maxf(0.0, thr - _strike_threat(f)) * 0.9
 		"possessed": v = thr * 1.0 + 25.0
 		"hexed": v = 12.0
@@ -671,7 +671,7 @@ func _gift_option(game: DuelGame, pi: int) -> Dictionary:
 		"whisper":
 			v = 22.0 + foe.wards.size() * 5.0 if foe.hand.size() >= 3 else 0.0
 		"foresight":
-			v = 34.0 if p.hand.size() <= 3 else 0.0
+			v = 26.0 if p.hand.size() <= 3 else 0.0
 		"recall":
 			var good := 0
 			for c in p.discard:
@@ -679,41 +679,34 @@ func _gift_option(game: DuelGame, pi: int) -> Dictionary:
 					good += 1
 			v = 36.0 if good >= 2 and p.hand.size() <= 4 else 0.0
 		"unbound":
-			v = 45.0 if p.hand.size() <= 2 else 0.0
+			v = 32.0 if p.hand.size() <= 2 else 0.0
 		"contagion":
-			var vals := []
-			for t in game.targetable(foe.totems()):
-				vals.append(_status_value(game, t, "poison"))
-			vals.sort()
-			vals.reverse()
 			v = 0.0
-			for i in mini(2, vals.size()):
-				v += vals[i]
-			v = v if v >= 40.0 else 0.0
+			for t in foe.totems():
+				v += 10.0 + _status_value(game, t, "poison")
+			v = v if v >= 50.0 else 0.0
 		"regrowth":
 			v = 0.0
 			for t in p.totems():
-				v += minf(30.0, float(t.damage))
-			v = v if v >= 50.0 else 0.0
+				v += minf(40.0, float(t.damage)) + (15.0 if not t.cond("body").is_empty() else 0.0)
+			v = v if v >= 55.0 else 0.0
 		"undertow":
 			v = 0.0
-			for t in game.targetable(foe.totems()):
-				v = maxf(v, _totem_value(game, 1 - pi, t) * 0.7 + (t.stack.size() - 1) * 18.0 + t.damage * 0.3)
-			v = v if v >= 45.0 else 0.0
+			for t in foe.totems():
+				v += _totem_value(game, 1 - pi, t) * 0.6 + (t.stack.size() - 1) * 18.0 - t.damage * 0.3
+			v = v if v >= 70.0 else 0.0
 		"star_chart":
-			v = 0.0
+			v = 22.0 + (14.0 if p.hand.size() <= 3 else 0.0)
 			for t in p.totems():
 				for i in t.moves().size():
 					if t.move(i).has("fate") and game.move_problem(pi, t, i) == "":
-						v += 10.0
-			v += 8.0
-			v = v if v >= 25.0 else 0.0
+						v += 8.0
 		"forged_guard":
 			var attackers := 0
 			for t in foe.totems():
 				attackers += 1
-			v = p.guard() * attackers * 2.5 if foe.life > p.life else p.guard() * attackers * 1.5
-			v = v if v >= 25.0 else 0.0
+			v = p.guard() * attackers * 2.0 + p.totems().size() * 30.0 * (0.6 if attackers > 0 else 0.2)
+			v = v if v >= 40.0 else 0.0
 		"unveil":
 			v = 26.0 + foe.wards.size() * 6.0
 	if v <= 0.0:

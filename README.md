@@ -18,7 +18,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `assets/sfx/` | Sound effects. |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
-## The Duel Lab (new duel rules, v1)
+## The Duel Lab (duel rules v2)
 
 The card battle is being rebuilt to the v1 rules (three Totem slots a side,
 Life, Essence, Fate dice, Wards, Ascension). It lives in its own folders and
@@ -30,7 +30,7 @@ godot -- --lab
 
 | Folder | What's in it |
 | --- | --- |
-| `scripts/duel/` | The v1 rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`) and the computer duellist (`duel_ai.gd`). No graphics code. |
+| `scripts/duel/` | The rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`), the computer duellist (`duel_ai.gd`), the 24 conditions and 6 boons (`duel_conditions.gd`), the Kingdom Laws and Blessings (`duel_laws.gd`), and Resonance, Rank and Attunement (`duel_rewards.gd`). No graphics code. |
 | `scripts/duel_ui/` | The Duel Lab set-up screen, the duel screen, card faces and the pieces they're built from. |
 
 ```sh
@@ -38,7 +38,17 @@ godot --headless --script res://tests/duel_sim.gd -- 2000            # balance: 
 godot --headless --script res://tests/duel_sim.gd -- 2000 --cards    # plus win rate when each card is played
 godot --headless --script res://tests/duel_log.gd -- emberstorm veilwild 3   # the full log of one duel
 godot --headless res://tests/duel_monkey.tscn -- 6                   # random taps through the duel screen
+godot --headless --script res://tests/deck_rate.gd -- veilwild 100   # one deck against the field (+card/-card to swap)
+godot --headless --script res://tests/condition_probe.gd -- 80       # how strong each condition and boon card is
+godot --headless --script res://tests/law_sim.gd -- 400              # every Kingdom Law against every deck
+godot --headless --script res://tests/patron_sim.gd -- 200           # each patron god, and each Blessing under its own Law
+godot --headless --script res://tests/rewards_test.gd                # Resonance, Rank, Codex and Attunement
+godot --headless --script res://tests/load_all.gd                    # every script loads
 ```
+
+The rules are written up in the "Duel Rules v2" Claude doc, and the story in the
+"Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
+god's Law.
 
 **Play it on a phone:** https://fg29cw8knf-wq.github.io/covenant-war/ (turn the phone sideways; in
 Safari use Share > Add to Home Screen for a full-screen app icon). Rebuild it with `tools/build_web.sh`

@@ -37,7 +37,9 @@ static var shock_fail := 8            # a Shocked Totem's attack fails on 1 to t
 static var blind_fail := 10           # a Blinded Totem's attack misses on 1 to this
 static var confuse_fail := 7          # a Confused Totem hits its own side on 1 to this
 static var soaked_bonus := 20         # Storm and Frost hits on a Soaked Totem
-static var enraged_bonus := 20
+static var enraged_bonus := 10       # an Enraged Totem deals this much more...
+static var enraged_exposed := 20      # ...and takes this much more from every hit
+static var frozen_roll := 14          # a Frozen Totem breaks free on this or higher
 static var marked_bonus := 20
 static var doom_dawns := 3            # a Doomed Totem falls at its owner's third Dawn
 # boons
@@ -69,7 +71,7 @@ static func tunables() -> Array:
 	return ["life_base", "life_per_attribute", "guard_min_hit", "fatigue", "essence_cap",
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
-		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns"]
+		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns"]
 
 
 static func snapshot() -> Dictionary:
@@ -104,6 +106,8 @@ static func get_value(key: String):
 		"enraged_bonus": return enraged_bonus
 		"marked_bonus": return marked_bonus
 		"doom_dawns": return doom_dawns
+		"enraged_exposed": return enraged_exposed
+		"frozen_roll": return frozen_roll
 		"shielded_amount": return shielded_amount
 		"empowered_bonus": return empowered_bonus
 		"regen_heal": return regen_heal
@@ -139,6 +143,8 @@ static func set_value(key: String, v) -> void:
 		"enraged_bonus": enraged_bonus = int(v)
 		"marked_bonus": marked_bonus = int(v)
 		"doom_dawns": doom_dawns = int(v)
+		"enraged_exposed": enraged_exposed = int(v)
+		"frozen_roll": frozen_roll = int(v)
 		"shielded_amount": shielded_amount = int(v)
 		"empowered_bonus": empowered_bonus = int(v)
 		"regen_heal": regen_heal = int(v)

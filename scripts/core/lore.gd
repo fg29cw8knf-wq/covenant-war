@@ -103,12 +103,12 @@ const GIFTS := {
 	"whisper": {"name": "Whisper", "text": "Look at your opponent's hand and discard one card from it."},
 	"foresight": {"name": "Foresight", "text": "Draw 2 cards. Your next coin flip this duel lands on heads."},
 	"recall": {"name": "Rune of Recall", "text": "Put up to 2 cards from your discard pile into your hand."},
-	"unbound": {"name": "Unbound Will", "text": "Draw 3 cards. (The gift of the Unsworn, who kneel to no god.)"},
-	"contagion": {"name": "Contagion", "text": "Poison up to two enemy Totems."},
-	"regrowth": {"name": "Regrowth", "text": "Heal 30 damage from every one of your Totems."},
-	"undertow": {"name": "Undertow", "text": "Return one enemy Totem to its owner's hand."},
-	"star_chart": {"name": "Star Chart", "text": "Choose which of your top 5 cards comes next; +2 on your Fate rolls this turn."},
-	"forged_guard": {"name": "Forged Guard", "text": "Your Guard is doubled until your next Dawn."},
+	"unbound": {"name": "Unbound Will", "text": "Draw 2 cards. (The gift of the Unsworn, who kneel to no god.)"},
+	"contagion": {"name": "Contagion", "text": "Every enemy Totem takes 10 damage and is Poisoned."},
+	"regrowth": {"name": "Regrowth", "text": "Heal 40 damage from every one of your Totems and clear their Body conditions."},
+	"undertow": {"name": "Undertow", "text": "Sweep every enemy Totem back to its owner's hand."},
+	"star_chart": {"name": "Star Chart", "text": "Draw any two of your top 5 cards; +2 on your Fate rolls this turn."},
+	"forged_guard": {"name": "Forged Guard", "text": "Shield each of your Totems for 30, and double your Guard until your next Dawn."},
 	"unveil": {"name": "Unveil", "text": "Turn every enemy Ward face up, then destroy one."},
 }
 

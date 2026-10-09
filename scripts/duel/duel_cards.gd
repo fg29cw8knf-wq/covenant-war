@@ -120,7 +120,7 @@ const CARDS := {
 	# =================================================================== TIDE
 	"brookfin": {
 		"kind": "totem", "name": "Brookfin", "element": "tide", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 60, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
+		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Splash", "cost": 0, "damage": 10},
 			{"name": "Undertow", "cost": 1, "damage": 30, "effects": [{"op": "heal", "who": "self", "amount": 10}]},
@@ -170,7 +170,7 @@ const CARDS := {
 	# ================================================================ VERDANT
 	"mossling": {
 		"kind": "totem", "name": "Mossling", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 60, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
+		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Sap", "cost": 0, "damage": 10, "effects": [{"op": "heal", "who": "self", "amount": 10}]},
 			{"name": "Vine Snare", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -191,7 +191,7 @@ const CARDS := {
 	},
 	"bloomsprite": {
 		"kind": "totem", "name": "Bloomsprite", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 40, "affinity": "insight", "keywords": ["channel"], "attuned": {"min": 5, "draw": 1},
+		"hp": 50, "affinity": "insight", "keywords": ["channel"], "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Petal Mend", "cost": 0, "damage": 0, "target": "ally",
 				"effects": [{"op": "heal", "who": "target", "amount": 30}]},
@@ -292,7 +292,7 @@ const CARDS := {
 	# ================================================================ PSYCHIC
 	"dreamfox": {
 		"kind": "totem", "name": "Dreamfox", "element": "psychic", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 60, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
+		"hp": 70, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Psy Nip", "cost": 0, "damage": 10},
 			{"name": "Hypnotic Gaze", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -304,7 +304,7 @@ const CARDS := {
 	},
 	"veilfox": {
 		"kind": "totem", "name": "Veilfox", "element": "psychic", "tier": 2, "stage": 1,
-		"ascends_from": "dreamfox", "cost": 2, "hp": 100, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
+		"ascends_from": "dreamfox", "cost": 2, "hp": 110, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Mind Lash", "cost": 0, "damage": 30},
 			{"name": "Mirage", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "confused"}]},
@@ -313,7 +313,7 @@ const CARDS := {
 	},
 	"somnowl": {
 		"kind": "totem", "name": "Somnowl", "element": "psychic", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 70, "affinity": "insight", "keywords": ["channel"],
+		"hp": 80, "affinity": "insight", "keywords": ["channel"],
 		"moves": [
 			{"name": "Hoot", "cost": 0, "damage": 20},
 			{"name": "Night Screech", "cost": 2, "damage": 20, "target": "all_foes"},
@@ -322,7 +322,7 @@ const CARDS := {
 	},
 	"thought_eater": {
 		"kind": "totem", "name": "Thought Eater", "element": "psychic", "tier": 3, "stage": 0, "cost": 4,
-		"hp": 110, "affinity": "intellect", "attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
+		"hp": 120, "affinity": "intellect", "attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
 		"moves": [
 			{"name": "Mind Rend", "cost": 0, "damage": 30},
 			{"name": "Devour Thought", "cost": 2, "damage": 60, "effects": [{"op": "discard_random", "count": 1}]},
@@ -332,7 +332,7 @@ const CARDS := {
 	# ================================================================== VENOM
 	"blightrat": {
 		"kind": "totem", "name": "Blightrat", "element": "venom", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 60, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
+		"hp": 70, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Gnaw", "cost": 0, "damage": 10},
 			{"name": "Plague Bite", "cost": 1, "damage": 20, "effects": [{"op": "status", "status": "poison"}]},
@@ -341,7 +341,7 @@ const CARDS := {
 	},
 	"plague_asp": {
 		"kind": "totem", "name": "Plague Asp", "element": "venom", "tier": 2, "stage": 1,
-		"ascends_from": "blightrat", "cost": 2, "hp": 90, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
+		"ascends_from": "blightrat", "cost": 2, "hp": 100, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Fang", "cost": 0, "damage": 30},
 			{"name": "Venom Surge", "cost": 2, "damage": 40, "target": "foe_totem",
@@ -351,7 +351,7 @@ const CARDS := {
 	},
 	"mirewidow": {
 		"kind": "totem", "name": "Mirewidow", "element": "venom", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 60, "affinity": "cunning", "keywords": ["thorns"],
+		"hp": 70, "affinity": "cunning", "keywords": ["thorns"],
 		"moves": [
 			{"name": "Venom Bite", "cost": 0, "damage": 10, "target": "foe_totem",
 				"effects": [{"op": "status", "status": "poison"}]},
@@ -403,7 +403,7 @@ const CARDS := {
 	},
 	"healing_draught": {
 		"kind": "rite", "name": "Healing Draught", "element": "any", "tier": 1, "cost": 1, "target": "ally",
-		"effects": [{"op": "heal", "who": "target", "amount": 50}, {"op": "cure", "who": "target", "kind": "body"}],
+		"effects": [{"op": "heal", "who": "target", "amount": 50}, {"op": "cure", "who": "target"}],
 		"art": "a glass flask of glowing rose-red liquid with a cork stopper, tiny bubbles rising",
 	},
 	"travellers_pack": {
@@ -488,8 +488,8 @@ const CARDS := {
 		"art": "a burst of razor-edged steel shards flying through the air, glinting red in firelight",
 	},
 	"drowning_rain": {
-		"kind": "rite", "name": "Drowning Rain", "element": "tide", "tier": 1, "cost": 2, "target": "all_foes",
-		"effects": [{"op": "status", "status": "soaked"}],
+		"kind": "rite", "name": "Drowning Rain", "element": "tide", "tier": 1, "cost": 1, "target": "all_foes",
+		"damage": 10, "effects": [{"op": "status", "status": "soaked"}],
 		"art": "a heavy sheet of blue-green rain pouring onto a duelling circle, water pooling between the runes",
 	},
 	"strangling_roots": {
@@ -509,7 +509,7 @@ const CARDS := {
 	},
 	"goading_ember": {
 		"kind": "rite", "name": "Goading Ember", "element": "fire", "tier": 1, "cost": 1, "target": "foe_totem",
-		"effects": [{"op": "status", "status": "enraged"}],
+		"damage": 20, "effects": [{"op": "status", "status": "enraged"}],
 		"art": "a single taunting ember flicked at a beast, the beast snarling with red rage lines around it",
 	},
 	"confounding_chime": {
@@ -725,14 +725,14 @@ static func gift_text(g: String) -> String:
 		"stillness": return "Stun up to two enemy Totems."
 		"tempest": return "Gain %d Essence this turn. Totems you call this turn are Swift, and Shifting is free." % DuelRules.tempest_essence
 		"whisper": return "See your opponent's hand and Wards, then discard two cards from their hand."
-		"foresight": return "Draw 3 cards. Your next Fate roll counts as a natural 20."
+		"foresight": return "Draw 2 cards. Your next Fate roll counts as a natural 20."
 		"recall": return "Return up to 2 cards from your discard pile to your hand."
-		"unbound": return "Draw 3 cards."
-		"contagion": return "Poison up to two enemy Totems."
-		"regrowth": return "Heal 30 damage from every one of your Totems."
-		"undertow": return "Return one enemy Totem to its owner's hand; any Ascension cards on it are discarded."
-		"star_chart": return "Choose which of your top 5 cards you draw next. +2 on your Fate rolls this turn."
-		"forged_guard": return "Your Guard is doubled until your next Dawn."
+		"unbound": return "Draw 2 cards."
+		"contagion": return "Every enemy Totem takes 10 damage and is Poisoned."
+		"regrowth": return "Heal 40 damage from every one of your Totems and clear their Body conditions."
+		"undertow": return "Sweep every enemy Totem back to its owner's hand; any Ascension cards on them are discarded."
+		"star_chart": return "Draw any two of your top 5 cards. +2 on your Fate rolls this turn."
+		"forged_guard": return "Shield each of your Totems for 30, and double your Guard until your next Dawn."
 		"unveil": return "Turn every enemy Ward face up, then destroy one."
 	return ""
 

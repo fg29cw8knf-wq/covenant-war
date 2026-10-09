@@ -327,6 +327,8 @@ class Lightning:
 		material = DuelFX.additive()
 
 	func _draw() -> void:
+		if _pts.size() < 2:
+			return
 		var al := 1.0 - t * t
 		draw_polyline(_pts, Color(col, 0.35 * al), width * 3.0, true)
 		draw_polyline(_pts, Color(col, 0.9 * al), width, true)

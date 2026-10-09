@@ -11,7 +11,7 @@ const LAWS := {
 		"blessing": "It heals %d instead."},
 	"pyrrhane": {"name": "Forge Heat", "place": "Pyreholt",
 		"law": "Fire cards cost 1 less Essence, and every Totem takes %d damage at its owner's Dusk.",
-		"blessing": "Your Totems ignore the heat."},
+		"blessing": "Your Fire Totems ignore the heat."},
 	"vexa": {"name": "Plague Air", "place": "Pyreholt",
 		"law": "Poison deals %d at each Dawn instead of %d.",
 		"blessing": "Your Totems can't be Poisoned."},
@@ -23,7 +23,7 @@ const LAWS := {
 		"blessing": "Your Totems enter with +%d HP."},
 	"ixara": {"name": "Open Sky", "place": "Stormreach",
 		"law": "Shifting is free for everyone.",
-		"blessing": "The first Totem you call each turn is Swift."},
+		"blessing": "You can Shift one more time each turn."},
 	"maerith": {"name": "High Tide", "place": "Stormreach",
 		"law": "At Dawn, a duellist with fewer Totems than their opponent draws an extra card.",
 		"blessing": "You draw it even when the Totems are level."},
@@ -52,12 +52,12 @@ const LAWS := {
 
 # --- the numbers -------------------------------------------------------------
 static var dawnlight_heal := 10
-static var dawnlight_blessed_heal := 20
+static var dawnlight_blessed_heal := 15
 static var forge_heat := 5
 static var plague_poison := 15
 static var winter_wake := 15
 static var spring_heal_bonus := 10
-static var spring_hp_bonus := 10
+static var spring_hp_bonus := 5
 static var ironworks_guard := 3
 
 

@@ -31,12 +31,12 @@ const DEFS := {
 	"rooted": {"name": "Rooted", "short": "ROOTED", "kind": "body", "turns": 2, "color": "7fc25a"},
 	"petrified": {"name": "Petrified", "short": "STONE", "kind": "body", "turns": 2, "color": "b8a88a"},
 	"staggered": {"name": "Staggered", "short": "STAGGER", "kind": "body", "turns": 0, "color": "d7e8e0"},
-	"blinded": {"name": "Blinded", "short": "BLIND", "kind": "body", "turns": 1, "color": "fff3c4"},
+	"blinded": {"name": "Blinded", "short": "BLIND", "kind": "body", "turns": 2, "color": "fff3c4"},
 	# ------------------------------------------------------------- Mind ---
 	"sleep": {"name": "Asleep", "short": "SLEEP", "kind": "mind", "turns": 0, "roll": true, "color": "b9a4ff"},
 	"stun": {"name": "Stunned", "short": "STUN", "kind": "mind", "turns": 1, "color": "ffd23f"},
 	"confused": {"name": "Confused", "short": "CONFUSED", "kind": "mind", "turns": 2, "color": "f08fd0"},
-	"charmed": {"name": "Charmed", "short": "CHARMED", "kind": "mind", "turns": 2, "color": "ff8fb3"},
+	"charmed": {"name": "Charmed", "short": "CHARMED", "kind": "mind", "turns": 1, "color": "ff8fb3"},
 	"terrified": {"name": "Terrified", "short": "TERROR", "kind": "mind", "turns": 2, "color": "8e7cc3"},
 	"enraged": {"name": "Enraged", "short": "RAGE", "kind": "mind", "turns": 2, "color": "ff5a36"},
 	"silenced": {"name": "Silenced", "short": "SILENCE", "kind": "mind", "turns": 2, "color": "a0a6b8"},
@@ -64,7 +64,7 @@ const TEXT := {
 	"poison": "Takes %d damage at its owner's Dawn until cured.",
 	"corroded": "Every hit on it deals %d more, until cured.",
 	"bleed": "Takes %d damage every time it attacks or Shifts.",
-	"frozen": "Can't attack or Shift. A Fire hit thaws it.",
+	"frozen": "Can't attack or Shift. Breaks free on %d or more; a Fire hit thaws it.",
 	"shocked": "Each of its attacks fails on a roll of 1 to %d.",
 	"soaked": "Takes %d more from Storm and Frost, and can't be Burned.",
 	"rooted": "Can't Shift, and can attack only the slot opposite.",
@@ -74,9 +74,9 @@ const TEXT := {
 	"sleep": "Can't attack. Wakes when an attack or Rite damages it.",
 	"stun": "Skips its next attack.",
 	"confused": "Each attack: on 1 to %d it Strikes its own side instead.",
-	"charmed": "Can't attack the Totem that charmed it, or its owner.",
+	"charmed": "Can't attack the side that charmed it.",
 	"terrified": "Deals half damage, and can't attack what frightened it.",
-	"enraged": "Deals %d more, but must attack the enemy with the most HP and can't Shift.",
+	"enraged": "Deals %d more and takes %d more; can only single out the enemy with the most HP, and can't Shift.",
 	"silenced": "Can only use its free Strike.",
 	"possessed": "Won't obey its owner: the opponent aims its Strike each turn.",
 	"hexed": "Its stronger moves and its Ascension cost 1 more Essence.",
@@ -164,7 +164,8 @@ static func describe(id: String) -> String:
 		"soaked": return t % DuelRules.soaked_bonus
 		"blinded": return t % DuelRules.blind_fail
 		"confused": return t % DuelRules.confuse_fail
-		"enraged": return t % DuelRules.enraged_bonus
+		"enraged": return t % [DuelRules.enraged_bonus, DuelRules.enraged_exposed]
+		"frozen": return t % DuelRules.frozen_roll
 		"marked": return t % DuelRules.marked_bonus
 		"shielded": return t % DuelRules.shielded_amount
 		"empowered": return t % DuelRules.empowered_bonus

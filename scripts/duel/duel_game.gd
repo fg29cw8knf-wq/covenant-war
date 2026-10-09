@@ -241,6 +241,8 @@ func _dawn_conditions(p: DuelPlayer) -> void:
 			var need := DuelRules.wake_roll
 			if id == "sleep" and law == "vaelith" and not blessed(p.index):
 				need = DuelLaws.winter_wake
+			if id == "frozen":
+				need = DuelRules.frozen_roll
 			var ok := r + mod >= need or r == 20
 			var verb: String = {"sleep": ["wakes", "sleeps on"], "frozen": ["thaws", "stays frozen"],
 				"possessed": ["breaks free", "stays possessed"]}.get(id, ["breaks free", "is held"])[0 if ok else 1]
@@ -305,8 +307,10 @@ func _dusk(p: DuelPlayer) -> void:
 				p.discard.append(c)
 		while p.hand.size() > DuelRules.hand_limit:
 			p.discard.append(p.hand.pop_back())
-	if law == "pyrrhane" and not blessed(p.index):
+	if law == "pyrrhane":
 		for t in p.totems():
+			if blessed(p.index) and t.element() == "fire":
+				continue
 			await _damage_totem(t, DuelLaws.forge_heat, {"source": "heat"})
 		await _resolve_knockouts()
 		if over:
@@ -588,6 +592,8 @@ func shift_cost(pi: int) -> int:
 func shift_problem(pi: int, totem, slot: int) -> String:
 	var p: DuelPlayer = players[pi]
 	var allowed := 2 if DuelRules.has_perk(p.attributes(), "swiftness") else 1
+	if law == "ixara" and blessed(pi):
+		allowed += 1
 	if p.shifts >= allowed:
 		return "You've already shifted this turn."
 	if totem == null or not (totem is DuelTotem) or totem.owner != pi or not p.totems().has(totem):
@@ -659,13 +665,14 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 	var foe := opponent(pi)
 	if t.has_status("rooted"):
 		out = out.filter(func(x): return (x is String and x == LIFE) or (x is DuelTotem and x.slot == t.slot))
-	for id in ["charmed", "terrified"]:
-		if t.has_status(id):
-			var c: Dictionary = t.condition_of(id)
-			var src := int(c.get("src_uid", -1))
-			out = out.filter(func(x): return not (x is DuelTotem and x.uid == src))
-			if id == "charmed" and int(c.get("src_owner", foe.index)) != pi:
-				out = out.filter(func(x): return not (x is String and x == LIFE))
+	if t.has_status("charmed"):
+		var cc: Dictionary = t.condition_of("charmed")
+		if int(cc.get("src_owner", foe.index)) == foe.index:
+			out = []   # it won't lift a claw against the side that charmed it
+	if t.has_status("terrified"):
+		var tc: Dictionary = t.condition_of("terrified")
+		var src := int(tc.get("src_uid", -1))
+		out = out.filter(func(x): return not (x is DuelTotem and x.uid == src))
 	if t.has_status("enraged"):
 		var foes := out.filter(func(x): return x is DuelTotem)
 		if not foes.is_empty():
@@ -753,11 +760,14 @@ func gift_problem(pi: int, target = null) -> String:
 		"recall":
 			if _recallable(p).is_empty():
 				return "Your discard pile is empty."
-		"contagion", "undertow":
-			if targetable(foe.totems()).is_empty():
-				return "Your opponent has no Totems you can single out."
+		"contagion":
+			if foe.totems().is_empty():
+				return "Your opponent has no Totems."
+		"undertow":
+			if foe.totems().is_empty():
+				return "Your opponent has no Totems."
 		"regrowth":
-			if not p.totems().any(func(t): return t.damage > 0):
+			if not p.totems().any(func(t): return t.damage > 0 or not t.cond("body").is_empty()):
 				return "None of your Totems need healing."
 		"star_chart":
 			if p.deck.is_empty():
@@ -830,8 +840,6 @@ func _act_call(pi: int, card: DuelCard, slot: int) -> void:
 	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
 	if p.free_shift:
 		t.hasted = true   # Ixara's Tempest
-	if law == "ixara" and blessed(pi) and p.totems_called == 0:
-		t.hasted = true   # Open Sky's Blessing
 	if law == "verdanthe" and blessed(pi):
 		t.bonus_hp += DuelLaws.spring_hp_bonus
 	p.slots[slot] = t
@@ -975,6 +983,8 @@ func _scaled(amount: int, defn: DuelTotem, element: String) -> int:
 		amount += DuelRules.corroded_bonus
 	if defn.has_status("marked"):
 		amount += DuelRules.marked_bonus
+	if defn.has_status("enraged"):
+		amount += DuelRules.enraged_exposed
 	if defn.has_status("soaked") and (element == "storm" or element == "frost"):
 		amount += DuelRules.soaked_bonus
 	if defn.has_status("petrified"):
@@ -1232,7 +1242,7 @@ func _act_gift(pi: int, target) -> void:
 						foe.discard.append(c)
 						_log("%s discards %s." % [foe.player_name, c.card_name()], pi)
 		"foresight":
-			var drawn := await _draw(p, 3)
+			var drawn := await _draw(p, 2)
 			if not drawn.is_empty():
 				await _fx("fx_draw", [pi, drawn])
 			p.foresight = true
@@ -1245,35 +1255,36 @@ func _act_gift(pi: int, target) -> void:
 					p.hand.append(c)
 					_log("%s returns %s to their hand." % [p.player_name, c.card_name()], pi)
 		"unbound":
-			var drawn := await _draw(p, 3)
+			var drawn := await _draw(p, 2)
 			if not drawn.is_empty():
 				await _fx("fx_draw", [pi, drawn])
 		"contagion":
-			var chosen: Array = await p.controller.choose_totems(self, pi, "Choose up to two enemy Totems to Poison.",
-				targetable(foe.totems()), 1, 2)
-			for t in chosen.slice(0, 2):
+			for t in foe.totems():
+				await _damage_totem(t, 10, {"spill": true, "element": "venom"})
 				await _apply_status(t, "poison", null, pi)
 		"regrowth":
 			for t in p.totems():
-				await _heal(t, 30)
+				await _heal(t, 40)
+				t.clear_conditions("body")
 		"undertow":
-			var chosen: Array = await p.controller.choose_totems(self, pi, "Choose an enemy Totem for the undertow.",
-				targetable(foe.totems()), 1, 1)
-			for t in chosen.slice(0, 1):
+			for t in foe.totems():
 				await _undertow(t)
 		"star_chart":
 			var top: Array = p.deck.slice(maxi(0, p.deck.size() - 5))
 			top.reverse()
-			var chosen: Array = await p.controller.choose_cards(self, pi, "Choose the card you draw next.", top, 1, 1,
+			var chosen: Array = await p.controller.choose_cards(self, pi, "Choose two cards to draw.", top, mini(2, top.size()), mini(2, top.size()),
 				{"reason": "star_chart"})
-			for c in chosen.slice(0, 1):
+			for c in chosen.slice(0, 2):
 				if p.deck.has(c):
 					p.deck.erase(c)
-					p.deck.append(c)
+					p.hand.append(c)
+					_log("%s draws %s from the stars." % [p.player_name, c.card_name()], pi)
 			p.fate_bonus = 2
 			_log("The stars align: +2 on %s Fate rolls this turn." % whose(p.player_name, true), pi)
 		"forged_guard":
 			p.guard_double = true
+			for t in p.totems():
+				t.shield += 30
 			_log("%s Guard is doubled to %d until their next Dawn." % [whose(p.player_name), p.guard()], pi)
 		"unveil":
 			var names := []
