@@ -5,28 +5,29 @@ extends CanvasLayer
 ## Plays, in order of preference:
 ##   1. the finished cut: res://assets/movies/opening.ogv
 ##   2. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
-##      or the still res://assets/art/movie/<shot>.png animated in the engine,
+##      or the still res://assets/art/movie/<shot>.png (or .jpg) animated in the engine,
 ##      or, when neither exists yet, an animatic card describing the shot.
-## Narration subtitles follow the script timings. Voice lines
-## (res://assets/audio/vo/vo_<n>.ogg) and music (res://assets/audio/opening_theme.ogg)
-## play when present. Tap to show Skip.
+## Narration subtitles follow the Master Script v2 timings (2:24, the title at 2:14).
+## Voice lines (res://assets/audio/vo/vo_<n>.ogg) and music (res://assets/audio/opening_theme.ogg)
+## play when present. Tap to show Skip. The files to make are listed in
+## "Opening Movie: Your Step-by-Step".
 
 signal finished
 
 ## Script: start time (s), length (s), narration, what we see, camera move, overlay effect.
 const SHOTS := [
 	{"id": "shot_01", "len": 8.0, "vo": "Before the first king, before the first card, there was the Throne.",
-		"see": "The Empyrean: an endless sea of golden clouds. Far away, the Throne on a floating peak.", "move": "in", "fx": "motes_gold"},
+		"see": "Black. A spark rises; a sea of golden clouds; the Throne tiny on a distant floating peak.", "move": "in", "fx": "motes_gold"},
 	{"id": "shot_02", "len": 8.0, "vo": "Whoever sits upon it commands every drop of magic in creation.",
-		"see": "The empty Throne. Rivers of light flow up into it from the clouds.", "move": "up", "fx": "motes_gold"},
+		"see": "The empty Throne; rivers of light flow up into it.", "move": "up", "fx": "motes_gold"},
 	{"id": "shot_03", "len": 9.0, "vo": "Once, the gods fought over it, and the heavens broke. So the first gods wrote the Covenant.",
-		"see": "Giant ancient gods, silhouettes against the light, carve runes into a ring of stone in the sky.", "move": "right", "fx": "sparks"},
+		"see": "Giant god silhouettes carve runes into a floating stone ring.", "move": "right", "fx": "sparks"},
 	{"id": "shot_04", "len": 11.0, "vo": "One god would rule for one Age: two thousand years. No god may destroy another. And all magic that falls to the world below must obey its law.",
-		"see": "The rune ring locks around the Throne like a seal. A shockwave of light rolls across the clouds.", "move": "out", "fx": "motes_gold"},
+		"see": "The rune ring locks around the Throne; a shockwave rolls across the clouds.", "move": "out", "fx": "motes_gold"},
 	{"id": "shot_05", "len": 8.0, "vo": "For two thousand years, the Throne has belonged to Solmaris, the Radiant Sovereign.",
-		"see": "Solmaris on the Throne: white and gold, sunburst halo, mirrored armour, eyes closed.", "move": "in", "fx": "motes_gold"},
+		"see": "Solmaris on the Throne, eyes closed, serene and cold.", "move": "in", "fx": "motes_gold"},
 	{"id": "shot_06", "len": 6.0, "vo": "Now her Age is ending.",
-		"see": "Her eyes open. A sundial the size of the sky; its shadow touches the last rune. The heavens crack.", "move": "up", "fx": "flash"},
+		"see": "Her eyes open; the shadow of the sky-sized sundial touches the last rune.", "move": "up", "fx": "flash"},
 	{"id": "shot_07a", "len": 2.0, "vo": "And the others are coming for her crown.",
 		"see": "Pyrrhane, the Burning Crown, rises from a sea of fire.", "move": "in", "fx": "embers", "god": "pyrrhane"},
 	{"id": "shot_07b", "len": 2.0, "vo": "", "see": "Vaelith, the Frost Queen, on still black water.", "move": "in", "fx": "snow", "god": "vaelith"},
@@ -35,22 +36,24 @@ const SHOTS := [
 	{"id": "shot_07e", "len": 2.0, "vo": "", "see": "Oriel, the Dreaming Eye, opens her many eyes.", "move": "in", "fx": "motes", "god": "oriel"},
 	{"id": "shot_07f", "len": 2.0, "vo": "", "see": "Aldrith, the Runeweaver, locks his rune circles.", "move": "in", "fx": "motes", "god": "aldrith"},
 	{"id": "shot_08", "len": 8.0, "vo": "Gods cannot kill gods. So they will fight through us.",
-		"see": "The seven gods' powers collide above the clouds. The sky shatters like glass.", "move": "in", "fx": "flash"},
+		"see": "The seven powers collide; the sky shatters like glass.", "move": "in", "fx": "flash"},
 	{"id": "shot_09a", "len": 5.0, "vo": "Every blow tears the sky, and their magic falls to the world of Veyl,",
-		"see": "Streaks of coloured light fall through the clouds to the land far below.", "move": "down", "fx": "falling"},
+		"see": "Light falls to Veyl.", "move": "down", "fx": "falling"},
 	{"id": "shot_09b", "len": 5.0, "vo": "crystallised into Sigils.",
-		"see": "One streak lands in a field and cools into a glowing card.", "move": "in", "fx": "sparks"},
+		"see": "One streak cools into a card in a field.", "move": "in", "fx": "sparks"},
 	{"id": "shot_10", "len": 9.0, "vo": "Those who can wield a Sigil can summon what sleeps inside it.",
-		"see": "A duellist raises a blazing card. A wolf of living flame bursts out onto a rune circle.", "move": "in", "fx": "embers"},
+		"see": "A duellist raises a card and Blazehound bursts out onto a rune circle.", "move": "in", "fx": "embers"},
 	{"id": "shot_11", "len": 9.0, "vo": "Kingdoms rose on Sigil wealth. Now wars are fought with cards, not swords.",
-		"see": "Two armies at dusk. Between them, giant summoned creatures clash above a glowing circle.", "move": "up", "fx": "sparks"},
-	{"id": "shot_12", "len": 10.0, "vo": "Each god has marked one mortal Champion. The last Champion standing crowns their god for the next Age.",
-		"see": "Seven coloured lights fall across Veyl, one to each kingdom. Seven marks burn onto seven hands.", "move": "out", "fx": "falling"},
+		"see": "Two armies at dusk; Boulderox and Voltlynx clash above a giant duelling circle.", "move": "up", "fx": "sparks"},
+	{"id": "shot_12", "len": 10.0, "vo": "Each kingdom is ruled by a Champion sworn to a god. When an Age ends, anyone may challenge them, and the seven who still stand fight for the Throne.",
+		"see": "Seven beams fall on seven kingdoms; seven marks burn onto seven hands.", "move": "out", "fx": "falling"},
+	{"id": "shot_12b", "len": 10.0, "vo": "And in Ironvault, a mortal king who owns half the world has begun to wonder why the other half belongs to the gods.",
+		"see": "A vault of glowing cards; a gold-ringed hand turns over a card beside a gold case with eight empty slots. The face is never shown.", "move": "left", "fx": "motes_gold"},
 	{"id": "shot_13", "len": 8.0, "vo": "But on the last night of the Age, over a village no one had ever heard of...",
-		"see": "Ashford at night. The sky tears open and many-coloured light rains over the hills.", "move": "in", "fx": "falling"},
-	{"id": "shot_14", "len": 8.0, "vo": "...an eighth mark was made.",
-		"see": "A blank, glowing card falls into an open hand. A pure white mark burns onto its back.", "move": "in", "fx": "motes"},
-	{"id": "shot_15", "len": 8.0, "vo": "", "see": "The Throne, circled by eight lights: seven coloured, one white.", "move": "out", "fx": "motes_gold", "title": true},
+		"see": "Ashford at night; the sky tears open.", "move": "in", "fx": "falling"},
+	{"id": "shot_15", "len": 18.0, "vo": "...the Covenant did something it had never done before.",
+		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites and joins them.", "move": "out", "fx": "motes_gold",
+		"title": true, "title_at": 8.0},
 ]
 
 const MOVIE := "res://assets/movies/opening.ogv"
@@ -159,7 +162,7 @@ func _play_shots() -> void:
 		n += 1
 		var id: String = shot.id
 		var clip := "res://assets/movies/shots/%s.ogv" % id
-		var still := "res://assets/art/movie/%s.png" % id
+		var still := _still_path(id)
 		_set_sub(String(shot.vo))
 		var vo_path := "res://assets/audio/vo/vo_%s.ogg" % id.trim_prefix("shot_")
 		if ResourceLoader.exists(vo_path):
@@ -174,8 +177,17 @@ func _play_shots() -> void:
 			_video.stop()
 			_video.visible = false
 			_stage.visible = true
-			_stage.show_shot(shot, load(still) if ResourceLoader.exists(still) else null, n)
+			_stage.show_shot(shot, load(still) if still != "" else null, n)
 		await _wait(float(shot.len))
+
+
+## The shot's painting, as a PNG or a JPG, or "" until it's been made.
+static func _still_path(id: String) -> String:
+	for ext in ["png", "jpg"]:
+		var p := "res://assets/art/movie/%s.%s" % [id, ext]
+		if ResourceLoader.exists(p):
+			return p
+	return ""
 
 
 func _wait(sec: float) -> void:
@@ -264,13 +276,14 @@ class ShotView:
 			return
 		var r := Rect2(Vector2.ZERO, size)
 		var k := clampf(_t / float(shot.len), 0.0, 1.0)
+		var title_t := _t - float(shot.get("title_at", 0.0)) if shot.get("title", false) else -1.0
 		if still != null:
 			_draw_still(r, k)
 		else:
-			_draw_card(r)
+			_draw_card(r, title_t < 0.0)
 		_draw_fx(r)
-		if shot.get("title", false):
-			_draw_title(r, k)
+		if title_t >= 0.0:
+			_draw_title(r, title_t)
 		# letterbox bars and vignette give every shot the same frame
 		var bar := r.size.y * 0.06
 		draw_rect(Rect2(0, 0, r.size.x, bar), Color.BLACK)
@@ -301,13 +314,16 @@ class ShotView:
 		var pos := (r.size - sz) * 0.5 + off * r.size
 		CardFace.draw_cover(self, Rect2(pos, sz), still, 0.5)
 
-	func _draw_card(r: Rect2) -> void:
+	## with_words: false once the title is up, so the card's description doesn't sit under it.
+	func _draw_card(r: Rect2, with_words := true) -> void:
 		var god: String = shot.get("god", "")
 		var tint := Lore.color(Lore.GODS[god].element, 2) if god != "" else Color("141a33")
 		CardFace.vgrad_rect(self, r, tint.darkened(0.55), Color("030307"))
 		var c := r.get_center()
 		for i in 8:
 			draw_circle(c, r.size.y * (0.7 - i * 0.07), Color(tint.lightened(0.3), 0.025))
+		if not with_words:
+			return
 		var f := CardFace.font("display")
 		CardFace.text(self, CardFace.font("bold"), Vector2(0, r.size.y * 0.3), "SHOT " + String(shot.id).trim_prefix("shot_").lstrip("0").to_upper(),
 			24, Color(UITheme.GOLD, 0.7), HORIZONTAL_ALIGNMENT_CENTER, r.size.x)
@@ -376,8 +392,9 @@ class ShotView:
 				if f > 0.0:
 					draw_rect(r, Color(1, 1, 1, 0.5 * f))
 
-	func _draw_title(r: Rect2, k: float) -> void:
-		var a := clampf((k - 0.15) / 0.35, 0.0, 1.0)
+	## t: seconds since the title was due; it fades up over 2.5 s.
+	func _draw_title(r: Rect2, t: float) -> void:
+		var a := clampf(t / 2.5, 0.0, 1.0)
 		var c := Vector2(r.size.x * 0.5, r.size.y * 0.36)
 		for i in 10:
 			draw_circle(c, (r.size.x * 0.32) * (1.0 - i * 0.08), Color(UITheme.GOLD, 0.02 * a))

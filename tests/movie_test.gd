@@ -8,11 +8,18 @@ func _ready() -> void:
 	await get_tree().create_timer(3.0).timeout
 	await _shot(out + "/movie_a.png")
 	Engine.time_scale = 10.0
-	# shot 7a starts at 50 s; title at 124 s
+	# shot 7a starts at 50 s; Ironvault (12b) at 108 s; the title at 134 s; the end at 144 s
 	await get_tree().create_timer(48.5).timeout
 	await _shot(out + "/movie_b.png")
-	await get_tree().create_timer(75.0).timeout
+	await get_tree().create_timer(60.0).timeout
 	await _shot(out + "/movie_c.png")
+	await get_tree().create_timer(34.0).timeout
+	await _shot(out + "/movie_d.png")
+	var ok := is_instance_valid(m) and not m._done
+	# at 10x speed the movie runs a few seconds behind the timers, so allow a wide margin
+	await get_tree().create_timer(19.0).timeout
+	var ended := not is_instance_valid(m) or m._done
+	print("MOVIE TEST: %s (title shown while playing=%s, finished by 2:45=%s)" % ["PASS" if ok and ended else "FAIL", ok, ended])
 	get_tree().quit()
 
 
