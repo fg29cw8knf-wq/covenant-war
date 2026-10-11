@@ -53,7 +53,7 @@ const SHOTS := [
 		"see": "Ashford at night; the sky tears open.", "move": "in", "fx": "falling"},
 	{"id": "shot_15", "len": 18.0, "vo": "...the Covenant did something it had never done before.",
 		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites and joins them.", "move": "out", "fx": "motes_gold",
-		"title": true, "title_at": 8.0},
+		"title": true, "title_at": 8.5},
 ]
 
 const MOVIE := "res://assets/movies/opening.ogv"
