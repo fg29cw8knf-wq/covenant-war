@@ -68,6 +68,12 @@ var _music: AudioStreamPlayer
 var _voice: AudioStreamPlayer
 var _done := false
 var _skip_timer: SceneTreeTimer
+var _queue: Array = []
+var _duck_tween: Tween
+var _clock := 0.0
+var _voice_until := -1.0
+## How far the music drops while Morrowen speaks.
+const DUCK_DB := -8.0
 
 
 func _ready() -> void:
@@ -163,11 +169,15 @@ func _play_shots() -> void:
 		var id: String = shot.id
 		var clip := "res://assets/movies/shots/%s.ogv" % id
 		var still := _still_path(id)
-		_set_sub(String(shot.vo))
 		var vo_path := "res://assets/audio/vo/vo_%s.ogg" % id.trim_prefix("shot_")
 		if ResourceLoader.exists(vo_path):
-			_voice.stream = load(vo_path)
-			_voice.play()
+			# the line goes up when its voice starts, which may be a moment after the cut
+			_queue.append({"path": vo_path, "text": String(shot.vo)})
+			_speak_next()
+		elif String(shot.vo) != "":
+			_set_sub(String(shot.vo))
+		elif _voice_until < 0.0 and _queue.is_empty():
+			_set_sub("")
 		if ResourceLoader.exists(clip):
 			_stage.visible = false
 			_video.stream = load(clip)
@@ -179,6 +189,41 @@ func _play_shots() -> void:
 			_stage.visible = true
 			_stage.show_shot(shot, load(still) if still != "" else null, n)
 		await _wait(float(shot.len))
+
+
+## Lines never overlap or get cut off: a line still playing when the next shot
+## cuts finishes first, and the next line follows it. The music ducks under
+## every line. Timing runs on the movie clock, not the audio driver, so the
+## subtitles stay right even when the sound can't play.
+func _speak_next() -> void:
+	if _clock < _voice_until or _queue.is_empty():
+		return
+	var line: Dictionary = _queue.pop_front()
+	var stream: AudioStream = load(line.path)
+	_voice.stream = stream
+	_voice.play()
+	_voice_until = _clock + stream.get_length() + 0.15
+	_set_sub(String(line.text))
+	_duck(true)
+	if OS.is_debug_build():
+		print("movie: %s at %d:%04.1f" % [String(line.path).get_file(), int(_clock) / 60, fmod(_clock, 60.0)])
+
+
+func _tick_voice() -> void:
+	if _clock < _voice_until or _voice_until < 0.0:
+		return
+	_voice_until = -1.0
+	if _queue.is_empty():
+		_duck(false)
+	else:
+		_speak_next()
+
+
+func _duck(down: bool) -> void:
+	if _duck_tween:
+		_duck_tween.kill()
+	_duck_tween = create_tween()
+	_duck_tween.tween_property(_music, "volume_db", DUCK_DB if down else 0.0, 0.3 if down else 0.8)
 
 
 ## The shot's painting, as a PNG or a JPG, or "" until it's been made.
@@ -195,6 +240,8 @@ func _wait(sec: float) -> void:
 	while t < sec and not _done:
 		await get_tree().process_frame
 		t += get_process_delta_time()
+		_clock += get_process_delta_time()
+		_tick_voice()
 
 
 func _set_sub(text: String) -> void:
@@ -233,6 +280,9 @@ func _finish() -> void:
 		return
 	_done = true
 	_video.stop()
+	_queue.clear()
+	if _duck_tween:
+		_duck_tween.kill()
 	var tw := create_tween()
 	tw.tween_property(_root, "modulate:a", 0.0, 0.6)
 	tw.parallel().tween_property(_music, "volume_db", -40.0, 0.6)
