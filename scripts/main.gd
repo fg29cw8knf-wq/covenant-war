@@ -40,9 +40,11 @@ func _swap(n: Node) -> void:
 func show_title() -> void:
 	var holder := Node.new()
 	holder.name = "Title"
-	var backdrop := World.new().setup("solhaven", "gate")
-	backdrop.attract = true
-	holder.add_child(backdrop)
+	if not TitleScreen.has_art():
+		# until the painted title exists, the old slow flight over Solhaven
+		var backdrop := World.new().setup("solhaven", "gate")
+		backdrop.attract = true
+		holder.add_child(backdrop)
 	var title := TitleScreen.new()
 	holder.add_child(title)
 	title.new_game.connect(_on_new_game)

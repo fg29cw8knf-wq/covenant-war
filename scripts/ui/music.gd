@@ -8,6 +8,9 @@ extends Node
 ##   Music.stop()
 
 const DIR := "res://assets/audio/music/"
+## Tracks with an intro that shouldn't repeat: after the first pass the loop
+## jumps back to this many seconds in (the file's tail is baked to blend there).
+const LOOP_START := {"ashford_festival": 35.062}
 
 var current := ""
 var _players: Array[AudioStreamPlayer] = []
@@ -60,6 +63,8 @@ func _switch(track: String, fade: float) -> void:
 	current = track
 	var s: AudioStream = load(path_for(track))
 	_set_loop(s, true)
+	if s is AudioStreamOggVorbis:
+		(s as AudioStreamOggVorbis).loop_offset = float(LOOP_START.get(track, 0.0))
 	var old := _players[_active]
 	_active = 1 - _active
 	var p := _players[_active]
