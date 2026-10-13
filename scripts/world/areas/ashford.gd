@@ -94,7 +94,7 @@ static func _bram() -> Array:
 		], "else": [
 			{"if": "ash_ready", "then": [
 				{"who": "bram", "say": "Everyone sorted? Good. Then go and find Corin by the well. Win, and you light the Great Lantern at midnight."},
-				{"who": "bram", "say": "Remember what I taught you: one Totem in each of your three slots, Essence to pay for them, and keep something between your rival and your Life."},
+				{"who": "bram", "say": "Remember what I taught you: a Totem in a slot to fight for you, Essence to pay for it, and keep something between your rival and your Life."},
 			], "else": [
 				{"who": "bram", "say": "Still folk wanting a hand, Sprout."},
 				{"if": "!ash_tom", "then": [{"who": "bram", "say": "Tom's by the hay cart, fighting with his barrels."}]},
@@ -165,8 +165,7 @@ static func _corin() -> Array:
 			], "else": [
 				{"who": "corin", "say": "Lantern Duel, Sprout. The village's old Spark cards, same as every year. Winner lights the Great Lantern at midnight."},
 				{"who": "corin", "say": "Half of Ashford's watching. Try not to cry."},
-				{"who": "bram", "say": "Quick reminder. Tap a Totem in your hand to call it into a slot, and pay its cost in Essence. You get more Essence every turn."},
-				{"who": "bram", "say": "Tap one of your Totems to see its moves, then pick a target. When Corin's slots are empty, you can strike his Life directly. First to zero Life loses."},
+				{"who": "bram", "say": "One Spark each tonight, and I'll talk you through the first few turns. Listen for me."},
 				{"duel": {"v1": true, "id": "corin_lantern", "name": "Corin", "difficulty": 0.25},
 					"win": [
 						{"who": "corin", "say": "Fine! Fine. Go on, light the thing. Next year it's mine."},
