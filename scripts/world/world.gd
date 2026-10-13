@@ -113,7 +113,9 @@ func _first_step_done(step: int) -> void:
 	hud.show_hint("")
 	if step == 0:
 		await get_tree().create_timer(2.5).timeout
-		if not busy:
+		while busy and is_inside_tree():   # mid-conversation: wait for it to end
+			await get_tree().create_timer(0.5).timeout
+		if is_inside_tree():
 			_show_first_steps()
 
 

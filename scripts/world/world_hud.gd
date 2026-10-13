@@ -19,6 +19,7 @@ var _title: Control
 var _fade: ColorRect
 var _toast: Label
 var _hint: PanelContainer
+var _hint_text := ""       # the current first-steps hint; hidden while the controls are
 
 
 func _ready() -> void:
@@ -146,6 +147,9 @@ func set_controls_visible(v: bool) -> void:
 		_talk.visible = false
 		_talk_name.visible = false
 	pad.reset()
+	# the first-steps hint steps aside for talking and cutscenes
+	_hint.visible = v and _hint_text != ""
+	_hint.modulate.a = 1.0 if _hint.visible else 0.0
 
 
 func show_area_title(title: String, subtitle: String) -> void:
@@ -159,6 +163,7 @@ func show_area_title(title: String, subtitle: String) -> void:
 
 ## A standing instruction for new players; "" hides it.
 func show_hint(text: String) -> void:
+	_hint_text = text
 	if text == "":
 		if _hint.visible:
 			var tw := create_tween()

@@ -1859,9 +1859,9 @@ func _coach(at: String) -> void:
 			_coach_box.add_child(v)
 			_coach_who = UITheme.label("", 22, UITheme.GOLD, "bold")
 			v.add_child(_coach_who)
-			_coach_label = UITheme.label("", 30, UITheme.TEXT)
+			_coach_label = UITheme.label("", 27, UITheme.TEXT)
 			_coach_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			_coach_label.custom_minimum_size = Vector2(900, 0)
+			_coach_label.custom_minimum_size = Vector2(560, 0)
 			v.add_child(_coach_label)
 			overlay.add_child(_coach_box)
 		_coach_who.text = String(line.get("who", "")).to_upper()
@@ -1869,7 +1869,8 @@ func _coach(at: String) -> void:
 		_coach_box.modulate.a = 0.0
 		_coach_box.visible = true
 		await get_tree().process_frame
-		_coach_box.position = Vector2((overlay.size.x - _coach_box.size.x) * 0.5, 120)
+		# top right, clear of the rival's Totems and the turn banner
+		_coach_box.position = Vector2(overlay.size.x - _coach_box.size.x - 24, 72)
 		var tw := _coach_box.create_tween()
 		tw.tween_property(_coach_box, "modulate:a", 1.0, 0.35)
 		sfx.play("ui_select")
