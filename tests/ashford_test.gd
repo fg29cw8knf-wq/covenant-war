@@ -38,7 +38,7 @@ func _ready() -> void:
 		get_tree().quit()
 		return
 	if "midnight" in args:
-		for f in ["ash_started", "ash_tom", "ash_mae", "ash_nell", "ash_ready"]:
+		for f in ["ash_started", "ash_tam", "ash_tilly", "ash_nell", "ash_ready"]:
 			Game.set_flag(f)
 		world._refresh_markers()
 		var c = world._npc_by_id("corin")
@@ -52,7 +52,7 @@ func _ready() -> void:
 	await _frames(120)
 	await _shot("after_arrival")
 	# walk round the errands
-	for id in ["tom", "mae", "nell"]:
+	for id in ["tam", "tilly", "nell", "hob", "seamus"]:
 		var n = world._npc_by_id(id)
 		_teleport(n.body.global_position + Vector3(0.0, 0, 1.6))
 		await _frames(8)

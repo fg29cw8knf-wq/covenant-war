@@ -1308,6 +1308,7 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 
 
 func fx_ward_set(pi: int, _card: DuelCard) -> void:
+	_coach("ward")
 	sfx.play("card_fly")
 	get_tree().create_timer(0.3 / speed).timeout.connect(func() -> void: sfx.play("ward_set"))
 	_layout_hand()
@@ -1365,6 +1366,8 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	_hide_detail()
 	if t.owner == me and _coached.has("attack"):
 		_coach_hide(4.0)
+	elif t.owner != me:
+		_bark()
 	var v := _view(t)
 	var mv := t.move(i)
 	var col := DuelFX.light(t.element())
@@ -1499,6 +1502,7 @@ func _impact(pos: Vector2, col: Color, amount: int) -> void:
 
 
 func fx_roll(_pi: int, info: Dictionary) -> void:
+	_coach("fate")
 	var dv := DuelViews.DiceView.new()
 	dv.info = info
 	dv.position = Vector2(FIELD_CX - 590, 276)
@@ -1574,6 +1578,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	v.flash = 1.0
 	v.flash_color = Color(1, 0.3, 0.25)
 	var weak: bool = att != null and t.weak_to(att.element())
+	if weak and att != null and att.owner == me and t.owner != me:
+		_coach("weakness")
 	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80, 1.1 / speed, "WEAK!  ×1.5" if weak else "")
 	# knocked back, then settles
 	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
@@ -1666,6 +1672,8 @@ func fx_life_gain(pi: int, amount: int) -> void:
 func fx_status(t: DuelTotem, status: String) -> void:
 	if status == "":
 		return   # a condition was cleared; the nameplate redraws by itself
+	if status == "poison":
+		_coach("poison")
 	var v := _view(t)
 	var col: Color = DuelConditions.color(status)
 	var c := _center(v)
@@ -1883,6 +1891,49 @@ func _coach_hide(delay: float = 0.0) -> void:
 	var tw := _coach_box.create_tween()
 	tw.tween_property(_coach_box, "modulate:a", 0.0, 0.5).set_delay(delay)
 	tw.tween_callback(func() -> void: _coach_box.visible = false)
+
+
+## The rival's barks (spec.barks: a list of short lines), one at a time in a
+## small box on their side of the Circle, roughly every other attack.
+var _bark_box: PanelContainer
+var _bark_label: Label
+var _bark_i := 0
+var _bark_skip := false
+
+
+func _bark() -> void:
+	var lines: Array = spec.get("barks", [])
+	if lines.is_empty():
+		return
+	_bark_skip = not _bark_skip
+	if _bark_skip and _bark_i > 0:
+		return
+	if _bark_box == null:
+		_bark_box = PanelContainer.new()
+		_bark_box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.88), UITheme.GOLD_DIM, 18, 2, 20))
+		_bark_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 2)
+		_bark_box.add_child(v)
+		var who := UITheme.label(String(spec.get("names", ["", "Rival"])[1]).to_upper(), 20, UITheme.TEXT_DIM, "bold")
+		v.add_child(who)
+		_bark_label = UITheme.label("", 26, UITheme.TEXT)
+		_bark_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_bark_label.custom_minimum_size = Vector2(460, 0)
+		v.add_child(_bark_label)
+		overlay.add_child(_bark_box)
+	_bark_label.text = String(lines[_bark_i % lines.size()])
+	_bark_i += 1
+	_bark_box.modulate.a = 0.0
+	_bark_box.visible = true
+	await get_tree().process_frame
+	# top left, under the rival's name
+	_bark_box.position = Vector2(24, 72)
+	var tw := _bark_box.create_tween()
+	tw.tween_property(_bark_box, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(2.6)
+	tw.tween_property(_bark_box, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func() -> void: _bark_box.visible = false)
 
 
 ## Flips a card up in the middle of the Circle, flying in from `from`.

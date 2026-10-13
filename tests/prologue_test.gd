@@ -53,6 +53,9 @@ func _auto_advance(want: String) -> void:
 	for n in _all(main):
 		if n is DialogueBox and n.visible and not n._choices.visible:
 			n._tap()
+		elif n is Button and n.is_visible_in_tree() and n.theme_type_variation == "ChoiceButton":
+			n.pressed.emit()   # the first answer to every choice
+			return
 		elif n is LineEdit and n.is_visible_in_tree():
 			n.text = "Rowan"
 			n.text_submitted.emit(n.text)

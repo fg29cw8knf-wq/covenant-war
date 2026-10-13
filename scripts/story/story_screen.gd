@@ -37,23 +37,41 @@ func fade(to_alpha: float, dur: float = 0.6) -> void:
 	await tw.finished
 
 
-## Show a scene and play lines over it: each is {"text", "who"?}.
+## Show a scene and play lines over it. Each line is {"text", "who"?, "name"?},
+## or {"choice": [...], "then": [[lines], ...]}, {"if": flag, "then": [...], "else": [...]}
+## or {"set": flag}, as in the walkable world's dialogue. A flag starting "!" means "not".
 func scene(id: String, lines: Array) -> void:
 	if _bg.scene != id:
 		await fade(1.0, 0.5)
 		_bg.set_scene(id)
 		await fade(0.0, 0.8)
-	for ln in lines:
-		var who: String = ln.get("who", "")
-		var nm := ""
-		var portrait: Texture2D = null
-		if who != "":
-			nm = ln.get("name", who.capitalize())
-			if who == "player":
-				nm = Game.player_name
-			portrait = DollArt.portrait(who)
-		await box.say(nm, portrait, String(ln.text).replace("{name}", Game.player_name))
+	await _play(lines)
 	box.close()
+
+
+func _play(lines: Array) -> void:
+	for ln in lines:
+		if ln.has("choice"):
+			var i: int = await box.choose(ln.choice)
+			var branches: Array = ln.get("then", [])
+			if i < branches.size():
+				await _play(branches[i])
+		elif ln.has("if"):
+			var cond: String = ln["if"]
+			var ok: bool = (not bool(Game.flag(cond.substr(1)))) if cond.begins_with("!") else bool(Game.flag(cond))
+			await _play(ln.get("then", []) if ok else ln.get("else", []))
+		elif ln.has("set"):
+			Game.set_flag(ln.set)
+		elif ln.has("text"):
+			var who: String = ln.get("who", "")
+			var nm := ""
+			var portrait: Texture2D = null
+			if who != "":
+				nm = ln.get("name", who.capitalize())
+				if who == "player":
+					nm = Game.player_name
+				portrait = DollArt.portrait(who)
+			await box.say(nm, portrait, String(ln.text).replace("{name}", Game.player_name))
 
 
 ## Ask for the player's name; returns it.
@@ -256,6 +274,37 @@ class StoryBG:
 					var p := Vector2(fmod(i * 97.3, r.size.x), r.size.y - fmod(_t * (40 + i % 7 * 12) + i * 53.0, r.size.y))
 					draw_circle(p, 2.0 + i % 3, Color(1.0, 0.6 + (i % 5) * 0.06, 0.2, 0.7))
 				_village(r, Color("0a0405"))
+			"camp":
+				_sky(r, Color("070a16"), Color("1a1430"))
+				_stars_draw(r, 0.8)
+				var hz := r.size.y * 0.7
+				draw_colored_polygon(PackedVector2Array([Vector2(0, hz), Vector2(r.size.x * 0.25, hz - 140), Vector2(r.size.x * 0.5, hz - 60), Vector2(r.size.x * 0.75, hz - 160), Vector2(r.size.x, hz - 40), Vector2(r.size.x, r.size.y), Vector2(0, r.size.y)]), Color("0b0a12"))
+				var fc := Vector2(r.size.x * 0.5, r.size.y * 0.86)
+				for i in 10:
+					var fl := 1.0 + 0.15 * sin(_t * 7.0 + i)
+					draw_circle(fc, (260.0 - i * 24.0) * fl, Color(1.0, 0.55, 0.2, 0.035))
+				for i in 24:
+					var ph := fmod(_t * (0.6 + (i % 5) * 0.12) + i * 0.21, 1.0)
+					var sp := fc + Vector2(sin(i * 2.3 + _t) * 40.0 * ph, -ph * 260.0)
+					draw_circle(sp, 2.5 * (1.0 - ph) + 0.5, Color(1.0, 0.7 + 0.2 * ph, 0.25, 0.9 * (1.0 - ph)))
+				draw_circle(fc, 36 + 4 * sin(_t * 9.0), Color(1.0, 0.75, 0.3, 0.9))
+				draw_circle(fc, 20, Color(1.0, 0.95, 0.7, 0.95))
+			"vault":
+				_sky(r, Color("05040a"), Color("1a1206"))
+				for col in 9:
+					var x := r.size.x * (0.08 + col * 0.105)
+					for row in 7:
+						var y := r.size.y * (0.08 + row * 0.11)
+						var g := 0.35 + 0.3 * sin(_t * 1.3 + col * 0.7 + row * 1.1)
+						draw_rect(Rect2(x, y, 42, 60), Color(0.95, 0.8, 0.35, 0.08 + 0.12 * g))
+						draw_rect(Rect2(x, y, 42, 60), Color(0.9, 0.75, 0.3, 0.45 + 0.3 * g), false, 2.0)
+				var dy := r.size.y * 0.84
+				draw_rect(Rect2(r.size.x * 0.25, dy, r.size.x * 0.5, r.size.y - dy), Color("120d08"))
+				draw_rect(Rect2(r.size.x * 0.25, dy - 14, r.size.x * 0.5, 14), Color("3a2a12"))
+				for i in 8:
+					var sx := r.size.x * 0.5 + (i - 3.5) * 54.0
+					draw_rect(Rect2(sx - 16, dy - 50, 32, 36), Color(0.95, 0.8, 0.35, 0.1), false, 2.0)
+				draw_circle(Vector2(r.size.x * 0.5, dy - 110), r.size.x * 0.12, Color(1.0, 0.85, 0.5, 0.04))
 			"road":
 				_sky(r, Color("1c2a4a"), Color("d98a5a"), true)
 				_stars_draw(r, 0.5)

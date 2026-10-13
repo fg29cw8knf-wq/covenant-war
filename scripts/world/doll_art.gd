@@ -27,6 +27,14 @@ const LOOKS := {
 	"child": {"skin": "f6d5b8", "hair": "e0a040", "style": "long", "outfit": "5d8fd0", "trim": "f2f2f2", "legs": "5a4a3a"},
 	"elder": {"skin": "e7bf9e", "hair": "e8e4dc", "style": "long", "outfit": "6c5a8a", "trim": "cdb680", "legs": "4a4058", "extras": ["robe"]},
 	"hunter": {"skin": "d9a883", "hair": "1e1a18", "style": "short", "outfit": "3a3a44", "trim": "b08a3a", "legs": "26262c", "cloak": "22222a", "extras": ["hood"]},
+	"hob": {"skin": "e0ad86", "hair": "7a5a3a", "style": "bald", "outfit": "6f7f4e", "trim": "4a4a30", "legs": "3a3226"},
+	"krell": {"skin": "d8b092", "hair": "2a2622", "style": "short", "outfit": "1c1c22", "trim": "c9a03a", "legs": "16161c", "cloak": "0e0e12", "extras": ["armor"]},
+	"morne": {"skin": "ecd2b8", "hair": "d8cfa8", "style": "short", "outfit": "14101a", "trim": "d4b24a", "legs": "100c14", "cloak": "1e1626"},
+	"herald": {"skin": "0b0c12", "hair": "0b0c12", "style": "bald", "outfit": "8a8c94", "trim": "c8ccd4", "legs": "6e7078", "cloak": "9a9ca6", "extras": ["hood", "robe"]},
+	"hierarch": {"skin": "e6c6a6", "hair": "d8d4cc", "style": "bald", "outfit": "e8c25a", "trim": "f6ecd0", "legs": "c9a63c", "extras": ["robe", "beard"]},
+	"trader": {"skin": "d2a07a", "hair": "4a3a2a", "style": "short", "outfit": "7a5a3a", "trim": "b89a5a", "legs": "3a3226", "extras": ["beard"]},
+	"refugee": {"skin": "dcb08e", "hair": "3a2a20", "style": "long", "outfit": "8a7a6a", "trim": "5a4a3a", "legs": "4a3a30", "cloak": "6a5a4a"},
+	"courtier": {"skin": "f0d0b0", "hair": "7a4a2a", "style": "long", "outfit": "d8c070", "trim": "f6e8b0", "legs": "c0a858"},
 }
 
 static var _cache := {}

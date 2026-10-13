@@ -40,6 +40,9 @@ func _auto_advance() -> void:
 			return
 		if n is DialogueBox and n.visible and not n._choices.visible:
 			n._tap()
+		elif n is Button and n.is_visible_in_tree() and n.theme_type_variation == "ChoiceButton":
+			n.pressed.emit()
+			return
 		elif n is LineEdit and n.is_visible_in_tree():
 			n.text_submitted.emit(n.text)
 		elif n is Button and n.is_visible_in_tree() and (n.text.begins_with("Choose ") or n.text == "Continue"):

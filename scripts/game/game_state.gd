@@ -51,7 +51,8 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 	collection = {}
 	for id in deck:
 		collection[id] = int(collection.get(id, 0)) + 1
-	flags = {}
+	if not keep_progress:
+		flags = {}   # the Prologue's choices in Ashford survive the deck choice
 	area = "solhaven"
 	spawn = "gate"
 	play_seconds = 0.0

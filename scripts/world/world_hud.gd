@@ -19,6 +19,7 @@ var _title: Control
 var _fade: ColorRect
 var _toast: Label
 var _hint: PanelContainer
+var _objective: Label
 var _hint_text := ""       # the current first-steps hint; hidden while the controls are
 
 
@@ -114,6 +115,17 @@ func _ready() -> void:
 	hl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_hint.add_child(hl)
 	_root.add_child(_hint)
+	# the current objective, top left
+	_objective = UITheme.label("", 28, UITheme.GOLD, "bold")
+	_objective.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_objective.offset_left = 36
+	_objective.offset_top = 28
+	_objective.offset_right = 1100
+	_objective.offset_bottom = 70
+	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_objective.modulate.a = 0.0
+	_objective.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_objective)
 
 	dialogue = DialogueBox.new()
 	_root.add_child(dialogue)
@@ -127,6 +139,8 @@ func _ready() -> void:
 	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_fade.modulate.a = 0.0
 	_root.add_child(_fade)
+	# the fade sits under the dialogue, so lines can play over black (the vault, the end of a chapter)
+	_root.move_child(_fade, dialogue.get_index())
 
 
 # --------------------------------------------------------------- public ---
@@ -147,9 +161,17 @@ func set_controls_visible(v: bool) -> void:
 		_talk.visible = false
 		_talk_name.visible = false
 	pad.reset()
-	# the first-steps hint steps aside for talking and cutscenes
+	# the first-steps hint and the objective step aside for talking and cutscenes
 	_hint.visible = v and _hint_text != ""
 	_hint.modulate.a = 1.0 if _hint.visible else 0.0
+	_objective.modulate.a = 1.0 if v and _objective.text != "" else 0.0
+
+
+## The current task, shown top left while the player is free to move; "" clears it.
+func set_objective(text: String) -> void:
+	_objective.text = text
+	var tw := create_tween()
+	tw.tween_property(_objective, "modulate:a", 1.0 if text != "" and pad.visible else 0.0, 0.4)
 
 
 func show_area_title(title: String, subtitle: String) -> void:

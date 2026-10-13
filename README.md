@@ -56,15 +56,27 @@ and push `build/web` to the `gh-pages` branch.
 
 The story's duels still use the older rules below until the v1 duel is signed off.
 
-## Story mode: Ashford
+## Story mode
 
-New Game starts the Prologue in Ashford, the player's village, on the last
-night of the Age (`scripts/world/areas/ashford.gd`): Bram's errands, the Lantern
-Duel against Corin on the v1 rules, then midnight, the Sigilfall and the
-marking, before the rest of the Prologue plays as story scenes and the player
-arrives in Solhaven. The village itself (`scripts/world/ashford_village.gd`) is
-built from the look test in `lookdev/ashford`, with lighter settings on the
-phone and web renderers. Its shaders live in `assets/shaders/village/`.
+Every line follows the "Spoken Script" Claude doc (the Prologue and Chapter 1,
+measured against the genre); the Master Script holds the world and the later
+chapters. New Game starts the Prologue in Ashford, the player's village, on the
+last night of the Age (`scripts/world/areas/ashford.gd`): Bram teaches the
+controls in his own words, three optional chores the game remembers (Tam's
+barrel, Tilly's moth, Nell's story), the Lantern Duel against Corin with Bram's
+coaching you can decline, then midnight, the Sigilfall and the marking. The
+rest of the Prologue plays as story scenes with choices (`scripts/story/prologue.gd`):
+the Herald, Ashford burning, Bram's decks, the campfire and Dask's road duel.
+Solhaven (`scripts/world/areas/solhaven.gd`) is Chapter 1 as a hub: the gate
+and its refugees, Bram's wagon and Turnip, Wren, the Sun Court on the temple
+steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
+Aldric at the Circle and Morne's vault to close the chapter. Still to build
+from the script: the attic and lantern hanging, the run and the cart, the
+garden escape, Wren's chase, the mirror puzzle, the Sunspire, and a deck screen.
+
+The village itself (`scripts/world/ashford_village.gd`) is built from the look
+test in `lookdev/ashford`, with lighter settings on the phone and web renderers.
+Its shaders live in `assets/shaders/village/`.
 
 ```sh
 xvfb-run -a godot --resolution 1280x720 --fixed-fps 8 res://tests/ashford_test.tscn -- /tmp/ash 24            # play it all, with screenshots

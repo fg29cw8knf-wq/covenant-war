@@ -91,15 +91,21 @@ func _arrive() -> void:
 		hud.dialogue.close()
 		hud.set_controls_visible(true)
 		busy = false
+	hud.set_objective(_fmt(String(Game.flag("objective", ""))))
 	_show_first_steps()
 
 
-## The first two things a new player needs to know, shown until they've done
-## each once: how to walk, then how to talk to someone.
+## Bram teaches walking and talking in his own words (Spoken Script, P1). These
+## two standing hints are only a fallback: they appear if a new player has done
+## nothing for a while after his lesson, and go once each step is done.
 func _show_first_steps() -> void:
 	if attract or Game.settings.get("first_steps", 0) >= 2:
 		return
-	if int(Game.settings.get("first_steps", 0)) == 0:
+	var step := int(Game.settings.get("first_steps", 0))
+	await get_tree().create_timer(9.0).timeout
+	if not is_inside_tree() or int(Game.settings.get("first_steps", 0)) != step:
+		return
+	if step == 0:
 		hud.show_hint("Tap the ground where you want to walk.")
 	else:
 		hud.show_hint("Walk up to someone and tap the Talk button to speak to them.")
@@ -437,6 +443,9 @@ func run_steps(steps: Array, npc) -> void:
 				await run_steps(branches[i], npc)
 		elif st.has("set"):
 			Game.set_flag(st.set)
+		elif st.has("objective"):
+			Game.set_flag("objective", String(st.objective))
+			hud.set_objective(_fmt(String(st.objective)))
 		elif st.has("give"):
 			hud.dialogue.close()
 			Game.add_card(st.give)
@@ -527,7 +536,7 @@ func _simulate_duel(spec: Dictionary) -> bool:
 func _end_of_slice() -> void:
 	hud.dialogue.close()
 	await hud.fade(0.85, 1.0)
-	await hud.dialogue.say("", null, "[center][b]End of the first chapter.[/b][/center]\n[center]You have defeated the Sun's Champion. The Covenant War has begun.[/center]")
+	await hud.dialogue.say("", null, "[center][b]End of Chapter One: The Sun's Court.[/b][/center]\n[center]The Unsworn is tested and found worthy. Six kingdoms wait, and the Turning has a year to run.[/center]")
 	await hud.dialogue.say("", null, "[center]Thank you for playing this early slice of The Covenant War.\nYou can keep exploring Solhaven and duelling.[/center]")
 	hud.dialogue.close()
 	await hud.fade(0.0, 1.0)

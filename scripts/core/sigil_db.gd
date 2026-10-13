@@ -415,6 +415,15 @@ const CARDS := {
 		],
 		"art": "an elegant fox with four translucent veil-like tails, a glowing third eye, surrounded by shifting mirages",
 	},
+	"sunmane_lion": {
+		"kind": "totem", "name": "Sunmane Lion", "element": "radiant", "tier": 4, "stage": 0,
+		"hp": 120, "retreat": 2, "affinity": "presence", "attuned": {"min": 6, "damage": 10},
+		"attacks": [
+			{"name": "Dawn Roar", "cost": ["radiant", "any"], "damage": 40},
+			{"name": "Sunmane Charge", "cost": ["radiant", "radiant", "any"], "damage": 80},
+		],
+		"art": "a young lion whose mane is morning light, pale gold and white, standing on a sunlit stone with its head raised, the Resonance of Dawnmane made small",
+	},
 	# ================================================================ LEGEND
 	"sunlance_seraph": {
 		"kind": "totem", "name": "Sunlance Seraph", "element": "radiant", "tier": 5, "stage": 0,
