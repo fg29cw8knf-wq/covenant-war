@@ -334,35 +334,41 @@ class ShotView:
 		_draw_fx(r)
 		if title_t >= 0.0:
 			_draw_title(r, title_t)
-		# letterbox bars and vignette give every shot the same frame
-		var bar := r.size.y * 0.06
-		draw_rect(Rect2(0, 0, r.size.x, bar), Color.BLACK)
-		draw_rect(Rect2(0, r.size.y - bar, r.size.x, bar), Color.BLACK)
+		# letterbox bars frame the placeholder cards; a painting is shown whole
+		if still == null:
+			var bar := r.size.y * 0.06
+			draw_rect(Rect2(0, 0, r.size.x, bar), Color.BLACK)
+			draw_rect(Rect2(0, r.size.y - bar, r.size.x, bar), Color.BLACK)
 
+	## The whole painting stays in view: it's fitted inside the screen (black
+	## at the sides on a wide phone, like a cinema frame) and the camera moves
+	## are gentle, never cropping more than a few percent.
 	func _draw_still(r: Rect2, k: float) -> void:
 		var e := k * k * (3.0 - 2.0 * k)
-		var zoom := 1.06
+		var zoom := 1.0
 		var off := Vector2.ZERO
 		match String(shot.get("move", "in")):
 			"in":
-				zoom = lerpf(1.02, 1.12, e)
+				zoom = lerpf(1.0, 1.05, e)
 			"out":
-				zoom = lerpf(1.14, 1.02, e)
+				zoom = lerpf(1.05, 1.0, e)
 			"up":
-				zoom = 1.1
-				off = Vector2(0, lerpf(0.04, -0.04, e))
+				zoom = 1.03
+				off = Vector2(0, lerpf(0.015, -0.015, e))
 			"down":
-				zoom = 1.1
-				off = Vector2(0, lerpf(-0.04, 0.04, e))
+				zoom = 1.03
+				off = Vector2(0, lerpf(-0.015, 0.015, e))
 			"left":
-				zoom = 1.1
-				off = Vector2(lerpf(0.04, -0.04, e), 0)
+				zoom = 1.03
+				off = Vector2(lerpf(0.015, -0.015, e), 0)
 			"right":
-				zoom = 1.1
-				off = Vector2(lerpf(-0.04, 0.04, e), 0)
-		var sz := r.size * zoom
+				zoom = 1.03
+				off = Vector2(lerpf(-0.015, 0.015, e), 0)
+		var ts := Vector2(still.get_width(), still.get_height())
+		var fit := minf(r.size.x / ts.x, r.size.y / ts.y) * zoom
+		var sz := ts * fit
 		var pos := (r.size - sz) * 0.5 + off * r.size
-		CardFace.draw_cover(self, Rect2(pos, sz), still, 0.5)
+		draw_texture_rect(still, Rect2(pos, sz), false)
 
 	## with_words: false once the title is up, so the card's description doesn't sit under it.
 	func _draw_card(r: Rect2, with_words := true) -> void:

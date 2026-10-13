@@ -514,8 +514,11 @@ func sync(v) -> void:
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
 
 
+## Models face +Z (the camera) as exported. The rival's face the player, the
+## player's are turned to face across the board at the rival, each with a
+## little angle so they aren't dead square to the camera.
 static func home_yaw(s: Slot) -> float:
-	return PI * 0.24 if s.mine else -PI * 0.27
+	return PI * 0.76 if s.mine else -PI * 0.27
 
 
 ## Turns a slot's model to face a point on the field for `hold` seconds
@@ -555,8 +558,9 @@ func _load_model(s: Slot, id: String) -> void:
 	# measure its height so it can be scaled to the slot
 	var aabb := _merged_aabb(inst)
 	# Models are scaled so their body (the bigger of height and length) fills
-	# the slot; a raised tail or wings shouldn't shrink the creature.
-	s.model_h = maxf(0.01, maxf(aabb.size.y, aabb.size.z * 0.8))
+	# the slot; a raised tail shouldn't shrink the creature, but a wide
+	# wingspan (a moth) counts, or it would dwarf its neighbours.
+	s.model_h = maxf(0.01, maxf(aabb.size.y, maxf(aabb.size.z, aabb.size.x) * 0.8))
 	s.model_floor = aabb.position.y
 	s.anim = _find_anim(inst)
 	if s.anim != null:

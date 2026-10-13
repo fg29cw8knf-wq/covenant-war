@@ -18,6 +18,7 @@ var _menu: Control
 var _title: Control
 var _fade: ColorRect
 var _toast: Label
+var _hint: PanelContainer
 
 
 func _ready() -> void:
@@ -92,6 +93,27 @@ func _ready() -> void:
 	_title = _make_title()
 	_root.add_child(_title)
 
+	# first-steps hints ("Tap the ground to walk"), bottom centre
+	_hint = PanelContainer.new()
+	_hint.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.85), UITheme.GOLD_DIM, 20, 2, 18))
+	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint.anchor_left = 0.5
+	_hint.anchor_right = 0.5
+	_hint.anchor_top = 1.0
+	_hint.anchor_bottom = 1.0
+	_hint.offset_left = -440
+	_hint.offset_right = 440
+	_hint.offset_top = -170
+	_hint.offset_bottom = -90
+	_hint.modulate.a = 0.0
+	_hint.visible = false
+	var hl := UITheme.label("", 30, UITheme.TEXT, "bold")
+	hl.name = "Text"
+	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	hl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_hint.add_child(hl)
+	_root.add_child(_hint)
+
 	dialogue = DialogueBox.new()
 	_root.add_child(dialogue)
 
@@ -133,6 +155,20 @@ func show_area_title(title: String, subtitle: String) -> void:
 	tw.tween_property(_title, "modulate:a", 1.0, 0.8)
 	tw.tween_interval(2.2)
 	tw.tween_property(_title, "modulate:a", 0.0, 1.0)
+
+
+## A standing instruction for new players; "" hides it.
+func show_hint(text: String) -> void:
+	if text == "":
+		if _hint.visible:
+			var tw := create_tween()
+			tw.tween_property(_hint, "modulate:a", 0.0, 0.3)
+			tw.tween_callback(func() -> void: _hint.visible = false)
+		return
+	(_hint.get_node("Text") as Label).text = text
+	_hint.visible = true
+	var tw2 := create_tween()
+	tw2.tween_property(_hint, "modulate:a", 1.0, 0.4)
 
 
 func toast(text: String) -> void:

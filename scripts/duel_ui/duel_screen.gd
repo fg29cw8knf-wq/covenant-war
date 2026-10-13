@@ -36,6 +36,13 @@ const ARENA_MOTES := {
 }
 
 var spec: Dictionary = {}
+## Tutorial coaching: spec.coach = [{"at": "start"|"call"|"essence"|"attack", "who": "Bram", "say": "..."}].
+## Each line shows once, when the duel reaches that step, and stays until the next.
+var _coach_box: PanelContainer
+var _coach_label: Label
+var _coach_who: Label
+var _coached: Dictionary = {}
+var _my_turns := 0
 var game: DuelGame
 var human: DuelHuman
 var me := 0
@@ -646,6 +653,11 @@ func begin_main() -> void:
 	_hide_detail()
 	_refresh()
 	_show_actions_default()
+	_my_turns += 1
+	if _my_turns == 1:
+		_coach("call")
+	elif _my_turns == 2:
+		_coach("attack")
 
 
 func _clear_selection() -> void:
@@ -1175,6 +1187,8 @@ func fx_turn(pi: int) -> void:
 	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.6, 96, "", "TURN %d" % game.turn)
 	if pi == me:
 		sfx.play("essence_gain")
+		if _my_turns == 0:
+			_coach("start")
 
 
 func fx_draw(pi: int, cards: Array) -> void:
@@ -1191,6 +1205,8 @@ func fx_draw(pi: int, cards: Array) -> void:
 
 func fx_call(t: DuelTotem) -> void:
 	_hide_detail()
+	if t.owner == me:
+		_coach("essence")
 	var v := _view(t)
 	v.set_totem(t)
 	v.fade = 0.0
@@ -1347,6 +1363,8 @@ func _target_point(t: DuelTotem, target) -> Vector2:
 
 func fx_attack(t: DuelTotem, i: int, target) -> void:
 	_hide_detail()
+	if t.owner == me and _coached.has("attack"):
+		_coach_hide(4.0)
 	var v := _view(t)
 	var mv := t.move(i)
 	var col := DuelFX.light(t.element())
@@ -1824,6 +1842,48 @@ func _toast(text: String) -> void:
 	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 470), text, UITheme.TEXT, 34, 1.6)
 
 
+## Shows the tutorial line for this step (once), in a box at the top of the Circle.
+func _coach(at: String) -> void:
+	if _coached.has(at):
+		return
+	for line in spec.get("coach", []):
+		if String(line.get("at", "")) != at:
+			continue
+		_coached[at] = true
+		if _coach_box == null:
+			_coach_box = PanelContainer.new()
+			_coach_box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.9), UITheme.GOLD_DIM, 18, 2, 22))
+			_coach_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			var v := VBoxContainer.new()
+			v.add_theme_constant_override("separation", 4)
+			_coach_box.add_child(v)
+			_coach_who = UITheme.label("", 22, UITheme.GOLD, "bold")
+			v.add_child(_coach_who)
+			_coach_label = UITheme.label("", 30, UITheme.TEXT)
+			_coach_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			_coach_label.custom_minimum_size = Vector2(900, 0)
+			v.add_child(_coach_label)
+			overlay.add_child(_coach_box)
+		_coach_who.text = String(line.get("who", "")).to_upper()
+		_coach_label.text = String(line.get("say", ""))
+		_coach_box.modulate.a = 0.0
+		_coach_box.visible = true
+		await get_tree().process_frame
+		_coach_box.position = Vector2((overlay.size.x - _coach_box.size.x) * 0.5, 120)
+		var tw := _coach_box.create_tween()
+		tw.tween_property(_coach_box, "modulate:a", 1.0, 0.35)
+		sfx.play("ui_select")
+		return
+
+
+func _coach_hide(delay: float = 0.0) -> void:
+	if _coach_box == null or not _coach_box.visible:
+		return
+	var tw := _coach_box.create_tween()
+	tw.tween_property(_coach_box, "modulate:a", 0.0, 0.5).set_delay(delay)
+	tw.tween_callback(func() -> void: _coach_box.visible = false)
+
+
 ## Flips a card up in the middle of the Circle, flying in from `from`.
 ## Returns the card's centre.
 func _show_card_big(id: String, tag: String, col: Color, hold: float, from := Vector2(-1, -1)) -> Vector2:
@@ -1947,12 +2007,24 @@ func _show_result(r: String) -> String:
 	st.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	v.add_child(st)
 	if r == "won" and (not _watching() or Game.settings.get("debug_autoplay", false)):
-		for line in _reward_lines():
+		# the rewards scroll if there are many, so the buttons always stay on screen
+		var sc := ScrollContainer.new()
+		sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		sc.custom_minimum_size = Vector2(1100, 0)
+		var lines := _reward_lines()
+		var rv := VBoxContainer.new()
+		rv.add_theme_constant_override("separation", 10)
+		rv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sc.add_child(rv)
+		for line in lines:
 			var rl := UITheme.label(line, 28, UITheme.GOLD)
 			rl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 			rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			rl.custom_minimum_size = Vector2(1100, 0)
-			v.add_child(rl)
+			rl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			rv.add_child(rl)
+		v.add_child(sc)
+		await get_tree().process_frame
+		sc.custom_minimum_size.y = minf(rv.size.y + 8, overlay.size.y * 0.32)
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 24)
@@ -1968,7 +2040,10 @@ func _show_result(r: String) -> String:
 	back.pressed.connect(func() -> void: picked[0] = r if r != "draw" else "draw")
 	box.modulate.a = 0.0
 	await get_tree().process_frame
-	box.position = Vector2((overlay.size.x - box.size.x) * 0.5, overlay.size.y * 0.62)
+	await get_tree().process_frame
+	# centred a little below the middle, and never off the bottom of the screen
+	var y := clampf(overlay.size.y * 0.56 - box.size.y * 0.5, 40.0, overlay.size.y - box.size.y - 40.0)
+	box.position = Vector2((overlay.size.x - box.size.x) * 0.5, y)
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
 	while picked[0] == "":

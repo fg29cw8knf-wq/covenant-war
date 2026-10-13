@@ -12,8 +12,6 @@ func _ready() -> void:
 	if "--lab" in args or "--lab-watch" in args:
 		show_lab()
 		return
-	if not Game.settings.get("seen_opening", false):
-		await play_opening()
 	show_title()
 
 
@@ -64,8 +62,10 @@ func _on_continue() -> void:
 
 
 func _on_new_game() -> void:
-	# Ashford first: the festival and the Sigilfall are played in the village.
-	# The player's real name is asked later, when the herald reads it out.
+	# The story starts with the opening movie (skippable), then Ashford: the
+	# festival and the Sigilfall are played in the village. The player's real
+	# name is asked later, when the herald reads it out.
+	await play_opening()
 	Game.new_game("Sprout", "emberstorm")
 	go_world("ashford", "green")
 

@@ -21,23 +21,27 @@ const SPAWNS := {
 
 const ENV := {}
 
-## The village's old Spark cards, split between the two young Attuned.
-## The player's half is steady (earth and water); Corin's is brash (fire).
+## The village's old Spark cards: a handful each, one Totem apiece, so the
+## first duel is a tutorial. The player's is steady water (Brookfin beats
+## Corin's fire); Corin's is brash fire.
 const PLAYER_DECK := [
-	"pebblit", "pebblit", "pebblit", "brookfin", "brookfin", "brookfin",
-	"mossling", "mossling", "mossling", "cinderpup", "cinderpup", "cinderpup",
-	"sparkkit", "sparkkit", "sparkkit", "lantern_moth", "lantern_moth", "lantern_moth",
-	"shellguard", "shellguard",
-	"essence_flask", "essence_flask", "essence_flask", "healing_draught", "healing_draught", "healing_draught",
-	"travellers_pack", "travellers_pack", "bulwark", "bulwark",
+	"brookfin",
+	"essence_flask", "essence_flask", "essence_flask", "healing_draught", "healing_draught",
+	"bulwark", "bulwark", "travellers_pack", "travellers_pack", "essence_flask", "healing_draught",
 ]
 const CORIN_DECK := [
-	"sparkkit", "sparkkit", "sparkkit", "emberwisp", "emberwisp", "emberwisp",
-	"cinderpup", "cinderpup", "cinderpup", "hearth_salamander", "hearth_salamander",
-	"pebblit", "pebblit", "pebblit", "lantern_moth", "lantern_moth", "blightrat", "blightrat",
-	"burrowmole", "burrowmole",
+	"cinderpup",
 	"essence_flask", "essence_flask", "essence_flask", "healing_draught", "healing_draught",
-	"travellers_pack", "travellers_pack", "firebrand", "firebrand", "firebrand",
+	"firebrand", "firebrand", "travellers_pack", "travellers_pack", "essence_flask", "healing_draught",
+]
+
+## Bram coaches from his stool; each line appears as the duel reaches that step
+## (Master Script, Duel 1).
+const COACH := [
+	{"at": "start", "who": "Bram", "say": "Draw. Five cards to start. Those Sparks are older than both of you, so be gentle with them."},
+	{"at": "call", "who": "Bram", "say": "Call a Totem into a slot. It's the card's magic, given a body. It fights for you. It can't hurt you."},
+	{"at": "essence", "who": "Bram", "say": "Everything costs Essence, and you get more each turn. Spend it or waste it."},
+	{"at": "attack", "who": "Bram", "say": "Now attack. Hit his Totems, or if the slot across from yours is empty, hit him straight. When his Life hits zero, you've won."},
 ]
 
 
@@ -190,8 +194,10 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 		"ai": [false, true],
 		"difficulty": float(spec.get("difficulty", 0.3)),
 		"arena": arena,
-		"life": 80,
+		"life": 60,
 		"story": true,
+		"tutorial": true,
+		"coach": COACH,
 		"rewards": {"opponent": "village"},
 	}
 

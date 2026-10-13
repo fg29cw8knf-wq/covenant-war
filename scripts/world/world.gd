@@ -91,6 +91,30 @@ func _arrive() -> void:
 		hud.dialogue.close()
 		hud.set_controls_visible(true)
 		busy = false
+	_show_first_steps()
+
+
+## The first two things a new player needs to know, shown until they've done
+## each once: how to walk, then how to talk to someone.
+func _show_first_steps() -> void:
+	if attract or Game.settings.get("first_steps", 0) >= 2:
+		return
+	if int(Game.settings.get("first_steps", 0)) == 0:
+		hud.show_hint("Tap the ground where you want to walk.")
+	else:
+		hud.show_hint("Walk up to someone and tap the Talk button to speak to them.")
+
+
+func _first_step_done(step: int) -> void:
+	if int(Game.settings.get("first_steps", 0)) != step:
+		return
+	Game.settings["first_steps"] = step + 1
+	Game.save_settings()
+	hud.show_hint("")
+	if step == 0:
+		await get_tree().create_timer(2.5).timeout
+		if not busy:
+			_show_first_steps()
 
 
 # ============================================================ building ===
@@ -310,6 +334,7 @@ func _on_tap(pos: Vector2) -> void:
 			_move_target = p
 			_talk_target = null
 			_spawn_tap_ring(p)
+			_first_step_done(0)
 
 
 func _spawn_tap_ring(p: Vector3) -> void:
@@ -377,6 +402,7 @@ func _talk(n: Dictionary) -> void:
 	if busy:
 		return
 	busy = true
+	_first_step_done(1)
 	_move_target = null
 	hud.set_controls_visible(false)
 	player_doll.walking = false

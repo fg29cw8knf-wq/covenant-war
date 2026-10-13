@@ -33,8 +33,11 @@ func _ready() -> void:
 	var cam := Camera3D.new()
 	add_child(cam)
 	var h := aabb.size.y
+	var big: float = maxf(aabb.size.x, maxf(aabb.size.y, aabb.size.z))
+	var k: float = big / 1.75  # 1 for a person; scales the camera out for buildings
+	var c0: Vector3 = aabb.get_center()
 	# three-quarter view like the village camera, then a face close-up
-	var views := [["full", Vector3(1.6, h * 0.65, 2.6), Vector3(0, h * 0.5, 0)],
+	var views := [["full", c0 + Vector3(1.6 * k, h * 0.15 + 1.0 * k, 2.6 * k), c0],
 		["face", Vector3(0.35, h * 0.92, 0.75), Vector3(0, h * 0.9, 0)]]
 	var want := ["idle", "walk", "talk", "duel_idle", "play_card"]
 	for v in views:

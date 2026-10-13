@@ -35,6 +35,9 @@ func _ready() -> void:
 
 func _auto_advance() -> void:
 	for n in _all(main):
+		if n is OpeningMovie:
+			n._finish()
+			return
 		if n is DialogueBox and n.visible and not n._choices.visible:
 			n._tap()
 		elif n is LineEdit and n.is_visible_in_tree():
