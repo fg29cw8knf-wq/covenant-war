@@ -20,6 +20,7 @@ var _fade: ColorRect
 var _toast: Label
 var _hint: PanelContainer
 var _objective: Label
+var _objective_tw: Tween
 var _hint_text := ""       # the current first-steps hint; hidden while the controls are
 
 
@@ -116,7 +117,7 @@ func _ready() -> void:
 	_hint.add_child(hl)
 	_root.add_child(_hint)
 	# the current objective, top left
-	_objective = UITheme.label("", 28, UITheme.GOLD, "bold")
+	_objective = UITheme.label("", 30, UITheme.GOLD, "bold", 10)
 	_objective.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_objective.offset_left = 36
 	_objective.offset_top = 28
@@ -164,14 +165,23 @@ func set_controls_visible(v: bool) -> void:
 	# the first-steps hint and the objective step aside for talking and cutscenes
 	_hint.visible = v and _hint_text != ""
 	_hint.modulate.a = 1.0 if _hint.visible else 0.0
+	if _objective_tw != null and _objective_tw.is_valid():
+		_objective_tw.kill()
 	_objective.modulate.a = 1.0 if v and _objective.text != "" else 0.0
 
 
 ## The current task, shown top left while the player is free to move; "" clears it.
+## While the controls are hidden (talking, cutscenes) it waits, and
+## set_controls_visible shows it again.
 func set_objective(text: String) -> void:
+	if _objective_tw != null and _objective_tw.is_valid():
+		_objective_tw.kill()
 	_objective.text = text
-	var tw := create_tween()
-	tw.tween_property(_objective, "modulate:a", 1.0 if text != "" and pad.visible else 0.0, 0.4)
+	if not pad.visible:
+		_objective.modulate.a = 0.0
+		return
+	_objective_tw = create_tween()
+	_objective_tw.tween_property(_objective, "modulate:a", 1.0 if text != "" else 0.0, 0.4)
 
 
 func show_area_title(title: String, subtitle: String) -> void:
