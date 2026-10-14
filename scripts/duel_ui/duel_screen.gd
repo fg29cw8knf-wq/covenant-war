@@ -43,6 +43,8 @@ var _coach_label: Label
 var _coach_who: Label
 var _coached: Dictionary = {}
 var _my_turns := 0
+## The gated tutorial (spec.tutorial), or null. See DuelTutor.
+var tutor: DuelTutor = null
 var game: DuelGame
 var human: DuelHuman
 var me := 0
@@ -434,17 +436,29 @@ func _start() -> void:
 	human = DuelHuman.new()
 	human.screen = self
 	var controllers := []
+	var lesson: Dictionary = spec.get("tutorial", {})
 	for i in 2:
 		if ai_flags[i]:
-			var a := DuelHuman.Paced.new(float(spec.get("difficulty", 1.0)))
+			var a: DuelHuman.Paced
+			if i == 1 and not lesson.is_empty() and spec.has("rival_script"):
+				a = DuelHuman.Scripted.new(spec.rival_script, float(spec.get("difficulty", 1.0)))
+			else:
+				a = DuelHuman.Paced.new(float(spec.get("difficulty", 1.0)))
 			a.screen = self
 			controllers.append(a)
 		else:
 			controllers.append(human)
 	game = DuelGame.new()
+	game.stacked = spec.get("stacked", [false, false])
 	game.setup(spec.get("decks", ["emberstorm", "tidegrove"]), spec.get("names", ["You", "Rival"]),
 		controllers, spec.get("profiles", []), int(spec.get("seed", -1)))
 	game.start_life = int(spec.get("life", 0))
+	game.start_lives = spec.get("lives", [])
+	game.first_forced = int(spec.get("first", -1))
+	game.life_floor = spec.get("life_floor", [0, 0])
+	game.totem_floor = spec.get("totem_floor", [0, 0])
+	if not lesson.is_empty() and not ai_flags[me]:
+		tutor = DuelTutor.new().setup(self, lesson)
 	game.law = String(spec.get("law", ""))
 	game.presenter = self
 	sfx.play("shuffle")
@@ -590,6 +604,59 @@ func _hand_anchor(hv) -> Vector2:
 	return Vector2(FIELD_CX + off * step, HAND_Y - 74 - 32)
 
 
+## Where something the tutorial points at sits on the stage (design pixels).
+## f: hand, card:<id>, slot:<n>, totem:<id>, foe:<id>, target:<id|life>,
+## life, essence, end, move:<n>; anything else gives an empty rect.
+func tutor_rect(f: String) -> Rect2:
+	var kind := f.get_slice(":", 0)
+	var arg := f.get_slice(":", 1) if f.contains(":") else ""
+	match kind:
+		"hand":
+			var r := Rect2()
+			for hv in hand_views:
+				var hr := Rect2(hv.position, hv.size * hv.scale)
+				r = hr if r.size == Vector2.ZERO else r.merge(hr)
+			return r
+		"card":
+			for hv in hand_views:
+				if hv.card.id == arg:
+					return Rect2(hv.position, hv.size * hv.scale)
+		"slot":
+			var v: DuelViews.TotemView = views[me][clampi(int(arg), 0, DuelRules.SLOTS - 1)]
+			var foot := _foot(v)
+			return Rect2(foot - Vector2(130, 150), Vector2(260, 200))
+		"totem", "foe", "target":
+			if kind == "target" and arg == "life":
+				return tutor_rect("life")
+			var sides := [me] if kind == "totem" else ([rival] if kind == "foe" else [rival, me])
+			for side in sides:
+				for v in views[side]:
+					if v.totem != null and v.totem.id() == arg:
+						if field != null and v.body_rect_3d.size != Vector2.ZERO:
+							return v.body_rect_3d.grow(14)
+						return Rect2(v.position, v.size)
+		"life":
+			var p: DuelViews.PlayerPanel = panels[rival]
+			return Rect2(p.position + p.life_rect().position, p.life_rect().size).grow(8)
+		"essence":
+			var p2: DuelViews.PlayerPanel = panels[me]
+			return Rect2(p2.position, p2.size)
+		"end":
+			return Rect2(end_btn.position, end_btn.size)
+		"move":
+			for b in actions.get_children():
+				if b is ActionButton and String(b.get_meta("key", "")) == "move:" + arg:
+					return Rect2(actions.position + b.position, b.size)
+			if arg == "any":
+				var r2 := Rect2()
+				for b in actions.get_children():
+					if b is ActionButton and String(b.get_meta("key", "")).begins_with("move:"):
+						var br := Rect2(actions.position + b.position, b.size)
+						r2 = br if r2.size == Vector2.ZERO else r2.merge(br)
+				return r2
+	return Rect2()
+
+
 func _card_cost(c: DuelCard) -> int:
 	if c.is_basic_totem():
 		return game.call_cost(me, c)
@@ -688,7 +755,17 @@ func _set_hint(t: String) -> void:
 func _unhandled_input(e: InputEvent) -> void:
 	if mode == "over" or not is_visible_in_tree():
 		return
+	if tutor != null and tutor.blocking:
+		# an explanation is up: Space or Enter carries on, like a tap
+		if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+			tutor.tap()
+			get_viewport().set_input_as_handled()
+		return
 	var cancel: bool = e.is_action_pressed("menu") or (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT)
+	if cancel and tutor != null and tutor.gating() and mode == "main":
+		tutor.nudge()   # no backing out of a lesson step
+		get_viewport().set_input_as_handled()
+		return
 	if cancel:
 		if mode == "main" and pending != "":
 			_cancel_pending()      # one step back: from a target to the move list
@@ -711,12 +788,20 @@ func _unhandled_input(e: InputEvent) -> void:
 
 func _on_end_turn() -> void:
 	if mode == "main":
+		if tutor != null and not tutor.allows("end"):
+			tutor.nudge()
+			return
+		if tutor != null:
+			tutor.did("end")
 		sfx.play("end_turn")
 		_respond({"type": "end"})
 
 
 func _on_gift() -> void:
 	if mode != "main":
+		return
+	if tutor != null and tutor.gating():
+		tutor.nudge()
 		return
 	var prob := game.gift_problem(me)
 	if prob != "":
@@ -746,14 +831,26 @@ func _on_gift() -> void:
 
 func _on_panel_tapped(panel) -> void:
 	if mode == "main" and pending != "" and targets.has(DuelGame.LIFE) and panel == panels[rival]:
+		if tutor != null and not tutor.allows("target", DuelGame.LIFE):
+			tutor.nudge()
+			return
+		if tutor != null:
+			tutor.did("target", DuelGame.LIFE)
 		_resolve(DuelGame.LIFE)
+	elif tutor != null and tutor.gating() and mode == "main":
+		tutor.nudge()
 
 
 func _on_hand_tapped(hv) -> void:
 	var c: DuelCard = hv.card
+	if tutor != null and tutor.gating() and mode == "main" and (sel_card == c or not tutor.allows("card", c)):
+		tutor.nudge()
+		return
 	_show_detail(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c)})
 	if mode != "main":
 		return
+	if tutor != null:
+		tutor.did("card", c)
 	sfx.play("card_lift")
 	if sel_card == c:
 		_clear_selection()
@@ -824,6 +921,23 @@ func _on_hand_tapped(hv) -> void:
 
 
 func _on_slot_tapped(v) -> void:
+	if tutor != null and tutor.gating() and mode == "main":
+		var ok := false
+		if pending == "call" and v.side == me and v.totem == null and targets.has(v.slot):
+			ok = tutor.allows("slot", v.slot)
+			if ok:
+				tutor.did("slot", v.slot)
+		elif pending != "" and pending != "call" and pending != "shift" and v.totem != null and targets.has(v.totem):
+			ok = tutor.allows("target", v.totem)
+			if ok:
+				tutor.did("target", v.totem)
+		elif pending == "" and v.totem != null and v.side == me:
+			ok = tutor.allows("totem", v.totem)
+			if ok:
+				tutor.did("totem", v.totem)
+		if not ok:
+			tutor.nudge()
+			return
 	if v.totem != null and not (pending != "" and targets.has(v.totem)):
 		var opts := {"hp_left": v.totem.hp_left(), "attrs": v.totem.attrs}
 		_show_detail(v.totem.id(), opts)
@@ -873,6 +987,9 @@ func _resolve(target) -> void:
 
 
 func _cancel_pending() -> void:
+	if tutor != null and tutor.gating():
+		tutor.nudge()
+		return
 	sfx.play("ui_back")
 	var t := sel_totem
 	_clear_selection()
@@ -913,7 +1030,7 @@ func _select_totem(t: DuelTotem) -> void:
 		if ready == "" and prob != "":
 			sub = prob
 		var idx := i
-		_add_action(title, sub, t.move_cost(i), prob == "", func() -> void: _choose_move(t, idx))
+		_add_action(title, sub, t.move_cost(i), prob == "", func() -> void: _choose_move(t, idx), "move:%d" % i)
 	if game.shift_problem(me, t, (t.slot + 1) % DuelRules.SLOTS) == "":
 		var sc := game.shift_cost(me)
 		_add_action("Shift", "Move to another slot (swaps if taken).", sc, true, func() -> void:
@@ -933,6 +1050,11 @@ func _select_totem(t: DuelTotem) -> void:
 
 
 func _choose_move(t: DuelTotem, i: int) -> void:
+	if tutor != null and tutor.gating():
+		if not tutor.allows("move", i):
+			tutor.nudge()
+			return
+		tutor.did("move", i)
 	var ts := game.attack_targets(me, t, i)
 	if ts.size() == 1 and ts[0] is String and ts[0] == DuelGame.NONE:
 		_respond({"type": "attack", "attacker": t, "move": i, "target": DuelGame.NONE})
@@ -1004,14 +1126,18 @@ func _add_note(t: String) -> void:
 	_queue_place()
 
 
-func _add_action(title: String, sub: String, cost: int, enabled: bool, cb: Callable) -> void:
+func _add_action(title: String, sub: String, cost: int, enabled: bool, cb: Callable, key: String = "") -> void:
 	var b := ActionButton.new()
 	b.title = title
 	b.sub = sub
 	b.cost = cost
 	b.enabled = enabled
+	b.set_meta("key", key)
 	b.custom_minimum_size = Vector2(384, 96)
 	b.pressed.connect(func() -> void:
+		if tutor != null and tutor.gating() and not tutor.allows("button", key):
+			tutor.nudge()
+			return
 		if b.enabled:
 			sfx.play("ui_tap")
 			cb.call()
@@ -1194,6 +1320,8 @@ func fx_rolloff(r0: int, r1: int) -> void:
 		if game.law != "":
 			var god: String = game.law if Lore.GODS.has(game.law) else ""
 			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+		if tutor != null:
+			await tutor.event("intro")
 	var names: Array = spec.get("names", ["You", "Rival"])
 	if r0 == r1:
 		await _banner("A TIE", UITheme.TEXT, 0.7, 72, "", "Both rolled %d. Roll again!" % r0)
@@ -1214,6 +1342,8 @@ func fx_turn(pi: int) -> void:
 	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.6, 96, "", "TURN %d" % game.turn)
 	if pi == me:
 		sfx.play("essence_gain")
+		if tutor != null:
+			tutor.begin_turn()
 		if _my_turns == 0:
 			_coach("start")
 
@@ -1269,6 +1399,8 @@ func fx_call(t: DuelTotem) -> void:
 	await pause(maxf(0.5, clip_len * 0.8))
 	if field != null:
 		field.cam_home(0.5 / speed)
+	if tutor != null and t.owner == rival:
+		await tutor.event("rival_call")
 
 
 func fx_ascend(t: DuelTotem) -> void:
@@ -1332,6 +1464,8 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
 		DuelFX.burst(fx_layer, c, col, 30, 520.0, 14.0, 0.7, Vector2(0, 200), 180.0, Vector2.UP, speed)
 	await pause(0.1)
+	if tutor != null and pi == rival:
+		await tutor.event("rival_rite")
 
 
 func fx_ward_set(pi: int, _card: DuelCard) -> void:
@@ -1563,6 +1697,8 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	await pause(1.2)
+	if tutor != null:
+		await tutor.event("fate" if _pi == me else "rival_fate")
 	var tw := dv.create_tween()
 	tw.tween_property(dv, "modulate:a", 0.0, 0.15 / speed)
 	tw.tween_callback(dv.queue_free)
@@ -1589,6 +1725,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	_last_hit_pos = c
 	if amount <= 0:
 		await pause(0.2)
+		if tutor != null and absorbed > 0 and t.owner == me:
+			await tutor.event("absorbed")
 		return
 	sfx.play("hit_weak" if att != null and t.weak_to(att.element()) else ("hit_heavy" if amount >= 40 else "hit_light"))
 	_clip(t, "hit", speed)
@@ -1622,6 +1760,11 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	await pause(0.36)
 	if field != null and att != null:
 		field.cam_home(0.7 / speed)
+	if tutor != null:
+		if weak and att != null and att.owner == me and t.owner != me:
+			await tutor.event("weakness")
+		elif t.owner == me:
+			await tutor.event("hit_mine")
 
 
 func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
@@ -1778,6 +1921,8 @@ func fx_ko(t: DuelTotem) -> void:
 	v.set_totem(game.players[t.owner].slots[t.slot])
 	if field != null:
 		field.cam_home(0.7 / speed)
+	if tutor != null and t.owner == rival:
+		await tutor.event("ko_rival")
 
 
 func fx_summon(pi: int, card: DuelCard) -> void:
@@ -1835,6 +1980,8 @@ func fx_message(text: String) -> void:
 
 
 func fx_game_over(winner: int, _reason: String) -> void:
+	if tutor != null:
+		tutor.finish()
 	Music.stop(0.4)
 	var won := winner == me or (_watching() and winner in [0, 1])
 	if not Music.stinger("victory" if won else "defeat", false):

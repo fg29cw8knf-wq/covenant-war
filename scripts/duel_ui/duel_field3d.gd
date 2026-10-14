@@ -575,6 +575,8 @@ func _load_model(s: Slot, id: String) -> void:
 			if idle != "" and s.anim.current_animation != idle:
 				s.anim.play(idle, 0.25))
 		play_clip(s.side, s.index, "idle")
+	else:
+		WingFlap.attach(inst)   # a model without clips still beats its wings (the Lantern Moth)
 	# mesh shadows, and push emissive parts (fire, eyes) so they glow through the bloom
 	for mi in inst.find_children("*", "MeshInstance3D", true, false):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON

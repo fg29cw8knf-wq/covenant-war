@@ -1,0 +1,2 @@
+The opening movie's video clips, one per shot (shot_01.ogv ...), made by tools/movie_clips.py
+from the image-to-video clips. A shot without a clip plays its painting instead.

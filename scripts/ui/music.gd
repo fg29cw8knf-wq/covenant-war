@@ -10,7 +10,7 @@ extends Node
 const DIR := "res://assets/audio/music/"
 ## Tracks with an intro that shouldn't repeat: after the first pass the loop
 ## jumps back to this many seconds in (the file's tail is baked to blend there).
-const LOOP_START := {"ashford_festival": 35.062, "menu_theme": 59.0}
+const LOOP_START := {"ashford_festival": 35.062, "menu_theme": 59.0, "duel_pinch": 29.78}
 
 var current := ""
 var _players: Array[AudioStreamPlayer] = []

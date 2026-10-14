@@ -79,14 +79,19 @@ func _ready() -> void:
 
 
 func _arrive() -> void:
+	var key := "arrived_" + area_id
+	if not Game.flag(key) and area.get_script_constant_map().has("INTRO"):
+		area.intro_frame(self)   # start the camera on the intro's first shot before the fade
 	await hud.fade(0.0, 0.6)
 	hud.show_area_title(area.NAME, area.SUBTITLE)
-	var key := "arrived_" + area_id
 	if not Game.flag(key):
 		Game.set_flag(key)
-		await get_tree().create_timer(1.2).timeout
 		busy = true
 		hud.set_controls_visible(false)
+		if area.get_script_constant_map().has("INTRO"):
+			await area.intro(self)   # the area's own opening shot (Ashford's flight over the festival)
+		else:
+			await get_tree().create_timer(1.2).timeout
 		await run_steps(area.arrival(), null)
 		hud.dialogue.close()
 		hud.set_controls_visible(true)
@@ -582,6 +587,14 @@ func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 
 ## Hands the camera back to the player.
 func end_cine() -> void:
+	cine = false
+
+
+## Glides the camera back behind the player, then hands it back.
+func cine_home(secs: float = 1.0) -> void:
+	var f := _cam_focus_target()
+	await cine_to(f + CAM_OFFSET, f + Vector3(0, 1.1, 0), secs)
+	_focus = f
 	cine = false
 
 

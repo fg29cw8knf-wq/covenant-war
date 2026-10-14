@@ -13,6 +13,8 @@ const BOUNDS := Rect2(-24.0, -24.0, 48.0, 44.0)
 const CAMERA_X_LIMIT := 13.0
 ## The village builds its own sky, moon, fog and lights.
 const CUSTOM_ENV := true
+## New Game opens on a flight over the festival before the player takes over (intro()).
+const INTRO := true
 
 const SPAWNS := {
 	"green": Vector3(1.5, 0, 10.5),
@@ -23,27 +25,95 @@ const ENV := {}
 
 ## The village's old Spark cards: a handful each, one Totem apiece, so the
 ## first duel is a tutorial. The player's is steady water (Brookfin beats
-## Corin's fire); Corin's is brash fire.
+## Corin's fire); Corin's is brash fire. Both are dealt in the order written
+## (no shuffle), so every lesson below has the card it needs.
 const PLAYER_DECK := [
-	"brookfin",
-	"essence_flask", "essence_flask", "essence_flask", "healing_draught", "healing_draught",
-	"bulwark", "bulwark", "travellers_pack", "travellers_pack", "essence_flask", "healing_draught",
+	"brookfin", "bulwark", "essence_flask", "healing_draught", "essence_flask",
+	"healing_draught", "bulwark", "essence_flask",
+	"healing_draught", "essence_flask", "bulwark", "travellers_pack",
 ]
 const CORIN_DECK := [
-	"cinderpup",
-	"essence_flask", "essence_flask", "essence_flask", "healing_draught", "healing_draught",
-	"firebrand", "firebrand", "travellers_pack", "travellers_pack", "essence_flask", "healing_draught",
+	"cinderpup", "essence_flask", "healing_draught", "essence_flask", "travellers_pack", "essence_flask",
+	"firebrand", "essence_flask", "healing_draught",
+	"essence_flask", "healing_draught", "essence_flask",
 ]
+## Both start on 25 Life, so Brookfin's Undertow to the Life ends the lesson.
+const LANTERN_LIFE := 25
 
-## Bram coaches from his stool; each line appears as the duel reaches that step
-## (Spoken Script, P1: the tutorial). "weakness" fires the first time one of
-## the player's attacks hits a weakness.
-const COACH := [
-	{"at": "start", "who": "Bram", "say": "Draw. Five cards to start. Those Sparks are older than the pair of you put together, so be gentle."},
-	{"at": "call", "who": "Bram", "say": "Call a Totem into a slot. It's the card's magic, given a body. It fights for you. Inside a circle, nobody bleeds. That's the law."},
-	{"at": "essence", "who": "Bram", "say": "Everything costs Essence, and you get more each turn. Spend it. Nobody ever won a duel with savings."},
-	{"at": "attack", "who": "Bram", "say": "Now attack. Hit his Totems, or if the slot across from yours is empty, hit him straight. His Life hits zero, you've won. Don't gloat."},
-	{"at": "weakness", "who": "Bram", "say": "See that? His pup's fire, your Brookfin's water. Water wins, and it hits half again as hard. The orb on the card tells you what's what."},
+## Bram teaches the duel from his stool, one step at a time (Spoken Script, P1:
+## the Lantern Duel). Each line waits for the player: an explanation until they
+## tap, an instruction until they've done it, and nothing else can be touched
+## meanwhile. See DuelTutor for the step format.
+const LESSON := {
+	"events": {
+		"intro": [
+			{"say": "Right. Those cards are Sigils. Every one of them fell out of the sky two thousand years ago, the last time the gods fought over the Throne."},
+			{"say": "Magic, gone hard like frost on a window. These are Sparks, the smallest kind. Ashford's kept this lot in a box at the inn since before my grandad."},
+			{"say": "Only the Attuned can wake one. In this village, that's you and Corin. Lucky us."},
+			{"say": "A duel's how sensible folk settle things. Your Totems do the fighting. Bring his Life down to nothing and you've won.", "focus": "life"},
+			{"say": "You both roll the die to see who starts. Highest goes first."},
+		],
+		"rival_call": [
+			{"say": "There's his Cinderpup. Fire, see the orb? Remember that.", "focus": "foe:cinderpup"},
+		],
+		"weakness": [
+			{"say": "See that? Water puts fire out. Hit a Totem's weakness and it hurts a good deal more. The orb on each card tells you its element.", "focus": "foe:cinderpup"},
+		],
+		"rival_fate": [
+			{"say": "That's Fate. Some moves roll the die: roll high, hit hard; roll low, nothing. Corin loves those. Corin loves anything that can go wrong loudly."},
+		],
+		"absorbed": [
+			{"say": "And your Bulwark took the lot. Told you.", "focus": "totem:brookfin"},
+		],
+		"ko_rival": [
+			{"say": "Out it goes, back into its card. Nobody bleeds inside a circle. That's the law."},
+		],
+		"hit_mine": [
+			{"say": "He's throwing Rites now. That one got through, but Brookfin's tougher than it looks.", "focus": "totem:brookfin"},
+		],
+	},
+	"turns": [
+		[
+			{"say": "Along the bottom, that's your hand. Five to start, and you draw one more every turn after this.", "focus": "hand"},
+			{"say": "Brookfin's your Totem: a Spark of river water. Tap it.", "do": "card:brookfin"},
+			{"say": "Now tap the glowing slot. That calls it into the circle.", "do": "slot:1"},
+			{"say": "Calling it cost one Essence. That's the blue gems by your Life. You get one more every turn, so spend them. Nobody ever won a duel with savings.", "focus": "essence"},
+			{"say": "Nobody attacks on the first turn, and a Totem called this turn needs a moment to find its feet. So that's you done."},
+			{"say": "Tap End Turn.", "do": "end"},
+		],
+		[
+			{"say": "You drew a card. One every turn, like I said.", "focus": "hand"},
+			{"say": "Brookfin can fight now. Tap it.", "do": "totem:brookfin"},
+			{"say": "Pick a move. Splash costs nothing. Undertow costs one Essence, hits harder and heals Brookfin a little. Start with Splash.", "do": "move:0"},
+			{"say": "Now tap his Cinderpup.", "do": "target:cinderpup"},
+			{"say": "You've still two Essence. Not every card's a Totem. That Bulwark's a Rite: a bit of magic you cast once, then it's gone.", "focus": "card:bulwark"},
+			{"say": "Tap Bulwark.", "do": "card:bulwark"},
+			{"say": "Now tap Brookfin. The stone soaks up the next hit.", "do": "target:brookfin"},
+			{"say": "That'll do for this turn. End it.", "do": "end"},
+		],
+		[
+			{"say": "His pup's hurting. Undertow will finish it."},
+			{"say": "Tap Brookfin.", "do": "totem:brookfin"},
+			{"say": "Undertow, this time.", "do": "move:1"},
+			{"say": "And tap the Cinderpup.", "do": "target:cinderpup"},
+			{"say": "Nothing stands across from Brookfin now. Next turn it can go straight at Corin's Life.", "focus": "life"},
+			{"say": "End your turn.", "do": "end"},
+		],
+		[
+			{"say": "Now. Tap Brookfin.", "do": "totem:brookfin"},
+			{"say": "Undertow. Make it count.", "do": "move:1"},
+			{"say": "Tap Corin's Life. There's nothing in the way.", "do": "target:life"},
+		],
+	],
+}
+
+## Corin's side of the lesson, one list per turn (DuelHuman.Scripted): he calls
+## his pup across from Brookfin, tries his luck with a Fate move (the roll is set
+## so the Bulwark holds), then throws a Rite.
+const CORIN_SCRIPT := [
+	[{"type": "call", "card": "cinderpup", "slot": "mirror"}],
+	[{"type": "attack", "attacker": "cinderpup", "move": 1, "target": "brookfin", "roll": 12}],
+	[{"type": "rite", "card": "firebrand", "target": "brookfin"}],
 ]
 
 ## Corin's barks during the Lantern Duel, shown in rotation when he attacks.
@@ -104,6 +174,7 @@ static func arrival() -> Array:
 		{"who": "bram", "say": "Your choice. But folk here remember who turned up."},
 		{"say": "[i]He glances up at the stars the way he'd watch a stranger's hands.[/i]"},
 		{"who": "bram", "say": "Go on. Folk are waiting."},
+		{"scene": "home"},
 		{"objective": "Duel Corin by the well. Tam, Tilly and Old Nell could use a hand first."},
 		{"set": "ash_started"},
 	]
@@ -134,6 +205,7 @@ static func _tam() -> Array:
 			{"who": "tam", "say": "Whatever's owed can stay owed till morning. If you see my Nell, tell her I'm saving her a dance. Knees or no knees."},
 		], "else": [
 			{"who": "tam", "say": "Evening. Take the other end of this, would you? Bram wants the cider at the stall before the dancing starts, and my back wants a word with Bram."},
+			{"scene": "tam_barrel"},
 			{"say": "[i]You heave the last barrel into place. Tam wipes his hands on his shirt and nods up the lane, towards the mill.[/i]"},
 			{"who": "tam", "say": "Ironvault's man came by this morning. Very polite about it. The mill's note falls due at the new moon."},
 			{"who": "tam", "say": "Forty years I've ground Ashford's flour, and a banker I've never met owns the stones. Ah, well. Not tonight."},
@@ -157,7 +229,9 @@ static func _tilly() -> Array:
 			]},
 			{"choice": ["Let me see it.", "Not tonight, Tilly."], "then": [
 				[
-					{"say": "[i]You touch the card. A moth made of lamplight unfolds from it, circles Tilly's head twice and settles back into the paper, still glowing.[/i]"},
+					{"say": "[i]You touch the card.[/i]"},
+					{"scene": "tilly_moth"},
+					{"say": "[i]A moth made of lamplight. It circled Tilly's head twice and settled back into the paper, still glowing.[/i]"},
 					{"who": "tilly", "say": "Again! Again! It never does that for Da. It never does that for anyone."},
 					{"set": "ash_tilly"},
 				],
@@ -242,10 +316,16 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 		"ai": [false, true],
 		"difficulty": float(spec.get("difficulty", 0.3)),
 		"arena": arena,
-		"life": 60,
+		"life": LANTERN_LIFE,
 		"story": true,
-		"tutorial": true,
-		"coach": [] if Game.flag("coach_off") else COACH,
+		# dealt in order, the player first, and it can't be lost: a first duel
+		# should teach, not punish. Declining Bram's help still keeps those.
+		"stacked": [true, true],
+		"first": 0,
+		"life_floor": [1, 0],
+		"totem_floor": [1, 0],
+		"tutorial": {} if Game.flag("coach_off") else LESSON,
+		"rival_script": CORIN_SCRIPT,
 		"barks": CORIN_BARKS,
 		"rewards": {"opponent": "village"},
 	}
@@ -257,6 +337,280 @@ static func scene(name: String, w: World) -> void:
 	match name:
 		"midnight":
 			await _midnight(w)
+		"tam_barrel":
+			await _tam_barrel(w)
+		"tilly_moth":
+			await _tilly_moth(w)
+		"home":
+			await w.cine_home(1.2)
+
+
+# ================================================================== intro ===
+
+const INTRO_FROM := Vector3(-30.0, 15.0, 48.0)
+
+## The first frame of New Game, set before the screen fades up.
+static func intro_frame(w: World) -> void:
+	w.cine = true
+	w.cam.global_position = INTRO_FROM
+	w.cam.look_at(Vector3(0, 3.0, 0), Vector3.UP)
+
+
+## New Game's opening shot (after the movie): the camera comes in over the
+## fields and rooftops of Ashford, past the Great Lantern still waiting to be
+## lit, and down to the player on the green as Bram comes over. A tap speeds
+## it up.
+static func intro(w: World) -> void:
+	var v := village(w)
+	var p := w.player.global_position
+	var bram = w._npc_by_id("bram")
+	var fast := func(_pos: Vector2) -> void: Engine.time_scale = 4.0
+	w.hud.tapped.connect(fast)
+	await w.cine_to(Vector3(-12.0, 8.5, 30.0), Vector3(0.0, 4.0, -2.0), 5.5)
+	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
+	if bram != null:
+		_walk(w, bram, p + Vector3(1.0, 0.0, -1.7), 3.6)
+	await w.cine_to(Vector3(8.0, 5.2, 14.0), top - Vector3(0, 1.0, 0), 3.5)
+	await w.cine_to(p + Vector3(3.2, 2.5, 4.4), p + Vector3(0.4, 1.25, -0.9), 2.4)
+	if bram != null:
+		bram.doll.look_toward(p, w.cam)
+		w.player_doll.look_toward(bram.body.global_position, w.cam)
+	await w.get_tree().create_timer(0.3).timeout
+	if w.hud.tapped.is_connected(fast):
+		w.hud.tapped.disconnect(fast)
+	Engine.time_scale = 1.0
+
+
+## Walks an NPC (or the player, with npc = null) to `to` over `secs`, facing the way they go.
+static func _walk(w: World, npc, to: Vector3, secs: float) -> void:
+	var body: Node3D = w.player if npc == null else npc.body
+	var doll: PaperDoll = w.player_doll if npc == null else npc.doll
+	var from := body.global_position
+	to.y = from.y
+	if from.distance_to(to) < 0.05:
+		return
+	doll.walking = true
+	doll.face(to - from, w.cam)
+	var tw := w.create_tween()
+	tw.tween_method(func(u: float) -> void: body.global_position = from.lerp(to, u), 0.0, 1.0, secs)
+	await tw.finished
+	doll.walking = false
+
+
+# ================================================================ chores ===
+
+## Tam's barrel: the player takes one end, Tam the other, and they carry the
+## last cider barrel from the hay cart over to Tilly's stall.
+static func _tam_barrel(w: World) -> void:
+	var v := village(w)
+	var tam = w._npc_by_id("tam")
+	var b: Node3D = v.tam_barrel
+	if b == null or tam == null:
+		return
+	var start := b.global_position - Vector3(0, AshfordVillage.BARREL_HALF, 0)   # on the ground
+	var spot := v.barrel_spot
+	var dir := spot - start
+	dir.y = 0.0
+	dir = dir.normalized()
+	var side := dir.cross(Vector3.UP).normalized()
+	if side.dot(w.cam.global_transform.basis.x) < 0.0:
+		side = -side   # the player takes the end nearer the camera's right
+	# from behind the two of them, looking on towards the stall where it's going
+	w.cine = true
+	w.cine_to(start - dir * 3.8 + Vector3(0, 2.4, 0), spot + Vector3(0, 0.9, 0), 1.0)
+	# each takes an end
+	_walk(w, null, start + side * 0.8, 0.8)
+	await _walk(w, tam, start - side * 0.8, 0.8)
+	w.player_doll.look_toward(start, w.cam)
+	tam.doll.look_toward(start, w.cam)
+	await w.get_tree().create_timer(0.25).timeout
+	# lift it onto its side, held between them
+	var b0 := b.basis
+	var lifted := Basis(dir, PI * 0.5)   # on its side, spanning the two of them
+	var tw := w.create_tween().set_parallel(true)
+	tw.tween_property(b, "global_position", start + Vector3(0, 0.95, 0), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_method(func(u: float) -> void: b.basis = Basis(b0.get_rotation_quaternion().slerp(lifted.get_rotation_quaternion(), u)), 0.0, 1.0, 0.5)
+	await tw.finished
+	# carry it over, side by side
+	var end := spot - dir * 0.75
+	var secs := maxf(2.2, start.distance_to(end) / 3.0)
+	w.player_doll.walking = true
+	tam.doll.walking = true
+	w.player_doll.face(dir, w.cam)
+	tam.doll.face(dir, w.cam)
+	var pb: Node3D = w.player
+	var tb: Node3D = tam.body
+	var carry := w.create_tween()
+	carry.tween_method(func(u: float) -> void:
+		var c := start.lerp(end, u)
+		var bob := absf(sin(u * secs * 6.0)) * 0.05
+		b.global_position = c + Vector3(0, 0.95 + bob, 0)
+		pb.global_position = c + side * 0.8
+		tb.global_position = c - side * 0.8, 0.0, 1.0, secs)
+	await carry.finished
+	w.player_doll.walking = false
+	tam.doll.walking = false
+	# heave it up onto its end beside the others
+	var up_basis := Basis(Vector3.UP, 0.4)
+	var down := w.create_tween().set_parallel(true)
+	down.tween_property(b, "global_position", spot + Vector3(0, AshfordVillage.BARREL_HALF + 0.25, 0), 0.35).set_trans(Tween.TRANS_SINE)
+	down.tween_method(func(u: float) -> void: b.basis = Basis(lifted.get_rotation_quaternion().slerp(up_basis.get_rotation_quaternion(), u)), 0.0, 1.0, 0.35)
+	await down.finished
+	var thud := w.create_tween()
+	thud.tween_property(b, "global_position", spot + Vector3(0, AshfordVillage.BARREL_HALF, 0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await thud.finished
+	v.dust_puff(spot)
+	w.shake(0.12)
+	tam.doll.look_toward(pb.global_position, w.cam)
+	w.player_doll.look_toward(tb.global_position, w.cam)
+	await w.get_tree().create_timer(0.4).timeout
+	await w.cine_home(0.9)
+
+
+## Tilly's Lantern Moth: at the player's touch it unfolds out of her card, a
+## moth made of lamplight, circles her head twice and settles back into the card.
+static func _tilly_moth(w: World) -> void:
+	var v := village(w)
+	var tilly = w._npc_by_id("tilly")
+	if tilly == null:
+		return
+	var tp: Vector3 = tilly.body.global_position
+	var pp: Vector3 = w.player.global_position
+	# side on to the two of them, so nobody stands between the camera and the moth
+	var axis := tp - pp
+	axis.y = 0.0
+	axis = axis.normalized() if axis.length() > 0.01 else Vector3.FORWARD
+	var perp := axis.cross(Vector3.UP).normalized()
+	var to_cam := w.cam.global_position - tp
+	to_cam.y = 0.0
+	if perp.dot(to_cam) < 0.0:
+		perp = -perp
+	var card := tp - axis * 0.3 + Vector3(0, TILLY_HANDS, 0)
+	var head := tp + Vector3(0, TILLY_HEAD, 0)
+	var between := (tp + pp) * 0.5
+	w.cine = true
+	await w.cine_to(between + perp * 4.6 + axis * 0.6 + Vector3(0, 1.7, 0), tp - axis * 0.3 + Vector3(0, 1.2, 0), 1.0)
+	# the card glows, then the moth unfolds out of it
+	var glow: MeshInstance3D = v.glow_sprite(w, card, Color(1.0, 0.72, 0.32), 0.4, 0.7)
+	var gt := w.create_tween()
+	gt.tween_property(glow, "scale", Vector3.ONE * 1.1, 0.5).set_trans(Tween.TRANS_SINE)
+	await gt.finished
+	var moth := LanternMothFlight.new()
+	w.add_child(moth)
+	moth.global_position = card
+	moth.scale = Vector3.ONE * 0.05
+	var grow := w.create_tween()
+	grow.tween_property(moth, "scale", Vector3.ONE * MOTH_SIZE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# up, twice round her head, and back down into the card
+	var r := 0.72
+	var a0 := atan2(-axis.z, -axis.x)   # starts on her near side, between her and you
+	var flight := w.create_tween()
+	flight.tween_method(func(u: float) -> void:
+		var pos: Vector3
+		var ring := head + Vector3(cos(a0) * r, 0.0, sin(a0) * r)
+		if u < 0.15:
+			var k := u / 0.15
+			pos = card.lerp(ring, k * k * (3.0 - 2.0 * k)) + Vector3(0, sin(k * PI) * 0.3, 0)
+		elif u < 0.85:
+			var k2 := (u - 0.15) / 0.7
+			var a := a0 + k2 * TAU * 2.0
+			pos = head + Vector3(cos(a) * r, sin(k2 * TAU * 3.0) * 0.12, sin(a) * r)
+		else:
+			var k3 := (u - 0.85) / 0.15
+			pos = ring.lerp(card, k3 * k3)
+		moth.fly_to(pos), 0.0, 1.0, 6.5)
+	await flight.finished
+	var shrink := w.create_tween().set_parallel(true)
+	shrink.tween_property(moth, "scale", Vector3.ONE * 0.05, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	shrink.tween_property(glow, "scale", Vector3.ONE * 1.8, 0.35)
+	await shrink.finished
+	moth.queue_free()
+	var fade := w.create_tween()
+	fade.tween_property(glow, "scale", Vector3.ONE * 0.7, 0.6).set_trans(Tween.TRANS_SINE)
+	await fade.finished
+	glow.queue_free()
+	tilly.doll.look_toward(w.player.global_position, w.cam)
+	await w.cine_home(0.9)
+
+## Where Tilly holds her card, and her head, in metres above the ground.
+const TILLY_HANDS := 0.85
+const TILLY_HEAD := 1.45
+## The moth's model is drawn tiny; this makes its wingspan about half a metre.
+const MOTH_SIZE := 1.8
+
+
+## The Lantern Moth in flight: Gary's model, wings beating, carrying its own
+## warm light and a trail of sparks, turning to face the way it flies.
+class LanternMothFlight:
+	extends Node3D
+	var model: Node3D
+	var _last := Vector3.ZERO
+	var _have_last := false
+
+	func _ready() -> void:
+		var path := "res://assets/models/creatures/lantern_moth.glb"
+		if ResourceLoader.exists(path):
+			model = load(path).instantiate()
+		else:
+			var mi := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = 0.05
+			sm.height = 0.1
+			mi.mesh = sm
+			model = mi
+		# the model stands upright facing +Z: tip it forward into flight
+		model.rotation = Vector3(deg_to_rad(50.0), PI, 0.0)
+		add_child(model)
+		WingFlap.attach(model)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.74, 0.36)
+		l.light_energy = 2.4
+		l.omni_range = 3.5
+		l.position = Vector3(0, 0.05, 0)
+		add_child(l)
+		var p := GPUParticles3D.new()
+		p.amount = 36
+		p.lifetime = 0.9
+		p.local_coords = false
+		var pm := ParticleProcessMaterial.new()
+		pm.direction = Vector3(0, -1, 0)
+		pm.spread = 40.0
+		pm.initial_velocity_min = 0.05
+		pm.initial_velocity_max = 0.25
+		pm.gravity = Vector3(0, -0.35, 0)
+		pm.scale_min = 0.4
+		pm.scale_max = 1.0
+		var sc := Curve.new()
+		sc.add_point(Vector2(0, 1))
+		sc.add_point(Vector2(1, 0))
+		var sct := CurveTexture.new()
+		sct.curve = sc
+		pm.scale_curve = sct
+		p.process_material = pm
+		var q := QuadMesh.new()
+		q.size = Vector2(0.035, 0.035)
+		p.draw_pass_1 = q
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		m.albedo_color = Color(1.0, 0.78, 0.4)
+		p.material_override = m
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(p)
+
+	## Moves to `pos`, turning to face along the way it's going.
+	func fly_to(pos: Vector3) -> void:
+		if _have_last:
+			var d := pos - _last
+			var flat := Vector3(d.x, 0.0, d.z)
+			if flat.length() > 0.0005:
+				var want := Basis.looking_at(flat.normalized(), Vector3.UP).get_rotation_quaternion()
+				var now := basis.get_rotation_quaternion()
+				basis = Basis(now.slerp(want, 0.25)).scaled(scale)
+		global_position = pos
+		_last = pos
+		_have_last = true
 
 
 ## P1's end and P2: the Great Lantern, the sky lanterns, the Sigilfall and the marking.
@@ -270,8 +624,11 @@ static func _midnight(w: World) -> void:
 	var p := w.player.global_position
 	for n in w.npcs:
 		n.doll.set_marker("")
-	await w.cine_to(Vector3(7.5, 2.0, 10.5), Vector3(0.0, 7.5, 0.0), 2.0)
+	var lantern_top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
+	await w.cine_to(Vector3(7.5, 2.0, 10.5), lantern_top - Vector3(0, 0.6, 0), 2.0)
 	await hud.dialogue.say("", null, "[i]Midnight. The chapel bell counts twelve, and all of Ashford counts with it.[/i]")
+	v.light_great_lantern()
+	w.shake(0.15)
 	if Game.flag("ash_won_lantern"):
 		await hud.dialogue.say("", null, "[i]You touch the taper to the Great Lantern. It catches with a roar, and the whole village roars back.[/i]")
 	else:

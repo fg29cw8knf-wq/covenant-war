@@ -52,7 +52,8 @@ const SHOTS := [
 	{"id": "shot_13", "len": 8.0, "vo": "But on the last night of the Age, over a village no one had ever heard of...",
 		"see": "Ashford at night; the sky tears open.", "move": "in", "fx": "falling"},
 	{"id": "shot_15", "len": 18.0, "vo": "...the Covenant did something it had never done before.",
-		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites and joins them.", "move": "out", "fx": "motes_gold",
+		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites and joins them.", "move": "out", "fx": "orbit",
+		"orbit_at": Vector2(0.5, 0.79), "orbit_r": Vector2(0.13, 0.04), "white_at": 4.0,
 		"title": true, "title_at": 8.5},
 ]
 
@@ -90,12 +91,18 @@ func _ready() -> void:
 	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(black)
 
+	# clips keep their 16:9 shape on any screen, framed like the paintings
+	var frame := AspectRatioContainer.new()
+	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	frame.ratio = 16.0 / 9.0
+	frame.stretch_mode = AspectRatioContainer.STRETCH_FIT
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(frame)
 	_video = VideoStreamPlayer.new()
-	_video.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_video.expand = true
 	_video.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_video.visible = false
-	_root.add_child(_video)
+	frame.add_child(_video)
 
 	_stage = ShotView.new()
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -179,14 +186,18 @@ func _play_shots() -> void:
 		elif _voice_until < 0.0 and _queue.is_empty():
 			_set_sub("")
 		if ResourceLoader.exists(clip):
-			_stage.visible = false
+			# the clip plays; the stage stays up only to draw the title over it
 			_video.stream = load(clip)
 			_video.visible = true
 			_video.play()
+			_stage.visible = shot.get("title", false) or String(shot.get("fx", "")) == "orbit"
+			_stage.overlay_only = true
+			_stage.show_shot(shot, null, n)
 		else:
 			_video.stop()
 			_video.visible = false
 			_stage.visible = true
+			_stage.overlay_only = false
 			_stage.show_shot(shot, load(still) if still != "" else null, n)
 		await _wait(float(shot.len))
 
@@ -301,6 +312,9 @@ class ShotView:
 	var _t := 0.0
 	var _rng := RandomNumberGenerator.new()
 	var _parts: Array = []
+	var _still_rect := Rect2()
+	## True while a video clip plays underneath: only the title is drawn.
+	var overlay_only := false
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -327,6 +341,15 @@ class ShotView:
 		var r := Rect2(Vector2.ZERO, size)
 		var k := clampf(_t / float(shot.len), 0.0, 1.0)
 		var title_t := _t - float(shot.get("title_at", 0.0)) if shot.get("title", false) else -1.0
+		if overlay_only:
+			# a clip plays underneath: the 16:9 frame it fills, then the lights and title over it
+			var k16 := minf(r.size.x / 16.0, r.size.y / 9.0)
+			_still_rect = Rect2((r.size - Vector2(16, 9) * k16) * 0.5, Vector2(16, 9) * k16)
+			if String(shot.get("fx", "")) == "orbit":
+				_draw_orbit(r)
+			if title_t >= 0.0:
+				_draw_title(r, title_t)
+			return
 		if still != null:
 			_draw_still(r, k)
 		else:
@@ -368,7 +391,8 @@ class ShotView:
 		var fit := minf(r.size.x / ts.x, r.size.y / ts.y) * zoom
 		var sz := ts * fit
 		var pos := (r.size - sz) * 0.5 + off * r.size
-		draw_texture_rect(still, Rect2(pos, sz), false)
+		_still_rect = Rect2(pos, sz)
+		draw_texture_rect(still, _still_rect, false)
 
 	## with_words: false once the title is up, so the card's description doesn't sit under it.
 	func _draw_card(r: Rect2, with_words := true) -> void:
@@ -447,6 +471,59 @@ class ShotView:
 				var f := clampf(1.0 - absf(_t - 0.7) * 3.0, 0.0, 1.0)
 				if f > 0.0:
 					draw_rect(r, Color(1, 1, 1, 0.5 * f))
+			"orbit":
+				_draw_orbit(r)
+
+	## Shot 15: the seven gods' lights circle the Throne; then an eighth, pure
+	## white, ignites out of nothing and joins them.
+	func _draw_orbit(r: Rect2) -> void:
+		for p in _parts.slice(0, 40):
+			var pos := Vector2(fmod(p.x + _t * 0.004 * (p.z - 0.5), 1.0), fmod(p.y + 1.0 - _t * 0.01 * (0.3 + p.w), 1.0)) * r.size
+			draw_circle(pos, 1.0 + p.z * 2.0, Color(UITheme.GOLD, 0.12 + 0.25 * p.w))
+		var sr := _still_rect if still != null else r
+		var at: Vector2 = shot.get("orbit_at", Vector2(0.5, 0.85))
+		var rad: Vector2 = shot.get("orbit_r", Vector2(0.15, 0.05))
+		var c := sr.position + at * sr.size
+		var R := rad * sr.size
+		var k := sr.size.y / 1080.0
+		# the faint path they trace
+		var path := PackedVector2Array()
+		for i in 65:
+			var t := TAU * i / 64.0
+			path.append(c + Vector2(cos(t) * R.x, sin(t) * R.y))
+		draw_polyline(path, Color(UITheme.GOLD, 0.12), 2.0 * k, true)
+		var white_at := float(shot.get("white_at", 4.0))
+		var lights := []
+		for i in 8:
+			var ang := _t * 0.5 + TAU * i / 8.0
+			var depth := sin(ang)          # +1 in front of the Throne, -1 behind it
+			var a := 1.0
+			if i == 7:
+				a = clampf((_t - white_at) / 0.8, 0.0, 1.0)
+				if a <= 0.0:
+					continue
+			var el := "any" if i == 7 else String(Lore.GODS[Lore.GREAT_GODS[i]].element)
+			var col := Color.WHITE if i == 7 else Lore.color(el, 0)
+			lights.append([depth, Vector2(c.x + cos(ang) * R.x, c.y + depth * R.y), col, a])
+		lights.sort_custom(func(x, y): return x[0] < y[0])
+		for l in lights:
+			var depth: float = l[0]
+			var pos: Vector2 = l[1]
+			var col: Color = l[2]
+			var a: float = l[3] * (0.55 + 0.45 * (depth * 0.5 + 0.5))
+			var sz := (13.0 + 5.0 * depth) * k
+			for g in 5:
+				draw_circle(pos, sz * (6.0 - g), Color(col, 0.06 * a))
+			draw_circle(pos, sz * 1.4, Color(col, 0.6 * a))
+			draw_circle(pos, sz * 0.8, Color(col.lightened(0.7), 0.98 * a))
+		# the eighth light's ignition: a ring of white that blooms and fades
+		var since := _t - white_at
+		if since >= 0.0 and since < 1.6:
+			var ang7 := _t * 0.5 + TAU * 7.0 / 8.0
+			var p7 := Vector2(c.x + cos(ang7) * R.x, c.y + sin(ang7) * R.y)
+			var u := since / 1.6
+			draw_arc(p7, (20.0 + 160.0 * u) * k, 0.0, TAU, 48, Color(1, 1, 1, 0.7 * (1.0 - u)), 3.0 * k, true)
+			draw_circle(p7, (40.0 * (1.0 - u)) * k, Color(1, 1, 1, 0.5 * (1.0 - u)))
 
 	## t: seconds since the title was due; it fades up over 2.5 s.
 	func _draw_title(r: Rect2, t: float) -> void:
@@ -458,8 +535,8 @@ class ShotView:
 		CardFace.text(self, CardFace.font("display"), Vector2(0, c.y - 110), "THE", 48, Color(UITheme.GOLD, a), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 8)
 		CardFace.text(self, f, Vector2(0, c.y + 20), "COVENANT WAR", 132, Color(UITheme.GOLD, a), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 16, Color(0.05, 0.03, 0.01, 0.9 * a))
 		CardFace.text(self, CardFace.font("display"), Vector2(0, c.y + 100), "THRONE  OF  AGES", 46, Color(1, 1, 1, 0.9 * a), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 8)
-		# eight lights circling
-		for i in 8:
+		# eight lights circling (shot 15 already has them round the Throne)
+		for i in (0 if String(shot.get("fx", "")) == "orbit" else 8):
 			var ang := _t * 0.4 + TAU * i / 8.0
 			var p := c + Vector2(cos(ang) * r.size.x * 0.3, sin(ang) * r.size.y * 0.12) + Vector2(0, 30)
 			var el := "any" if i == 7 else String(Lore.GODS[Lore.GREAT_GODS[i]].element)

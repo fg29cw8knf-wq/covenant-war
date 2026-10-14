@@ -1,28 +1,34 @@
-extends SceneTree
-## Balance check for the Lantern Duel decks:
-##   godot --headless --script res://tests/lantern_sim.gd -- <life> <player ai> <corin ai> [swap]
-func _init() -> void:
+extends Node
+## Balance check for the Lantern Duel, set up exactly as the story plays it
+## (decks dealt in order, the player first, 25 Life, the safety floor), with
+## the computer playing both sides:
+##   godot --headless res://tests/lantern_sim.tscn -- [player ai] [corin ai] [games]
+## Add "raw" to play it without the floor and with shuffled decks, to see how
+## the decks themselves compare.
+func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
-	var life := int(a[0]) if a.size() > 0 else 80
-	var pa := float(a[1]) if a.size() > 1 else 0.8
-	var ca := float(a[2]) if a.size() > 2 else 0.25
-	var swap := a.size() > 3
+	var pa := float(a[0]) if a.size() > 0 else 0.3
+	var ca := float(a[1]) if a.size() > 1 else 0.25
+	var n := int(a[2]) if a.size() > 2 else 200
+	var raw := a.has("raw")
 	var area = load("res://scripts/world/areas/ashford.gd")
 	var turns := []
 	var wins := 0
-	var n := 80
 	for i in n:
-		var d0: Array = area.PLAYER_DECK.duplicate()
-		var d1: Array = area.CORIN_DECK.duplicate()
-		if swap:
-			var t := d0; d0 = d1; d1 = t
 		var g := DuelGame.new()
-		g.setup([d0, d1], ["Sprout", "Corin"], [DuelAI.new(pa), DuelAI.new(ca)], [Lore.new_profile("Sprout"), Lore.new_profile("Corin")], i)
-		g.start_life = life
+		var spec: Dictionary = area.duel_spec({"difficulty": ca})
+		if not raw:
+			g.stacked = spec.stacked
+		g.setup(spec.decks, ["Sprout", "Corin"], [DuelAI.new(pa), DuelAI.new(ca)], [Lore.new_profile("Sprout"), Lore.new_profile("Corin")], i)
+		g.start_life = int(spec.life)
+		if not raw:
+			g.first_forced = int(spec.first)
+			g.life_floor = spec.life_floor
+			g.totem_floor = spec.totem_floor
 		await g.run()
 		turns.append(g.turn)
 		if g.winner == 0:
 			wins += 1
 	turns.sort()
-	print("life %d ai %.2f v %.2f swap %s: median turns %d (min %d, max %d), side-0 wins %d%%" % [life, pa, ca, swap, turns[n / 2], turns[0], turns[-1], wins * 100 / n])
-	quit()
+	print("ai %.2f v %.2f %s: median turns %d (min %d, max %d), player wins %d%%" % [pa, ca, "raw" if raw else "as played", turns[n / 2], turns[0], turns[-1], wins * 100 / n])
+	get_tree().quit()

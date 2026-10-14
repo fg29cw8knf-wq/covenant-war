@@ -2,7 +2,7 @@ extends Node
 ## Plays Ashford by itself and saves screenshots: the village at the start,
 ## the errands, Corin's Lantern Duel (simulated) and the whole midnight scene.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 --fixed-fps 8 \
-##       res://tests/ashford_test.tscn -- <out_dir> [every_n_frames]
+##       res://tests/ashford_test.tscn -- <out_dir> [every_n_frames] [film | midnight | still]
 
 var out_dir := "user://"
 var every := 24
@@ -11,6 +11,7 @@ var _shots := 0
 var _wait := 0
 var _frame := 0
 var _filming := false
+var quick := false   # tap through dialogue faster
 
 
 func _ready() -> void:
@@ -20,7 +21,7 @@ func _ready() -> void:
 	if args.size() > 1:
 		every = int(args[1])
 	Game.new_game("Sprout", "emberstorm")
-	if "midnight" in args or "still" in args:
+	if "midnight" in args or "still" in args or "chores" in args:
 		Game.set_flag("arrived_ashford")
 	world = World.new().setup("ashford", "green")
 	add_child(world)
@@ -29,12 +30,27 @@ func _ready() -> void:
 		await _frames(4)
 		await _shot("end")
 		get_tree().quit())
+	if "film" in args:
+		_filming = true   # a frame every few: the opening flight, the chores and midnight
 	await _frames(30)
 	if "still" in args:
 		await _shot("still_spawn")
 		_teleport(Vector3(-2.0, 0, 4.0))
 		await _frames(12)
 		await _shot("still_green")
+		get_tree().quit()
+		return
+	if "chores" in args:
+		# just Tam's barrel and Tilly's moth, filmed
+		quick = true
+		for id in ["tam", "tilly"]:
+			var n = world._npc_by_id(id)
+			_teleport(n.body.global_position + Vector3(0.0, 0, 1.6))
+			await _frames(6)
+			_filming = true
+			await world._talk(n)
+			_filming = false
+			await _shot("talked_" + id)
 		get_tree().quit()
 		return
 	if "midnight" in args:
@@ -48,8 +64,11 @@ func _ready() -> void:
 		world._talk(c)
 		return
 	await _shot("arrival")
-	# let the arrival dialogue play out
-	await _frames(120)
+	# let the opening flight and the arrival dialogue play out
+	await _frames(30)
+	while world.busy:
+		await _frames(4)
+	await _frames(12)
 	await _shot("after_arrival")
 	# walk round the errands
 	for id in ["tam", "tilly", "nell", "hob", "seamus"]:
@@ -73,7 +92,7 @@ func _process(_d: float) -> void:
 	# tap through dialogue automatically
 	if world != null and world.hud != null and world.hud.dialogue._waiting:
 		_wait += 1
-		if _wait > 12:
+		if _wait > (3 if quick else 12):
 			_wait = 0
 			world.hud.dialogue._advance.emit()
 	if world != null and world.hud != null and world.hud.dialogue._choices.visible:

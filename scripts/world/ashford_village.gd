@@ -31,6 +31,18 @@ var leaf_tex: ImageTexture
 var quality := 2             # 2 Forward+, 1 phone renderer, 0 web
 var burning_house: Node3D
 var elapsed := 0.0
+## The Great Lantern on the green (Gary's model, scaled up to stand over the
+## crowd). The light inside is the candle, lit at midnight.
+const GREAT_LANTERN_MODEL := "res://assets/models/ashford/great_lantern.glb"
+const GREAT_LANTERN_SCALE := 2.4
+const GREAT_LANTERN_CANDLE := 3.4      # the candle flame's height in the model, in metres
+var great_lantern_top := Vector3.ZERO
+var great_lantern_light: OmniLight3D
+var great_lantern_glow: MeshInstance3D
+var festival_light: OmniLight3D
+## Tam's chore: the cider barrel by the hay cart, and where it goes at Tilly's stall.
+var tam_barrel: Node3D
+var barrel_spot := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -680,38 +692,69 @@ func build_mill(pos: Vector3) -> void:
 func build_green() -> void:
 	var g := Node3D.new()
 	add_child(g)
-	# the Great Lantern
+	# the Great Lantern: Gary's model where it exists, the drawn pole otherwise.
+	# It stays dark until midnight, when the Lantern Duel's winner lights it.
 	var lp := Vector3(0.0, height(0, 0), 0.0)
-	solid_round(lp, 0.45)
-	cyl(g, 0.12, 0.18, 10.0, lp + Vector3(0, 5.0, 0), mats.beam_v, 10)
-	box(g, Vector3(1.8, 0.12, 0.12), lp + Vector3(0, 9.2, 0), mats.beam)
-	box(g, Vector3(0.12, 0.12, 1.8), lp + Vector3(0, 9.2, 0), mats.beam)
 	var top := lp + Vector3(0, 10.35, 0)
-	box(g, Vector3(0.62, 0.8, 0.62), top, mats.lamp_glass)
-	for sx in [-1, 1]:
-		for sz in [-1, 1]:
-			box(g, Vector3(0.07, 0.9, 0.07), top + Vector3(0.33 * sx, 0, 0.33 * sz), mats.metal)
-	cyl(g, 0.05, 0.62, 0.45, top + Vector3(0, 0.62, 0), mats.metal, 4, Vector3(0, PI / 4, 0))
+	var anchor := top + Vector3(0, -1.1, 0)   # where the bunting strings meet
+	var pole_h := 9.0
+	if ResourceLoader.exists(GREAT_LANTERN_MODEL):
+		var gr := Node3D.new()
+		gr.name = "GreatLantern"
+		gr.position = lp - Vector3(0, 0.05, 0)
+		gr.scale = Vector3.ONE * GREAT_LANTERN_SCALE
+		g.add_child(gr)
+		var inst: Node3D = load(GREAT_LANTERN_MODEL).instantiate()
+		gr.add_child(inst)
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		solid_round(lp, 0.62 * GREAT_LANTERN_SCALE)
+		footprints.append([Vector2(lp.x, lp.z), 0.75 * GREAT_LANTERN_SCALE])
+		top = lp + Vector3(0, GREAT_LANTERN_CANDLE * GREAT_LANTERN_SCALE, 0)
+		anchor = lp + Vector3(0, 2.66 * GREAT_LANTERN_SCALE, 0)
+		pole_h = anchor.y + 0.5
+	else:
+		solid_round(lp, 0.45)
+		cyl(g, 0.12, 0.18, 10.0, lp + Vector3(0, 5.0, 0), mats.beam_v, 10)
+		box(g, Vector3(1.8, 0.12, 0.12), lp + Vector3(0, 9.2, 0), mats.beam)
+		box(g, Vector3(0.12, 0.12, 1.8), lp + Vector3(0, 9.2, 0), mats.beam)
+		box(g, Vector3(0.62, 0.8, 0.62), top, mats.lamp_glass)
+		for sx in [-1, 1]:
+			for sz in [-1, 1]:
+				box(g, Vector3(0.07, 0.9, 0.07), top + Vector3(0.33 * sx, 0, 0.33 * sz), mats.metal)
+		cyl(g, 0.05, 0.62, 0.45, top + Vector3(0, 0.62, 0), mats.metal, 4, Vector3(0, PI / 4, 0))
+	great_lantern_top = top
 	var gl := OmniLight3D.new()
 	gl.light_color = Color(1.0, 0.6, 0.28)
-	gl.light_energy = 6.0
+	gl.light_energy = 0.0
 	gl.light_volumetric_fog_energy = 0.6
 	gl.omni_range = 26.0
 	gl.omni_attenuation = 1.3
 	gl.shadow_enabled = true
 	gl.light_size = 0.3
 	gl.position = top
+	gl.visible = false
 	g.add_child(gl)
-	flicker_lights.append([gl, 7.0])
-	glow_sprite(g, top, Color(1.0, 0.5, 0.2), 1.6, 0.5)
+	great_lantern_light = gl
+	great_lantern_glow = glow_sprite(g, top, Color(1.0, 0.5, 0.2), 1.6, 0.5)
+	great_lantern_glow.visible = false
+	# until midnight the green is lit by its festival lights: a softer, lower glow
+	var fest := OmniLight3D.new()
+	fest.light_color = Color(1.0, 0.66, 0.36)
+	fest.light_energy = 2.6
+	fest.omni_range = 20.0
+	fest.omni_attenuation = 1.5
+	fest.position = lp + Vector3(0, 5.5, 0)
+	g.add_child(fest)
+	festival_light = fest
 	# bunting and fairy lights from the lantern to poles round the green
 	var poles: Array = []
 	for i in 7:
 		var a := TAU * i / 7.0 + 0.3
 		var pp := Vector3(cos(a) * 11.5, 0, sin(a) * 11.5)
 		pp.y = height(pp.x, pp.z)
-		cyl(g, 0.08, 0.1, 9.0, pp + Vector3(0, 4.5, 0), mats.beam_v, 8)
-		poles.append(pp + Vector3(0, 8.9, 0))
+		cyl(g, 0.08, 0.1, pole_h, pp + Vector3(0, pole_h * 0.5, 0), mats.beam_v, 8)
+		poles.append(pp + Vector3(0, pole_h - 0.1, 0))
 		solid_round(pp, 0.25)
 	var flag_xf: Array = []
 	var flag_col: Array = []
@@ -721,7 +764,7 @@ func build_green() -> void:
 	var lan_col: Array = []
 	var palette := [Color(0.7, 0.08, 0.06), Color(0.85, 0.65, 0.12), Color(0.08, 0.2, 0.6), Color(0.85, 0.82, 0.7), Color(0.1, 0.4, 0.15)]
 	for i in poles.size():
-		var a: Vector3 = top + Vector3(0, -1.1, 0)
+		var a: Vector3 = anchor
 		var b: Vector3 = poles[i]
 		var nb := poles[(i + 1) % poles.size()] as Vector3
 		for pass_i in 2:
@@ -759,9 +802,18 @@ func build_green() -> void:
 	cyl(g, 0.1, 0.1, 1.6, wp + Vector3(0, 1.9, 0), mats.wood, 8, Vector3(0, 0, PI / 2))
 	footprints.append([Vector2(wp.x, wp.z), 1.2])
 	solid_round(wp, 1.15)
-	# festival stalls
-	stall(g, Vector3(7.5, 0, 6.0), deg_to_rad(-30), mats.cloth_red)
+	# festival stalls (the red one is Tilly's, where Tam's cider goes)
+	var red := stall(g, Vector3(7.5, 0, 6.0), deg_to_rad(-30), mats.cloth_red)
 	stall(g, Vector3(-4.0, 0, -8.5), deg_to_rad(160), mats.cloth_blue)
+	barrel_spot = red.to_global(Vector3(-2.1, 0.0, 0.05)) if red.is_inside_tree() else red.transform * Vector3(-2.1, 0.0, 0.05)
+	barrel_spot.y = height(barrel_spot.x, barrel_spot.z)
+	# the last cider barrel, waiting by Tam for a second pair of hands
+	var bp := Vector3(7.3, 0.0, -3.5)
+	bp.y = height(bp.x, bp.z)
+	tam_barrel = make_barrel()
+	tam_barrel.position = bp + Vector3(0, BARREL_HALF, 0)
+	tam_barrel.rotation.y = 0.4
+	g.add_child(tam_barrel)
 	# hay cart
 	var cp := Vector3(9.0, height(9, -5), -5.0)
 	var cart := Node3D.new(); cart.position = cp; cart.rotation.y = 0.6; g.add_child(cart)
@@ -775,7 +827,7 @@ func build_green() -> void:
 	footprints.append([Vector2(cp.x, cp.z), 1.8])
 	solid_round(cp, 1.7)
 
-func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> void:
+func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> Node3D:
 	var s := Node3D.new()
 	pos.y = height(pos.x, pos.z)
 	s.position = pos
@@ -806,6 +858,114 @@ func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> void:
 	s.add_child(l)
 	footprints.append([Vector2(pos.x, pos.z), 1.8])
 	solid_box(Vector3(pos.x, 1.5, pos.z), Vector3(2.7, 3.0, 1.5), yaw)
+	return s
+
+## A cider barrel: bulged oak staves and two iron hoops. Its origin is its
+## middle (0.4 m up when it stands), so it turns about its centre when carried.
+const BARREL_HALF := 0.4
+func make_barrel() -> Node3D:
+	var b := Node3D.new()
+	b.name = "CiderBarrel"
+	var body := Node3D.new()
+	body.name = "Body"
+	body.position = Vector3(0, -BARREL_HALF, 0)
+	b.add_child(body)
+	# fresh oak, a shade lighter than the old barrels so it reads at night
+	var oak := StandardMaterial3D.new()
+	oak.albedo_color = Color(0.62, 0.42, 0.24)
+	oak.roughness = 0.75
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.32, 0.3, 0.3)
+	iron.metallic = 0.6
+	iron.roughness = 0.45
+	var bar := CylinderMesh.new()
+	bar.top_radius = 0.27; bar.bottom_radius = 0.3; bar.height = 0.42; bar.radial_segments = 18
+	add_mesh(body, bar, oak, Transform3D(Basis(), Vector3(0, 0.21, 0)))
+	var bar2 := CylinderMesh.new()
+	bar2.top_radius = 0.3; bar2.bottom_radius = 0.27; bar2.height = 0.42; bar2.radial_segments = 18
+	add_mesh(body, bar2, oak, Transform3D(Basis(), Vector3(0, 0.59, 0)))
+	for y in [0.1, 0.32, 0.48, 0.7]:
+		var hoop := CylinderMesh.new()
+		var r := 0.285 if y < 0.2 or y > 0.6 else 0.305
+		hoop.top_radius = r; hoop.bottom_radius = r; hoop.height = 0.045; hoop.radial_segments = 18
+		add_mesh(body, hoop, iron, Transform3D(Basis(), Vector3(0, y, 0)))
+	return b
+
+## Puffs of dust where something heavy lands.
+func dust_puff(at: Vector3) -> void:
+	var p := GPUParticles3D.new()
+	p.amount = 10
+	p.lifetime = 1.1
+	p.one_shot = true
+	p.explosiveness = 0.95
+	p.position = at + Vector3(0, 0.08, 0)
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 0.3, 0)
+	pm.spread = 90.0
+	pm.initial_velocity_min = 0.6
+	pm.initial_velocity_max = 1.2
+	pm.gravity = Vector3(0, 0.15, 0)
+	pm.damping_min = 1.5
+	pm.damping_max = 2.5
+	pm.scale_min = 0.3
+	pm.scale_max = 0.55
+	var sc := Curve.new(); sc.add_point(Vector2(0, 0.5)); sc.add_point(Vector2(1, 1.6))
+	var sct := CurveTexture.new(); sct.curve = sc
+	pm.scale_curve = sct
+	p.process_material = pm
+	var q := QuadMesh.new(); q.size = Vector2(0.7, 0.7)
+	p.draw_pass_1 = q
+	p.material_override = mats.chimney_smoke
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(2.0).timeout.connect(p.queue_free)
+
+## Lights the Great Lantern at midnight: the flame catches, flares, and settles.
+func light_great_lantern() -> void:
+	if great_lantern_light == null:
+		return
+	var gl := great_lantern_light
+	gl.visible = true
+	gl.light_energy = 0.0
+	great_lantern_glow.visible = true
+	great_lantern_glow.scale = Vector3.ONE * 0.2
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(gl, "light_energy", 14.0, 0.25)
+	tw.tween_property(great_lantern_glow, "scale", Vector3.ONE * 3.2, 0.25)
+	tw.chain().set_parallel(true)
+	tw.tween_property(gl, "light_energy", 6.0, 1.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(great_lantern_glow, "scale", Vector3.ONE * 1.6, 1.4).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(festival_light, "light_energy", 1.2, 1.4)
+	tw.chain().tween_callback(func() -> void: flicker_lights.append([gl, 7.0]))
+	# a burst of sparks out of the lantern
+	var p := GPUParticles3D.new()
+	p.amount = 40
+	p.lifetime = 1.6
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.position = great_lantern_top
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 70.0
+	pm.initial_velocity_min = 2.0
+	pm.initial_velocity_max = 5.0
+	pm.gravity = Vector3(0, -2.5, 0)
+	pm.scale_min = 0.5
+	pm.scale_max = 1.0
+	p.process_material = pm
+	var q := QuadMesh.new(); q.size = Vector2(0.09, 0.09)
+	p.draw_pass_1 = q
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	sm.albedo_color = Color(1.0, 0.7, 0.3)
+	p.material_override = sm
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(2.5).timeout.connect(p.queue_free)
 
 func flag_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()

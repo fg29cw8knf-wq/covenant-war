@@ -44,7 +44,15 @@ godot --headless --script res://tests/law_sim.gd -- 400              # every Kin
 godot --headless --script res://tests/patron_sim.gd -- 200           # each patron god, and each Blessing under its own Law
 godot --headless --script res://tests/rewards_test.gd                # Resonance, Rank, Codex and Attunement
 godot --headless --script res://tests/load_all.gd                    # every script loads
+godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200        # the Lantern Duel as the story plays it (always winnable)
+xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.tscn -- <dir>   # plays Bram's lesson tap by tap
 ```
+
+The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
+`LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and
+each instruction locks everything but the one thing to tap. Both decks are dealt in
+order, the player goes first, Corin follows a script (`DuelHuman.Scripted`) and the
+player's Life and Totem can't drop to zero.
 
 The rules are written up in the "Duel Rules v2" Claude doc, and the story in the
 "Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
@@ -73,6 +81,11 @@ steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
 Aldric at the Circle and Morne's vault to close the chapter. Still to build
 from the script: the attic and lantern hanging, the run and the cart, the
 garden escape, Wren's chase, the mirror puzzle, the Sunspire, and a deck screen.
+
+New Game opens with a flight over Ashford (`intro()` in `ashford.gd`) before the
+player takes over; Tam's barrel is carried to the stall and Tilly's Lantern Moth
+flies (its wings beat through `scripts/world/wing_flap.gd`, which also flaps the
+moth in duels); the Great Lantern (Gary's model) is lit at midnight.
 
 The village itself (`scripts/world/ashford_village.gd`) is built from the look
 test in `lookdev/ashford`, with lighter settings on the phone and web renderers.
@@ -120,3 +133,13 @@ The summary line must report `0 invariant errors`.
   bonus — when its duellist's matching attribute is high enough.
 - Swearing to a god gives +3 to that god's attribute and a once-per-duel Divine Gift.
   Staying Unsworn gives +1 to every attribute and the gift *Unbound Will*.
+
+## Opening movie clips
+
+The opening movie plays each shot's painting with a slow camera move, or a video
+clip where one exists. To add clips made with an image-to-video tool, name them
+after their shots (`shot_08.mp4`) and run:
+
+```sh
+python3 tools/movie_clips.py <folder of clips>     # -> assets/movies/shots/<shot>.ogv, trimmed to each shot
+```

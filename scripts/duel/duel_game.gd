@@ -43,6 +43,16 @@ var log_lines: Array = []
 var _next_uid := 1
 ## Above 0, both duellists start on this Life instead of their attribute total (story tutorials).
 var start_life := 0
+## Per-duellist starting Life, [player 0, player 1] (overrides start_life; story tutorials).
+var start_lives: Array = []
+## Tutorials: decks dealt in the order written instead of shuffled ([bool, bool]),
+## who goes first (-1 = roll for it), Fate rolls queued per duellist, and a floor
+## under a duellist's Life and Totems so the lesson can't be lost.
+var stacked: Array = [false, false]
+var first_forced := -1
+var forced_rolls: Array = [[], []]
+var life_floor: Array = [0, 0]
+var totem_floor: Array = [0, 0]
 ## The Dominion Law this duel is fought under (a god's id, "ironvault" or ""). See DuelLaws.
 var law := ""
 ## Ward card uids that lie face up (Ysolde's Unveiling, or the Unveil Gift).
@@ -69,7 +79,10 @@ func setup(decks: Array, names: Array, controllers: Array, profiles: Array = [],
 		for id in ids:
 			p.deck.append(DuelCard.new(_next_uid, id, i))
 			_next_uid += 1
-		_shuffle(p.deck)
+		if i < stacked.size() and stacked[i]:
+			p.deck.reverse()   # cards are drawn from the back: the list's first card comes first
+		else:
+			_shuffle(p.deck)
 		players.append(p)
 
 
@@ -90,6 +103,8 @@ func _setup_phase() -> void:
 	_log("The duelling circle ignites.")
 	for p in players:
 		p.max_life = start_life if start_life > 0 else DuelRules.life_for(p.attributes())
+		if start_lives.size() == 2 and int(start_lives[p.index]) > 0:
+			p.max_life = int(start_lives[p.index])
 		p.life = p.max_life
 		p.fortune_left = mini(2, int(p.profile.get("fortune", 0)))
 		if law == "hethrin" and blessed(p.index):
@@ -100,7 +115,14 @@ func _setup_phase() -> void:
 		_log("This duel is fought under %s: %s" % [DuelLaws.law_name(law), DuelLaws.describe(law)])
 	# Both roll a d20; Swiftness adds its Fate modifier, so the swifter
 	# duellist goes first more often (but not always).
-	while true:
+	while first_forced >= 0:
+		first_player = first_forced
+		var hi := 15
+		var lo := 6
+		await _fx("fx_rolloff", [hi if first_player == 0 else lo, lo if first_player == 0 else hi])
+		_log("Roll for first turn: %s goes first." % players[first_player].player_name)
+		break
+	while first_forced < 0:
 		var m0 := DuelRules.fate_mod(players[0].attribute("swiftness"))
 		var m1 := DuelRules.fate_mod(players[1].attribute("swiftness"))
 		var r0 := rng.randi_range(1, 20)
@@ -1489,6 +1511,8 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 		amount -= absorbed
 		_log("%s's shield absorbs %d." % [t.card_name(), absorbed], t.owner)
 	var before := t.hp_left()
+	if int(totem_floor[t.owner]) > 0:
+		amount = mini(amount, maxi(0, before - int(totem_floor[t.owner])))
 	if amount > 0:
 		t.damage += amount
 		var att = info.get("attacker")
@@ -1522,6 +1546,8 @@ func _hit_life(pi: int, amount: int, info: Dictionary = {}) -> int:
 		if amt < DuelRules.guard_min_hit:
 			amt = mini(amount, DuelRules.guard_min_hit)
 	p.life -= amt
+	if int(life_floor[pi]) > 0 and p.life < int(life_floor[pi]):
+		p.life = int(life_floor[pi])
 	if info.get("attacker") != null or info.get("spill", false):
 		players[1 - pi].stats.life_damage_dealt += amt
 	_log("%s loses %d Life (%d left)." % [p.player_name, amt, maxi(0, p.life)], pi)
@@ -1668,11 +1694,15 @@ func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dicti
 	var p: DuelPlayer = players[pi]
 	var mod := fate_mod(pi, affinity)
 	var forced := false
+	var queued := false
 	var roll := 0
 	if p.foresight:
 		roll = 20
 		forced = true
 		p.foresight = false
+	elif not (forced_rolls[pi] as Array).is_empty():
+		roll = int((forced_rolls[pi] as Array).pop_front())
+		queued = true
 	else:
 		roll = rng.randi_range(1, 20)
 		if roll == 19 and law == "aster" and blessed(pi):
@@ -1683,7 +1713,7 @@ func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dicti
 	info["forced"] = forced
 	p.stats.fate_rolls += 1
 	await _fx("fx_roll", [pi, info])
-	if p.fortune_left > 0 and not forced and int(info.index) < bands.size() - 1:
+	if p.fortune_left > 0 and not forced and not queued and int(info.index) < bands.size() - 1:
 		var again: bool = await p.controller.choose_reroll(self, pi, info)
 		if again:
 			p.fortune_left -= 1
