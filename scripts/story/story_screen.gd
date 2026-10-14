@@ -3,7 +3,7 @@ extends CanvasLayer
 ## Full-screen story moments: a painted scene with narration and dialogue,
 ## plus the name entry and starter-deck choice of the prologue.
 ##
-## Scene art is loaded from res://assets/art/story/<scene>.png (16:9) when it
+## Scene art is loaded from res://assets/art/story/<scene>.png or .jpg (16:9) when it
 ## exists; until then each scene is drawn in code.
 
 var _root: Control
@@ -219,8 +219,12 @@ class StoryBG:
 	func set_scene(id: String) -> void:
 		scene = id
 		_t = 0.0
-		var p := "res://assets/art/story/%s.png" % id
-		_tex = load(p) if ResourceLoader.exists(p) else null
+		_tex = null
+		for ext in ["png", "jpg", "webp"]:
+			var p := "res://assets/art/story/%s.%s" % [id, ext]
+			if ResourceLoader.exists(p):
+				_tex = load(p)
+				break
 		queue_redraw()
 
 	func _process(delta: float) -> void:
