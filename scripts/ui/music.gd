@@ -34,6 +34,13 @@ func level_db() -> float:
 	return linear_to_db(maxf(0.001, float(Game.settings.get("music", 0.8)))) - 8.0
 
 
+## Applies a changed music volume to what's playing now.
+func apply_volume() -> void:
+	var p := _players[_active]
+	if p.playing:
+		p.volume_db = level_db()
+
+
 static func path_for(track: String) -> String:
 	for ext in ["ogg", "mp3", "wav"]:
 		var p := "%s%s.%s" % [DIR, track, ext]

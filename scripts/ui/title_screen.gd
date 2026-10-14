@@ -88,8 +88,8 @@ void fragment() {
 	box.anchor_bottom = 0.0
 	box.offset_left = 120
 	box.offset_right = 620
-	box.offset_top = 540
-	box.offset_bottom = 1000
+	box.offset_top = 584
+	box.offset_bottom = 1060
 	box.alignment = BoxContainer.ALIGNMENT_BEGIN
 	box.add_theme_constant_override("separation", 16)
 	_ui.add_child(box)
@@ -112,12 +112,12 @@ void fragment() {
 	movie.pressed.connect(func() -> void: watch_opening.emit())
 	box.add_child(movie)
 
-	var ver := UITheme.label("Early build %s" % ProjectSettings.get_setting("application/config/version", ""), 22, Color(1, 1, 1, 0.4))
+	var ver := UITheme.label("%s   ·   Early build %s" % [NoticeScreen.COPYRIGHT, ProjectSettings.get_setting("application/config/version", "")], 22, Color(1, 1, 1, 0.6), "body", 6)
 	ver.anchor_left = 1.0
 	ver.anchor_right = 1.0
 	ver.anchor_top = 1.0
 	ver.anchor_bottom = 1.0
-	ver.offset_left = -400
+	ver.offset_left = -1100
 	ver.offset_right = -40
 	ver.offset_top = -70
 	ver.offset_bottom = -30
@@ -334,7 +334,8 @@ void fragment() {
 		var y := 300.0
 		draw_line(Vector2(4, y), Vector2(560, y), Color(gold, 0.6), 2.0)
 		CardFace.text(self, CardFace.font("display"), Vector2(4, y + 50), "THRONE  OF  AGES", 40, UITheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, 8)
-		CardFace.text(self, CardFace.font("body"), Vector2(4, y + 100), "Seven gods. One throne. You hold the cards.", 30, Color(UITheme.TEXT, 0.85), HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
+		CardFace.text(self, CardFace.font("body"), Vector2(4, y + 96), "Seven gods. One throne. You hold the cards.", 30, Color(UITheme.TEXT, 0.85), HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
+		CardFace.text(self, CardFace.font("bold"), Vector2(4, y + 136), "MADE  BY  GARY  MANNION", 26, Color(gold, 0.95), HORIZONTAL_ALIGNMENT_LEFT, -1, 6)
 		# a slowly turning sigil beside the name
 		var c := Vector2(1010, 170)
 		var r := 90.0 + sin(_t * 1.3) * 3.0

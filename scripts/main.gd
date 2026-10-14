@@ -12,6 +12,12 @@ func _ready() -> void:
 	if "--lab" in args or "--lab-watch" in args:
 		show_lab()
 		return
+	if get_tree().current_scene == self and not "--no-notice" in args:
+		# who made the game, and a word about the adverts (tests that load
+		# main.tscn inside their own scene skip it)
+		var notice := NoticeScreen.new()
+		add_child(notice)
+		await notice.finished
 	show_title()
 
 
@@ -116,12 +122,14 @@ func run_duel(spec: Dictionary) -> bool:
 	add_child(layer)
 	var won := false
 	if spec.has("decks"):
-		# a duel on the v1 rules
+		# a duel on the v1 rules; an advert may come first (Ads has the rules)
+		await Ads.before_duel(spec)
 		var ds := DuelScreen.new().configure(spec)
 		layer.add_child(ds)
 		var r: String = await ds.finished
 		while r == "again":
 			ds.queue_free()
+			await Ads.before_duel(spec, true)
 			ds = DuelScreen.new().configure(spec)
 			layer.add_child(ds)
 			r = await ds.finished

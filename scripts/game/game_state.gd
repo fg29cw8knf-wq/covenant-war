@@ -3,6 +3,8 @@ extends Node
 ## where they are in the world. Saved to user://save.json.
 
 signal changed
+## A god's or a person's opinion of the player moved (see Standing).
+signal standing_changed(who: String, by: int, why: String)
 
 const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
@@ -21,6 +23,13 @@ var settings := {"music": 0.8, "sfx": 0.9, "text_speed": 1.0, "violence": "full"
 ## v2 progress (see DuelRewards and "Duel Rules v2"): the player's v2 card
 ## collection, Sigil Rank, Seals, Codex, Resonance and Attunement.
 var v2 := {}
+## Direct nudges to how gods and people see the player, on top of what the
+## story's flags already say (see Standing), and the reasons, oldest first.
+var standing := {}
+var standing_log: Array = []
+## Things carried (item id -> count) and the equipment worn (slot -> item id).
+var items := {}
+var equipped := {}
 
 
 func _ready() -> void:
@@ -53,6 +62,10 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 		collection[id] = int(collection.get(id, 0)) + 1
 	if not keep_progress:
 		flags = {}   # the Prologue's choices in Ashford survive the deck choice
+		standing = {}
+		standing_log = []
+		items = {}
+		equipped = {}
 	area = "solhaven"
 	spawn = "gate"
 	play_seconds = 0.0
@@ -64,6 +77,7 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 		for id in kept.get("codex", {}):
 			if not v2.codex.has(id) or String(kept.codex[id]) == "champion":
 				v2.codex[id] = kept.codex[id]
+	refresh_profile()
 	changed.emit()
 
 
@@ -145,8 +159,17 @@ func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, 
 			if String(v.codex.get(id, "")) != "champion":
 				v.codex[id] = seen_as
 	var res := DuelRewards.resonance(game, me, opponent_kind, thick, ad)
-	var out := {"resonance": res, "made": [], "overflow": 0, "rank_before": int(v.rank), "xp_before": int(v.xp)}
-	var amount: int = res.total
+	var out := add_resonance(int(res.total))
+	out["resonance"] = res
+	return out
+
+
+## Pours Resonance into the target card (crystallising it when full, overflow
+## to the Attunement pool) and adds the same as Rank XP. Used by a won duel
+## and by the advert that doubles a win. Returns what happened.
+func add_resonance(amount: int) -> Dictionary:
+	var v := _v2()
+	var out := {"made": [], "overflow": 0, "rank_before": int(v.rank), "xp_before": int(v.xp), "amount": amount}
 	if v.target == "" or not DuelRewards.eligible(String(v.target), int(v.rank), v.codex):
 		var ch := resonance_choices()
 		v.target = ch[0] if not ch.is_empty() else ""
@@ -195,8 +218,55 @@ func spend_point(attribute: String) -> bool:
 		return false
 	v.points = int(v.points) - 1
 	Lore.add_attribute(profile, attribute, 1)
+	refresh_profile()
 	changed.emit()
 	return true
+
+
+## Recomputes the attributes duels use: earned, plus the patron's blessing,
+## plus whatever equipment is worn (never above 10).
+func refresh_profile() -> void:
+	if profile.is_empty():
+		return
+	Lore.set_patron(profile, String(profile.get("patron", "")))
+	var bonus := Items.gear_bonus(equipped)
+	var attrs: Dictionary = profile.attributes
+	for a in bonus:
+		attrs[a] = mini(Items.ATTRIBUTE_CAP, int(attrs.get(a, 0)) + int(bonus[a]))
+
+
+## True once Bram has handed over a deck (the Prologue's deck choice).
+func has_deck() -> bool:
+	return bool(flag("bram_deck")) or bool(flag("beat_hunter")) or area != "ashford"
+
+
+# ------------------------------------------------------------- standing ---
+
+## Nudges how a god or a person sees the player (Standing has the rest).
+func shift_standing(who: String, by: int, why: String = "") -> void:
+	if by == 0:
+		return
+	standing[who] = int(standing.get(who, 0)) + by
+	standing_log.append({"who": who, "by": by, "why": why})
+	standing_changed.emit(who, by, why)
+	changed.emit()
+
+
+# ---------------------------------------------------------------- items ---
+
+func give_item(id: String, n: int = 1) -> void:
+	items[id] = int(items.get(id, 0)) + n
+	changed.emit()
+
+
+## Wears a piece of equipment in its slot ("" to take that slot off).
+func equip(slot: String, id: String) -> void:
+	if id == "":
+		equipped.erase(slot)
+	elif Items.is_gear(id) and int(items.get(id, 0)) > 0 and String(Items.ITEMS[id].slot) == slot:
+		equipped[slot] = id
+	refresh_profile()
+	changed.emit()
 
 
 ## Spare copies of a Totem: owned beyond the copies in the deck, never the last one.
@@ -263,7 +333,12 @@ func flag(key: String, default = false):
 
 
 func set_flag(key: String, value = true) -> void:
+	var before = flags.get(key, null)
 	flags[key] = value
+	if before == null or String(before) != String(value):
+		var e := Standing.effect_of(key, value)
+		if not e.is_empty():
+			standing_changed.emit(String(e.who), int(e.by), String(e.why))
 	changed.emit()
 
 
@@ -300,6 +375,10 @@ func save_game() -> bool:
 		"play_seconds": play_seconds,
 		"settings": settings,
 		"v2": v2,
+		"standing": standing,
+		"standing_log": standing_log,
+		"items": items,
+		"equipped": equipped,
 		"saved_at": Time.get_datetime_string_from_system(),
 	}
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
@@ -333,6 +412,11 @@ func load_game() -> bool:
 	play_seconds = float(data.get("play_seconds", 0.0))
 	settings.merge(data.get("settings", {}), true)
 	v2 = _ints(data.get("v2", {}))
+	standing = _ints(data.get("standing", {}))
+	standing_log = _ints(data.get("standing_log", []))
+	items = _ints(data.get("items", {}))
+	equipped = data.get("equipped", {})
+	refresh_profile()
 	changed.emit()
 	return true
 

@@ -1,8 +1,8 @@
 class_name WorldHUD
 extends CanvasLayer
 ## Everything drawn over the walkable world: the touch pad (drag = joystick,
-## tap = walk there / talk), the Talk button, the menu, the area title, the
-## dialogue box, reward pop-ups and screen fades.
+## tap = walk there / talk), the Talk button, the pause menu (PauseMenu), the
+## area title, the dialogue box, reward pop-ups and screen fades.
 
 signal talk_pressed
 signal menu_action(action: String)
@@ -131,8 +131,13 @@ func _ready() -> void:
 	dialogue = DialogueBox.new()
 	_root.add_child(dialogue)
 
-	_menu = _make_menu()
+	_menu = PauseMenu.new()
+	_menu.action.connect(func(what: String) -> void: menu_action.emit(what))
 	_root.add_child(_menu)
+	# "Tilly will remember that."
+	Game.standing_changed.connect(func(who: String, by: int, _why: String) -> void:
+		if by != 0:
+			toast("%s will remember that." % Standing.display_name(who)))
 
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
@@ -233,9 +238,8 @@ func show_card_reward(card_id: String) -> void:
 	overlay.queue_free()
 
 
-func open_menu() -> void:
-	_menu.visible = true
-	(_menu.get_node("Box/Resume") as Button).grab_focus()
+func open_menu(at_tab: String = "") -> void:
+	(_menu as PauseMenu).open(at_tab)
 
 
 func menu_open() -> bool:
@@ -265,54 +269,15 @@ func _make_title() -> Control:
 	return c
 
 
-func _make_menu() -> Control:
-	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
-	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	dim.visible = false
-	var box := VBoxContainer.new()
-	box.name = "Box"
-	box.set_anchors_preset(Control.PRESET_CENTER)
-	box.offset_left = -300
-	box.offset_right = 300
-	box.offset_top = -330
-	box.offset_bottom = 330
-	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_theme_constant_override("separation", 22)
-	dim.add_child(box)
-	var head := UITheme.label("PAUSED", 56, UITheme.GOLD, "display_bold")
-	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(head)
-	var info := UITheme.label("", 28, UITheme.TEXT_DIM)
-	info.name = "Info"
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(info)
-	for pair in [["Resume", "resume", true], ["Save game", "save", false], ["Title screen", "title", false]]:
-		var b := UITheme.button(pair[0], pair[2], 520)
-		b.name = pair[0].replace(" ", "")
-		var act: String = pair[1]
-		b.pressed.connect(func() -> void:
-			if act == "resume":
-				dim.visible = false
-			menu_action.emit(act))
-		box.add_child(b)
-	(box.get_node("Resume") as Button).name = "Resume"
-	dim.visibility_changed.connect(func() -> void:
-		if dim.visible:
-			info.text = "%s  ·  %s" % [Game.player_name, "Unsworn" if Lore.GODS.get(Game.profile.get("patron", ""), {}).is_empty() else "Sworn to " + Lore.GODS[Game.profile.patron].name])
-	return dim
-
-
 func close_menu() -> void:
 	_menu.visible = false
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _menu.visible or not visible:
+		return   # the pause menu handles its own keys; nothing while a duel is up
 	if event.is_action_pressed("menu") and _menu_btn.visible and not dialogue.visible:
-		if _menu.visible:
-			_menu.visible = false
-		else:
-			open_menu()
+		open_menu()
 		get_viewport().set_input_as_handled()
 
 

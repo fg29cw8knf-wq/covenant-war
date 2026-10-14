@@ -96,6 +96,7 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 	])
 	var deck := await story.choose_starter()
 	Game.new_game(nm, deck, true)
+	Game.set_flag("bram_deck")
 	_prologue_gifts()
 	var tails := {
 		"emberstorm": "Emberstorm. Hits first and hits hardest. I won a duke's bet with that one.",

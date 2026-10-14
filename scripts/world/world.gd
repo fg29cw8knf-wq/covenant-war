@@ -252,7 +252,7 @@ func _place_camera() -> void:
 
 func _physics_process(delta: float) -> void:
 	var dir := Vector3.ZERO
-	if not busy:
+	if not busy and not hud.menu_open():
 		var v := hud.pad.vector
 		var k := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 		if k.length() > v.length():
@@ -417,6 +417,8 @@ func _talk(n: Dictionary) -> void:
 	n.doll.look_toward(player.global_position, cam)
 	player_doll.look_toward(n.body.global_position, cam)
 	n.doll.set_marker("")
+	if String(n.def.get("id", "")) != "":
+		Game.flags["met_" + String(n.def.id)] = true
 	await run_steps(n.def.talk, n)
 	hud.dialogue.close()
 	hud.set_controls_visible(true)
@@ -443,6 +445,13 @@ func run_steps(steps: Array, npc) -> void:
 				await run_steps(branches[i], npc)
 		elif st.has("set"):
 			Game.set_flag(st.set)
+		elif st.has("standing"):
+			# {"standing": {"tilly": 1, "solmaris": -1}, "why": "..."}
+			for who in st.standing:
+				Game.shift_standing(String(who), int(st.standing[who]), String(st.get("why", "")))
+		elif st.has("item"):
+			Game.give_item(String(st.item))
+			hud.toast("Got: %s" % Items.ITEMS.get(String(st.item), {}).get("name", st.item))
 		elif st.has("objective"):
 			Game.set_flag("objective", String(st.objective))
 			hud.set_objective(_fmt(String(st.objective)))
@@ -467,6 +476,8 @@ func run_steps(steps: Array, npc) -> void:
 
 
 func _check(cond: String) -> bool:
+	if cond.begins_with("standing:"):
+		return Standing.check(cond)
 	if cond.begins_with("!"):
 		return not bool(Game.flag(cond.substr(1)))
 	return bool(Game.flag(cond))

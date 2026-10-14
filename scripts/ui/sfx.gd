@@ -41,10 +41,12 @@ func play(sound: String, pitch: float = 1.0) -> void:
 	var stream := get_stream(_take(sound))
 	if stream == null:
 		return
+	var level := linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)) / 0.9))
 	for p in _players:
 		if not p.playing:
 			p.stream = stream
 			p.pitch_scale = pitch
+			p.volume_db = volume_db + level
 			p.play()
 			return
 

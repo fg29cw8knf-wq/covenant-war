@@ -71,6 +71,7 @@ var _stage_base := Vector2.ZERO
 var _shake := 0.0
 var _base_k := 1.0
 var _zoom := 0.0
+var _won_resonance := 0
 var _zoom_at := Vector2(1000, 476)
 var _started := false
 var _arena_name := "solhaven"
@@ -680,6 +681,32 @@ func _respond(value) -> void:
 
 func _set_hint(t: String) -> void:
 	hint.text = t
+
+
+## Keyboard and mouse on a computer: Esc or right-click cancels what's
+## selected (or opens the duel menu), Space ends the turn.
+func _unhandled_input(e: InputEvent) -> void:
+	if mode == "over" or not is_visible_in_tree():
+		return
+	var cancel: bool = e.is_action_pressed("menu") or (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT)
+	if cancel:
+		if mode == "main" and pending != "":
+			_cancel_pending()      # one step back: from a target to the move list
+		elif mode == "main" and (sel_card != null or sel_totem != null):
+			_clear_selection()
+			_hide_detail()
+			_clear_actions()
+			_show_actions_default()
+			_refresh()
+		elif e.is_action_pressed("menu"):
+			lab_panel.visible = not lab_panel.visible
+			if not lab_panel.visible:
+				log_panel.visible = false
+		get_viewport().set_input_as_handled()
+	elif e is InputEventKey and e.pressed and not e.echo and e.physical_keycode == KEY_SPACE:
+		if mode == "main" and pending == "" and sel_card == null and sel_totem == null:
+			_on_end_turn()
+			get_viewport().set_input_as_handled()
 
 
 func _on_end_turn() -> void:
@@ -2077,6 +2104,27 @@ func _show_result(r: String) -> String:
 		v.add_child(sc)
 		await get_tree().process_frame
 		sc.custom_minimum_size.y = minf(rv.size.y + 8, overlay.size.y * 0.32)
+		# an advert the player can choose to watch, to double this win
+		if _won_resonance > 0 and spec.get("story", false) and Ads.can_offer_rewarded():
+			var dbl := UITheme.button("Watch an advert: double this win's Resonance (%d left today)" % Ads.rewarded_left_today(), false, 0)
+			dbl.custom_minimum_size = Vector2(0, 84)
+			dbl.add_theme_font_size_override("font_size", 26)
+			dbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			dbl.pressed.connect(func() -> void:
+				dbl.disabled = true
+				if await Ads.rewarded("double_resonance"):
+					var extra := Game.add_resonance(_won_resonance)
+					var t := "Doubled! +%d more Resonance." % _won_resonance
+					if not extra.made.is_empty():
+						t += "  %s crystallises in your hand!" % DuelCards.CARDS[extra.made[0]].name
+					elif String(extra.get("target", "")) != "":
+						t += "  %s: %d / %d" % [DuelCards.CARDS[extra.target].name, int(extra.banked_after), DuelRewards.card_cost(extra.target)]
+					dbl.text = t
+					Game.save_game()
+				else:
+					dbl.text = "No reward: the advert was stopped early."
+				)
+			v.add_child(dbl)
 	var hb := HBoxContainer.new()
 	hb.alignment = BoxContainer.ALIGNMENT_CENTER
 	hb.add_theme_constant_override("separation", 24)
@@ -2112,6 +2160,7 @@ func _reward_lines() -> Array:
 		var res := DuelRewards.resonance(game, me, kind, bool(rw.get("thick", false)), false)
 		return ["This win makes %d Resonance (%s)." % [res.total, _resonance_why(res)]]
 	var out := Game.record_win(game, me, kind, bool(rw.get("thick", false)), false)
+	_won_resonance = int(out.resonance.total)
 	var lines := ["+%d Resonance  (%s)" % [out.resonance.total, _resonance_why(out.resonance)]]
 	var target: String = out.get("target", "")
 	if not out.made.is_empty():

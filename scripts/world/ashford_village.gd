@@ -411,14 +411,103 @@ func build_village() -> void:
 		var ang := deg_to_rad(p[0])
 		# angles measured toward -z so "north" is up the screen in the main shots
 		var pos := Vector3(cos(ang) * p[1], 0.0, -sin(ang) * p[1])
-		house(pos, p[2], p[3], p[4], p[5], doors[i % 4], i, i == 4)
+		# Gary's painted cottages where they exist, the drawn stand-in otherwise
+		var mid: String = RING_MODELS[i]
+		if mid == "" and ResourceLoader.exists("res://assets/models/ashford/inn.glb"):
+			continue   # the inn's model is bigger than the drawn one and fills this plot
+		if not model_house(mid, pos, i, i == 4):
+			house(pos, p[2], p[3], p[4], p[5], doors[i % 4], i, i == 4)
 	# the Crooked Lantern inn, two storeys, on the west side
 	var inn_pos := Vector3(-24.0, 0.0, 6.0)
-	house(inn_pos, 11.0, 6.4, 4.8, 0, "green", 99, false, true)
+	if not model_house("inn", inn_pos, 99, false):
+		house(inn_pos, 11.0, 6.4, 4.8, 0, "green", 99, false, true)
 	# farmhouses dotted over the hills, lights in their windows
 	for f in [Vector3(-70, 0, -40), Vector3(48, 0, 46), Vector3(95, 0, -30), Vector3(-95, 0, 20), Vector3(-30, 0, -95), Vector3(20, 0, -120)]:
-		house(f, 7.0, 5.0, 2.6, 1, "natural", 200 + int(f.x), false)
+		if not model_house("cottage_b", f, 200 + int(f.x), false):
+			house(f, 7.0, 5.0, 2.6, 1, "natural", 200 + int(f.x), false)
 	build_mill(Vector3(62.0, 0.0, -88.0))
+
+
+## Which of Gary's cottages stands on each plot round the green (the fifth,
+## north-west, is the one whose thatch catches at the Sigilfall; the sixth
+## is left to the Crooked Lantern).
+const RING_MODELS := ["cottage_c", "cottage_a", "cottage_b", "cottage_c", "cottage_a", "",
+	"cottage_c", "cottage_a", "cottage_b", "cottage_c", "cottage_a"]
+## Warm light behind the windows: each model has <id>_glow.png, a mask of its
+## glass made from its colour atlas, used as the emission texture.
+const WINDOW_GLOW := Color(1.0, 0.6, 0.28)
+var _model_info := {}   # model id -> its chimney top (measured once)
+
+## Places one of Gary's building models (assets/models/ashford/<id>.glb) facing
+## the green, with lit windows, a porch light and chimney smoke. Returns false
+## when the model isn't there, so the drawn stand-in is built instead.
+func model_house(id: String, pos: Vector3, seed_i: int, burning: bool) -> bool:
+	var path := "res://assets/models/ashford/%s.glb" % id
+	if not ResourceLoader.exists(path):
+		return false
+	var scene: PackedScene = load(path)
+	var root := Node3D.new()
+	pos.y = height(pos.x, pos.z) - 0.08
+	root.position = pos
+	var to_c := -Vector2(pos.x, pos.z).normalized()
+	root.rotation.y = atan2(to_c.x, to_c.y)
+	add_child(root)
+	var inst: Node3D = scene.instantiate()
+	root.add_child(inst)
+	var glow_path := "res://assets/models/ashford/%s_glow.png" % id
+	var glow: Texture2D = load(glow_path) if ResourceLoader.exists(glow_path) else null
+	var box := AABB()
+	var first := true
+	var measure := not _model_info.has(id)
+	var top_v := Vector3(0, -1, 0)    # the highest vertex: the chimney
+	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		var xf := root.global_transform.affine_inverse() * mi.global_transform
+		var b := xf * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		for s in mi.mesh.get_surface_count():
+			if measure:
+				var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
+				for v in verts:
+					var w := xf * v
+					if w.y > top_v.y:
+						top_v = w
+			var m := mi.get_active_material(s)
+			if glow != null and m is StandardMaterial3D:
+				var gm: StandardMaterial3D = m.duplicate()
+				gm.emission_enabled = true
+				gm.emission = WINDOW_GLOW
+				gm.emission_energy_multiplier = 2.2 + (seed_i % 5) * 0.25
+				gm.emission_texture = glow
+				gm.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
+				mi.set_surface_override_material(s, gm)
+	if measure:
+		_model_info[id] = top_v
+	top_v = _model_info[id]
+	var L := box.size.x
+	var D := box.size.z
+	var top := box.end.y
+	var mid := Vector2(box.get_center().x, box.get_center().z).rotated(-root.rotation.y)
+	var centre := Vector3(pos.x + mid.x, 0.0, pos.z + mid.y)
+	footprints.append([Vector2(centre.x, centre.z), max(L, D) * 0.56])
+	solid_box(Vector3(centre.x, 1.5, centre.z), Vector3(L + 0.3, 3.0, D + 0.3), root.rotation.y)
+	# a warm light at the door and one behind, so the house reads at night
+	for spot in [Vector3(-0.8, 2.2, box.end.z + 0.7), Vector3(0.6, 2.0, box.position.z - 0.8)]:
+		var ll := OmniLight3D.new()
+		ll.light_color = Color(1.0, 0.62, 0.3)
+		ll.light_energy = 1.3 if spot.z > 0 else 0.7
+		ll.omni_range = 7.0
+		ll.omni_attenuation = 1.4
+		ll.position = spot
+		root.add_child(ll)
+	if top_v.y > 0.0 and not burning:
+		chimney_smoke(root, top_v + Vector3(0, 0.15, 0))
+	if burning:
+		burning_house = root
+		# ignite_roof() reads these as length, depth, wall height and roof rise
+		set_meta("burning_dims", [L, D, top * 0.5, top * 0.33 - 0.25])
+	return true
 
 func house(pos: Vector3, L: float, D: float, H: float, style: int, door: String, seed_i: int, burning: bool, inn := false) -> void:
 	var root := Node3D.new()
