@@ -594,13 +594,15 @@ func _load_model(s: Slot, id: String) -> void:
 	s.shadow.visible = true
 
 
-## The model packs name their magic surfaces: fire, mist, veil, water, fin and
-## glow. Fire and mist are light, not paint, so they're drawn additively and
-## unlit; everything else keeps the artist's materials with a gentle emission.
+## The model packs name their magic surfaces: fire, flame, mist, veil, water,
+## fin and glow. Fire and mist are light, not paint, so they're drawn
+## additively and unlit (the Blazehound's flame ribbons, say, which are
+## alpha-blended, double-sided and emissive in the file); everything else
+## keeps the artist's materials with a gentle emission.
 static func _dress_material(m: BaseMaterial3D) -> void:
 	var nm := m.resource_name.to_lower()
 	var blended := m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA
-	if nm.contains("fire") and blended:
+	if (nm.contains("fire") or nm.contains("flame") or nm.contains("ember")) and blended:
 		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 		m.cull_mode = BaseMaterial3D.CULL_DISABLED

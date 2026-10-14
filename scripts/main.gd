@@ -143,4 +143,5 @@ func run_duel(spec: Dictionary) -> bool:
 		hidden_world.visible = true
 		if hidden_world.hud != null:
 			hidden_world.hud.visible = true
+		hidden_world.resume_music()   # the area's music carries on from where it left off
 	return won

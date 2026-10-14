@@ -43,15 +43,19 @@ const LANTERN_LIFE := 25
 ## Bram teaches the duel from his stool, one step at a time (Spoken Script, P1:
 ## the Lantern Duel). Each line waits for the player: an explanation until they
 ## tap, an instruction until they've done it, and nothing else can be touched
-## meanwhile. See DuelTutor for the step format.
+## meanwhile. See DuelTutor for the step format. It teaches only what's on
+## the table tonight (Totems, Rites, Essence, Life, attacking, one weakness,
+## Fate and the card panel); Wards, the element chart, conditions and
+## Ascension are taught the first time each matters, later on.
 const LESSON := {
 	"events": {
 		"intro": [
-			{"say": "Right. Those cards are Sigils. Every one of them fell out of the sky two thousand years ago, the last time the gods fought over the Throne."},
-			{"say": "Magic, gone hard like frost on a window. These are Sparks, the smallest kind. Ashford's kept this lot in a box at the inn since before my grandad."},
+			{"say": "Right. Those cards are Sigils. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window."},
+			{"say": "These are Sparks, the smallest kind. Ploughs turn them up all the time. Ashford's kept this lot in a box at the inn since before my grandad."},
+			{"say": "That's the gods on a quiet day, mind. When they fight, it doesn't drip. It pours."},
 			{"say": "Only the Attuned can wake one. In this village, that's you and Corin. Lucky us."},
 			{"say": "A duel's how sensible folk settle things. Your Totems do the fighting. Bring his Life down to nothing and you've won.", "focus": "life"},
-			{"say": "You both roll the die to see who starts. Highest goes first."},
+			{"say": "Tap the die to roll for who goes first. Highest starts.", "do": "die"},
 		],
 		"rival_call": [
 			{"say": "There's his Cinderpup. Fire, see the orb? Remember that.", "focus": "foe:cinderpup"},
@@ -60,7 +64,7 @@ const LESSON := {
 			{"say": "See that? Water puts fire out. Hit a Totem's weakness and it hurts a good deal more. The orb on each card tells you its element.", "focus": "foe:cinderpup"},
 		],
 		"rival_fate": [
-			{"say": "That's Fate. Some moves roll the die: roll high, hit hard; roll low, nothing. Corin loves those. Corin loves anything that can go wrong loudly."},
+			{"say": "That's Fate. Some moves roll the die: roll high, hit hard; roll low, nothing. Corin loves those. Corin loves anything that can go wrong loudly.", "focus": "die", "learn": "fate"},
 		],
 		"absorbed": [
 			{"say": "And your Bulwark took the lot. Told you.", "focus": "totem:brookfin"},
@@ -76,6 +80,7 @@ const LESSON := {
 		[
 			{"say": "Along the bottom, that's your hand. Five to start, and you draw one more every turn after this.", "focus": "hand"},
 			{"say": "Brookfin's your Totem: a Spark of river water. Tap it.", "do": "card:brookfin"},
+			{"say": "That panel on the right is the card up close: its cost, its element and what its moves do. Tap any card, yours or Corin's, whenever you want a closer look.", "focus": "detail"},
 			{"say": "Now tap the glowing slot. That calls it into the circle.", "do": "slot:1"},
 			{"say": "Calling it cost one Essence. That's the blue gems by your Life. You get one more every turn, so spend them. Nobody ever won a duel with savings.", "focus": "essence"},
 			{"say": "Nobody attacks on the first turn, and a Totem called this turn needs a moment to find its feet. So that's you done."},
@@ -140,7 +145,10 @@ static func build(root: Node3D) -> void:
 	v.name = "Village"
 	root.add_child(v)
 	root.set_meta("village", v)
-	Music.play(["ashford_festival", "duel_alt"], 2.0, true)
+	# the festival reel: its intro once, then the loop (Music.LOOP_START), and
+	# it carries on from where it was when a duel or a scene hands back
+	(root as World).music = ["ashford_festival"]
+	Music.play((root as World).music, 2.0, true)
 
 
 static func village(w: Node) -> AshfordVillage:

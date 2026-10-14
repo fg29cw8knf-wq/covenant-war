@@ -50,9 +50,22 @@ xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.t
 
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and
-each instruction locks everything but the one thing to tap. Both decks are dealt in
-order, the player goes first, Corin follows a script (`DuelHuman.Scripted`) and the
-player's Life and Totem can't drop to zero.
+each instruction locks everything but the one thing to tap (including the tap on
+the die for who goes first, and the card panel on the right). Both decks are dealt
+in order, the player goes first, Corin follows a script (`DuelHuman.Scripted`) and
+the player's Life and Totem can't drop to zero. It teaches only what's on the table
+that night; everything else is taught the first time it matters, in the same gated
+way, by Bram: the first condition or boon to land on either side (`fx_status`,
+which also gives it a Codex entry under *Conditions*), Wards and the element chart
+at the campfire before Dask's road duel (`prologue.gd`, with `ElementChart`), the
+first Ward set or sprung, and the first time an Ascension can be played. A duel
+with `spec.lessons = true` gets a tutor just for these one-off lessons
+(`DuelTutor.lesson()`); each is taught once ever (`Game.learn()`), and every line
+Bram has given is kept, in order, on the pause menu's **How to Duel** page.
+
+```sh
+xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/creature_shot.tscn -- <dir> blazehound   # a duel with a given Totem on the field
+```
 
 The rules are written up in the "Duel Rules v2" Claude doc, and the story in the
 "Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
@@ -133,6 +146,26 @@ The summary line must report `0 invariant errors`.
   bonus — when its duellist's matching attribute is high enough.
 - Swearing to a god gives +3 to that god's attribute and a once-per-duel Divine Gift.
   Staying Unsworn gives +1 to every attribute and the gift *Unbound Will*.
+
+## Music loops
+
+Gary's tracks are delivered as whole pieces; the game plays a cut that loops
+without a join you can hear. `Music` (`scripts/ui/music.gd`) plays each track's
+intro once, then loops from `LOOP_START[name]` back to the file's end, which has
+the music leading into the loop point baked over it. The two duel themes take
+turns (`Music.duel_theme()`), and a track that was faded out (the village reel
+when a duel starts) carries on from where it was when it comes back
+(`World.resume_music()`), never from the top.
+
+```sh
+python3 tools/music_loop.py assets/audio/source/<name>.mp3 assets/audio/music/<name>.ogg \
+    --start 35.03 --end 86.85 --fade 2.15 --check docs/audio-checks/<name>_loop_seam.mp3
+godot --headless --script res://tests/loop_probe.gd -- <name>      # where Godot's loop really lands, and the jump at the join
+```
+
+`--start` and `--end` are a bar-aligned pair (the tool nudges `--end` onto the
+beat and adds the crossfade); put the start in `LOOP_START`. The seam-check mp3
+is the join as the game plays it, three times, for listening to.
 
 ## Opening movie clips
 

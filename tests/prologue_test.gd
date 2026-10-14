@@ -53,6 +53,8 @@ func _auto_advance(want: String) -> void:
 	for n in _all(main):
 		if n is DialogueBox and n.visible and not n._choices.visible:
 			n._tap()
+		elif n is StoryScreen.ChartOverlay and n.visible:
+			n.tap()   # Bram's element chart at the campfire
 		elif n is Button and n.is_visible_in_tree() and n.theme_type_variation == "ChoiceButton":
 			n.pressed.emit()   # the first answer to every choice
 			return

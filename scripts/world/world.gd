@@ -39,6 +39,14 @@ var _focus := Vector3.ZERO
 var _stuck_time := 0.0
 var cine := false          # a cutscene is driving the camera
 var _shake := 0.0
+var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
+
+
+## Brings the area's music back after a duel or a scene took it over; it
+## carries on from where it left off (Music remembers), never from the top.
+func resume_music() -> void:
+	if not music.is_empty():
+		Music.play(music, 1.5, true)
 
 
 func setup(p_area: String, spawn: String) -> World:

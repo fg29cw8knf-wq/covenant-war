@@ -40,6 +40,8 @@ func fade(to_alpha: float, dur: float = 0.6) -> void:
 ## Show a scene and play lines over it. Each line is {"text", "who"?, "name"?},
 ## or {"choice": [...], "then": [[lines], ...]}, {"if": flag, "then": [...], "else": [...]}
 ## or {"set": flag}, as in the walkable world's dialogue. A flag starting "!" means "not".
+## A line with "learn": <id> and "group" is a duelling lesson, kept on the pause
+## menu's How to Duel page; {"chart": "elements"} shows the element chart until a tap.
 func scene(id: String, lines: Array) -> void:
 	if _bg.scene != id:
 		await fade(1.0, 0.5)
@@ -62,6 +64,8 @@ func _play(lines: Array) -> void:
 			await _play(ln.get("then", []) if ok else ln.get("else", []))
 		elif ln.has("set"):
 			Game.set_flag(ln.set)
+		elif ln.has("chart"):
+			await show_chart()
 		elif ln.has("text"):
 			var who: String = ln.get("who", "")
 			var nm := ""
@@ -71,7 +75,53 @@ func _play(lines: Array) -> void:
 				if who == "player":
 					nm = Game.player_name
 				portrait = DollArt.portrait(who)
+			if ln.has("learn"):
+				Game.learn(String(ln.learn), String(ln.get("group", "Duelling")), nm, String(ln.text))
 			await box.say(nm, portrait, String(ln.text).replace("{name}", Game.player_name))
+
+
+## The element chart over the scene, until the player taps.
+func show_chart() -> void:
+	box.close()
+	var holder := ChartOverlay.new()
+	holder.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	holder.mouse_filter = Control.MOUSE_FILTER_STOP
+	_root.add_child(holder)
+	var dim := ColorRect.new()
+	dim.color = Color(0.01, 0.01, 0.03, 0.6)
+	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(dim)
+	var chart := ElementChart.new()
+	chart.set_anchors_preset(Control.PRESET_CENTER)
+	chart.size = chart.custom_minimum_size
+	chart.position = (holder.size - chart.size) * 0.5 - Vector2(0, 20)
+	holder.add_child(chart)
+	var foot := UITheme.label("TAP TO GO ON  ▸", 24, UITheme.GOLD, "bold")
+	foot.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	foot.position = Vector2(holder.size.x * 0.5 - 200, chart.position.y + chart.size.y + 16)
+	foot.size = Vector2(400, 40)
+	foot.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	holder.add_child(foot)
+	holder.modulate.a = 0.0
+	holder.create_tween().tween_property(holder, "modulate:a", 1.0, 0.3)
+	await holder.done
+	holder.queue_free()
+
+
+## The element chart's full-screen holder: a tap (after a moment) closes it.
+class ChartOverlay:
+	extends Control
+	signal done
+	var _shown_at := Time.get_ticks_msec()
+
+	func _gui_input(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+			tap()
+
+	func tap() -> void:
+		if Time.get_ticks_msec() - _shown_at > 400:
+			done.emit()
 
 
 ## Ask for the player's name; returns it.

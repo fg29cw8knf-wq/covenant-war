@@ -790,22 +790,25 @@ func build_green() -> void:
 	var bm := SphereMesh.new(); bm.radius = 0.035; bm.height = 0.07; bm.radial_segments = 6; bm.rings = 3
 	multimesh(g, bm, mats.bulb, bulb_xf, bulb_col, false)
 	multimesh(g, lantern_mesh(), mats.lantern, lan_xf, lan_col, false)
-	# the well
+	# the well (Gary's model, or the drawn one): Corin waits here and Nell sits here
 	var wp := Vector3(-6.0, height(-6, 4), 4.0)
-	var ring := CylinderMesh.new(); ring.top_radius = 0.95; ring.bottom_radius = 1.0; ring.height = 0.85; ring.radial_segments = 20
-	add_mesh(g, ring, mats.stone, Transform3D(Basis(), wp + Vector3(0, 0.42, 0)))
-	cyl(g, 0.72, 0.72, 0.05, wp + Vector3(0, 0.86, 0), mats.dark, 20)
-	for sx in [-1, 1]:
-		box(g, Vector3(0.14, 2.0, 0.14), wp + Vector3(0.85 * sx, 1.4, 0), mats.beam_v)
-	box(g, Vector3(2.2, 0.08, 1.3), wp + Vector3(0, 2.5, 0.3), mats.wood_h, Vector3(0.45, 0, 0))
-	box(g, Vector3(2.2, 0.08, 1.3), wp + Vector3(0, 2.5, -0.3), mats.wood_h, Vector3(-0.45, 0, 0))
-	cyl(g, 0.1, 0.1, 1.6, wp + Vector3(0, 1.9, 0), mats.wood, 8, Vector3(0, 0, PI / 2))
-	footprints.append([Vector2(wp.x, wp.z), 1.2])
-	solid_round(wp, 1.15)
+	if prop_model("well", g, wp, 0.0) == null:
+		var ring := CylinderMesh.new(); ring.top_radius = 0.95; ring.bottom_radius = 1.0; ring.height = 0.85; ring.radial_segments = 20
+		add_mesh(g, ring, mats.stone, Transform3D(Basis(), wp + Vector3(0, 0.42, 0)))
+		cyl(g, 0.72, 0.72, 0.05, wp + Vector3(0, 0.86, 0), mats.dark, 20)
+		for sx in [-1, 1]:
+			box(g, Vector3(0.14, 2.0, 0.14), wp + Vector3(0.85 * sx, 1.4, 0), mats.beam_v)
+		box(g, Vector3(2.2, 0.08, 1.3), wp + Vector3(0, 2.5, 0.3), mats.wood_h, Vector3(0.45, 0, 0))
+		box(g, Vector3(2.2, 0.08, 1.3), wp + Vector3(0, 2.5, -0.3), mats.wood_h, Vector3(-0.45, 0, 0))
+		cyl(g, 0.1, 0.1, 1.6, wp + Vector3(0, 1.9, 0), mats.wood, 8, Vector3(0, 0, PI / 2))
+		footprints.append([Vector2(wp.x, wp.z), 1.2])
+		solid_round(wp, 1.15)
 	# festival stalls (the red one is Tilly's, where Tam's cider goes)
 	var red := stall(g, Vector3(7.5, 0, 6.0), deg_to_rad(-30), mats.cloth_red)
 	stall(g, Vector3(-4.0, 0, -8.5), deg_to_rad(160), mats.cloth_blue)
-	barrel_spot = red.to_global(Vector3(-2.1, 0.0, 0.05)) if red.is_inside_tree() else red.transform * Vector3(-2.1, 0.0, 0.05)
+	# the barrel goes down just past the stall's left-hand post
+	var beside := Vector3(-2.35 if red.has_meta("model") else -2.1, 0.0, 0.05)
+	barrel_spot = red.to_global(beside) if red.is_inside_tree() else red.transform * beside
 	barrel_spot.y = height(barrel_spot.x, barrel_spot.z)
 	# the last cider barrel, waiting by Tam for a second pair of hands
 	var bp := Vector3(7.3, 0.0, -3.5)
@@ -827,7 +830,46 @@ func build_green() -> void:
 	footprints.append([Vector2(cp.x, cp.z), 1.8])
 	solid_round(cp, 1.7)
 
+## One of Gary's props (assets/models/ashford/<id>.glb, +Y up, front +Z) set
+## down at `pos` turned by `yaw`, with shadows, a footprint and a solid body.
+## Returns its node, or null when the model isn't there yet.
+func prop_model(id: String, parent: Node3D, pos: Vector3, yaw: float) -> Node3D:
+	var path := "res://assets/models/ashford/%s.glb" % id
+	if not ResourceLoader.exists(path):
+		return null
+	var root := Node3D.new()
+	root.name = id.capitalize()
+	pos.y = height(pos.x, pos.z) - 0.03
+	root.position = pos
+	root.rotation.y = yaw
+	root.set_meta("model", true)
+	parent.add_child(root)
+	var inst: Node3D = load(path).instantiate()
+	root.add_child(inst)
+	var box_ := AABB()
+	var first := true
+	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var b := (root.global_transform.affine_inverse() * mi.global_transform) * mi.get_aabb()
+		box_ = b if first else box_.merge(b)
+		first = false
+	var c := box_.get_center()
+	var flat := Vector2(c.x, c.z).rotated(-yaw)
+	var centre := Vector3(pos.x + flat.x, 0.0, pos.z + flat.y)
+	footprints.append([Vector2(centre.x, centre.z), maxf(box_.size.x, box_.size.z) * 0.55])
+	solid_box(Vector3(centre.x, 1.5, centre.z), Vector3(box_.size.x + 0.2, 3.0, box_.size.z + 0.2), yaw)
+	return root
+
+
 func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> Node3D:
+	var m := prop_model("stall", parent, pos, yaw)
+	if m != null:
+		# the lantern on its front right post is unlit in the model: light it
+		var ml := OmniLight3D.new()
+		ml.light_color = Color(1.0, 0.6, 0.3); ml.light_energy = 1.3; ml.omni_range = 6.0
+		ml.position = Vector3(1.55, 1.9, 1.1)
+		m.add_child(ml)
+		return m
 	var s := Node3D.new()
 	pos.y = height(pos.x, pos.z)
 	s.position = pos

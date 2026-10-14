@@ -864,7 +864,7 @@ class DiceView:
 			face_col = Color("c99a2e")
 		elif landed and face == 1:
 			face_col = Color("9a2a3a")
-		_draw_d20(c, rad * (1.0 + (0.08 * sin(_t * 30.0) if not landed else 0.0)), spin if not landed else 0.0, face_col)
+		DuelViews.draw_d20(self, c, rad * (1.0 + (0.08 * sin(_t * 30.0) if not landed else 0.0)), spin if not landed else 0.0, face_col)
 		var fcol := Color.WHITE
 		if landed and face == 20:
 			fcol = Color("fff3c4")
@@ -904,41 +904,104 @@ class DiceView:
 		if bands.is_empty() and landed:
 			CardFace.text(self, fnt, Vector2(x, y + 40), String(info.get("text", "")), 30, UITheme.TEXT)
 
-	## A twenty-sided die seen face-on: a hexagon of shaded facets.
-	func _draw_d20(c: Vector2, r: float, rot: float, col: Color) -> void:
-		var outer := PackedVector2Array()
-		for i in 6:
-			var a := -PI / 2.0 + TAU * i / 6.0 + rot
-			outer.append(c + Vector2(cos(a), sin(a)) * r)
-		var inner := PackedVector2Array()
-		for i in 3:
-			var a := -PI / 2.0 + TAU * i / 3.0 + rot
-			inner.append(c + Vector2(cos(a), sin(a)) * r * 0.6)
-		DuelFX.draw_glow(self, c, Vector2(r, r) * 1.9, Color(col.lightened(0.4), 0.45))
-		draw_colored_polygon(outer, col.darkened(0.45))
-		# the three corner facets (darkest) and three side facets (mid)
-		for i in 3:
-			var o := outer[i * 2]
-			var o_prev := outer[(i * 2 + 5) % 6]
-			var o_next := outer[(i * 2 + 1) % 6]
-			draw_colored_polygon(PackedVector2Array([o, o_next, inner[i]]), col.darkened(0.15 + 0.1 * i))
-			draw_colored_polygon(PackedVector2Array([o, inner[i], o_prev]), col.darkened(0.25 + 0.1 * i))
-			draw_colored_polygon(PackedVector2Array([inner[i], o_next, inner[(i + 1) % 3]]), col.lerp(Color.WHITE, 0.08))
-		draw_polygon(inner, PackedColorArray([col.lightened(0.45), col.lightened(0.15), col.lightened(0.15)]))
-		var edge := Color(UITheme.GOLD, 0.95)
-		var closed := outer.duplicate()
-		closed.append(outer[0])
-		draw_polyline(closed, edge, 4.0, true)
-		var tri := inner.duplicate()
-		tri.append(inner[0])
-		draw_polyline(tri, Color(edge, 0.8), 2.5, true)
-		for i in 3:
-			draw_line(inner[i], outer[i * 2], Color(edge, 0.6), 2.0, true)
-			draw_line(inner[i], outer[(i * 2 + 1) % 6], Color(edge, 0.6), 2.0, true)
-			draw_line(inner[i], outer[(i * 2 + 5) % 6], Color(edge, 0.6), 2.0, true)
+## A twenty-sided die seen face-on: a hexagon of shaded facets.
+static func draw_d20(ci: CanvasItem, c: Vector2, r: float, rot: float, col: Color) -> void:
+	var outer := PackedVector2Array()
+	for i in 6:
+		var a := -PI / 2.0 + TAU * i / 6.0 + rot
+		outer.append(c + Vector2(cos(a), sin(a)) * r)
+	var inner := PackedVector2Array()
+	for i in 3:
+		var a := -PI / 2.0 + TAU * i / 3.0 + rot
+		inner.append(c + Vector2(cos(a), sin(a)) * r * 0.6)
+	DuelFX.draw_glow(ci, c, Vector2(r, r) * 1.9, Color(col.lightened(0.4), 0.45))
+	ci.draw_colored_polygon(outer, col.darkened(0.45))
+	# the three corner facets (darkest) and three side facets (mid)
+	for i in 3:
+		var o := outer[i * 2]
+		var o_prev := outer[(i * 2 + 5) % 6]
+		var o_next := outer[(i * 2 + 1) % 6]
+		ci.draw_colored_polygon(PackedVector2Array([o, o_next, inner[i]]), col.darkened(0.15 + 0.1 * i))
+		ci.draw_colored_polygon(PackedVector2Array([o, inner[i], o_prev]), col.darkened(0.25 + 0.1 * i))
+		ci.draw_colored_polygon(PackedVector2Array([inner[i], o_next, inner[(i + 1) % 3]]), col.lerp(Color.WHITE, 0.08))
+	ci.draw_polygon(inner, PackedColorArray([col.lightened(0.45), col.lightened(0.15), col.lightened(0.15)]))
+	var edge := Color(UITheme.GOLD, 0.95)
+	var closed := outer.duplicate()
+	closed.append(outer[0])
+	ci.draw_polyline(closed, edge, 4.0, true)
+	var tri := inner.duplicate()
+	tri.append(inner[0])
+	ci.draw_polyline(tri, Color(edge, 0.8), 2.5, true)
+	for i in 3:
+		ci.draw_line(inner[i], outer[i * 2], Color(edge, 0.6), 2.0, true)
+		ci.draw_line(inner[i], outer[(i * 2 + 1) % 6], Color(edge, 0.6), 2.0, true)
+		ci.draw_line(inner[i], outer[(i * 2 + 5) % 6], Color(edge, 0.6), 2.0, true)
 
 
 # =============================================================== CardPicker ===
+
+## The roll for who goes first: both duellists' dice, big in the middle of
+## the Circle. In the Lantern Duel the player taps their own die to roll.
+class RolloffView:
+	extends Control
+	signal die_tapped
+	var names: Array = ["You", "Rival"]
+	var faces: Array = [1, 1]
+	var landed := false
+	var spin := 0.0
+	var waiting := false       # for the player's tap
+	var _t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func die_center(i: int) -> Vector2:
+		return Vector2(size.x * (0.3 if i == 0 else 0.7), size.y * 0.52)
+
+	## The player's die, with room round it (for the tutorial's spotlight).
+	func die_rect() -> Rect2:
+		return Rect2(die_center(0) - Vector2(150, 150), Vector2(300, 300))
+
+	func _gui_input(e: InputEvent) -> void:
+		var pressed: bool = (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) or (e is InputEventScreenTouch and e.pressed)
+		if pressed:
+			die_tapped.emit(die_rect().grow(40).has_point(e.position))
+
+	func _draw() -> void:
+		DuelFX.draw_glow(self, size * 0.5, Vector2(size.x * 0.6, size.y * 0.8), Color(0, 0, 0, 0.85))
+		var fnt := CardFace.font("display_bold")
+		CardFace.text(self, fnt, Vector2(size.x * 0.5 - 400, 44), "WHO GOES FIRST?", 34, Color(UITheme.GOLD, 0.95), HORIZONTAL_ALIGNMENT_CENTER, 800, 6)
+		for i in 2:
+			var c := die_center(i)
+			var rad := 108.0
+			var mine := i == 0
+			var col := Color("5a3fb5") if mine else Color("7a3a4a")
+			if landed and int(faces[i]) == 20:
+				col = Color("c99a2e")
+			var wobble := 0.0 if landed else 0.08 * sin(_t * 30.0 + i * 2.0)
+			var bounce := 0.0 if landed else absf(sin(_t * 9.0 + i)) * 18.0
+			if waiting and mine:
+				var pulse := 0.5 + 0.5 * sin(_t * 5.0)
+				DuelFX.draw_glow(self, c, Vector2(rad, rad) * (2.3 + 0.3 * pulse), Color(UITheme.GOLD, 0.25 + 0.2 * pulse))
+			DuelViews.draw_d20(self, c - Vector2(0, bounce), rad * (1.0 + wobble), 0.0 if landed else spin + i, col)
+			var fcol := Color("fff3c4") if landed and int(faces[i]) == 20 else Color.WHITE
+			CardFace.text_in(self, fnt, Rect2(c - Vector2(0, bounce) - Vector2(rad, rad * 0.75), Vector2(rad * 2, rad * 1.5)), str(faces[i]), 70, fcol, HORIZONTAL_ALIGNMENT_CENTER, 9, Color(0.05, 0.02, 0.1, 0.9))
+			var nm := String(names[i]).to_upper()
+			CardFace.text(self, fnt, Vector2(c.x - 220, c.y - rad - 30), nm, 28, UITheme.MINE if mine else UITheme.THEIRS, HORIZONTAL_ALIGNMENT_CENTER, 440, 5)
+			if waiting and mine:
+				CardFace.text(self, fnt, Vector2(c.x - 220, c.y + rad + 46), "TAP YOUR DIE", 26, UITheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 440, 5)
+		if landed:
+			var win := 0 if int(faces[0]) > int(faces[1]) else (1 if int(faces[1]) > int(faces[0]) else -1)
+			var line := "A tie: roll again!" if win < 0 else ("%s %s first" % [String(names[win]), "go" if String(names[win]) == "You" else "goes"])
+			CardFace.text(self, fnt, Vector2(size.x * 0.5 - 400, size.y - 54), line.to_upper(), 30, UITheme.GOLD, HORIZONTAL_ALIGNMENT_CENTER, 800, 6)
+		# the "v" between the dice
+		CardFace.text(self, fnt, Vector2(size.x * 0.5 - 60, size.y * 0.52 - 24), "v", 44, Color(UITheme.TEXT, 0.5), HORIZONTAL_ALIGNMENT_CENTER, 120, 5)
+
+
 ## A pop-up that shows cards (or Totems) and lets the player choose some.
 class CardPicker:
 	extends Control

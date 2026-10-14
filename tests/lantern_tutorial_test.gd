@@ -49,6 +49,21 @@ func _drive() -> void:
 		var tu: DuelTutor = ds.tutor
 		if tu == null:
 			continue
+		if not tu.event_step.is_empty():
+			# an instruction inside an event: tap the die for who goes first
+			var key0 := "event:" + String(tu.event_step.do)
+			if key0 != last:
+				last = key0
+				await get_tree().create_timer(0.6).timeout
+				await _shot("do")
+				print("  [do %s] %s" % [tu.event_step.do, String(tu.event_step.say).left(60)])
+				ds._on_end_turn()           # a wrong tap first: nothing may happen
+				ds._on_die_tapped(false)    # and a tap beside the die
+				await get_tree().create_timer(0.2).timeout
+				if tu.event_step.is_empty():
+					problems.append("wrong tap moved the lesson on at %s" % key0)
+				ds._on_die_tapped(true)
+			continue
 		if tu.blocking:
 			var key := "info:" + tu.text_label.text
 			if key != last:

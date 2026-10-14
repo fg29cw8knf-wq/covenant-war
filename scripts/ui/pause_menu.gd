@@ -11,7 +11,7 @@ extends Control
 signal action(what: String)
 
 const TABS := [["hero", "Hero"], ["standing", "Standing"], ["deck", "Deck"], ["codex", "Codex"],
-	["items", "Items"], ["controls", "Controls"], ["options", "Options"]]
+	["items", "Items"], ["howto", "How to Duel"], ["controls", "Controls"], ["options", "Options"]]
 
 ## What each attribute does in a duel, and its 7+ perk (see DuelRules).
 const ATTR_TEXT := {
@@ -163,6 +163,7 @@ func show_tab(key: String) -> void:
 		"deck": page = _deck()
 		"codex": page = _codex()
 		"items": page = _items()
+		"howto": page = _howto()
 		"controls": page = _controls()
 		_: page = _options()
 	_content.add_child(page)
@@ -576,6 +577,45 @@ func _controls() -> Control:
 	v.add_child(_scroll(body))
 	fill.call(here)
 	return v
+
+
+# =========================================================== how to duel ===
+
+## Every lesson Bram has given, in the order he gave it (Game.lessons()),
+## under the heading each belongs to, with the element chart once he's shown it.
+func _howto() -> Control:
+	var lessons: Array = Game.lessons()
+	if lessons.is_empty():
+		return _empty_page("How to Duel", "Bram hasn't taught you anything yet. Every lesson he gives is kept here, so you can read it again.")
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(_wrap("Everything Bram has told you about duelling, in the order he said it.", 24, UITheme.TEXT_DIM))
+	var groups := []
+	for l in lessons:
+		if not groups.has(l.group):
+			groups.append(l.group)
+	for g in groups:
+		v.add_child(_gap(10))
+		v.add_child(UITheme.label(String(g).to_upper(), 30, UITheme.GOLD, "display_bold"))
+		for l in lessons:
+			if l.group != g:
+				continue
+			var r := HBoxContainer.new()
+			r.add_theme_constant_override("separation", 16)
+			var who := UITheme.label(String(l.who).to_upper(), 23, UITheme.GOLD_DIM, "bold")
+			who.custom_minimum_size = Vector2(110, 0)
+			r.add_child(who)
+			var say := UITheme.label(String(l.say), 25, UITheme.TEXT)
+			say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			say.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			r.add_child(say)
+			v.add_child(r)
+		if g == "The elements":
+			var chart := ElementChart.new()
+			chart.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			v.add_child(chart)
+	v.add_child(_gap(20))
+	return _scroll(v)
 
 
 # =============================================================== options ===

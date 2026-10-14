@@ -104,6 +104,43 @@ func _v2() -> Dictionary:
 	return v2
 
 
+# ------------------------------------------------------------- lessons ---
+
+## Everything Bram has taught about duelling, in the order he said it, for
+## the pause menu's How to Duel page: [{id, group, who, say}, ...].
+func lessons() -> Array:
+	var v := _v2()
+	if not v.has("lessons"):
+		v["lessons"] = []
+	return v.lessons
+
+
+func learned(id: String) -> bool:
+	for l in lessons():
+		if String(l.get("id", "")) == id:
+			return true
+	return false
+
+
+## Keeps a lesson line (once per id).
+func learn(id: String, group: String, who: String, text: String) -> void:
+	if learned(id):
+		return
+	lessons().append({"id": id, "group": group, "who": who, "say": text})
+
+
+## Conditions and boons the player has met (and had explained): their Codex entries.
+func conditions_met() -> Dictionary:
+	var v := _v2()
+	if not v.has("conditions"):
+		v["conditions"] = {}
+	return v.conditions
+
+
+func meet_condition(id: String) -> void:
+	conditions_met()[id] = true
+
+
 func rank() -> int:
 	return int(_v2().rank)
 

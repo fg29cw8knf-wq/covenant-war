@@ -34,6 +34,16 @@ func _ready() -> void:
 	Game.v2.attune["cinderpup"] = 4
 	Game.give_item("hearth_charm")
 	Game.equip("charm", "hearth_charm")
+	# Bram's lessons so far (the How to Duel page) and two conditions met (the Codex)
+	Game.learn("The Lantern Duel:1", "The Lantern Duel", "Bram", "Right. Those cards are Sigils. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window.")
+	Game.learn("The Lantern Duel:2", "The Lantern Duel", "Bram", "A duel's how sensible folk settle things. Your Totems do the fighting. Bring his Life down to nothing and you've won.")
+	Game.learn("fate", "Fate", "Bram", "That's Fate. Some moves roll the die: roll high, hit hard; roll low, nothing.")
+	Game.learn("wards:2", "Wards", "Bram", "Some of those cards are Wards. You set one face down for next to nothing, and it waits.")
+	Game.learn("elements:1", "The elements", "Bram", "Second: the elements. Twelve of them, and every one hurts something and fears something. Here's the lot.")
+	Game.learn("status:burn", "Conditions", "Bram", "His Cinderpup is Burned now. Takes 10 damage at its owner's Dawn. Two turns, then it's gone.")
+	Game.meet_condition("burn")
+	Game.meet_condition("poison")
+	Game.meet_condition("shielded")
 	var world := World.new().setup("solhaven", "gate")
 	add_child(world)
 	await _frames(40)
@@ -43,6 +53,14 @@ func _ready() -> void:
 		menu.show_tab(t[0])
 		await _frames(12)
 		await _shot(t[0])
+	# the Codex's Conditions page
+	menu.show_tab("codex")
+	await _frames(6)
+	var cgrid: Codex.Grid = menu._content.get_child(0)
+	cgrid.filter = "conditions"
+	cgrid.rebuild()
+	await _frames(12)
+	await _shot("codex_conditions")
 	# a card's detail, with its Ascension progress
 	menu.show_tab("codex")
 	await _frames(6)

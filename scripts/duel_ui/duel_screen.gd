@@ -43,8 +43,12 @@ var _coach_label: Label
 var _coach_who: Label
 var _coached: Dictionary = {}
 var _my_turns := 0
-## The gated tutorial (spec.tutorial), or null. See DuelTutor.
+## The gated tutorial (spec.tutorial), or null. See DuelTutor. A duel with
+## spec.lessons = true (Bram is about) gets one with no script, so the first
+## condition, Ward or Ascension can be explained once, the same gated way.
 var tutor: DuelTutor = null
+var _rolloff: DuelViews.RolloffView = null   # the dice for who goes first, while they're up
+var _dice_view: DuelViews.DiceView = null    # a Fate roll, while it's up
 var game: DuelGame
 var human: DuelHuman
 var me := 0
@@ -457,12 +461,12 @@ func _start() -> void:
 	game.first_forced = int(spec.get("first", -1))
 	game.life_floor = spec.get("life_floor", [0, 0])
 	game.totem_floor = spec.get("totem_floor", [0, 0])
-	if not lesson.is_empty() and not ai_flags[me]:
-		tutor = DuelTutor.new().setup(self, lesson)
+	if (not lesson.is_empty() or spec.get("lessons", false)) and not ai_flags[me]:
+		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
 	game.law = String(spec.get("law", ""))
 	game.presenter = self
 	sfx.play("shuffle")
-	Music.play(["arena_" + _arena_name, "duel_alt" if randf() < 0.5 else "duel_main", "duel_main", "duel_alt"])
+	Music.play(["arena_" + _arena_name] + Music.duel_theme())
 	game.logged.connect(_on_log)
 	game.state_changed.connect(_refresh)
 	for side in 2:
@@ -606,11 +610,21 @@ func _hand_anchor(hv) -> Vector2:
 
 ## Where something the tutorial points at sits on the stage (design pixels).
 ## f: hand, card:<id>, slot:<n>, totem:<id>, foe:<id>, target:<id|life>,
-## life, essence, end, move:<n>; anything else gives an empty rect.
+## life, essence, end, move:<n>, detail (the card panel), die (the dice up
+## now); anything else gives an empty rect.
 func tutor_rect(f: String) -> Rect2:
 	var kind := f.get_slice(":", 0)
 	var arg := f.get_slice(":", 1) if f.contains(":") else ""
 	match kind:
+		"detail":
+			if detail.visible:
+				return Rect2(detail.position, detail.size)
+		"die":
+			if _rolloff != null:
+				return Rect2(_rolloff.position, _rolloff.size)
+			if _dice_view != null:
+				var dc := _dice_view.position + _dice_view.die_center()
+				return Rect2(dc - Vector2(150, 150), Vector2(300, 300))
 		"hand":
 			var r := Rect2()
 			for hv in hand_views:
@@ -641,6 +655,10 @@ func tutor_rect(f: String) -> Rect2:
 		"essence":
 			var p2: DuelViews.PlayerPanel = panels[me]
 			return Rect2(p2.position, p2.size)
+		"ward":
+			var wz: DuelViews.WardZone = ward_zones[rival if arg == "rival" else me]
+			var n := maxi(1, game.players[rival if arg == "rival" else me].wards.size())
+			return Rect2(wz.position + wz.card_rect(0).position, Vector2(94 * n, 109)).grow(6)
 		"end":
 			return Rect2(end_btn.position, end_btn.size)
 		"move":
@@ -1312,7 +1330,18 @@ func fx_start() -> void:
 	await pause(0.1)
 
 
+## Both duellists roll for the first turn, big in the middle of the Circle.
+## In the Lantern Duel Bram's intro ends with "tap the die", and the roll
+## waits for that tap.
 func fx_rolloff(r0: int, r1: int) -> void:
+	var names: Array = spec.get("names", ["You", "Rival"])
+	var rv := DuelViews.RolloffView.new()
+	rv.names = [names[me] if _watching() else "You", names[rival]]
+	rv.position = Vector2(FIELD_CX - 560, 300)
+	rv.size = Vector2(1120, 400)
+	rv.die_tapped.connect(_on_die_tapped)
+	fx_layer.add_child(rv)
+	_rolloff = rv
 	if not _started:
 		_started = true
 		sfx.play("duel_start")
@@ -1321,14 +1350,62 @@ func fx_rolloff(r0: int, r1: int) -> void:
 			var god: String = game.law if Lore.GODS.has(game.law) else ""
 			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
 		if tutor != null:
-			await tutor.event("intro")
-	var names: Array = spec.get("names", ["You", "Rival"])
+			rv.waiting = true
+			await tutor.event("intro")   # ends with the player tapping their die
+			rv.waiting = false
+	var rattle := Sfx.has_file("dice_roll")
+	if rattle:
+		sfx.play("dice_roll")
+	var steps := int(16 / maxf(1.0, speed * 0.7))
+	for k in steps:
+		rv.faces = [randi_range(1, 20), randi_range(1, 20)]
+		rv.spin += 0.5
+		if not rattle:
+			sfx.play("click", 1.3 + randf() * 0.3)
+		await pause(0.05)
+	rv.faces = [r0 if me == 0 else r1, r1 if me == 0 else r0]
+	rv.landed = true
+	sfx.play("dice_land")
+	for i in 2:
+		var c := rv.position + rv.die_center(i)
+		DuelFX.flash(fx_layer, c, Color(0.7, 0.6, 1.0), 200.0, 0.5 / speed)
+		DuelFX.burst(fx_layer, c, Color(0.7, 0.6, 1.0), 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
+	await pause(1.1)
+	_rolloff = null
+	var tw := rv.create_tween()
+	tw.tween_property(rv, "modulate:a", 0.0, 0.2 / speed)
+	tw.tween_callback(rv.queue_free)
 	if r0 == r1:
 		await _banner("A TIE", UITheme.TEXT, 0.7, 72, "", "Both rolled %d. Roll again!" % r0)
 		return
 	var first: String = names[0] if r0 > r1 else names[1]
 	var head := "YOU GO FIRST" if first == "You" else "%s GOES FIRST" % first.to_upper()
 	await _banner(head, UITheme.GOLD, 1.0, 72, "", "Fate roll:  %s %d   ·   %s %d" % [names[0], r0, names[1], r1])
+
+
+## The player tapped the roll-off dice (`on_die`: on their own die).
+func _on_die_tapped(on_die: bool) -> void:
+	if tutor == null or not tutor.gating():
+		return
+	if on_die and tutor.allows("die"):
+		sfx.play("ui_select")
+		tutor.did("die")
+	else:
+		tutor.nudge()
+
+
+## Lessons for things on the table for the first time, before the player
+## acts: an Ascension card they could play now.
+func lessons_at_main() -> void:
+	if tutor == null or game == null or game.over:
+		return
+	for c in game.players[me].hand:
+		var card: DuelCard = c
+		if card.kind() == "totem" and not card.is_basic_totem() and game.ascend_problem(me, card) == "":
+			var from_name: String = DuelCards.CARDS[card.def.ascends_from].name
+			await tutor.lesson("ascend", "That %s is an Ascension: %s, grown up. Tap it, then tap your %s, and it steps into the same slot, bigger and nastier, with everything it had. Costs Essence, mind, so think about when." % [
+				card.card_name(), from_name, from_name], "Ascension", "card:" + card.id)
+			return
 
 
 func fx_turn(pi: int) -> void:
@@ -1481,6 +1558,11 @@ func fx_ward_set(pi: int, _card: DuelCard) -> void:
 	DuelFX.flash(fx_layer, to, DuelCardFace.WARD_COL, 140.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, to, Color("d9a6f0"), 16, 260.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	await pause(0.15)
+	if tutor != null:
+		if pi == rival:
+			await tutor.lesson("ward_set", "A Ward. He's set it face down, so you can't read it. It waits, and springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you do next.", "Wards", "ward:rival")
+		else:
+			await tutor.lesson("ward_mine", "Your Ward's down. It springs on its own when its moment comes; you don't have to do a thing.", "Wards", "ward:mine")
 
 
 func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
@@ -1490,6 +1572,8 @@ func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 	var c := await _show_card_big(card.id, "WARD!", DuelCardFace.WARD_COL, 0.9, from)
 	DuelFX.shockwave(fx_layer, c, Color("d9a6f0"), 380.0, 0.6 / speed, 1.0, 10.0)
 	shake(6.0)
+	if tutor != null and pi == rival:
+		await tutor.lesson("ward_spring", "There it goes. A Ward takes the hit meant for him, or turns it back on you. It's spent now. Break them first, then hit him.", "Wards")
 
 
 func fx_shift(_pi: int) -> void:
@@ -1669,6 +1753,7 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	dv.position = Vector2(FIELD_CX - 590, 276)
 	dv.size = Vector2(1180, 400)
 	fx_layer.add_child(dv)
+	_dice_view = dv
 	var steps := int(14 / maxf(1.0, speed * 0.7))
 	var rattle := Sfx.has_file("dice_roll")
 	if rattle:
@@ -1698,7 +1783,11 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	await pause(1.2)
 	if tutor != null:
+		# the die stays up while Bram explains it (the Lantern Duel's scripted
+		# line, or the one-off lesson in a later duel)
 		await tutor.event("fate" if _pi == me else "rival_fate")
+		await tutor.lesson("fate", "That's a Fate roll. Some moves roll the die: roll high, hit hard; roll low, nothing. The dice don't care who you are.", "Fate", "die")
+	_dice_view = null
 	var tw := dv.create_tween()
 	tw.tween_property(dv, "modulate:a", 0.0, 0.15 / speed)
 	tw.tween_callback(dv.queue_free)
@@ -1875,6 +1964,31 @@ func fx_status(t: DuelTotem, status: String) -> void:
 		snd = {"body": "poison", "mind": "stun", "soul": "sleep"}.get(DuelConditions.kind_of(status), "stun")
 	sfx.play("status_" + snd)
 	await pause(0.3)
+	# the first time a condition (or boon) lands on either side, Bram says
+	# what it does and how long it lasts, and it gets its Codex entry
+	if tutor != null and (DuelConditions.is_condition(status) or DuelConditions.is_boon(status)):
+		Game.meet_condition(status)
+		await tutor.lesson("status:" + status, _status_lesson(t, status),
+			"Conditions" if DuelConditions.is_condition(status) else "Boons",
+			("totem:" if t.owner == me else "foe:") + t.id())
+
+
+## Bram's one line on a condition: what it does, and how long it lasts.
+func _status_lesson(t: DuelTotem, status: String) -> String:
+	var who := "Your %s" % t.card_name() if t.owner == me else "His %s" % t.card_name()
+	var nm := DuelConditions.display_name(status)
+	var what := DuelConditions.describe(status)
+	var turns := DuelConditions.turns(status)
+	var lasts := ""
+	if DuelConditions.breaks_free(status):
+		lasts = "It stays until it breaks free, or it's cured."
+	elif turns == 0:
+		lasts = "It stays until it's cured." if DuelConditions.is_condition(status) else "It stays until it's used up."
+	elif turns == 1:
+		lasts = "One turn, then it's gone."
+	else:
+		lasts = "%s turns, then it's gone." % ["Two", "Three", "Four", "Five"][clampi(turns - 2, 0, 3)]
+	return "%s is %s now. %s %s" % [who, nm, what, lasts]
 
 
 func fx_ko(t: DuelTotem) -> void:

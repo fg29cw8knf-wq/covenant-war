@@ -133,6 +133,11 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 			[{"who": "bram", "name": "Bram", "text": "...Someone paid me for a job I shouldn't have taken. Then I stopped."}],
 			[{"who": "bram", "name": "Bram", "text": "Sprout, I was the best you never heard of. That's the best kind."}],
 		]},
+		{"who": "bram", "name": "Bram", "text": "Before you sleep. Two things I never taught you at the Lantern, because Corin's never owned either. First: Wards.", "learn": "wards:1", "group": "Wards"},
+		{"who": "bram", "name": "Bram", "text": "Some of those cards are Wards. You set one face down for next to nothing, and it waits. When the right thing happens, a Totem called, a Rite cast, a hit coming in, it springs by itself and does its work. He can't read it, so he can't plan round it. Set them early.", "learn": "wards:2", "group": "Wards"},
+		{"who": "bram", "name": "Bram", "text": "Second: the elements. Twelve of them, and every one hurts something and fears something. Water beats fire, you've seen that. Here's the lot.", "learn": "elements:1", "group": "The elements"},
+		{"chart": "elements"},
+		{"who": "bram", "name": "Bram", "text": "Hit a weakness and it takes half again as much. You won't hold all that in your head tonight. It's in your pack, under How to Duel, with everything else I've told you.", "learn": "elements:2", "group": "The elements"},
 		{"who": "bram", "name": "Bram", "text": "Fancy a practice round before we sleep? I'll go easy. Mostly."},
 	])
 	var practice: int = await story.box.choose(["Let's duel.", "Let's sleep."])
@@ -211,14 +216,16 @@ static func practice_duel_spec(mine: String) -> Dictionary:
 		"difficulty": 0.35,
 		"arena": "tidegrove",
 		"story": true,
+		"lessons": true,   # Bram explains the first condition, Ward or Ascension, once
 		"barks": ["Don't look at my face. Look at the cards.", "Hm.", "That's one way to do it.", "I taught you that. I'm having it back."],
 		"rewards": {"opponent": "village"},
 		"title": "A practice round · Bram",
 	}
 
 
-## Dask's road duel, on the v2 rules: a sworn wager. Bram coaches the new
-## systems from the roadside as each first appears.
+## Dask's road duel, on the v2 rules: a sworn wager. Bram explains each new
+## thing (a Ward, a condition, an Ascension) from the roadside the first time
+## it appears, the same gated way as the Lantern Duel (spec.lessons).
 static func road_duel_spec() -> Dictionary:
 	var me: String = Game.starter if DuelCards.DECKS.has(Game.starter) else "emberstorm"
 	var deck: Array = Game.v2.get("deck", []) if not Game.v2.get("deck", []).is_empty() else DuelCards.card_list(me)
@@ -232,11 +239,7 @@ static func road_duel_spec() -> Dictionary:
 		"difficulty": 0.5,
 		"arena": "ironstone",
 		"story": true,
-		"coach": [
-			{"at": "fate", "who": "Bram", "say": "That's a Fate roll. The dice don't care who you are. Neither does he."},
-			{"at": "ward", "who": "Bram", "say": "A Ward. It takes the hit meant for him. Break it first, then hit him."},
-			{"at": "poison", "who": "Bram", "say": "Poison. It bites a little every turn, and it doesn't stop. Kill the Totem quick, or outlast it."},
-		],
+		"lessons": true,
 		"barks": ["Roll, little Unsworn. Let's see your luck.", "Poison's slow. I'm patient.", "Didn't see the trap? Nobody does.", "Krell's going to love this."],
 		"rewards": {"opponent": "rival"},
 		"title": "Road Duel · a sworn wager",

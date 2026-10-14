@@ -10,12 +10,20 @@ extends Node
 const DIR := "res://assets/audio/music/"
 ## Tracks with an intro that shouldn't repeat: after the first pass the loop
 ## jumps back to this many seconds in (the file's tail is baked to blend there).
-const LOOP_START := {"ashford_festival": 35.062, "menu_theme": 59.0, "duel_pinch": 29.78}
+## Each loop is cut with tools/music_loop.py and checked with tests/loop_probe.gd.
+const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch": 29.78, "duel_alt": 11.376}
+## The two duel themes take turns, duel by duel.
+const DUEL_THEMES := ["duel_main", "duel_alt"]
 
 var current := ""
 var _players: Array[AudioStreamPlayer] = []
+var _names := ["", ""]          # which track each player holds
 var _active := 0
 var _sting: AudioStreamPlayer
+var _duel_i := 0
+## Where each track was when it faded out, so coming back to it (the village
+## after a duel, say) carries on from there instead of starting again.
+var _resume := {}
 
 
 func _ready() -> void:
@@ -64,6 +72,14 @@ func play(tracks: Array, fade: float = 1.2, keep_if_none: bool = false) -> void:
 		stop(fade)
 
 
+## The next duel's theme, then the other one as its fallback: duels alternate
+## between duel_main and duel_alt.
+func duel_theme() -> Array:
+	var i := _duel_i
+	_duel_i = (_duel_i + 1) % DUEL_THEMES.size()
+	return [DUEL_THEMES[i], DUEL_THEMES[(i + 1) % DUEL_THEMES.size()]]
+
+
 func _switch(track: String, fade: float) -> void:
 	if track == current and _players[_active].playing:
 		return
@@ -73,11 +89,16 @@ func _switch(track: String, fade: float) -> void:
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop_offset = float(LOOP_START.get(track, 0.0))
 	var old := _players[_active]
+	_remember(_active)
 	_active = 1 - _active
 	var p := _players[_active]
+	_names[_active] = track
 	p.stream = s
 	p.volume_db = -40.0
-	p.play()
+	var from := float(_resume.get(track, 0.0))
+	if from >= s.get_length() - 1.0:
+		from = 0.0
+	p.play(from)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(p, "volume_db", level_db(), fade)
 	if old.playing:
@@ -87,11 +108,20 @@ func _switch(track: String, fade: float) -> void:
 
 func stop(fade: float = 0.8) -> void:
 	current = ""
-	for p in _players:
+	for i in _players.size():
+		var p := _players[i]
 		if p.playing:
+			_remember(i)
 			var tw := create_tween()
 			tw.tween_property(p, "volume_db", -60.0, fade)
 			tw.tween_callback(p.stop)
+
+
+## Notes where a player's track has got to, for when it comes back.
+func _remember(i: int) -> void:
+	var p := _players[i]
+	if _names[i] != "" and p.playing:
+		_resume[_names[i]] = p.get_playback_position()
 
 
 ## A short piece over the music (Summons, victory, defeat). Returns false when

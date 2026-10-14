@@ -10,7 +10,7 @@ extends RefCounted
 
 const CELL := Vector2(186, 260)
 const KIND_ORDER := {"totem": 0, "rite": 1, "ward": 2, "summon": 3}
-const FILTERS := [["all", "All"], ["owned", "Owned"], ["totem", "Totems"], ["rite", "Rites"], ["ward", "Wards"], ["summon", "Summons"]]
+const FILTERS := [["all", "All"], ["owned", "Owned"], ["totem", "Totems"], ["rite", "Rites"], ["ward", "Wards"], ["summon", "Summons"], ["conditions", "Conditions"]]
 
 
 static func owned(id: String) -> int:
@@ -238,6 +238,7 @@ class Grid:
 		_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		add_child(_scroll)
 		_grid = GridContainer.new()
+		_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL   # so a one-column list fills the width
 		_grid.add_theme_constant_override("h_separation", 16)
 		_grid.add_theme_constant_override("v_separation", 16)
 		_scroll.add_child(_grid)
@@ -246,13 +247,41 @@ class Grid:
 
 	func _fit_columns() -> void:
 		var w := _scroll.size.x - 24.0
-		_grid.columns = maxi(1, int((w + 16.0) / (Codex.CELL.x + 16.0)))
+		_grid.columns = 1 if filter == "conditions" else maxi(1, int((w + 16.0) / (Codex.CELL.x + 16.0)))
+
+	## The conditions and boons the player has met, each with Bram's
+	## explanation of what it does and how long it lasts.
+	func _rebuild_conditions() -> void:
+		var met := Game.conditions_met()
+		var n := 0
+		for id in DuelConditions.DEFS.keys() + DuelConditions.BOONS.keys():
+			if not met.has(id):
+				continue
+			n += 1
+			var row := ConditionRow.new()
+			row.id = id
+			row.custom_minimum_size = Vector2(0, 96)
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_grid.add_child(row)
+		if n == 0:
+			var l := UITheme.label("No conditions met yet. The first time one lands in a duel, Bram explains it and it's kept here.", 26, UITheme.TEXT_DIM)
+			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			_grid.add_child(l)
+		if _summary != null:
+			_summary.text = "You've met %d of %d conditions and boons" % [n, DuelConditions.DEFS.size() + DuelConditions.BOONS.size()]
 
 	func rebuild() -> void:
 		if _grid == null:
 			return
 		for c in _grid.get_children():
 			c.queue_free()
+		if filter == "conditions":
+			_rebuild_conditions()
+			for k in _filter_btns:
+				_filter_btns[k].button_pressed = k == filter
+			_fit_columns()
+			return
 		var ids := []
 		if not only.is_empty():
 			ids = only
@@ -293,6 +322,38 @@ class Grid:
 				c.owned = Codex.owned(c.id)
 				c.in_deck = Codex.count_in(deck, c.id)
 				c.queue_redraw()
+
+
+## One condition or boon the player has met: its colour, name, kind, how long
+## it lasts and what it does.
+class ConditionRow:
+	extends Control
+	var id := ""
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _draw() -> void:
+		var col := DuelConditions.color(id)
+		var r := Rect2(Vector2.ZERO, size)
+		CardFace.box(self, r, 14, Color(0.06, 0.07, 0.12, 0.9), Color(col, 0.5), 2.0)
+		draw_rect(Rect2(0, 10, 10, size.y - 20), col)
+		var fnt := CardFace.font("display_bold")
+		var body := CardFace.font("body")
+		CardFace.text(self, fnt, Vector2(30, 38), DuelConditions.display_name(id), 28, col)
+		var kind := DuelConditions.kind_of(id)
+		var turns := DuelConditions.turns(id)
+		var lasts := ""
+		if DuelConditions.breaks_free(id):
+			lasts = "until it breaks free or is cured"
+		elif turns == 0:
+			lasts = "until cured" if DuelConditions.is_condition(id) else "until used up"
+		else:
+			lasts = "%d turn%s" % [turns, "" if turns == 1 else "s"]
+		var tag := ("%s condition" % DuelConditions.KIND_NAMES.get(kind, "").capitalize()) if kind != "" else "Boon"
+		CardFace.text(self, CardFace.font("bold"), Vector2(30, 66), "%s  ·  lasts %s" % [tag, lasts], 20, UITheme.TEXT_DIM)
+		var what := DuelConditions.describe(id)
+		CardFace.text(self, body, Vector2(size.x * 0.42, 40), what, CardFace.fit_size(body, what, 24, size.x * 0.56), UITheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT, size.x * 0.56)
 
 
 ## One card in the grid: the card face, greyed out if not owned, with badges.

@@ -11,6 +11,7 @@ var screen = null   # DuelScreen
 func choose_action(_game: DuelGame, _pi: int) -> Dictionary:
 	if screen.tutor != null:
 		await screen.tutor.at_main()   # the tutorial's next lesson, before the player can act
+		await screen.lessons_at_main()   # and anything new on the table (an Ascension)
 	screen.begin_main()
 	var r = await responded
 	return r

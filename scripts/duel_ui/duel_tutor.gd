@@ -9,17 +9,26 @@ extends RefCounted
 ##   "events": {"intro": [step...], "weakness": [step...], ...},   shown once, when the duel reaches them
 ##   "turns":  [[step...], [step...], ...]                          the player's turns, in order
 ## }
-## A step is {"say": "...", "who": "Bram", "focus": "...", "do": "..."}.
+## A step is {"say": "...", "who": "Bram", "focus": "...", "do": "...", "learn": "..."}.
 ## Without "do" it's an explanation (tap to go on); with "do" it's an
 ## instruction, and only that action is allowed:
 ##   card:<id>  tap that card in your hand     slot:<n>   tap that empty slot
 ##   totem:<id> tap your Totem                 move:<n>   pick that move (move:any = either)
 ##   target:<id> | target:life                 end        End Turn
+##   die        tap your die (the roll for who goes first)
 ## focus (optional) spotlights something: hand, card:<id>, slot:<n>, totem:<id>,
-## foe:<id>, life, essence, end, move:<n>. A "do" step spotlights its own target.
-## Once the scripted turns run out the duel plays freely.
+## foe:<id>, life, essence, end, move:<n>, detail (the card panel), die. A "do"
+## step spotlights its own target. Once the scripted turns run out the duel
+## plays freely. "learn" names a lesson the line teaches (so it isn't taught
+## again later by lesson()).
+##
+## Every line is kept, in order, on the pause menu's How to Duel page
+## (Game.lessons()). Later duels where Bram is about (spec.lessons = true)
+## get a tutor with no script, just for lesson(): the first condition, Ward
+## or Ascension is explained the same gated way, once ever.
 
 signal _tapped
+signal _did_step
 
 var screen   # DuelScreen
 var data: Dictionary = {}
@@ -27,8 +36,11 @@ var queue: Array = []          # what's left of this turn's lesson
 var my_turn := 0
 var blocking := false          # an explanation is up: everything waits for a tap
 var focus := ""
+var group := "The Lantern Duel"   # the How to Duel heading the scripted lines go under
+var event_step: Dictionary = {}   # an instruction inside an event (tap the die), waiting to be done
 var _shown := {}
 var _shown_at := 0
+var _said := 0
 var root: Control
 var catcher: Control
 var spot: Spotlight
@@ -40,9 +52,10 @@ var foot_label: Label
 var portrait: TextureRect
 
 
-func setup(p_screen, p_data: Dictionary) -> DuelTutor:
+func setup(p_screen, p_data: Dictionary, p_group: String = "The Lantern Duel") -> DuelTutor:
 	screen = p_screen
 	data = p_data
+	group = p_group
 	root = Control.new()
 	root.name = "Tutorial"
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -105,15 +118,12 @@ func begin_turn() -> void:
 
 ## Called before the player may act: explanations first, then the instruction.
 func at_main() -> void:
-	while not queue.is_empty() and not (queue[0] as Dictionary).has("do"):
-		await _explain(queue[0])
-		if not queue.is_empty():
-			queue.pop_front()
-	_show_head()
+	await _continue()
 
 
 ## A moment in the duel (the rival calls, a weakness lands, a knockout...).
-## Its lines show once, and the duel waits while they're up.
+## Its lines show once, and the duel waits while they're up; a "do" step in
+## it (tap the die) waits until it's done.
 func event(name: String) -> void:
 	if _shown.has(name):
 		return
@@ -122,22 +132,46 @@ func event(name: String) -> void:
 		return
 	_shown[name] = true
 	for step in lines:
-		await _explain(step)
+		if (step as Dictionary).has("do"):
+			await _instruct(step)
+		else:
+			await _explain(step)
+	_show_head()
+
+
+## A one-off lesson for something seen for the first time (a condition, a
+## Ward, Ascension): one gated line from Bram, kept on the How to Duel page,
+## never taught twice. `focus` spotlights what it's about.
+func lesson(id: String, text: String, p_group: String, p_focus: String = "", who: String = "Bram") -> void:
+	if Game.learned(id):
+		return
+	Game.learn(id, p_group, who, text)
+	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
 	_show_head()
 
 
 ## True while an instruction is waiting to be carried out.
 func gating() -> bool:
-	return blocking or (not queue.is_empty() and (queue[0] as Dictionary).has("do"))
+	return blocking or not event_step.is_empty() or (not queue.is_empty() and (queue[0] as Dictionary).has("do"))
 
 
-## May the player do this right now? kind: card, slot, totem, move, target, end, button, other.
+## The instruction the player must carry out now, or {}.
+func _current_do() -> Dictionary:
+	if not event_step.is_empty():
+		return event_step
+	if not queue.is_empty() and (queue[0] as Dictionary).has("do"):
+		return queue[0]
+	return {}
+
+
+## May the player do this right now? kind: card, slot, totem, move, target, end, die, button, other.
 func allows(kind: String, what = null) -> bool:
 	if blocking:
 		return false
-	if queue.is_empty() or not (queue[0] as Dictionary).has("do"):
+	var step := _current_do()
+	if step.is_empty():
 		return true
-	var d := String(queue[0].do)
+	var d := String(step.do)
 	var want := d.get_slice(":", 0)
 	var arg := d.get_slice(":", 1) if d.contains(":") else ""
 	match kind:
@@ -159,20 +193,32 @@ func allows(kind: String, what = null) -> bool:
 			return what is DuelTotem and (what as DuelTotem).id() == arg
 		"end":
 			return want == "end"
+		"die":
+			return want == "die"
 	return false
 
 
-## The player did what was asked (call after allows() said yes).
+## The player did what was asked (call after allows() said yes). Any
+## explanations queued behind it show now, before the next instruction.
 func did(kind: String, what = null) -> void:
-	if queue.is_empty() or not (queue[0] as Dictionary).has("do"):
+	if _current_do().is_empty() or not allows(kind, what):
 		return
-	if not allows(kind, what):
+	if not event_step.is_empty():
+		event_step = {}
+		_hide()
+		_did_step.emit()
 		return
 	queue.pop_front()
-	if not queue.is_empty() and (queue[0] as Dictionary).has("do"):
-		_show_head()
-	else:
-		_hide()
+	_continue()
+
+
+## Shows the explanations at the front of the queue, then the next instruction.
+func _continue() -> void:
+	while not queue.is_empty() and not (queue[0] as Dictionary).has("do"):
+		await _explain(queue[0])
+		if not queue.is_empty():
+			queue.pop_front()
+	_show_head()
 
 
 ## Something else was tapped: shake the instruction so the eye finds it.
@@ -191,6 +237,7 @@ func nudge() -> void:
 ## The duel is over: everything goes.
 func finish() -> void:
 	queue.clear()
+	event_step = {}
 	blocking = false
 	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hide()
@@ -215,6 +262,15 @@ func _explain(step: Dictionary) -> void:
 		screen.sfx.play("ui_tap")
 	blocking = false
 	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+
+## An instruction inside an event: up until the player does it.
+func _instruct(step: Dictionary) -> void:
+	event_step = step
+	_show_box(step, "YOUR MOVE  ▸")
+	focus = String(step.get("focus", step.do))
+	spot.dim = 0.5
+	await _did_step
 
 
 func _show_head() -> void:
@@ -245,6 +301,17 @@ func _show_box(step: Dictionary, footer: String) -> void:
 		box.modulate.a = 0.4
 		box.create_tween().tween_property(box, "modulate:a", 1.0, 0.18)
 	_place_box()
+	_keep(step, who)
+
+
+## Every scripted line goes on the How to Duel page, in the order it was said.
+func _keep(step: Dictionary, who: String) -> void:
+	if not bool(step.get("keep", true)):
+		return
+	_said += 1
+	Game.learn("%s:%d" % [group, _said], group, who, String(step.get("say", "")))
+	if step.has("learn"):
+		Game.learn(String(step.learn), group, who, String(step.get("say", "")))
 
 
 func _hide() -> void:
