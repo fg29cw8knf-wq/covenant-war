@@ -167,6 +167,18 @@ godot --headless --script res://tests/loop_probe.gd -- <name>      # where Godot
 beat and adds the crossfade); put the start in `LOOP_START`. The seam-check mp3
 is the join as the game plays it, three times, for listening to.
 
+On the web (phones), Godot's own audio can only loop a track by stopping at its
+end and starting again from the top, so the web build plays the music through
+the page instead: `tools/build_web.sh` leaves the music out of the pack, makes
+an MP3 of each track in `build/web/music/` (with the real length of each, the
+loop's end, in `manifest.json`) and puts `scripts/ui/music_web.js` into
+`index.html`; `Music` hands it the tracks, fades and loop points, and the
+browser loops them sample-accurately. Check it in a real browser with:
+
+```sh
+tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the join, the crossfades, the volume
+```
+
 ## Opening movie clips
 
 The opening movie plays each shot's painting with a slow camera move, or a video
