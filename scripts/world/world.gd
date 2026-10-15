@@ -417,6 +417,21 @@ func _refresh_markers() -> void:
 		n.doll.set_marker(kind)
 
 
+# ========================================================== keys and pads ===
+
+## E, Space, Enter or a pad's A talks to whoever the round button is showing,
+## like tapping it. Only a fresh press counts (holding a key doesn't repeat),
+## and the press that closes the last line of a talk never gets here: the
+## dialogue box takes it first. Nothing happens while busy, in a cutscene or
+## with the pause menu open.
+func _unhandled_input(event: InputEvent) -> void:
+	if attract or hud == null or busy or cine or hud.menu_open():
+		return
+	if event.is_action_pressed("interact") and _near != null and hud.talk_showing():
+		get_viewport().set_input_as_handled()
+		_talk(_near)
+
+
 # =============================================================== talking ===
 
 func _talk(n: Dictionary) -> void:

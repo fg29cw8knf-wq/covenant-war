@@ -109,7 +109,8 @@ func show_chart() -> void:
 	holder.queue_free()
 
 
-## The element chart's full-screen holder: a tap (after a moment) closes it.
+## The element chart's full-screen holder: a tap, or E, Space, Enter or a
+## pad's A (after a moment) closes it.
 class ChartOverlay:
 	extends Control
 	signal done
@@ -118,6 +119,11 @@ class ChartOverlay:
 	func _gui_input(e: InputEvent) -> void:
 		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
 			tap()
+
+	func _unhandled_input(e: InputEvent) -> void:
+		if e.is_action_pressed("interact"):
+			tap()
+			get_viewport().set_input_as_handled()
 
 	func tap() -> void:
 		if Time.get_ticks_msec() - _shown_at > 400:

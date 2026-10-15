@@ -133,14 +133,22 @@ func toast(t: String) -> void:
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
 
 
-func _unhandled_input(e: InputEvent) -> void:
-	if visible and e.is_action_pressed("menu"):
-		if _overlay != null:
+## Esc, Tab or a pad's Start closes what's on top: a card's detail or a
+## question, else the menu. Caught in _input, before the buttons see it: a
+## tab button clicked with the mouse keeps the keyboard focus, and Godot
+## would use Tab to move that focus instead.
+func _input(e: InputEvent) -> void:
+	if not is_visible_in_tree() or not e.is_action_pressed("menu"):
+		return
+	get_viewport().set_input_as_handled()
+	if _overlay != null:
+		if _overlay.has_signal("closed"):
+			_overlay.emit_signal("closed")   # a card's detail tidies itself away
+		else:
 			_overlay.queue_free()
 			_overlay = null
-		else:
-			request_close()
-		get_viewport().set_input_as_handled()
+	else:
+		request_close()
 
 
 func _clear() -> void:
@@ -460,7 +468,7 @@ const CONTROLS := {
 			["Look at a card", "Tap it in your hand to see the whole card."],
 			["Call a Totem", "Tap it in your hand, then tap an empty slot."],
 			["Attack", "Tap your Totem, choose a move, then tap the target."],
-			["Rite or Ward", "Tap the card, then the button that appears."],
+			["Rite or Ward", "Tap the card, then the button that appears (or its target)."],
 			["Your god's Gift", "Tap the medallion beside End Turn (once a duel)."],
 			["End your turn", "Tap the big emblem, bottom right."],
 			["Change your mind", "Tap Cancel, or tap an empty part of the board."],
@@ -481,7 +489,7 @@ const CONTROLS := {
 			["Look at a card", "Tap it in your hand."],
 			["Call a Totem", "Tap it in your hand, then tap an empty slot."],
 			["Attack", "Tap your Totem, choose a move, then tap the target."],
-			["Rite or Ward", "Tap the card, then the button that appears."],
+			["Rite or Ward", "Tap the card, then the button that appears (or its target)."],
 			["Your god's Gift", "Tap the medallion beside End Turn."],
 			["End your turn", "Tap the big emblem, bottom right."],
 			["Change your mind", "Tap Cancel."],
@@ -496,17 +504,19 @@ const CONTROLS := {
 			["Walk to a spot", "Click the ground."],
 			["Talk or duel", "E, Space or Enter when the round button shows, or click the person."],
 			["Next line", "Click, or E / Space / Enter."],
-			["Answer", "Click it."],
+			["Answer", "Click it, or pick it with the arrow keys and press Enter (or E)."],
 			["Pause menu", "Esc or Tab."],
 		],
 		"duel": [
 			["Look at a card", "Click it in your hand."],
 			["Call a Totem", "Click it, then click an empty slot."],
 			["Attack", "Click your Totem, choose a move, then click the target."],
+			["Rite or Ward", "Click the card, then the button that appears (or its target)."],
 			["Your god's Gift", "Click the medallion beside End Turn."],
 			["End your turn", "Space (with nothing selected), or click the big emblem."],
 			["Change your mind", "Esc or right-click."],
 			["Duel menu", "Esc with nothing selected, or click ☰."],
+			["Bram's lessons", "Click, or E / Space / Enter, to go on."],
 		],
 	},
 	"controller": {
@@ -516,10 +526,12 @@ const CONTROLS := {
 			["Walk", "Left stick."],
 			["Talk or duel", "A (Cross on PlayStation)."],
 			["Next line", "A (Cross)."],
+			["Answer", "Left stick or d-pad to choose, then A (Cross)."],
 			["Pause menu", "Start (Options)."],
 		],
 		"duel": [
 			["Duels", "Use touch or the mouse for now. Full controller duels come later."],
+			["Bram's lessons", "A (Cross) moves his explanations on. When he says tap, use touch or the mouse."],
 		],
 	},
 }

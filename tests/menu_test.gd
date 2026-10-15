@@ -106,7 +106,8 @@ func _ready() -> void:
 	add_child(notice)
 	await _frames(90)
 	await _shot("notice")
-	notice.queue_free()
+	if is_instance_valid(notice):   # once seen, it closes itself after a few seconds
+		notice.queue_free()
 	Ads._show("interstitial")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("advert")
