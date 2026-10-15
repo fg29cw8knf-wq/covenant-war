@@ -7,11 +7,17 @@ extends Control
 ##
 ## Deck edits are made on a copy and only become the real deck when they make
 ## a legal deck; leaving with an unfinished deck asks first.
+##
+## Deck and Codex only appear once the story opens them (Game.unlock(), when
+## Bram hands over the first deck). Bram's 12-card Spark deck is shown but
+## can't be edited; his 30-card deck from the cellar can.
 
 signal action(what: String)
 
 const TABS := [["hero", "Hero"], ["standing", "Standing"], ["deck", "Deck"], ["codex", "Codex"],
 	["items", "Items"], ["howto", "How to Duel"], ["controls", "Controls"], ["options", "Options"]]
+## Tabs that only appear once Game.unlocked() says so.
+const LOCKED_TABS := ["deck", "codex"]
 
 ## What each attribute does in a duel, and its 7+ perk (see DuelRules).
 const ATTR_TEXT := {
@@ -31,6 +37,8 @@ var _tab_btns := {}
 var _deck_work: Array = []
 var _overlay: Control = null
 var _toast: Label
+var _tab_bar: HBoxContainer
+var _resume: Button
 
 
 func _ready() -> void:
@@ -56,6 +64,7 @@ func _ready() -> void:
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 8)
 	col.add_child(bar)
+	_tab_bar = bar
 	for t in TABS:
 		var b := UITheme.button(t[1], false, 0)
 		b.toggle_mode = true
@@ -70,6 +79,7 @@ func _ready() -> void:
 	resume.custom_minimum_size = Vector2(210, 84)
 	resume.pressed.connect(request_close)
 	bar.add_child(resume)
+	_resume = resume
 	_content = MarginContainer.new()
 	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_content.add_theme_constant_override("margin_left", 8)
@@ -90,6 +100,17 @@ func open(at_tab: String = "") -> void:
 	_deck_work = Array(Game.v2.get("deck", [])).duplicate()
 	visible = true
 	show_tab(at_tab if at_tab != "" else tab)
+
+
+## Is this tab in the bar yet? (Deck and Codex wait for Game.unlock().)
+static func tab_open(key: String) -> bool:
+	return not LOCKED_TABS.has(key) or Game.unlocked(key)
+
+
+## Shows only the tabs the story has opened.
+func _refresh_tabs() -> void:
+	for k in _tab_btns:
+		_tab_btns[k].visible = tab_open(k)
 
 
 ## Resume: commits a changed deck if it's legal, or asks what to do.
@@ -152,6 +173,9 @@ func _clear() -> void:
 
 
 func show_tab(key: String) -> void:
+	_refresh_tabs()
+	if not tab_open(key) or not _tab_btns.has(key):
+		key = "hero"
 	tab = key
 	for k in _tab_btns:
 		_tab_btns[k].button_pressed = k == key
@@ -259,8 +283,9 @@ func _hero() -> Control:
 				show_tab("hero"))
 		row.add_child(plus)
 	var tgt := String(v.get("target", ""))
-	var res := "Your wins build Resonance towards [b]%s[/b]: %d / %d. Change it in the Codex." % [DuelCards.CARDS[tgt].name, int(v.get("banked", {}).get(tgt, 0)), DuelRewards.card_cost(tgt)] if tgt != "" and DuelCards.CARDS.has(tgt) \
-		else "Your wins make Resonance. Pick a card in the Codex to build it towards."
+	var codex := tab_open("codex")
+	var res := "Your wins build Resonance towards [b]%s[/b]: %d / %d.%s" % [DuelCards.CARDS[tgt].name, int(v.get("banked", {}).get(tgt, 0)), DuelRewards.card_cost(tgt), " Change it in the Codex." if codex else ""] if tgt != "" and DuelCards.CARDS.has(tgt) \
+		else ("Your wins make Resonance. Pick a card in the Codex to build it towards." if codex else "Your wins make Resonance, and Resonance makes new cards.")
 	right.add_child(_wrap(res + "  Attunement pool: %d." % int(v.get("pool", 0)), 24, UITheme.TEXT_DIM, true))
 	return _scroll(hb)
 
@@ -302,22 +327,16 @@ func _standing_row(who: String) -> Control:
 
 func _deck() -> Control:
 	if not Game.has_deck():
-		return _empty_page("No deck yet", "Bram keeps his old decks in the cellar of the Crooked Lantern. You'll have one of your own before long.")
+		if _deck_work.is_empty():
+			return _empty_page("No deck yet", "Bram keeps his old decks in the cellar of the Crooked Lantern. You'll have one of your own before long.")
+		return _first_deck()
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 12)
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 20)
 	v.add_child(top)
-	var counts := {}
-	for id in _deck_work:
-		var k: String = DuelCards.CARDS[id].kind
-		counts[k] = int(counts.get(k, 0)) + 1
 	top.add_child(UITheme.label("YOUR DECK  %d / %d" % [_deck_work.size(), DuelRules.deck_size], 38, UITheme.GOLD, "display_bold"))
-	var parts := []
-	for k in ["totem", "rite", "ward", "summon"]:
-		if counts.has(k):
-			parts.append("%d %s%s" % [counts[k], k.capitalize(), "" if int(counts[k]) == 1 else "s"])
-	var comp := UITheme.label("  ·  ".join(parts), 26, UITheme.TEXT_DIM)
+	var comp := UITheme.label(_deck_makeup(_deck_work), 26, UITheme.TEXT_DIM)
 	comp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	comp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	top.add_child(comp)
@@ -331,6 +350,50 @@ func _deck() -> Control:
 		26, Color("8fe0a0") if probs.is_empty() else Color("ff8a80"))
 	st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(st)
+	var ids := []
+	for id in Codex.all_ids():
+		if _deck_work.has(id):
+			ids.append(id)
+	var grid := Codex.Grid.new()
+	grid.show_filters = false
+	grid.only = ids
+	grid.deck = _deck_work
+	grid.counts_from_deck = true
+	grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	grid.card_tapped.connect(func(id: String) -> void: _open_card(id))
+	v.add_child(grid)
+	return v
+
+
+## "1 Totem  ·  11 Rites"
+static func _deck_makeup(cards: Array) -> String:
+	var counts := {}
+	for id in cards:
+		var k: String = DuelCards.CARDS[id].kind
+		counts[k] = int(counts.get(k, 0)) + 1
+	var parts := []
+	for k in ["totem", "rite", "ward", "summon"]:
+		if counts.has(k):
+			parts.append("%d %s%s" % [counts[k], k.capitalize(), "" if int(counts[k]) == 1 else "s"])
+	return "  ·  ".join(parts)
+
+
+## Bram's Spark deck, before the player has a full deck of their own: shown
+## card by card (tap one to read it), but it can't be changed.
+func _first_deck() -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 20)
+	v.add_child(top)
+	var head := "BRAM'S SPARK DECK" if Game.flag("first_deck") else "YOUR FIRST DECK"
+	top.add_child(UITheme.label("%s  ·  %d CARDS" % [head, _deck_work.size()], 38, UITheme.GOLD, "display_bold"))
+	var comp := UITheme.label(_deck_makeup(_deck_work), 26, UITheme.TEXT_DIM)
+	comp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	comp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	top.add_child(comp)
+	v.add_child(_wrap("A first deck. A full deck is %d cards, and you'll build your own later from the cards you collect. Tap a card to read it." % DuelRules.deck_size,
+		26, UITheme.TEXT))
 	var ids := []
 	for id in Codex.all_ids():
 		if _deck_work.has(id):
@@ -367,6 +430,60 @@ func _open_card(id: String) -> void:
 	d.changed.connect(func() -> void: Game.save_game())
 	add_child(d)
 	_overlay = d
+
+
+## The card whose detail is open, or "".
+func open_card_id() -> String:
+	return (_overlay as Codex.Detail).id if _overlay is Codex.Detail else ""
+
+
+## Closes an open card detail (as its Close button does).
+func close_card() -> void:
+	if _overlay is Codex.Detail:
+		(_overlay as Codex.Detail).closed.emit()
+
+
+# ============================================================ pack tour ===
+
+## Where something in the menu is on screen, for Bram's pack tour (PackTour):
+## tab:<key>, tabs, resume, deck_grid / codex_grid / card (the cards in view),
+## card:<id>, detail (an open card's face), close (its Close button). Empty
+## if it isn't showing.
+func tour_rect(what: String) -> Rect2:
+	if not visible:
+		return Rect2()
+	if what.begins_with("tab:"):
+		var b: Button = _tab_btns.get(what.substr(4))
+		return b.get_global_rect() if b != null and b.visible else Rect2()
+	match what:
+		"tabs":
+			return _tab_bar.get_global_rect()
+		"resume":
+			return _resume.get_global_rect()
+		"detail":
+			return (_overlay as Codex.Detail).focus_rect() if _overlay is Codex.Detail else Rect2()
+		"close":
+			return (_overlay as Codex.Detail).close_rect() if _overlay is Codex.Detail else Rect2()
+		"deck_grid", "codex_grid", "card":
+			var g := _page_grid()
+			return g.cells_rect() if g != null else Rect2()
+	if what.begins_with("card:"):
+		var g2 := _page_grid()
+		return g2.cells_rect(what.substr(5)) if g2 != null else Rect2()
+	return Rect2()
+
+
+## The card grid on the page showing now, if it has one.
+func _page_grid() -> Codex.Grid:
+	var todo: Array = _content.get_children()
+	while not todo.is_empty():
+		var n: Node = todo.pop_front()
+		if n.is_queued_for_deletion():
+			continue
+		if n is Codex.Grid:
+			return n
+		todo.append_array(n.get_children())
+	return null
 
 
 # ================================================================= items ===

@@ -1,9 +1,10 @@
 class_name Codex
 extends RefCounted
-## The card collection: every v2 card as a grid (cards the player doesn't own
-## yet are greyed out), and a detail view for one card with its painting,
-## description, attacks, how to get it and, for Totems, how far its
-## Ascended form has come. Used by the pause menu's Codex and Deck tabs.
+## The card collection: every card the player has found, as a grid (their
+## own, and cards they've seen played, greyed out until they own one; cards
+## not found yet aren't shown at all), and a detail view for one card with
+## its painting, description, attacks, how to get it and, for Totems, how far
+## its Ascended form has come. Used by the pause menu's Codex and Deck tabs.
 ##
 ## The deck being edited is passed in as `deck` (an Array of card ids); the
 ## pause menu commits it to Game.v2.deck only when it is legal.
@@ -15,6 +16,22 @@ const FILTERS := [["all", "All"], ["owned", "Owned"], ["totem", "Totems"], ["rit
 
 static func owned(id: String) -> int:
 	return int(Game.v2.get("collection", {}).get(id, 0))
+
+
+## Has the player found this card: owned one, or seen it played in a duel?
+static func found(id: String) -> bool:
+	return owned(id) > 0 or Game.v2.get("codex", {}).has(id)
+
+
+## Every card the player has found, in collection order.
+static func found_ids() -> Array:
+	return all_ids().filter(func(id): return found(id))
+
+
+## A card's name once the player has found it; until then, `unknown` (so a
+## card's detail never names one they haven't come across).
+static func name_if_found(id: String, unknown: String) -> String:
+	return String(DuelCards.CARDS[id].name) if found(id) else unknown
 
 
 static func count_in(deck: Array, id: String) -> int:
@@ -197,7 +214,9 @@ static func describe(id: String) -> String:
 
 # ================================================================= views ===
 
-## The collection grid with its filter row.
+## The collection grid with its filter row. Only cards the player has found
+## are listed (or just `only`, on the Deck tab); a filter with nothing in it
+## is hidden.
 class Grid:
 	extends VBoxContainer
 	signal card_tapped(id: String)
@@ -264,38 +283,50 @@ class Grid:
 			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			_grid.add_child(row)
 		if n == 0:
-			var l := UITheme.label("No conditions met yet. The first time one lands in a duel, Bram explains it and it's kept here.", 26, UITheme.TEXT_DIM)
-			l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			_grid.add_child(l)
+			_grid.add_child(_note("No conditions met yet. The first time one lands in a duel, Bram explains it and it's kept here."))
 		if _summary != null:
-			_summary.text = "You've met %d of %d conditions and boons" % [n, DuelConditions.DEFS.size() + DuelConditions.BOONS.size()]
+			_summary.text = "Conditions and boons met: %d" % n
+
+	## The cards a filter shows, from the ones the player has found.
+	func _ids_for(f: String) -> Array:
+		var out := []
+		for id in Codex.found_ids():
+			var d: Dictionary = DuelCards.CARDS[id]
+			match f:
+				"owned":
+					if Codex.owned(id) <= 0:
+						continue
+				"totem", "rite", "ward", "summon":
+					if d.kind != f:
+						continue
+			out.append(id)
+		return out
+
+	## Shows only the filters with something in them (All always shows).
+	func _refresh_filters() -> void:
+		for k in _filter_btns:
+			var any := true
+			if k == "conditions":
+				any = not Game.conditions_met().is_empty()
+			elif k != "all":
+				any = not _ids_for(k).is_empty()
+			_filter_btns[k].visible = any
+		if _filter_btns.has(filter) and not _filter_btns[filter].visible:
+			filter = "all"
+		for k in _filter_btns:
+			_filter_btns[k].button_pressed = k == filter
 
 	func rebuild() -> void:
 		if _grid == null:
 			return
 		for c in _grid.get_children():
 			c.queue_free()
+		_refresh_filters()
 		if filter == "conditions":
 			_rebuild_conditions()
-			for k in _filter_btns:
-				_filter_btns[k].button_pressed = k == filter
 			_fit_columns()
 			return
-		var ids := []
-		if not only.is_empty():
-			ids = only
-		else:
-			for id in Codex.all_ids():
-				var d: Dictionary = DuelCards.CARDS[id]
-				match filter:
-					"owned":
-						if Codex.owned(id) <= 0:
-							continue
-					"totem", "rite", "ward", "summon":
-						if d.kind != filter:
-							continue
-				ids.append(id)
+		var ids: Array = only if not only.is_empty() else _ids_for(filter)
 		for id in ids:
 			var cell := Cell.new()
 			cell.id = id
@@ -305,16 +336,34 @@ class Grid:
 			cell.custom_minimum_size = Codex.CELL
 			cell.tapped.connect(func(cid: String) -> void: card_tapped.emit(cid))
 			_grid.add_child(cell)
-		for k in _filter_btns:
-			_filter_btns[k].button_pressed = k == filter
+		if ids.is_empty():
+			_grid.add_child(_note("No cards found yet. Every card you find is written in here: your own, and any you see played against you."))
 		if _summary != null:
-			var total := DuelCards.CARDS.size()
-			var have := 0
-			for id in DuelCards.CARDS:
-				if Codex.owned(id) > 0:
-					have += 1
-			_summary.text = "You own %d of %d cards  ·  tap a card for its details" % [have, total]
+			var all := Codex.found_ids()
+			var yours := all.filter(func(id): return Codex.owned(id) > 0).size()
+			var mine := "" if yours == all.size() else " (%d yours)" % yours
+			_summary.text = "Cards found: %d%s  ·  tap a card for its details" % [all.size(), mine]
 		_fit_columns()
+
+	func _note(t: String) -> Label:
+		var l := UITheme.label(t, 26, UITheme.TEXT_DIM)
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		l.custom_minimum_size = Vector2(600, 0)
+		return l
+
+	## Where the cards in view are on screen (all of them, or just `id`), for
+	## Bram's pack tour; an empty Rect2 if none are showing.
+	func cells_rect(id: String = "") -> Rect2:
+		var clip := _scroll.get_global_rect()
+		var out := Rect2()
+		for c in _grid.get_children():
+			if not (c is Cell) or c.is_queued_for_deletion() or (id != "" and c.id != id):
+				continue
+			var r: Rect2 = c.get_global_rect().intersection(clip)
+			if r.has_area():
+				out = r if not out.has_area() else out.merge(r)
+		return out
 
 	func refresh_counts() -> void:
 		for c in _grid.get_children():
@@ -409,7 +458,7 @@ void fragment() {
 			CardFace.box(self, b, 20, Color(0.04, 0.04, 0.08, 0.9), Color(UITheme.GOLD, 0.9), 2)
 			CardFace.text_in(self, f, b, "×%d" % n, 24, UITheme.GOLD)
 			if not deck_badge and in_deck > 0:
-				var db := Rect2(Vector2(8, size.y - 44), Vector2(94, 34))
+				var db := Rect2(Vector2(size.x - 102, 54), Vector2(94, 34))   # under the count, clear of the name
 				CardFace.box(self, db, 17, Color(0.1, 0.35, 0.55, 0.92))
 				CardFace.text_in(self, CardFace.font("bold"), db, "DECK %d" % in_deck, 18, Color.WHITE)
 		# Attunement towards the Ascended form, as a thin bar along the bottom
@@ -434,6 +483,17 @@ class Detail:
 	var _buttons: HBoxContainer
 	var _status: Label
 	var _art: Control
+	var _close: Button
+
+	## Where the Close button is on screen (for Bram's pack tour).
+	func close_rect() -> Rect2:
+		return _close.get_global_rect() if _close != null else Rect2()
+
+	## The card face, on screen (for Bram's pack tour).
+	func focus_rect() -> Rect2:
+		if _art == null:
+			return Rect2()
+		return _art.get_global_transform() * (_art as BigCard).card_rect()
 
 	func _ready() -> void:
 		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -475,6 +535,7 @@ class Detail:
 		var x := UITheme.button("Close", false, 180)
 		x.pressed.connect(func() -> void: closed.emit())
 		top.add_child(x)
+		_close = x
 		_meters = HBoxContainer.new()
 		_meters.add_theme_constant_override("separation", 24)
 		right.add_child(_meters)
@@ -528,28 +589,31 @@ class Detail:
 		var p := Codex.ascension_progress(id)
 		if String(p.get("state", "")) == "filling" and Codex.owned(String(p.root)) <= 0 and int(p.get("have", 0)) <= 0:
 			p = {"state": "unowned", "root": p.root, "next": p.next}
+		# cards not found yet aren't named
+		var root_name := Codex.name_if_found(String(p.get("root", id)), "its Basic Totem")
+		var next_name := Codex.name_if_found(String(p.get("next", id)), "its Ascended form") if p.has("next") else ""
 		match String(p.get("state", "none")):
 			"unowned":
 				lines.append("")
-				lines.append("Once you own %s, spare copies and your Attunement pool can make it Ascend into %s." % [DuelCards.CARDS[p.root].name, DuelCards.CARDS[p.next].name])
+				lines.append("Once you own %s, spare copies and your Attunement pool can make it Ascend into %s." % [root_name, next_name])
 			"filling":
 				var nxt: String = p.next
 				var root: String = p.root
 				lines.append("")
 				lines.append("[color=#%s][b]ASCENSION[/b][/color]" % gold)
 				if nxt == id:
-					lines.append("Manifests from %s's Attunement: [b]%d / %d[/b]." % [DuelCards.CARDS[root].name, int(p.have), int(p.need)])
+					lines.append("Manifests from %s's Attunement: [b]%d / %d[/b]." % [root_name, int(p.have), int(p.need)])
 				else:
-					lines.append("Attunement towards [b]%s[/b]: [b]%d / %d[/b]." % [DuelCards.CARDS[nxt].name, int(p.have), int(p.need)])
+					lines.append("Attunement towards [b]%s[/b]: [b]%d / %d[/b]." % [next_name, int(p.have), int(p.need)])
 				lines.append("Re-absorb spare copies of %s (each worth %d) or pour in your Attunement pool (%d points, worth half) to fill it." % [
-					DuelCards.CARDS[root].name, DuelRewards.copy_points(root), int(v.get("pool", 0))])
+					root_name, DuelRewards.copy_points(root), int(v.get("pool", 0))])
 			"done":
 				if DuelCards.is_ascension(id):
 					lines.append("")
 					lines.append("[color=#%s]Manifested through Attunement.[/color]" % gold)
 			"later":
 				lines.append("")
-				lines.append("Manifests from %s's Attunement, after %s." % [DuelCards.CARDS[p.root].name, DuelCards.CARDS[p.next].name])
+				lines.append("Manifests from %s's Attunement, after %s." % [root_name, Codex.name_if_found(String(p.next), "the form before it")])
 		_info.text = text + "\n" + "\n".join(lines)
 		# the two progress bars that matter most, always in view
 		for c in _meters.get_children():
@@ -559,8 +623,7 @@ class Detail:
 			var cost := DuelRewards.card_cost(id)
 			_meter("RESONANCE TOWARDS A NEW COPY", float(banked) / float(cost), "%d / %d" % [banked, cost])
 		if String(p.get("state", "")) == "filling":
-			var nxt_name: String = DuelCards.CARDS[p.next].name
-			_meter(("ATTUNEMENT TOWARDS %s" % nxt_name.to_upper()) if p.next != id else "ATTUNEMENT TO MANIFEST IT",
+			_meter(("ATTUNEMENT TOWARDS %s" % next_name.to_upper()) if p.next != id else "ATTUNEMENT TO MANIFEST IT",
 				float(p.have) / float(p.need), "%d / %d" % [int(p.have), int(p.need)])
 		elif String(p.get("state", "")) == "done" and DuelCards.is_ascension(id):
 			_meter("ATTUNEMENT", 1.0, "Manifested")
@@ -576,7 +639,7 @@ class Detail:
 		if p.get("state", "") == "filling":
 			var root: String = p.root
 			if Game.spare_copies(root) > 0:
-				_add("Re-absorb a spare %s" % DuelCards.CARDS[root].name, func() -> void:
+				_add("Re-absorb a spare %s" % root_name, func() -> void:
 					var made := Game.reabsorb(root, 1)
 					_status.text = "%s manifests!" % DuelCards.CARDS[made].name if made != "" else "+%d Attunement." % DuelRewards.copy_points(root)
 					_after())
@@ -637,12 +700,17 @@ class BigCard:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	## Where the card is drawn, in this control's space.
+	func card_rect() -> Rect2:
+		var h := minf(size.y, size.x * CardFace.ASPECT)
+		var w := h / CardFace.ASPECT
+		return Rect2(Vector2((size.x - w) * 0.5, (size.y - h) * 0.5), Vector2(w, h))
+
 	func _draw() -> void:
 		if id == "":
 			return
-		var h := minf(size.y, size.x * CardFace.ASPECT)
-		var w := h / CardFace.ASPECT
-		var r := Rect2(Vector2((size.x - w) * 0.5, (size.y - h) * 0.5), Vector2(w, h))
+		var r := card_rect()
+		var h := r.size.y
 		for i in 6:
 			draw_circle(r.get_center(), h * (0.55 - i * 0.06), Color(UITheme.GOLD, 0.025))
 		DuelCardFace.draw_card(self, r, id, {"attrs": Game.profile.get("attributes", {}), "compact": false})

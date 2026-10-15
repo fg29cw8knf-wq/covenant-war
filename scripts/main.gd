@@ -70,9 +70,10 @@ func _on_continue() -> void:
 func _on_new_game() -> void:
 	# The story starts with the opening movie (skippable), then Ashford: the
 	# festival and the Sigilfall are played in the village. The player's real
-	# name is asked later, when the herald reads it out.
+	# name is asked later, when the herald reads it out. No cards yet: Bram
+	# hands over the first deck in Ashford, before the Lantern Duel.
 	await play_opening()
-	Game.new_game("Sprout", "emberstorm")
+	Game.new_game("Sprout", "")
 	go_world("ashford", "green")
 
 
