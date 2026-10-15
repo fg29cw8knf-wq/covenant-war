@@ -8,7 +8,7 @@ Developer Mode on, and a cable between them. No paid developer account.
 **https://github.com/fg29cw8knf-wq/covenant-war/releases/download/iphone/CovenantWar-iOS.zip**
 
 This link always gives the newest build. It is rebuilt by itself every time
-the game's `main` branch changes (it takes about 10 minutes). The page
+the game's `main` branch changes (it takes a few minutes). The page
 https://github.com/fg29cw8knf-wq/covenant-war/releases/tag/iphone says when
 it was built.
 
