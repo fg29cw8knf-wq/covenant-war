@@ -43,6 +43,12 @@ var festival_light: OmniLight3D
 ## Tam's chore: the cider barrel by the hay cart, and where it goes at Tilly's stall.
 var tam_barrel: Node3D
 var barrel_spot := Vector3.ZERO
+## Tam's hay cart, and how it stands before the Sigilfall knocks it over.
+const HAY_CART_YAW := 2.07
+const HAY_CART_HALF_WIDTH := 1.25   # centre to the outside of a wheel
+var hay_cart: Node3D
+var hay_cart_rest := Transform3D.IDENTITY
+var hay_cart_tip := 0.0
 
 
 func _ready() -> void:
@@ -144,6 +150,9 @@ func make_materials() -> void:
 
 # ------------------------------------------------------------------ environment
 
+var moon_light: DirectionalLight3D
+var tear_light: DirectionalLight3D
+
 func build_environment() -> void:
 	env = Environment.new()
 	sky_mat = shader_mat("sky")
@@ -210,6 +219,7 @@ func build_environment() -> void:
 
 	# Moonlight and the cold light from the tear in the sky.
 	var moon := DirectionalLight3D.new()
+	moon_light = moon
 	moon.light_color = Color(0.55, 0.66, 1.0)
 	moon.light_energy = [1.0, 0.85, 0.7][quality]
 	moon.shadow_enabled = true
@@ -220,6 +230,7 @@ func build_environment() -> void:
 	add_child(moon)
 	moon.look_at_from_position(Vector3.ZERO, -Vector3(-0.84, 0.45, 0.30), Vector3.UP)
 	var tear := DirectionalLight3D.new()
+	tear_light = tear
 	tear.light_color = Color(0.75, 0.6, 1.0)
 	tear.light_energy = 0.3
 	tear.shadow_enabled = false
@@ -449,6 +460,8 @@ const RING_MODELS := ["cottage_c", "cottage_a", "cottage_b", "cottage_c", "cotta
 ## glass made from its colour atlas, used as the emission texture.
 const WINDOW_GLOW := Color(1.0, 0.6, 0.28)
 var _model_info := {}   # model id -> its chimney top (measured once)
+## Every building model placed: {id, root, L, D, top, inn}, for setting them alight.
+var houses: Array = []
 
 ## Places one of Gary's building models (assets/models/ashford/<id>.glb) facing
 ## the green, with lit windows, a porch light and chimney smoke. Returns false
@@ -519,6 +532,7 @@ func model_house(id: String, pos: Vector3, seed_i: int, burning: bool) -> bool:
 		burning_house = root
 		# ignite_roof() reads these as length, depth, wall height and roof rise
 		set_meta("burning_dims", [L, D, top * 0.5, top * 0.33 - 0.25])
+	houses.append({"id": id, "root": root, "L": L, "D": D, "top": top, "inn": id == "inn"})
 	return true
 
 func house(pos: Vector3, L: float, D: float, H: float, style: int, door: String, seed_i: int, burning: bool, inn := false) -> void:
@@ -665,8 +679,10 @@ func chimney_smoke(root: Node3D, at: Vector3) -> void:
 	p.visibility_aabb = AABB(Vector3(-4, -1, -4), Vector3(14, 14, 10))
 	root.add_child(p)
 
+var mill_root: Node3D
 func build_mill(pos: Vector3) -> void:
 	var root := Node3D.new()
+	mill_root = root
 	pos.y = height(pos.x, pos.z) - 0.3
 	root.position = pos
 	root.rotation.y = deg_to_rad(205)
@@ -817,18 +833,23 @@ func build_green() -> void:
 	tam_barrel.position = bp + Vector3(0, BARREL_HALF, 0)
 	tam_barrel.rotation.y = 0.4
 	g.add_child(tam_barrel)
-	# hay cart
+	# Tam's hay cart (Gary's model), its shafts down on the grass pointing up
+	# the lane to the mill: the cart that goes over on Corin at the Sigilfall
 	var cp := Vector3(9.0, height(9, -5), -5.0)
-	var cart := Node3D.new(); cart.position = cp; cart.rotation.y = 0.6; g.add_child(cart)
-	box(cart, Vector3(2.6, 0.5, 1.5), Vector3(0, 0.9, 0), mats.wood_h)
-	for sx in [-1, 1]:
-		cyl(cart, 0.55, 0.55, 0.1, Vector3(0, 0.55, 0.8 * sx), mats.wood, 16, Vector3(PI / 2, 0, 0))
-	var hay := SphereMesh.new(); hay.radius = 1.0; hay.height = 1.2
-	add_mesh(cart, hay, mats.hay, Transform3D(Basis().scaled(Vector3(1.3, 0.8, 0.75)), Vector3(0, 1.35, 0)))
-	box(cart, Vector3(2.2, 0.08, 0.08), Vector3(2.0, 0.65, 0.4), mats.wood_h, Vector3(0, 0, -0.25))
-	box(cart, Vector3(2.2, 0.08, 0.08), Vector3(2.0, 0.65, -0.4), mats.wood_h, Vector3(0, 0, -0.25))
-	footprints.append([Vector2(cp.x, cp.z), 1.8])
-	solid_round(cp, 1.7)
+	hay_cart = prop_model("hay_cart", g, cp, HAY_CART_YAW)
+	if hay_cart == null:
+		var cart := Node3D.new(); cart.position = cp; cart.rotation.y = 0.6; g.add_child(cart)
+		box(cart, Vector3(2.6, 0.5, 1.5), Vector3(0, 0.9, 0), mats.wood_h)
+		for sx in [-1, 1]:
+			cyl(cart, 0.55, 0.55, 0.1, Vector3(0, 0.55, 0.8 * sx), mats.wood, 16, Vector3(PI / 2, 0, 0))
+		var hay := SphereMesh.new(); hay.radius = 1.0; hay.height = 1.2
+		add_mesh(cart, hay, mats.hay, Transform3D(Basis().scaled(Vector3(1.3, 0.8, 0.75)), Vector3(0, 1.35, 0)))
+		box(cart, Vector3(2.2, 0.08, 0.08), Vector3(2.0, 0.65, 0.4), mats.wood_h, Vector3(0, 0, -0.25))
+		box(cart, Vector3(2.2, 0.08, 0.08), Vector3(2.0, 0.65, -0.4), mats.wood_h, Vector3(0, 0, -0.25))
+		footprints.append([Vector2(cp.x, cp.z), 1.8])
+		solid_round(cp, 1.7)
+		hay_cart = cart
+	hay_cart_rest = hay_cart.transform
 
 ## One of Gary's props (assets/models/ashford/<id>.glb, +Y up, front +Z) set
 ## down at `pos` turned by `yaw`, with shadows, a footprint and a solid body.
@@ -1538,16 +1559,20 @@ func fire_at(at: Vector3, extents: Vector3, amount: int, scale_k: float, grow :=
 	s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	s.visibility_aabb = AABB(Vector3(-30, -2, -30), Vector3(60, 50, 60))
 	add_child(s)
-	for k in 2:
+	var ls: Array = []
+	# two lights per fire on the big renderer; one, without shadows, on phones
+	for k in (2 if quality == 2 else 1):
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.45, 0.12)
-		l.light_energy = 5.0 * scale_k
+		l.light_energy = 5.0 * scale_k * (1.0 if quality == 2 else 1.5)
 		l.omni_range = 18.0
-		l.shadow_enabled = k == 0
+		l.shadow_enabled = k == 0 and quality > 0
 		l.light_volumetric_fog_energy = 0.2
 		l.position = at + Vector3(rng.randf_range(-1, 1), 1.5 + k, rng.randf_range(-1, 1))
 		add_child(l)
-		flicker_lights.append([l, 5.0 * scale_k])
+		flicker_lights.append([l, l.light_energy])
+		ls.append(l)
+	fires.append({"flame": f, "ember": e, "smoke": s, "lights": ls})
 
 # ------------------------------------------------------------------ mist and post
 
@@ -1674,7 +1699,11 @@ func _process(delta: float) -> void:
 			player_light.shadow_enabled = false
 			add_child(player_light)
 		player_light.global_position = w.player.global_position + Vector3(0, 2.4, 0.8)
-	for fl in flicker_lights:
+	for i in range(flicker_lights.size() - 1, -1, -1):
+		var fl: Array = flicker_lights[i]
+		if not is_instance_valid(fl[0]):
+			flicker_lights.remove_at(i)   # it went with whatever carried it
+			continue
 		var l: OmniLight3D = fl[0]
 		l.light_energy = fl[1] * (0.82 + 0.18 * sin(elapsed * 13.0 + fl[1]) * sin(elapsed * 7.3 + fl[1] * 2.0))
 	if lantern_t >= 0.0:
@@ -1732,3 +1761,255 @@ func _rise_lanterns(delta: float) -> void:
 	if done:
 		lantern_t = -1.0
 		phase_done.emit("lanterns")
+
+# ------------------------------------------------------------------ the Prologue's cutscenes
+
+## Tips Tam's hay cart over on its side, about its left-hand wheel (the side
+## facing the green): 0 standing, 1 flat over. Corin ends up under it.
+func set_cart_tip(amount: float) -> void:
+	hay_cart_tip = amount
+	if hay_cart == null:
+		return
+	var edge := Vector3(-HAY_CART_HALF_WIDTH, 0.0, 0.0)
+	# a little past flat so the hay rests on the grass rather than the wheel rim
+	var r := Basis(Vector3(0, 0, 1), amount * deg_to_rad(88.0))
+	hay_cart.transform = hay_cart_rest * Transform3D(Basis(), edge) * Transform3D(r, Vector3.ZERO) * Transform3D(Basis(), -edge)
+
+
+func tip_cart(to: float, secs: float, trans := Tween.TRANS_QUAD, ease := Tween.EASE_IN) -> void:
+	var tw := create_tween()
+	tw.tween_method(set_cart_tip, hay_cart_tip, to, secs).set_trans(trans).set_ease(ease)
+	await tw.finished
+
+
+## Which way the cart falls (flat on the ground, world space).
+func cart_fall_dir() -> Vector3:
+	var x := hay_cart_rest.basis.x
+	x.y = 0.0
+	return -x.normalized()
+
+
+## The middle of the cart where it stands, on the ground.
+func cart_centre() -> Vector3:
+	var c := hay_cart_rest.origin
+	if hay_cart != null and hay_cart.get_parent() != null:
+		c = (hay_cart.get_parent() as Node3D).global_transform * c
+	return Vector3(c.x, height(c.x, c.z), c.z)
+
+
+## The cart's long axis (towards its shafts), flat.
+func cart_along() -> Vector3:
+	var z := hay_cart_rest.basis.z
+	z.y = 0.0
+	return z.normalized()
+
+
+## A Sigil strike: a streak of light drops out of the sky onto `at` and lands
+## (light, sparks, scorch and a little fire). Waits until it lands.
+func strike(at: Vector3, col: Color, secs := 0.4, big := false) -> void:
+	at.y = height(at.x, at.z)
+	var fall := Vector3(0.28, -1.0, 0.16).normalized()
+	var start := at - fall * 70.0
+	var mi := MeshInstance3D.new()
+	mi.mesh = QuadMesh.new()
+	mi.material_override = mats.streak
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_instance_shader_parameter("col", col)
+	mi.set_instance_shader_parameter("intensity", 8.0)
+	add_child(mi)
+	var gs := glow_sprite(self, start, col, 2.4, 1.3)
+	var length := 16.0
+	var tw := create_tween()
+	tw.tween_method(func(u: float) -> void:
+		var head := start.lerp(at, u)
+		mi.transform = Transform3D(Basis(Vector3(0.9, 0, 0), -fall * length, Vector3(0, 0, 1)), head - fall * length * 0.5)
+		gs.global_position = head, 0.0, 1.0, secs)
+	await tw.finished
+	mi.queue_free()
+	gs.queue_free()
+	if big:
+		impact(at, col)
+	else:
+		small_impact(at, col)
+
+
+## A lighter landing than impact(): a flash, sparks and a scorch, and a small
+## fire that dies down (cheap enough to have several in a shot on a phone).
+func small_impact(at: Vector3, col: Color) -> void:
+	var l := OmniLight3D.new()
+	l.light_color = col.lerp(Color(1, 0.9, 0.7), 0.4)
+	l.light_energy = 9.0
+	l.omni_range = 14.0
+	l.position = at + Vector3(0, 1.2, 0)
+	add_child(l)
+	var lt := create_tween()
+	lt.tween_property(l, "light_energy", 1.2, 0.8)
+	lt.tween_callback(func() -> void: flicker_lights.append([l, 1.2]))
+	var sp := GPUParticles3D.new()
+	sp.amount = [50, 80, 110][quality]
+	sp.lifetime = 1.2
+	sp.one_shot = true
+	sp.explosiveness = 0.95
+	sp.position = at + Vector3(0, 0.2, 0)
+	var pm := ParticleProcessMaterial.new()
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 75.0
+	pm.initial_velocity_min = 3.0
+	pm.initial_velocity_max = 9.0
+	pm.gravity = Vector3(0, -9.0, 0)
+	pm.scale_min = 0.06
+	pm.scale_max = 0.14
+	sp.process_material = pm
+	var q := QuadMesh.new(); q.size = Vector2(1, 1)
+	sp.draw_pass_1 = q
+	var em: ShaderMaterial = mats.ember.duplicate()
+	em.set_shader_parameter("ember_col", col.lerp(Color(1, 0.9, 0.6), 0.5))
+	em.set_shader_parameter("intensity", 25.0)
+	sp.material_override = em
+	sp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	sp.visibility_aabb = AABB(Vector3(-12, -2, -12), Vector3(24, 14, 24))
+	add_child(sp)
+	sp.emitting = true
+	get_tree().create_timer(2.5).timeout.connect(sp.queue_free)
+	scorch(at, 3.2)
+	dust_puff(at)
+
+
+## A burnt patch on the ground where a Sigil came down.
+func scorch(at: Vector3, size: float) -> void:
+	var dm := QuadMesh.new(); dm.size = Vector2(size, size); dm.orientation = PlaneMesh.FACE_Y
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.01, 0.008, 0.006)
+	m.emission_enabled = true
+	m.emission = Color(0.9, 0.18, 0.02)
+	m.emission_energy_multiplier = 0.3
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 1)); g.set_color(1, Color(1, 1, 1, 0))
+	var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill = GradientTexture2D.FILL_RADIAL; gt.fill_from = Vector2(0.5, 0.5); gt.fill_to = Vector2(0.5, 0.0)
+	m.albedo_texture = gt
+	m.emission_texture = gt
+	var mi := add_mesh(self, dm, m, Transform3D(Basis(Vector3.UP, rng.randf() * TAU), at + Vector3(0, 0.06, 0)), false)
+	scorches.append(mi)
+
+var scorches: Array = []
+## Fires lit by fire_at(): {flame, ember, smoke, lights}, so dawn can put them out.
+var fires: Array = []
+
+
+## The mill's thatch catches, up on its hill.
+func fire_mill() -> void:
+	if mill_root == null:
+		return
+	var at := mill_root.to_global(Vector3(0, 10.2, 0))
+	fire_at(at, Vector3(1.6, 0.6, 1.6), [24, 36, 50][quality], 1.3, true)
+
+
+## Sets building `i` (an index into houses) alight; "inn" for the Crooked Lantern.
+func burn_house(i: int, grow := true) -> void:
+	if i < 0 or i >= houses.size():
+		return
+	var h: Dictionary = houses[i]
+	if h.get("burning", false):
+		return
+	h["burning"] = true
+	var root: Node3D = h.root
+	var at := root.to_global(Vector3(0.0, float(h.top) * 0.62, 0.0))
+	fire_at(at, Vector3(float(h.L) * 0.32, 0.4, float(h.D) * 0.3), [20, 32, 46][quality], 1.15 if h.inn else 1.0, grow)
+
+
+func inn_index() -> int:
+	for i in houses.size():
+		if houses[i].inn:
+			return i
+	return -1
+
+
+## The ring of cottages nearest a point, nearest first.
+func houses_near(p: Vector3) -> Array:
+	var idx := range(houses.size())
+	idx.sort_custom(func(a, b): return (houses[a].root as Node3D).global_position.distance_to(p) < (houses[b].root as Node3D).global_position.distance_to(p))
+	return idx
+
+
+## The light and sky for each part of the Prologue:
+##   "festival"  the last night of the Age (as built)
+##   "dawn"      the morning after: a low sun through smoke, the fires out
+##   "burning"   the next night: no festival lights, the village dark
+func set_time(kind: String) -> void:
+	var dawn := kind == "dawn"
+	sky_mat.set_shader_parameter("dawn", 1.0 if dawn else 0.0)
+	if kind != "festival":
+		# the festival is over: bunting lights, sky lanterns and Sigils gone
+		sigil_on = false
+		for st in streaks:
+			st.node.visible = false
+			st.glow.visible = false
+			if st.light:
+				st.light.visible = false
+		paper_mm.visible = false
+		for ll in lantern_lights:
+			ll[0].visible = false
+		lantern_t = -1.0
+		if white_light != null:
+			white_light.visible = false
+		mats.bulb.set_shader_parameter("energy", 0.0)
+		mats.lantern.set_shader_parameter("energy", 0.0)
+		festival_light.light_energy = 0.0
+		tear = 0.3
+		tear_target = 0.3
+		sky_mat.set_shader_parameter("tear_open", 0.25)
+		sky_dim = 1.0
+		sky_dim_target = 1.0
+		sky_mat.set_shader_parameter("sky_dim", 1.0)
+	if dawn:
+		moon_light.light_color = Color(1.0, 0.74, 0.52)
+		moon_light.light_energy = [2.2, 2.0, 1.9][quality]
+		var sun := Vector3(0.86, 0.16, -0.50).normalized()
+		moon_light.look_at_from_position(Vector3.ZERO, -sun, Vector3.UP)
+		tear_light.visible = false
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		env.ambient_light_color = Color(0.62, 0.62, 0.72)
+		env.ambient_light_energy = 0.85
+		env.fog_light_color = Color(0.62, 0.52, 0.5)
+		env.fog_density = 0.0035
+		env.volumetric_fog_albedo = Color(0.9, 0.8, 0.75)
+		env.tonemap_exposure = 1.0
+		great_lantern_light.light_energy = 1.5
+		_douse_fires()
+		if player_light != null:
+			player_light.light_energy = 0.0
+	elif kind == "burning":
+		moon_light.light_color = Color(0.55, 0.66, 1.0)
+		moon_light.light_energy = [0.9, 0.75, 0.6][quality]
+		moon_light.look_at_from_position(Vector3.ZERO, -Vector3(-0.84, 0.45, 0.30), Vector3.UP)
+		tear_light.visible = true
+		tear_light.light_energy = 0.15
+		if quality == 2:
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+			env.ambient_light_energy = 1.2
+		else:
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			env.ambient_light_color = Color(0.32, 0.36, 0.55)
+			env.ambient_light_energy = [0.65, 0.5][quality]
+		env.fog_light_color = Color(0.04, 0.05, 0.10)
+		env.fog_density = 0.0012
+		great_lantern_light.visible = false
+		great_lantern_glow.visible = false
+		_douse_fires()
+		if player_light != null:
+			player_light.light_energy = 0.6
+
+
+## The fires go out; their smoke keeps rising, thinner and grey.
+func _douse_fires() -> void:
+	for f in fires:
+		(f.flame as GPUParticles3D).emitting = false
+		(f.ember as GPUParticles3D).emitting = false
+		(f.smoke as GPUParticles3D).amount_ratio = 0.5
+		for l in f.lights:
+			(l as OmniLight3D).visible = false
+			for fl in flicker_lights:
+				if fl[0] == l:
+					flicker_lights.erase(fl)
+					break
+	fires.clear()

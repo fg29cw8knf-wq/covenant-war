@@ -71,12 +71,18 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 	play_seconds = 0.0
 	v2 = new_v2(starter_deck)
 	if not kept.is_empty():
-		for k in ["rank", "xp", "points", "banked", "target", "pool"]:
+		for k in ["rank", "xp", "points", "banked", "target", "pool", "lessons", "conditions"]:
 			if kept.has(k):
 				v2[k] = kept[k]
 		for id in kept.get("codex", {}):
 			if not v2.codex.has(id) or String(kept.codex[id]) == "champion":
 				v2.codex[id] = kept.codex[id]
+		# the cards already found (Bram's Sparks, Tilly's moth) stay in the
+		# collection alongside the new deck
+		for id in kept.get("collection", {}):
+			v2.collection[id] = maxi(int(v2.collection.get(id, 0)), 0) + int(kept.collection[id])
+		for id in kept.get("bonded", {}):
+			v2.bonded[id] = kept.bonded[id]
 	refresh_profile()
 	changed.emit()
 
@@ -372,7 +378,7 @@ func flag(key: String, default = false):
 func set_flag(key: String, value = true) -> void:
 	var before = flags.get(key, null)
 	flags[key] = value
-	if before == null or String(before) != String(value):
+	if before == null or str(before) != str(value):
 		var e := Standing.effect_of(key, value)
 		if not e.is_empty():
 			standing_changed.emit(String(e.who), int(e.by), String(e.why))

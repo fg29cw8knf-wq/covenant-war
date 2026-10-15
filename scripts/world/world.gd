@@ -14,6 +14,7 @@ signal story_next(what: String)
 const AREAS := {
 	"solhaven": preload("res://scripts/world/areas/solhaven.gd"),
 	"ashford": preload("res://scripts/world/areas/ashford.gd"),
+	"thornwood": preload("res://scripts/world/areas/thornwood.gd"),
 }
 
 const SPEED := 5.4
@@ -66,6 +67,9 @@ func _ready() -> void:
 	for def in area.npcs():
 		_spawn_npc(def)
 	_build_camera()
+	# a story film picking up where it was starts on black, not on the world
+	if not attract and area.get_script_constant_map().has("RESUMES") and area.starts_black():
+		Cine.overlay(self).black(true)
 	if attract:
 		var ca := cam.attributes as CameraAttributesPractical
 		ca.dof_blur_far_distance = 52.0
@@ -104,6 +108,10 @@ func _arrive() -> void:
 		hud.dialogue.close()
 		hud.set_controls_visible(true)
 		busy = false
+	if area.get_script_constant_map().has("RESUMES"):
+		await area.resume(self)   # a story film the game was closed in the middle of
+		if not is_inside_tree():
+			return
 	hud.set_objective(_fmt(String(Game.flag("objective", ""))))
 	_show_first_steps()
 
@@ -206,7 +214,7 @@ func _spawn_player(pos: Vector3) -> void:
 	player.add_child(cs)
 	player.position = pos
 	add_child(player)
-	player_doll = PaperDoll.new().setup("player")
+	player_doll = Figure3D.make("player")
 	player.add_child(player_doll)
 	player_doll.facing_back = true
 
@@ -224,7 +232,7 @@ func _spawn_npc(def: Dictionary) -> void:
 	body.add_child(cs)
 	body.position = def.pos
 	add_child(body)
-	var doll := PaperDoll.new().setup(def.look)
+	var doll := Figure3D.make(def.look, String(def.get("id", "")))
 	body.add_child(doll)
 	npcs.append({"def": def, "body": body, "doll": doll})
 
@@ -294,7 +302,12 @@ func _physics_process(delta: float) -> void:
 	player.velocity.y = 0.0
 	player.move_and_slide()
 	var moving := Vector2(player.velocity.x, player.velocity.z).length() > 0.4
-	player_doll.walking = moving
+	if not cine:   # a cutscene walks the player itself
+		player_doll.walking = moving
+		if player_doll is Figure3D:
+			# the player covers ground at a jog: match the feet to it
+			(player_doll as Figure3D).gait = "run"
+			(player_doll as Figure3D).pace = Vector2(player.velocity.x, player.velocity.z).length()
 	if dir.length() > 0.1:
 		player_doll.face(dir, cam)
 	# give up on a tap target we can't reach
@@ -447,7 +460,12 @@ func run_steps(steps: Array, npc) -> void:
 			return
 		if st.has("say"):
 			var who: String = st.get("who", "narrator")
+			var talker = _figure_of(who)
+			if talker is Figure3D:
+				(talker as Figure3D).talking = true
 			await hud.dialogue.say(_speaker(who), _portrait(who), _fmt(st.say))
+			if talker is Figure3D:
+				(talker as Figure3D).talking = false
 		elif st.has("if"):
 			var ok := _check(st["if"])
 			await run_steps(st.get("then", []) if ok else st.get("else", []), npc)
@@ -494,6 +512,14 @@ func _check(cond: String) -> bool:
 	if cond.begins_with("!"):
 		return not bool(Game.flag(cond.substr(1)))
 	return bool(Game.flag(cond))
+
+
+## The figure of whoever is speaking, if they're standing in the world.
+func _figure_of(who: String):
+	if who == "player":
+		return player_doll
+	var n = _npc_by_id(who)
+	return n.doll if n != null else null
 
 
 func _speaker(who: String) -> String:

@@ -97,7 +97,7 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 	var deck := await story.choose_starter()
 	Game.new_game(nm, deck, true)
 	Game.set_flag("bram_deck")
-	_prologue_gifts()
+	prologue_gifts()
 	var tails := {
 		"emberstorm": "Emberstorm. Hits first and hits hardest. I won a duke's bet with that one.",
 		"tidegrove": "Tidegrove. Patient. Heals what the others break, then drowns them. Nobody ever thanked me for a win with it.",
@@ -185,10 +185,10 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 ## Tilly's Lantern Moth (always) and Hob's nine cabbage Sparks (if the player
 ## carried Tam's barrel, woke Tilly's moth and sat with Nell) join the v2
 ## collection once Bram's deck is chosen.
-static func _prologue_gifts() -> void:
+static func prologue_gifts() -> void:
 	var v: Dictionary = Game.v2
 	var gifts: Array = []
-	if Game.flag("has_lantern_moth"):
+	if Game.flag("has_lantern_moth") and not Game.flag("moth_given"):
 		gifts.append("lantern_moth")
 	if Game.flag("ash_tam") and Game.flag("ash_tilly") and Game.flag("ash_nell"):
 		Game.set_flag("hob_gift")

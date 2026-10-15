@@ -84,16 +84,45 @@ measured against the genre); the Master Script holds the world and the later
 chapters. New Game starts the Prologue in Ashford, the player's village, on the
 last night of the Age (`scripts/world/areas/ashford.gd`): Bram teaches the
 controls in his own words, three optional chores the game remembers (Tam's
-barrel, Tilly's moth, Nell's story), the Lantern Duel against Corin with Bram's
-coaching you can decline, then midnight, the Sigilfall and the marking. The
-rest of the Prologue plays as story scenes with choices (`scripts/story/prologue.gd`):
-the Herald, Ashford burning, Bram's decks, the campfire and Dask's road duel.
-Solhaven (`scripts/world/areas/solhaven.gd`) is Chapter 1 as a hub: the gate
+barrel, Tilly's moth, Nell's story), then Corin's Lantern Duel. Corin points out
+the player has no deck; Bram walks over with his twelve Sparks, explains that
+anyone can work a Sigil's magic but only the Attuned can call a Totem out of
+one, and walks the player round their pack (Deck and Codex open only then).
+The duel follows, with Bram's coaching you can decline, and Tilly runs over
+with her moth.
+
+Everything after the Lantern Duel is a film in the game's own 3D, with Bram,
+Corin and the player as their 3D models (`scripts/world/figure_3d.gd`; the
+villagers stay cut-outs until their models exist): midnight, the Sigilfall,
+the run, the cart, the white light, the Pale Herald at dawn, the taproom,
+Ashford burning, the cellar and Bram's decks (`ashford.gd`, parts saved in the
+`pro_part` flag so a closed game picks up where it was), then the Thornwood
+(`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd`): the
+riverbank, the campfire and its practice duel, Dask's road duel and dawn over
+Solhaven. Films are staged with `scripts/world/cine.gd` (shots, walks,
+spawns, reveals) and `scripts/world/cine_overlay.gd` (letterbox, subtitles,
+choices, the name prompt, the deck choice). Solhaven
+(`scripts/world/areas/solhaven.gd`) is Chapter 1 as a hub: the gate
 and its refugees, Bram's wagon and Turnip, Wren, the Sun Court on the temple
 steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
 Aldric at the Circle and Morne's vault to close the chapter. Still to build
-from the script: the attic and lantern hanging, the run and the cart, the
-garden escape, Wren's chase, the mirror puzzle, the Sunspire, and a deck screen.
+from the script: the attic and lantern hanging, Wren's chase, the mirror
+puzzle and the Sunspire.
+
+Dialogue portraits for the 3D characters are rendered from their models:
+
+```sh
+xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn
+```
+
+To watch a film part by itself, tapping through every line (`corin`, `midnight`,
+`dawn`, `taproom`, `burning`, `cellar`, `river`, `camp`, `road`, `ridge`):
+
+```sh
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 10 \
+    res://tests/film_test.tscn -- /tmp/film midnight 30 keys     # a still every 3 s and one per line
+godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film river   # just run it
+```
 
 New Game opens with a flight over Ashford (`intro()` in `ashford.gd`) before the
 player takes over; Tam's barrel is carried to the stall and Tilly's Lantern Moth

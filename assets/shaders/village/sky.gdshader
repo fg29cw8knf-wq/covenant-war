@@ -13,6 +13,9 @@ uniform vec3 tear_a = vec3(0.4777, 0.6691, -0.5693);
 uniform vec3 tear_b = vec3(0.3726, 0.1045, -0.9222);
 uniform float tear_open : hint_range(0.0, 1.5) = 1.0;
 uniform float sky_dim : hint_range(0.0, 1.0) = 1.0;
+// 0 = night, 1 = the dawn after the Sigilfall: a low sun in the east, smoke-hazed
+uniform float dawn : hint_range(0.0, 1.0) = 0.0;
+uniform vec3 sun_dir = vec3(0.86, 0.10, -0.50);
 
 vec3 tear_light(vec3 d, out float core) {
 	vec3 a = normalize(tear_a);
@@ -108,5 +111,29 @@ void sky() {
 	}
 	col += tl;
 	if (h < 0.0) col = mix(col, horizon * 0.4, smoothstep(0.0, -0.1, h));
-	COLOR = col * sky_dim;
+	col *= sky_dim;
+	if (dawn > 0.001) {
+		// dawn: a pale blue overhead warming to apricot at the horizon, the sun
+		// just up in the east behind a haze of smoke, clouds lit from below
+		vec3 sd = normalize(sun_dir);
+		float s = max(dot(d, sd), 0.0);
+		vec3 zen = vec3(0.16, 0.26, 0.46);
+		vec3 hor = vec3(0.98, 0.62, 0.38);
+		vec3 dc = mix(hor, zen, pow(clamp(h + 0.02, 0.0, 1.0), 0.42));
+		float east = pow(max(dot(normalize(vec3(d.x, 0.0, d.z) + 1e-4), normalize(vec3(sd.x, 0.0, sd.z))), 0.0), 3.0);
+		dc += vec3(0.9, 0.42, 0.18) * east * exp(-max(h, 0.0) * 6.0) * 0.55;
+		dc += vec3(1.0, 0.72, 0.42) * pow(s, 9.0) * 0.9;
+		dc += vec3(1.0, 0.92, 0.75) * (smoothstep(0.9993, 0.9996, s) * 7.0 + pow(s, 600.0) * 3.0);
+		if (h > -0.05 && !CUBEPASS) {
+			vec2 cuv = d.xz / (h + 0.12) * 0.55;
+			float cl = fbm(cuv * 1.3 + vec2(TIME * 0.004, 0.0));
+			cl = smoothstep(0.40, 0.80, cl + 0.08 * fbm(cuv * 5.0));
+			vec3 ccol = mix(vec3(0.42, 0.40, 0.48), vec3(1.0, 0.66, 0.48), 0.35 + 0.65 * east);
+			ccol += vec3(1.0, 0.6, 0.35) * pow(s, 4.0) * 0.8;
+			dc = mix(dc, ccol, cl * smoothstep(-0.05, 0.12, h) * 0.85);
+		}
+		if (h < 0.0) dc = mix(dc, vec3(0.45, 0.36, 0.34), smoothstep(0.0, -0.12, h));
+		col = mix(col, dc, dawn);
+	}
+	COLOR = col;
 }

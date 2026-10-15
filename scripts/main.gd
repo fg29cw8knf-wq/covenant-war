@@ -101,11 +101,20 @@ func go_world(area: String, spawn: String) -> void:
 	var w := World.new().setup(area, spawn)
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)
-	w.story_next.connect(func(what: String) -> void:
-		if what == "prologue_heralds":
-			_after_marking())
+	w.story_next.connect(_on_story_next)
 	_swap(w)
 	Game.save_game()
+
+
+## The story moving on from one place to the next.
+func _on_story_next(what: String) -> void:
+	match what:
+		"prologue_heralds":
+			_after_marking()
+		"thornwood":
+			go_world("thornwood", "river")
+		"solhaven":
+			go_world("solhaven", "gate")
 
 
 # ---------------------------------------------------------------- duels ---

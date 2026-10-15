@@ -1,0 +1,133 @@
+extends Node
+## Plays the Prologue's film (or part of it) by itself, tapping through every
+## line and choice, and saves a screenshot every so often. Duels are played
+## out by the computer on both sides.
+##
+##   godot --headless --fixed-fps 10 res://tests/film_test.tscn -- <out_dir> <part> [every_n_frames]
+##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 \
+##       --fixed-fps 4 res://tests/film_test.tscn -- <out_dir> <part> 8
+##
+## part: corin (Corin to midnight, with Bram's deck), midnight, dawn, taproom,
+## burning, cellar (Ashford), or river, camp, road, ridge (the Thornwood).
+## Add "only" after the part to stop at the end of that part.
+
+var out_dir := "user://"
+var every := 0
+var world: World
+var _frame := 0
+var _shots := 0
+var _wait := 0
+var _only := false
+var _part := ""
+var _keys := false       # draw only the frames that are kept (fast)
+var _was_waiting := false
+var _shooting := false
+var _line_frames := 0
+
+
+func _ready() -> void:
+	var args := OS.get_cmdline_user_args()
+	out_dir = args[0] if args.size() > 0 else "user://"
+	_part = args[1] if args.size() > 1 else "midnight"
+	every = int(args[2]) if args.size() > 2 else 0
+	_only = "only" in args
+	_keys = "keys" in args
+	if _keys:
+		RenderingServer.render_loop_enabled = false
+	Game.new_game("Sprout", "")
+	for f in ["arrived_ashford", "ash_started", "ash_tam", "ash_tilly", "ash_nell", "ash_ready"]:
+		Game.set_flag(f)
+	var thorn := _part in ["river", "camp", "road", "ridge"]
+	if _part != "corin":
+		for f in ["first_deck", "ash_lantern_duel", "ash_won_lantern", "has_lantern_moth", "moth_given"]:
+			Game.set_flag(f)
+	if _part in ["dawn", "taproom", "burning", "cellar"] or thorn:
+		Game.set_flag("ash_marked")
+		Game.set_flag("pro_part", _part if not thorn else "cellar")
+	if thorn:
+		Game.new_game("Ash", "tidegrove", true)
+		for f in ["ash_marked", "pro_tunnel_done", "bram_deck", "hob_gift", "arrived_thornwood", "arrived_thornwood_film"]:
+			Game.set_flag(f)
+		Game.set_flag("thorn_part", _part)
+	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
+	world.story_next.connect(func(what: String) -> void:
+		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"))
+		await _shot("end")
+		print("FILM: done")
+		get_tree().quit())
+	add_child(world)
+	await _frames(20)
+	if _part == "corin":
+		var c = world._npc_by_id("corin")
+		world.player.global_position = c.body.global_position + Vector3(1.4, 0, 1.4)
+		await _frames(4)
+		world._talk(c)
+	elif _part == "midnight":
+		await world.area.scene("midnight", world)
+	print("FILM: started ", _part)
+
+
+func _process(_d: float) -> void:
+	_frame += 1
+	if world == null:
+		return
+	# tap through the world's dialogue box
+	if world.hud != null and world.hud.dialogue._waiting:
+		_wait += 1
+		if _wait > 3:
+			_wait = 0
+			world.hud.dialogue._advance.emit()
+	if world.hud != null and world.hud.dialogue._choices.visible:
+		world.hud.dialogue._chosen.emit(0)
+	# and the film's subtitles, choices, name and deck
+	if world.has_meta("cine_overlay"):
+		var ov: CineOverlay = world.get_meta("cine_overlay")
+		# lines are tapped on by game time (frames), so a slow render still
+		# sees each one on screen
+		if ov._waiting:
+			_line_frames += 1
+			if _line_frames > 12:
+				_line_frames = 0
+				ov._next.emit()
+		else:
+			_line_frames = 0
+		if ov._choices.visible and ov._choices.get_child_count() > 0:
+			ov._chosen.emit(0)
+		for b in ov.find_children("*", "Button", true, false):
+			var bt := b as Button
+			if bt.is_visible_in_tree() and (bt.text == "That's me" or bt.text.begins_with("Choose ")):
+				bt.pressed.emit()
+				break
+		if ov._chart != null:
+			ov._chart.call("tap")
+	for r in get_tree().root.find_children("*", "DeckReveal", true, false):
+		if (r as DeckReveal)._ready_to_close:
+			(r as DeckReveal)._close()
+	if _keys and world.has_meta("cine_overlay"):
+		var ov2: CineOverlay = world.get_meta("cine_overlay")
+		if ov2._waiting and _line_frames == 4:
+			_shot("line_%04d" % _frame)
+		_was_waiting = ov2._waiting
+	if every > 0 and _frame % every == 0:
+		_shot("f%04d" % _frame)
+
+
+func _shot(label: String) -> void:
+	if DisplayServer.get_name() == "headless" or _shooting:
+		return
+	_shooting = true
+	if _keys:
+		RenderingServer.render_loop_enabled = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	if _keys:
+		RenderingServer.render_loop_enabled = false
+	_shooting = false
+	_shots += 1
+	get_viewport().get_texture().get_image().save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await get_tree().process_frame

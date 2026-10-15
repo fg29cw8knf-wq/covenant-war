@@ -14,6 +14,8 @@ var _shadow: MeshInstance3D
 var _marker: Sprite3D
 var _t := 0.0
 var _marker_kind := ""
+var _dir := Vector3.ZERO          # the way they face, in the world
+var _cam_basis := Basis()         # the camera that picture was chosen for
 
 static var _shadow_mat: StandardMaterial3D
 
@@ -67,6 +69,8 @@ func _apply_texture() -> void:
 func face(dir: Vector3, cam: Camera3D) -> void:
 	if dir.length() < 0.01 or cam == null:
 		return
+	_dir = Vector3(dir.x, 0.0, dir.z).normalized()
+	_cam_basis = cam.global_transform.basis
 	var right := cam.global_transform.basis.x
 	var fwd := -cam.global_transform.basis.z
 	fwd.y = 0
@@ -90,6 +94,7 @@ func look_toward(point: Vector3, cam: Camera3D) -> void:
 		if facing_back:
 			facing_back = false
 			_apply_texture()
+		_dir = Vector3.ZERO   # turned to someone: keep the face showing
 
 
 ## "" hides it; "talk" or "duel" shows an icon over the character's head.
@@ -107,6 +112,13 @@ func set_marker(kind: String) -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	# when the camera swings round (a new shot), pick the picture again so
+	# someone facing away from it shows their back, not their face
+	if _dir != Vector3.ZERO:
+		var cam := get_viewport().get_camera_3d() if is_inside_tree() else null
+		if cam != null and not cam.global_transform.basis.is_equal_approx(_cam_basis):
+			if cam.global_transform.basis.z.dot(_cam_basis.z) < 0.97:
+				face(_dir, cam)
 	if walking:
 		var b := sin(_t * 12.0)
 		_sprite.position.y = absf(b) * 0.07
