@@ -270,7 +270,12 @@ func choose(options: Array) -> int:
 		b.text = options[i]
 		b.custom_minimum_size = Vector2(0, UITheme.TOUCH)
 		b.pressed.connect(func() -> void: _chosen.emit(i))
+		# not for the first moment, so a tap meant for the last line can't pick
+		b.disabled = true
 		_choices.add_child(b)
+		var guard := b.create_tween()   # dies with the button if it goes first
+		guard.tween_interval(0.4)
+		guard.tween_property(b, "disabled", false, 0.0)
 	_choices.visible = true
 	_choices.modulate.a = 0.0
 	create_tween().tween_property(_choices, "modulate:a", 1.0, 0.25)
@@ -329,7 +334,11 @@ func ask_name(question: String, default_name: String) -> String:
 	v.add_child(ok)
 	panel.modulate.a = 0.0
 	create_tween().tween_property(panel, "modulate:a", 1.0, 0.4)
-	edit.grab_focus.call_deferred()
+	# with a controller, start on the button (the default name), not the text
+	if Input.get_connected_joypads().is_empty():
+		edit.grab_focus.call_deferred()
+	else:
+		ok.grab_focus.call_deferred()
 	var done := [false]
 	ok.pressed.connect(func() -> void: done[0] = true)
 	edit.text_submitted.connect(func(_t: String) -> void: done[0] = true)
@@ -368,6 +377,7 @@ func choose_deck(heading: String) -> String:
 	row.add_theme_constant_override("separation", 26)
 	holder.add_child(row)
 	var chosen := [""]
+	var first_pick: Button = null
 	for id in ids:
 		var d: Dictionary = DuelCards.DECKS[id]
 		var col := VBoxContainer.new()
@@ -396,8 +406,12 @@ func choose_deck(heading: String) -> String:
 		var deck_id: String = id
 		pick.pressed.connect(func() -> void: chosen[0] = deck_id)
 		col.add_child(pick)
+		if first_pick == null:
+			first_pick = pick
 	holder.modulate.a = 0.0
 	create_tween().tween_property(holder, "modulate:a", 1.0, 0.4)
+	if first_pick != null:
+		first_pick.grab_focus.call_deferred()   # arrows or the d-pad move along, Enter or A picks
 	while chosen[0] == "":
 		await get_tree().process_frame
 	holder.queue_free()

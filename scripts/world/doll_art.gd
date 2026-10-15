@@ -25,6 +25,8 @@ const LOOKS := {
 	"acolyte": {"skin": "f2d0b0", "hair": "2c2420", "style": "long", "outfit": "f4efe2", "trim": "e2b64a", "legs": "c8bfa8", "extras": ["robe", "hood"]},
 	"merchant": {"skin": "c98e66", "hair": "2a1c14", "style": "short", "outfit": "a8452f", "trim": "e6c060", "legs": "4a3226", "extras": ["beard"]},
 	"child": {"skin": "f6d5b8", "hair": "e0a040", "style": "long", "outfit": "5d8fd0", "trim": "f2f2f2", "legs": "5a4a3a"},
+	"child_b": {"skin": "e2b48e", "hair": "4a2e1e", "style": "short", "outfit": "6f9a4c", "trim": "e8dcc4", "legs": "4a3a2a"},
+	"child_c": {"skin": "c99a74", "hair": "2a1c14", "style": "long", "outfit": "b8574a", "trim": "f2e8d0", "legs": "3e3a4a"},
 	"elder": {"skin": "e7bf9e", "hair": "e8e4dc", "style": "long", "outfit": "6c5a8a", "trim": "cdb680", "legs": "4a4058", "extras": ["robe"]},
 	"hunter": {"skin": "d9a883", "hair": "1e1a18", "style": "short", "outfit": "3a3a44", "trim": "b08a3a", "legs": "26262c", "cloak": "22222a", "extras": ["hood"]},
 	"hob": {"skin": "e0ad86", "hair": "7a5a3a", "style": "bald", "outfit": "6f7f4e", "trim": "4a4a30", "legs": "3a3226"},

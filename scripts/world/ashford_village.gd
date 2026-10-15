@@ -1226,6 +1226,36 @@ func make_tree(seed_i: int) -> Array:
 	bark.generate_tangents()
 	return [bark.commit(), leaves.commit()]
 
+## A garden hedge: leaf cards packed into a long low block, `length` along
+## its local X. Used where someone needs to hide (the back gardens).
+func hedge(at: Vector3, yaw: float, length := 4.0, h := 1.6) -> MeshInstance3D:
+	var r := RandomNumberGenerator.new()
+	r.seed = int(absf(at.x) * 131.0 + absf(at.z) * 17.0)
+	var leaves := SurfaceTool.new()
+	leaves.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := int(length * 34.0)
+	for k in n:
+		var p := Vector3(r.randf_range(-length * 0.5, length * 0.5), r.randf_range(0.15, h), r.randf_range(-0.45, 0.45))
+		var nrm := Vector3(0, 0.4, sign(p.z) if absf(p.z) > 0.05 else 1.0).normalized()
+		var basis := Basis.from_euler(Vector3(r.randf() * TAU, r.randf() * TAU, r.randf() * TAU))
+		var sz := r.randf_range(0.55, 0.9)
+		var ex := basis.x * sz * 0.5
+		var ey := basis.y * sz * 0.5
+		var col := Color(1, 1, 1).darkened(r.randf() * 0.4)
+		for tri_v in [[p - ex - ey, Vector2(0, 1)], [p + ex - ey, Vector2(1, 1)], [p + ex + ey, Vector2(1, 0)], [p - ex - ey, Vector2(0, 1)], [p + ex + ey, Vector2(1, 0)], [p - ex + ey, Vector2(0, 0)]]:
+			leaves.set_color(col)
+			leaves.set_normal(nrm)
+			leaves.set_uv(tri_v[1])
+			leaves.add_vertex(tri_v[0])
+	var mi := MeshInstance3D.new()
+	mi.mesh = leaves.commit()
+	mi.material_override = mats.leaf_dark
+	add_child(mi)
+	mi.global_position = Vector3(at.x, height(at.x, at.z), at.z)
+	mi.rotation.y = yaw
+	return mi
+
+
 func build_trees() -> void:
 	var variants := [make_tree(11), make_tree(23), make_tree(37)]
 	var bark_x := [[], [], []]

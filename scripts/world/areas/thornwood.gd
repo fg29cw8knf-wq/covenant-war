@@ -145,9 +145,9 @@ static func _river(w: World) -> void:
 	Cine.place(w, "nell", fb + Vector3(4.6, 0, -0.6), crest)
 	Music.play(["river_farewell", "menu_theme"], 2.0, true)
 	# from behind the villagers, across the water, up to the burning crest
-	Cine.shot(w, fb + Vector3(-1.5, 2.2, 6.5), crest + Vector3(0, -6.0, 0), 42.0)
+	Cine.shot(w, fb + Vector3(-2.6, 3.4, 11.0), crest + Vector3(0, 1.0, 0), 42.0)
 	await Cine.fade(w, 0.0, 2.0)
-	await Cine.drift(w, fb + Vector3(-1.5, 2.2, 6.5), fb + Vector3(-1.0, 1.9, 5.2), crest + Vector3(0, -6.0, 0), near + Vector3(0, 1.5, 0), 4.0)
+	await Cine.drift(w, fb + Vector3(-2.6, 3.4, 11.0), fb + Vector3(-2.0, 2.8, 9.0), crest + Vector3(0, 1.0, 0), near + Vector3(0, 1.5, 0), 4.0)
 	Cine.walk(w, "bram", near + Vector3(0.6, 0, 0.2), 1.6)
 	await Cine.walk(w, "player", near + Vector3(-0.8, 0, 0.4), 1.5)
 	Cine.look(w, "bram", fb)
@@ -161,7 +161,7 @@ static func _river(w: World) -> void:
 	await Cine.say(w, "corin", "Somebody's got to stay! Go on! Go!" if a == 0 else "You'd better! You owe me next year's Lantern Duel!")
 	# Hob's cabbage Sparks, skimmed over the shallows
 	if Game.flag("hob_gift"):
-		Cine.shot(w, Cine.body(w, "hob").global_position + Vector3(-2.0, 1.5, 2.2), Cine.head(w, "hob"), 34.0)
+		Cine.shot(w, Cine.body(w, "hob").global_position + Vector3(-3.4, 1.7, 4.4), Cine.body(w, "hob").global_position + Vector3(0, 1.1, 0), 36.0)
 		await Cine.say(w, "hob", "Wait! Found these in the cabbages this morning. Came up with my cabbages, so they're yours. The cabbages I'm keeping.")
 		await _skim(w, Cine.body(w, "hob").global_position + Vector3(0, 1.2, 0), w.player.global_position + Vector3(0.5, 0.1, 0.6))
 		await Cine.reveal(w, ["mossling", "mossling", "sparkkit", "sparkkit", "emberwisp", "shellguard", "bloomsprite", "burrowmole", "somnowl"], "NINE SPARKS", "from Hob's cabbages")
@@ -320,11 +320,15 @@ static func _road(w: World) -> void:
 	Cine.look(w, "bram", dask_at)
 	Cine.look(w, "player", dask_at)
 	Music.play(["dask"], 1.0, true)
-	Cine.shot(w, dask_at + Vector3(-1.6, 1.5, -2.2), dask_at + Vector3(0, 1.5, 0), 30.0)
+	Cine.shot(w, dask_at + Vector3(-3.0, 1.6, -4.0), dask_at + Vector3(0.3, 1.25, 0), 34.0)
 	await Cine.say(w, "dask", "The Unsworn's card. Hand it over, and the old man lives.")
-	Cine.over_shoulder(w, "dask", "bram", 1.0, 32.0)
+	# Bram, from beside Dask (a cut-out can't be looked past)
+	var to_b: Vector3 = Cine.body(w, "bram").global_position - dask_at
+	to_b.y = 0.0
+	to_b = to_b.normalized()
+	Cine.shot(w, dask_at + to_b * 1.2 + to_b.cross(Vector3.UP) * 1.1 + Vector3(0, 1.6, 0), Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
 	await Cine.say(w, "bram", "Covenant law, boy. Stake it in a sworn duel, or walk away.")
-	Cine.shot(w, dask_at + Vector3(-1.6, 1.5, -2.2), dask_at + Vector3(0, 1.5, 0), 30.0)
+	Cine.shot(w, dask_at + Vector3(-3.0, 1.6, -4.0), dask_at + Vector3(0.3, 1.25, 0), 34.0)
 	await Cine.say(w, "dask", "Fine. Swear it, Unsworn. Your card against my whole deck.")
 	# the oath: a ring of gold closes round the two of them like a lock
 	await _oath(w, (w.player.global_position + dask_at) * 0.5)
@@ -338,7 +342,7 @@ static func _road(w: World) -> void:
 		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
 		if not Game.v2.codex.has(id):
 			Game.v2.codex[id] = "seen"
-	Cine.shot(w, dask_at + Vector3(-1.6, 1.5, -2.2), dask_at + Vector3(0, 1.5, 0), 30.0)
+	Cine.shot(w, dask_at + Vector3(-3.0, 1.6, -4.0), dask_at + Vector3(0.3, 1.25, 0), 34.0)
 	await Cine.fade(w, 0.0, 0.6)
 	await Cine.say(w, "dask", "Take them, then. This isn't over. Caldus Morne pays well for that card, Unsworn.")
 	# he throws his deck at your feet and is gone into the trees
@@ -436,6 +440,7 @@ static func _ridge(w: World) -> void:
 	var rg: Vector3 = ThornwoodSet.SPOTS.ridge
 	rg.y = v.height(rg.x, rg.z)
 	var sol := ThornwoodSet.SOLHAVEN
+	w.cam.far = 1200.0   # Solhaven is a long way off across the plains
 	Cine.place(w, "bram", rg + Vector3(0.8, 0, -2.4), sol)
 	Cine.place(w, "player", rg + Vector3(-0.6, 0, -2.8), sol)
 	Music.play(["solhaven_dawn", "menu_theme"], 2.0, true)

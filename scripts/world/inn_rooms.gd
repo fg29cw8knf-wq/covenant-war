@@ -369,13 +369,17 @@ static func _smoke_seep(v: AshfordVillage, root: Node3D, at: Vector3) -> void:
 ## the room. Call outside() to put them back.
 static func inside(v: AshfordVillage) -> void:
 	v.set_meta("outside_env", [v.moon_light.visible, v.tear_light.visible, v.env.ambient_light_source,
-		v.env.ambient_light_color, v.env.ambient_light_energy, v.env.fog_density])
+		v.env.ambient_light_color, v.env.ambient_light_energy, v.env.fog_density, v.env.fog_enabled,
+		v.env.volumetric_fog_enabled])
 	v.moon_light.visible = false
 	v.tear_light.visible = false
 	v.env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	v.env.ambient_light_color = Color(0.45, 0.36, 0.3)
 	v.env.ambient_light_energy = 0.35
 	v.env.fog_density = 0.0
+	# the rooms sit below the village, where its height fog is thickest
+	v.env.fog_enabled = false
+	v.env.volumetric_fog_enabled = false
 
 
 static func outside(v: AshfordVillage) -> void:
@@ -388,4 +392,7 @@ static func outside(v: AshfordVillage) -> void:
 	v.env.ambient_light_color = s[3]
 	v.env.ambient_light_energy = s[4]
 	v.env.fog_density = s[5]
+	if s.size() > 7:
+		v.env.fog_enabled = s[6]
+		v.env.volumetric_fog_enabled = s[7]
 	v.remove_meta("outside_env")

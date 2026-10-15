@@ -379,8 +379,10 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 	var arena := "ashford" if DuelArt.arena("ashford") != null else "tidegrove"
 	return {
 		"decks": [PLAYER_DECK.duplicate(), CORIN_DECK.duplicate()],
-		"names": [Game.player_name, "Corin"],
-		"profiles": [Lore.new_profile(Game.player_name), Lore.new_profile("Corin")],
+		# the player has no name of their own until the Herald says it at dawn
+		# (only Bram calls them Sprout), so the nameplate just says You
+		"names": ["You" if Game.player_name == "Sprout" else Game.player_name, "Corin"],
+		"profiles": [Lore.new_profile("You" if Game.player_name == "Sprout" else Game.player_name), Lore.new_profile("Corin")],
 		"ai": [false, true],
 		"difficulty": float(spec.get("difficulty", 0.3)),
 		"arena": arena,
@@ -459,8 +461,14 @@ static func intro(w: World) -> void:
 	var v := village(w)
 	var p := w.player.global_position
 	var bram = w._npc_by_id("bram")
-	var fast := func(_pos: Vector2) -> void: Engine.time_scale = 4.0
-	w.hud.tapped.connect(fast)
+	# a tap, click or key speeds it up (the touch pad is hidden during it)
+	var watching := [true]
+	var watch := func() -> void:
+		while watching[0] and is_instance_valid(w) and w.is_inside_tree():
+			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_action_pressed("interact") or Input.is_action_pressed("ui_accept"):
+				Engine.time_scale = 4.0
+			await w.get_tree().process_frame
+	watch.call()
 	await w.cine_to(Vector3(-12.0, 8.5, 30.0), Vector3(0.0, 4.0, -2.0), 5.5)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
 	if bram != null:
@@ -471,8 +479,7 @@ static func intro(w: World) -> void:
 		bram.doll.look_toward(p, w.cam)
 		w.player_doll.look_toward(bram.body.global_position, w.cam)
 	await w.get_tree().create_timer(0.3).timeout
-	if w.hud.tapped.is_connected(fast):
-		w.hud.tapped.disconnect(fast)
+	watching[0] = false
 	Engine.time_scale = 1.0
 
 
@@ -919,9 +926,9 @@ const MID := {
 ## camera (on the near side, behind Bram, Corin and you) sees their faces.
 const CROWD := [["v1", "farmer", Vector3(-2.4, 0, -3.0)], ["v2", "merchant", Vector3(0.9, 0, -3.6)],
 	["v3", "refugee", Vector3(3.5, 0, -2.8)], ["v4", "trader", Vector3(-4.6, 0, -2.2)],
-	["v5", "child", Vector3(0.6, 0, -2.4)], ["v6", "elder", Vector3(5.8, 0, -2.6)],
+	["v5", "child_b", Vector3(0.6, 0, -2.4)], ["v6", "elder", Vector3(5.8, 0, -2.6)],
 	["v7", "farmer", Vector3(-6.6, 0, 0.2)], ["v8", "merchant", Vector3(2.2, 0, -5.0)],
-	["v9", "child", Vector3(2.4, 0, -2.0)], ["v10", "trader", Vector3(-1.0, 0, -5.2)]]
+	["v9", "child_c", Vector3(2.4, 0, -2.0)], ["v10", "trader", Vector3(-1.0, 0, -5.2)]]
 
 
 ## Everyone to their marks for a scene, at once (behind a fade).
@@ -1419,7 +1426,7 @@ static func _the_white_light(w: World) -> void:
 const DAWN := {
 	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(1.9, 0, 11.6), "corin": Vector3(-1.0, 0, 10.4),
 	"tilly": Vector3(-3.2, 0, 13.0), "nell": Vector3(-2.2, 0, 9.4), "tam": Vector3(3.2, 0, 9.6),
-	"hob": Vector3(4.6, 0, 12.4), "seamus": Vector3(-4.6, 0, 10.6),
+	"hob": Vector3(2.4, 0, 15.8), "seamus": Vector3(-4.6, 0, 10.6),
 }
 ## Where the Herald stops, and the road it comes down.
 const HERALD_AT := Vector3(9.0, 0, 13.4)
@@ -1451,7 +1458,7 @@ static func _dawn(w: World) -> void:
 	_clear_crowd(w)
 	_stage(w, DAWN, HERALD_ROAD[1])
 	Cine.place(w, "tilly", DAWN.tilly, Vector3(-4.6, 0, 13.6))
-	Cine.spawn(w, "kid", "child", Vector3(-5.4, 0, 12.6))
+	Cine.spawn(w, "kid", "child_b", Vector3(-5.4, 0, 12.6))
 	Cine.place(w, "kid", Vector3(-5.4, 0, 12.6), Vector3(-4.6, 0, 13.6))
 	Music.play(["dawn_after"], 2.0, true)
 	await Cine.caption(w, "Dawn")
@@ -1487,7 +1494,8 @@ static func _dawn(w: World) -> void:
 	fan.position = Vector3(0.0, 1.25, 0.35)
 	fan.scale = Vector3.ONE * 2.2
 	Cine.look(w, "hob", Cine.body(w, "bram").global_position)
-	Cine.two_shot(w, "hob", "bram", 3.6, 1.5, 1.0, 34.0)
+	var hp := hob.global_position
+	Cine.shot(w, hp + Vector3(0.7, 1.45, -2.9), hp + Vector3(0, 1.2, 0), 34.0)
 	await Cine.say(w, "hob", "Lost half the barley and the mill roof. Found nine cards in the cabbages. Can't tell if that's a good trade.")
 	fan.queue_free()
 	# the mist, coming down the road against the wind
@@ -1658,11 +1666,16 @@ static func _mist_bank(v: AshfordVillage, herald: Node3D) -> Node3D:
 		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		m.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
 		m.albedo_texture = gt
-		m.albedo_color = Color(0.92, 0.9, 0.9, randf_range(0.22, 0.38))
+		m.albedo_color = Color(0.92, 0.9, 0.9, randf_range(0.16, 0.3))
 		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		# thins out close to the camera, so a shot inside it isn't a white-out
+		m.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+		m.distance_fade_min_distance = 2.5
+		m.distance_fade_max_distance = 9.0
 		mi.material_override = m
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.position = Vector3(randf_range(-4.0, 4.0), s * 0.3, randf_range(-5.0, 9.0))
+		# round it and behind it (it faces along +Z), not between it and the village
+		mi.position = Vector3(randf_range(-5.0, 5.0), s * 0.3, randf_range(-9.0, 1.5))
 		root.add_child(mi)
 	return root
 
@@ -1864,15 +1877,14 @@ static func _burning(w: World) -> void:
 	Cine.shot(w, KRELL_AT + Vector3(-4.2, 1.5, 2.2), KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
 	await Cine.say(w, "krell", "Evening, Ashford. Nice lanterns.")
 	await Cine.say(w, "krell", "Ironvault holds the note on every roof in this village. Mill, inn, barns, the lot. One card settles it. Every debt, gone.")
-	Cine.shot(w, KRELL_AT + Vector3(-2.2, 1.6, 1.2), Cine.head(w, "krell"), 26.0)
+	Cine.shot(w, KRELL_AT + Vector3(-4.2, 1.7, 2.0), KRELL_AT + Vector3(0, 1.4, 0), 30.0)
 	await Cine.say(w, "krell", "Where is the Unsworn?")
 	# silence; nobody points
 	Music.stop(1.0)
-	Cine.shot(w, Cine.body(w, "nell").global_position + Vector3(1.2, 1.3, -1.5), Cine.head(w, "nell") + Vector3(0, -0.2, 0), 28.0)
-	Cine.look(w, "nell", Cine.body(w, "nell").global_position + Vector3(0.4, 0, 2.0))
+	# the village, from where the riders stand: nobody moves
+	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
 	await Cine.wait(w, 1.8)
-	Cine.look(w, "hob", Cine.body(w, "nell").global_position)
-	Cine.shot(w, Cine.body(w, "hob").global_position + Vector3(1.4, 1.3, -1.6), Cine.head(w, "hob") + Vector3(0, -0.2, 0), 30.0)
+	Cine.shot(w, KRELL_AT + Vector3(-2.6, 1.6, -0.4), Cine.body(w, "nell").global_position + Vector3(0, 1.2, 0), 32.0)
 	await Cine.wait(w, 1.6)
 	Cine.shot(w, Vector3(-9.0, 1.6, 9.6), Vector3(4.0, 1.4, 5.6), 34.0)
 	await Cine.wait(w, 1.4)
@@ -1895,8 +1907,13 @@ static func _burning(w: World) -> void:
 	fork.rotation = Vector3(0, 0.6, PI * 0.5)
 	if gore:
 		_blood(v, KRELL_AT + Vector3(-2.3, 0.04, -0.5))
-	Cine.shot(w, Cine.body(w, "nell").global_position + Vector3(0.9, 1.35, -1.3), Cine.head(w, "nell") + Vector3(0, -0.15, 0), 26.0)
-	Cine.look(w, "nell", KRELL_AT)
+	# from behind Nell, to where he fell
+	var np := Cine.body(w, "nell").global_position
+	var to_k := KRELL_AT - np
+	to_k.y = 0.0
+	to_k = to_k.normalized()
+	Cine.shot(w, np - to_k * 3.6 + to_k.cross(Vector3.UP) * 1.2 + Vector3(0, 1.6, 0), KRELL_AT + Vector3(-2.3, 0.5, -0.5), 34.0)
+	Cine.place(w, "nell", np, KRELL_AT)
 	await Cine.wait(w, 1.6)
 	await Cine.say(w, "nell", "Tam.", 3.0)
 	await Cine.wait(w, 0.8)
@@ -1965,6 +1982,22 @@ static func _gardens(w: World, hunters: Array) -> void:
 		Cine.body(w, hid).add_child(sl)
 		sl.position = Vector3(0.3, 1.5, 0.2)
 		beams.append(sl)
+	# hedges to hide behind, between each hiding place and the hunters
+	var cover: Array = []
+	var hunt := Vector3(-16.0, 0, 20.0)
+	for g in GARDENS:
+		var to_h: Vector3 = hunt - (g as Vector3)
+		to_h.y = 0.0
+		to_h = to_h.normalized()
+		cover.append(v.hedge((g as Vector3) + to_h * 1.1, atan2(to_h.x, to_h.z), 4.2, 1.55))
+	# the houses burning down the lane throw their light this far (a low
+	# directional light: the phone and web renderers cap lamps per mesh)
+	var glow := DirectionalLight3D.new()
+	glow.light_color = Color(1.0, 0.52, 0.24)
+	glow.light_energy = 0.55
+	glow.shadow_enabled = false
+	v.add_child(glow)
+	glow.look_at_from_position(Vector3(-10.0, 9.0, 8.0), Vector3(-28.0, 0.0, 15.0), Vector3.UP)
 	var t0 := Time.get_ticks_msec()
 	var sweeping := [true]
 	var sweep := func() -> void:
@@ -1996,6 +2029,7 @@ static func _gardens(w: World, hunters: Array) -> void:
 	for sl in beams:
 		if is_instance_valid(sl):
 			(sl as Node).queue_free()
+	glow.queue_free()
 
 
 ## A torch in a hunter's hand: a flame and its light.
@@ -2160,3 +2194,7 @@ static func _cellar(w: World) -> void:
 ## Moth stay in the collection (Game.new_game keeps the collection).
 static func _keep_spark_cards_through(deck: String) -> void:
 	Game.new_game(Game.player_name, deck, true)
+	# still in the cellar: a save now must bring the player back here, not
+	# on to Solhaven (new_game points the save there)
+	Game.area = "ashford"
+	Game.spawn = "green"
