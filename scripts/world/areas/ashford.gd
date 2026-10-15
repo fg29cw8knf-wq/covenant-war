@@ -1256,7 +1256,7 @@ static func _the_cart(w: World) -> void:
 	to_c.y = 0.0
 	to_c = to_c.normalized() if to_c.length() > 0.1 else -fd
 	var aside := to_c.cross(Vector3.UP)
-	Cine.shot(w, tb.global_position - to_c * 2.6 + aside * 1.3 + Vector3(0, 1.6, 0), corin.global_position + Vector3(0, 0.45, 0), 40.0)
+	Cine.shot(w, tb.global_position - to_c * 4.0 + aside * 1.6 + Vector3(0, 2.1, 0), corin.global_position + Vector3(0, 0.45, 0), 40.0)
 	Cine.place(w, "tilly", tb.global_position, corin.global_position)
 	await Cine.say(w, "tilly", "Corin! CORIN!", 1.6)
 	# the player, getting up in the west, turns, and runs back
@@ -1275,7 +1275,9 @@ static func _the_cart(w: World) -> void:
 	await Cine.path(w, "player", [Vector3(-1.0, 0, 6.0), cc + fd * 6.5 + al * 2.0, lift_p], 5.4, "run")
 	Cine.place(w, "player", lift_p, cc)
 	await Cine.wait(w, 0.3)
-	# under the cart: from the side, the cart, Corin and the two of them
+	# Tilly steps back out of their way
+	Cine.place(w, "tilly", cc + fd * 3.0 + al * 3.1, corin.global_position)
+	# under the cart: from the open side, the cart, Corin and the two of them
 	Cine.shot(w, cc + fd * 7.6 + al * 0.6 + Vector3(0, 1.6, 0), cc + fd * 3.3 + Vector3(0, 0.8, 0), 40.0)
 	await Cine.say(w, "corin", "Help! My leg's stuck. I can't...")
 	Cine.place(w, "bram", lift_b, cc)
@@ -1303,7 +1305,7 @@ static func _the_cart(w: World) -> void:
 	if cf is Figure3D:
 		await (cf as Figure3D).get_up(0.9)
 	Cine.look(w, "corin", w.player.global_position)
-	Cine.path(w, "tilly", [corin.global_position - al * 0.9 - fd * 0.2], 3.0, "run")
+	Cine.place(w, "tilly", corin.global_position - al * 1.1 - fd * 0.45, corin.global_position)
 	# the two of them, the cart behind
 	var mid := (corin.global_position + w.player.global_position) * 0.5
 	Cine.shot(w, mid + fd * 3.4 + al * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
@@ -2010,7 +2012,7 @@ static func _gardens(w: World, hunters: Array) -> void:
 					sl.look_at(aim, Vector3.UP)
 			await w.get_tree().process_frame
 	sweep.call()
-	Cine.shot(w, Vector3(-19.0, 3.0, 22.0), Vector3(-27.0, 0.8, 14.0), 44.0)
+	Cine.shot(w, Vector3(-17.5, 4.5, 24.0), Vector3(-27.0, 0.8, 14.5), 46.0)
 	Cine.path(w, "bram", [GARDENS[0]], 2.6, "run")
 	await Cine.path(w, "player", [GARDENS[0] + Vector3(0.9, 0, 0.6)], 2.6, "run")
 	await Cine.say(w, "h3", "Check the barns!", 1.6)
@@ -2018,8 +2020,15 @@ static func _gardens(w: World, hunters: Array) -> void:
 	await Cine.path(w, "player", [GARDENS[1] + Vector3(0.8, 0, 0.6)], 2.6, "run")
 	# a hound comes along the lane; they freeze
 	Cine.beast(w, "hound3", "shieldhound", Vector3(-22.0, 0, 26.0), Color(1.0, 0.8, 0.35, 1.0))
-	Cine.shot(w, GARDENS[1] + Vector3(2.6, 0.9, -2.6), GARDENS[1] + Vector3(-1.0, 1.0, 4.0), 40.0)
+	# behind the two of them, crouched at the hedge, as the hound goes by
+	var g1: Vector3 = GARDENS[1]
+	var to_h1 := hunt - g1
+	to_h1.y = 0.0
+	to_h1 = to_h1.normalized()
+	Cine.shot(w, g1 - to_h1 * 1.7 + to_h1.cross(Vector3.UP) * 0.7 + Vector3(0, 1.35, 0), Vector3(-27.0, 0.6, 21.5), 44.0)
 	await Cine.path(w, "hound3", [Vector3(-27.0, 0, 21.5), Vector3(-34.0, 0, 20.0)], 2.2)
+	# and from the hunters' side: two heads just over the hedge, the beams going over
+	Cine.shot(w, g1 + to_h1 * 4.2 + Vector3(0, 1.3, 0), g1 + Vector3(0, 1.0, 0), 38.0)
 	await Cine.say(w, "h4", "Nothing here.", 1.4)
 	await Cine.say(w, "h3", "Huntmaster wants the innkeeper alive.", 2.2)
 	Cine.despawn(w, "hound3")

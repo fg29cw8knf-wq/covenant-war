@@ -406,6 +406,7 @@ func build_solhaven() -> void:
 	var root := Node3D.new()
 	root.name = "SolhavenFar"
 	root.position = c
+	root.scale = Vector3.ONE * 0.4   # small and hazy on the horizon: a day's walk off
 	add_child(root)
 	var white := StandardMaterial3D.new()
 	white.albedo_color = Color(0.92, 0.9, 0.85)

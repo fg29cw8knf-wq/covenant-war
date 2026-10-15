@@ -32,6 +32,7 @@ var _catch: Control
 var _hint: Label
 var _waiting := false
 var _shown_at := 0
+var _line_no := 0
 var _bars_on := false
 ## false: every line waits for a tap (for tests, or a player who reads slowly)
 var auto := true
@@ -229,10 +230,14 @@ func say(who: String, text: String, hold := -1.0) -> void:
 	var speed := maxf(0.4, float(Game.settings.get("text_speed", 1.0)))
 	var secs := hold if hold > 0.0 else (READ_BASE + text.length() * READ_PER_CHAR) / speed
 	var timer: SceneTreeTimer = null
+	_line_no += 1
+	var this_line := _line_no
 	if auto:
 		timer = get_tree().create_timer(secs)
+		# only this line's own timer may move it on (an earlier line tapped
+		# through early still has its timer running)
 		timer.timeout.connect(func() -> void:
-			if _waiting:
+			if _waiting and _line_no == this_line:
 				_next.emit())
 	_hint.modulate.a = 0.0
 	var ht := create_tween()
