@@ -53,7 +53,7 @@ func _ready() -> void:
 		Game.set_flag("thorn_part", _part)
 	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
 	world.story_next.connect(func(what: String) -> void:
-		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"))
+		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())
 		await _shot("end")
 		print("FILM: done")
 		get_tree().quit())
@@ -103,6 +103,9 @@ func _process(_d: float) -> void:
 				break
 		if ov._chart != null:
 			ov._chart.call("tap")
+	# Bram's tour of the pack: tap on, or do what he asks
+	for t in get_tree().root.find_children("*", "PackTour", true, false):
+		_drive_tour(t as PackTour)
 	for r in get_tree().root.find_children("*", "DeckReveal", true, false):
 		if (r as DeckReveal)._ready_to_close:
 			(r as DeckReveal)._close()
@@ -142,3 +145,35 @@ func _shot(label: String) -> void:
 func _frames(n: int) -> void:
 	for i in n:
 		await get_tree().process_frame
+
+
+var _tour_frames := 0
+
+
+func _drive_tour(t: PackTour) -> void:
+	if not t.running:
+		return
+	_tour_frames += 1
+	if _tour_frames < 8:
+		return
+	_tour_frames = 0
+	var menu := t.menu
+	if t.blocking:
+		t._tapped.emit()
+		return
+	var d := t.waiting_for()
+	match d:
+		"menu":
+			world.hud.open_menu()
+		"resume":
+			menu.request_close()
+		"close":
+			menu.close_card()
+		"card":
+			menu._open_card(String(Game.v2.deck[0]))
+		_:
+			if d.begins_with("tab:"):
+				menu.show_tab(d.substr(4))
+			elif d.begins_with("card:"):
+				menu._open_card(d.substr(5))
+

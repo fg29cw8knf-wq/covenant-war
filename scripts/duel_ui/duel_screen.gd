@@ -1401,6 +1401,10 @@ func lessons_at_main() -> void:
 		return
 	for c in game.players[me].hand:
 		var card: DuelCard = c
+		if card.is_summon():
+			await tutor.lesson("summon", "That %s is a Summon. Not a Totem: a piece of something far bigger. It costs %d Essence, does one great thing, and goes back where it came from. Save it for when it counts." % [
+				card.card_name(), game.summon_cost(me, card)], "Summons", "card:" + card.id)
+			return
 		if card.kind() == "totem" and not card.is_basic_totem() and game.ascend_problem(me, card) == "":
 			var from_name: String = DuelCards.CARDS[card.def.ascends_from].name
 			await tutor.lesson("ascend", "That %s is an Ascension: %s, grown up. Tap it, then tap your %s, and it steps into the same slot, bigger and nastier, with everything it had. Costs Essence, mind, so think about when." % [
@@ -1560,7 +1564,8 @@ func fx_ward_set(pi: int, _card: DuelCard) -> void:
 	await pause(0.15)
 	if tutor != null:
 		if pi == rival:
-			await tutor.lesson("ward_set", "A Ward. He's set it face down, so you can't read it. It waits, and springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you do next.", "Wards", "ward:rival")
+			var ws := "That's my Ward, face down. You can't read it, so you can't plan round it. It waits, and springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you do next." if _bram_rival() else "A Ward. He's set it face down, so you can't read it. It waits, and springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you do next."
+			await tutor.lesson("ward_set", ws, "Wards", "ward:rival")
 		else:
 			await tutor.lesson("ward_mine", "Your Ward's down. It springs on its own when its moment comes; you don't have to do a thing.", "Wards", "ward:mine")
 
@@ -1573,7 +1578,7 @@ func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 	DuelFX.shockwave(fx_layer, c, Color("d9a6f0"), 380.0, 0.6 / speed, 1.0, 10.0)
 	shake(6.0)
 	if tutor != null and pi == rival:
-		await tutor.lesson("ward_spring", "There it goes. A Ward takes the hit meant for him, or turns it back on you. It's spent now. Break them first, then hit him.", "Wards")
+		await tutor.lesson("ward_spring", "There it goes. A Ward takes the hit meant for %s, or turns it back on you. It's spent now. Next time, think what it's waiting for, and don't give it that." % ("me" if _bram_rival() else "him"), "Wards")
 
 
 func fx_shift(_pi: int) -> void:
@@ -1975,7 +1980,7 @@ func fx_status(t: DuelTotem, status: String) -> void:
 
 ## Bram's one line on a condition: what it does, and how long it lasts.
 func _status_lesson(t: DuelTotem, status: String) -> String:
-	var who := "Your %s" % t.card_name() if t.owner == me else "His %s" % t.card_name()
+	var who := "Your %s" % t.card_name() if t.owner == me else ("My %s" if _bram_rival() else "His %s") % t.card_name()
 	var nm := DuelConditions.display_name(status)
 	var what := DuelConditions.describe(status)
 	var turns := DuelConditions.turns(status)
@@ -2075,6 +2080,15 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		hint.visible = hint_was
 	else:
 		landing.call()
+	if tutor != null and pi == rival:
+		await tutor.lesson("summon", ("That was my Summon. Not a Totem: a piece of something far bigger. One great blow, then it's gone, and it costs a fortune in Essence, so you won't see it often." if _bram_rival() else "That was a Summon. Not a Totem: a piece of something far bigger. One great blow, then it's gone, and it costs him a fortune in Essence, so he can't do it often."), "Summons")
+
+
+## Is Bram the one across the Circle (the practice round at the campfire)?
+## Then his one-off lines are about his own cards.
+func _bram_rival() -> bool:
+	var names: Array = spec.get("names", [])
+	return names.size() > rival and String(names[rival]) == "Bram"
 
 
 func fx_gift(pi: int, g: String) -> void:
