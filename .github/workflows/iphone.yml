@@ -7,7 +7,7 @@ name: iPhone app
 
 on:
   push:
-    branches: [main]
+    branches: [main, claude/exciting-rubin-1j2g18]   # TEMPORARY: first build before merge
   workflow_dispatch:
 
 permissions:
