@@ -138,6 +138,8 @@ func _ready() -> void:
 	Game.standing_changed.connect(func(who: String, by: int, _why: String) -> void:
 		if by != 0:
 			toast("%s will remember that." % Standing.display_name(who)))
+	# "New in your pack: Deck and Codex"
+	Game.feature_unlocked.connect(_on_feature_unlocked)
 
 	_fade = ColorRect.new()
 	_fade.color = Color.BLACK
@@ -244,6 +246,56 @@ func open_menu(at_tab: String = "") -> void:
 
 func menu_open() -> bool:
 	return _menu.visible
+
+
+# ------------------------------------------------------------ the pack ---
+
+var _unlocked_now: Array = []
+
+
+## Parts of the pack opened in the same moment share one toast.
+func _on_feature_unlocked(feature: String) -> void:
+	if _unlocked_now.is_empty():
+		_toast_unlocks.call_deferred()
+	_unlocked_now.append(feature)
+
+
+func _toast_unlocks() -> void:
+	var names: Array = _unlocked_now.map(func(f): return String(Game.FEATURES.get(f, String(f).capitalize())))
+	_unlocked_now = []
+	if names.is_empty():
+		return
+	var said: String = names[-1] if names.size() == 1 else ", ".join(names.slice(0, -1)) + " and " + String(names[-1])
+	toast("New in your pack: %s" % said)
+
+
+## Bram's gated tour of the pack (PackTour), right after he hands over the
+## first deck: each line waits for the player, and nothing else works until
+## it's done (no walking, talking or other taps). Steps default to
+## PackTour.FIRST_DECK. A tab the tour needs is unlocked if it isn't yet.
+func pack_tour(steps: Array = []) -> void:
+	var w := get_parent() as World
+	var was_busy := w.busy if w != null else false
+	if w != null:
+		w.busy = true
+	var keep := {"menu": _menu_btn.visible, "talk": _talk.visible, "talk_name": _talk_name.visible}
+	dialogue.close()
+	pad.reset()
+	_talk.visible = false
+	_talk_name.visible = false
+	_menu_btn.visible = true   # the pack has to be there to be tapped
+	var tour := PackTour.new()
+	_root.add_child(tour)
+	var toast_at := _toast.get_index()
+	_root.move_child(_toast, _root.get_child_count() - 1)   # "New in your pack" shows over the tour
+	await tour.run(self, steps if not steps.is_empty() else PackTour.FIRST_DECK)
+	_root.move_child(_toast, toast_at)
+	tour.queue_free()
+	_menu_btn.visible = keep.menu
+	_talk.visible = keep.talk
+	_talk_name.visible = keep.talk_name
+	if w != null and is_instance_valid(w):
+		w.busy = was_busy
 
 
 # ---------------------------------------------------------------- build ---

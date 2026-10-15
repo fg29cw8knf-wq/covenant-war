@@ -1,9 +1,14 @@
 extends Node
 ## Screenshots of the pause menu (every tab), a card's detail, a deck edit,
-## the opening notice and an advert placeholder. Run with a real renderer:
+## the opening notice and an advert placeholder; first, a new game in Ashford
+## (no Deck or Codex yet), Bram's Spark deck and a Codex of just the cards
+## found. Run with a real renderer:
 ##   xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 \
 ##       res://tests/menu_test.tscn -- <out_dir> [WxH]
 ## Ends with "MENU TEST: ok" when every step worked.
+
+const SPARK := ["brookfin", "bulwark", "essence_flask", "healing_draught", "essence_flask", "healing_draught",
+	"bulwark", "essence_flask", "healing_draught", "essence_flask", "bulwark", "travellers_pack"]
 
 var out_dir := "user://"
 var size := Vector2i(1600, 900)
@@ -18,6 +23,14 @@ func _ready() -> void:
 		var p: PackedStringArray = args[1].split("x")
 		size = Vector2i(int(p[0]), int(p[1]))
 	get_window().size = size
+	get_viewport().scaling_3d_scale = 0.5   # the world behind the menu at half resolution (software GL is slow)
+	Game.new_game("Ash", "")
+	Game.flags["arrived_solhaven"] = true   # no arrival scene behind the menu
+	var world := World.new().setup("solhaven", "gate")
+	add_child(world)
+	await _frames(40)
+	var menu: PauseMenu = world.hud._menu
+	await _new_player(world, menu)
 	# a player just past the Prologue: Bram's deck, Dask's cards, a few choices made
 	Game.new_game("Ash", "emberstorm")
 	for f in ["ash_marked", "ash_tam", "ash_tilly", "ash_nell", "ash_won_lantern", "bram_deck", "beat_hunter",
@@ -27,6 +40,7 @@ func _ready() -> void:
 	for id in DuelCards.card_list("dask_hounds"):
 		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
 		Game.v2.codex[id] = "seen"
+	Game.v2.codex["brookfin"] = "seen"   # seen in the Lantern Duel, not owned
 	Game.v2.rank = 3
 	Game.v2.points = 2
 	Game.v2.xp = 25
@@ -44,11 +58,10 @@ func _ready() -> void:
 	Game.meet_condition("burn")
 	Game.meet_condition("poison")
 	Game.meet_condition("shielded")
-	var world := World.new().setup("solhaven", "gate")
-	add_child(world)
-	await _frames(40)
-	var menu: PauseMenu = world.hud._menu
 	world.hud.open_menu("hero")
+	for k in PauseMenu.LOCKED_TABS:
+		if not menu._tab_btns[k].visible:
+			problems.append("%s tab hidden with Bram's deck" % k)
 	for t in PauseMenu.TABS:
 		menu.show_tab(t[0])
 		await _frames(12)
@@ -106,12 +119,89 @@ func _ready() -> void:
 	add_child(notice)
 	await _frames(90)
 	await _shot("notice")
-	notice.queue_free()
+	if is_instance_valid(notice):   # it may have closed itself already on a slow machine
+		notice.queue_free()
 	Ads._show("interstitial")
 	await get_tree().create_timer(1.0).timeout
 	await _shot("advert")
 	print("MENU TEST: %s" % ("ok" if problems.is_empty() else "PROBLEMS " + str(problems)))
 	get_tree().quit()
+
+
+## A new game in Ashford: no Deck or Codex; then Bram's Spark deck (shown,
+## not editable) and a Codex of only the cards found.
+func _new_player(world: World, menu: PauseMenu) -> void:
+	Game.area = "ashford"
+	if not Game.v2.deck.is_empty() or not Game.v2.collection.is_empty() or not Game.v2.codex.is_empty():
+		problems.append("a new game has cards")
+	world.hud.open_menu("hero")
+	await _frames(12)
+	await _shot("locked_hero")
+	for k in PauseMenu.LOCKED_TABS:
+		if menu._tab_btns[k].visible:
+			problems.append("%s tab shows before it's unlocked" % k)
+	menu.show_tab("codex")
+	if menu.tab != "hero":
+		problems.append("a locked tab opened")
+	menu.show_tab("howto")
+	await _frames(8)
+	await _shot("locked_howto")
+	menu.request_close()
+	# Bram hands over the Spark deck
+	Game.give_first_deck(SPARK)
+	Game.unlock("deck")
+	Game.unlock("codex")
+	await get_tree().create_timer(0.8).timeout
+	await _shot("unlock_toast")
+	world.hud.open_menu("deck")
+	await _frames(12)
+	await _shot("spark_deck")
+	var words := _texts(menu._content)
+	if menu.tab != "deck" or not words.contains("12 CARDS"):
+		problems.append("no Spark deck page (%s)" % words.left(80))
+	if words.contains("Not ready"):
+		problems.append("the Spark deck says it isn't ready")
+	menu._open_card("brookfin")
+	await _frames(10)
+	await _shot("spark_detail")
+	if _texts(menu._overlay).contains("Add to deck"):
+		problems.append("the Spark deck can be edited")
+	menu.close_card()
+	await _frames(4)
+	menu.show_tab("codex")
+	await _frames(12)
+	await _shot("spark_codex")
+	var grid: Codex.Grid = menu._page_grid()
+	if grid._grid.get_child_count() != 5 or not _texts(grid).contains("Cards found: 5"):
+		problems.append("the Codex shows %d cards, not the 5 found" % grid._grid.get_child_count())
+	for f in ["ward", "summon", "conditions"]:
+		if grid._filter_btns[f].visible:
+			problems.append("the empty %s filter shows" % f)
+	# after the Lantern Duel: Corin's cards seen, not owned
+	Game.v2.codex["cinderpup"] = "seen"
+	Game.v2.codex["firebrand"] = "seen"
+	menu.show_tab("codex")
+	await _frames(12)
+	await _shot("found_codex")
+	grid = menu._page_grid()
+	if grid._grid.get_child_count() != 7 or not _texts(grid).contains("Cards found: 7 (5 yours)"):
+		problems.append("the Codex should show 7 found, 5 yours: %s" % _texts(grid).left(120))
+	menu.request_close()
+	await _frames(4)
+	Game.area = "solhaven"
+
+
+## Every bit of text under a node, for checking what a page says.
+func _texts(n: Node) -> String:
+	var out := ""
+	if n is Label or n is Button:
+		out += n.text + "\n"
+	elif n is RichTextLabel:
+		out += n.get_parsed_text() + "\n"
+	for c in n.get_children():
+		if not c.is_queued_for_deletion():
+			out += _texts(c)
+	return out
 
 
 func _frames(n: int) -> void:

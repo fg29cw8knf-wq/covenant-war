@@ -91,8 +91,59 @@ func _initialize() -> void:
 					rank += 1
 		seals += int(ch[2])
 		print("  after %-22s Rank %2d  (cap %2d)" % [ch[0], rank, DuelRewards.rank_cap(seals)])
+	await _new_game_checks()
 	print("REWARDS TEST: %s" % ("PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(1 if fails > 0 else 0)
+
+
+## New Game has no cards; Bram's Spark deck, the Deck and Codex unlocks, a
+## win with almost nothing, the save round trip and an old save in Ashford.
+func _new_game_checks() -> void:
+	const SPARK := ["brookfin", "bulwark", "essence_flask", "healing_draught", "essence_flask", "healing_draught",
+		"bulwark", "essence_flask", "healing_draught", "essence_flask", "bulwark", "travellers_pack"]
+	var gs = load("res://scripts/game/game_state.gd").new()
+	gs.new_game("Sprout", "")
+	gs.area = "ashford"
+	_check(gs.v2.deck.is_empty() and gs.v2.collection.is_empty() and gs.v2.codex.is_empty(), "New Game starts with no cards")
+	_check(not gs.unlocked("deck") and not gs.unlocked("codex"), "Deck and Codex start locked in Ashford")
+	_check(not gs.deck.is_empty(), "the old-rules deck is still there for Solhaven's prototype duels")
+	var heard := []
+	gs.feature_unlocked.connect(func(f: String) -> void: heard.append(f))
+	gs.give_first_deck(SPARK)
+	_check(gs.v2.deck.size() == 12 and int(gs.v2.collection.get("essence_flask", 0)) == 4, "the Spark deck is the deck and in the collection")
+	_check(gs.v2.codex.size() == 5 and gs.v2.bonded.has("brookfin") and gs.flag("first_deck"), "...Bonded, in the Codex, flag first_deck")
+	_check(not gs.has_deck(), "...but it isn't a full deck to edit")
+	_check(gs.unlock("deck") and gs.unlock("codex") and not gs.unlock("deck"), "unlock() is new once")
+	_check(heard == ["deck", "codex"] and gs.unlocked("codex"), "unlocking tells the world (got %s)" % [heard])
+	# a win with a nearly empty collection: the Codex fills and Resonance has a target
+	var game := DuelGame.new()
+	game.setup(["emberstorm", "veilwild"], ["You", "Rival"], [DuelAI.new(1.0, 7), DuelAI.new(0.2, 8)],
+		[Lore.new_profile("You", "", 5), Lore.new_profile("Rival", "", 2)], 77)
+	await game.run()
+	var out: Dictionary = gs.record_win(game, 0, "village")
+	_check(gs.v2.codex.size() > 5 and String(out.target) != "", "a win adds the cards seen and picks a Resonance target")
+	# save and load (as JSON, without touching the save file)
+	var data = JSON.parse_string(JSON.stringify(gs.save_data()))
+	var gs2 = load("res://scripts/game/game_state.gd").new()
+	gs2.load_data(data)
+	_check(gs2.unlocked("deck") and gs2.flag("first_deck") and gs2.v2.deck.size() == 12, "features and the Spark deck survive a save")
+	# the Prologue's deck choice keeps the Spark cards, the lessons and the unlocks
+	gs.learn("Your pack:1", "Your pack", "Bram", "A line.")
+	gs.new_game("Ash", "tidegrove", true)
+	gs.set_flag("bram_deck")
+	_check(gs.v2.deck.size() == 30 and gs.has_deck() and gs.learned("Your pack:1"), "Bram's deck replaces the Spark deck, lessons kept")
+	_check(int(gs.v2.collection.get("travellers_pack", 0)) >= 1 and gs.unlocked("codex"), "the Spark cards stay in the collection")
+	# an old save in Ashford from before this change: no cards, Deck and Codex locked
+	var old: Dictionary = data.duplicate(true)
+	old.version = 1
+	old.v2.deck = DuelCards.card_list("emberstorm")
+	old.flags = {"arrived_ashford": true}
+	old.features = {}
+	var gs3 = load("res://scripts/game/game_state.gd").new()
+	gs3.load_data(old)
+	_check(gs3.v2.deck.is_empty() and gs3.v2.collection.is_empty() and not gs3.unlocked("deck"), "an old Ashford save starts with no cards")
+	for g in [gs, gs2, gs3]:
+		g.free()
 
 
 func _check(ok: bool, what: String) -> void:

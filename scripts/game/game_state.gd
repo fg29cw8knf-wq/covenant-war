@@ -5,10 +5,15 @@ extends Node
 signal changed
 ## A god's or a person's opinion of the player moved (see Standing).
 signal standing_changed(who: String, by: int, why: String)
+## A part of the pack (pause menu) opened up for the first time (see unlock()).
+signal feature_unlocked(feature: String)
 
 const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
-const SAVE_VERSION := 1
+## 2: New Game starts with no cards; Bram hands over the first deck in Ashford.
+const SAVE_VERSION := 2
+## Parts of the pack that open up as the story goes (unlock()), and their names.
+const FEATURES := {"deck": "Deck", "codex": "Codex"}
 
 var player_name := "Ash"
 var profile: Dictionary = {}
@@ -30,6 +35,8 @@ var standing_log: Array = []
 ## Things carried (item id -> count) and the equipment worn (slot -> item id).
 var items := {}
 var equipped := {}
+## Parts of the pack the story has opened up (feature id -> true; see FEATURES).
+var features := {}
 
 
 func _ready() -> void:
@@ -43,9 +50,11 @@ func _process(delta: float) -> void:
 
 # ------------------------------------------------------------ new game ---
 
-## keep_progress: keep the v2 Rank, Codex and Resonance already earned (the
-## Prologue calls this again once the player picks Bram's deck).
-func new_game(p_name: String, starter_deck: String, keep_progress := false) -> void:
+## starter_deck "" starts with no cards at all: New Game does that, and Bram
+## hands over the first deck in Ashford (give_first_deck()).
+## keep_progress: keep the v2 Rank, Codex, Resonance, cards and lessons
+## already earned (the Prologue calls this again once the player picks Bram's deck).
+func new_game(p_name: String, starter_deck: String = "", keep_progress := false) -> void:
 	var kept := v2.duplicate(true) if keep_progress else {}
 	player_name = p_name.strip_edges() if p_name.strip_edges() != "" else "Ash"
 	starter = starter_deck
@@ -66,6 +75,7 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 		standing_log = []
 		items = {}
 		equipped = {}
+		features = {}
 	area = "solhaven"
 	spawn = "gate"
 	play_seconds = 0.0
@@ -77,12 +87,11 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 		for id in kept.get("codex", {}):
 			if not v2.codex.has(id) or String(kept.codex[id]) == "champion":
 				v2.codex[id] = kept.codex[id]
-		# the cards already found (Bram's Sparks, Tilly's moth) stay in the
-		# collection alongside the new deck
+		# cards already given (Bram's Spark deck) stay in the collection
 		for id in kept.get("collection", {}):
-			v2.collection[id] = maxi(int(v2.collection.get(id, 0)), 0) + int(kept.collection[id])
+			v2.collection[id] = int(v2.collection.get(id, 0)) + int(kept.collection[id])
 		for id in kept.get("bonded", {}):
-			v2.bonded[id] = kept.bonded[id]
+			v2.bonded[id] = true
 	refresh_profile()
 	changed.emit()
 
@@ -90,7 +99,7 @@ func new_game(p_name: String, starter_deck: String, keep_progress := false) -> v
 # ------------------------------------------------------------- v2 progress ---
 
 ## Fresh v2 progress: Bram's starter deck, Bonded (so every card answers at
-## any Rank), Rank 1.
+## any Rank), Rank 1. With no deck ("") there are no cards at all.
 static func new_v2(starter_deck: String) -> Dictionary:
 	var v := {"rank": 1, "xp": 0, "points": 0, "seals": [], "convocation": false,
 		"collection": {}, "bonded": {}, "codex": {}, "target": "", "target_chosen": false, "banked": {},
@@ -278,9 +287,49 @@ func refresh_profile() -> void:
 		attrs[a] = mini(Items.ATTRIBUTE_CAP, int(attrs.get(a, 0)) + int(bonus[a]))
 
 
-## True once Bram has handed over a deck (the Prologue's deck choice).
+## True once the player has a full deck of their own to edit: Bram's 30-card
+## deck from the cellar (the Prologue's deck choice). The Spark deck he hands
+## over before the Lantern Duel doesn't count: it can't be changed.
 func has_deck() -> bool:
 	return bool(flag("bram_deck")) or bool(flag("beat_hunter")) or area != "ashford"
+
+
+## Bram's first deck (the Spark deck, before the Lantern Duel): the cards join
+## the collection and become the player's deck, Bonded and in the Codex.
+## Sets the flag "first_deck". The Deck and Codex tabs open with unlock().
+func give_first_deck(cards: Array) -> void:
+	var v := _v2()
+	v.deck = []
+	for id in cards:
+		if not DuelCards.CARDS.has(id):
+			push_warning("give_first_deck: no card '%s'" % id)
+			continue
+		v.deck.append(id)
+		v.collection[id] = int(v.collection.get(id, 0)) + 1
+		v.bonded[id] = true
+		if not v.codex.has(id):
+			v.codex[id] = "seen"
+	set_flag("first_deck")
+
+
+# ------------------------------------------------------------- features ---
+
+## Opens a part of the pack for good ("deck" or "codex", see FEATURES). The
+## world shows "New in your pack: ..." the first time. Returns true if it was new.
+func unlock(feature: String) -> bool:
+	var was := unlocked(feature)
+	features[feature] = true
+	if was:
+		return false
+	feature_unlocked.emit(feature)
+	changed.emit()
+	return true
+
+
+## Has the story opened this part of the pack yet? Anyone who has Bram's
+## 30-card deck, or is past Ashford (old saves too), has them all.
+func unlocked(feature: String) -> bool:
+	return bool(features.get(feature, false)) or bool(flag("bram_deck")) or bool(flag("beat_hunter")) or area != "ashford"
 
 
 # ------------------------------------------------------------- standing ---
@@ -405,7 +454,18 @@ func has_save() -> bool:
 
 
 func save_game() -> bool:
-	var data := {
+	var data := save_data()
+	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
+	if f == null:
+		push_warning("Couldn't write the save file: %s" % error_string(FileAccess.get_open_error()))
+		return false
+	f.store_string(JSON.stringify(data, "\t"))
+	return true
+
+
+## Everything a save holds, as plain data.
+func save_data() -> Dictionary:
+	return {
 		"version": SAVE_VERSION,
 		"player_name": player_name,
 		"profile": profile,
@@ -422,18 +482,17 @@ func save_game() -> bool:
 		"standing_log": standing_log,
 		"items": items,
 		"equipped": equipped,
+		"features": features,
 		"saved_at": Time.get_datetime_string_from_system(),
 	}
-	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if f == null:
-		push_warning("Couldn't write the save file: %s" % error_string(FileAccess.get_open_error()))
-		return false
-	f.store_string(JSON.stringify(data, "\t"))
-	return true
 
 
 func load_game() -> bool:
-	var data := _read_save()
+	return load_data(_read_save())
+
+
+## Restores a save made by save_data() (read back from JSON).
+func load_data(data: Dictionary) -> bool:
 	if data.is_empty():
 		return false
 	player_name = data.get("player_name", "Ash")
@@ -459,6 +518,16 @@ func load_game() -> bool:
 	standing_log = _ints(data.get("standing_log", []))
 	items = _ints(data.get("items", {}))
 	equipped = data.get("equipped", {})
+	features = data.get("features", {})
+	# Before version 2, New Game handed out Bram's Emberstorm deck at once. A
+	# save still in Ashford, before Bram's first deck, starts with no cards now.
+	if int(data.get("version", 1)) < 2 and area == "ashford" and not has_deck() and not flag("first_deck"):
+		var fresh := new_v2("")
+		for k in ["deck", "collection", "bonded", "codex"]:
+			v2[k] = fresh[k]
+		for k in fresh:
+			if not v2.has(k):
+				v2[k] = fresh[k]
 	refresh_profile()
 	changed.emit()
 	return true
