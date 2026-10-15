@@ -94,7 +94,460 @@ body {
 <link rel="apple-touch-icon" href="index.apple-touch-icon.png"/>
 <link rel="manifest" href="index.manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><style>body{background:#07080f}</style>
-	</head>
+	<script>
+window.CW_MUSIC = {"base":"music/","tracks":{"ashford_festival":{"file":"ashford_festival.mp3?v=c240721c06","length":86.848020833,"onset":0.145063},"defeat":{"file":"defeat.mp3?v=819681b0fc","length":13.8,"onset":0.019125},"duel_alt":{"file":"duel_alt.mp3?v=3659d54843","length":115.633979167,"onset":0.274146},"duel_main":{"file":"duel_main.mp3?v=c206af025a","length":170.666666667,"onset":0.0},"duel_pinch":{"file":"duel_pinch.mp3?v=5fa6e955ed","length":115.1075,"onset":0.359854},"menu_theme":{"file":"menu_theme.mp3?v=5c98cb5b30","length":126.5,"onset":0.152104},"sigilfall":{"file":"sigilfall.mp3?v=26bec01819","length":90.024,"onset":0.028271},"summon_pyraxis":{"file":"summon_pyraxis.mp3?v=cfa6943276","length":8.55,"onset":0.468685},"the_marking":{"file":"the_marking.mp3?v=ea49de3102","length":14.712,"onset":0.120646},"victory":{"file":"victory.mp3?v=a4c49008c3","length":12.372979167,"onset":0.066979}}};
+// The web build's music player (window.CWMusic), driven by scripts/ui/music.gd.
+//
+// Godot's web audio loops a track by waiting for it to end and starting it
+// again from the top, with a gap, and it can't loop back to LOOP_START. So on
+// the web the music plays through the page's own Web Audio player instead,
+// using the browser's sample-accurate looping: each track plays its intro once
+// and then loops [loop start, real end) seamlessly, exactly like on desktop.
+//
+// tools/web_music.py puts this script in index.html, after window.CW_MUSIC:
+//   {base: "music/", tracks: {name: {file, length, onset}}}
+// file   - the MP3 next to index.html (with a ?v= of its contents, so a re-cut
+//          track is never served stale from a cache)
+// length - the real length of the music in seconds, from the source .ogg: the
+//          loop's end. Never buffer.duration, which an MP3 decoder may pad.
+// onset  - when the music first gets louder than ONSET_LEVEL (seconds, or null),
+//          to find any padding a decoder leaves at the start (see trim).
+//
+// Music.gd talks to it in "slots" (0 and 1), like its two AudioStreamPlayers.
+(function () {
+	'use strict';
+	const CFG = window.CW_MUSIC || { base: 'music/', tracks: {} };
+	const TRACKS = CFG.tracks || {};
+	const ONSET_LEVEL = 0.05; // the same as tools/web_music.py
+	const CACHE = 'covenant-war-music';
+	const AC = window.AudioContext || window.webkitAudioContext;
+	let ctx = null;
+	let out = null;
+	try {
+		ctx = new AC();
+		out = ctx.createGain();
+		out.connect(ctx.destination);
+	} catch (e) {
+		console.warn('Music: no Web Audio here, so no music.', e);
+		return; // no window.CWMusic: music.gd falls back to Godot's own players
+	}
+
+	const lin = (db) => Math.pow(10, db / 20);
+
+	// ------------------------------------------------------------ waking up ---
+	// Browsers (iOS above all) start audio suspended until the player touches
+	// the page, and iOS suspends it again after a call or a trip to the home
+	// screen. Every touch, click or key wakes it while it's asleep.
+	const GESTURES = ['touchstart', 'touchend', 'pointerdown', 'pointerup', 'mousedown', 'keydown', 'click'];
+	let listening = false;
+	function wake() {
+		if (ctx.state === 'running') {
+			listen(false);
+			return;
+		}
+		ctx.resume().catch(() => {});
+		try { // iOS: a silent sound started inside the touch is what really unlocks it
+			const s = ctx.createBufferSource();
+			s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
+			s.connect(out);
+			s.start(0);
+		} catch (e) { /* not needed elsewhere */ }
+	}
+	function listen(on) {
+		if (on === listening) {
+			return;
+		}
+		listening = on;
+		GESTURES.forEach((g) => {
+			if (on) {
+				window.addEventListener(g, wake, { capture: true, passive: true });
+			} else {
+				window.removeEventListener(g, wake, { capture: true });
+			}
+		});
+	}
+	ctx.addEventListener('statechange', () => listen(ctx.state !== 'running'));
+	document.addEventListener('visibilitychange', () => {
+		if (!document.hidden && ctx.state !== 'running') {
+			ctx.resume().catch(() => {});
+		}
+	});
+	listen(ctx.state !== 'running');
+
+	// -------------------------------------------------------------- loading ---
+	// The MP3s are kept in the page's Cache Storage once fetched, so they load
+	// instantly next time and still play offline; decoded audio is kept only
+	// while something is playing it (a decoded track is tens of megabytes).
+	const store = ('caches' in window) ? caches.open(CACHE).catch(() => null) : Promise.resolve(null);
+	const buffers = new Map(); // name -> what trim() gives
+	const loading = new Map(); // name -> Promise of the same
+	const urlOf = (name) => new URL(CFG.base + TRACKS[name].file, location.href).href;
+
+	function cached(url) {
+		return store.then((c) => (c ? c.match(url) : null)).catch(() => null);
+	}
+	function fromNet(url) {
+		return fetch(url).then((r) => {
+			if (!r.ok) {
+				throw new Error(url + ': HTTP ' + r.status);
+			}
+			const copy = r.clone();
+			store.then((c) => c && c.put(url, copy)).catch(() => {});
+			return r;
+		});
+	}
+	function decode(bytes) {
+		return new Promise((resolve, reject) => { // the callback form: older Safari has no promise one
+			const p = ctx.decodeAudioData(bytes, resolve, reject);
+			if (p && p.catch) {
+				p.catch(reject);
+			}
+		});
+	}
+	function load(name) {
+		if (buffers.has(name)) {
+			return Promise.resolve(buffers.get(name));
+		}
+		if (!loading.has(name)) {
+			const url = urlOf(name);
+			let wasCached = false;
+			const p = cached(url).then((hit) => {
+				wasCached = !!hit;
+				return hit || fromNet(url);
+			})
+				.then((r) => r.arrayBuffer())
+				.then(decode)
+				.then((buf) => {
+					const t = trim(buf, TRACKS[name]);
+					buffers.set(name, t);
+					return t;
+				}, (err) => {
+					if (wasCached) { // a bad copy: fetch it afresh next time
+						store.then((c) => c && c.delete(url)).catch(() => {});
+					}
+					throw err;
+				});
+			loading.set(name, p);
+			const done = () => loading.delete(name);
+			p.then(done, done);
+		}
+		return loading.get(name);
+	}
+
+	// The decoded track, cut to exactly the music, so the loop's end is the
+	// buffer's own end (the browser's loop is exact there). A decoder that
+	// ignores the MP3's gapless header leaves padding at the start and the end:
+	// how much of it is at the start is found from where the music first gets
+	// loud, never more than all the extra there is.
+	// {buf, lead: seconds cut from the start, decoded: seconds decoded}
+	function trim(buf, info) {
+		const rate = buf.sampleRate;
+		const frames = Math.round(info.length * rate);
+		const extra = buf.length - frames;
+		const t = { buf: buf, lead: 0, decoded: buf.duration };
+		if (extra <= 0) {
+			return t;
+		}
+		let lead = 0;
+		if (extra > 0.002 * rate && info.onset != null) {
+			let first = Math.min(buf.length, Math.ceil(info.onset * rate) + extra + 1);
+			for (let c = 0; c < buf.numberOfChannels; c++) {
+				const d = buf.getChannelData(c);
+				for (let i = 0; i < first; i++) {
+					if (d[i] >= ONSET_LEVEL || d[i] <= -ONSET_LEVEL) {
+						first = i;
+						break;
+					}
+				}
+			}
+			lead = Math.min(Math.max(Math.round(first - info.onset * rate), 0), extra);
+		}
+		const cut = ctx.createBuffer(buf.numberOfChannels, frames, rate);
+		for (let c = 0; c < buf.numberOfChannels; c++) {
+			cut.getChannelData(c).set(buf.getChannelData(c).subarray(lead, lead + frames));
+		}
+		t.buf = cut;
+		t.lead = lead / rate;
+		return t;
+	}
+
+	// Drops decoded audio nothing is playing any more.
+	function prune() {
+		const used = new Set();
+		live.forEach((v) => used.add(v.name));
+		slots.forEach((v) => v && v.state !== 'stopped' && used.add(v.name));
+		if (sting && sting.state !== 'stopped') {
+			used.add(sting.name);
+		}
+		buffers.forEach((t, name) => used.has(name) || buffers.delete(name));
+	}
+
+	// Gets the short pieces (stingers) ready, so the first one isn't late.
+	setTimeout(() => {
+		Object.keys(TRACKS).forEach((name) => {
+			if (TRACKS[name].length < 30) {
+				const url = urlOf(name);
+				cached(url).then((hit) => hit || fromNet(url).then((r) => r.arrayBuffer())).catch(() => {});
+			}
+		});
+	}, 5000);
+	// and forgets MP3s an older build cached that this one doesn't use
+	store.then((c) => c && c.keys().then((keys) => {
+		const want = new Set(Object.keys(TRACKS).map(urlOf));
+		keys.forEach((k) => want.has(k.url) || c.delete(k));
+	})).catch(() => {});
+
+	// -------------------------------------------------------------- playing ---
+	// A voice is one track playing (or loading, or fading out). Its gain is
+	// faded in dB, the way music.gd's tweens do: exponential in Web Audio.
+	const slots = [null, null];
+	const live = new Set();
+	let sting = null;
+
+	function voice(name, from, loopStart, db, loop) {
+		return { name: name, from: from, loopStart: loopStart, db: db, loop: loop, state: 'loading', src: null, gain: null };
+	}
+
+	// Starts a loaded voice: from `from` seconds in, fading in from -40 dB over `fade`.
+	// The start and the loop points are put on whole sample frames: between
+	// frames the browser blends neighbouring samples, which dulls the treble.
+	function start(v, t, fade) {
+		const info = TRACKS[v.name];
+		const buf = t.buf;
+		const frame = (s) => Math.round(s * buf.sampleRate) / buf.sampleRate;
+		const end = Math.min(frame(info.length), buf.length / buf.sampleRate);
+		const src = ctx.createBufferSource();
+		src.buffer = buf;
+		v.trim = { lead: t.lead, decoded: t.decoded };
+		v.a = Math.max(frame(v.loopStart), 0);
+		if (v.a >= end - 0.5) {
+			v.a = 0; // a loop start past the end: loop the whole track
+		}
+		v.b = end;
+		if (v.loop) {
+			src.loop = true;
+			src.loopStart = v.a;
+			src.loopEnd = v.b;
+		}
+		const g = ctx.createGain();
+		src.connect(g);
+		g.connect(out);
+		const now = ctx.currentTime;
+		v.offset = Math.min(Math.max(frame(v.from), 0), frame(end - 0.05));
+		if (fade > 0) {
+			g.gain.setValueAtTime(lin(-40), now);
+			g.gain.exponentialRampToValueAtTime(lin(v.db), now + fade);
+		} else {
+			g.gain.setValueAtTime(lin(v.db), now);
+		}
+		if (v.loop) {
+			src.start(now, v.offset);
+		} else {
+			src.start(now, v.offset, end - v.offset);
+		}
+		v.src = src;
+		v.gain = g;
+		v.t0 = now;
+		v.state = 'playing';
+		live.add(v);
+		src.onended = () => {
+			v.state = 'stopped';
+			live.delete(v);
+			src.disconnect();
+			g.disconnect();
+			v.src = null;
+			v.gain = null;
+			prune();
+		};
+	}
+
+	// Holds a gain where it is now, cancelling whatever fade it was in.
+	function hold(p, now) {
+		const val = Math.max(p.value, 1e-5);
+		p.cancelScheduledValues(now);
+		p.setValueAtTime(val, now);
+	}
+
+	function fadeOut(v, fade) {
+		if (!v) {
+			return;
+		}
+		if (v.state === 'loading') {
+			v.state = 'stopped';
+			return;
+		}
+		if (v.state !== 'playing' && v.state !== 'stopping') {
+			return;
+		}
+		v.state = 'stopping';
+		const p = v.gain.gain;
+		const now = ctx.currentTime;
+		const end = now + Math.max(fade, 0.03);
+		hold(p, now);
+		p.exponentialRampToValueAtTime(lin(-60), end);
+		try {
+			v.src.stop(end + 0.02);
+		} catch (e) { /* an older Safari refuses a second stop(); the fade still silences it */ }
+	}
+
+	// Where a voice is in its track (seconds), counting the loop.
+	function where(v) {
+		if (!v) {
+			return 0;
+		}
+		if (!v.src) {
+			return v.from;
+		}
+		let p = v.offset + (ctx.currentTime - v.t0);
+		if (v.loop && p >= v.b) {
+			p = v.a + (p - v.b) % (v.b - v.a);
+		}
+		return p;
+	}
+
+	function ramp(v, db, time) {
+		const p = v.gain.gain;
+		const now = ctx.currentTime;
+		hold(p, now);
+		p.exponentialRampToValueAtTime(lin(db), now + Math.max(time, 0.03));
+	}
+
+	window.CWMusic = {
+		// The tracks there are, as JSON {name: length in seconds}.
+		tracks: function () {
+			const t = {};
+			Object.keys(TRACKS).forEach((n) => { t[n] = TRACKS[n].length; });
+			return JSON.stringify(t);
+		},
+
+		// Plays `name` in `slot` from `from` seconds, looping back to `loopStart`,
+		// fading in to `db` over `fade`; once it sounds, the voice in `oldSlot`
+		// (if any) fades out over the same time. Until then the old one plays on,
+		// so a track that's still loading never leaves a silence.
+		play: function (slot, name, from, loopStart, fade, db, oldSlot) {
+			if (!TRACKS[name]) {
+				return false;
+			}
+			const old = oldSlot >= 0 ? slots[oldSlot] : null;
+			const prev = slots[slot];
+			if (prev && prev.name === name && prev.state === 'playing') {
+				// back to a track before the next one even started: it carries on
+				ramp(prev, db, fade);
+				prev.db = db;
+				if (old && old !== prev) {
+					fadeOut(old, fade);
+				}
+				return true;
+			}
+			fadeOut(prev, prev && prev.state === 'stopping' ? 0.05 : fade);
+			const v = voice(name, from, loopStart, db, true);
+			slots[slot] = v;
+			load(name).then((t) => {
+				if (v.state !== 'loading') {
+					return; // replaced or stopped while it loaded
+				}
+				start(v, t, fade);
+				if (old && old !== v) {
+					fadeOut(old, fade);
+				}
+			}, (err) => {
+				console.warn('Music: ' + name + ' could not be loaded, so it is silent.', err);
+				if (v.state === 'loading') {
+					v.state = 'stopped';
+					fadeOut(old, fade);
+				}
+			});
+			prune();
+			return true;
+		},
+
+		fadeOut: function (slot, fade) {
+			fadeOut(slots[slot], fade);
+		},
+
+		// True while the slot's track is loading, playing or fading out.
+		playing: function (slot) {
+			const v = slots[slot];
+			return !!v && v.state !== 'stopped';
+		},
+
+		position: function (slot) {
+			return where(slots[slot]);
+		},
+
+		// A new volume for what's playing (short ramp, so no click).
+		level: function (slot, db) {
+			const v = slots[slot];
+			if (!v) {
+				return;
+			}
+			v.db = db;
+			if (v.state === 'playing') {
+				ramp(v, db, 0.05);
+			}
+		},
+
+		// A one-shot piece over the music, in place of any still sounding; once
+		// it starts, the music in `duckSlot` (unless -1) dips to `low` dB over
+		// `down` seconds, stays there `stay` seconds, and comes back to `back` dB
+		// over `up` seconds.
+		sting: function (name, db, duckSlot, low, down, stay, back, up) {
+			if (!TRACKS[name]) {
+				return false;
+			}
+			fadeOut(sting, 0.05);
+			const v = voice(name, 0, 0, db, false);
+			sting = v;
+			load(name).then((t) => {
+				if (v.state !== 'loading') {
+					return;
+				}
+				start(v, t, 0);
+				const m = duckSlot >= 0 ? slots[duckSlot] : null;
+				if (m && m.state === 'playing') {
+					const p = m.gain.gain;
+					const now = ctx.currentTime;
+					hold(p, now);
+					p.exponentialRampToValueAtTime(lin(low), now + down);
+					p.setValueAtTime(lin(low), now + down + stay);
+					p.exponentialRampToValueAtTime(lin(back), now + down + stay + up);
+				}
+			}, (err) => {
+				console.warn('Music: ' + name + ' could not be loaded.', err);
+				v.state = 'stopped';
+			});
+			return true;
+		},
+
+		// For tests (tests/web_music_check.py): the insides, and a jump to
+		// `pos` seconds in the slot's track without a fade.
+		debug: {
+			ctx: ctx,
+			out: out,
+			slots: slots,
+			buffers: buffers,
+			sting: () => sting,
+			seek: function (slot, pos) {
+				const v = slots[slot];
+				if (!v || v.state !== 'playing') {
+					return false;
+				}
+				const old = v.src;
+				old.onended = null;
+				old.stop();
+				old.disconnect();
+				v.state = 'loading';
+				v.from = pos;
+				const g = v.gain;
+				start(v, { buf: old.buffer, lead: v.trim.lead, decoded: v.trim.decoded }, 0);
+				g.disconnect(); // the new start made its own gain, at the voice's level
+				return true;
+			},
+		},
+	};
+}());
+</script>
+</head>
 	<body>
 		<canvas id="canvas">
 			Your browser does not support the canvas tag.
@@ -112,7 +565,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args": [], "canvasResizePolicy": 2, "emscriptenPoolSize": 8, "ensureCrossOriginIsolationHeaders": false, "executable": "index", "experimentalVK": true, "fileSizes": {"index.wasm": 39514754}, "focusCanvas": true, "gdextensionLibs": [], "godotPoolSize": 4, "serviceWorker": "index.service.worker.js", "packParts": [["index.pck.part0", 90000000], ["index.pck.part1", 45140076]]};
+const GODOT_CONFIG = {"args": [], "canvasResizePolicy": 2, "emscriptenPoolSize": 8, "ensureCrossOriginIsolationHeaders": false, "executable": "index", "experimentalVK": true, "fileSizes": {"index.wasm": 39514754}, "focusCanvas": true, "gdextensionLibs": [], "godotPoolSize": 4, "serviceWorker": "index.service.worker.js", "packParts": [["index.pck.part0", 90000000], ["index.pck.part1", 34339508]]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 

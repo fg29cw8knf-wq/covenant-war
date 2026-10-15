@@ -1,0 +1,52 @@
+{
+ "ashford_festival": {
+  "file": "ashford_festival.mp3?v=c240721c06",
+  "length": 86.848020833,
+  "onset": 0.145063
+ },
+ "defeat": {
+  "file": "defeat.mp3?v=819681b0fc",
+  "length": 13.8,
+  "onset": 0.019125
+ },
+ "duel_alt": {
+  "file": "duel_alt.mp3?v=3659d54843",
+  "length": 115.633979167,
+  "onset": 0.274146
+ },
+ "duel_main": {
+  "file": "duel_main.mp3?v=c206af025a",
+  "length": 170.666666667,
+  "onset": 0.0
+ },
+ "duel_pinch": {
+  "file": "duel_pinch.mp3?v=5fa6e955ed",
+  "length": 115.1075,
+  "onset": 0.359854
+ },
+ "menu_theme": {
+  "file": "menu_theme.mp3?v=5c98cb5b30",
+  "length": 126.5,
+  "onset": 0.152104
+ },
+ "sigilfall": {
+  "file": "sigilfall.mp3?v=26bec01819",
+  "length": 90.024,
+  "onset": 0.028271
+ },
+ "summon_pyraxis": {
+  "file": "summon_pyraxis.mp3?v=cfa6943276",
+  "length": 8.55,
+  "onset": 0.468685
+ },
+ "the_marking": {
+  "file": "the_marking.mp3?v=ea49de3102",
+  "length": 14.712,
+  "onset": 0.120646
+ },
+ "victory": {
+  "file": "victory.mp3?v=a4c49008c3",
+  "length": 12.372979167,
+  "onset": 0.066979
+ }
+}
