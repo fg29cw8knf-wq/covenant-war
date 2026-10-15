@@ -208,6 +208,23 @@ static func despawn(w: World, id: String) -> void:
 
 
 ## Puts someone on a spot at once, facing `face_to` if given.
+## The ground's height under a point, where the set has a terrain (else p.y).
+static func ground(w: World, p: Vector3) -> float:
+	if w.has_meta("village"):
+		var v = w.get_meta("village")
+		if is_instance_valid(v) and v.has_method("height"):
+			return float(v.height(p.x, p.z))
+	return p.y
+
+
+## Is this body standing on the set's terrain (not in a room built below it)?
+static func _on_terrain(w: World, b: Node3D) -> bool:
+	if not w.has_meta("village"):
+		return false
+	var g := ground(w, b.global_position)
+	return absf(b.global_position.y - g) < 3.0
+
+
 static func place(w: World, who: String, at: Vector3, face_to = null) -> void:
 	var b := body(w, who)
 	if b == null:
@@ -221,7 +238,10 @@ static func place(w: World, who: String, at: Vector3, face_to = null) -> void:
 			if wf is Figure3D:
 				(wf as Figure3D).pace = 0.0
 				(wf as Figure3D).gait = "walk"
-	b.global_position = Vector3(at.x, b.global_position.y if at.y == 0.0 else at.y, at.z)
+	var y := at.y
+	if at.y == 0.0:
+		y = ground(w, at) if _on_terrain(w, b) else b.global_position.y
+	b.global_position = Vector3(at.x, y, at.z)
 	if face_to != null:
 		var f = fig(w, who)
 		var d: Vector3 = (face_to as Vector3) - b.global_position
@@ -262,18 +282,23 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 	# a later walk, or place(), takes over from this one
 	var token := Time.get_ticks_usec()
 	b.set_meta("cine_path", token)
+	# over the village's slopes, feet stay on the grass
+	var follow := _on_terrain(w, b)
 	for p in points:
 		var to: Vector3 = p
 		var from := b.global_position
 		to.y = from.y
-		var dist := from.distance_to(to)
+		var dist := Vector2(to.x - from.x, to.z - from.z).length()
 		if dist < 0.05:
 			continue
 		f.face(to - from, w.cam)
 		var tw := w.create_tween()
 		tw.tween_method(func(u: float) -> void:
 			if is_instance_valid(b) and b.get_meta("cine_path", 0) == token:
-				b.global_position = from.lerp(to, u), 0.0, 1.0, dist / maxf(speed, 0.1))
+				var at := from.lerp(to, u)
+				if follow:
+					at.y = ground(w, at)
+				b.global_position = at, 0.0, 1.0, dist / maxf(speed, 0.1))
 		await tw.finished
 		if not is_instance_valid(b) or b.get_meta("cine_path", 0) != token:
 			return

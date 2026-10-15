@@ -1991,7 +1991,7 @@ static func _gardens(w: World, hunters: Array) -> void:
 		var to_h: Vector3 = hunt - (g as Vector3)
 		to_h.y = 0.0
 		to_h = to_h.normalized()
-		cover.append(v.hedge((g as Vector3) + to_h * 1.1, atan2(to_h.x, to_h.z), 4.2, 1.55))
+		cover.append(v.hedge((g as Vector3) + to_h * 1.1, atan2(to_h.x, to_h.z), 4.2, 1.3))
 	# the houses burning down the lane throw their light this far (a low
 	# directional light: the phone and web renderers cap lamps per mesh)
 	var glow := DirectionalLight3D.new()
@@ -2022,13 +2022,16 @@ static func _gardens(w: World, hunters: Array) -> void:
 	Cine.beast(w, "hound3", "shieldhound", Vector3(-22.0, 0, 26.0), Color(1.0, 0.8, 0.35, 1.0))
 	# behind the two of them, crouched at the hedge, as the hound goes by
 	var g1: Vector3 = GARDENS[1]
+	g1.y = v.height(g1.x, g1.z)   # the gardens sit up the slope behind the inn
 	var to_h1 := hunt - g1
 	to_h1.y = 0.0
 	to_h1 = to_h1.normalized()
-	Cine.shot(w, g1 - to_h1 * 1.7 + to_h1.cross(Vector3.UP) * 0.7 + Vector3(0, 1.35, 0), Vector3(-27.0, 0.6, 21.5), 44.0)
+	Cine.shot(w, g1 - to_h1 * 1.7 + to_h1.cross(Vector3.UP) * 0.7 + Vector3(0, 1.35, 0), Vector3(-27.0, v.height(-27.0, 21.5) + 0.6, 21.5), 44.0)
 	await Cine.path(w, "hound3", [Vector3(-27.0, 0, 21.5), Vector3(-34.0, 0, 20.0)], 2.2)
 	# and from the hunters' side: two heads just over the hedge, the beams going over
-	Cine.shot(w, g1 + to_h1 * 4.2 + Vector3(0, 1.3, 0), g1 + Vector3(0, 1.0, 0), 38.0)
+	var hc := g1 + to_h1 * 4.2
+	hc.y = v.height(hc.x, hc.z) + 1.3
+	Cine.shot(w, hc, g1 + Vector3(0, 1.0, 0), 38.0)
 	await Cine.say(w, "h4", "Nothing here.", 1.4)
 	await Cine.say(w, "h3", "Huntmaster wants the innkeeper alive.", 2.2)
 	Cine.despawn(w, "hound3")
