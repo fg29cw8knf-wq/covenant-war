@@ -6,6 +6,11 @@ extends Node
 ##   Music.play(["arena_veilwild", "duel_main"])  first track that exists
 ##   Music.stinger("victory")                      one-shot, ducks the loop
 ##   Music.stop()
+##
+## On the web the music plays through the page's own player instead
+## (scripts/ui/music_web.js, which tools/build_web.sh puts in the page with an
+## MP3 of every track): Godot's web audio can only loop a track by stopping at
+## its end and starting again from the top. Everything else here is the same.
 
 const DIR := "res://assets/audio/music/"
 ## Tracks with an intro that shouldn't repeat: after the first pass the loop
@@ -24,6 +29,11 @@ var _duel_i := 0
 ## Where each track was when it faded out, so coming back to it (the village
 ## after a duel, say) carries on from there instead of starting again.
 var _resume := {}
+## The page's player (window.CWMusic) when the music plays through it, on the web.
+static var _web = null
+## Its tracks: name -> length in seconds.
+static var _web_tracks := {}
+var _web_test = null            # keeps the ?musictest hook's callback alive
 
 
 func _ready() -> void:
@@ -35,6 +45,43 @@ func _ready() -> void:
 		_players.append(p)
 	_sting = AudioStreamPlayer.new()
 	add_child(_sting)
+	if OS.has_feature("web"):
+		_web_start()
+
+
+## On the web, hands the music to the page's player when the page has one
+## (a build without it keeps Godot's players and whatever music the pack has).
+func _web_start() -> void:
+	if not JavaScriptBridge.eval("!!window.CWMusic", true):
+		return
+	var tracks = JSON.parse_string(str(JavaScriptBridge.eval("CWMusic.tracks()", true)))
+	if not tracks is Dictionary:
+		return
+	_web = JavaScriptBridge.get_interface("CWMusic")
+	_web_tracks = tracks
+	# a hook for tests/web_music_check.py, only with ?musictest in the address
+	if str(JavaScriptBridge.eval("location.search", true)).contains("musictest"):
+		_web_test = JavaScriptBridge.create_callback(_on_web_test)
+		JavaScriptBridge.get_interface("window").CWMusicTest = _web_test
+
+
+## The test hook: CWMusicTest("play", "a,b", fade), ("stop", fade),
+## ("stinger", name, duck), ("volume", 0..1).
+func _on_web_test(args: Array) -> void:
+	match str(args[0]):
+		"play":
+			play(Array(str(args[1]).split(",")), float(args[2]))
+		"stop":
+			stop(float(args[1]))
+		"stinger":
+			stinger(str(args[1]), bool(args[2]))
+		"volume":
+			Game.settings["music"] = float(args[1])
+			apply_volume()
+
+
+func _web_playing(i: int) -> bool:
+	return bool(_web.playing(i))
 
 
 ## The loudness music plays at, from the player's settings.
@@ -44,11 +91,17 @@ func level_db() -> float:
 
 ## Applies a changed music volume to what's playing now.
 func apply_volume() -> void:
+	if _web != null:
+		if _web_playing(_active):
+			_web.level(_active, level_db())
+		return
 	var p := _players[_active]
 	if p.playing:
 		p.volume_db = level_db()
 
 
+## The track's file in the game's pack ("" if it isn't there; the web build
+## leaves the music out of the pack and plays its own copies, see has()).
 static func path_for(track: String) -> String:
 	for ext in ["ogg", "mp3", "wav"]:
 		var p := "%s%s.%s" % [DIR, track, ext]
@@ -58,6 +111,8 @@ static func path_for(track: String) -> String:
 
 
 static func has(track: String) -> bool:
+	if _web != null:
+		return _web_tracks.has(track)
 	return path_for(track) != ""
 
 
@@ -81,6 +136,9 @@ func duel_theme() -> Array:
 
 
 func _switch(track: String, fade: float) -> void:
+	if _web != null:
+		_web_switch(track, fade)
+		return
 	if track == current and _players[_active].playing:
 		return
 	current = track
@@ -106,8 +164,30 @@ func _switch(track: String, fade: float) -> void:
 		tw.chain().tween_callback(old.stop)
 
 
+## _switch on the web: the same, in the page's player. The new track fades in
+## once it has loaded, and only then does the old one fade out.
+func _web_switch(track: String, fade: float) -> void:
+	if track == current and _web_playing(_active):
+		return
+	current = track
+	var old := _active
+	_remember(old)
+	_active = 1 - _active
+	_names[_active] = track
+	var from := float(_resume.get(track, 0.0))
+	if from >= float(_web_tracks[track]) - 1.0:
+		from = 0.0
+	_web.play(_active, track, from, float(LOOP_START.get(track, 0.0)), fade, level_db(), old)
+
+
 func stop(fade: float = 0.8) -> void:
 	current = ""
+	if _web != null:
+		for i in 2:
+			if _web_playing(i):
+				_remember(i)
+				_web.fadeOut(i, fade)
+		return
 	for i in _players.size():
 		var p := _players[i]
 		if p.playing:
@@ -119,6 +199,10 @@ func stop(fade: float = 0.8) -> void:
 
 ## Notes where a player's track has got to, for when it comes back.
 func _remember(i: int) -> void:
+	if _web != null:
+		if _names[i] != "" and _web_playing(i):
+			_resume[_names[i]] = float(_web.position(i))
+		return
 	var p := _players[i]
 	if _names[i] != "" and p.playing:
 		_resume[_names[i]] = p.get_playback_position()
@@ -129,6 +213,12 @@ func _remember(i: int) -> void:
 func stinger(track: String, duck: bool = true) -> bool:
 	if not has(track):
 		return false
+	if _web != null:
+		# the same dip as below, done by the page's player once the piece starts
+		var ducked := _active if duck and _web_playing(_active) else -1
+		var hold := maxf(0.5, float(_web_tracks[track]) - 0.6)
+		_web.sting(track, level_db() + 2.0, ducked, level_db() - 14.0, 0.2, hold, level_db(), 0.8)
+		return true
 	var s: AudioStream = load(path_for(track))
 	_set_loop(s, false)
 	_sting.stream = s
