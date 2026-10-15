@@ -27,6 +27,11 @@ Xcode opens it.
 3. Click the **Signing & Capabilities** tab.
 4. Make sure **Automatically manage signing** is ticked.
 5. Click the **Team** menu and choose **your name (Personal Team)**.
+   - If you see two sections, **Signing (Debug)** and **Signing (Release)**,
+     you have a download from before 15 October 2026, 18:30. Download it again
+     (step 1), or choose your team in both sections and then, on the **Build
+     Settings** tab, search for `Code Signing Identity` and set **Release** to
+     **Apple Development**.
    - Not in the list? Choose **Add an Account…**, sign in with your Apple ID,
      close that window and pick it from **Team** again.
 6. Wait a few seconds. The red errors under Signing should clear.

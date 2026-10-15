@@ -3,6 +3,9 @@
 
 - Blanks the placeholder team (CHOOSETEAM), so Xcode asks for one: the
   person's own Personal Team.
+- Signs the Release build (the one Run uses) with "Apple Development" like
+  Debug, not "Apple Distribution", which a free Apple ID doesn't have. With the
+  two the same, Xcode shows one Signing section and the team is chosen once.
 - Drops the iOS Simulator copies of the engine (a real iPhone never uses them),
   which halves the download.
 
@@ -18,6 +21,7 @@ out = sys.argv[1]
 for path in [os.path.join(out, "CovenantWar.xcodeproj", "project.pbxproj"), os.path.join(out, "CovenantWar", "export_options.plist")]:
 	t = open(path).read()
 	t = t.replace("= CHOOSETEAM;", '= "";').replace("<string>CHOOSETEAM</string>", "<string></string>")
+	t = t.replace('CODE_SIGN_IDENTITY = "Apple Distribution";', 'CODE_SIGN_IDENTITY = "Apple Development";')
 	assert "CHOOSETEAM" not in t, path
 	open(path, "w").write(t)
 
