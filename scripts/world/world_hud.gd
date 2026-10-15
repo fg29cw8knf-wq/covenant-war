@@ -162,6 +162,12 @@ func set_talk_target(npc_name: String, duel: bool) -> void:
 	_talk.queue_redraw()
 
 
+## True while the round Talk button is up: someone is in reach and the
+## player is free to move.
+func talk_showing() -> bool:
+	return _talk.visible and pad.visible
+
+
 func set_controls_visible(v: bool) -> void:
 	pad.visible = v
 	_menu_btn.visible = v

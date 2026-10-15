@@ -774,8 +774,8 @@ func _unhandled_input(e: InputEvent) -> void:
 	if mode == "over" or not is_visible_in_tree():
 		return
 	if tutor != null and tutor.blocking:
-		# an explanation is up: Space or Enter carries on, like a tap
-		if e is InputEventKey and e.pressed and not e.echo and e.physical_keycode in [KEY_SPACE, KEY_ENTER, KEY_KP_ENTER]:
+		# an explanation is up: E, Space, Enter or a pad's A carries on, like a tap
+		if e.is_action_pressed("interact"):
 			tutor.tap()
 			get_viewport().set_input_as_handled()
 		return
@@ -785,14 +785,8 @@ func _unhandled_input(e: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if cancel:
-		if mode == "main" and pending != "":
-			_cancel_pending()      # one step back: from a target to the move list
-		elif mode == "main" and (sel_card != null or sel_totem != null):
-			_clear_selection()
-			_hide_detail()
-			_clear_actions()
-			_show_actions_default()
-			_refresh()
+		if mode == "main" and (pending != "" or sel_card != null or sel_totem != null):
+			_back_out()
 		elif e.is_action_pressed("menu"):
 			lab_panel.visible = not lab_panel.visible
 			if not lab_panel.visible:
@@ -802,6 +796,47 @@ func _unhandled_input(e: InputEvent) -> void:
 		if mode == "main" and pending == "" and sel_card == null and sel_totem == null:
 			_on_end_turn()
 			get_viewport().set_input_as_handled()
+
+
+## A right-click cancels wherever the pointer is. The cards and Totems keep
+## clicks for themselves, so it's caught here, before they see it.
+func _input(e: InputEvent) -> void:
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
+		_unhandled_input(e)
+
+
+## A tap on the bare board changes your mind, like Cancel. Only a tap well
+## clear of every slot, creature and the card panel counts, so a tap that
+## just misses a target doesn't throw the choice away.
+func _gui_input(e: InputEvent) -> void:
+	if not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT):
+		return
+	accept_event()
+	if mode != "main" or (pending == "" and sel_card == null and sel_totem == null):
+		return
+	var p: Vector2 = stage.get_global_transform_with_canvas().affine_inverse() * (get_global_transform_with_canvas() * e.position)
+	if detail.visible and Rect2(detail.position, detail.size).has_point(p):
+		return
+	for side in 2:
+		for v in views[side]:
+			if Rect2(v.position, v.size).grow(40).has_point(p) or v.body_rect_3d.grow(40).has_point(p):
+				return
+	if tutor != null and tutor.gating():
+		tutor.nudge()   # no backing out of a lesson step
+		return
+	_back_out()
+
+
+## One step back: from a target to the Totem's moves, or drop what's picked.
+func _back_out() -> void:
+	if pending != "":
+		_cancel_pending()
+	else:
+		_clear_selection()
+		_hide_detail()
+		_clear_actions()
+		_show_actions_default()
+		_refresh()
 
 
 func _on_end_turn() -> void:

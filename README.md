@@ -155,6 +155,7 @@ Ashford's cottages and the Crooked Lantern are Gary's models (`assets/models/ash
 xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 res://tests/menu_test.tscn -- /tmp/menu 1600x900   # every menu tab, card detail, notice, advert
 xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 res://tests/pack_tour_test.tscn -- /tmp/tour 1600x900   # Bram's pack tour, tap by tap
 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 res://tests/village_shot.tscn -- /tmp/village       # Ashford's buildings and the roof fire
+godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse); also runs under xvfb-run
 ```
 
 ## Running the tests

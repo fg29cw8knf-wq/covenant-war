@@ -593,7 +593,7 @@ func _setup_input() -> void:
 		"move_right": [KEY_D, KEY_RIGHT],
 		"move_up": [KEY_W, KEY_UP],
 		"move_down": [KEY_S, KEY_DOWN],
-		"interact": [KEY_E, KEY_SPACE, KEY_ENTER],
+		"interact": [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER],
 		"menu": [KEY_ESCAPE, KEY_TAB],
 	}
 	for action in keys:
@@ -619,3 +619,9 @@ func _setup_input() -> void:
 		ev.axis = axes[action][0]
 		ev.axis_value = axes[action][1]
 		InputMap.action_add_event(action, ev)
+	# a pad's A presses whichever button has the keyboard focus (the title
+	# screen's buttons, the notice's Continue), as Enter does
+	var pad_ok := InputEventJoypadButton.new()
+	pad_ok.button_index = JOY_BUTTON_A
+	if not InputMap.action_has_event("ui_accept", pad_ok):
+		InputMap.action_add_event("ui_accept", pad_ok)

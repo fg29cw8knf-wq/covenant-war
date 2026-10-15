@@ -7,6 +7,9 @@ signal _advance
 signal _chosen(index: int)
 
 const CHARS_PER_SEC := 55.0
+## New answers ignore keys this long, so a key mashed to get through the
+## last line doesn't pick one by accident.
+const CHOICE_GUARD_MS := 400
 
 var _panel: PanelContainer
 var _portrait: TextureRect
@@ -19,6 +22,7 @@ var _choices: VBoxContainer
 var _typing := false
 var _waiting := false
 var _t := 0.0
+var _choices_at := 0
 
 
 func _ready() -> void:
@@ -135,6 +139,7 @@ func choose(options: Array) -> int:
 	_text.visible_ratio = 1.0
 	_typing = false
 	for c in _choices.get_children():
+		_choices.remove_child(c)   # gone now, so the new first answer is child 0
 		c.queue_free()
 	for i in options.size():
 		var b := Button.new()
@@ -143,8 +148,10 @@ func choose(options: Array) -> int:
 		b.custom_minimum_size = Vector2(0, UITheme.TOUCH)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.pressed.connect(func() -> void: _chosen.emit(i))
+		b.gui_input.connect(_on_choice_key.bind(b, i))
 		_choices.add_child(b)
 	_choices.visible = true
+	_choices_at = Time.get_ticks_msec()
 	_layout.call_deferred()
 	if _choices.get_child_count() > 0:
 		(_choices.get_child(0) as Button).grab_focus.call_deferred()
@@ -167,11 +174,56 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or _choices.visible:
+	if not visible:
+		return
+	if _choices.visible:
+		_refocus_choices(event)
 		return
 	if event.is_action_pressed("interact"):
 		_tap()
 		get_viewport().set_input_as_handled()
+
+
+## Keys and pads on an answer. The arrow keys, W / S, the left stick and the
+## d-pad move between answers (Godot moves the focus for all but W / S);
+## Enter, E or a pad's A picks the one with focus. Space never picks: it's
+## the key for getting through text. Nothing picks in the answers' first
+## moment either. Clicks and taps are left to the button.
+func _on_choice_key(e: InputEvent, b: Button, i: int) -> void:
+	if not (e is InputEventKey or e is InputEventJoypadButton or e is InputEventJoypadMotion):
+		return
+	if e is InputEventKey and (e.is_action("move_up") or e.is_action("move_down")) \
+			and not (e.is_action("ui_up") or e.is_action("ui_down")):
+		b.accept_event()
+		if e.is_pressed() and not e.is_echo():
+			var to := i + (1 if e.is_action("move_down") else -1)
+			if to >= 0 and to < _choices.get_child_count():
+				(_choices.get_child(to) as Control).grab_focus()
+		return
+	if not (e.is_action("interact") or e.is_action("ui_accept")):
+		return
+	b.accept_event()
+	if not e.is_pressed() or e.is_echo():
+		return
+	if e is InputEventKey and (e.physical_keycode == KEY_SPACE or e.keycode == KEY_SPACE):
+		return
+	if Time.get_ticks_msec() - _choices_at >= CHOICE_GUARD_MS:
+		_chosen.emit(i)
+
+
+## The answers lost the keyboard focus (a click beside them): the next arrow,
+## stick or pick key gives it back to the first answer.
+func _refocus_choices(event: InputEvent) -> void:
+	if _choices.get_child_count() == 0 or not event.is_pressed() or event.is_echo():
+		return
+	var f := get_viewport().gui_get_focus_owner()
+	if f != null and f.get_parent() == _choices:
+		return
+	for a in ["ui_up", "ui_down", "move_up", "move_down", "interact"]:
+		if event.is_action_pressed(a):
+			(_choices.get_child(0) as Control).grab_focus()
+			get_viewport().set_input_as_handled()
+			return
 
 
 func _tap() -> void:

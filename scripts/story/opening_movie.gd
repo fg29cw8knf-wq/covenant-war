@@ -69,6 +69,8 @@ var _music: AudioStreamPlayer
 var _voice: AudioStreamPlayer
 var _done := false
 var _skip_timer: SceneTreeTimer
+var _skip_up := false        # Skip is showing: the next E, Space, Enter or A skips
+var _focus_before: Control   # the button underneath that had the keyboard focus
 var _queue: Array = []
 var _duck_tween: Tween
 var _clock := 0.0
@@ -129,8 +131,13 @@ func _ready() -> void:
 	_skip.offset_top = 36
 	_skip.offset_bottom = 132
 	_skip.modulate.a = 0.0
+	_skip.focus_mode = Control.FOCUS_NONE   # keys are handled in _unhandled_input
 	_skip.pressed.connect(_finish)
 	_root.add_child(_skip)
+	# the title's button underneath keeps the keyboard focus, and would take
+	# Space and Enter for itself (starting the movie again); it gets it back after
+	_focus_before = get_viewport().gui_get_focus_owner()
+	get_viewport().gui_release_focus()
 
 	_music = AudioStreamPlayer.new()
 	add_child(_music)
@@ -269,20 +276,28 @@ func _on_input(e: InputEvent) -> void:
 		_show_skip()
 
 
+## Esc, Tab or Start skips at once; E, Space, Enter or A shows Skip, and a
+## second press while it shows skips.
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("menu"):
 		_finish()
+		get_viewport().set_input_as_handled()
 	elif e.is_action_pressed("interact"):
-		_show_skip()
+		if _skip_up:
+			_finish()
+		else:
+			_show_skip()
+		get_viewport().set_input_as_handled()
 
 
 func _show_skip() -> void:
+	_skip_up = true
 	create_tween().tween_property(_skip, "modulate:a", 1.0, 0.2)
-	_skip.grab_focus()
 	var my_timer := get_tree().create_timer(3.5)
 	_skip_timer = my_timer
 	await my_timer.timeout
 	if _skip_timer == my_timer and not _done:
+		_skip_up = false
 		create_tween().tween_property(_skip, "modulate:a", 0.0, 0.4)
 
 
@@ -298,6 +313,8 @@ func _finish() -> void:
 	tw.tween_property(_root, "modulate:a", 0.0, 0.6)
 	tw.parallel().tween_property(_music, "volume_db", -40.0, 0.6)
 	await tw.finished
+	if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
+		_focus_before.grab_focus()   # back on the title, the keys work again
 	finished.emit()
 	queue_free()
 
