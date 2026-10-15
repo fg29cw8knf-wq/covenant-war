@@ -23,6 +23,8 @@ var _keys := false       # draw only the frames that are kept (fast)
 var _was_waiting := false
 var _shooting := false
 var _line_frames := 0
+var _start_part := ""
+var _ending := false
 
 
 func _ready() -> void:
@@ -62,8 +64,9 @@ func _ready() -> void:
 		world.player.global_position = c.body.global_position + Vector3(1.4, 0, 1.4)
 		await _frames(4)
 		world._talk(c)
-	elif _part == "midnight":
-		await world.area.scene("midnight", world)
+	# midnight and the later parts start by themselves: World resumes a
+	# Prologue film part-way on arrival
+	_start_part = str(Game.flag("pro_part")) + str(Game.flag("thorn_part"))
 	print("FILM: started ", _part)
 
 
@@ -110,6 +113,14 @@ func _process(_d: float) -> void:
 		_was_waiting = ov2._waiting
 	if every > 0 and _frame % every == 0:
 		_shot("f%04d" % _frame)
+	# "only": stop when the film moves on to its next part
+	if _only and _start_part != "" and not _ending and _frame > 30:
+		var now := str(Game.flag("pro_part")) + str(Game.flag("thorn_part"))
+		if now != _start_part:
+			_ending = true
+			print("FILM: part over after ", _frame, " frames (", now, ")")
+			await _shot("end")
+			get_tree().quit()
 
 
 func _shot(label: String) -> void:

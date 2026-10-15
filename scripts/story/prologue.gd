@@ -81,7 +81,7 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 		{"who": "bram", "name": "Bram", "text": "Listen to me. They can't just take it off you. A Sigil taken by force turns to dust. The Covenant sees to that."},
 		{"who": "bram", "name": "Bram", "text": "They need you to stake it in a sworn duel and lose. Or they need you dead."},
 		{"choice": ["Then I'll duel them.", "What do we do?"], "then": [
-			[{"who": "bram", "name": "Bram", "text": "Twelve of them and their dogs? Not tonight. Not ever, if I can help it."}],
+			[{"who": "bram", "name": "Bram", "text": "Them and their dogs? Not tonight. Not ever, if I can help it."}],
 			[{"who": "bram", "name": "Bram", "text": "We go. Quiet, and now. Stay behind me."}],
 		]},
 		{"text": "Lantern beams sweep the back gardens. You go hedge to hedge behind Bram while the hunters shout to each other over the roofs. Nothing here. Check the barns. Huntmaster wants the innkeeper alive."},
@@ -126,16 +126,16 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 	# --- P5 · The Thornwood road
 	await story.scene("camp", [
 		{"text": "The Thornwood road, east. The first night: a campfire in a clearing. Bram is roasting something that was probably a rabbit."},
-		{"who": "bram", "name": "Bram", "text": "Tam ground my flour from the day I opened the inn. Never once weighed it in his own favour. And he went at an armoured rider with a hay fork."},
+		{"who": "bram", "name": "Bram", "text": "Tam ground my flour from the day I opened the inn. Never once weighed it in his own favour. And he went at Ironvault's huntmaster with a hay fork."},
 		{"who": "bram", "name": "Bram", "text": "I took you out the back door instead. I'd do it again tomorrow. Doesn't mean I sleep."},
 		{"who": "bram", "name": "Bram", "text": "Lords used to hire me to settle their quarrels, you know. Duel for a field, duel for a dowry, duel for a bridge. Good money."},
 		{"choice": ["Why did you stop?", "Were you any good?"], "then": [
 			[{"who": "bram", "name": "Bram", "text": "...Someone paid me for a job I shouldn't have taken. Then I stopped."}],
 			[{"who": "bram", "name": "Bram", "text": "Sprout, I was the best you never heard of. That's the best kind."}],
 		]},
-		{"who": "bram", "name": "Bram", "text": "Before you sleep. Two things I never taught you at the Lantern, because Corin's never owned either. First: Wards.", "learn": "wards:1", "group": "Wards"},
-		{"who": "bram", "name": "Bram", "text": "Some of those cards are Wards. You set one face down for next to nothing, and it waits. When the right thing happens, a Totem called, a Rite cast, a hit coming in, it springs by itself and does its work. He can't read it, so he can't plan round it. Set them early.", "learn": "wards:2", "group": "Wards"},
-		{"who": "bram", "name": "Bram", "text": "Second: the elements. Twelve of them, and every one hurts something and fears something. Water beats fire, you've seen that. Here's the lot.", "learn": "elements:1", "group": "The elements"},
+		{"who": "bram", "name": "Bram", "text": "Before you sleep. Two things we didn't get to at the Lantern. First: Wards. Corin's never owned one.", "learn": "wards:1", "group": "Wards"},
+		{"who": "bram", "name": "Bram", "text": "Some of the cards in that box are Wards. You set one face down for next to nothing, and it waits. When the right thing happens, a Totem called, a Rite cast, a hit coming in, it springs by itself and does its work. He can't read it, so he can't plan round it. Set them early.", "learn": "wards:2", "group": "Wards"},
+		{"who": "bram", "name": "Bram", "text": "Second: the rest of the elements. Twelve of them, and every one hurts something and fears something. Water beats fire, you've seen that. Here's the lot.", "learn": "elements:1", "group": "The elements"},
 		{"chart": "elements"},
 		{"who": "bram", "name": "Bram", "text": "Hit a weakness and it takes half again as much. You won't hold all that in your head tonight. It's in your pack, under How to Duel, with everything else I've told you.", "learn": "elements:2", "group": "The elements"},
 		{"who": "bram", "name": "Bram", "text": "Fancy a practice round before we sleep? I'll go easy. Mostly."},
@@ -156,7 +156,7 @@ static func play_after_marking(story: StoryScreen, main, faded := true) -> void:
 		{"text": "The second night. The road narrows between thorn trees, and the fireflies go out."},
 		{"who": "bram", "name": "Bram", "text": "Stay close."},
 		{"text": "A wiry figure steps out of the trees, a bronze mask over his mouth and a Shieldhound clanking at his heel."},
-		{"who": "hunter", "name": "Hunter Dask", "text": "The blank card. Hand it over, and the old man lives."},
+		{"who": "hunter", "name": "Hunter Dask", "text": "The Unsworn's card. Hand it over, and the old man lives."},
 		{"who": "bram", "name": "Bram", "text": "Covenant law, boy. Stake it in a sworn duel, or walk away."},
 		{"who": "hunter", "name": "Hunter Dask", "text": "Fine. Swear it, Unsworn. Your card against my whole deck."},
 		{"text": "You swear, and the air closes around the words like a lock. Your card against his deck. (Lose a story duel and you simply fight it again.)"},

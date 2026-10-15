@@ -221,7 +221,7 @@ static func _chores_done() -> Array:
 static func _bram() -> Array:
 	return [
 		{"if": "ash_ready", "then": [
-			{"who": "bram", "say": "Everyone sorted? Good. Corin's by the well, warming up his audience. Go and spoil the ending. Whoever wins lights the Great Lantern at midnight."},
+			{"who": "bram", "say": "Everyone sorted? Good. Corin's by the well, warming up his audience. Go and spoil the ending. Leave the how to me. Whoever wins lights the Great Lantern at midnight."},
 		], "else": [
 			{"who": "bram", "say": "Still folk wanting a hand, Sprout, if you've the time before midnight."},
 			{"if": "!ash_tam", "then": [{"who": "bram", "say": "Tam's at the hay cart, losing an argument with a barrel."}]},
@@ -265,7 +265,7 @@ static func _tilly() -> Array:
 					{"say": "[i]You touch the card.[/i]"},
 					{"scene": "tilly_moth"},
 					{"say": "[i]A moth made of lamplight. It circled Tilly's head twice and settled back into the paper, still glowing.[/i]"},
-					{"who": "tilly", "say": "Again! Again! It never does that for Da. It never does that for anyone."},
+					{"who": "tilly", "say": "Again! Again! It never does that for Da. Corin can make it twitch, but it never flies for him."},
 					{"set": "ash_tilly"},
 				],
 				[
@@ -332,7 +332,7 @@ static func _corin() -> Array:
 					]},
 					{"scene": "first_deck"},
 					{"who": "bram", "say": "That's a deck. Shuffled, you draw from the top and play what you can."},
-					{"who": "bram", "say": "Anyone can work a Sigil's magic, mind. A Rite answers Tam as quick as it answers you."},
+					{"who": "bram", "say": "Anyone can work a Sigil's magic, mind. A Rite, a bit of magic you cast once and then it's gone, answers Tam as quick as it answers you."},
 					{"who": "bram", "say": "But calling a Totem up out of a card, so it stands and fights? That takes the Attuned. In Ashford, that's you, Corin, and an old innkeeper who should know better."},
 					{"who": "corin", "say": "You? Since when?"},
 					{"who": "bram", "say": "Since before you could spell it. Which, I'll grant, wasn't long ago."},
@@ -347,23 +347,27 @@ static func _corin() -> Array:
 static func _lantern_duel() -> Array:
 	return [
 		{"who": "corin", "say": "Finally. Half of Ashford's watching. I told the other half to hurry. And no going easy on me. I'd know."},
-		{"who": "bram", "say": "One Spark each. And nobody sets fire to a stall. I'm looking at you, Corin."},
+		{"who": "bram", "say": "One Totem each. And nobody sets fire to a stall. I'm looking at you, Corin."},
 		{"who": "corin", "say": "That was one stall."},
 		{"who": "bram", "say": "Want me calling your turns from the stool, Sprout? No shame either way. A Totem in a slot, Essence to pay its way, nothing empty between him and your Life."},
-		{"choice": ["Talk me through it, Bram.", "I know how to duel."], "then": [
+		{"choice": ["Talk me through it, Bram.", "I've watched enough duels."], "then": [
 			[{"who": "bram", "say": "Sensible. Listen for me."}],
 			[{"set": "coach_off"}, {"who": "bram", "say": "Then I'll keep my mouth shut and my eyebrows ready."}],
 		]},
 		{"duel": {"v1": true, "id": "corin_lantern", "name": "Corin", "difficulty": 0.25},
 			"win": [
-				{"who": "corin", "say": "Fine. Fine! You were better. Tonight. Go on, light the thing. Next year it's mine."},
+				{"who": "corin", "say": "Fine. Fine! You were better. Tonight. You're still second-best in my book. Go on, light the thing. Next year it's mine."},
 				{"set": "ash_won_lantern"},
 			],
 			"lose": [
-				{"who": "corin", "say": "Ha! Told you. You nearly had me, though. Nearly. Come on. Best view of the Lantern's next to me."},
+				{"who": "corin", "say": "Ha! Second-best, like I always say. You nearly had me, though. Nearly. Come on. Best view of the Lantern's next to me."},
 			]},
 		{"scene": "tilly_gift"},
-		{"who": "tilly", "say": "For luck! You keep it. It glows better for you anyway."},
+		{"if": "ash_tilly", "then": [
+			{"who": "tilly", "say": "For luck! You keep it. It glows better for you anyway."},
+		], "else": [
+			{"who": "tilly", "say": "For luck! It's a Lantern Moth. If it wakes for anyone, it'll wake for you. You keep it."},
+		]},
 		{"who": "bram", "say": "In your pack with it, Sprout. It'll keep."},
 		{"set": "ash_lantern_duel"},
 		{"scene": "midnight"},
@@ -1001,7 +1005,7 @@ static func _midnight(w: World) -> void:
 	Cine.shot(w, Vector3(3.2, 1.0, 12.5), top * 0.55, 34.0)
 	Cine.fade(w, 0.0, 1.2)
 	Cine.drift(w, Vector3(3.2, 1.0, 12.5), Vector3(2.2, 1.3, 10.0), top * 0.55, top * 0.62, 7.0)
-	_bell(w, 6)
+	_bell(w, 12)
 	await Cine.say(w, "", "Midnight. The chapel bell counts twelve, and all of Ashford counts with it.")
 	await Cine.wait(w, 1.0)
 	# the winner lights it
@@ -1237,9 +1241,16 @@ static func _the_cart(w: World) -> void:
 	v.dust_puff(cc + fd * 2.8)
 	v.dust_puff(cc + fd * 3.4 + al * 0.8)
 	_sfx(w, "cart_crash")
-	Cine.look(w, "tilly", corin.global_position)
 	await Cine.hop(w, "tilly", 0.25)
-	Cine.shot(w, Cine.body(w, "tilly").global_position + fd * 2.5 + Vector3(0, 1.0, 0), Cine.body(w, "tilly").global_position + Vector3(0, 1.0, 0), 34.0)
+	# from behind Tilly (where her run ends): Corin under the cart, beyond her
+	var tb := Cine.body(w, "tilly")
+	Cine.place(w, "tilly", cc + fd * 2.6 + al * 1.7 + Vector3(0.5, 0, 0.6), corin.global_position)
+	var to_c := corin.global_position - tb.global_position
+	to_c.y = 0.0
+	to_c = to_c.normalized() if to_c.length() > 0.1 else -fd
+	var aside := to_c.cross(Vector3.UP)
+	Cine.shot(w, tb.global_position - to_c * 2.6 + aside * 1.3 + Vector3(0, 1.6, 0), corin.global_position + Vector3(0, 0.45, 0), 40.0)
+	Cine.place(w, "tilly", tb.global_position, corin.global_position)
 	await Cine.say(w, "tilly", "Corin! CORIN!", 1.6)
 	# the player, getting up in the west, turns, and runs back
 	var pf = Cine.fig(w, "player")
@@ -1257,8 +1268,8 @@ static func _the_cart(w: World) -> void:
 	await Cine.path(w, "player", [Vector3(-1.0, 0, 6.0), cc + fd * 6.5 + al * 2.0, lift_p], 5.4, "run")
 	Cine.place(w, "player", lift_p, cc)
 	await Cine.wait(w, 0.3)
-	# under the cart
-	Cine.shot(w, cc + fd * 6.4 + al * 0.4 + Vector3(0, 1.3, 0), cc + fd * 3.2 + Vector3(0, 0.6, 0), 40.0)
+	# under the cart: from the side, the cart, Corin and the two of them
+	Cine.shot(w, cc + fd * 7.6 + al * 0.6 + Vector3(0, 1.6, 0), cc + fd * 3.3 + Vector3(0, 0.8, 0), 40.0)
 	await Cine.say(w, "corin", "Help! My leg's stuck. I can't...")
 	Cine.place(w, "bram", lift_b, cc)
 	await Cine.say(w, "bram", "Get the other side. On three. One, two...", 2.6)
@@ -1285,8 +1296,10 @@ static func _the_cart(w: World) -> void:
 	if cf is Figure3D:
 		await (cf as Figure3D).get_up(0.9)
 	Cine.look(w, "corin", w.player.global_position)
-	Cine.path(w, "tilly", [corin.global_position + al * 0.8 + fd * 0.4], 3.0, "run")
-	Cine.two_shot(w, "corin", "player", 3.6, 1.5, -1.0, 36.0)
+	Cine.path(w, "tilly", [corin.global_position - al * 0.9 - fd * 0.2], 3.0, "run")
+	# the two of them, the cart behind
+	var mid := (corin.global_position + w.player.global_position) * 0.5
+	Cine.shot(w, mid + fd * 3.4 + al * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
 	await Cine.say(w, "corin", "I'm all right. I'm all right. That was... I'm all right.")
 
 
@@ -1302,6 +1315,11 @@ static func _the_white_light(w: World) -> void:
 	var bram_h := Cine.head(w, "bram")
 	var corin_h := Cine.head(w, "corin")
 	var hand := p + ((pf as Figure3D).facing() if pf is Figure3D else Vector3.FORWARD) * 0.42 + Vector3(0, 1.22, 0)
+	# the cart lies on its side behind them: cameras stay on the open side
+	var open := v.cart_fall_dir()
+	var along := v.cart_along()
+	var pfwd: Vector3 = (pf as Figure3D).facing() if pf is Figure3D else Vector3.FORWARD
+	var pside := pfwd.cross(Vector3.UP).normalized()
 	var curve := Curve3D.new()
 	curve.add_point(p + Vector3(-6.0, 26.0, -10.0))
 	curve.add_point(p + Vector3(-3.0, 9.0, -5.0))
@@ -1314,6 +1332,13 @@ static func _the_white_light(w: World) -> void:
 	wl.visible = true
 	var length := curve.get_baked_length()
 	var watchers := ["bram", "corin", "player", "tilly"]
+	# Tilly steps in behind Corin, out of the camera's way
+	var cb := Cine.body(w, "corin")
+	if Cine.body(w, "tilly") != null and cb != null:
+		var away := cb.global_position - (p + Vector3(3.5, 0.0, 6.0))
+		away.y = 0.0
+		away = away.normalized()
+		Cine.place(w, "tilly", cb.global_position + away * 0.9 + away.cross(Vector3.UP) * 0.5, cb.global_position)
 	Cine.shot(w, p + Vector3(3.5, 1.4, 6.0), p + Vector3(-2.0, 7.0, -4.0), 46.0)
 	var track := [true]   # the camera watches the light until the next shot takes over
 	var tw := w.create_tween()
@@ -1333,7 +1358,7 @@ static func _the_white_light(w: World) -> void:
 	await Cine.wait(w, 3.4)
 	if pf is Figure3D:
 		(pf as Figure3D).pose("play_card", 0.42)
-	Cine.move(w, hand + Vector3(1.0, 0.25, 1.4), hand, 2.6, 34.0)
+	Cine.move(w, hand + pfwd * 1.1 + pside * 0.55 + Vector3(0, 0.3, 0), hand - pfwd * 0.25 + Vector3(0, 0.12, 0), 2.6, 38.0)
 	await tw.finished
 	# it settles in your hand
 	v.lights_out()
@@ -1352,7 +1377,7 @@ static func _the_white_light(w: World) -> void:
 	holder.add_child(cl)
 	_hold(w, "player", holder)
 	w.set_meta("blank_card_glow", g)
-	Cine.shot(w, hand + Vector3(0.7, 0.35, 0.9), hand + Vector3(0, -0.02, 0), 30.0)
+	Cine.shot(w, hand + pfwd * 0.7 + pside * 0.35 + Vector3(0, 0.22, 0), hand - pfwd * 0.1 + Vector3(0, 0.02, 0), 34.0)
 	await Cine.wait(w, 1.1)
 	# and a white mark burns itself into the back of your hand
 	var mark := v.glow_sprite(holder, Vector3(0.0, -0.04, -0.05), Color(0.95, 0.97, 1.0), 0.06, 2.2)
@@ -1363,9 +1388,11 @@ static func _the_white_light(w: World) -> void:
 	_sfx(w, "sigil_strike", 1.7)
 	w.flash(Color(0.95, 0.97, 1.0), 0.04, 0.6)
 	await Cine.wait(w, 1.5)
-	Cine.two_shot(w, "corin", "player", 3.4, 1.45, -1.0, 34.0)
+	var mid := (Cine.body(w, "corin").global_position + p) * 0.5
+	Cine.shot(w, mid + open * 3.4 + along * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
 	Cine.look(w, "corin", p)
 	await Cine.say(w, "corin", "It came to you. It just... came to you.")
+	await Cine.say(w, "corin", "And your hand. What's that on your hand?")
 	# Bram takes your wrist, sees the mark, and folds your fingers over the card
 	var bram := Cine.body(w, "bram")
 	var to_p := p - bram.global_position
@@ -1373,7 +1400,8 @@ static func _the_white_light(w: World) -> void:
 	await Cine.walk(w, "bram", p - to_p.normalized() * 0.75, 1.2)
 	Cine.look(w, "bram", p)
 	Cine.look(w, "player", bram.global_position)
-	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
+	var mb := (bram.global_position + p) * 0.5
+	Cine.shot(w, mb + open * 2.8 + along * 0.6 + Vector3(0, 1.55, 0), mb + Vector3(0, 1.35, 0), 32.0)
 	var gt := w.create_tween().set_parallel(true)
 	gt.tween_property(cl, "light_energy", 0.0, 1.2)
 	gt.tween_property(g, "scale", Vector3.ONE * 0.05, 1.2)
@@ -1896,7 +1924,7 @@ static func _burning(w: World) -> void:
 	await Cine.say(w, "bram", "Listen to me. They can't just take it off you. A Sigil taken by force turns to dust. The Covenant sees to that.")
 	await Cine.say(w, "bram", "They need you to stake it in a sworn duel and lose. Or they need you dead.")
 	var c1 := await Cine.choose(w, ["Then I'll duel them.", "What do we do?"])
-	await Cine.say(w, "bram", "Twelve of them and their dogs? Not tonight. Not ever, if I can help it." if c1 == 0 else "We go. Quiet, and now. Stay behind me.")
+	await Cine.say(w, "bram", "Them and their dogs? Not tonight. Not ever, if I can help it." if c1 == 0 else "We go. Quiet, and now. Stay behind me.")
 	# through the back gardens, hedge to hedge, out of the lantern beams
 	await _gardens(w, hunters)
 	# the Crooked Lantern is burning

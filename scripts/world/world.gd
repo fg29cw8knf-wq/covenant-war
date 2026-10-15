@@ -95,7 +95,9 @@ func _arrive() -> void:
 	if not Game.flag(key) and area.get_script_constant_map().has("INTRO"):
 		area.intro_frame(self)   # start the camera on the intro's first shot before the fade
 	await hud.fade(0.0, 0.6)
-	hud.show_area_title(area.NAME, area.SUBTITLE)
+	# no place-name card over a story film picking up part-way
+	if not (area.get_script_constant_map().has("RESUMES") and area.starts_black()):
+		hud.show_area_title(area.NAME, area.SUBTITLE)
 	if not Game.flag(key):
 		Game.set_flag(key)
 		busy = true

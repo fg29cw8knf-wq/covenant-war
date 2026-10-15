@@ -212,6 +212,15 @@ static func place(w: World, who: String, at: Vector3, face_to = null) -> void:
 	var b := body(w, who)
 	if b == null:
 		return
+	if b.get_meta("cine_path", 0) != 0:
+		# stop any walk they were on
+		b.set_meta("cine_path", 0)
+		var wf = fig(w, who)
+		if wf != null:
+			wf.walking = false
+			if wf is Figure3D:
+				(wf as Figure3D).pace = 0.0
+				(wf as Figure3D).gait = "walk"
 	b.global_position = Vector3(at.x, b.global_position.y if at.y == 0.0 else at.y, at.z)
 	if face_to != null:
 		var f = fig(w, who)
@@ -250,6 +259,9 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 		(f as Figure3D).gait = gait
 		(f as Figure3D).pace = speed
 	f.walking = true
+	# a later walk, or place(), takes over from this one
+	var token := Time.get_ticks_usec()
+	b.set_meta("cine_path", token)
 	for p in points:
 		var to: Vector3 = p
 		var from := b.global_position
@@ -260,9 +272,11 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 		f.face(to - from, w.cam)
 		var tw := w.create_tween()
 		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(b):
+			if is_instance_valid(b) and b.get_meta("cine_path", 0) == token:
 				b.global_position = from.lerp(to, u), 0.0, 1.0, dist / maxf(speed, 0.1))
 		await tw.finished
+		if not is_instance_valid(b) or b.get_meta("cine_path", 0) != token:
+			return
 	if is_instance_valid(f):
 		f.walking = false
 		if f is Figure3D:
