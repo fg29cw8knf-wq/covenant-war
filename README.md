@@ -75,6 +75,31 @@ god's Law.
 Safari use Share > Add to Home Screen for a full-screen app icon). Rebuild it with `tools/build_web.sh`
 and push `build/web` to the `gh-pages` branch.
 
+A phone browser runs out of memory if it loads the whole game at once, so the web
+build comes in parts (`tools/web_packs.py` says what's in each, and `build_web.sh`
+keeps the export presets in step with it): a main pack (title, menus, Ashford,
+Thornwood), then `packs/movie.pck` (the opening movie), `packs/duel.pck` (the duel
+Totems and Summons; the moth and the hounds the films need stay in the main pack)
+and `packs/solhaven.pck` (Solhaven's script and anything in a `solhaven/` folder),
+each downloaded the first time it's needed, with a loading bar. Code that needs
+one awaits it first: `await Packs.need("duel")` (`scripts/game/packs.gd`; it
+returns at once in the apps, the editor and the tests, where everything is in one
+pack). `docs/`, `tools/`, `tests/`, `lookdev/` and `assets/audio/source/` are
+never exported. `python3 tools/pck_list.py build/web/index.pck` shows what's in a pack.
+
+The title screen and the pause menu's Options page show **Early build** followed by
+the date and time (UK) the build was made: `tools/build_web.sh` and
+`tools/build_ios.sh` write it into `build_info.cfg` for that build only. A game run
+from the editor shows the version number instead.
+
+**Play it on an iPhone as an app:** download
+https://github.com/fg29cw8knf-wq/covenant-war/releases/download/iphone/CovenantWar-iOS.zip
+on a Mac, open `CovenantWar.xcodeproj` in Xcode, choose your Apple ID as the team
+and press Run. `docs/iphone.md` has the steps, including for a free Apple ID.
+`.github/workflows/iphone.yml` rebuilds it with `tools/build_ios.sh` every time
+`main` changes. The app has everything in one pack at full quality: Forward+ (as on
+the Mac; Android keeps the Mobile renderer) and ASTC textures.
+
 The story's duels still use the older rules below until the v1 duel is signed off.
 
 ## Story mode

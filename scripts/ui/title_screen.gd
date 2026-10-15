@@ -112,7 +112,7 @@ void fragment() {
 	movie.pressed.connect(func() -> void: watch_opening.emit())
 	box.add_child(movie)
 
-	var ver := UITheme.label("%s   ·   Early build %s" % [NoticeScreen.COPYRIGHT, ProjectSettings.get_setting("application/config/version", "")], 22, Color(1, 1, 1, 0.6), "body", 6)
+	var ver := UITheme.label("%s   ·   Early build %s" % [NoticeScreen.COPYRIGHT, Packs.build_label()], 22, Color(1, 1, 1, 0.6), "body", 6)
 	ver.anchor_left = 1.0
 	ver.anchor_right = 1.0
 	ver.anchor_top = 1.0
