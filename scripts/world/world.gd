@@ -480,7 +480,10 @@ func run_steps(steps: Array, npc) -> void:
 			var talker = _figure_of(who)
 			if talker is Figure3D:
 				(talker as Figure3D).talking = true
-			await hud.dialogue.say(_speaker(who), _portrait(who), _fmt(st.say))
+			var line := _fmt(st.say)
+			if st.has("during"):
+				_during(String(st.during), DialogueBox.reach_secs(line, String(st.get("at", ""))))
+			await hud.dialogue.say(_speaker(who), _portrait(who), line)
 			if talker is Figure3D:
 				(talker as Figure3D).talking = false
 		elif st.has("if"):
@@ -521,6 +524,17 @@ func run_steps(steps: Array, npc) -> void:
 			hud.dialogue.close()
 			await area.scene(st.scene, self)
 	_refresh_markers()
+
+
+## A scene that plays while a line is up, not waited for: {"say": ...,
+## "during": "<scene>", "at": "<words>"} starts it as the line types out as
+## far as those words (Bram setting off while Corin talks, Tilly's card
+## passing over on "You keep it").
+func _during(scene_name: String, delay: float) -> void:
+	if delay > 0.0:
+		await get_tree().create_timer(delay).timeout
+	if is_inside_tree():
+		await area.scene(scene_name, self)
 
 
 func _check(cond: String) -> bool:

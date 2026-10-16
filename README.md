@@ -88,8 +88,12 @@ barrel, Tilly's moth, Nell's story), then Corin's Lantern Duel. Corin points out
 the player has no deck; Bram walks over with his twelve Sparks, explains that
 anyone can work a Sigil's magic but only the Attuned can call a Totem out of
 one, and walks the player round their pack (Deck and Codex open only then).
-The duel follows, with Bram's coaching you can decline, and Tilly runs over
-with her moth.
+Bram sets off from his stool the moment the player starts talking to Corin
+and waits a few steps off, so he's there to step in. The duel follows, with
+Bram's coaching you can decline, and Tilly runs over with her moth, which
+passes into the player's hands on her words "You keep it". A dialogue line can
+play a scene while it's up: `{"say": ..., "during": "<scene>", "at": "<words>"}`
+starts the scene as the line types out as far as those words.
 
 Everything after the Lantern Duel is a film in the game's own 3D, with Bram,
 Corin and the player as their 3D models (`scripts/world/figure_3d.gd`; the
@@ -122,6 +126,7 @@ To watch a film part by itself, tapping through every line (`corin`, `midnight`,
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 10 \
     res://tests/film_test.tscn -- /tmp/film midnight 30 keys     # a still every 3 s and one per line
 godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film river   # just run it
+godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film corin 0 only read=25 trace   # lines left up as a player reads them, with where Bram is
 ```
 
 New Game opens with a flight over Ashford (`intro()` in `ashford.gd`) before the

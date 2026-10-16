@@ -9,7 +9,9 @@ extends Node
 ##
 ## part: corin (Corin to midnight, with Bram's deck), midnight, dawn, taproom,
 ## burning, cellar (Ashford), or river, camp, road, ridge (the Thornwood).
-## Add "only" after the part to stop at the end of that part.
+## Add "only" after the part to stop at the end of that part, and
+## "read=<frames>" to leave each dialogue-box line up that long (as a player
+## reading it would) instead of tapping on at once.
 
 var out_dir := "user://"
 var every := 0
@@ -25,6 +27,7 @@ var _shooting := false
 var _line_frames := 0
 var _start_part := ""
 var _ending := false
+var _read := 3
 
 
 func _ready() -> void:
@@ -34,6 +37,9 @@ func _ready() -> void:
 	every = int(args[2]) if args.size() > 2 else 0
 	_only = "only" in args
 	_keys = "keys" in args
+	for a in args:
+		if String(a).begins_with("read="):
+			_read = int(String(a).substr(5))
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
@@ -76,8 +82,10 @@ func _process(_d: float) -> void:
 		return
 	# tap through the world's dialogue box
 	if world.hud != null and world.hud.dialogue._waiting:
+		if _wait == 0 and "trace" in OS.get_cmdline_user_args():
+			_trace()
 		_wait += 1
-		if _wait > 3:
+		if _wait > _read:
 			_wait = 0
 			world.hud.dialogue._advance.emit()
 	if world.hud != null and world.hud.dialogue._choices.visible:
@@ -124,6 +132,23 @@ func _process(_d: float) -> void:
 			print("FILM: part over after ", _frame, " frames (", now, ")")
 			await _shot("end")
 			get_tree().quit()
+
+
+## "trace": each dialogue-box line as it comes up, with where Bram is.
+var _last_line := ""
+
+
+func _trace() -> void:
+	var t: String = world.hud.dialogue._text.get_parsed_text()
+	if t == _last_line:
+		return
+	_last_line = t
+	var b = world._npc_by_id("bram")
+	var bp: Vector3 = b.body.global_position if b != null else Vector3.ZERO
+	var to := ""
+	if world.has_meta("bram_stop"):
+		to = " %.1fm from his mark" % Vector2(bp.x, bp.z).distance_to(Vector2(world.get_meta("bram_stop").x, world.get_meta("bram_stop").z))
+	print("LINE frame %4d  Bram at (%.1f, %.1f)%s  | %s" % [_frame, bp.x, bp.z, to, t.left(60)])
 
 
 func _shot(label: String) -> void:

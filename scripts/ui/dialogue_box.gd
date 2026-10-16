@@ -132,6 +132,18 @@ func say(speaker: String, portrait: Texture2D, text: String) -> void:
 	_waiting = false
 
 
+## How long a line takes to type out as far as `phrase` (0 when the phrase
+## is "" or not in the line), so something can happen on those words.
+static func reach_secs(text: String, phrase: String) -> float:
+	if phrase == "":
+		return 0.0
+	var plain := RegEx.create_from_string("\\[[^\\]]*\\]").sub(text, "", true)
+	var i := plain.find(phrase)
+	if i < 0:
+		return 0.0
+	return float(i) / (CHARS_PER_SEC * float(Game.settings.get("text_speed", 1.0)))
+
+
 ## Offer choices under the current line; returns the chosen index.
 func choose(options: Array) -> int:
 	visible = true
