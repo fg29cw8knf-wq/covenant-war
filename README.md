@@ -126,10 +126,18 @@ passes into the player's hands on her words "You keep it". A dialogue line can
 play a scene while it's up: `{"say": ..., "during": "<scene>", "at": "<words>"}`
 starts the scene as the line types out as far as those words.
 
-Everything after the Lantern Duel is a film in the game's own 3D, with Bram,
-Corin and the player as their 3D models (`scripts/world/figure_3d.gd`; the
-villagers stay cut-outs until their models exist): midnight, the Sigilfall,
-the run, the cart, the white light, the Pale Herald at dawn, the taproom,
+Bram, Corin, Tam, Tilly and the player are their 3D models everywhere
+(`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October); the other
+villagers stay cut-outs until their models exist, and a model dropped into
+`assets/models/characters/<id>.glb` is picked up by itself. The models share
+one skeleton, so a clip one lacks is borrowed from another and fitted to
+their height (Tilly is a child), and `reach()` puts hands on things: Tam and
+the player carry the barrel by its ends, Tilly holds her moth's card out in
+both hands, Corin leads her up the lane by the hand and holds it on the
+riverbank, Tam levels his pitchfork.
+
+Everything after the Lantern Duel is a film in the game's own 3D: midnight,
+the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn, the taproom,
 Ashford burning, the cellar and Bram's decks (`ashford.gd`, parts saved in the
 `pro_part` flag so a closed game picks up where it was), then the Thornwood
 (`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd`): the
@@ -144,7 +152,9 @@ Aldric at the Circle and Morne's vault to close the chapter. Still to build
 from the script: the attic and lantern hanging, Wren's chase, the mirror
 puzzle and the Sunspire.
 
-Dialogue portraits for the 3D characters are rendered from their models:
+Dialogue portraits for the 3D characters are rendered from their models into
+`assets/art/characters/<id>_portrait.png` (the dialogue box uses someone's own
+portrait when there is one, else the face for their costume):
 
 ```sh
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn

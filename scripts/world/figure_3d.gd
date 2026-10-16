@@ -10,22 +10,29 @@ extends PaperDoll
 ##   await fig.act("lift")            plays a clip once, then back to standing
 ##   fig.hold("look_up")              plays a clip and stays in its last pose
 ##   fig.lie_down() / fig.get_up()    flat on the ground (under a cart, struck down)
+##   fig.reach(l, r) / fig.let_go()   hands on things (a barrel, a card, a hand)
 ##
-## The three models share one skeleton, so a clip one of them lacks is
-## borrowed from another (Corin borrows the player's fall, the player
-## borrows Bram's lift).
+## The models share one skeleton (the same bone names, fingers and all), so
+## a clip one of them lacks is borrowed from another (Corin borrows the
+## player's fall, the player and Tam borrow Bram's lift). A borrowed clip is
+## fitted to whoever borrows it: its hip height is scaled to theirs (Tilly
+## is a child, so Bram's hips would lift her off the ground) and the tracks
+## for bones they haven't got (Bram's apron, the player's braid) are dropped.
 
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play. Everyone else's model
-## is characters/<their id or look>.glb (tam, tilly, nell, hob, seamus, krell,
-## dask, hunter), picked up the moment it exists.
+## is characters/<their id or look>.glb (nell, hob, seamus, krell, dask,
+## hunter), picked up the moment it exists.
 const MODELS := {"player": "player_a"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "talk", "duel_idle", "cheer"]
 ## Where to borrow a clip from when a model doesn't have it.
 const DONORS := ["player_a", "bram", "corin"]
-## How fast each gait carries them, for matching the feet to the ground (m/s).
+## How fast each gait carries a grown-up, for matching the feet to the
+## ground (m/s); shorter legs (Tilly's) take quicker steps.
 const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
+## A grown-up's hip height (m), the measure for the above.
+const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
 
 var model: Node3D
@@ -46,12 +53,18 @@ var _lie_target := 0.0
 var _lie_yaw := 0.0
 var _pivot: Node3D
 var _hand_glow: Node3D
+var _skel: Skeleton3D
+var _hips := ADULT_HIPS  # their hip height standing (m)
+var _top := 1.6          # their head bone standing (m), for the marker over it
+var _ik := {}            # "left"/"right": the TwoBoneIK3D holding that hand
+var _pose_n := 0
 
 static var _donor_cache := {}
 
-## Whether the characters who have a model use it (decided 15 October: Bram,
-## Corin and the player in 3D everywhere; the rest stay cut-outs until their
-## models exist). false puts everyone back to cut-outs.
+## Whether the characters who have a model use it. Bram, Corin and the
+## player became 3D on 15 October, Tam and Tilly on 16 October; the rest
+## (Nell, Hob, Seamus, the crowd, Krell and her hunters) stay cut-outs until
+## their models exist. false puts everyone back to cut-outs.
 const USE_MODELS := true
 
 
@@ -88,8 +101,22 @@ func _ready() -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		# skinned meshes move a long way from their rest bounds when they lie down
 		mi.extra_cull_margin = 2.0
+	# how tall they stand: the walk's pace, the marker over their head and
+	# their shadow go by it (Tilly is a head shorter than anyone)
+	_skel = model.find_child("Skeleton3D", true, false) as Skeleton3D
+	if _skel != null:
+		var hb := _skel.find_bone("Hips")
+		if hb >= 0:
+			_hips = _skel.get_bone_rest(hb).origin.y
+		var hd := _skel.find_bone("Head")
+		if hd >= 0:
+			_top = _skel.get_bone_global_rest(hd).origin.y
 	anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if anim != null:
+		# bones a clip doesn't move go back to standing: without this, a
+		# borrowed clip that moves a bone the model's own clips never do
+		# (the fall's drop to the ground) leaves it there for good
+		anim.deterministic = true
 		for c in LOOPS:
 			if anim.has_animation(c):
 				anim.get_animation(c).loop_mode = Animation.LOOP_LINEAR
@@ -98,7 +125,7 @@ func _ready() -> void:
 	# a soft round shadow, as the cut-outs have, to sit them on the grass
 	_shadow = MeshInstance3D.new()
 	var q := QuadMesh.new()
-	q.size = Vector2(0.9, 0.9)
+	q.size = Vector2(0.9, 0.9) * clampf(_hips / ADULT_HIPS, 0.6, 1.2)
 	_shadow.mesh = q
 	_shadow.rotation_degrees.x = -90
 	_shadow.position.y = 0.03
@@ -111,9 +138,14 @@ func _ready() -> void:
 	_marker.no_depth_test = true
 	_marker.render_priority = 10
 	_marker.pixel_size = 0.0045
-	_marker.position.y = 2.15
+	_marker.position.y = _marker_y()
 	_marker.visible = false
 	add_child(_marker)
+
+
+## Where the marker floats: a hand's breadth over their head.
+func _marker_y() -> float:
+	return _top + 0.55
 
 
 func _apply_texture() -> void:
@@ -171,14 +203,23 @@ func hold(clip: String, speed := 1.0, blend := 0.25) -> void:
 	_play(clip, blend, speed)
 
 
-## Holds a clip at one moment (fraction 0..1 of its length).
-func pose(clip: String, at: float) -> void:
+## Holds a clip at one moment (fraction 0..1 of its length), easing into it
+## over `blend` seconds. (It plays up to that moment and stops there: a
+## paused player never finishes blending, so the old pose would stay.)
+func pose(clip: String, at: float, blend := 0.2) -> void:
 	if not _ensure(clip):
 		return
 	_action = clip
 	_held = true
-	_play(clip, 0.15, 0.0)
-	anim.seek(anim.get_animation(clip).length * clampf(at, 0.0, 1.0), true)
+	_pose_n += 1
+	var n := _pose_n
+	var t := anim.get_animation(clip).length * clampf(at, 0.0, 1.0)
+	_play(clip, blend)
+	anim.seek(maxf(0.0, t - blend), true)
+	await get_tree().create_timer(blend).timeout
+	if n == _pose_n and _action == clip and anim.current_animation == clip:
+		anim.pause()
+		anim.seek(t, true)
 
 
 ## Back to standing, walking or talking.
@@ -259,11 +300,11 @@ func _process(delta: float) -> void:
 		if want != _clip:
 			_play(want, 0.25)
 		if (_clip == "walk" or _clip == "run") and pace > 0.0:
-			anim.speed_scale = clampf(pace / float(GAIT_SPEED[_clip]), 0.5, 1.8)
+			anim.speed_scale = clampf(pace / (float(GAIT_SPEED[_clip]) * _hips / ADULT_HIPS), 0.5, 1.8)
 		elif _clip == "walk" or _clip == "run":
 			anim.speed_scale = 1.0
 	if _marker != null and _marker.visible:
-		_marker.position.y = 2.15 + sin(_t * 3.0) * 0.06
+		_marker.position.y = _marker_y() + sin(_t * 3.0) * 0.06
 
 
 func _base() -> String:
@@ -291,8 +332,10 @@ func _ensure(clip: String) -> bool:
 	if anim.has_animation(clip):
 		return true
 	for donor in DONORS:
-		var a := _donor_clip(donor, clip)
-		if a != null:
+		var d := _donor_clip(donor, clip)
+		if not d.is_empty():
+			var a := (d.clip as Animation).duplicate(true)
+			_fit(a, float(d.hips))
 			if not anim.has_animation_library(""):
 				anim.add_animation_library("", AnimationLibrary.new())
 			anim.get_animation_library("").add_animation(clip, a)
@@ -300,17 +343,134 @@ func _ensure(clip: String) -> bool:
 	return false
 
 
-static func _donor_clip(donor: String, clip: String) -> Animation:
+## Fits a borrowed clip to this body: bone positions (the hips' height, a
+## fall's drop) scale with how tall they stand, and tracks for bones this
+## model hasn't got are dropped. Turns carry over as they are, so a child
+## bends like a grown-up, only smaller.
+func _fit(a: Animation, donor_hips: float) -> void:
+	if _skel == null:
+		return
+	var k := _hips / maxf(donor_hips, 0.01)
+	for t in range(a.get_track_count() - 1, -1, -1):
+		var bone := String(a.track_get_path(t).get_concatenated_subnames())
+		if bone != "" and _skel.find_bone(bone) < 0:
+			a.remove_track(t)
+			continue
+		if a.track_get_type(t) == Animation.TYPE_POSITION_3D and absf(k - 1.0) > 0.005:
+			for i in a.track_get_key_count(t):
+				a.track_set_key_value(t, i, (a.track_get_key_value(t, i) as Vector3) * k)
+
+
+## A donor's clip and its hip height ({} when it hasn't that clip).
+static func _donor_clip(donor: String, clip: String) -> Dictionary:
 	var key := donor + ":" + clip
 	if _donor_cache.has(key):
 		return _donor_cache[key]
 	var path := DIR + donor + ".glb"
-	var a: Animation = null
+	var out := {}
 	if ResourceLoader.exists(path):
 		var inst: Node = (load(path) as PackedScene).instantiate()
 		var ap := inst.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		var sk := inst.find_child("Skeleton3D", true, false) as Skeleton3D
 		if ap != null and ap.has_animation(clip):
-			a = ap.get_animation(clip).duplicate(true)
+			var hips := ADULT_HIPS
+			if sk != null and sk.find_bone("Hips") >= 0:
+				hips = sk.get_bone_rest(sk.find_bone("Hips")).origin.y
+			out = {"clip": ap.get_animation(clip).duplicate(true), "hips": hips}
 		inst.free()
-	_donor_cache[key] = a
-	return a
+	_donor_cache[key] = out
+	return out
+
+
+# ------------------------------------------------------------------ hands ---
+
+## Puts their hands on things: each hand goes to its target (a Node3D, and
+## follows it if it moves; null leaves that hand to the clip), blending in
+## over `secs`, elbows out and down. Holding a barrel by its rims, a card
+## held out in both hands, a hand held. let_go() gives the arms back.
+func reach(left: Node3D, right: Node3D, secs := 0.3) -> void:
+	_reach("left", left, secs)
+	_reach("right", right, secs)
+
+
+func let_go(secs := 0.3) -> void:
+	_reach("left", null, secs)
+	_reach("right", null, secs)
+
+
+## Something held in front of them that turns as they turn (a card held out
+## in both hands, a pitchfork levelled, a hand to hold): `at` is in their
+## own frame, x to their left, y up, z ahead. reach() puts the hands on it.
+func carry(node: Node3D, at: Vector3) -> Node3D:
+	if node.get_parent() != null:
+		node.reparent(_pivot, false)
+	else:
+		_pivot.add_child(node)
+	node.position = at
+	return node
+
+
+## Their own frame turned into the world: a point `at` (x to their left, y
+## up, z ahead) where it is now.
+func to_world(at: Vector3) -> Vector3:
+	return global_transform * (Basis(Vector3.UP, _yaw) * at)
+
+
+## How tall they stand, as a fraction of a grown-up (Tilly about 0.7).
+func stature() -> float:
+	return _hips / ADULT_HIPS
+
+
+## Is a hand reaching for something?
+func reaching(side := "") -> bool:
+	for s in (["left", "right"] if side == "" else [side]):
+		var ik = _ik.get(s)
+		if ik != null and is_instance_valid(ik) and (ik as TwoBoneIK3D).active:
+			return true
+	return false
+
+
+func _reach(side: String, target: Node3D, secs: float) -> void:
+	if _skel == null or not is_inside_tree():
+		return
+	var ik: TwoBoneIK3D = _ik.get(side)
+	if ik != null and not is_instance_valid(ik):
+		ik = null
+	if ik != null and ik.has_meta("tween"):
+		var old = ik.get_meta("tween")
+		if old is Tween and (old as Tween).is_valid():
+			(old as Tween).kill()
+	if target == null:
+		if ik != null and ik.active:
+			var off := create_tween()
+			off.tween_property(ik, "influence", 0.0, maxf(secs, 0.01))
+			off.tween_callback(func() -> void: ik.active = false)
+			ik.set_meta("tween", off)
+		return
+	var pre := "Left" if side == "left" else "Right"
+	if ik == null:
+		ik = TwoBoneIK3D.new()
+		ik.name = pre + "Reach"
+		ik.setting_count = 1
+		ik.set_root_bone_name(0, pre + "Arm")
+		ik.set_middle_bone_name(0, pre + "ForeArm")
+		ik.set_end_bone_name(0, pre + "Hand")
+		# reach with the palm, not the wrist
+		ik.set_extend_end_bone(0, true)
+		ik.set_end_bone_direction(0, SkeletonModifier3D.BONE_DIRECTION_FROM_PARENT)
+		ik.set_end_bone_length(0, 0.075 * _hips / ADULT_HIPS)
+		ik.influence = 0.0
+		_skel.add_child(ik)
+		# the elbow bends towards this: out to their side, down and back
+		var pole := Node3D.new()
+		pole.name = pre + "Elbow"
+		var s := _hips / ADULT_HIPS
+		pole.position = Vector3((0.55 if side == "left" else -0.55) * s, 0.75 * s, -0.55 * s)
+		_pivot.add_child(pole)
+		ik.set_pole_node(0, ik.get_path_to(pole))
+		_ik[side] = ik
+	ik.set_target_node(0, ik.get_path_to(target))
+	ik.active = true
+	var on := create_tween()
+	on.tween_property(ik, "influence", 1.0, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+	ik.set_meta("tween", on)

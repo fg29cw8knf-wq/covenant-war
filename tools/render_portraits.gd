@@ -6,7 +6,10 @@ extends Node3D
 ##   xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 \
 ##       --resolution 512x512 res://tools/render_portraits.tscn -- [ids...]
 
-const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a"}
+const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "tam": "tam", "tilly": "tilly"}
+## A child's head is smaller: the camera comes in closer so it fills the
+## frame like everyone else's.
+const CLOSER := {"tilly": 0.88}
 const OUT := "res://assets/art/characters/"
 const SIZE := 512
 
@@ -76,8 +79,9 @@ func _render(id: String) -> void:
 		var hb := sk.find_bone("Head")
 		if hb >= 0:
 			head = sk.global_transform * sk.get_bone_global_pose(hb).origin
-	var aim := head + Vector3(0, -0.06, 0)
-	_cam.global_position = aim + Vector3(0.42, 0.06, 1.25)
+	var k: float = CLOSER.get(id, 1.0)
+	var aim := head + Vector3(0, -0.06, 0) * k
+	_cam.global_position = aim + Vector3(0.42, 0.06, 1.25) * k
 	_cam.look_at(aim, Vector3.UP)
 	for i in 6:
 		await get_tree().process_frame
