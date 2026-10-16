@@ -28,7 +28,7 @@ var args := {}
 var sky_mat: ShaderMaterial
 var paper_mm: MultiMeshInstance3D
 var leaf_tex: ImageTexture
-var quality := 2             # 2 Forward+, 1 phone renderer, 0 web
+var quality := 2             # 2 full (Mac/PC), 1 phone, 0 phone link (web): Gfx.level()
 var burning_house: Node3D
 var elapsed := 0.0
 ## The Great Lantern on the green (Gary's model, scaled up to stand over the
@@ -53,15 +53,7 @@ var hay_cart_tip := 0.0
 
 func _ready() -> void:
 	var t0 := Time.get_ticks_msec()
-	match RenderingServer.get_current_rendering_method():
-		"forward_plus":
-			quality = 2
-		"mobile":
-			quality = 1
-		_:
-			quality = 0
-	if OS.has_feature("web"):
-		quality = 0
+	quality = Gfx.level()   # phones play the lighter level 1 unless set to Full
 	args["grass"] = str([9000, 20000, 42000][quality])
 	rng.seed = 1171
 	n_hills.seed = 7; n_hills.frequency = 0.008; n_hills.fractal_octaves = 4

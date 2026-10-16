@@ -36,15 +36,7 @@ var campfire_light: OmniLight3D
 
 
 func _ready() -> void:
-	match RenderingServer.get_current_rendering_method():
-		"forward_plus":
-			quality = 2
-		"mobile":
-			quality = 1
-		_:
-			quality = 0
-	if OS.has_feature("web"):
-		quality = 0
+	quality = Gfx.level()
 	args["grass"] = str([7000, 14000, 26000][quality])
 	rng.seed = 4242
 	n_hills.seed = 19; n_hills.frequency = 0.012; n_hills.fractal_octaves = 4

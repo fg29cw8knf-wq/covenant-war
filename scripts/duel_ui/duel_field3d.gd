@@ -74,6 +74,7 @@ func _init() -> void:
 	vp.handle_input_locally = false
 	vp.transparent_bg = false
 	vp.msaa_3d = Viewport.MSAA_2X
+	Gfx.apply(vp)   # a phone draws it smaller and upscales it
 	vp.positional_shadow_atlas_size = 2048
 	add_child(vp)
 

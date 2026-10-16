@@ -759,6 +759,14 @@ func _options() -> Control:
 		Game.settings["violence"] = "full" if on else "reduced"))
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
 		Game.settings["duel_3d"] = on))
+	if Gfx.is_phone():
+		v.add_child(_check("Smooth graphics (recommended on a phone; off = the Mac's full settings)", not Gfx.full(), func(on: bool) -> void:
+			Game.settings["graphics"] = "smooth" if on else "full"
+			Gfx.setup(get_tree())
+			toast("Fully applies the next time a place loads")))
+	v.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
+		Game.settings["show_fps"] = on
+		Gfx.FpsMeter.show_on(get_tree(), on)))
 	v.add_child(_check("Show advert placeholders (this early build only)", bool(Game.settings.get("ad_previews", true)), func(on: bool) -> void:
 		Game.settings["ad_previews"] = on))
 	var row := HBoxContainer.new()

@@ -79,7 +79,6 @@ func _ready() -> void:
 		ca.dof_blur_near_enabled = false
 		player.visible = false
 		player.process_mode = Node.PROCESS_MODE_DISABLED
-		set_physics_process(false)
 		return
 	hud = WorldHUD.new()
 	add_child(hud)
@@ -254,6 +253,10 @@ func _build_camera() -> void:
 	attrs.dof_blur_near_distance = CAM_OFFSET.length() - 8.0
 	attrs.dof_blur_near_transition = 5.0
 	attrs.dof_blur_amount = 0.06
+	if Gfx.level() < 2:
+		# depth-of-field blur is one of the dearest effects on a phone
+		attrs.dof_blur_far_enabled = false
+		attrs.dof_blur_near_enabled = false
 	cam.attributes = attrs
 	add_child(cam)
 	_focus = _cam_focus_target()
@@ -275,7 +278,11 @@ func _place_camera() -> void:
 
 # ============================================================ movement ===
 
-func _physics_process(delta: float) -> void:
+## Moves the player once a frame, in step with the camera. (It used to run at
+## the physics rate, 60 a second, while the camera ran every frame: on a phone
+## drawing 120 frames a second, or dropping frames, the player hopped while the
+## camera glided, which looked like the game straining to catch up.)
+func _move(delta: float) -> void:
 	var dir := Vector3.ZERO
 	if not busy and not hud.menu_open():
 		var v := hud.pad.vector
@@ -339,6 +346,7 @@ func _process(delta: float) -> void:
 		_shake = maxf(0.0, _shake - delta)
 		cam.h_offset = randf_range(-1, 1) * _shake * 0.25
 		cam.v_offset = randf_range(-1, 1) * _shake * 0.25
+	_move(delta)   # (the title screen's drifting camera returned above)
 	if cine:
 		return
 	_focus = _focus.lerp(_cam_focus_target(), minf(1.0, delta * 5.0))

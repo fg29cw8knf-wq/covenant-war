@@ -8,6 +8,9 @@
   two the same, Xcode shows one Signing section and the team is chosen once.
 - Drops the iOS Simulator copies of the engine (a real iPhone never uses them),
   which halves the download.
+- Turns off Xcode's Metal API Validation and GPU Frame Capture for Run. Both
+  are on by default and check every draw call while the game runs from Xcode,
+  which makes a 3D game noticeably slower than it really is.
 
     python3 tools/ios_tidy.py build/ios
 """
@@ -24,6 +27,13 @@ for path in [os.path.join(out, "CovenantWar.xcodeproj", "project.pbxproj"), os.p
 	t = t.replace('CODE_SIGN_IDENTITY = "Apple Distribution";', 'CODE_SIGN_IDENTITY = "Apple Development";')
 	assert "CHOOSETEAM" not in t, path
 	open(path, "w").write(t)
+
+for scheme in glob.glob(os.path.join(out, "*.xcodeproj", "xcshareddata", "xcschemes", "*.xcscheme")):
+	t = open(scheme).read()
+	if "enableGPUValidationMode" not in t:
+		t = t.replace("<LaunchAction\n", '<LaunchAction\n      enableGPUFrameCaptureMode = "3"\n      enableGPUValidationMode = "1"\n', 1)
+	assert "enableGPUValidationMode" in t, scheme
+	open(scheme, "w").write(t)
 
 for fw in glob.glob(os.path.join(out, "*.xcframework")):
 	info_path = os.path.join(fw, "Info.plist")
