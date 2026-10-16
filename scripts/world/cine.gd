@@ -318,6 +318,48 @@ static func act(w: World, who: String, clip: String, speed := 1.0) -> void:
 		await hop(w, who)
 
 
+## Two people hand in hand (Corin leading Tilly off): `a`'s hand on `b`'s
+## side and `b`'s hand on `a`'s side meet between them, and stay together
+## as `a` moves (if `b` falls behind, their arm stretches after). Only for
+## 3D figures; let_go_hands() parts them.
+static func hold_hands(w: World, a: String, b: String, secs := 0.3) -> void:
+	var fa = fig(w, a)
+	var fb = fig(w, b)
+	if not (fa is Figure3D and fb is Figure3D):
+		return
+	var big := fa as Figure3D
+	var small := fb as Figure3D
+	var to_b := body(w, b).global_position - body(w, a).global_position
+	to_b.y = 0.0
+	# which hand: whichever is on the other's side (a figure's right is
+	# its facing turned clockwise; in its own frame left is +x)
+	var a_right := to_b.dot(big.facing().cross(Vector3.UP)) > 0.0
+	var b_right := (-to_b).dot(small.facing().cross(Vector3.UP)) > 0.0
+	var meet := Node3D.new()
+	meet.name = "HandInHand"
+	# beside the bigger one's hip, at a height both can reach
+	var x := 0.3 * big.stature() * (-1.0 if a_right else 1.0)
+	big.carry(meet, Vector3(x, 0.46 * (big.stature() + small.stature()), 0.1))
+	big.reach(null if a_right else meet, meet if a_right else null, secs)
+	small.reach(null if b_right else meet, meet if b_right else null, secs)
+	w.set_meta("hands_" + a + "_" + b, meet)
+
+
+static func let_go_hands(w: World, a: String, b: String, secs := 0.25) -> void:
+	var key := "hands_" + a + "_" + b
+	var meet = w.get_meta(key, null)
+	if w.has_meta(key):
+		w.remove_meta(key)
+	for who in [a, b]:
+		var f = fig(w, who)
+		if f is Figure3D:
+			(f as Figure3D).let_go(secs)
+	if meet != null and is_instance_valid(meet):
+		await wait(w, secs + 0.05)
+		if is_instance_valid(meet):
+			(meet as Node).queue_free()
+
+
 ## A cut-out's way of showing a feeling: a quick hop on the spot.
 static func hop(w: World, who: String, height := 0.18) -> void:
 	var b := body(w, who)

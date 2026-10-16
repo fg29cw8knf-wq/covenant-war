@@ -143,6 +143,7 @@ static func _river(w: World) -> void:
 		if n.def.id != "bram":
 			Cine.place(w, String(n.def.id), n.def.pos, near)
 	Cine.place(w, "nell", fb + Vector3(4.6, 0, -0.6), crest)
+	_corin_holds_tilly(w, near)
 	Music.play(["river_farewell", "menu_theme"], 2.0, true)
 	# from behind the villagers, across the water, up to the burning crest
 	Cine.shot(w, fb + Vector3(-2.6, 3.4, 11.0), crest + Vector3(0, 1.0, 0), 42.0)
@@ -182,6 +183,23 @@ static func _river(w: World) -> void:
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "We'll come back, Sprout. I swear it on the Lantern.")
 	await Cine.fade(w, 1.0, 1.6)
+
+
+## Corin holding Tilly's hand on the far bank: she stands close at his side
+## (the side she was on), both looking across at `near`, hand in hand.
+static func _corin_holds_tilly(w: World, near: Vector3) -> void:
+	var c := Cine.body(w, "corin")
+	var t := Cine.body(w, "tilly")
+	if c == null or t == null or not (Cine.fig(w, "tilly") is Figure3D) or not (Cine.fig(w, "corin") is Figure3D):
+		return
+	var look := near - c.global_position
+	look.y = 0.0
+	var right := look.normalized().cross(Vector3.UP)
+	var side := right if (t.global_position - c.global_position).dot(right) >= 0.0 else -right
+	var at := c.global_position + side * 0.55 + look.normalized() * 0.05
+	at.y = 0.0   # on the ground there
+	Cine.place(w, "tilly", at, near)
+	Cine.hold_hands(w, "corin", "tilly", 0.01)
 
 
 ## A bundle of cards skimmed across the river: two skips and a splash, then

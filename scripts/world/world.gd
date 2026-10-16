@@ -575,6 +575,11 @@ func _portrait(who: String) -> Texture2D:
 			return DollArt.portrait("player")
 	var n = _npc_by_id(who)
 	if n != null:
+		# their own face when it's been rendered from their 3D model (Tam,
+		# Tilly), else the face that goes with their costume
+		var id := String(n.def.get("id", ""))
+		if id != "" and DollArt.has_portrait(id):
+			return DollArt.portrait(id)
 		return DollArt.portrait(n.def.look)
 	if DollArt.LOOKS.has(who):
 		return DollArt.portrait(who)

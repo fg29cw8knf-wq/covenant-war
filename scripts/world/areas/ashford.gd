@@ -532,25 +532,56 @@ static func _tam_barrel(w: World) -> void:
 	var side := dir.cross(Vector3.UP).normalized()
 	if side.dot(w.cam.global_transform.basis.x) < 0.0:
 		side = -side   # the player takes the end nearer the camera's right
-	# from behind the two of them, looking on towards the stall where it's going
+	var end := spot - dir * 0.75
+	# ahead of them and off the player's side, so both faces come towards the
+	# camera as they carry it (from behind, the hay cart was in the way)
 	w.cine = true
-	w.cine_to(start - dir * 3.8 + Vector3(0, 2.4, 0), spot + Vector3(0, 0.9, 0), 1.0)
+	var cam_at := end + dir * 2.4 + side * 3.6 + Vector3(0, 1.9, 0)
+	w.cine_to(cam_at, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), 1.0)
 	# each takes an end
-	_walk(w, null, start + side * 0.8, 0.8)
-	await _walk(w, tam, start - side * 0.8, 0.8)
+	var held := BARREL_HOLD
+	_walk(w, null, start + side * held, 0.8)
+	await _walk(w, tam, start - side * held, 0.8)
 	w.player_doll.look_toward(start, w.cam)
 	tam.doll.look_toward(start, w.cam)
 	await w.get_tree().create_timer(0.25).timeout
-	# lift it onto its side, held between them
+	# lift it onto its side, held between them: a 3D figure bends to it and
+	# takes hold of its end with both hands (hand holds on the barrel, so
+	# they go where it goes)
 	var b0 := b.basis
 	var lifted := Basis(dir, PI * 0.5)   # on its side, spanning the two of them
+	var lift_c := start + Vector3(0, 0.95, 0)
+	var holds := []
+	for who in [[w.player_doll, 1.0], [tam.doll, -1.0]]:
+		var f = who[0]
+		if f is Figure3D:
+			var e: Vector3 = side * float(who[1])
+			var grips := []
+			for fwd in [1.0, -1.0]:
+				var g := Node3D.new()
+				g.name = "BarrelGrip"
+				b.add_child(g)
+				# where the hand will be once it's lifted, in the barrel's own frame
+				g.position = lifted.inverse() * (e * (AshfordVillage.BARREL_HALF - 0.05) + dir * 0.17 * fwd - Vector3(0, 0.07, 0))
+				grips.append(g)
+			# its left hand takes the grip on its left as it faces the barrel
+			var left_fwd: bool = (-e).cross(Vector3.UP).dot(dir) < 0.0
+			(f as Figure3D).pose("lift", 0.45, 0.35)
+			(f as Figure3D).reach(grips[0] if left_fwd else grips[1], grips[1] if left_fwd else grips[0], 0.45)
+			holds.append_array(grips)
+	if not holds.is_empty():
+		await w.get_tree().create_timer(0.3).timeout
 	var tw := w.create_tween().set_parallel(true)
-	tw.tween_property(b, "global_position", start + Vector3(0, 0.95, 0), 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(b, "global_position", lift_c, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_method(func(u: float) -> void: b.basis = Basis(b0.get_rotation_quaternion().slerp(lifted.get_rotation_quaternion(), u)), 0.0, 1.0, 0.5)
 	await tw.finished
-	# carry it over, side by side
-	var end := spot - dir * 0.75
-	var secs := maxf(2.2, start.distance_to(end) / 3.0)
+	# carry it over, side by side, at a heavy barrel's walk
+	var secs := maxf(2.2, start.distance_to(end) / BARREL_PACE)
+	var pace := start.distance_to(end) / secs
+	for f in [w.player_doll, tam.doll]:
+		if f is Figure3D:
+			(f as Figure3D).release(0.25)
+			(f as Figure3D).pace = pace
 	w.player_doll.walking = true
 	tam.doll.walking = true
 	w.player_doll.face(dir, w.cam)
@@ -560,14 +591,21 @@ static func _tam_barrel(w: World) -> void:
 	var carry := w.create_tween()
 	carry.tween_method(func(u: float) -> void:
 		var c := start.lerp(end, u)
-		var bob := absf(sin(u * secs * 6.0)) * 0.05
+		var bob := absf(sin(u * secs * 5.2)) * 0.035
 		b.global_position = c + Vector3(0, 0.95 + bob, 0)
-		pb.global_position = c + side * 0.8
-		tb.global_position = c - side * 0.8, 0.0, 1.0, secs)
+		pb.global_position = c + side * held
+		tb.global_position = c - side * held, 0.0, 1.0, secs)
+	Cine.drift(w, cam_at, cam_at + dir * 0.4 - side * 0.3, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), end + Vector3(0, 0.85, 0), secs)
 	await carry.finished
 	w.player_doll.walking = false
 	tam.doll.walking = false
-	# heave it up onto its end beside the others
+	for f in [w.player_doll, tam.doll]:
+		if f is Figure3D:
+			(f as Figure3D).pace = 0.0
+	# heave it up onto its end beside the others (letting go as it lands)
+	for f in [w.player_doll, tam.doll]:
+		if f is Figure3D:
+			(f as Figure3D).let_go(0.3)
 	var up_basis := Basis(Vector3.UP, 0.4)
 	var down := w.create_tween().set_parallel(true)
 	down.tween_property(b, "global_position", spot + Vector3(0, AshfordVillage.BARREL_HALF + 0.25, 0), 0.35).set_trans(Tween.TRANS_SINE)
@@ -578,10 +616,17 @@ static func _tam_barrel(w: World) -> void:
 	await thud.finished
 	v.dust_puff(spot)
 	w.shake(0.12)
+	for g in holds:
+		(g as Node).queue_free()
 	tam.doll.look_toward(pb.global_position, w.cam)
 	w.player_doll.look_toward(tb.global_position, w.cam)
 	await w.get_tree().create_timer(0.4).timeout
 	await w.cine_home(0.9)
+
+## How far from the barrel's middle each of them walks carrying it (m), and
+## how fast they go with it (m/s).
+const BARREL_HOLD := 0.7
+const BARREL_PACE := 1.7
 
 
 ## Tilly's Lantern Moth: at the player's touch it unfolds out of her card, a
@@ -605,10 +650,21 @@ static func _tilly_moth(w: World) -> void:
 	var card := tp - axis * 0.3 + Vector3(0, TILLY_HANDS, 0)
 	var head := tp + Vector3(0, TILLY_HEAD, 0)
 	var between := (tp + pp) * 0.5
+	# a 3D Tilly holds her card out to you in both hands, and the moth
+	# circles her own head
+	var tf = tilly.doll
+	var held: Node3D = null
+	if tf is Figure3D:
+		(tf as Figure3D).snap_face(-axis)
+		held = _moth_card(v)
+		(tf as Figure3D).carry(held, TILLY_HOLD)
+		_hands_on(tf, held, 0.4)
+		card = (tf as Figure3D).to_world(TILLY_HOLD)
+		head = Cine.head(w, "tilly") - Vector3(0, 0.06, 0)
 	w.cine = true
-	await w.cine_to(between + perp * 4.6 + axis * 0.6 + Vector3(0, 1.7, 0), tp - axis * 0.3 + Vector3(0, 1.2, 0), 1.0)
+	await w.cine_to(between + perp * 4.0 + axis * 0.6 + Vector3(0, 1.5, 0), tp - axis * 0.3 + Vector3(0, 1.05, 0), 1.0)
 	# the card glows, then the moth unfolds out of it
-	var glow: MeshInstance3D = v.glow_sprite(w, card, Color(1.0, 0.72, 0.32), 0.4, 0.7)
+	var glow: MeshInstance3D = v.glow_sprite(held if held != null else w, Vector3.ZERO if held != null else card, Color(1.0, 0.72, 0.32), 0.4, 0.7)
 	var gt := w.create_tween()
 	gt.tween_property(glow, "scale", Vector3.ONE * 1.1, 0.5).set_trans(Tween.TRANS_SINE)
 	await gt.finished
@@ -646,12 +702,48 @@ static func _tilly_moth(w: World) -> void:
 	fade.tween_property(glow, "scale", Vector3.ONE * 0.7, 0.6).set_trans(Tween.TRANS_SINE)
 	await fade.finished
 	glow.queue_free()
+	# she tucks it away again
+	if held != null:
+		(tf as Figure3D).let_go(0.35)
+		var away := w.create_tween()
+		away.tween_property(held, "scale", Vector3.ONE * 0.01, 0.35)
+		away.tween_callback(held.queue_free)
 	tilly.doll.look_toward(w.player.global_position, w.cam)
 	await w.cine_home(0.9)
 
-## Where Tilly holds her card, and her head, in metres above the ground.
+## Where Tilly holds her card, and her head, in metres above the ground
+## (her painted cut-out, drawn full height).
 const TILLY_HANDS := 0.85
 const TILLY_HEAD := 1.45
+## Where the 3D Tilly holds her card out, in her own frame (y up, z ahead).
+const TILLY_HOLD := Vector3(0.0, 0.74, 0.25)
+const TILLY_HOLD_OUT := Vector3(0.0, 0.84, 0.36)
+
+
+## Tilly's Lantern Moth card: a little warm-lit card with a hand hold either
+## side of it ("L" on the holder's left, "R" on its right).
+static func _moth_card(v: AshfordVillage) -> Node3D:
+	var n := Node3D.new()
+	n.name = "MothCard"
+	var c := InnRooms.blank_card(v)
+	var m := c.material_override as StandardMaterial3D
+	m.albedo_color = Color(0.95, 0.86, 0.66)
+	m.emission = Color(1.0, 0.7, 0.32)
+	m.emission_energy_multiplier = 1.2
+	c.rotation = Vector3(-PI * 0.3, 0, 0)   # tipped up towards whoever she shows it to
+	n.add_child(c)
+	for s in [["L", 1.0], ["R", -1.0]]:
+		var g := Node3D.new()
+		g.name = String(s[0])
+		g.position = Vector3(0.05 * float(s[1]), -0.01, -0.01)
+		n.add_child(g)
+	return n
+
+
+## Both of a 3D figure's hands on a holder's "L" and "R" holds.
+static func _hands_on(f, holder: Node3D, secs := 0.3) -> void:
+	if f is Figure3D and holder != null:
+		(f as Figure3D).reach(holder.get_node("L"), holder.get_node("R"), secs)
 ## The moth's model is drawn tiny; this makes its wingspan about half a metre.
 const MOTH_SIZE := 1.8
 
@@ -969,20 +1061,34 @@ static func _tilly_gift(w: World) -> void:
 	var side := d.cross(Vector3.UP).normalized()
 	Cine.shot(w, p - d * 2.4 + side * 1.6 + Vector3(0, 1.9, 0), stop + Vector3(0, 0.9, 0), 38.0)
 	Cine.look(w, "player", from)
-	# her card glowing in her hands as she runs
+	# her card glowing in her hands as she runs (a 3D Tilly holds it in both)
 	var v := village(w)
-	var glow: MeshInstance3D = v.glow_sprite(tilly, Vector3(0.0, TILLY_HANDS, 0.2), Color(1.0, 0.72, 0.32), 0.45, 0.8)
+	var tf = Cine.fig(w, "tilly")
+	var glow: Node3D
+	if tf is Figure3D:
+		glow = _moth_card(v)
+		v.glow_sprite(glow, Vector3.ZERO, Color(1.0, 0.72, 0.32), 0.45, 0.8)
+		(tf as Figure3D).carry(glow, TILLY_HOLD)
+		_hands_on(tf, glow, 0.2)
+	else:
+		glow = v.glow_sprite(tilly, Vector3(0.0, TILLY_HANDS, 0.2), Color(1.0, 0.72, 0.32), 0.45, 0.8)
 	await Cine.path(w, "tilly", [stop], 3.4, "run")
 	Cine.look(w, "tilly", p)
 	await Cine.hop(w, "tilly", 0.12)
-	# side on and wide enough to see the card cross from her hands to yours
-	# (her cut-out is drawn full height, so a close two-shot is all Tilly)
+	# side on, to see the card cross from her hands to yours (her painted
+	# cut-out is drawn full height, so that needs a wider shot than her model)
 	var mid := (p + stop) * 0.5
-	Cine.shot(w, mid + side * 4.6 + Vector3(0, 1.45, 0), mid + Vector3(0, 1.15, 0), 38.0)
+	if tf is Figure3D:
+		Cine.shot(w, mid + side * 3.3 + Vector3(0, 1.3, 0), mid + Vector3(0, 1.0, 0), 38.0)
+	else:
+		Cine.shot(w, mid + side * 4.6 + Vector3(0, 1.45, 0), mid + Vector3(0, 1.15, 0), 38.0)
 	# she holds it out to you, arms up and forward
 	var out := w.create_tween()
-	out.tween_property(glow, "global_position", glow.global_position - d * 0.22 + Vector3(0, 0.12, 0), 0.35) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if tf is Figure3D:
+		out.tween_property(glow, "position", TILLY_HOLD_OUT, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		out.tween_property(glow, "global_position", glow.global_position - d * 0.22 + Vector3(0, 0.12, 0), 0.35) \
+			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await out.finished
 	w.set_meta("tilly_glow", glow)
 	w.set_meta("tilly_handed", false)
@@ -1001,17 +1107,32 @@ static func _tilly_hands_over(w: World) -> void:
 	d.y = 0.0
 	d = d.normalized() if d.length() > 0.01 else Vector3.BACK
 	var pf = Cine.fig(w, "player")
-	if pf is Figure3D:
-		(pf as Figure3D).pose("play_card", 0.3)
+	var tf = Cine.fig(w, "tilly")
+	# it leaves her hands (a 3D Tilly lets go as it rises out of them), and
+	# turns as it crosses so its face ends up towards you
+	var g3 := (glow as Node3D).get_parent() != w and tf is Figure3D
+	if g3:
+		(glow as Node3D).reparent(w)
+		(tf as Figure3D).let_go(0.5)
 	# a little arc, brightening as it crosses
 	var from: Vector3 = glow.global_position
 	var to := p + Vector3(0, 1.05, 0) + d * 0.3
 	var s0: Vector3 = glow.scale
+	var b0: Basis = (glow as Node3D).global_basis
 	var gt := w.create_tween()
 	gt.tween_method(func(u: float) -> void:
 		if is_instance_valid(glow):
 			glow.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.12, 0)
-			glow.scale = s0 * (1.0 + sin(u * PI) * 0.35), 0.0, 1.0, 0.7).set_trans(Tween.TRANS_SINE)
+			if g3:
+				glow.global_basis = Basis(Vector3.UP, PI * u) * b0
+			glow.scale = s0 * (1.0 + sin(u * PI) * 0.35), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+	# you reach out and take it
+	if pf is Figure3D:
+		if g3:
+			await Cine.wait(w, 0.35)
+			_hands_on(pf, glow, 0.4)
+		else:
+			(pf as Figure3D).pose("play_card", 0.3)
 	await gt.finished
 	w.set_meta("tilly_handed", true)
 
@@ -1025,15 +1146,26 @@ static func _tilly_card(w: World) -> void:
 	while glow != null and is_instance_valid(glow) and not w.get_meta("tilly_handed", true) and waited < 3.0:
 		await w.get_tree().process_frame
 		waited += w.get_process_delta_time()
-	if glow != null and is_instance_valid(glow):
+	var pf = Cine.fig(w, "player")
+	var tf = Cine.fig(w, "tilly")
+	if tf is Figure3D:
+		(tf as Figure3D).let_go(0.3)   # (if it never left her hands)
+	# a 3D player keeps it in their hands through the reveal
+	var in_hands: bool = pf is Figure3D and (pf as Figure3D).reaching()
+	if glow != null and is_instance_valid(glow) and not in_hands:
 		await Cine.wait(w, 0.25)
 		glow.queue_free()
 	w.remove_meta("tilly_glow")
 	w.set_meta("tilly_handed", true)
-	var pf = Cine.fig(w, "player")
 	await Cine.reveal(w, ["lantern_moth"], "NEW SIGIL", "Tilly's Lantern Moth")
 	if pf is Figure3D:
 		(pf as Figure3D).release()
+		if in_hands:
+			(pf as Figure3D).let_go(0.3)
+			if glow != null and is_instance_valid(glow):
+				var away := w.create_tween()
+				away.tween_property(glow, "scale", Vector3.ONE * 0.01, 0.3)
+				away.tween_callback(glow.queue_free)
 	_give_card("lantern_moth")
 	Game.set_flag("has_lantern_moth")
 	Game.set_flag("moth_given")
@@ -1174,7 +1306,7 @@ static func _midnight(w: World) -> void:
 	for c in CROWD:
 		Cine.hop(w, String(c[0]), 0.22)
 	for who in ["tilly", "hob", "tam"]:
-		Cine.hop(w, who, 0.2)
+		Cine.act(w, who, "cheer")   # a cut-out (Hob) hops
 	for who in ["bram", "corin", "player"]:
 		if who != lighter:
 			Cine.act(w, who, "cheer")
@@ -1196,16 +1328,17 @@ static func _midnight(w: World) -> void:
 	await Cine.say(w, "bram", "It shouldn't. It always seems to." if pick == 0 else "From your mouth to their ears.")
 	# the sky lanterns go up, and stop
 	v.release_lanterns()
-	for who in ["bram", "corin", "player"]:
+	for who in ["bram", "corin", "player", "tam", "tilly"]:
 		Cine.look(w, who, top)
 	Cine.shot(w, Vector3(1.0, 0.6, 9.0), Vector3(0.0, 6.0, -2.0), 52.0)
 	await Cine.drift(w, Vector3(1.0, 0.6, 9.0), Vector3(-2.0, 5.5, 14.0), Vector3(0.0, 6.0, -2.0), Vector3(4.0, 22.0, -18.0), 7.0, 52.0)
 	Music.stop(3.0)
 	await Cine.drift(w, Vector3(-2.0, 5.5, 14.0), Vector3(-3.0, 7.0, 16.0), Vector3(4.0, 22.0, -18.0), Vector3(8.0, 30.0, -24.0), 4.0)
-	for who in ["bram", "corin", "player"]:
+	# heads up, and they stay up (the clip looks up and comes back down)
+	for who in ["bram", "corin", "player", "tam", "tilly"]:
 		var f = Cine.fig(w, who)
 		if f is Figure3D:
-			(f as Figure3D).hold("look_up")
+			(f as Figure3D).pose("look_up", 0.5, 0.9)
 	# from under the Lantern, their faces turned up to the sky
 	Cine.shot(w, Vector3(-0.5, 0.95, 1.7), Vector3(-0.6, 1.75, 4.6), 44.0)
 	await Cine.wait(w, 1.8)
@@ -1248,7 +1381,7 @@ static func _midnight(w: World) -> void:
 	Cine.shot(w, nell_cam, Cine.head(w, "nell"), 34.0)
 	Cine.look(w, "nell", nell_cam)
 	await Cine.say(w, "nell", "Fire! The mill's on fire!", 2.0)
-	for who in ["bram", "corin", "player"]:
+	for who in ["bram", "corin", "player", "tam", "tilly"]:
 		var f = Cine.fig(w, who)
 		if f is Figure3D:
 			(f as Figure3D).release()
@@ -1348,8 +1481,23 @@ static func _strike_later(w: World, at: Vector3, col: Color, after: float) -> vo
 
 static func _corin_and_tilly(w: World, lane_a: Vector3, lane_b: Vector3) -> void:
 	var tilly := Cine.body(w, "tilly")
-	await Cine.path(w, "corin", [tilly.global_position + Vector3(-0.6, 0, -0.2)], 4.6, "run")
-	Cine.path(w, "tilly", [lane_a + Vector3(0.6, 0, 0.5), lane_b + village(w).cart_along() * 1.6 + Vector3(0.5, 0, 0.6)], 3.6, "run")
+	var corin := Cine.body(w, "corin")
+	# he comes up on her far side from the lane, takes her hand, and they run
+	# side by side (she on his right as they go, in step with him)
+	var run_dir := lane_b - lane_a
+	run_dir.y = 0.0
+	run_dir = run_dir.normalized()
+	var beside := run_dir.cross(Vector3.UP).normalized() * 0.62   # his right, as he runs
+	await Cine.path(w, "corin", [tilly.global_position - beside], 4.6, "run")
+	if Cine.fig(w, "tilly") is Figure3D and Cine.fig(w, "corin") is Figure3D:
+		Cine.look(w, "corin", lane_a)
+		Cine.look(w, "tilly", lane_a + beside)
+		Cine.hold_hands(w, "corin", "tilly", 0.15)
+	var gap := tilly.global_position - corin.global_position
+	gap.y = 0.0
+	# in step with him to the cart; when it goes over she runs on (the cart
+	# lets go of their hands, _the_cart)
+	Cine.path(w, "tilly", [lane_a + gap, lane_b + gap, lane_b + run_dir * 1.6 + gap], 3.6, "run")
 	await Cine.path(w, "corin", [lane_a, lane_b], 3.6, "run")
 
 
@@ -1372,6 +1520,7 @@ static func _the_cart(w: World) -> void:
 	# the blast on the far side throws the cart over on him
 	var hit := cc - fd * 1.8 + al * 0.3
 	v.strike(hit, SIGIL_COLS[0], 0.25, false)
+	Cine.let_go_hands(w, "corin", "tilly", 0.12)
 	await Cine.wait(w, 0.28)
 	w.shake(0.7)
 	_sfx(w, "sigil_strike")
@@ -1728,10 +1877,15 @@ static func _dawn(w: World) -> void:
 	Cine.shot(w, Vector3(-2.0, 1.0, 16.4), Cine.body(w, "tilly").global_position + Vector3(0, 0.9, 0), 36.0)
 	await Cine.wait(w, 0.8)
 	Cine.look(w, "tilly", HERALD_AT + Vector3(10, 0, 0))
-	Cine.hop(w, "tilly", 0.22)
-	await Cine.wait(w, 0.5)
-	await Cine.hop(w, "tilly", 0.22)
-	await Cine.wait(w, 1.4)
+	# then Tilly waves (a cut-out hops instead)
+	if Cine.fig(w, "tilly") is Figure3D:
+		Cine.act(w, "tilly", "wave")
+		await Cine.wait(w, 2.3)
+	else:
+		Cine.hop(w, "tilly", 0.22)
+		await Cine.wait(w, 0.5)
+		await Cine.hop(w, "tilly", 0.22)
+		await Cine.wait(w, 1.4)
 	await Cine.fade(w, 1.0, 1.2)
 	herald.queue_free()
 	if is_instance_valid(mist):
@@ -2030,8 +2184,21 @@ static func _burning(w: World) -> void:
 	await Cine.wait(w, 1.4)
 	# Tam: forty years of flour, a note he could never pay, and a pitchfork
 	var fork := _pitchfork(v)
-	Cine.body(w, "tam").add_child(fork)
-	fork.position = Vector3(0.35, 0.95, 0.1)
+	var tam_f = Cine.fig(w, "tam")
+	if tam_f is Figure3D:
+		# levelled in both hands, tines forward
+		(tam_f as Figure3D).carry(fork, Vector3(-0.05, 1.0, 0.15))
+		fork.rotation = Vector3(deg_to_rad(68), 0.0, 0.0)
+		var grips := []
+		for at in [0.22, -0.32]:   # left hand up the shaft, right hand down it
+			var g := Node3D.new()
+			g.position = Vector3(0, at, 0)
+			fork.add_child(g)
+			grips.append(g)
+		(tam_f as Figure3D).reach(grips[0], grips[1], 0.25)
+	else:
+		Cine.body(w, "tam").add_child(fork)
+		fork.position = Vector3(0.35, 0.95, 0.1)
 	Cine.shot(w, Vector3(0.0, 1.4, 9.0), KRELL_AT + Vector3(-1.5, 1.0, -0.5), 38.0)
 	await Cine.wait(w, 0.4)
 	Cine.path(w, "tam", [KRELL_AT + Vector3(-2.2, 0, -0.6)], 4.2, "run")
@@ -2042,6 +2209,8 @@ static func _burning(w: World) -> void:
 	await Cine.path(w, "hound1", [KRELL_AT + Vector3(-2.0, 0, 0.2)], 9.0)
 	# cut away as he goes down, to Nell
 	Cine.fig(w, "tam").visible = false
+	if tam_f is Figure3D:
+		(tam_f as Figure3D).let_go(0.0)
 	fork.reparent(v)
 	fork.global_position = KRELL_AT + Vector3(-2.6, 0.05, -0.4)
 	fork.rotation = Vector3(0, 0.6, PI * 0.5)

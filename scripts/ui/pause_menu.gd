@@ -1048,7 +1048,7 @@ class StandingRow:
 				draw_circle(c, rad, Lore.color(Lore.GODS[who].element, 2))
 				Glyphs.draw(self, Lore.GODS[who].element, c, rad * 0.6, col)
 		else:
-			var tex := DollArt.portrait(String(Standing.PEOPLE[who].look))
+			var tex := DollArt.portrait(who if DollArt.has_portrait(who) else String(Standing.PEOPLE[who].look))
 			DuelArt.rounded(self, Rect2(c - Vector2(rad, rad), Vector2(rad, rad) * 2.0), rad, tex)
 			draw_arc(c, rad, 0, TAU, 48, Color(UITheme.GOLD, 0.7), 2.0, true)
 		var x := h + 30.0

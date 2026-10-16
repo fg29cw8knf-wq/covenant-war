@@ -64,6 +64,11 @@ static func texture(id: String, view: String = "front") -> Texture2D:
 
 
 ## A head-and-shoulders crop for dialogue boxes.
+## Is there a rendered portrait (assets/art/characters/<id>_portrait.png)?
+static func has_portrait(id: String) -> bool:
+	return ResourceLoader.exists(DIR + id + "_portrait.png")
+
+
 static func portrait(id: String) -> Texture2D:
 	var key := id + ":portrait"
 	if _cache.has(key):
