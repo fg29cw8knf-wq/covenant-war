@@ -11,10 +11,12 @@ signal exit_to_title
 ## The area's story has moved on to something outside the walkable world.
 signal story_next(what: String)
 
+## Loaded when the area is entered: on the web Solhaven's script comes in its own
+## pack (Packs.need("solhaven") first).
 const AREAS := {
-	"solhaven": preload("res://scripts/world/areas/solhaven.gd"),
-	"ashford": preload("res://scripts/world/areas/ashford.gd"),
-	"thornwood": preload("res://scripts/world/areas/thornwood.gd"),
+	"solhaven": "res://scripts/world/areas/solhaven.gd",
+	"ashford": "res://scripts/world/areas/ashford.gd",
+	"thornwood": "res://scripts/world/areas/thornwood.gd",
 }
 
 const SPEED := 5.4
@@ -52,7 +54,7 @@ func resume_music() -> void:
 
 func setup(p_area: String, spawn: String) -> World:
 	area_id = p_area if AREAS.has(p_area) else "solhaven"
-	area = AREAS[area_id]
+	area = load(AREAS[area_id])
 	Game.area = area_id
 	Game.spawn = spawn
 	return self

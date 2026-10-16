@@ -23,6 +23,7 @@ func _ready() -> void:
 
 ## The opening movie; returns when it ends or is skipped.
 func play_opening() -> void:
+	await Packs.need("movie")
 	var movie := OpeningMovie.new()
 	add_child(movie)
 	await movie.finished
@@ -44,7 +45,7 @@ func _swap(n: Node) -> void:
 func show_title() -> void:
 	var holder := Node.new()
 	holder.name = "Title"
-	if not TitleScreen.has_art():
+	if not TitleScreen.has_art() and Packs.has("solhaven"):
 		# until the painted title exists, the old slow flight over Solhaven
 		var backdrop := World.new().setup("solhaven", "gate")
 		backdrop.attract = true
@@ -99,6 +100,8 @@ func show_lab() -> void:
 # ---------------------------------------------------------------- world ---
 
 func go_world(area: String, spawn: String) -> void:
+	if area == "solhaven":
+		await Packs.need("solhaven")
 	var w := World.new().setup(area, spawn)
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)
@@ -131,6 +134,7 @@ func run_duel(spec: Dictionary) -> bool:
 	layer.layer = 20
 	add_child(layer)
 	var won := false
+	await Packs.need("duel")
 	if spec.has("decks"):
 		# a duel on the v1 rules; an advert may come first (Ads has the rules)
 		await Ads.before_duel(spec)

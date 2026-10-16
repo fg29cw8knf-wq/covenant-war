@@ -778,7 +778,7 @@ func _options() -> Control:
 				action.emit("title")))
 	row.add_child(title)
 	v.add_child(_gap(10))
-	v.add_child(UITheme.label("The Covenant War: Throne of Ages  ·  made by Gary Mannion  ·  early build %s" % ProjectSettings.get_setting("application/config/version", ""), 22, UITheme.TEXT_DIM))
+	v.add_child(UITheme.label("The Covenant War: Throne of Ages  ·  made by Gary Mannion  ·  early build %s" % Packs.build_label(), 22, UITheme.TEXT_DIM))
 	v.add_child(UITheme.label(NoticeScreen.COPYRIGHT, 22, UITheme.TEXT_DIM))
 	return _scroll(v)
 

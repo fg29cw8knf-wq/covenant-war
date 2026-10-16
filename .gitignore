@@ -11,3 +11,4 @@ __pycache__/
 
 # Claude worktrees
 .claude/
+build_info.cfg

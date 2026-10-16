@@ -358,7 +358,10 @@ func _refresh_tuning() -> void:
 # ------------------------------------------------------------------- play ---
 
 func _play(watch: bool) -> void:
-	if _screen != null:
+	if _screen != null or not Packs.has("duel"):
+		if _screen == null:
+			await Packs.need("duel")   # on the web, the Totems and Summons first
+			_play(watch)
 		return
 	var layer := CanvasLayer.new()
 	layer.layer = 20

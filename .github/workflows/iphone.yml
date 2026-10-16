@@ -1,0 +1,68 @@
+# Builds the iPhone app's Xcode project (tools/build_ios.sh) whenever main
+# changes, and puts it on the "iphone" release, always at the same address:
+#   https://github.com/fg29cw8knf-wq/covenant-war/releases/download/iphone/CovenantWar-iOS.zip
+# Run it by hand from the Actions tab (iPhone app > Run workflow) for a fresh one.
+# How to install it on a phone with a free Apple ID: docs/iphone.md.
+name: iPhone app
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: iphone-app
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Godot and its iOS export template (cached)
+        id: godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-ios
+
+      - name: Download Godot
+        if: steps.godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot/templates
+          cd ~/godot
+          base=https://github.com/godotengine/godot/releases/download/$GODOT_VERSION-stable
+          curl -sSLo godot.zip $base/Godot_v$GODOT_VERSION-stable_linux.x86_64.zip
+          unzip -q godot.zip && rm godot.zip
+          curl -sSLo templates.tpz $base/Godot_v$GODOT_VERSION-stable_export_templates.tpz
+          unzip -q -j templates.tpz templates/ios.zip templates/version.txt -d templates && rm templates.tpz
+
+      - name: Install Godot
+        run: |
+          dir=~/.local/share/godot/export_templates/$GODOT_VERSION.stable
+          mkdir -p "$dir" && cp ~/godot/templates/* "$dir"/
+          sudo ln -sf ~/godot/Godot_v$GODOT_VERSION-stable_linux.x86_64 /usr/local/bin/godot
+
+      - name: Import the project
+        run: godot --headless --import
+
+      - name: Build the Xcode project
+        run: tools/build_ios.sh
+
+      - name: Publish to the iphone release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          built=$(cat build/CovenantWar-iOS.txt)
+          gh release delete iphone --yes --cleanup-tag || true
+          gh release create iphone build/CovenantWar-iOS.zip --target "$GITHUB_SHA" --latest \
+            --title "iPhone app (built $built)" \
+            --notes "The Xcode project for the iPhone app, built $built from ${GITHUB_SHA::7}. Unzip it on a Mac, open CovenantWar.xcodeproj, choose your Apple ID as the team and press Run. Step by step: https://github.com/${{ github.repository }}/blob/main/docs/iphone.md"

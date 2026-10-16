@@ -20,6 +20,7 @@ boot_splash/fullsize=false
 Game="*res://scripts/game/game_state.gd"
 Music="*res://scripts/ui/music.gd"
 Ads="*res://scripts/game/ads.gd"
+Packs="*res://scripts/game/packs.gd"
 
 [display]
 
@@ -38,7 +39,7 @@ pointing/emulate_touch_from_mouse=true
 [rendering]
 
 renderer/rendering_method="forward_plus"
-renderer/rendering_method.mobile="mobile"
+renderer/rendering_method.android="mobile"
 renderer/rendering_method.web="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=2
