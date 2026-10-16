@@ -175,6 +175,7 @@ func build_crest() -> void:
 		if root != null:
 			crest_fires.append([root, p])
 	build_mill(c + Vector3(30.0, 0, -6.0))
+	stop_mill()   # its cap burned the night of the Sigilfall: the sails stand still
 	# the glow of it all on the hillside and the clouds
 	for i in 3:
 		var l := OmniLight3D.new()
@@ -209,7 +210,7 @@ func burn_crest() -> void:
 	for f in crest_fires:
 		fire_at((f[1] as Vector3) + Vector3(0, 3.0, 0), Vector3(2.6, 0.5, 1.8), [16, 24, 36][quality], 1.1)
 	if mill_root != null:
-		fire_at(mill_root.to_global(Vector3(0, 10.2, 0)), Vector3(1.6, 0.5, 1.6), [14, 20, 30][quality], 1.1)
+		fire_at(mill_fire_point(), mill_fire_box, [14, 20, 30][quality], 1.1)
 	for i in 3:
 		var l: OmniLight3D = get_meta("crest_glow_%d" % i)
 		l.light_energy = 6.0

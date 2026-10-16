@@ -1238,8 +1238,8 @@ static func _midnight(w: World) -> void:
 	_sfx(w, "sigil_strike")
 	await Cine.wait(w, 1.4)
 	# and one on the mill
-	var mill_top := v.mill_root.to_global(Vector3(0, 10.2, 0)) if v.mill_root != null else Vector3(62, 40, -88)
-	Cine.shot(w, Vector3(4.0, 2.0, 8.0), mill_top, 22.0)
+	var mill_top := v.mill_fire_point() if v.mill_root != null else Vector3(62, 40, -88)
+	Cine.shot(w, AshfordVillage.MILL_VIEW_FROM, mill_top, 22.0)
 	await v.strike(mill_top + Vector3(0, 0.6, 0), Color(1.0, 0.55, 0.12), 0.5)
 	v.fire_mill()
 	w.shake(0.25)
