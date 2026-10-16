@@ -921,9 +921,9 @@ static func _rite_text(d: Dictionary) -> String:
 			"buff": parts.append("One of your Totems deals %d more damage this turn" % e.amount)
 			"status":
 				if d.target == "all_foes":
-					parts.append("Every enemy Totem is %s" % STATUS_NAMES[e.status])
+					parts.append(("they are all %s" if dmg > 0 else "Every enemy Totem is %s") % STATUS_NAMES[e.status])
 				elif dmg > 0:
-					parts.append("and it is %s" % STATUS_NAMES[e.status])
+					parts.append("it is %s" % STATUS_NAMES[e.status])
 				else:
 					parts.append("An enemy Totem is %s" % STATUS_NAMES[e.status])
 			"drain": parts.append("gain Life equal to the damage dealt")
