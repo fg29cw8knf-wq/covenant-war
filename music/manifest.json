@@ -39,6 +39,16 @@
   "length": 8.55,
   "onset": 0.468685
  },
+ "summon_somnara": {
+  "file": "summon_somnara.mp3?v=e4e090fb20",
+  "length": 9.612993197,
+  "onset": 0.023537
+ },
+ "summon_thalassa": {
+  "file": "summon_thalassa.mp3?v=5f131b4438",
+  "length": 12.420997732,
+  "onset": 0.405692
+ },
  "the_marking": {
   "file": "the_marking.mp3?v=ea49de3102",
   "length": 14.712,

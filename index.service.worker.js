@@ -4,7 +4,7 @@
 // Incrementing CACHE_VERSION will kick off the install event and force
 // previously cached resources to be updated from the network.
 /** @type {string} */
-const CACHE_VERSION = '1792082896|8773616';
+const CACHE_VERSION = '1792143010|9484930';
 /** @type {string} */
 const CACHE_PREFIX = 'The Covenant War-sw-cache-';
 const CACHE_NAME = CACHE_PREFIX + CACHE_VERSION;
