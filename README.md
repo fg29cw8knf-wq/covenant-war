@@ -92,6 +92,12 @@ the date and time (UK) the build was made: `tools/build_web.sh` and
 `tools/build_ios.sh` write it into `build_info.cfg` for that build only. A game run
 from the editor shows the version number instead.
 
+**Play it on a Mac:** download
+https://github.com/fg29cw8knf-wq/covenant-war/releases/download/mac/CovenantWar-Mac.zip,
+unzip it and open The Covenant War (the first time: System Settings > Privacy &
+Security > Open Anyway; `docs/mac.md`). `.github/workflows/mac.yml` rebuilds it with
+`tools/build_mac.sh` every time `main` changes. Full quality, one pack.
+
 **Play it on an iPhone as an app:** download
 https://github.com/fg29cw8knf-wq/covenant-war/releases/download/iphone/CovenantWar-iOS.zip
 on a Mac, open `CovenantWar.xcodeproj` in Xcode, choose your Apple ID as the team
