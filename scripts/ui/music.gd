@@ -16,7 +16,8 @@ const DIR := "res://assets/audio/music/"
 ## Tracks with an intro that shouldn't repeat: after the first pass the loop
 ## jumps back to this many seconds in (the file's tail is baked to blend there).
 ## Each loop is cut with tools/music_loop.py and checked with tests/loop_probe.gd.
-const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch": 29.78, "duel_alt": 11.376}
+const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch": 29.78, "duel_alt": 11.376,
+		"arena_emberforge": 7.997, "arena_solhaven": 12.245, "arena_tidegrove": 12.245}
 ## The two duel themes take turns, duel by duel.
 const DUEL_THEMES := ["duel_main", "duel_alt"]
 

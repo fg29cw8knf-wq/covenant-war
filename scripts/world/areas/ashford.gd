@@ -1261,7 +1261,7 @@ static func _midnight(w: World) -> void:
 	await _the_white_light(w)
 
 
-## The bell at midnight (a struck bell, until a recorded one exists).
+## The bell at midnight: six tolls as it counts twelve.
 static func _bell(w: World, times: int) -> void:
 	for i in times:
 		_sfx(w, "bell_toll")
