@@ -293,13 +293,17 @@ func path_at(x: float, z: float) -> float:
 
 # ------------------------------------------------------------------ terrain
 
+## The terrain mesh: a grid TERRAIN_N squares a side over +-TERRAIN_HALF metres,
+## fine near the green and coarser further out (ground_y() follows it exactly).
+const TERRAIN_N := 230
+const TERRAIN_HALF := 520.0
+const TERRAIN_SPREAD := 1.9
+
 func build_terrain() -> void:
-	var N := 230
-	var half := 520.0
+	var N := TERRAIN_N
 	var coords := PackedFloat32Array()
 	for i in N + 1:
-		var t := float(i) / N * 2.0 - 1.0
-		coords.append(sign(t) * pow(abs(t), 1.9) * half)
+		coords.append(_terrain_line(i))
 	var verts := PackedVector3Array()
 	var norms := PackedVector3Array()
 	var idx := PackedInt32Array()
@@ -341,6 +345,52 @@ func build_terrain() -> void:
 		arr[Mesh.ARRAY_INDEX] = idx
 		mesh.clear_surfaces()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+
+## Where grid line `i` of the terrain mesh runs (the same on x and z).
+func _terrain_line(i: int) -> float:
+	var t := float(i) / TERRAIN_N * 2.0 - 1.0
+	return sign(t) * pow(abs(t), TERRAIN_SPREAD) * TERRAIN_HALF
+
+## The grid square of the terrain mesh that `x` (or z) falls in.
+func _terrain_square(x: float) -> int:
+	var t := signf(x) * pow(absf(x) / TERRAIN_HALF, 1.0 / TERRAIN_SPREAD)
+	var i := clampi(int(floor((t + 1.0) * 0.5 * TERRAIN_N)), 0, TERRAIN_N - 1)
+	# step past any rounding at a grid line
+	if x < _terrain_line(i):
+		i = maxi(i - 1, 0)
+	elif x > _terrain_line(i + 1):
+		i = mini(i + 1, TERRAIN_N - 1)
+	return i
+
+## The ground as it is drawn: the terrain mesh is flat triangles between its
+## grid points, so far out, where the squares are a few metres across, it can
+## sit a little above or below height(). Things set down out there use this.
+func ground_y(x: float, z: float) -> float:
+	var i := _terrain_square(x)
+	var j := _terrain_square(z)
+	var x0 := _terrain_line(i)
+	var x1 := _terrain_line(i + 1)
+	var z0 := _terrain_line(j)
+	var z1 := _terrain_line(j + 1)
+	var u := clampf((x - x0) / (x1 - x0), 0.0, 1.0)
+	var w := clampf((z - z0) / (z1 - z0), 0.0, 1.0)
+	var ha := height(x0, z0)
+	var hb := height(x1, z0)
+	var hc := height(x0, z1)
+	var hd := height(x1, z1)
+	# each square is two triangles, (a b c) and (b d c), as build_terrain makes them
+	if u + w <= 1.0:
+		return ha + (hb - ha) * u + (hc - ha) * w
+	return hd + (hc - hd) * (1.0 - u) + (hb - hd) * (1.0 - w)
+
+## The lowest drawn ground under a round base of `radius` at `at`, so nothing
+## set down on a slope is left with an edge in the air.
+func ground_under(at: Vector3, radius: float) -> float:
+	var lo := ground_y(at.x, at.z)
+	for k in 12:
+		var a := TAU * k / 12.0
+		lo = minf(lo, ground_y(at.x + cos(a) * radius, at.z + sin(a) * radius))
+	return lo
 
 # ------------------------------------------------------------------ mesh helpers
 
@@ -448,7 +498,7 @@ func build_village() -> void:
 	for f in [Vector3(-70, 0, -40), Vector3(48, 0, 46), Vector3(95, 0, -30), Vector3(-95, 0, 20), Vector3(-30, 0, -95), Vector3(20, 0, -120)]:
 		if not model_house("cottage_b", f, 200 + int(f.x), false):
 			house(f, 7.0, 5.0, 2.6, 1, "natural", 200 + int(f.x), false)
-	build_mill(Vector3(62.0, 0.0, -88.0))
+	build_mill(MILL_SPOT)
 
 
 ## Which of Gary's cottages stands on each plot round the green (the fifth,
@@ -679,10 +729,65 @@ func chimney_smoke(root: Node3D, at: Vector3) -> void:
 	p.visibility_aabb = AABB(Vector3(-4, -1, -4), Vector3(14, 14, 10))
 	root.add_child(p)
 
+## The windmill on the hill north-east of the green: Gary's whitewashed tower
+## (mill_tower.glb, 8.15 m to the tip of its thatch, origin at the middle of
+## its base, door and sail hub facing +Z) with his sails (mill_sails.glb,
+## 9.76 m across, origin at their hub) on its windshaft, or the drawn stand-in.
+## The sails turn steadily, anticlockwise seen from the front as English mills
+## do, until the Sigil sets the thatch alight at midnight; then they slow to a
+## stop, and stay stopped for the rest of the Prologue (dawn, the night Ashford
+## burns, the Thornwood).
+const MILL_TOWER_MODEL := "res://assets/models/ashford/mill_tower.glb"
+const MILL_SAILS_MODEL := "res://assets/models/ashford/mill_sails.glb"
+## The mill faces west-south-west: into the west wind that carries the smoke
+## east, and turned enough towards the village that its sails show from the green.
+const MILL_YAW := -0.87
+## The flat top of the hill north-east of the green, at the end of the lane
+## (the ground under the tower's foot is level to within about 10 cm there).
+const MILL_SPOT := Vector3(66.0, 0.0, -79.0)
+const MILL_BASE_RADIUS := 1.75      # the tower's foot, for standing it on the slope
+const MILL_HUB := Vector3(0.0, 6.91, 2.045)   # the sails' hub on the tower's windshaft (Gary's notes)
+const MILL_THATCH := Vector3(0.0, 7.0, 0.0)   # the middle of the thatched cap, where the fire takes
+## A turn every ten seconds (6 rpm): a working mill in an evening breeze.
+const MILL_TURN := TAU / 10.0
+const MILL_STOPPING := 14.0         # seconds the sails take to run down once the cap is alight
 var mill_root: Node3D
+var mill_sails: Node3D              # turns about its own Z (the windshaft)
+var mill_spin := MILL_TURN          # radians a second now
+var mill_spin_to := MILL_TURN       # what it is easing towards (0 once the mill has burned)
+var mill_thatch := Vector3(0, 10.2, 0)   # the cap's middle, in mill_root's space (the drawn mill's here)
+var mill_fire_box := Vector3(1.6, 0.6, 1.6)   # how far round that the flames start: about to the eaves
+
 func build_mill(pos: Vector3) -> void:
 	var root := Node3D.new()
+	root.name = "Mill"
 	mill_root = root
+	if ResourceLoader.exists(MILL_TOWER_MODEL):
+		# stood on the lowest ground under its foot, a few centimetres down, so
+		# no edge of the base floats where the hill falls away
+		pos.y = ground_under(pos, MILL_BASE_RADIUS) - 0.06
+		root.position = pos
+		root.rotation.y = MILL_YAW
+		add_child(root)
+		var tower: Node3D = load(MILL_TOWER_MODEL).instantiate()
+		root.add_child(tower)
+		for mi: MeshInstance3D in tower.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		mill_thatch = MILL_THATCH
+		mill_fire_box = Vector3(1.1, 0.45, 1.1)
+		if ResourceLoader.exists(MILL_SAILS_MODEL):
+			var hub := Node3D.new()
+			hub.name = "Sails"
+			hub.position = MILL_HUB
+			hub.rotation.z = 0.35
+			root.add_child(hub)
+			var sails: Node3D = load(MILL_SAILS_MODEL).instantiate()
+			hub.add_child(sails)
+			for mi: MeshInstance3D in sails.find_children("*", "MeshInstance3D", true, false):
+				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			mill_sails = hub
+		solid_round(pos, MILL_BASE_RADIUS)
+		return
 	pos.y = height(pos.x, pos.z) - 0.3
 	root.position = pos
 	root.rotation.y = deg_to_rad(205)
@@ -702,6 +807,25 @@ func build_mill(pos: Vector3) -> void:
 		box(arm, Vector3(0.22, 7.5, 0.16), Vector3(0, 3.75, 0), mats.beam_v)
 		box(arm, Vector3(1.4, 5.8, 0.05), Vector3(0.8, 4.3, 0.05), mats.cloth_blue)
 	cyl(hub, 0.35, 0.35, 0.6, Vector3(0, 0, -0.2), mats.metal, 10, Vector3(PI / 2, 0, 0))
+	mill_sails = hub
+
+## The middle of the mill's thatched cap, in the world: where the Sigil
+## strikes, the fire burns and the film looks.
+func mill_fire_point() -> Vector3:
+	return mill_root.to_global(mill_thatch)
+
+## Stops the sails where they are (the mill has burned).
+func stop_mill() -> void:
+	mill_spin = 0.0
+	mill_spin_to = 0.0
+
+func _turn_mill(delta: float) -> void:
+	if mill_sails == null:
+		return
+	if mill_spin != mill_spin_to:
+		mill_spin = move_toward(mill_spin, mill_spin_to, MILL_TURN / MILL_STOPPING * delta)
+	if mill_spin > 0.0:
+		mill_sails.rotation.z = fposmod(mill_sails.rotation.z + mill_spin * delta, TAU)
 
 # ------------------------------------------------------------------ the green
 
@@ -1256,16 +1380,51 @@ func hedge(at: Vector3, yaw: float, length := 4.0, h := 1.6) -> MeshInstance3D:
 	return mi
 
 
+## Gary's oaks (assets/models/ashford/oak_a.glb, and oak_b, oak_c... as they
+## come: every one that's there is used, in turn) stand round the edge of the
+## village, where the films and the flight over the rooftops pass close; the
+## copses and hedgerow trees out on the hills stay the light drawn trees. Each
+## oak is about 20,000 triangles up close, so there are at most OAK_MAX of
+## them, each its own node so the engine draws its simpler versions (LODs) when
+## it's further off; each is turned, sized and stretched a little differently.
+const OAK_MODELS := ["oak_a", "oak_b", "oak_c", "oak_d"]
+const OAK_MAX := 16
+const OAK_CROWN := 6.4        # the model's crown, centre to edge, in metres
+const OAK_TRUNK := 0.75       # its trunk at the foot (the roots spread further, low)
+## Trees keep this far from the mill's foot, clear of its turning sails.
+const MILL_CLEAR := 9.5
+## Where the film watches the Sigil strike the mill from, on the green
+## (ashford.gd, "and one on the mill"), and the top of the lane, as far up it
+## as the player can walk: no tree stands in the way of the mill from either.
+const MILL_VIEW_FROM := Vector3(4.0, 2.0, 8.0)
+const MILL_LANE_VIEW := Vector3(12.0, 1.8, -23.5)
+var oaks: Array = []          # every oak planted: its root node
+
+func oak_scenes() -> Array:
+	var out: Array = []
+	for id in OAK_MODELS:
+		var path := "res://assets/models/ashford/%s.glb" % id
+		if ResourceLoader.exists(path):
+			out.append(load(path))
+	return out
+
 func build_trees() -> void:
 	var variants := [make_tree(11), make_tree(23), make_tree(37)]
 	var bark_x := [[], [], []]
 	var leaf_x := [[], [], []]
+	var oak_kinds := oak_scenes()
+	# the oaks' own dice, so the village's other random things (grass, sky
+	# lanterns, Sigils) come out as they always have
+	var orng := RandomNumberGenerator.new()
+	orng.seed = 1172
+	var oak_at: Array = []    # [Vector2 trunk, crown radius]
 	var spots: Array = []
 	# trees round the edge of the village
 	for i in 26:
 		var a := rng.randf() * TAU
 		var rr := rng.randf_range(29.0, 44.0)
 		spots.append(Vector2(cos(a) * rr, sin(a) * rr))
+	var edge := spots.size()
 	# copses and hedgerow trees on the hills
 	for c in [Vector2(-60, -55), Vector2(35, -50), Vector2(-85, 45), Vector2(85, 30), Vector2(10, -105), Vector2(-40, -110), Vector2(110, -60), Vector2(-120, -20)]:
 		for i in 14:
@@ -1274,10 +1433,15 @@ func build_trees() -> void:
 		var a := rng.randf() * TAU
 		var rr := rng.randf_range(60.0, 150.0)
 		spots.append(Vector2(cos(a) * rr, sin(a) * rr))
-	for s in spots:
+	var mill_at := Vector2(mill_root.position.x, mill_root.position.z) if mill_root != null else Vector2(INF, INF)
+	for n in spots.size():
+		var s: Vector2 = spots[n]
 		var blocked := false
+		var room := INF    # how far the nearest building is past its own footprint
 		for f in footprints:
-			if (s as Vector2).distance_to(f[0]) < f[1] + 3.5:
+			var d := s.distance_to(f[0]) - float(f[1])
+			room = minf(room, d)
+			if d < 3.5:
 				blocked = true
 		for cpos in [Vector2(-50, 50), Vector2(-30, 44), Vector2(14, 22)]:
 			if Geometry2D.get_closest_point_to_segment(s, cpos, Vector2.ZERO).distance_to(s) < 9.0:
@@ -1286,12 +1450,69 @@ func build_trees() -> void:
 			continue
 		var k := rng.randi() % 3
 		var sc := rng.randf_range(0.85, 1.35)
-		var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * sc), Vector3(s.x, height(s.x, s.y) - 0.1, s.y))
+		var yaw := rng.randf() * TAU
+		if s.distance_to(mill_at) < MILL_CLEAR or _blocks_mill_view(s, 3.6 * sc, 8.6 * sc):
+			continue
+		if n < edge and not oak_kinds.is_empty():
+			var osc := orng.randf_range(0.82, 1.12)
+			var crown := OAK_CROWN * osc
+			# an oak needs more room than a drawn tree: its crown mustn't reach
+			# into a roof, or into the next oak's crown more than a little
+			var fits := oaks.size() < OAK_MAX and room > crown * 0.7 and not _blocks_mill_view(s, crown, 9.6 * osc)
+			for o in oak_at:
+				if s.distance_to(o[0]) < (crown + float(o[1])) * 0.72:
+					fits = false
+			if fits:
+				var kind: PackedScene = oak_kinds[oaks.size() % oak_kinds.size()]
+				plant_oak(kind, s, yaw, Vector3(osc, osc * orng.randf_range(0.9, 1.1), osc))
+				oak_at.append([s, crown])
+				continue
+		var xf := Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * sc), Vector3(s.x, height(s.x, s.y) - 0.1, s.y))
 		bark_x[k].append(xf)
 		leaf_x[k].append(xf)
 	for k in 3:
 		multimesh(self, variants[k][0], mats.bark, bark_x[k], [])
 		multimesh(self, variants[k][1], mats.leaf, leaf_x[k], [])
+
+## Whether a tree at `s` (its crown `crown` round, its top `top` above the
+## ground) would stand in the view of the mill from the green or the lane.
+func _blocks_mill_view(s: Vector2, crown: float, top: float) -> bool:
+	if mill_root == null:
+		return false
+	var to := mill_fire_point()
+	var b := Vector2(to.x, to.z)
+	for from: Vector3 in [MILL_VIEW_FROM, MILL_LANE_VIEW]:
+		var a := Vector2(from.x, from.z)
+		var near := Geometry2D.get_closest_point_to_segment(s, a, b)
+		var u := a.distance_to(near) / maxf(a.distance_to(b), 0.01)
+		var sight_y := lerpf(from.y, to.y, u)
+		# wider towards the mill, for its sails (5 m out) and the tower under the cap
+		if near.distance_to(s) < crown + 1.5 + 4.0 * u and ground_y(s.x, s.y) + top > sight_y - 6.0 * u:
+			return true
+	return false
+
+## One of Gary's oaks at `at` (on the ground), turned by `yaw` and sized by
+## `sc`, with its trunk solid so no one walks through it.
+func plant_oak(kind: PackedScene, at: Vector2, yaw: float, sc: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Oak%d" % oaks.size()
+	var p := Vector3(at.x, 0.0, at.y)
+	# set into the lowest ground round the trunk, so it doesn't stand proud on a slope
+	p.y = ground_under(p, OAK_TRUNK * sc.x) - 0.05
+	root.position = p
+	root.rotation.y = yaw
+	root.scale = sc
+	add_child(root)
+	var inst: Node3D = kind.instantiate()
+	root.add_child(inst)
+	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		# a phone's sharp screen would keep the full 20,000 triangles further
+		# out than it needs: on the web the simpler versions come in sooner
+		mi.lod_bias = 0.5 if quality == 0 else 1.0
+	solid_round(p, OAK_TRUNK * sc.x)
+	oaks.append(root)
+	return root
 
 # ------------------------------------------------------------------ grass
 
@@ -1736,6 +1957,7 @@ func _process(delta: float) -> void:
 			continue
 		var l: OmniLight3D = fl[0]
 		l.light_energy = fl[1] * (0.82 + 0.18 * sin(elapsed * 13.0 + fl[1]) * sin(elapsed * 7.3 + fl[1] * 2.0))
+	_turn_mill(delta)
 	if lantern_t >= 0.0:
 		_rise_lanterns(delta)
 	if absf(tear - tear_target) > 0.001:
@@ -1926,12 +2148,12 @@ var scorches: Array = []
 var fires: Array = []
 
 
-## The mill's thatch catches, up on its hill.
+## The mill's thatch catches, up on its hill, and its sails run down to a stop.
 func fire_mill() -> void:
 	if mill_root == null:
 		return
-	var at := mill_root.to_global(Vector3(0, 10.2, 0))
-	fire_at(at, Vector3(1.6, 0.6, 1.6), [24, 36, 50][quality], 1.3, true)
+	fire_at(mill_fire_point(), mill_fire_box, [24, 36, 50][quality], 1.3, true)
+	mill_spin_to = 0.0
 
 
 ## Sets building `i` (an index into houses) alight; "inn" for the Crooked Lantern.
@@ -1982,6 +2204,7 @@ func set_time(kind: String) -> void:
 		lantern_t = -1.0
 		if white_light != null:
 			white_light.visible = false
+		stop_mill()   # its cap burned at midnight
 		mats.bulb.set_shader_parameter("energy", 0.0)
 		mats.lantern.set_shader_parameter("energy", 0.0)
 		festival_light.light_energy = 0.0
