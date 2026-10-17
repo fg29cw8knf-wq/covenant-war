@@ -1,4 +1,19 @@
 {
+ "arena_emberforge": {
+  "file": "arena_emberforge.mp3?v=c8b9f016c5",
+  "length": 92.7061875,
+  "onset": 0.017229
+ },
+ "arena_solhaven": {
+  "file": "arena_solhaven.mp3?v=638425972f",
+  "length": 134.368791667,
+  "onset": 0.426979
+ },
+ "arena_tidegrove": {
+  "file": "arena_tidegrove.mp3?v=83ea66f58f",
+  "length": 134.314791667,
+  "onset": 0.428354
+ },
  "ashford_festival": {
   "file": "ashford_festival.mp3?v=c240721c06",
   "length": 86.848020833,
@@ -33,6 +48,11 @@
   "file": "sigilfall.mp3?v=26bec01819",
   "length": 90.024,
   "onset": 0.028271
+ },
+ "summon_grondmaw": {
+  "file": "summon_grondmaw.mp3?v=d2232ec152",
+  "length": 8.6,
+  "onset": 0.021188
  },
  "summon_pyraxis": {
   "file": "summon_pyraxis.mp3?v=cfa6943276",
