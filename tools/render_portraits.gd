@@ -10,6 +10,9 @@ const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "tam": 
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's.
 const CLOSER := {"tilly": 0.88}
+## Whose head bone sits low in the skull (the player's, from AssetFurnace's
+## rig): the camera aims this much higher (m) so the face sits like the others'.
+const RAISE := {"player": 0.05}
 const OUT := "res://assets/art/characters/"
 const SIZE := 512
 
@@ -80,7 +83,7 @@ func _render(id: String) -> void:
 		if hb >= 0:
 			head = sk.global_transform * sk.get_bone_global_pose(hb).origin
 	var k: float = CLOSER.get(id, 1.0)
-	var aim := head + Vector3(0, -0.06, 0) * k
+	var aim := head + Vector3(0, -0.06, 0) * k + Vector3(0, float(RAISE.get(id, 0.0)), 0)
 	_cam.global_position = aim + Vector3(0.42, 0.06, 1.25) * k
 	_cam.look_at(aim, Vector3.UP)
 	for i in 6:

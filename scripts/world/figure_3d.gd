@@ -14,10 +14,18 @@ extends PaperDoll
 ##
 ## The models share one skeleton (the same bone names, fingers and all), so
 ## a clip one of them lacks is borrowed from another (Corin borrows the
-## player's fall, the player and Tam borrow Bram's lift). A borrowed clip is
-## fitted to whoever borrows it: its hip height is scaled to theirs (Tilly
-## is a child, so Bram's hips would lift her off the ground) and the tracks
-## for bones they haven't got (Bram's apron, the player's braid) are dropped.
+## fall, Tam borrows Bram's lift). A borrowed clip is fitted to whoever
+## borrows it: its hip height is scaled to theirs (Tilly is a child, so
+## Bram's hips would lift her off the ground) and the tracks for bones they
+## haven't got (Bram's apron, the first player model's braid) are dropped.
+##
+## The player (player_a, Gary's young man, since 17 October) carries his own
+## motion-captured clips (idle, walk, run, sneak, cheer, wave, jump, sit,
+## fight_stance, punch, punch_combo, kick, roundhouse, flying_kick,
+## sword_swing, kata, hit_react, death, dance, roll, strafe_left) and the
+## game's (talk, duel_idle, play_card, victory, defeat, fall, look_up, lift)
+## fitted to his body by tools/rig_character.py. The clips everyone else
+## borrows are the first player model's, kept in clips/shared.glb.
 
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play. Everyone else's model
@@ -25,18 +33,24 @@ const DIR := "res://assets/models/characters/"
 ## hunter), picked up the moment it exists.
 const MODELS := {"player": "player_a"}
 ## Clips that repeat until something else is asked for.
-const LOOPS := ["idle", "walk", "run", "talk", "duel_idle", "cheer"]
-## Where to borrow a clip from when a model doesn't have it.
-const DONORS := ["player_a", "bram", "corin"]
+const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
+## Where to borrow a clip from when a model doesn't have it: the shared
+## clips first (the first player model's), then Bram's, Corin's, and last
+## the player's motion-captured ones (a punch, a roll...).
+const DONORS := ["clips/shared", "bram", "corin", "player_a"]
 ## How fast each gait carries a grown-up, for matching the feet to the
 ## ground (m/s); shorter legs (Tilly's) take quicker steps.
 const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
+## Models whose own walking clips go at their own pace (m/s, as
+## tools/rig_character.py measured them), not GAIT_SPEED's.
+const OWN_GAIT := {"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87}}
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
 
 var model: Node3D
 var anim: AnimationPlayer
+var _model_name := ""     # the file it's played by (player_a for the player)
 var gait := "walk"
 var talking := false
 ## Metres a second the character is being moved at (cutscenes set it so the
@@ -94,7 +108,8 @@ func _ready() -> void:
 	_pivot = Node3D.new()
 	_pivot.name = "Pivot"
 	add_child(_pivot)
-	var path := DIR + String(MODELS.get(char_id, char_id)) + ".glb"
+	_model_name = String(MODELS.get(char_id, char_id))
+	var path := DIR + _model_name + ".glb"
 	model = (load(path) as PackedScene).instantiate()
 	_pivot.add_child(model)
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
@@ -299,12 +314,20 @@ func _process(delta: float) -> void:
 		var want := _base()
 		if want != _clip:
 			_play(want, 0.25)
-		if (_clip == "walk" or _clip == "run") and pace > 0.0:
-			anim.speed_scale = clampf(pace / (float(GAIT_SPEED[_clip]) * _hips / ADULT_HIPS), 0.5, 1.8)
-		elif _clip == "walk" or _clip == "run":
-			anim.speed_scale = 1.0
+		var natural := _gait_pace(_clip)
+		if natural > 0.0:
+			anim.speed_scale = clampf(pace / natural, 0.5, 1.8) if pace > 0.0 else 1.0
 	if _marker != null and _marker.visible:
 		_marker.position.y = _marker_y() + sin(_t * 3.0) * 0.06
+
+
+## The ground (m/s) a walking clip covers at its own speed on this body; 0
+## for a clip that isn't a gait.
+func _gait_pace(clip: String) -> float:
+	var own: Dictionary = OWN_GAIT.get(_model_name, {})
+	if own.has(clip):
+		return float(own[clip])
+	return float(GAIT_SPEED.get(clip, 0.0)) * _hips / ADULT_HIPS
 
 
 func _base() -> String:

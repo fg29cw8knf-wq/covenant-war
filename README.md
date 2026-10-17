@@ -136,6 +136,33 @@ the player carry the barrel by its ends, Tilly holds her moth's card out in
 both hands, Corin leads her up the lane by the hand and holds it on the
 riverbank, Tam levels his pitchfork.
 
+The player (look A) is Gary's young man since 17 October, from AssetFurnace
+with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
+AssetFurnace model into a game character: the shared skeleton's bone names
+(AssetFurnace numbers them), every bone's rest square to the world, a set
+height (the player stands 1.76 m), walking clips cut to one step cycle that
+stays on the spot (their natural pace goes in `Figure3D.OWN_GAIT`), the
+game's other clips fitted to his body from `characters/clips/shared.glb`
+(the first player model's clips, which everyone else still borrows) and
+Bram's lift, and the textures beside the model. AssetFurnace's normal map
+splits the face into a light and a dark half, so it's left out. To rebuild
+him from Gary's master file:
+
+```sh
+tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>
+godot --headless --import
+xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
+godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses
+xvfb-run -a -s "-screen 0 800x800x24" godot --rendering-driver opengl3 --resolution 640x640 \
+    --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, and in every clip
+```
+
+His own clips besides the game's: sneak, strafe_left, jump, sit,
+fight_stance, punch, punch_combo, kick, roundhouse, flying_kick,
+sword_swing, kata, hit_react, death, dance, wave and roll (the roll, the
+flying kick, the punch combo, the strafe and the death travel as made, so
+whoever plays one moves the figure to where it ends).
+
 Everything after the Lantern Duel is a film in the game's own 3D: midnight,
 the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn, the taproom,
 Ashford burning, the cellar and Bram's decks (`ashford.gd`, parts saved in the
