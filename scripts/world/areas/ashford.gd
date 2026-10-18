@@ -1205,6 +1205,11 @@ const CROWD := [["v1", "farmer", Vector3(-2.4, 0, -3.0)], ["v2", "merchant", Vec
 static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 	for who in marks:
 		var at: Vector3 = marks[who]
+		# anyone still down in the taproom or the cellar (built well below the
+		# village) comes up onto the ground first, so place() sets them on it
+		var sb := Cine.body(w, String(who))
+		if sb != null and sb.global_position.y < Cine.ground(w, at) - 5.0:
+			sb.global_position = Vector3(at.x, Cine.ground(w, at), at.z)
 		var face_to = look_at
 		if face_to == null:
 			face_to = Vector3.ZERO
@@ -1304,7 +1309,7 @@ static func _midnight(w: World) -> void:
 	w.shake(0.15)
 	_drop(w, lighter)
 	await Cine.wait(w, 0.5)
-	Cine.drift(w, Vector3(5.5, 2.2, 13.0), Vector3(4.5, 2.6, 11.5), Vector3(0, 3.0, 2.0), Vector3(0, 3.4, 2.0), 3.5, 42.0)
+	Cine.drift(w, Vector3(-3.8, 2.2, 7.6), Vector3(-3.2, 2.5, 6.6), Vector3(0, 3.0, 0.6), Vector3(0, 3.4, 0.6), 3.5, 44.0)
 	for c in CROWD:
 		Cine.hop(w, String(c[0]), 0.22)
 	for who in ["tilly", "hob", "tam"]:
@@ -1411,7 +1416,8 @@ static func _midnight(w: World) -> void:
 	dm = dm.normalized()
 	var sd := dm.cross(Vector3.UP)
 	Cine.look(w, "nell", mill_top)
-	Cine.shot(w, np0 - dm * 1.9 + sd * 1.7 + Vector3(0, 1.5, 0), np0 + dm * 5.0 + Vector3(0, 2.4, 0), 42.0)
+	# her face, the fire in her eyes (the mill is behind the camera)
+	Cine.shot(w, np0 + dm * 2.3 + sd * 1.36 + Vector3(0, 1.45, 0), np0 + Vector3(0, 1.5, 0), 32.0)
 	await Cine.say(w, "nell", "The mill! The mill's on fire!", 2.2)
 	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		var f = Cine.fig(w, who)
@@ -1430,6 +1436,18 @@ static func _midnight(w: World) -> void:
 ## clear of the crowd: [Tam, Nell].
 static func _dance_spot() -> Array:
 	return [Vector3(5.0, 0, 3.4), Vector3(5.8, 0, 3.9)]
+
+
+## Cine.drift, but handing back its tween so a cut can stop it.
+static func _drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> Tween:
+	w.cine = true
+	if fov > 0.0:
+		w.cam.fov = fov
+	var tw := w.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		w.cam.global_position = pos_a.lerp(pos_b, u)
+		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
+	return tw
 
 
 ## The bell at midnight: six tolls as it counts twelve.
@@ -1789,7 +1807,7 @@ static func _the_white_light(w: World) -> void:
 	# he looks down at his own empty hand
 	var cf = Cine.fig(w, "corin")
 	if cf is Figure3D:
-		(cf as Figure3D).pose("play_card", 0.32, 0.5)
+		(cf as Figure3D).pose("play_card", 0.42, 0.5)
 		await Cine.wait(w, 0.5)
 		var ch: Vector3 = (cf as Figure3D).bone_pos("RightHand")
 		var cfw: Vector3 = (cf as Figure3D).facing()
@@ -1892,8 +1910,14 @@ static func _dawn(w: World) -> void:
 	await Cine.drift(w, Vector3(-30.0, 14.0, 40.0), Vector3(-18.0, 8.0, 31.0), Vector3(8.0, 4.0, -16.0), Vector3(6.0, 3.0, -12.0), 6.0)
 	# the mill, a black shell
 	if v.mill_root != null:
-		var mt := v.mill_fire_point()
-		Cine.drift(w, AshfordVillage.MILL_VIEW_FROM, AshfordVillage.MILL_VIEW_FROM + Vector3(1.5, 0.4, 2.0), mt + Vector3(0, -3.0, 0), mt + Vector3(0, -2.5, 0), 3.0, 24.0)
+		# from down the lane, against the sunrise
+		var mb := v.mill_root.global_position
+		var ml := Vector3(mb.x, v.height(mb.x, mb.z) + 9.0, mb.z)
+		var m0 := mb + Vector3(-26.0, 0, 29.0)
+		var m1 := mb + Vector3(-24.0, 0, 26.5)
+		m0.y = v.height(m0.x, m0.z) + 6.0
+		m1.y = v.height(m1.x, m1.z) + 5.8
+		Cine.drift(w, m0, m1, ml, ml + Vector3(0, -0.5, 0), 3.0, 28.0)
 		await Cine.wait(w, 2.8)
 	# children picking Sparks out of the furrows like conkers
 	var glints: Array = []
@@ -1944,7 +1968,10 @@ static func _dawn(w: World) -> void:
 	var mist := _mist_bank(v, herald)
 	for who in ["bram", "corin", "player", "nell", "tam", "hob"]:
 		Cine.look(w, who, road[1])
-	Cine.shot(w, Vector3(6.0, 1.9, 16.5), road[0] + Vector3(-6.0, 2.0, 0.0), 30.0)
+	# from the road, up the rise it comes over
+	var rc := Vector3(21.0, 0, 14.2)
+	rc.y = v.height(rc.x, rc.z) + 1.7
+	Cine.shot(w, rc, road[0] + Vector3(0, 2.5, 0), 30.0)
 	var walk := _herald_walk(w, herald, road, 2.4)
 	await Cine.wait(w, 3.0)
 	# the village kneels without being told
@@ -1977,13 +2004,14 @@ static func _dawn(w: World) -> void:
 	# the Covenant
 	Cine.shot(w, HERALD_AT + Vector3(-3.6, 0.9, 2.4), herald.hood_pos() + Vector3(0, -0.15, 0), 36.0)
 	await _herald_say(w, 1, "Hear the Covenant.")
-	Cine.drift(w, Vector3(-1.6, 2.1, 12.8), Vector3(0.6, 2.2, 13.0), HERALD_AT + Vector3(1.0, 2.6, 0), HERALD_AT + Vector3(1.6, 2.7, 0), 14.0, 40.0)
+	var cov := _drift_tween(w, Vector3(-1.6, 2.1, 12.8), Vector3(0.6, 2.2, 13.0), HERALD_AT + Vector3(1.0, 2.6, 0), HERALD_AT + Vector3(1.6, 2.7, 0), 14.0, 40.0)
 	await _herald_say(w, 2, "The Age of Solmaris is ending. By the Covenant, the Turning begins. For one year, any Seat in Veyl may be challenged by anyone.")
+	cov.kill()
 	# Solhaven: the lantern shows a knight kneeling in a sun chapel
-	var lp := herald.lantern_pos()
-	Cine.shot(w, Vector3(4.2, 1.2, 12.2), lp + Vector3(-0.9, 1.0, 0.0), 40.0)
 	herald.lantern_flare(1.0)
 	var vis := _vision(w, herald, 0)
+	var vc := vis.global_position
+	Cine.shot(w, vc + Vector3(-5.6, -2.9, -0.9), vc + Vector3(0.6, -0.75, 0.0), 40.0)
 	await _herald_say(w, 3, "Solhaven, for Solmaris: Ser Aldric Vane.")
 	await _vision_out(w, vis)
 	# then five more faces, a name under each, too quick to hold; the camera
@@ -2207,7 +2235,7 @@ void fragment() {
 static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3D:
 	var root := Node3D.new()
 	w.add_child(root)
-	root.global_position = herald.lantern_pos() + Vector3(-1.1, 1.55, 0.0)
+	root.global_position = herald.lantern_pos() + Vector3(-1.5, 0.7, 0.0)
 	var q := MeshInstance3D.new()
 	var qm := QuadMesh.new()
 	qm.size = Vector2(1.5, 1.9)
@@ -2520,21 +2548,20 @@ static func _burning(w: World) -> void:
 	Music.stop(1.0)
 	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
 	await Cine.wait(w, 1.6)
+	# Tam, Nell and Hob in one shot, from Krell's side of the green
 	var np := Cine.body(w, "nell").global_position
-	Cine.shot(w, np + Vector3(1.9, 1.4, -1.0), np + Vector3(0, 1.05, 0), 30.0)
+	Cine.shot(w, np + Vector3(4.4, 1.7, -3.6), np + Vector3(-0.4, 1.1, -0.4), 34.0)
 	Cine.look(w, "nell", np + Vector3(-1.5, 0, 0.6))
 	var nf = Cine.fig(w, "nell")
 	if nf is Figure3D:
 		(nf as Figure3D).pose("defeat", 0.3, 0.6)   # her head goes down
-	await Cine.wait(w, 1.4)
+	await Cine.wait(w, 1.3)
 	Cine.look(w, "hob", np)
-	var hbp := Cine.body(w, "hob").global_position
-	Cine.shot(w, hbp + Vector3(1.8, 1.45, -1.2), hbp + Vector3(0, 1.3, 0), 32.0)
-	await Cine.wait(w, 1.4)
+	await Cine.wait(w, 1.7)
 	Cine.shot(w, Vector3(-9.0, 1.6, 9.6), Vector3(4.0, 1.4, 5.6), 34.0)
 	await Cine.wait(w, 1.2)
 	# Krell turns a page
-	Cine.shot(w, KRELL_AT + Vector3(-2.6, 1.5, 1.3), KRELL_AT + Vector3(0.2, 1.2, 0), 28.0)
+	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.6, 1.4), KRELL_AT + Vector3(0, 1.3, 0), 28.0)
 	await _turn_page(w, ledger)
 	Cine.look(w, "krell", Cine.body(w, "tam").global_position)
 	await Cine.say(w, "krell", "Mr Hayes. The mill, its stones and its house. Eleven hundred crowns. You would be clear.")
@@ -2554,17 +2581,18 @@ static func _burning(w: World) -> void:
 		await Cine.wait(w, 1.0)
 		Cine.shot(w, pp + Vector3(-0.8, 1.6, 0.9), tb.global_position + Vector3(0, 1.4, 0), 18.0)
 		await Cine.wait(w, 1.8)
-		Cine.shot(w, tam_cam, Cine.head(w, "tam"), 26.0)
 		Cine.look(w, "tam", KRELL_AT)
+		Cine.shot(w, tb.global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 28.0)
 		await Cine.wait(w, 1.4)
 	# he steps forward, cap in his hands
 	var cap := _cap_in_hands(w, "tam")
 	Cine.shot(w, Vector3(-0.5, 1.5, 9.4), (tb.global_position + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
 	await Cine.walk(w, "tam", tb.global_position + (KRELL_AT - tb.global_position).normalized() * 1.4, 1.0)
-	Cine.shot(w, KRELL_AT + Vector3(-5.4, 1.5, 1.4), tb.global_position + Vector3(0, 1.4, 0), 32.0)
+	# his lie, to her face (the camera beside her)
+	Cine.shot(w, tb.global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 28.0)
 	await Cine.say(w, "tam", "They left at noon. Took the Solhaven road. Bram and the youngster both.")
 	# she looks at him for a long moment
-	Cine.shot(w, KRELL_AT + Vector3(-2.4, 1.65, 1.2), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
+	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.65, 1.4), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
 	await Cine.wait(w, 2.2)
 	await Cine.say(w, "krell", "No. They didn't.")
 	# she closes the ledger; a Shieldhound moves
@@ -2593,7 +2621,7 @@ static func _burning(w: World) -> void:
 	var to_k := tam_at - np
 	to_k.y = 0.0
 	to_k = to_k.normalized()
-	Cine.shot(w, np - to_k * 2.6 + to_k.cross(Vector3.UP) * 0.9 + Vector3(0, 1.55, 0), np + to_k * 0.4 + Vector3(0, 1.3, 0), 30.0)
+	Cine.shot(w, np - to_k * 3.1 + to_k.cross(Vector3.UP) * 1.4 + Vector3(0, 1.6, 0), np + to_k * 1.7 + Vector3(0, 0.9, 0), 32.0)
 	if nf is Figure3D:
 		(nf as Figure3D).release(0.3)
 	Cine.place(w, "nell", np, tam_at)
@@ -2610,7 +2638,7 @@ static func _burning(w: World) -> void:
 		_blood(v, fall_at + Vector3(0, 0.04, 0))
 	Cine.shot(w, fall_at + Vector3(-2.2, 1.3, 2.0), fall_at + Vector3(0.2, 0.1, 0.2), 34.0)
 	await Cine.wait(w, 2.0)
-	Cine.shot(w, np - to_k * 2.6 + to_k.cross(Vector3.UP) * 0.9 + Vector3(0, 1.55, 0), np + to_k * 0.4 + Vector3(0, 1.3, 0), 30.0)
+	Cine.shot(w, np - to_k * 3.1 + to_k.cross(Vector3.UP) * 1.4 + Vector3(0, 1.6, 0), np + to_k * 1.7 + Vector3(0, 0.9, 0), 32.0)
 	await Cine.say(w, "nell", "Tam.", 3.0)
 	await Cine.wait(w, 0.8)
 	Cine.shot(w, KRELL_AT + Vector3(-4.0, 1.6, 3.0), KRELL_AT + Vector3(0, 1.4, 0), 34.0)
@@ -2624,10 +2652,11 @@ static func _burning(w: World) -> void:
 		Cine.path(w, hunters[k], [Vector3(-2.0, 0, 1.0 + k), throw_from[k]], 5.0, "run")
 	for k in range(3, hunters.size()):
 		Cine.path(w, hunters[k], [Vector3(randf_range(-8, 8), 0, randf_range(-6, 10))], 3.0, "run")
-	Cine.path(w, "bram", [WOODPILE + Vector3(-0.6, 0, 0.5)], 4.4, "run")
-	Cine.shot(w, WOODPILE + Vector3(2.5, 1.5, 3.4), WOODPILE + Vector3(0, 1.1, 0), 40.0)
-	await Cine.path(w, "player", [WOODPILE + Vector3(0.4, 0, -0.1)], 4.6, "run")
 	_woodpile(v, WOODPILE + Vector3(1.4, 0, -1.4))
+	Cine.path(w, "bram", [WOODPILE + Vector3(-0.6, 0, 0.5)], 4.4, "run")
+	var wy := v.height(WOODPILE.x, WOODPILE.z)
+	Cine.shot(w, WOODPILE + Vector3(-2.2, wy + 1.5, 3.2), WOODPILE + Vector3(0.2, wy + 1.1, -0.2), 40.0)
+	await Cine.path(w, "player", [WOODPILE + Vector3(0.4, 0, -0.1)], 4.6, "run")
 	# the torches go into the inn's thatch, and the wind takes it to the next roof
 	Cine.shot(w, inn_at + Vector3(14.0, 4.0, -9.0), inn_at + Vector3(0, 4.0, 0), 44.0)
 	for k in 3:
@@ -2681,8 +2710,11 @@ static func _burning(w: World) -> void:
 
 ## Cuts the camera to a shot `after` seconds from now (while a line is up).
 static func _cut_later(w: World, after: float, pos: Vector3, look: Vector3, fov: float) -> void:
+	var ov := Cine.overlay(w)
+	var line := ov._line_no + 1   # the line about to be said
 	await Cine.wait(w, after)
-	Cine.shot(w, pos, look, fov)
+	if ov._line_no == line and ov._waiting:
+		Cine.shot(w, pos, look, fov)
 
 
 ## Krell's ledger, open in her hand (a 3D Krell holds it; a cut-out's is only
@@ -2990,7 +3022,8 @@ static func _cellar(w: World) -> void:
 	var side: Vector3 = (bp - (r.chest as Vector3))
 	side.y = 0.0
 	sack.global_position = (r.chest as Vector3) + side.normalized().cross(Vector3.UP) * 0.85 + Vector3(0, 0.0, 0)
-	Cine.shot(w, (r.chest as Vector3) + side.normalized() * 1.7 + Vector3(0, 1.3, 0) - side.normalized().cross(Vector3.UP) * 0.6, (r.chest as Vector3) + side.normalized().cross(Vector3.UP) * 0.4 + Vector3(0, 0.45, 0), 34.0)
+	var perp := side.normalized().cross(Vector3.UP)
+	Cine.shot(w, (r.chest as Vector3) - perp * 1.6 + side.normalized() * 0.5 + Vector3(0, 1.25, 0), (r.chest as Vector3) + perp * 0.35 + Vector3(0, 0.4, 0), 38.0)
 	if bf is Figure3D:
 		(bf as Figure3D).pose("lift", 0.35, 0.3)
 	for b in r.boxes:

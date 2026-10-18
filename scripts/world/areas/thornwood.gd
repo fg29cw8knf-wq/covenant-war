@@ -180,10 +180,13 @@ static func _river(w: World) -> void:
 	Cine.shot(w, hp + Vector3(-3.4, 1.7, 4.4), hp + Vector3(0, 1.1, 0), 36.0)
 	await Cine.say(w, "hob", "Wait!", 1.2)
 	var wade := Vector3(hp.x, 0, 3.6)
-	Cine.shot(w, hp + Vector3(-4.2, 1.4, 1.2), wade + Vector3(0, 0.2, 0), 36.0)
+	# from the near bank, across the water at him
+	var from_near := Vector3(hp.x - 2.0, 0, -1.6)
+	from_near.y = maxf(v.height(from_near.x, from_near.z), ThornwoodSet.WATER_Y) + 1.5
+	Cine.shot(w, from_near, Vector3(hp.x, 0.6, 5.5), 36.0)
 	await Cine.walk(w, "hob", wade, 1.3)
 	Cine.look(w, "hob", w.player.global_position)
-	Cine.shot(w, wade + Vector3(-2.6, 0.6, 3.0), wade + Vector3(0, 0.4, 0), 34.0)
+	Cine.shot(w, from_near, Vector3(hp.x, 0.6, 5.5), 32.0)
 	await Cine.say(w, "hob", "These came up in my cabbages. Tam said this morning you'd need them more than me.")
 	await _skim(w, hob.global_position + Vector3(0, 1.2, 0), w.player.global_position + Vector3(0.5, 0.1, 0.6))
 	Prologue.hob_sparks()
@@ -191,7 +194,7 @@ static func _river(w: World) -> void:
 	# Nell stands apart from the others, looking back at the mill. She does not wave.
 	var nell := Cine.body(w, "nell")
 	Cine.place(w, "nell", nell.global_position + Vector3(1.6, 0, -0.2), crest + Vector3(14.0, 0, 0))
-	Cine.shot(w, nell.global_position + Vector3(1.6, 1.4, 3.6), crest + Vector3(14.0, 0, 0), 34.0)
+	Cine.shot(w, nell.global_position + Vector3(0.8, 1.6, 2.8), nell.global_position + Vector3(-0.6, 1.4, -6.0), 34.0)
 	await Cine.wait(w, 3.0)
 	# up the hill, the roof of the Crooked Lantern falls in
 	Cine.shot(w, near + Vector3(1.6, 1.4, 2.8), crest, 30.0)
@@ -281,6 +284,7 @@ static func _camp(w: World) -> void:
 	Cine.overlay(w).black(true)
 	# the road east, walking
 	var road: Vector3 = ThornwoodSet.SPOTS.road + Vector3(0, 0, 12.0)
+	road.y = v.height(road.x, road.z)
 	Cine.place(w, "bram", road, road + Vector3(0, 0, 10))
 	Cine.place(w, "player", road + Vector3(-0.6, 0, -1.6), road + Vector3(0, 0, 10))
 	Music.play(["thornwood", "menu_theme"], 2.0, true)
@@ -573,7 +577,7 @@ static func _morning(w: World) -> void:
 			# he studies the cards on the log a while
 			_cards_on_log(w, lg)
 			Cine.place(w, "bram", (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1), lg.mid)
-			Cine.shot(w, (lg.mid as Vector3) + side * 1.6 + Vector3(0, 1.3, 0.4), (lg.mid as Vector3) + Vector3(0, 0.5, 0) - side * 0.3, 36.0)
+			Cine.shot(w, (lg.mid as Vector3) + side * 1.9 + Vector3(0, 1.5, 0), (lg.mid as Vector3) + Vector3(0, 0.6, 0) - side * 0.4, 40.0)
 			if bf is Figure3D:
 				(bf as Figure3D).pose("sit", 0.22, 0.5)   # bent over them
 			await Cine.fade(w, 0.0, 0.6)
@@ -706,7 +710,7 @@ static func _road(w: World) -> void:
 	await Cine.fade(w, 0.0, 0.6)
 	await Cine.say(w, "dask", "No.", 1.6)
 	Cine.look(w, "dask", mid)
-	Cine.shot(w, dask_at + Vector3(-1.6, 1.5, 2.2), mid + Vector3(0, 0.1, 0), 40.0)
+	Cine.shot(w, dask_at + Vector3(-2.6, 1.6, 3.2), mid + Vector3(0, 0.1, 0), 40.0)
 	var rf := w.create_tween().set_parallel(true)
 	rf.tween_property(ring.material_override, "albedo_color:a", 0.0, 3.0)
 	rf.tween_property(ring.get_child(0), "light_energy", 0.0, 3.0)
@@ -727,7 +731,7 @@ static func _road(w: World) -> void:
 		_sfx(w, "hound_whine")
 	await Cine.wait(w, 0.6)
 	_kneel_cutout(w, "dask", false)
-	Cine.shot(w, dask_cam, Cine.body(w, "dask").global_position + Vector3(0.0, 1.25, 0), 32.0)
+	_front_shot(w, "dask", w.player.global_position, 32.0)
 	await Cine.say(w, "dask", "Caldus Morne wants that card. Do you understand? Everyone on this road's going to know your face.")
 	# the wager: his whole deck
 	for id in DuelCards.card_list("dask_hounds"):
@@ -753,7 +757,7 @@ static func _road(w: World) -> void:
 		Cine.shot(w, (w.player.global_position + dpos) * 0.5 + (dpos - w.player.global_position).normalized().cross(Vector3.UP) * 2.2 + Vector3(0, 1.4, 0), (w.player.global_position + dpos) * 0.5 + Vector3(0, 1.15, 0), 36.0)
 		await Cine.wait(w, 1.0)
 		# he stares at it; he doesn't take it straight away
-		Cine.shot(w, dask_cam, dpos + Vector3(0.0, 1.25, 0), 30.0)
+		_front_shot(w, "dask", w.player.global_position, 30.0)
 		await Cine.wait(w, 1.8)
 		await Cine.say(w, "dask", "...Why?")
 		await Cine.wait(w, 0.6)
@@ -765,7 +769,7 @@ static func _road(w: World) -> void:
 		Cine.path(w, "dhound", [dpos + Vector3(1.2, 0, 0.4), r + Vector3(6.0, 0, 7.0)], 1.4)
 		await Cine.path(w, "dask", [dpos + Vector3(0.0, 0, 0.8), r + Vector3(5.0, 0, 6.0)], 0.9)
 	else:
-		Cine.shot(w, dask_cam, dpos + Vector3(0.0, 1.25, 0), 30.0)
+		_front_shot(w, "dask", w.player.global_position, 30.0)
 		await Cine.say(w, "dask", "Home.", 1.4)
 		await Cine.wait(w, 0.9)   # it isn't a laugh
 		await Cine.say(w, "dask", "Right.", 1.4)
@@ -798,6 +802,17 @@ static func _road(w: World) -> void:
 	watch.queue_free()
 	if pf2 is Figure3D:
 		(pf2 as Figure3D).get_up(0.01)
+
+
+## A three-quarter shot of someone's face as they look toward a point (for a
+## cut-out that has moved off its mark: the fixed cameras would see its back).
+static func _front_shot(w: World, who: String, toward: Vector3, fov: float) -> void:
+	var p: Vector3 = Cine.body(w, who).global_position
+	var f := toward - p
+	f.y = 0.0
+	f = f.normalized()
+	var s := f.cross(Vector3.UP)
+	Cine.shot(w, p + f * 1.9 - s * 1.3 + Vector3(0, 1.55, 0), p + Vector3(0, 1.3, 0), fov)
 
 
 ## The second night up to the oath: the fireflies go out, Dask steps out of
