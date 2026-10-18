@@ -29,6 +29,7 @@ var _log: Array = []
 var _last_line := ""
 var _chase_taps := 0
 var _crier_watched := false
+var _last_caption := ""
 
 
 func _ready() -> void:
@@ -100,8 +101,8 @@ func _play() -> void:
 		_teleport(Vector3(0, 0, -17.2))
 		await _until_free(9000)
 		await _shot("after_trial")
-		_check(Game.flag("c5_done") and Game.flag("trial_light_passed"), "the Trial of Light passed")
 		await _talk("liora")
+	_check(Game.flag("c5_done") and Game.flag("trial_light_passed"), "the Trial of Light passed")
 	if not Game.flag("c6_done"):
 		_teleport(Vector3(-14.6, 0, -9.0))
 		await _until_free(12000)
@@ -197,6 +198,12 @@ func _process(_d: float) -> void:
 				ov._next.emit()
 		else:
 			_line_frames = 0
+		# a caption (the chapter's end), once it's up
+		if ov._cap.modulate.a > 0.95 and ov._cap.text != _last_caption:
+			_last_caption = ov._cap.text
+			_note("CAPTION: " + ov._cap.text)
+			if _keys:
+				_shot("caption_%05d" % _frame)
 		if ov._choices.visible and ov._choices.get_child_count() > 0:
 			ov._chosen.emit(mini(_choice, ov._choices.get_child_count() - 1))
 	# the chase: tap each ledge as it lights

@@ -8,7 +8,7 @@ extends Node
 ## again, and on the third reset her other line); then won. Checks the rules
 ## came into play and the barks were said, and takes screenshots.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
-##       res://tests/solhaven_duels_test.tscn -- <out_dir> [hale|wren|trial|aldric]
+##       res://tests/solhaven_duels_test.tscn -- <out_dir> [hale|wren|trial|aldric] [2d]
 ##   godot --headless res://tests/solhaven_duels_test.tscn -- <out_dir>     # just the checks
 
 var out := "user://"
@@ -21,12 +21,14 @@ var Duels: GDScript
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
-	var only := args[1] if args.size() > 1 else ""
+	var only := args[1] if args.size() > 1 and args[1] != "2d" else ""
 	Duels = load("res://scripts/world/solhaven/duels.gd")
 	Game.new_game("Rowan", "tidegrove")
 	for f in ["ash_marked", "first_deck", "bram_deck"]:
 		Game.set_flag(f)
 	Game.area = "solhaven"
+	# the 3D field (the game's default; a setting saved by another run may say otherwise)
+	Game.settings["duel_3d"] = "2d" not in args
 	layer = CanvasLayer.new()
 	add_child(layer)
 	for which in ["hale", "wren", "trial", "aldric"]:
@@ -183,11 +185,11 @@ func _rule_moment(which: String, ds: DuelScreen) -> void:
 				await _wait(5.0)
 			var p: DuelPlayer = g.players[0]
 			g._hit_life(0, p.life - p.max_life / 3 + 10, {"no_guard": true})
-			await _wait(1.0)
+			await _wait(2.1)
 			await _shot("aldric_blank_eye")
-			await _wait(2.6)
+			await _wait(1.9)
 			await _shot("aldric_herald_hood")
-			await _wait(1.0)
+			await _wait(1.4)
 			_check(ds._barked.has("_blank_eye"), "aldric: the seal shows on the blank card")
 			if ds.field != null:
 				_check(ds._herald != null and absf(ds._herald._hood_want) > 0.05, "aldric: the Pale Herald at the Circle's edge, its hood turned (%s)" % (ds._herald._hood_want if ds._herald != null else "none"))

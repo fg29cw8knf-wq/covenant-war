@@ -1490,7 +1490,10 @@ func fx_rolloff(r0: int, r1: int) -> void:
 	_rolloff = rv
 	if not _started:
 		_started = true
+		# (a story duel's rule is read on its own, the dice out of the way)
+		rv.visible = not spec.has("rule")
 		await _opening_banners()
+		rv.visible = true
 		if tutor != null:
 			rv.waiting = true
 			await tutor.event("intro")   # ends with the player tapping their die
@@ -2367,24 +2370,23 @@ func _mirrors_show(card: DuelCard) -> void:
 	var col := DuelFX.light(card.element())
 	sfx.play("ascend")
 	var panes: Array = []
-	var half := 4
-	for i in half * 2:
-		# round an ellipse about the field, leaving its top and bottom clear
-		var side := -1.0 if i < half else 1.0
-		var k := float(i % half) / float(half - 1)
-		var ang := lerpf(-0.95, 0.75, k)
-		var c := Vector2(FIELD_CX + side * 760.0 * cos(ang * 0.55), 470.0 + 330.0 * sin(ang))
-		var m := MirrorPane.new()
-		m.tex = tex
-		m.col = col
-		m.size = Vector2(150, 290) * lerpf(0.82, 1.0, 1.0 - absf(ang) / 0.95)
-		m.position = c - m.size * 0.5
-		m.pivot_offset = m.size * 0.5
-		m.rotation = side * 0.06 * (1.0 - k)
-		m.modulate.a = 0.0
-		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		fx_layer.add_child(m)
-		panes.append(m)
+	# round the hall: an ellipse about the Circle, its near side (the hand)
+	# left open; behind the plates and the cards, as the walls are
+	for side in [-1.0, 1.0]:
+		for deg in [-62.0, -34.0, -6.0, 22.0, 50.0]:
+			var a := deg_to_rad(deg)
+			var c := Vector2(FIELD_CX + side * 830.0 * cos(a), 470.0 + 400.0 * sin(a))
+			var m := MirrorPane.new()
+			m.tex = tex
+			m.col = col
+			m.size = Vector2(140, 270) * lerpf(0.72, 1.0, (sin(a) + 1.0) * 0.5)
+			m.position = c - m.size * 0.5
+			m.pivot_offset = m.size * 0.5
+			m.modulate.a = 0.0
+			m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			stage.add_child(m)
+			stage.move_child(m, 0)
+			panes.append(m)
 	for m in panes:
 		var tw := (m as Control).create_tween()
 		tw.tween_property(m, "modulate:a", 1.0, 0.22 / speed)

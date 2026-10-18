@@ -491,13 +491,14 @@ func _build_road() -> void:
 
 
 ## Ashford's carts, sacks and crates, as they are (from assets/models/ashford).
-func _ashford_prop(id: String, pos: Vector3, yaw: float) -> void:
+func _ashford_prop(id: String, pos: Vector3, yaw: float, parent: Node3D = null) -> void:
+	var into: Node3D = parent if parent != null else self
 	var path := "res://assets/models/ashford/%s.glb" % id
 	if ResourceLoader.exists(path):
 		var root := Node3D.new()
 		root.position = pos
 		root.rotation.y = deg_to_rad(yaw)
-		add_child(root)
+		into.add_child(root)
 		var inst: Node3D = (load(path) as PackedScene).instantiate()
 		root.add_child(inst)
 		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
@@ -505,11 +506,11 @@ func _ashford_prop(id: String, pos: Vector3, yaw: float) -> void:
 		return
 	match id:
 		"crate":
-			LevelKit.crate(self, pos, 0.8, yaw)
+			LevelKit.crate(into, pos, 0.8, yaw)
 		"sacks":
-			LevelKit.sphere(self, pos + Vector3(0, 0.35, 0), 0.42, "cloth_white", 0.9)
+			LevelKit.sphere(into, pos + Vector3(0, 0.35, 0), 0.42, "cloth_white", 0.9)
 		_:
-			LevelKit.box(self, pos + Vector3(0, 0.5, 0), Vector3(1.8, 0.6, 3.2), "wood", true, yaw)
+			LevelKit.box(into, pos + Vector3(0, 0.5, 0), Vector3(1.8, 0.6, 3.2), "wood", true, yaw)
 
 
 ## The town houses round the square, down the lane and in the old quarter:
@@ -850,7 +851,7 @@ func _build_lane() -> void:
 					var sheet := LevelKit.box(n, Vector3(0, 0.75, -1.8 + k * 0.9), Vector3(0.02, 0.85, 0.75), "cloth_white", false)
 					sheet.material_override = _mat(Color.from_hsv(0.08 * k, 0.25, 0.9), 0.9)
 			"cart":
-				_ashford_prop("hay_cart", Vector3.ZERO, 90.0)
+				_ashford_prop("hay_cart", Vector3.ZERO, 90.0, n)
 			"ledge":
 				LevelKit.box(n, Vector3(0, 0, 0), Vector3(1.2, 1.1, 4.2), "sandstone")
 			"arch":
@@ -962,46 +963,71 @@ func _build_court() -> void:
 	lights_court.append(spot)
 	for z in [-4.0, -14.0, -24.0]:
 		_omni(root, Vector3(0, 9.0, z), Color(1.0, 0.9, 0.72), 1.6, 16.0, lights_court)
-	# Solmaris, leaning down out of the glare (only while time is stopped)
+	# Solmaris, leaning down out of the glare (only while time is stopped): a
+	# tall figure of light before the statue, bent toward whoever stands below
 	solmaris = Node3D.new()
 	solmaris.name = "Solmaris"
-	solmaris.position = Vector3(0, 9.5, throne_z + 0.5)
+	solmaris.position = Vector3(0, 0.9, throne_z - 1.0)
 	solmaris.visible = false
 	root.add_child(solmaris)
-	var body := MeshInstance3D.new()
-	var bsm := SphereMesh.new()
-	bsm.radius = 3.4
-	bsm.height = 9.0
-	body.mesh = bsm
-	body.material_override = _glow_mat(Color(1.0, 0.94, 0.8), 1.6, 0.42)
-	body.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	solmaris.add_child(body)
+	var lean := Node3D.new()
+	lean.rotation.x = 0.3
+	solmaris.add_child(lean)
+	var robe := MeshInstance3D.new()
+	var rm := CylinderMesh.new()
+	rm.top_radius = 0.9
+	rm.bottom_radius = 2.4
+	rm.height = 7.6
+	rm.radial_segments = 28
+	robe.mesh = rm
+	robe.position = Vector3(0, 3.8, 0)
+	robe.material_override = _glow_mat(Color(1.0, 0.94, 0.8), 1.4, 0.3)
+	robe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lean.add_child(robe)
+	for side in [-1.0, 1.0]:
+		# arms opening, palms down, toward you
+		var arm := MeshInstance3D.new()
+		var am := CapsuleMesh.new()
+		am.radius = 0.32
+		am.height = 4.2
+		arm.mesh = am
+		arm.position = Vector3(side * 1.6, 6.0, 0.9)
+		arm.rotation = Vector3(0.9, 0, side * 0.75)
+		arm.material_override = _glow_mat(Color(1.0, 0.94, 0.82), 1.6, 0.35)
+		arm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		lean.add_child(arm)
 	var head := MeshInstance3D.new()
 	var hsm := SphereMesh.new()
-	hsm.radius = 1.4
-	hsm.height = 2.9
+	hsm.radius = 0.75
+	hsm.height = 1.8
 	head.mesh = hsm
-	head.material_override = _glow_mat(Color(1.0, 0.97, 0.88), 4.0, 0.75)
-	head.position = Vector3(0, 4.6, 1.6)
+	head.position = Vector3(0, 8.4, 0.3)
+	head.material_override = _glow_mat(Color(1.0, 0.97, 0.88), 4.0, 0.8)
 	head.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	solmaris.add_child(head)
+	lean.add_child(head)
 	var corona := MeshInstance3D.new()
 	var tm := TorusMesh.new()
-	tm.inner_radius = 2.0
-	tm.outer_radius = 3.2
+	tm.inner_radius = 1.25
+	tm.outer_radius = 1.7
 	corona.mesh = tm
-	corona.material_override = _glow_mat(Color(1.0, 0.8, 0.4), 3.0, 0.45)
-	corona.position = Vector3(0, 4.6, 1.2)
+	corona.material_override = _glow_mat(Color(1.0, 0.8, 0.4), 3.0, 0.5)
+	corona.position = Vector3(0, 8.5, -0.25)
 	corona.rotation.x = PI * 0.5
 	corona.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	solmaris.add_child(corona)
+	lean.add_child(corona)
 	var sl := OmniLight3D.new()
 	sl.light_color = Color(1.0, 0.95, 0.85)
 	sl.light_energy = 0.0
 	sl.omni_range = 30.0
-	sl.position = Vector3(0, 2, 3)
+	sl.position = Vector3(0, 6, 3)
 	solmaris.add_child(sl)
 	solmaris.set_meta("light", sl)
+	solmaris.set_meta("head", head)
+
+
+## Where Solmaris's face is, while she leans down out of the glare.
+func solmaris_face() -> Vector3:
+	return (solmaris.get_meta("head") as Node3D).global_position
 
 
 ## The court in white: the sun-window blazes and Solmaris leans down out of

@@ -31,6 +31,9 @@ const NEXT := {"gate": "wagon"}
 
 static func run(w: World, part: String) -> void:
 	var p := part
+	# (the light over the next door is the square's, not the film's)
+	if _v(w) != null:
+		_v(w).mark("")
 	while p != "" and w.is_inside_tree():
 		Game.set_flag("sol_film", p)
 		Game.save_game()
@@ -175,11 +178,59 @@ static func _front(w: World, who: String, toward: Vector3, fov := 32.0, height :
 	if f.length() < 0.01:
 		f = Vector3(0, 0, 1)
 	f = f.normalized()
-	var s := f.cross(Vector3.UP) * side
-	if _doll(w, who):
-		Cine.shot(w, p + f * 3.4 - s * 1.7 + Vector3(0, height - 0.1, 0), p + Vector3(0, 1.22, 0), fov)
+	var doll := _doll(w, who)
+	var look: Vector3 = p + Vector3(0, 1.22, 0) if doll else Cine.head(w, who) - Vector3(0, 0.05, 0)
+	var fwd := 3.4 if doll else 2.6
+	var aside := 1.7 if doll else 1.4
+	var up := height - 0.1 if doll else height
+	# the first of these with nobody standing in the way (or between the
+	# camera and the face): this side, the other, a little nearer
+	var b_s := f.cross(Vector3.UP) * side
+	var tries := [[fwd, aside, b_s], [fwd, aside, -b_s], [fwd * 0.7, aside * 0.8, b_s], [fwd * 0.7, aside * 0.8, -b_s],
+		[fwd * 0.55, aside * 1.2, b_s], [fwd * 0.55, aside * 1.2, -b_s]]
+	var at: Vector3 = p + f * fwd - b_s * aside + Vector3(0, up, 0)
+	for t in tries:
+		var cand: Vector3 = p + f * float(t[0]) - (t[2] as Vector3) * float(t[1]) + Vector3(0, up, 0)
+		if _view_clear(w, cand, p, b):
+			at = cand
+			break
+	Cine.shot(w, at, look, fov)
+
+
+## Nobody (the player, the square's people, a film's extras) stands near the
+## line from the camera to `to`, except `subject` itself.
+static func _view_clear(w: World, cam: Vector3, to: Vector3, subject: Node3D) -> bool:
+	var bodies: Array = [w.player]
+	for n in w.npcs:
+		bodies.append(n.body)
+	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
+	for k in ex:
+		bodies.append(ex[k].body)
+	var a := Vector2(cam.x, cam.z)
+	var z := Vector2(to.x, to.z)
+	var seg := z - a
+	for o in bodies:
+		var nb := o as Node3D
+		if nb == null or nb == subject or not is_instance_valid(nb) or not nb.is_visible_in_tree():
+			continue
+		var q := Vector2(nb.global_position.x, nb.global_position.z)
+		var u := clampf((q - a).dot(seg) / maxf(seg.length_squared(), 0.001), 0.0, 1.0)
+		if u > 0.85 and q.distance_to(z) < 0.9:
+			continue   # beside the subject, not in front
+		if (a + seg * u).distance_to(q) < 0.75:
+			return false
+	return true
+
+
+## A close shot of someone's face from `cam`; a cut-out from further back
+## along the same line, so its painted head isn't the whole screen.
+static func _close(w: World, who: String, cam: Vector3, fov: float) -> void:
+	if not _doll(w, who):
+		Cine.shot(w, cam, Cine.head(w, who), fov)
 		return
-	Cine.shot(w, p + f * 2.6 - s * 1.4 + Vector3(0, height, 0), Cine.head(w, who) - Vector3(0, 0.05, 0), fov)
+	var at: Vector3 = Cine.body(w, who).global_position + Vector3(0, 1.22, 0)
+	var back := cam - at
+	Cine.shot(w, at + back * 1.7, at, fov + 4.0)
 
 
 ## Over `from`'s shoulder onto `to`'s face; when `from` is a cut-out (a
@@ -652,7 +703,7 @@ static func _thief(w: World) -> void:
 	for i in looks.size():
 		var a := TAU * i / looks.size() + 0.4
 		var at := p + Vector3(cos(a) * (2.0 + (i % 3) * 0.9), 0, sin(a) * (2.2 + (i % 2) * 1.1) - 1.5)
-		var id := "crowd_%d" % i
+		var id := "film_crowd_%d" % i
 		_extra(w, id, looks[i], at, "", "courtier" if looks[i] == "courtier" else "")
 		crowd.append(id)
 	for i in crowd.size():
@@ -662,14 +713,14 @@ static func _thief(w: World) -> void:
 	Cine.look(w, "player", p + Vector3(0, 0, -6))
 	Cine.shot(w, p + Vector3(-3.0, 2.6, 4.4), p + Vector3(0, 1.2, -1.0), 40.0)
 	# a girl in a patched leather jacket bumps into you
-	_extra(w, "wren", "wren", p + Vector3(-3.0, 0, -2.6), "Wren", "wren")
-	Cine.look(w, "wren", p)
-	await Cine.walk(w, "wren", p + Vector3(-0.35, 0, -0.45), 3.4, "run")
+	_extra(w, "film_wren", "wren", p + Vector3(-3.0, 0, -2.6), "Wren", "wren")
+	Cine.look(w, "film_wren", p)
+	await Cine.walk(w, "film_wren", p + Vector3(-0.35, 0, -0.45), 3.4, "run")
 	w.shake(0.1)
 	_sfx(w, "click", 0.7)
-	_front(w, "wren", p, 30.0)
-	await Cine.say(w, "wren", "Sorry. Busy day.", 1.6)
-	Cine.walk(w, "wren", Vector3(8.0, 0, -3.0), 3.2, "run")
+	_front(w, "film_wren", p, 30.0)
+	await Cine.say(w, "film_wren", "Sorry. Busy day.", 1.6)
+	Cine.walk(w, "film_wren", Vector3(8.0, 0, -3.0), 3.2, "run")
 	Cine.shot(w, p + Vector3(-1.6, 1.7, 2.2), Cine.head(w, "player"), 32.0)
 	await _narrate(w, "She's gone. A beat. Your pocket is empty.")
 	Cine.look(w, "bram", Vector3(8.0, 0, -3.0))
@@ -677,7 +728,7 @@ static func _thief(w: World) -> void:
 	await Cine.say(w, "bram", "Your pocket! Go! I'll come round!")
 	for id in crowd:
 		_drop(w, id)
-	_drop(w, "wren")
+	_drop(w, "film_wren")
 	# the chase
 	var ch := Chase.new()
 	await ch.play(w)
@@ -692,29 +743,29 @@ static func _alley(w: World, resumed: bool) -> void:
 	var wren_at := end_at + Vector3(0, 0, -1.6)
 	var me_at := end_at + Vector3(-0.3, 0, 3.2)
 	var bram_at := end_at + Vector3(1.6, 0, 6.6)
-	_extra(w, "wren", "wren", wren_at, "Wren", "wren")
+	_extra(w, "film_wren", "wren", wren_at, "Wren", "wren")
 	if resumed:
 		Cine.place(w, "player", me_at, wren_at)
 		Cine.place(w, "bram", bram_at, wren_at)
-		Cine.look(w, "wren", me_at)
+		Cine.look(w, "film_wren", me_at)
 	else:
 		Cine.place(w, "player", me_at, wren_at)
 		Cine.place(w, "bram", Vector3(60.0, 0, 30.0))
-		Cine.look(w, "wren", me_at)
+		Cine.look(w, "film_wren", me_at)
 		# Wren turns, grinning, and holds up the blank card
 		var card := InnRooms.blank_card(null)
 		card.name = "CardFlight"
-		var wf = Cine.fig(w, "wren")
+		var wf = Cine.fig(w, "film_wren")
 		if wf is Figure3D:
 			(wf as Figure3D).hand_light(card)
 			card.position = Vector3(0.0, 0.06, 0.04)
 			(wf as Figure3D).pose("play_card", 0.42, 0.4)
 		else:
-			Cine.body(w, "wren").add_child(card)
+			Cine.body(w, "film_wren").add_child(card)
 			card.position = Vector3(0.3, 1.5, 0.2)
-		_front(w, "wren", me_at, 30.0)
+		_front(w, "film_wren", me_at, 30.0)
 		await Cine.fade(w, 0.0, 0.5)
-		await Cine.say(w, "wren", "Right. Let's see what all the fuss is —", 1.8)
+		await Cine.say(w, "film_wren", "Right. Let's see what all the fuss is —", 1.8)
 		# the card flares white; she yelps and drops it, and it flies back into your hand
 		(card.material_override as StandardMaterial3D).emission_energy_multiplier = 8.0
 		w.flash(Color(0.92, 0.96, 1.0), 0.08, 0.6)
@@ -743,19 +794,19 @@ static func _alley(w: World, resumed: bool) -> void:
 			(pf as Figure3D).hand_light(held)
 			held.position = Vector3(0.0, 0.06, 0.04)
 		# shaking her hand: a red welt across the palm
-		_front(w, "wren", me_at, 30.0)
-		await Cine.say(w, "wren", "Nobody said it bites.")
+		_front(w, "film_wren", me_at, 30.0)
+		await Cine.say(w, "film_wren", "Nobody said it bites.")
 		if pf is Figure3D:
 			(pf as Figure3D).hand_light(null)
-		Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "wren"), 32.0)
+		Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "film_wren"), 32.0)
 		var k := await Cine.choose(w, ["That's mine.", "Who sent you?"])
-		_front(w, "wren", me_at, 30.0)
+		_front(w, "film_wren", me_at, 30.0)
 		if k == 0:
-			await Cine.say(w, "wren", "So I see.")
+			await Cine.say(w, "film_wren", "So I see.")
 		else:
-			await Cine.say(w, "wren", "Nobody sends me. I go where the money is, and you're carrying more of it than I've ever seen.")
-		await Cine.say(w, "wren", "Here's a deal. Beat me, and I'll tell you what you're worth, and how many people know it.")
-		await Cine.say(w, "wren", "Lose, and you buy me dinner.")
+			await Cine.say(w, "film_wren", "Nobody sends me. I go where the money is, and you're carrying more of it than I've ever seen.")
+		await Cine.say(w, "film_wren", "Here's a deal. Beat me, and I'll tell you what you're worth, and how many people know it.")
+		await Cine.say(w, "film_wren", "Lose, and you buy me dinner.")
 		# Bram comes round the end of the alley, out of breath, and stops where he can see your cards
 		Cine.place(w, "bram", end_at + Vector3(0.8, 0, 13.0), me_at)
 		Cine.shot(w, me_at + Vector3(-2.0, 1.8, -2.6), end_at + Vector3(1.0, 1.2, 9.0), 36.0)
@@ -772,12 +823,12 @@ static func _alley(w: World, resumed: bool) -> void:
 static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Vector3) -> void:
 	Cine.place(w, "player", me_at, wren_at)
 	Cine.place(w, "bram", bram_at, me_at)
-	Cine.place(w, "wren", wren_at, me_at)
-	_front(w, "wren", me_at, 30.0)
+	Cine.place(w, "film_wren", wren_at, me_at)
+	_front(w, "film_wren", me_at, 30.0)
 	await Cine.fade(w, 0.0, 0.6)
-	await Cine.say(w, "wren", "All right. All right. A deal's a deal.")
-	await Cine.say(w, "wren", "Ten thousand crowns. Posted this morning in every black market from here to the Shards, for a blank Sigil and the hand that holds it.")
-	await Cine.say(w, "wren", "Sealed with this.")
+	await Cine.say(w, "film_wren", "All right. All right. A deal's a deal.")
+	await Cine.say(w, "film_wren", "Ten thousand crowns. Posted this morning in every black market from here to the Shards, for a blank Sigil and the hand that holds it.")
+	await Cine.say(w, "film_wren", "Sealed with this.")
 	# she flicks you a wax seal
 	var seal := MeshInstance3D.new()
 	seal.name = "Seal"
@@ -791,7 +842,7 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 	sm.roughness = 0.4
 	seal.material_override = sm
 	w.add_child(seal)
-	seal.global_position = Cine.head(w, "wren") + Vector3(0, -0.4, 0)
+	seal.global_position = Cine.head(w, "film_wren") + Vector3(0, -0.4, 0)
 	Cine.shot(w, (seal.global_position + me_at) * 0.5 + Vector3(1.8, 0.6, 0), (seal.global_position + me_at) * 0.5 + Vector3(0, 1.0, 0), 34.0)
 	var tw := w.create_tween()
 	tw.tween_property(seal, "global_position", me_at + Vector3(0.25, 1.05, -0.25), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -800,62 +851,62 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 	seal.queue_free()
 	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "Ironvault.")
-	_front(w, "wren", me_at, 30.0)
-	await Cine.say(w, "wren", "Ironvault. And now everyone who can count to ten thousand is a hunter.")
-	await Cine.say(w, "wren", "I've just told you, which my fence won't love.")
-	await Cine.say(w, "wren", "He doesn't pay for failures. He collects on them.")
+	_front(w, "film_wren", me_at, 30.0)
+	await Cine.say(w, "film_wren", "Ironvault. And now everyone who can count to ten thousand is a hunter.")
+	await Cine.say(w, "film_wren", "I've just told you, which my fence won't love.")
+	await Cine.say(w, "film_wren", "He doesn't pay for failures. He collects on them.")
 	# she tugs back her sleeve: a black-market marker on a cord, her name stamped in tin
-	var wf = Cine.fig(w, "wren")
+	var wf = Cine.fig(w, "film_wren")
 	if wf is Figure3D:
 		(wf as Figure3D).pose("play_card", 0.3, 0.4)
 	Cine.shot(w, wren_at + Vector3(1.0, 1.3, 1.4), wren_at + Vector3(0.2, 1.1, 0.3), 30.0)
 	await Cine.wait(w, 1.4)
 	if wf is Figure3D:
 		(wf as Figure3D).release(0.4)
-	_front(w, "wren", me_at, 30.0)
-	await Cine.say(w, "wren", "So. You need someone who knows where hunters drink.")
-	await Cine.say(w, "wren", "I need someone they're more interested in than me.")
-	Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "wren"), 32.0)
+	_front(w, "film_wren", me_at, 30.0)
+	await Cine.say(w, "film_wren", "So. You need someone who knows where hunters drink.")
+	await Cine.say(w, "film_wren", "I need someone they're more interested in than me.")
+	Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "film_wren"), 32.0)
 	var k := await Cine.choose(w, ["Prove it's real.", "Why should we trust a thief?"])
 	if k == 0:
 		# she tosses you the tag: real tin, a real stamp, a Shardlands fence's mark
 		Game.set_flag("wren_tag")
 		Cine.shot(w, me_at + Vector3(0.9, 1.4, 1.0), me_at + Vector3(0.2, 1.1, -0.2), 30.0)
 		await Cine.wait(w, 1.2)
-		_front(w, "wren", me_at, 30.0)
-		await Cine.say(w, "wren", "Keep it if you like. I've another.")
+		_front(w, "film_wren", me_at, 30.0)
+		await Cine.say(w, "film_wren", "Keep it if you like. I've another.")
 	else:
-		_front(w, "wren", me_at, 30.0)
-		await Cine.say(w, "wren", "You shouldn't. That's what makes me useful.")
-		await Cine.say(w, "wren", "I know exactly how people like me think.")
+		_front(w, "film_wren", me_at, 30.0)
+		await Cine.say(w, "film_wren", "You shouldn't. That's what makes me useful.")
+		await Cine.say(w, "film_wren", "I know exactly how people like me think.")
 	# she pulls on a pair of fingerless gloves
 	if wf is Figure3D:
 		(wf as Figure3D).pose("play_card", 0.55, 0.4)
 	await Cine.wait(w, 1.0)
 	if wf is Figure3D:
 		(wf as Figure3D).release(0.3)
-	await Cine.say(w, "wren", "I'm Wren.")
+	await Cine.say(w, "film_wren", "I'm Wren.")
 	Cine.look(w, "bram", w.player.global_position)
 	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "I don't like it.")
 	await Cine.wait(w, 0.6)
 	await Cine.say(w, "bram", "Your call, Sprout.")
-	Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "wren"), 32.0)
+	Cine.shot(w, me_at + Vector3(-1.4, 1.7, 1.6), Cine.head(w, "film_wren"), 32.0)
 	var j := await Cine.choose(w, ["She comes with us.", "She doesn't."])
-	_front(w, "wren", me_at, 30.0)
+	_front(w, "film_wren", me_at, 30.0)
 	if j == 0:
 		Game.set_flag("wren_joined")
-		await Cine.say(w, "wren", "Good. Board, and a tenth of whatever you win.")
-		await Cine.say(w, "wren", "I'll keep the accounts.")
+		await Cine.say(w, "film_wren", "Good. Board, and a tenth of whatever you win.")
+		await Cine.say(w, "film_wren", "I'll keep the accounts.")
 	else:
 		Game.set_flag("wren_joined", false)
 		Game.set_flag("wren_declined")
-		await Cine.say(w, "wren", "Fair.")
+		await Cine.say(w, "film_wren", "Fair.")
 		# she walks off up the alley without looking back
 		Cine.shot(w, me_at + Vector3(-1.0, 1.6, 2.0), wren_at + Vector3(0, 1.0, 6.0), 38.0)
-		await Cine.path(w, "wren", [wren_at + Vector3(1.6, 0, 3.0), wren_at + Vector3(1.6, 0, 14.0)], 1.5)
+		await Cine.path(w, "film_wren", [wren_at + Vector3(1.6, 0, 3.0), wren_at + Vector3(1.6, 0, 14.0)], 1.5)
 	await Cine.fade(w, 1.0, 0.8)
-	_drop(w, "wren")
+	_drop(w, "film_wren")
 	# back to the square, by the market
 	Cine.place(w, "player", Vector3(9.0, 0, 9.0), Vector3(0, 0, -10))
 	Cine.place(w, "bram", Vector3(10.6, 0, -1.6))
@@ -901,8 +952,8 @@ static func _court(w: World) -> void:
 		Cine.look(w, "courtier_%d" % i, c + Vector3(0, 0, COURTIERS[i].z))
 	Cine.place(w, "bram", c + Vector3(1.9, 0, 0.0), c + Vector3(0, 0, -20))
 	if Game.flag("wren_joined"):
-		_extra(w, "wren", "wren", c + Vector3(-1.9, 0, 0.2), "Wren", "wren")
-		Cine.look(w, "wren", c + Vector3(0, 0, -20))
+		_extra(w, "film_wren", "wren", c + Vector3(-1.9, 0, 0.2), "Wren", "wren")
+		Cine.look(w, "film_wren", c + Vector3(0, 0, -20))
 	Cine.place(w, "player", c + Vector3(0, 0, -0.8), c + Vector3(0, 0, -30))
 	Music.play(["sun_court", "solhaven_dawn"], 2.0, false)
 	# a vast white hall under a sun-window; light in a single gold column on the throne
@@ -911,10 +962,11 @@ static func _court(w: World) -> void:
 	await Cine.drift(w, c + Vector3(0, 2.2, 1.2), c + Vector3(0, 3.6, -2.0), throne + Vector3(0, 3.0, 0), throne + Vector3(0, 6.0, 0), 3.0, 44.0)
 	# the aisle; the courtiers whisper as you pass
 	Cine.walk(w, "player", c + Vector3(0, 0, -8.5), 1.1)
-	Cine.shot(w, c + Vector3(-2.6, 1.6, -11.0), c + Vector3(0, 1.3, -4.0), 38.0)
 	Cine.look(w, "courtier_2", c + Vector3(0, 0, -6))
 	Cine.look(w, "courtier_3", c + Vector3(0, 0, -6))
+	_front(w, "courtier_2", c + Vector3(0, 0, -7.0), 34.0)
 	await Cine.say(w, "courtier_2", "That's the Unsworn? From one of the Shardland villages, I heard.")
+	_front(w, "courtier_3", c + Vector3(0, 0, -8.0), 34.0, 1.5, -1.0)
 	await Cine.say(w, "courtier_3", "They pray to whatever falls on them, out there.")
 	await Cine.walk(w, "player", c + Vector3(0, 0, -24.5), 1.2)
 	Cine.look(w, "player", throne)
@@ -932,7 +984,7 @@ static func _court(w: World) -> void:
 	await Cine.say(w, "hierarch", "A blank Sigil in a farmhand's pocket is a danger to us all.")
 	# the Herald
 	herald.turn_hood(w.player.global_position + Vector3(0, 1.4, 0))
-	Cine.shot(w, herald.global_position + Vector3(3.6, 1.6, 2.6), herald.hood_pos(), 34.0)
+	Cine.shot(w, herald.global_position + Vector3(4.4, 2.0, -1.2), herald.hood_pos() - Vector3(0, 0.6, 0), 40.0)
 	await _voice(w, "herald_14", "herald", ["The Covenant forbids it."])
 	Cine.shot(w, c + Vector3(3.0, 2.8, -14.0), throne + Vector3(0, 1.6, 0), 40.0)
 	await _narrate(w, "The hall goes silent.")
@@ -978,7 +1030,7 @@ static func _court(w: World) -> void:
 ## the glare, quiet, the way you'd speak at a sickbed.
 static func _solmaris(w: World, throne: Vector3) -> void:
 	var v := _v(w)
-	var still := ["hierarch", "aldric_court", "bram", "wren"]
+	var still := ["hierarch", "aldric_court", "bram", "film_wren"]
 	for i in COURTIERS.size():
 		still.append("courtier_%d" % i)
 	Music.stop(0.3)
@@ -1001,20 +1053,22 @@ static func _solmaris(w: World, throne: Vector3) -> void:
 	var pf = Cine.fig(w, "player")
 	if pf is Figure3D:
 		(pf as Figure3D).pose("look_up", 0.6, 0.8)
-	Cine.shot(w, w.player.global_position + Vector3(-0.8, 0.9, 2.6), throne + Vector3(0, 10.0, 0), 50.0)
+	var face: Vector3 = v.solmaris_face()
+	Cine.shot(w, w.player.global_position + Vector3(-0.8, 0.9, 2.6), face + Vector3(0, -3.0, 0), 52.0)
 	await Cine.wait(w, 1.6)
-	var face := throne + Vector3(0, 13.8, 2.0)
-	Cine.shot(w, w.player.global_position + Vector3(0.6, 1.4, 1.2), face, 38.0)
+	# you, small, under her: she bends to you out of the light
+	var under: Vector3 = w.player.global_position + Vector3(1.4, 0.6, 3.0)
+	Cine.shot(w, under, face + Vector3(0, -2.6, 0), 50.0)
 	await _voice(w, "solmaris_01", "solmaris", ["Don't be frightened. Nobody else can hear us."])
 	await _voice(w, "solmaris_02", "solmaris", ["I watched your village burn. Nobody there was praying to me, and I can't answer a prayer nobody says."])
-	Cine.shot(w, throne + Vector3(4.0, 3.0, 6.0), face + Vector3(0, -3.0, 0), 46.0)
+	Cine.shot(w, throne + Vector3(5.0, 2.4, 7.5), face + Vector3(0, -3.0, 0), 48.0)
 	await _voice(w, "solmaris_03", "solmaris", ["And what I want from you, I can't take.", "The Covenant lets me ask. Nothing more."])
-	Cine.shot(w, w.player.global_position + Vector3(0.6, 1.4, 1.2), face, 36.0)
+	Cine.shot(w, under, face + Vector3(0, -2.6, 0), 48.0)
 	await _voice(w, "solmaris_04", "solmaris", ["So I will offer. Give me that card, freely, and Ashford will stand again by the next new moon.", "Every roof. Every note paid.", "The mill turning."])
 	await _voice(w, "solmaris_05", "solmaris", ["I can't give you back the miller. Morrowen keeps what she keeps.", "Everything else, I can."])
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.6)
-	Cine.shot(w, w.player.global_position + Vector3(-1.2, 1.9, 2.4), face + Vector3(0, -5.0, 0), 40.0)
+	Cine.shot(w, w.player.global_position + Vector3(-1.6, 1.6, 3.0), face + Vector3(0, -4.0, 0), 46.0)
 	var k := await Cine.choose(w, ["No. Ashford didn't burn so I could sell it.", "Not yet.", "Tell me what it is first."])
 	Cine.shot(w, throne + Vector3(-3.0, 2.0, 7.0), face + Vector3(0, -2.0, 0), 44.0)
 	match k:
@@ -1027,7 +1081,7 @@ static func _solmaris(w: World, throne: Vector3) -> void:
 		_:
 			Game.set_flag("solmaris_favour", "curious")
 			await _voice(w, "solmaris_08", "solmaris", ["Something I have spent two thousand years making sure nobody found.", "And then it found you."])
-	Cine.shot(w, w.player.global_position + Vector3(0.6, 1.4, 1.2), face, 36.0)
+	Cine.shot(w, under, face + Vector3(0, -2.6, 0), 48.0)
 	await _voice(w, "solmaris_09", "solmaris", ["I'll ask again, when you've seen what that card costs the people around you."])
 	# the light folds away and time comes back
 	await v.court_blaze(0.0, 1.0)
@@ -1220,7 +1274,7 @@ static func _spire(w: World) -> void:
 		Cine.walk(w, "player", me_at, 1.3)
 		Cine.walk(w, "bram", top + Vector3(5.8, 0, 3.6), 1.2)
 		_crowd_cheer(w, true)
-		Cine.shot(w, top + Vector3(-6.0, 3.0, 9.0), top + Vector3(4.0, 2.0, -6.0), 46.0)
+		Cine.shot(w, top + Vector3(-3.0, 6.5, 6.0), top + Vector3(3.0, 3.0, -7.0), 52.0)
 		await Cine.say(w, "crowd", "ALDRIC! ALDRIC! ALDRIC!")
 		# Ser Aldric walks into the circle and salutes the crowd, then you
 		Cine.place(w, "aldric_roof", top + Vector3(-11.0, 0, -0.4), top)
@@ -1252,7 +1306,7 @@ static func _spire(w: World) -> void:
 			await Cine.say(w, "aldric_roof", "I'm glad.")
 		var herald := w.get_node_or_null("PaleHerald") as PaleHerald
 		if herald != null:
-			Cine.shot(w, herald.global_position + Vector3(3.0, 1.4, 3.0), herald.hood_pos(), 36.0)
+			_herald_shot(w, herald, top)
 		await _voice(w, "herald_15", "herald", ["The Sun Court's Trial, by the Covenant. If the Unsworn wins, they may challenge for any Seat in Veyl until the Turning closes.", "Begin."])
 		await Cine.fade(w, 1.0, 0.5)
 	else:
@@ -1356,7 +1410,7 @@ static func _roof_people(w: World, top: Vector3) -> void:
 	var spots: Array = v.roof_crowd_spots
 	var looks := ["courtier", "merchant", "farmer", "courtier", "child_b", "elder", "trader", "courtier", "guard", "merchant"]
 	for i in spots.size():
-		var id := "crowd_%d" % i
+		var id := "film_crowd_%d" % i
 		var look: String = looks[i % looks.size()]
 		_extra(w, id, look, spots[i], "", "courtier" if look == "courtier" else ("sun_guard" if look == "guard" else ""))
 		Cine.look(w, id, top)
@@ -1393,10 +1447,19 @@ static func _roof_people(w: World, top: Vector3) -> void:
 	_extra(w, "aldric_roof", "aldric", top + Vector3(-11.0, 0, -0.4), "Aldric", "aldric")
 
 
+## The Herald at the Circle's edge, seen from inside the Circle (the stands
+## behind it, nobody between).
+static func _herald_shot(w: World, herald: PaleHerald, top: Vector3) -> void:
+	var at := herald.global_position
+	var into := (top - at) * Vector3(1, 0, 1)
+	var cam := at + into.normalized() * 4.6 + into.normalized().cross(Vector3.UP) * 1.2 + Vector3(0, 1.7, 0)
+	Cine.shot(w, cam, herald.hood_pos() - Vector3(0, 0.5, 0), 40.0)
+
+
 static func _crowd_cheer(w: World, on: bool) -> void:
 	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
 	for id in ex.keys():
-		if not (String(id).begins_with("crowd_") or String(id).begins_with("cheap_")):
+		if not (String(id).begins_with("film_crowd_") or String(id).begins_with("cheap_")):
 			continue
 		var f = ex[id].get("doll")
 		if f is Figure3D:
@@ -1427,7 +1490,7 @@ static func _spire_after(w: World, top: Vector3, me_at: Vector3, ald_at: Vector3
 	var herald := w.get_node_or_null("PaleHerald") as PaleHerald
 	if herald != null:
 		herald.turn_hood(w.player.global_position + Vector3(0, 1.4, 0))
-		Cine.shot(w, herald.global_position + Vector3(3.0, 1.4, 3.0), herald.hood_pos(), 36.0)
+		_herald_shot(w, herald, top)
 	await _voice(w, "herald_16", "herald", ["The Unsworn is tested and found worthy. Challenge whom you will."])
 	# the light his fallen Totems shed cools into a card: a lion of your own
 	Cine.shot(w, me_at + Vector3(1.0, 1.4, 1.2), me_at + Vector3(0.1, 1.2, -0.3), 30.0)
@@ -1581,6 +1644,47 @@ static func _light_into_hand(w: World, from: Vector3, to: Vector3) -> Node3D:
 
 # ===================================================== C7 · Gold in the Dark ===
 
+## Wren rolled in her cloak in the wagon wheel's shadow (while she's a
+## cut-out): a dark shape, and her eyes, which open (returned, hidden till then).
+static func _sleeper(w: World, at: Vector3, along: Vector3) -> Node3D:
+	var root := Node3D.new()
+	root.name = "WrenSleeping"
+	w.add_child(root)
+	root.global_position = at
+	root.look_at(at + along, Vector3.UP)
+	var cloak := MeshInstance3D.new()
+	var cm := CapsuleMesh.new()
+	cm.radius = 0.24
+	cm.height = 1.5
+	cloak.mesh = cm
+	cloak.rotation.x = PI * 0.5
+	cloak.position = Vector3(0, 0.22, 0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color("2f5a34").darkened(0.35)
+	mat.roughness = 0.95
+	cloak.material_override = mat
+	root.add_child(cloak)
+	var eyes := Node3D.new()
+	eyes.visible = false
+	eyes.position = Vector3(0, 0.34, -0.62)
+	root.add_child(eyes)
+	for x in [-0.045, 0.045]:
+		var e := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.012
+		sm.height = 0.024
+		e.mesh = sm
+		var em := StandardMaterial3D.new()
+		em.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		em.albedo_color = Color(1.0, 0.92, 0.7)
+		em.emission_enabled = true
+		em.emission = Color(1.0, 0.85, 0.55)
+		em.emission_energy_multiplier = 3.0
+		e.material_override = em
+		e.position = Vector3(x, 0, 0)
+		eyes.add_child(e)
+	return eyes
+
 static func _vault(w: World) -> void:
 	var v := _v(w)
 	await Cine.begin(w)
@@ -1600,12 +1704,19 @@ static func _vault(w: World) -> void:
 	Cine.place(w, "player", Vector3(1000, 0, 1000))
 	var wheel: Vector3 = v.wagon.to_global(Vector3(-1.9, 0, 0.6))
 	wheel.y = 0.0
-	_extra(w, "wren", "wren", wheel, "Wren", "wren")
-	var wf = Cine.fig(w, "wren")
+	_extra(w, "film_wren", "wren", wheel, "Wren", "wren")
+	var wf = Cine.fig(w, "film_wren")
+	var out: Vector3 = -v.wagon.global_transform.basis.x.normalized()
+	var along: Vector3 = v.wagon.global_transform.basis.z.normalized()
+	var eyes: Node3D = null
 	if wf is Figure3D:
 		(wf as Figure3D).lie_down(0.01, true)
 	else:
-		Cine.body(w, "wren").position.y = -0.7
+		# (a cut-out can't lie down: a cloaked shape rolled in the wheel's shadow)
+		Cine.body(w, "film_wren").visible = false
+		eyes = _sleeper(w, wheel, along)
+	var under_cam: Vector3 = wheel + out * 2.4 + along * 0.9 + Vector3(0, 0.55, 0)
+	var under_at: Vector3 = wheel + Vector3(0, 0.28, 0)
 	var turnip_was: float = v.turnip.rotation.z
 	v.turnip.rotation.z = 0.0
 	# the blank card, turned under the lamp
@@ -1617,7 +1728,7 @@ static func _vault(w: World) -> void:
 	Cine.shot(w, f + Vector3(-9.0, 2.0, 9.0), v.wagon.global_position + Vector3(0, 1.2, 0), 40.0)
 	await Cine.fade(w, 0.0, 1.6)
 	if not Game.flag("wren_joined"):
-		Cine.shot(w, wheel + Vector3(1.8, 0.7, 1.8), wheel + Vector3(0, 0.3, 0), 36.0)
+		Cine.shot(w, under_cam, under_at, 36.0)
 		await _narrate(w, "That night, she's asleep under the wagon. Turnip hasn't bitten her.")
 	Cine.shot(w, Cine.head(w, "bram") + Vector3(0.9, -0.1, 1.2), card.global_position, 30.0)
 	await Cine.wait(w, 1.2)
@@ -1633,14 +1744,18 @@ static func _vault(w: World) -> void:
 		(bf as Figure3D).release(0.6)
 	Cine.shot(w, f + Vector3(-5.0, 1.5, 5.0), v.wagon.global_position + Vector3(0, 1.0, 0), 38.0)
 	await _narrate(w, "He puts the card in his coat and stares into the dark for a long time.")
-	Cine.shot(w, wheel + Vector3(1.4, 0.5, 1.6), wheel + Vector3(0, 0.25, 0), 34.0)
+	Cine.shot(w, under_cam, under_at, 34.0)
+	if eyes != null:
+		eyes.visible = true   # her eyes open, catching the lamp
 	await _narrate(w, "In the shadow of the wagon wheel, Wren is awake.")
 	await _narrate(w, "She heard. She says nothing.")
 	await Cine.fade(w, 1.0, 1.2)
 	v.turnip.rotation.z = turnip_was
 	if bf is Figure3D:
 		(bf as Figure3D).stand()
-	_drop(w, "wren")
+	_drop(w, "film_wren")
+	if w.has_node("WrenSleeping"):
+		w.get_node("WrenSleeping").queue_free()
 	await _morne(w)
 	# End of Chapter One
 	Game.set_flag("ch1_done")
@@ -1725,20 +1840,20 @@ static func _morne(w: World) -> void:
 	Cine.shot(w, c + Vector3(0, 1.2, 9.0), c + Vector3(0, 9.0, -12.0), 50.0)
 	await Cine.fade(w, 0.0, 1.6)
 	await Cine.drift(w, c + Vector3(0, 1.2, 9.0), c + Vector3(1.4, 1.8, 5.0), c + Vector3(0, 9.0, -12.0), c + Vector3(0, 1.3, -0.6), 4.0, 44.0)
-	Cine.shot(w, c + Vector3(1.6, 1.5, 1.4), Cine.head(w, "morne"), 30.0)
+	_close(w, "morne", c + Vector3(1.6, 1.5, 1.4), 30.0)
 	await Cine.wait(w, 1.2)
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "The Unsworn beat the Sun's knight. On the Sunspire, in front of the whole city.")
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_01", "morne", ["Good."])
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "Sir?")
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_02", "morne", ["Every Champion they beat is one we needn't. Let them do the work.", "What else?"])
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "Ashford's closed. Nobody pointed.")
 	await Cine.say(w, "krell", "We took the mill and the farms under the terms. The inn we burned.")
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_03", "morne", ["And the miller?"])
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "He lied to me.")
@@ -1746,7 +1861,7 @@ static func _morne(w: World) -> void:
 	Cine.shot(w, c + Vector3(0.6, 1.6, 0.8), c + Vector3(0.4, 1.0, 0.1), 30.0)
 	v.ledger_label.text = "Hayes, T. · the mill · marked paid"
 	await Cine.wait(w, 0.8)
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_04", "morne", ["Give his widow back the mill, with the note marked paid. Profit from a death looks like exactly what it is."])
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "There's an old man travelling with the Unsworn. Sixty or more.")
@@ -1755,11 +1870,11 @@ static func _morne(w: World) -> void:
 	# Morne's pen stops
 	Cine.shot(w, c + Vector3(0.5, 1.4, 0.7), c + Vector3(0.3, 1.05, 0.1), 26.0)
 	await Cine.wait(w, 1.4)
-	Cine.shot(w, c + Vector3(-1.0, 1.4, 1.4), Cine.head(w, "morne"), 26.0)
+	_close(w, "morne", c + Vector3(-1.0, 1.4, 1.4), 26.0)
 	await _voice(w, "morne_05", "morne", ["Holloway."])
 	_front(w, "krell", c, 32.0)
 	await Cine.say(w, "krell", "You know him, sir?")
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_06", "morne", ["He has an account with us."])
 	# he takes down an old ledger, thirty years of dust on it, and opens it beside today's
 	await Cine.walk(w, "morne", c + Vector3(-3.2, 0, -2.0), 1.0)
@@ -1771,12 +1886,12 @@ static func _morne(w: World) -> void:
 	v.ledger_label.text = "HOLLOWAY, B. · 4,000 cr. · outstanding."
 	Cine.shot(w, c + Vector3(0.95, 1.55, 0.55), c + Vector3(0.95, 1.05, 0.1), 24.0)
 	await Cine.wait(w, 2.6)
-	Cine.shot(w, c + Vector3(-1.2, 1.4, 1.6), Cine.head(w, "morne"), 28.0)
+	_close(w, "morne", c + Vector3(-1.2, 1.4, 1.6), 28.0)
 	await _voice(w, "morne_07", "morne", ["Take the price off the Unsworn. Let them win."])
 	# he dips the pen
 	Cine.shot(w, c + Vector3(0.5, 1.4, 0.7), c + Vector3(0.3, 1.05, 0.1), 26.0)
 	await Cine.wait(w, 1.0)
-	Cine.shot(w, c + Vector3(-1.0, 1.4, 1.4), Cine.head(w, "morne"), 26.0)
+	_close(w, "morne", c + Vector3(-1.0, 1.4, 1.4), 26.0)
 	await _voice(w, "morne_08", "morne", ["Put it on Holloway. Alive."])
 	# he writes today's date beside the old line
 	Cine.shot(w, c + Vector3(0.95, 1.55, 0.55), c + Vector3(0.95, 1.05, 0.1), 24.0)
