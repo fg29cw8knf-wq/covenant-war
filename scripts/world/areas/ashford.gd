@@ -1229,7 +1229,7 @@ static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 ## The night the riders come, they stand bunched on the near side of the
 ## green, facing the road.
 const CROWD_NIGHT := [Vector3(-3.1, 0, 8.1), Vector3(-0.7, 0, 8.5), Vector3(2.1, 0, 8.9), Vector3(-5.2, 0, 8.6),
-	Vector3(-1.6, 0, 7.1), Vector3(5.4, 0, 4.3), Vector3(-8.5, 0, 4.9), Vector3(2.8, 0, 10.4),
+	Vector3(-1.6, 0, 7.1), Vector3(-6.4, 0, 10.6), Vector3(-8.5, 0, 4.9), Vector3(2.8, 0, 10.4),
 	Vector3(-5.8, 0, 1.9), Vector3(0.8, 0, 9.9)]
 
 
@@ -2561,7 +2561,7 @@ static func _burning(w: World) -> void:
 	await Cine.wait(w, 1.3)
 	Cine.look(w, "hob", np)
 	await Cine.wait(w, 1.7)
-	Cine.shot(w, Vector3(-9.0, 1.6, 9.6), Vector3(4.0, 1.4, 5.6), 34.0)
+	Cine.shot(w, Vector3(-11.0, 2.4, 10.4), Vector3(4.0, 1.2, 5.6), 30.0)
 	await Cine.wait(w, 1.2)
 	# Krell turns a page
 	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.6, 1.4), KRELL_AT + Vector3(0, 1.3, 0), 28.0)
@@ -2589,7 +2589,7 @@ static func _burning(w: World) -> void:
 		await Cine.wait(w, 1.4)
 	# he steps forward, cap in his hands
 	var cap := _cap_in_hands(w, "tam")
-	Cine.shot(w, Vector3(-0.5, 1.5, 9.4), (tb.global_position + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
+	Cine.shot(w, Vector3(0.4, 1.6, 7.6), (tb.global_position + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
 	await Cine.walk(w, "tam", tb.global_position + (KRELL_AT - tb.global_position).normalized() * 1.4, 1.0)
 	# his lie, to her face (the camera beside her)
 	Cine.shot(w, tb.global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 28.0)
@@ -2641,7 +2641,7 @@ static func _burning(w: World) -> void:
 		_blood(v, fall_at + Vector3(0, 0.04, 0))
 	Cine.shot(w, fall_at + Vector3(-2.2, 1.3, 2.0), fall_at + Vector3(0.2, 0.1, 0.2), 34.0)
 	await Cine.wait(w, 2.0)
-	Cine.shot(w, tam_at + to_k * 1.4 - to_k.cross(Vector3.UP) * 1.0 + Vector3(0, 1.3, 0), np + Vector3(0, 1.2, 0), 34.0)
+	Cine.shot(w, tam_at + to_k * 1.4 - to_k.cross(Vector3.UP) * 1.0 + Vector3(0, 1.3, 0), Cine.head(w, "nell") + Vector3(0, -0.1, 0), 22.0)
 	await Cine.say(w, "nell", "Tam.", 3.0)
 	await Cine.wait(w, 0.8)
 	Cine.shot(w, KRELL_AT + Vector3(-4.0, 1.6, 3.0), KRELL_AT + Vector3(0, 1.4, 0), 34.0)
