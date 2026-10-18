@@ -179,14 +179,17 @@ static func _river(w: World) -> void:
 	var hp := hob.global_position
 	Cine.shot(w, hp + Vector3(-3.4, 1.7, 4.4), hp + Vector3(0, 1.1, 0), 36.0)
 	await Cine.say(w, "hob", "Wait!", 1.2)
-	var wade := Vector3(hp.x, 0, 3.6)
+	# out from the far bank until the water would be over his knees
+	var wade := Vector3(hp.x, 0, hp.z)
+	while wade.z > 0.0 and v.height(wade.x, wade.z - 0.2) > ThornwoodSet.WATER_Y - 0.45:
+		wade.z -= 0.2
 	# from the near bank, across the water at him
 	var from_near := Vector3(hp.x - 2.0, 0, -1.6)
 	from_near.y = maxf(v.height(from_near.x, from_near.z), ThornwoodSet.WATER_Y) + 1.5
 	Cine.shot(w, from_near, Vector3(hp.x, 0.6, 5.5), 36.0)
 	await Cine.walk(w, "hob", wade, 1.3)
 	Cine.look(w, "hob", w.player.global_position)
-	Cine.shot(w, from_near, wade + Vector3(0, 0.9, 0.3), 32.0)
+	Cine.shot(w, from_near, Cine.head(w, "hob") + Vector3(0, -0.45, 0), 30.0)
 	await Cine.say(w, "hob", "These came up in my cabbages. Tam said this morning you'd need them more than me.")
 	await _skim(w, hob.global_position + Vector3(0, 1.2, 0), w.player.global_position + Vector3(0.5, 0.1, 0.6))
 	Prologue.hob_sparks()
@@ -196,7 +199,7 @@ static func _river(w: World) -> void:
 	Cine.place(w, "nell", nell.global_position + Vector3(1.6, 0, -0.2), crest + Vector3(14.0, 0, 0))
 	var nf_at := nell.global_position + Vector3(-0.8, 0, -4.5)
 	nf_at.y = maxf(v.height(nf_at.x, nf_at.z), ThornwoodSet.WATER_Y) + 1.5
-	Cine.shot(w, nf_at, nell.global_position + Vector3(0, 1.35, 0), 30.0)
+	Cine.shot(w, nf_at, Cine.head(w, "nell") + Vector3(0, -0.15, 0), 20.0)
 	await Cine.wait(w, 3.0)
 	# up the hill, the roof of the Crooked Lantern falls in
 	Cine.shot(w, near + Vector3(1.6, 1.4, 2.8), crest, 30.0)
