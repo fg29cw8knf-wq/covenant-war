@@ -10,16 +10,16 @@ extends Node
 ##   xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 --resolution 960x540 res://tests/controls_test.tscn
 ##   godot --headless res://tests/controls_test.tscn
 
-## A short talk of our own for Seamus, so the test doesn't hang on the story's lines.
+## A short talk of our own for Ned, so the test doesn't hang on the story's lines.
 const LINES := [
-	{"who": "seamus", "say": "One."},
-	{"who": "seamus", "say": "Two."},
-	{"who": "seamus", "say": "Three."},
+	{"who": "ned", "say": "One."},
+	{"who": "ned", "say": "Two."},
+	{"who": "ned", "say": "Three."},
 ]
 const ASK := [
-	{"who": "seamus", "say": "Pick one."},
+	{"who": "ned", "say": "Pick one."},
 	{"choice": ["Alpha", "Beta", "Gamma"], "then": [[{"set": "ctl_pick_0"}], [{"set": "ctl_pick_1"}], [{"set": "ctl_pick_2"}]]},
-	{"who": "seamus", "say": "Done."},
+	{"who": "ned", "say": "Done."},
 ]
 ## The Lantern Duel's decks, dealt in order: Brookfin is always in the first hand.
 const MY_DECK := ["brookfin", "bulwark", "essence_flask", "healing_draught", "essence_flask",
@@ -191,8 +191,8 @@ func _typed() -> void:
 
 
 func _talking() -> void:
-	var n := await _go_near("seamus")
-	check("the round Talk button shows beside Seamus", hud._talk.visible)
+	var n := await _go_near("ned")
+	check("the round Talk button shows beside Ned", hud._talk.visible)
 	# each way to start a talk, each way to move on a line, and the key that
 	# closes the last line must not open the talk again
 	var runs := [[SPACE, E, ENTER], [ENTER, SPACE, PAD_A], [E, PAD_A, SPACE], [PAD_A, ENTER, E]]
@@ -248,7 +248,7 @@ func _talking() -> void:
 		await click(center_of(dlg._panel))
 	await until(func() -> bool: return not world.busy, 2.0)
 	# from further away: walks over, then talks
-	var far := await _go_near("seamus")
+	var far := await _go_near("ned")
 	world.player.global_position = far.body.global_position + Vector3(0, 0, 4.2)
 	world._focus = world._cam_focus_target()
 	await until(func() -> bool: return world._near == null, 2.0)
@@ -261,7 +261,7 @@ func _talking() -> void:
 		await press(KEY_E)
 	await until(func() -> bool: return not world.busy, 2.0)
 	# nothing while the pause menu is open, or in a cutscene
-	await _go_near("seamus")
+	await _go_near("ned")
 	hud.open_menu()
 	await frames(2)
 	await press(KEY_E)
@@ -278,7 +278,7 @@ func _talking() -> void:
 
 
 func _answers() -> void:
-	var n := await _go_near("seamus")
+	var n := await _go_near("ned")
 	var keyb := [
 		# [start, then: the inputs to move to the answer, the input that picks, the answer]
 		[E, [{"name": "the down arrow", "kind": "key", "code": KEY_DOWN}], ENTER, 1, "the arrow keys and Enter"],
