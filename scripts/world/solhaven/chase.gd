@@ -49,10 +49,13 @@ func play(world: World) -> void:
 	w.hud.set_objective(OBJECTIVE)
 	Game.set_flag("objective", OBJECTIVE)
 	# Wren, off ahead with the card
-	var wren := _wren(start + Vector3(4.0, 0, 3.0))
+	var wren := _wren(Vector3(8.0, 0, -3.0))
 	# her way: out of the market, down the lane over everything in it, round
 	# the corner into the alley, under the arch, to the end
-	var wren_route: Array = [Vector3(11.0, 0, 10.6), lane]
+	# round the fountain's east side, between the lamps, past the market stalls
+	var round := Vector3(5.6, 0, -6.6)
+	var market := Vector3(9.5, 0, 12.6)
+	var wren_route: Array = [round, market, lane]
 	for o in SolSet.CHASE:
 		if String(o.what) == "arch":
 			wren_route.append(CORNER)
@@ -61,8 +64,10 @@ func play(world: World) -> void:
 	_run_wren(wren_route)
 	_running = true
 	_bark_line("Keep up!")
-	# out of the market to the lane
-	await Cine.walk(w, "player", Vector3(11.0, 0, 10.6), RUN, "run")
+	# after her: round the fountain, through the market, into the lane
+	if start.x < round.x - 0.5 or start.z > round.z + 3.0:
+		await Cine.walk(w, "player", round, RUN, "run")
+	await Cine.walk(w, "player", market, RUN, "run")
 	await Cine.walk(w, "player", lane, RUN, "run")
 	var at := lane
 	for i in SolSet.CHASE.size():

@@ -638,10 +638,10 @@ static func _thief(w: World) -> void:
 	_sfx(w, "click", 0.7)
 	_front(w, "wren", p, 30.0)
 	await Cine.say(w, "wren", "Sorry. Busy day.", 1.6)
-	Cine.walk(w, "wren", p + Vector3(5.0, 0, 3.0), 3.2, "run")
+	Cine.walk(w, "wren", Vector3(8.0, 0, -3.0), 3.2, "run")
 	Cine.shot(w, p + Vector3(-1.6, 1.7, 2.2), Cine.head(w, "player"), 32.0)
 	await _narrate(w, "She's gone. A beat. Your pocket is empty.")
-	Cine.look(w, "bram", p + Vector3(5.0, 0, 3.0))
+	Cine.look(w, "bram", Vector3(8.0, 0, -3.0))
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "Your pocket! Go! I'll come round!")
 	for id in crowd:

@@ -160,7 +160,8 @@ static func hub(w: World) -> void:
 	v.wagon_to("wagon")
 	v.light_wagon_lamp(Game.flag("c2_done"))
 	if Game.flag("c1_done"):
-		v.open_gate(Game.flag("gate_choice", "") != "shut", 0.01)
+		# (open only if you had Hale open it to everyone)
+		v.open_gate(String(Game.flag("gate_choice", "")) == "all", 0.01)
 	v.write_board()
 	# Tamsin's crier: once a day, while there's an advert to be had
 	Game.flags["crier_offer"] = String(Game.flag("crier_day", "")) != Time.get_date_string_from_system() and Ads.can_offer_rewarded()
@@ -262,9 +263,8 @@ static func _grey_coat(w: World) -> void:
 			break
 		pip.doll.look_toward(b.global_position, w.cam)
 		await w.get_tree().create_timer(0.1).timeout
-	ex.erase("pell")
-	if is_instance_valid(b):
-		b.queue_free()
+	# (off, and freed once his walk's tween has run out)
+	Films._drop(w, "pell")
 	if is_instance_valid(pip.body):
 		pip.doll.look_toward(w.player.global_position, w.cam)
 
