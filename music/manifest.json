@@ -4,20 +4,45 @@
   "length": 92.7061875,
   "onset": 0.017229
  },
+ "arena_ironstone": {
+  "file": "arena_ironstone.mp3?v=8383708acc",
+  "length": 160.368979167,
+  "onset": 0.258625
+ },
  "arena_solhaven": {
   "file": "arena_solhaven.mp3?v=638425972f",
   "length": 134.368791667,
   "onset": 0.426979
  },
  "arena_tidegrove": {
-  "file": "arena_tidegrove.mp3?v=83ea66f58f",
-  "length": 134.314791667,
-  "onset": 0.428354
+  "file": "arena_tidegrove.mp3?v=49d59aa092",
+  "length": 169.6616875,
+  "onset": 0.017333
+ },
+ "arena_veilwild": {
+  "file": "arena_veilwild.mp3?v=90662dc49c",
+  "length": 179.2525,
+  "onset": 0.241646
+ },
+ "ashford_burns": {
+  "file": "ashford_burns.mp3?v=f399d5e563",
+  "length": 179.459520833,
+  "onset": 0.269396
  },
  "ashford_festival": {
   "file": "ashford_festival.mp3?v=c240721c06",
   "length": 86.848020833,
   "onset": 0.145063
+ },
+ "dask": {
+  "file": "dask.mp3?v=b7fefb89d6",
+  "length": 120.206291667,
+  "onset": 0.197167
+ },
+ "dawn_after": {
+  "file": "dawn_after.mp3?v=9afc49f630",
+  "length": 175.962666667,
+  "onset": 0.182146
  },
  "defeat": {
   "file": "defeat.mp3?v=819681b0fc",
@@ -44,10 +69,20 @@
   "length": 126.5,
   "onset": 0.152104
  },
+ "river_farewell": {
+  "file": "river_farewell.mp3?v=209f2b978d",
+  "length": 161.94,
+  "onset": 0.016979
+ },
  "sigilfall": {
   "file": "sigilfall.mp3?v=26bec01819",
   "length": 90.024,
   "onset": 0.028271
+ },
+ "solhaven_dawn": {
+  "file": "solhaven_dawn.mp3?v=89d171d474",
+  "length": 94.51875,
+  "onset": 0.017229
  },
  "summon_grondmaw": {
   "file": "summon_grondmaw.mp3?v=d2232ec152",
@@ -73,6 +108,11 @@
   "file": "the_marking.mp3?v=ea49de3102",
   "length": 14.712,
   "onset": 0.120646
+ },
+ "thornwood": {
+  "file": "thornwood.mp3?v=4b5b57baad",
+  "length": 156.617895833,
+  "onset": 0.167833
  },
  "victory": {
   "file": "victory.mp3?v=a4c49008c3",
