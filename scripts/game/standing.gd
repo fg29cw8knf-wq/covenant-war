@@ -39,8 +39,11 @@ const FLAG_EFFECTS := [
 	{"flag": "ash_won_lantern", "who": "corin", "by": 1, "why": "You beat Corin in the Lantern Duel, fair and square."},
 	{"flag": "let_refugees_in", "who": "refugees", "by": 3, "why": "You got the refugees through Solhaven's gate."},
 	{"flag": "beat_wren", "who": "wren", "by": 1, "why": "You beat Wren, and she keeps her deals."},
-	{"flag": "solmaris_favour", "value": "unsure", "who": "solmaris", "by": 1, "why": "You told Solmaris you'd think about kneeling."},
-	{"flag": "solmaris_favour", "value": "defiant", "who": "solmaris", "by": -2, "why": "You told Solmaris you kneel to no one."},
+	{"flag": "gate_children", "who": "refugees", "by": 1, "why": "You got the refugees' children through Solhaven's gate."},
+	{"flag": "solmaris_favour", "value": "not_yet", "who": "solmaris", "by": 1, "why": "Solmaris offered to raise Ashford for the card. You told her: not yet."},
+	{"flag": "solmaris_favour", "value": "refused", "who": "solmaris", "by": -1, "why": "Solmaris offered to raise Ashford for the card. You told her Ashford didn't burn so you could sell it."},
+	{"flag": "beat_hale", "who": "hale", "by": 1, "why": "You beat Warden Hale at the Golden Gate: not paint."},
+	{"flag": "beat_aldric", "who": "aldric", "by": 1, "why": "You beat Ser Aldric on the Sunspire, fairly, as he promised."},
 ]
 
 

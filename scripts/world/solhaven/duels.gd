@@ -167,7 +167,7 @@ const TRIAL_TURNS := 3
 
 ## Which board: the deck the player chose from Bram's four (its Summon).
 static func trial_deck() -> String:
-	var d := String(Game.flag("bram_deck", ""))
+	var d := str(Game.flag("bram_deck", ""))
 	if not TRIALS.has(d):
 		d = Game.starter
 	return d if TRIALS.has(d) else "emberstorm"

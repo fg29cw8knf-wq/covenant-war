@@ -2324,6 +2324,7 @@ func fx_light_fingers(pi: int, card: DuelCard) -> void:
 ## The Sunspire's Mirror (Aldric): at half Life the great mirror swings on its
 ## chains to put the sun on his side of the Circle.
 func fx_mirror(pi: int) -> void:
+	spec["_mirror_swung"] = true   # the story shows the mirror swung, afterwards
 	_hide_detail()
 	sfx.play("ascend")
 	var col := Color(1.0, 0.92, 0.62)
