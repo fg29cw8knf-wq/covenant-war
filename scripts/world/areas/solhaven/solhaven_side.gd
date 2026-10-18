@@ -635,9 +635,9 @@ static func _remove_npc(w: World, id: String) -> void:
 ## Ysa, the woman from the gate, and her son Tobin, six (v3): the Temple of
 ## Dawn heals Solmaris's faithful for a copper and everyone else for forty
 ## crowns, or an oath. Mercy, rationed by faith.
-## The camera on Ysa's corner of the square, from her spot.
-const YSA_CAM := Vector3(2.5, 2.1, 5.8)
-const YSA_LOOK := Vector3(-0.1, 0.9, 0.5)
+## Where the camera looks in Ysa's corner of the square: between her and you.
+static func _ysa_look() -> Vector3:
+	return (SQ.ysa_in + SQ.player_ysa) * 0.5 + Vector3(0, 1.0, 0)
 
 
 static func talk_ysa(w: World, _npc = null) -> void:
@@ -645,7 +645,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 		return
 	if ysa_inside():
 		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "healer": [SQ.healer_in, SQ.tobin_in], "player": [SQ.player_ysa, "ysa"]},
-			SQ.ysa_in + YSA_CAM, SQ.ysa_in + YSA_LOOK, 36.0)
+			SQ.ysa_cam, _ysa_look(), 36.0)
 	else:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "healer": [Places.spot("camp", "healer"), Places.spot("camp", "tobin")],
 			"player": [Places.spot("camp", "player"), "ysa"], "ref_a": [Places.spot("camp", "ref_a"), Places.spot("camp", "ysa")],
@@ -743,7 +743,7 @@ static func _anselm(w: World) -> void:
 	_remember("anselm", 1, "You brought him a boy to heal.")
 	# back to Ysa
 	if ysa_inside():
-		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "player": [SQ.player_ysa, "ysa"]}, SQ.ysa_in + YSA_CAM, SQ.ysa_in + YSA_LOOK, 36.0)
+		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "player": [SQ.player_ysa, "ysa"]}, SQ.ysa_cam, _ysa_look(), 36.0)
 	else:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "player": [Places.spot("camp", "player"), "ysa"]},
 			Places.spot("camp", "ysa") + Vector3(4.6, 2.1, 6.6), Places.spot("camp", "ysa") + Vector3(0.0, 0.9, 0.4), 36.0)
@@ -751,9 +751,9 @@ static func _anselm(w: World) -> void:
 	await _say(w, "ysa", "One name. | The Rootmother won't mind. She's not here.")
 	# at Anselm's: the name, and the leaf on the lantern
 	var room := func(m: String) -> Vector3: return Places.spot("anselm", m)
-	await _cut(w, {"ysa": [room.call("shrine") + Vector3(-0.7, 0, 1.0), room.call("lantern")], "anselm": [room.call("anselm"), "ysa"],
+	await _cut(w, {"ysa": [room.call("shrine") + Vector3(-1.0, 0, 0.5), room.call("lantern")], "anselm": [room.call("anselm"), "ysa"],
 		"player": [room.call("player"), "ysa"]},
-		room.call("shrine") + Vector3(-1.6, 1.7, 3.4), room.call("lantern") + Vector3(-0.6, -0.4, 0.4), 38.0, "anselm")
+		room.call("shrine") + Vector3(0.4, 1.5, 2.7), room.call("lantern") + Vector3(-0.45, -0.15, 0.1), 38.0, "anselm")
 	_tobin(w, room.call("tobin"), 0.0)
 	Game.set_flag("ilvane_name_said")
 	await _see(w, "At Anselm's, Ysa says the name once, quietly. Then she unties her green leaf and loops it on the handle of the shrine lantern.")

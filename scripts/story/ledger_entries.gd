@@ -75,8 +75,8 @@ const ACCOUNTS := [
 		"parts": [[
 			["", "You reached Solhaven three days after the fire, with the smoke still in your clothes. Warden Hale would not open his gate for a mark he took for paint."],
 			["beat_hale", "Warden Hale tested your mark in the Circle and found it real. The Sun Court, up the hill, was waiting to see it."],
-			["sun_court_done", "The Hierarch asked for your card and my Herald forbade it; then Solmaris stopped the light to ask for it herself. Ser Aldric would test you, once the Temple's Trial of Light was passed."],
-			["temple_leave", "You passed the Trial of Light. Ser Aldric was waiting to duel you in front of his whole city."],
+			["sun_court_done | c4_done", "The Hierarch asked for your card and my Herald forbade it; then Solmaris stopped the light to ask for it herself. Ser Aldric would test you, once the Temple's Trial of Light was passed."],
+			["temple_leave | trial_light_passed | c5_done", "You passed the Trial of Light. Ser Aldric was waiting to duel you in front of his whole city."],
 			["beat_aldric", "You beat Ser Aldric in front of his own city, and were found worthy to challenge any Seat in Veyl. In Ironvault, a man wrote the day's date beside an old debt."],
 		]]},
 	{"id": "s_mercy", "title": "The Price of Mercy", "place": "Solhaven", "kind": "side",
@@ -115,14 +115,14 @@ const ACCOUNTS := [
 			],
 		]},
 	{"id": "s_scar", "title": "The Sundial's Scar", "place": "Solhaven", "kind": "side",
-		"when": "met_maren | side_scar", "open": "!side_scar",
+		"when": "met_maren | side_started_sundial_scar | side_scar", "open": "!side_scar",
 		"parts": [[
 			["", "Old Maren, thirty years a Temple scribe, said the Great Sundial's shadows were nine days wrong, and that somebody had slowed the sun. She told you to look at the oldest stone, under the steps, at dawn."],
 			["side_scar=nothing", "At dawn you found the Great Sundial's lines cut twice, nine days apart, and Father Corvin found you. You told him you'd seen nothing, and Maren said you had sense."],
 			["side_scar=told", "At dawn you found the Great Sundial's lines cut twice, nine days apart, and told Father Corvin so to his face. Maren gave you forty pages from her bread tin, and asked you to send for her when it's time."],
 		]]},
 	{"id": "s_hale", "title": "Hale's Orders", "place": "Solhaven", "kind": "side",
-		"when": "side_hale | side_duel_on=hale | beat_aldric & let_refugees_in | beat_aldric & gate=all",
+		"when": "side_hale | side_duel_on=hale | side_started_hales_orders | beat_aldric & let_refugees_in & !c6_done",
 		"open": "!side_hale",
 		"parts": [[
 			["", "Warden Hale was stripped of his command for opening the gate to everyone, against the Hierarch's order. He was in the barracks yard, waiting to pay for it."],
@@ -178,40 +178,40 @@ const PEOPLE := [
 		["dask_sent_home", "Dask. Staked every card he owned on his mother's note and lost them to you. You sent him home."],
 	]},
 	# ------------------------------------------------------------ Solhaven
-	{"id": "hale", "look": "guard", "place": "Solhaven", "met": "met_hale", "lines": [
+	{"id": "hale", "look": "guard", "place": "Solhaven", "met": "met_hale | beat_hale | c1_done", "lines": [
 		["", "Warden Hale. Keeps Solhaven's south gate, and tests a mark before he trusts it."],
-		["beat_aldric & !let_refugees_in & !let_children_in & !gate=all,children", "Warden Hale. Kept his gate shut, as ordered, and asked you to remember the people outside it."],
+		["beat_aldric & !let_refugees_in & !let_children_in & !gate=all,children | c6_done & !gate=all,children & !let_refugees_in", "Warden Hale. Kept his gate shut, as ordered, and asked you to remember the people outside it."],
 		["let_children_in | gate=children", "Warden Hale. Let the children in, one grown-up with each, and had his pay docked for every one."],
 		["let_refugees_in | gate=all", "Warden Hale. Opened a gate he was told to keep shut."],
 		["side_hale=stood,lost", "Hale. Opened a gate he was told to keep shut, and paid for it."],
 		["side_hale=won", "Hale. Opened a gate he was told to keep shut, and you wouldn't let him pay for it."],
 	]},
-	{"id": "wren", "look": "wren", "place": "Solhaven", "met": "met_wren", "lines": [
+	{"id": "wren", "look": "wren", "place": "Solhaven", "met": "met_wren | beat_wren | c3_done", "lines": [
 		["", "Wren. A thief. Took the blank card out of your pocket, and found out that it bites."],
 		["beat_wren", "Wren. A thief who keeps her deals. Told you the price on your hand: ten thousand crowns, Ironvault's."],
 	]},
-	{"id": "pip", "look": "child", "place": "Solhaven", "met": "met_pip", "lines": [
+	{"id": "pip", "look": "child", "place": "Solhaven", "met": "met_pip | side_started_pips_errands", "lines": [
 		["", "Pip. Eleven. Means to carry Ser Aldric's shield one day; Ser Aldric doesn't know yet."],
-		["met_pip_before", "Pip. Eleven. Runs Mr Pell's notes for two crowns a run, and means to carry Ser Aldric's shield one day."],
+		["met_pip_before | side_started_pips_errands", "Pip. Eleven. Runs Mr Pell's notes for two crowns a run, and means to carry Ser Aldric's shield one day."],
 		["side_pip_place=hale,aldric,tamsin", "Pip. Eleven. Has a place now, and asked straight away whether Ser Aldric goes past it."],
 	]},
-	{"id": "maren", "look": "elder", "place": "Solhaven", "met": "met_maren", "lines": [
+	{"id": "maren", "look": "elder", "place": "Solhaven", "met": "met_maren | side_started_sundial_scar", "lines": [
 		["", "Old Maren. Thirty years a Temple scribe, until she asked which Champion the sun was slowed for."],
 		["side_scar=told", "Old Maren. Kept forty pages in a bread tin for thirty years, and gave them to you."],
 	]},
 	{"id": "tamsin", "look": "merchant", "place": "Solhaven", "met": "met_tamsin", "lines": [
 		["", "Tamsin. Sells Sigil caches out of the Shardlands, sealed, if not quite certified."],
 	]},
-	{"id": "liora", "look": "acolyte", "place": "Solhaven", "met": "met_liora", "lines": [
+	{"id": "liora", "look": "acolyte", "place": "Solhaven", "met": "met_liora | trial_light_passed | c5_done", "lines": [
 		["", "Acolyte Liora. Keeps the Trial of Light, and the mirrors that set it."],
-		["temple_leave", "Acolyte Liora. Keeps the Trial of Light. The mirrors showed her you twice, and she hasn't told anyone."],
+		["temple_leave | trial_light_passed | c5_done", "Acolyte Liora. Keeps the Trial of Light. The mirrors showed her you twice, and she hasn't told anyone."],
 	]},
-	{"id": "hierarch", "look": "hierarch", "place": "Solhaven", "met": "met_hierarch | sun_court_done", "lines": [
+	{"id": "hierarch", "look": "hierarch", "place": "Solhaven", "met": "met_hierarch | sun_court_done | c4_done", "lines": [
 		["", "Hierarch Cassius Aurel. Asked for your card, and called it an offer when he was refused."],
 	]},
-	{"id": "aldric", "look": "aldric", "place": "Solhaven", "met": "met_aldric", "lines": [
+	{"id": "aldric", "look": "aldric", "place": "Solhaven", "met": "met_aldric | sun_court_done | c4_done", "lines": [
 		["", "Ser Aldric Vane. The Sun's Champion, and the only one in his city who said he was sorry about Ashford."],
-		["sun_court_done", "Ser Aldric Vane. The Sun's Champion, and the only one in his city who said he was sorry about Ashford. His goddess hasn't spoken to him in a month."],
+		["sun_court_done | c4_done", "Ser Aldric Vane. The Sun's Champion, and the only one in his city who said he was sorry about Ashford. His goddess hasn't spoken to him in a month."],
 		["beat_aldric", "Ser Aldric Vane. Lost his first Trial to you, in front of his city, and gave you his Lion's light."],
 	]},
 	{"id": "ysa", "look": "side_ysa", "place": "Solhaven", "met": "side_mercy | side_duel_on=mercy", "lines": [

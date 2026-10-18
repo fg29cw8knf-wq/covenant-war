@@ -67,8 +67,8 @@ const HUB_SET := {
 	"barracks": Vector3(-16.1, 0, 14.2), "barracks_talk": Vector3(-14.9, 0, 14.2),   # between the houses, south of the board
 }
 const SQUARE_SET := {
-	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.7),
-	"player_ysa": Vector3(-8.4, 0, 9.2),
+	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.6),
+	"player_ysa": Vector3(-7.6, 0, 8.1), "ysa_cam": Vector3(-8.9, 1.7, 12.95),
 	"ysa_gate": Vector3(-1.2, 0, 26.2),   # outside the shut gate: you talk to her through it
 }
 
@@ -622,8 +622,8 @@ static func _barracks(root: Node3D) -> void:
 ## Where the people of the side stories stand in the square, and the
 ## child lying by Ysa (inside the walls, among the families Hale let in).
 const SQUARE := {
-	"ysa_in": Vector3(-8.9, 0, 11.4), "tobin_in": Vector3(-10.0, 0, 12.0), "healer_in": Vector3(-7.7, 0, 10.6),
-	"player_ysa": Vector3(-8.0, 0, 13.4),
+	"ysa_in": Vector3(-8.9, 0, 11.4), "tobin_in": Vector3(-10.0, 0, 12.0), "healer_in": Vector3(-7.8, 0, 10.6),
+	"player_ysa": Vector3(-7.1, 0, 12.1), "ysa_cam": Vector3(-9.2, 1.7, 16.9),
 	"ysa_gate": Vector3(-2.4, 0, 13.3),
 	"fen": Vector3(1.7, 0.74, -0.9), "fen_player": Vector3(1.2, 0, 2.7), "fen_wash": Vector3(2.05, 0, -0.4),
 	"crowd": [Vector3(0.4, 0, 1.4), Vector3(2.4, 0, 1.6), Vector3(3.8, 0, 0.7), Vector3(4.4, 0, -0.8), Vector3(-0.9, 0, 0.5)],
