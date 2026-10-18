@@ -89,8 +89,18 @@ var _trace_from := 0
 var _trace_to := -1
 
 
+## qa_cam=<from>-<to> prints the camera every frame in that window (where it
+## is, where it looks, its lens, and which shot has it).
+var _cam_from := 0
+var _cam_to := -1
+
+
 func _read_trace_arg() -> void:
 	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("qa_cam="):
+			var ab := String(a).substr(7).split("-")
+			_cam_from = int(ab[0])
+			_cam_to = int(ab[1]) if ab.size() > 1 else _cam_from + 30
 		if String(a).begins_with("qa_trace="):
 			var s := String(a).substr(9)
 			_trace_who = s.get_slice(":", 0)
@@ -100,6 +110,9 @@ func _read_trace_arg() -> void:
 
 
 func _trace() -> void:
+	if frame >= _cam_from and frame <= _cam_to:
+		print("QA-CAM f%d at %s looking %s fov %.0f shot %d cine %s busy %s  [%s]" % [frame, _v(w.cam.global_position),
+			_v(-w.cam.global_transform.basis.z), w.cam.fov, int(w.get_meta("cine_cam", 0)), w.cine, w.busy, _context()])
 	if _trace_who == "" or frame < _trace_from or frame > _trace_to:
 		return
 	for row in _people():
@@ -295,6 +308,13 @@ func _check_people(cut: bool) -> void:
 					_note("float", "%s stands %.2f m %s the ground at %s (clip %s)" % [id, absf(off), "above" if off > 0 else "below", _v(pos), fig3._clip])
 			else:
 				_float[key] = 0
+		# a cut-out showing its back picture (once a shot)
+		if on and d is PaperDoll and not (d is Figure3D) and (d as PaperDoll).facing_back:
+			if int(p.get("back_shot", -1)) != _last_cut:
+				_note("back", "%s's cut-out shows its back" % id)
+			_prev[key]["back_shot"] = _last_cut
+		elif p.has("back_shot"):
+			_prev[key]["back_shot"] = p.back_shot
 	for key in _prev.keys():
 		if not seen.has(key):
 			var p = _prev[key]
