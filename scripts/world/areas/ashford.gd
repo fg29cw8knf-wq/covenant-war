@@ -1268,6 +1268,10 @@ static func _midnight(w: World) -> void:
 		if df is Figure3D:
 			(df as Figure3D).hold("dance")
 	var dmid: Vector3 = (dance[0] + dance[1]) * 0.5
+	# Hob steps off to the side, out of the shot: on his mark he stood right
+	# behind Tam, and Tam's arms swung across his face (and clear of where the
+	# camera stands for Nell and the burning mill)
+	Cine.place(w, "hob", Vector3(8.6, 0, 4.6), dmid)
 	Cine.shot(w, dmid + Vector3(-2.0, 1.45, 3.6), dmid + Vector3(0, 1.0, 0), 36.0)
 	if not (Cine.fig(w, "nell") is Figure3D):
 		for k in 3:   # a cut-out Nell bobs along
@@ -1327,9 +1331,11 @@ static func _midnight(w: World) -> void:
 	await w.flash(Color(0.9, 0.92, 1.0), 0.25, 1.2)
 	Cine.drift(w, Vector3(6.0, 3.0, 20.0), Vector3(4.0, 2.2, 16.0), Vector3(34.0, 22.0, -40.0), Vector3(20.0, 16.0, -40.0), 4.0)
 	await Cine.wait(w, 1.6)
-	# for a breath the children cheer
-	var kids_cam := Vector3(1.8, 0.9, 1.7)
-	Cine.shot(w, kids_cam, Vector3(1.5, 1.0, -2.3), 40.0)
+	# for a breath the children cheer (from across the green, the Lantern's
+	# foot behind them: from beside it, its base filled half the shot and hid
+	# the boy)
+	var kids_cam := Vector3(4.5, 1.2, -6.0)
+	Cine.shot(w, kids_cam, Vector3(1.5, 1.0, -2.2), 30.0)
 	for id in ["v5", "v9"]:
 		Cine.look(w, id, kids_cam)
 		Cine.hop(w, id, 0.3)
@@ -1966,9 +1972,9 @@ static func _dawn(w: World) -> void:
 	# stays mostly on Ashford's faces, lit by them
 	var faces := [
 		[Vector3(-4.0, 1.7, 15.6), Vector3(4.0, 2.6, 12.0)],                             # from behind the village, the faces above the Herald
-		[DAWN.nell + Vector3(1.9, 0.75, 1.2), DAWN.nell + Vector3(0.0, 0.85, 0.0)],      # Nell
+		[DAWN.nell + Vector3(1.6, 0.75, -1.3), DAWN.nell + Vector3(0.0, 0.85, 0.0)],     # Nell (from her other side: Corin knelt between)
 		[DAWN.tam + Vector3(1.8, 0.75, -1.1), DAWN.tam + Vector3(0.0, 0.85, 0.0)],       # Tam
-		[DAWN.corin + Vector3(1.9, 0.8, 0.9), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],   # Corin and you
+		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 0.85, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],   # Corin and you (from in front, off to the side so he isn't behind you: from his side, the camera was in your chest)
 		[DAWN.hob + Vector3(2.0, 0.8, -1.0), DAWN.hob + Vector3(0.0, 0.85, 0.0)],        # Hob
 	]
 	var flick := Cine.light(w, HERALD_AT + Vector3(-2.0, 3.0, 0.0), Color(0.8, 0.86, 1.0), 0.0, 22.0)
@@ -2083,9 +2089,11 @@ static func _hand_tightens(w: World, shoulder: Node3D, after: float) -> void:
 
 
 ## Kneeling: the 3D cast go down low, heads bowed (the way down of the sit
-## clip, held: there is no kneel among the shared clips); a cut-out sinks a
-## little, as far as a kneeling figure would.
+## clip, held: there is no kneel among the shared clips); a cut-out crouches,
+## squashed down onto its feet as far as a kneeling figure would go (sunk
+## into the ground instead, it stood waist deep in the grass).
 const KNEEL := ["sit", 0.3]
+const CUTOUT_KNEEL := 0.76
 
 
 static func _kneel(w: World, who: String, secs := 0.6) -> void:
@@ -2094,8 +2102,8 @@ static func _kneel(w: World, who: String, secs := 0.6) -> void:
 		(f as Figure3D).pose(String(KNEEL[0]), float(KNEEL[1]), secs)
 	elif f != null and not (f as Node3D).has_meta("knelt"):
 		var n: Node3D = f
-		n.set_meta("knelt", n.position.y)
-		w.create_tween().tween_property(n, "position:y", n.position.y - 0.42, secs)
+		n.set_meta("knelt", true)
+		w.create_tween().tween_property(n, "scale:y", CUTOUT_KNEEL, secs)
 
 
 static func _stand(w: World, who: String, secs := 0.6) -> void:
@@ -2104,7 +2112,7 @@ static func _stand(w: World, who: String, secs := 0.6) -> void:
 		(f as Figure3D).release(secs)
 	elif f != null and (f as Node3D).has_meta("knelt"):
 		var n: Node3D = f
-		w.create_tween().tween_property(n, "position:y", float(n.get_meta("knelt")), maxf(0.01, secs))
+		w.create_tween().tween_property(n, "scale:y", 1.0, maxf(0.01, secs))
 		n.remove_meta("knelt")
 
 

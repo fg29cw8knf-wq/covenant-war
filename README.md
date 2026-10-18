@@ -229,7 +229,10 @@ Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
 Nell since 18 October); the other villagers (Hob, Ned, the crowd) stay
 cut-outs until their models exist, and a model dropped into
-`assets/models/characters/<id>.glb` is picked up by itself. The models share
+`assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
+shows the camera its painted front, turned left or right (its back picture
+read as a blank white card in a film), and kneels by crouching onto its feet
+rather than sinking into the ground. The models share
 one skeleton's bone names, so a clip one lacks is borrowed from another and
 fitted to their height (Tilly is a child, Nell small and stooped);
 `reach()` puts hands on things: Tam and the player carry the barrel by its
