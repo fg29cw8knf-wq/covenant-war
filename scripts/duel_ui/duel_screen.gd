@@ -464,6 +464,7 @@ func _start() -> void:
 	if (not lesson.is_empty() or spec.get("lessons", false)) and not ai_flags[me]:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
 	game.law = String(spec.get("law", ""))
+	game.story_rules = spec.get("story_rules", {})
 	game.presenter = self
 	sfx.play("shuffle")
 	Music.play(["arena_" + _arena_name] + Music.duel_theme())
@@ -485,6 +486,7 @@ func _start() -> void:
 		panels[side].mine = side == me
 		ward_zones[side].player = game.players[side]
 		ward_zones[side].mine = side == me
+	BlankCardSlot.attach(self)   # the blank card, from the night of the Sigilfall on
 	_refresh()
 	await game.run()
 	if mode == "over":
@@ -744,6 +746,7 @@ func begin_main() -> void:
 		_coach("call")
 	elif _my_turns == 2:
 		_coach("attack")
+	_bark_if_lethal()
 
 
 func _clear_selection() -> void:
@@ -1612,6 +1615,8 @@ func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 	var c := await _show_card_big(card.id, "WARD!", DuelCardFace.WARD_COL, 0.9, from)
 	DuelFX.shockwave(fx_layer, c, Color("d9a6f0"), 380.0, 0.6 / speed, 1.0, 10.0)
 	shake(6.0)
+	if pi == rival:
+		story_bark("rival_ward_springs")
 	if tutor != null and pi == rival:
 		await tutor.lesson("ward_spring", "There it goes. A Ward takes the hit meant for %s, or turns it back on you. It's spent now. Next time, think what it's waiting for, and don't give it that." % ("me" if _bram_rival() else "him"), "Wards")
 
@@ -1821,6 +1826,8 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	var col := UITheme.GOLD if int(info.roll) == 20 else (Color("ff6a5a") if int(info.roll) == 1 else Color(0.7, 0.6, 1.0))
 	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
+	if _pi == rival:
+		story_bark("rival_first_fate")
 	await pause(1.2)
 	if tutor != null:
 		# the die stays up while Bram explains it (the Lantern Duel's scripted
@@ -1874,6 +1881,7 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	var weak: bool = att != null and t.weak_to(att.element())
 	if weak and att != null and att.owner == me and t.owner != me:
 		_coach("weakness")
+		story_bark("weakness_on_rival")
 	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80, 1.1 / speed, "WEAK!  ×1.5" if weak else "")
 	# knocked back, then settles
 	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
@@ -1973,6 +1981,8 @@ func fx_status(t: DuelTotem, status: String) -> void:
 		return   # a condition was cleared; the nameplate redraws by itself
 	if status == "poison":
 		_coach("poison")
+		if t.owner == me:
+			story_bark("rival_poisons")
 	var v := _view(t)
 	var col: Color = DuelConditions.color(status)
 	var c := _center(v)
@@ -2043,6 +2053,8 @@ func fx_ko(t: DuelTotem) -> void:
 	shake(12.0)
 	punch(c, 0.045)
 	var ko_len := _clip(t, "ko", speed)
+	if t.owner == rival:
+		story_bark("rival_ko_own")
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
 	# Violence setting: Full spills blood as it falls; Reduced bursts into crystal and light.
 	var gore: bool = String(Game.settings.get("violence", "full")) == "full"
@@ -2240,11 +2252,43 @@ var _bark_skip := false
 
 func _bark() -> void:
 	var lines: Array = spec.get("barks", [])
-	if lines.is_empty():
-		return
+	if lines.is_empty() or spec.has("bark_on"):
+		return   # a story duel's barks are tied to what happens (story_bark)
 	_bark_skip = not _bark_skip
 	if _bark_skip and _bark_i > 0:
 		return
+	_show_bark(String(lines[_bark_i % lines.size()]))
+	_bark_i += 1
+
+
+## A story duel's barks (Master Script v3): each is tied to something that
+## happens on the board and is said once per duel. spec.bark_on maps the
+## event to the line: "rival_first_fate" (the rival's first Fate roll),
+## "rival_poisons" (one of yours is Poisoned), "rival_ward_springs" (their
+## Ward goes off), "my_lethal" (you have enough on the board to finish them),
+## "weakness_on_rival" (you hit one of theirs on its weakness), "rival_ko_own"
+## (one of theirs is knocked out). Their line for winning is spec.win_line
+## (StoryLoss).
+var _barked := {}
+
+
+func story_bark(event: String) -> void:
+	var lines: Dictionary = spec.get("bark_on", {})
+	if not lines.has(event) or _barked.has(event):
+		return
+	_barked[event] = true
+	_show_bark(String(lines[event]))
+
+
+## "my_lethal": checked each time the player is about to act.
+func _bark_if_lethal() -> void:
+	if not spec.get("bark_on", {}).has("my_lethal") or _barked.has("my_lethal") or game == null or game.over:
+		return
+	if DuelAI.new()._lethal_available(game, me):
+		story_bark("my_lethal")
+
+
+func _show_bark(line: String) -> void:
 	if _bark_box == null:
 		_bark_box = PanelContainer.new()
 		_bark_box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.88), UITheme.GOLD_DIM, 18, 2, 20))
@@ -2259,18 +2303,25 @@ func _bark() -> void:
 		_bark_label.custom_minimum_size = Vector2(460, 0)
 		v.add_child(_bark_label)
 		overlay.add_child(_bark_box)
-	_bark_label.text = String(lines[_bark_i % lines.size()])
-	_bark_i += 1
+	if _bark_tw != null and _bark_tw.is_valid():
+		_bark_tw.kill()   # a new line takes over from one still showing
+	_bark_label.text = line
 	_bark_box.modulate.a = 0.0
 	_bark_box.visible = true
 	await get_tree().process_frame
-	# top left, under the rival's name
-	_bark_box.position = Vector2(24, 72)
+	# just right of the rival's plate, below their hand, at the field's scale
+	var plate: Control = panels[rival]
+	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15
+	_bark_box.position = plate.global_position + Vector2(plate.size.x + 12.0, 70.0) * _base_k
 	var tw := _bark_box.create_tween()
+	_bark_tw = tw
 	tw.tween_property(_bark_box, "modulate:a", 1.0, 0.3)
 	tw.tween_interval(2.6)
 	tw.tween_property(_bark_box, "modulate:a", 0.0, 0.5)
 	tw.tween_callback(func() -> void: _bark_box.visible = false)
+
+
+var _bark_tw: Tween
 
 
 ## Flips a card up in the middle of the Circle, flying in from `from`.
@@ -2369,6 +2420,9 @@ func _on_log(text: String, who: int) -> void:
 # ================================================================== result ===
 
 func _show_result(r: String) -> String:
+	if r != "won" and spec.get("retry", false) and not _watching():
+		# a main story duel: the story is taken back, and played again
+		return await StoryLoss.new().play(self)
 	var title: String = {"won": "VICTORY", "lost": "DEFEAT", "draw": "DRAW"}[r]
 	if _watching():
 		title = "%s WINS" % String(game.players[game.winner].player_name).to_upper() if game.winner in [0, 1] else "DRAW"
