@@ -320,6 +320,18 @@ func _ledger() -> void:
 			await _shot("ledger_%s_end" % k)
 		world.hud.close_menu()
 		await _frames(4)
+	# at the largest text and buttons size: the Ledger, and the swear screen (Not yet)
+	Game.settings["ui_scale"] = 1.3
+	Ledger.section = "accounts"
+	world.hud.open_menu("ledger")
+	await _frames(14)
+	await _shot("ledger_accounts_largest")
+	world.hud.close_menu()
+	await _frames(4)
+	swears = ["not_yet"]
+	var sworn: bool = await load(SIDE)._swear(world, "mercy")
+	_check(not sworn and Game.flag("wager_mercy", "") == "", "swear screen: Not yet backs out, and nothing is sworn")
+	Game.settings["ui_scale"] = 1.0
 	# early on, in Ashford
 	Game.flags = {"arrived_ashford": true, "ash_started": true, "ash_tam": true, "met_bram": true, "met_tam": true}
 	Ledger.section = "accounts"
