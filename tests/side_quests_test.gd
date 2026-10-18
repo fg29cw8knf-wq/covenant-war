@@ -13,6 +13,7 @@ extends Node
 ## Scenarios: hub mercy_won mercy_lost mercy_swore fen_won fen_lost resume pip_aldric
 ## pip_lost pip_wren scar_told scar_nothing hale_won hale_lost hale_stood ledger (default: all).
 
+const SIDE := "res://scripts/world/areas/solhaven/solhaven_side.gd"
 const ALL := ["hub", "mercy_won", "mercy_lost", "mercy_swore", "fen_won", "fen_lost", "resume", "pip_aldric",
 	"pip_lost", "pip_wren", "scar_told", "scar_nothing", "hale_won", "hale_lost", "hale_stood", "ledger"]
 
@@ -99,10 +100,20 @@ func _want(flag: String, value) -> void:
 # ============================================================ the stories ===
 
 func _hub() -> void:
-	await _fresh({"let_refugees_in": true, "met_maren": true, "met_pip": true, "met_pip_before": true, "beat_aldric": true})
-	for look in [[Vector3(-3.0, 3.2, 18.0), Vector3(-9.0, 0.8, 11.6), "ysa_inside"], [Vector3(6.4, 3.0, 7.8), Vector3(1.6, 1.0, -0.6), "fen_fountain"],
-			[Vector3(5.6, 3.4, -6.0), Vector3(9.2, 0.8, -13.6), "great_sundial"], [Vector3(-9.0, 3.2, 7.0), Vector3(-16.0, 1.6, 3.0), "barracks_gate"],
-			[Vector3(9.0, 3.0, -7.0), Vector3(14.4, 1.0, -12.2), "counting_house"]]:
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "met_maren": true, "met_pip": true, "met_pip_before": true, "beat_aldric": true, "c6_done": true})
+	# Hale's Orders: in a square with a gate warden, only once he's said where Hale is
+	var side = load(SIDE)
+	if world._npc_by_id("gate_warden") != null:
+		_check(world._npc_by_id("barracks") == null, "hub: the barracks wait for the gate warden's word")
+		Game.set_flag("side_started_hales_orders")
+		await side.event(world, "hales_orders")
+	var sq: Dictionary = side.SQ
+	var hub: Dictionary = side.HUB
+	for look in [[sq.ysa_in + Vector3(5.9, 3.2, 6.6), sq.ysa_in + Vector3(-0.1, 0.8, 0.2), "ysa_inside"],
+			[Vector3(6.4, 3.0, 7.8), Vector3(1.6, 1.0, -0.6), "fen_fountain"],
+			[hub.sundial + Vector3(-3.6, 3.4, 7.6), hub.sundial + Vector3(0, 0.8, 0), "great_sundial"],
+			[hub.barracks + Vector3(7.1, 3.2, 4.0), hub.barracks + Vector3(0.1, 1.6, 0), "barracks_gate"],
+			[hub.counting_house + Vector3(-6.0, 3.0, 5.4), hub.counting_house + Vector3(-0.6, 1.0, 0.2), "counting_house"]]:
 		world.cine = true
 		world.cam.global_position = look[0]
 		world.cam.look_at(look[1], Vector3.UP)
@@ -111,10 +122,21 @@ func _hub() -> void:
 	world.cine = false
 	for id in ["ysa", "fen", "sundial", "barracks", "pip"]:
 		_check(world._npc_by_id(id) != null, "hub: %s is there to talk to" % id)
+	# the gate shut: Ysa waits at it
+	await _fresh({"met_maren": true})
+	var gate: Vector3 = side.SQ.ysa_gate
+	world.cine = true
+	world.cam.global_position = gate + Vector3(4.2, 3.0, -7.0)
+	world.cam.look_at(gate + Vector3(0, 1.0, 0), Vector3.UP)
+	await _frames(8)
+	await _shot("ysa_at_the_gate")
+	world.cine = false
+	var ysa = world._npc_by_id("ysa")
+	_check(ysa != null and (ysa.body as Node3D).global_position.distance_to(gate) < 0.5, "hub: the gate shut, Ysa waits at it")
 
 
 func _mercy_won() -> void:
-	await _fresh({"let_refugees_in": true})
+	await _fresh({"let_refugees_in": true, "gate_choice": "all"})
 	every_line = true
 	answers = ["Don't.", "That's buying faith.", "Will you heal a boy?", "Then we settle it"]
 	swears = ["swear"]
@@ -139,7 +161,7 @@ func _mercy_lost() -> void:
 
 
 func _mercy_swore() -> void:
-	await _fresh({"let_refugees_in": true})
+	await _fresh({"let_refugees_in": true, "gate_choice": "all"})
 	answers = ["Swear."]
 	await _talk("ysa")
 	_want("side_mercy", "swore")
@@ -241,7 +263,7 @@ func _scar_nothing() -> void:
 
 
 func _hale_won() -> void:
-	await _fresh({"let_refugees_in": true, "beat_aldric": true})
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "beat_aldric": true, "c6_done": true, "side_started_hales_orders": true})
 	every_line = true
 	answers = ["I'll duel for his sentence.", "Yes."]
 	swears = ["swear"]
@@ -251,7 +273,7 @@ func _hale_won() -> void:
 
 
 func _hale_lost() -> void:
-	await _fresh({"let_refugees_in": true, "beat_aldric": true})
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "beat_aldric": true, "c6_done": true, "side_started_hales_orders": true})
 	Game.settings["violence"] = "full"
 	answers = ["I'll duel for his sentence.", "Yes.", "Yes."]
 	swears = ["not_yet", "swear"]
@@ -261,7 +283,7 @@ func _hale_lost() -> void:
 
 
 func _hale_stood() -> void:
-	await _fresh({"let_refugees_in": true, "beat_aldric": true})
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "beat_aldric": true, "c6_done": true, "side_started_hales_orders": true})
 	Game.settings["violence"] = "reduced"
 	answers = ["Then I'll stand with you."]
 	await _talk("barracks")
@@ -271,7 +293,7 @@ func _hale_stood() -> void:
 
 ## Morrowen's Ledger, with the stories settled various ways.
 func _ledger() -> void:
-	await _fresh({"let_refugees_in": true, "beat_aldric": true, "sun_court_done": true, "temple_leave": true, "met_aldric": true,
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "beat_aldric": true, "c6_done": true, "side_started_hales_orders": true, "sun_court_done": true, "temple_leave": true, "met_aldric": true,
 		"met_wren": true, "beat_wren": true, "met_pip": true, "met_pip_before": true, "met_maren": true, "met_hierarch": true,
 		"side_mercy": "anselm_won", "ilvane": "full", "side_fen": "truth", "side_pip": "returned", "side_pip_place": "hale",
 		"side_scar": "told", "maren_pages": true, "side_hale": "stood", "met_tamsin": true, "met_liora": true})
