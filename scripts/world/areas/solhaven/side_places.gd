@@ -59,6 +59,33 @@ const HUB := {
 	"counting_house": Vector3(15.0, 0, -12.4),
 }
 
+## Chapter 1's square (the SolhavenSet: the world has meta "solhaven_set")
+## runs further south, with the notice board where the barracks gateway was
+## and a tree in the way of Ysa's corner: these spots replace HUB's and
+## SQUARE's there.
+const HUB_SET := {
+	"barracks": Vector3(-16.1, 0, 14.2), "barracks_talk": Vector3(-14.9, 0, 14.2),   # between the houses, south of the board
+}
+const SQUARE_SET := {
+	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.7),
+	"player_ysa": Vector3(-8.4, 0, 9.2),
+	"ysa_gate": Vector3(-1.2, 0, 26.2),   # outside the shut gate: you talk to her through it
+}
+
+
+static func _is_set(w) -> bool:
+	return w != null and is_instance_valid(w) and (w as Node).has_meta("solhaven_set")
+
+
+## The square's spots for this world's square.
+static func square(w) -> Dictionary:
+	return SQUARE.merged(SQUARE_SET, true) if _is_set(w) else SQUARE
+
+
+## The hub's marks for this world's square.
+static func hubs(w) -> Dictionary:
+	return HUB.merged(HUB_SET, true) if _is_set(w) else HUB
+
 
 ## A spot in a place, in the world.
 static func spot(place: String, mark: String) -> Vector3:
@@ -102,9 +129,10 @@ static func hub(w: World) -> void:
 	root.name = "SideHub"
 	w.add_child(root)
 	w.set_meta("side_hub", root)
-	_hub_sundial(root, HUB.sundial)
-	_hub_barracks(root, HUB.barracks)
-	_hub_counting_house(root, HUB.counting_house)
+	var at := hubs(w)
+	_hub_sundial(root, at.sundial)
+	_hub_barracks(root, at.barracks)
+	_hub_counting_house(root, at.counting_house)
 
 
 ## The Great Sundial in the temple square: stepped rings of golden stone and a
@@ -484,16 +512,25 @@ static func _sundial(root: Node3D) -> void:
 ## Dawn over the Sundial: a low warm sun from the east and a pale pink sky.
 ## dawn(w, false) puts the square's own light back.
 static func dawn(w: World, on: bool) -> void:
+	# the square's own sun and sky: Chapter 1's set's, or the world's
 	var sun: DirectionalLight3D = null
-	var we: WorldEnvironment = null
-	for c in w.get_children():
-		if c is DirectionalLight3D and sun == null:
-			sun = c
-		elif c is WorldEnvironment and we == null:
-			we = c
-	if sun == null or we == null or we.environment == null:
+	var env: Environment = null
+	if _is_set(w):
+		var v: Node = w.get_meta("solhaven_set")
+		sun = v.get("sun") as DirectionalLight3D
+		env = v.get("env") as Environment
+	else:
+		for c in w.get_children():
+			if c is DirectionalLight3D and sun == null:
+				sun = c
+			elif c is WorldEnvironment and env == null:
+				env = (c as WorldEnvironment).environment
+	if sun == null or env == null:
 		return
-	var env := we.environment
+	_dawn(w, on, sun, env)
+
+
+static func _dawn(w: World, on: bool, sun: DirectionalLight3D, env: Environment) -> void:
 	var sky: ProceduralSkyMaterial = null
 	if env.sky != null:
 		sky = env.sky.sky_material as ProceduralSkyMaterial
@@ -593,7 +630,8 @@ const SQUARE := {
 	"behind_fen": Vector3(-0.4, 0, -7.6), "behind_player": Vector3(-1.4, 0, -8.6),
 	"soup": Vector3(1.1, 0, -8.0), "debtor": Vector3(2.4, 0, -8.6), "line_a": Vector3(3.5, 0, -9.0), "line_b": Vector3(4.6, 0, -9.2),
 	"pip_steps": Vector3(13.5, 0, -12.7), "pell": Vector3(14.1, 0, -11.6), "side_door": Vector3(10.6, 0, -17.6),
-	"pip_meet": Vector3(11.4, 0, -5.6), "player_meet": Vector3(10.4, 0, -4.2), "player_follow": Vector3(11.2, 0, -9.4),
-	"market": [Vector3(12.6, 0, -6.8), Vector3(13.4, 0, -4.6), Vector3(9.8, 0, -6.4)],
-	"wren_lift": Vector3(12.4, 0, -5.0),
+	"pip_way": Vector3(12.2, 0, -13.0),   # round the Sundial's east side, to and from the side door
+	"pip_meet": Vector3(8.8, 0, -8.6), "player_meet": Vector3(7.7, 0, -7.4), "player_follow": Vector3(11.2, 0, -9.4),
+	"market": [Vector3(10.8, 0, -7.6), Vector3(6.4, 0, -9.6), Vector3(9.6, 0, -6.2)],
+	"wren_lift": Vector3(8.2, 0, -4.8),
 }

@@ -117,7 +117,10 @@ const PEOPLE := {
 ## The note Pip carries, on screen (v3).
 const NOTE := "To His Grace the Hierarch.\n\nIronvault acknowledges a further three thousand crowns drawn against the Temple roofs, for the Bread of Dawn. Interest as before.\n\nWith respect, Ironvault."
 
-const SQ := Places.SQUARE
+## The spots in the square and the hub's marks, for the square this world
+## has (setup() picks them: Places.square(), Places.hubs()).
+static var SQ: Dictionary = Places.SQUARE
+static var HUB: Dictionary = Places.HUB
 
 
 # ============================================================ entry points ===
@@ -135,10 +138,10 @@ static func npcs(_w = null) -> Array:
 		out.append({"id": "fen", "look": "side_fen", "name": "Fen", "pos": SQ.fen, "talk": [{"call": _fn("talk_fen")}],
 			"duel_flag": "side_fen_settled", "duel_needs": "side_fen_pending"})
 	if scar_open():
-		out.append({"id": "sundial", "look": "refugee", "name": "The Great Sundial", "pos": Places.HUB.sundial_talk,
+		out.append({"id": "sundial", "look": "refugee", "name": "The Great Sundial", "pos": HUB.sundial_talk,
 			"talk": [{"call": _fn("talk_sundial")}], "hidden": true})
-	if hale_open():
-		out.append({"id": "barracks", "look": "refugee", "name": "The barracks yard", "pos": Places.HUB.barracks_talk,
+	if hale_open(_w):
+		out.append({"id": "barracks", "look": "refugee", "name": "The barracks yard", "pos": HUB.barracks_talk,
 			"talk": [{"call": _fn("talk_barracks")}], "hidden": true})
 	return out
 
@@ -150,6 +153,8 @@ static func setup(w) -> void:
 	var world := w as World
 	if world == null or world.attract:
 		return
+	SQ = Places.square(world)
+	HUB = Places.hubs(world)
 	Places.hub(world)
 	_fn("_spawn_people").call_deferred(world)
 
@@ -198,15 +203,17 @@ static func s(key: String) -> String:
 	return String(v) if v is String else ""
 
 
-## How Hale's gate was left (v3 C1): "all", "children" or "shut". Read from
-## flag "gate" when Chapter 1 sets it, else from let_refugees_in.
+## How Hale's gate was left (v3 C1): "all", "children" or "shut" (flag
+## "gate", or "gate_choice", as Chapter 1 sets it; older saves:
+## let_refugees_in).
 static func gate_choice() -> String:
-	var g := s("gate")
-	if g in ["all", "children", "shut"]:
-		return g
+	for k in ["gate", "gate_choice"]:
+		var g := s(k)
+		if g in ["all", "children", "shut"]:
+			return g
 	if f("let_refugees_in"):
 		return "all"
-	if f("let_children_in") or f("gate_children"):
+	if f("let_children_in"):
 		return "children"
 	return "shut"
 
@@ -219,7 +226,7 @@ static func ysa_inside() -> bool:
 
 ## Is Wren with you? (She comes with you after the alley, v3 C3.)
 static func wren_with_you() -> bool:
-	return bool(f("beat_wren")) and not f("wren_declined")
+	return bool(f("wren_joined")) or (bool(f("beat_wren")) and not f("wren_declined"))
 
 
 static func mercy_open() -> bool:
@@ -234,20 +241,45 @@ static func pip_done() -> bool:
 	return s("side_pip") in ["returned", "kept", "aldric", "delivered"]
 
 
-## Pip is at work on the counting-house steps: met at the fountain (a talk
-## that's over: "met_pip" is set as it starts), errand open.
+## Pip is at work: met at the fountain ("Got to go. Work."; a talk that's
+## over: "met_pip" is set as it starts), errand open.
 static func pip_waiting() -> bool:
-	return bool(f("met_pip_before")) and not pip_done()
+	return (bool(f("met_pip_before")) or bool(f("pip_errands_begun")) or bool(f("side_started_pips_errands"))) and not pip_done()
 
 
+## After Old Maren's talk on the steps ("Go and look at the Sundial at dawn").
 static func scar_open() -> bool:
-	return bool(f("met_maren")) and s("side_scar") == ""
+	return (bool(f("met_maren")) or bool(f("side_started_sundial_scar"))) and s("side_scar") == ""
 
 
-## Hale's Orders: only if Hale opened the gate for everyone, once he's been
-## stripped of his command (after the Trial, v3 C6).
-static func hale_open() -> bool:
-	return gate_choice() == "all" and (bool(f("beat_aldric")) or bool(f("hale_stripped"))) and s("side_hale") == ""
+## Hale's Orders: only if Hale opened the gate for everyone, once you know
+## he's been stripped of his command (the gate warden tells you after the
+## Trial, v3 C6; in a square without a gate warden, after the Trial).
+static func hale_open(w = null) -> bool:
+	if gate_choice() != "all" or s("side_hale") != "":
+		return false
+	if f("side_started_hales_orders") or f("hales_orders_begun"):
+		return true
+	var warden: bool = w != null and is_instance_valid(w) and (w as World)._npc_by_id("gate_warden") != null
+	return not warden and (bool(f("beat_aldric")) or bool(f("hale_stripped")))
+
+
+## The main story has just started one of these stories (Chapter 1's
+## solhaven.gd calls this: "pips_errands" when Pip goes to work,
+## "sundial_scar" after Maren's talk, "hales_orders" when the gate warden
+## says where Hale is).
+static func event(w, name: String) -> void:
+	var world := w as World
+	if world == null or not is_instance_valid(world):
+		return
+	match name:
+		"pips_errands":
+			Game.set_flag("met_pip_before")
+			var n = world._npc_by_id("pip")
+			if n != null and not f("pip_at_work"):
+				await _pip_to_work(world, n)
+		"sundial_scar", "hales_orders":
+			_spawn_people(world)
 
 
 # ============================================================== staging ===
@@ -286,10 +318,14 @@ static func _put(w: World, who: String, pos: Vector3, face_to = null) -> void:
 	if b == null:
 		return
 	if who != "player" and w._npc_by_id(who) != null:
+		# one of the square's people: back where they were (and as they were,
+		# seen or not) when the scene ends
 		var moved: Dictionary = w.get_meta("side_moved", {}) if w.has_meta("side_moved") else {}
 		if not moved.has(who):
-			moved[who] = b.global_position
+			moved[who] = [b.global_position, b.visible]
 			w.set_meta("side_moved", moved)
+		b.visible = true
+	b.set_meta("cine_path", 0)   # stops a walk still going (Cine.path)
 	b.global_position = pos
 	var fig = Cine.fig(w, who)
 	if fig != null:
@@ -410,9 +446,16 @@ static func _end(w: World) -> void:
 	for who in moved:
 		var b := Cine.body(w, who)
 		if b != null:
-			b.global_position = moved[who]
+			b.set_meta("cine_path", 0)   # stops a walk still going (Cine.path)
+			b.global_position = moved[who][0]
+			b.visible = moved[who][1]
+			var fig = Cine.fig(w, who)
+			if fig != null:
+				fig.walking = false
 	w.set_meta("side_moved", {})
 	Places.dawn(w, false)
+	w.player.set_meta("cine_path", 0)
+	w.player_doll.walking = false
 	if w.has_meta("side_home"):
 		w.player.global_position = w.get_meta("side_home")
 		w.remove_meta("side_home")
@@ -592,12 +635,17 @@ static func _remove_npc(w: World, id: String) -> void:
 ## Ysa, the woman from the gate, and her son Tobin, six (v3): the Temple of
 ## Dawn heals Solmaris's faithful for a copper and everyone else for forty
 ## crowns, or an oath. Mercy, rationed by faith.
+## The camera on Ysa's corner of the square, from her spot.
+const YSA_CAM := Vector3(2.5, 2.1, 5.8)
+const YSA_LOOK := Vector3(-0.1, 0.9, 0.5)
+
+
 static func talk_ysa(w: World, _npc = null) -> void:
 	if not mercy_open():
 		return
 	if ysa_inside():
 		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "healer": [SQ.healer_in, SQ.tobin_in], "player": [SQ.player_ysa, "ysa"]},
-			Vector3(-6.4, 2.1, 17.2), Vector3(-9.0, 0.9, 11.9), 36.0)
+			SQ.ysa_in + YSA_CAM, SQ.ysa_in + YSA_LOOK, 36.0)
 	else:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "healer": [Places.spot("camp", "healer"), Places.spot("camp", "tobin")],
 			"player": [Places.spot("camp", "player"), "ysa"], "ref_a": [Places.spot("camp", "ref_a"), Places.spot("camp", "ysa")],
@@ -609,7 +657,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 	await _see(w, "She leaves. Ysa looks at you.")
 	var healer := Cine.body(w, "healer")
 	if healer != null:
-		Cine.walk(w, "healer", healer.global_position + Vector3(6.0, 0, 5.0), 1.4)
+		_walk(w, "healer", healer.global_position + Vector3(6.0, 0, 5.0), 1.4)
 	await _say(w, "ysa", "You're the Unsworn. You don't kneel to anyone. So tell me. Should I?")
 	var c := await _choose(w, ["Swear. Your son comes first.", "I'll pay it. (40 crowns)", "Don't. I'll find another way.", "That's yours to decide, not mine."])
 	match c:
@@ -642,7 +690,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 static func _mercy_sworn(w: World, how: String) -> void:
 	w.hud.dialogue.close()
 	await w.hud.fade(1.0, 0.6)
-	var at := SQ.tobin_in if ysa_inside() else Places.spot("camp", "tobin")
+	var at: Vector3 = SQ.tobin_in if ysa_inside() else Places.spot("camp", "tobin")
 	_tobin_up(w, at + Vector3(0.6, 0, 0.5), "player")
 	var healer := Cine.body(w, "healer")
 	if healer != null:
@@ -682,7 +730,7 @@ static func _anselm(w: World) -> void:
 	await _say(w, "anselm", "If you're the Guard, I'm nearly done. If you're not, sit down, you're in my light.")
 	var docker := Cine.body(w, "docker")
 	if docker != null:
-		Cine.walk(w, "docker", docker.global_position + Vector3(1.0, 0, 5.5), 1.3)
+		_walk(w, "docker", docker.global_position + Vector3(1.0, 0, 5.5), 1.3)
 	_face(w, "anselm", "player")
 	await _say(w, "anselm", "I keep Ilvane. You won't have heard of her. She was the god of people on the road at night. Carters, travellers, the lost. Four hundred years ago she had a shrine in every town.")
 	await _say(w, "anselm", "Now she has me, and about three hundred people who still say her name. When nobody says it, she's gone.")
@@ -695,7 +743,7 @@ static func _anselm(w: World) -> void:
 	_remember("anselm", 1, "You brought him a boy to heal.")
 	# back to Ysa
 	if ysa_inside():
-		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "player": [SQ.player_ysa, "ysa"]}, Vector3(-6.4, 2.1, 17.2), Vector3(-9.0, 0.9, 11.9), 36.0)
+		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "player": [SQ.player_ysa, "ysa"]}, SQ.ysa_in + YSA_CAM, SQ.ysa_in + YSA_LOOK, 36.0)
 	else:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "player": [Places.spot("camp", "player"), "ysa"]},
 			Places.spot("camp", "ysa") + Vector3(4.6, 2.1, 6.6), Places.spot("camp", "ysa") + Vector3(0.0, 0.9, 0.4), 36.0)
@@ -759,18 +807,27 @@ static func _sergeant_arrives(w: World) -> void:
 	await _say(w, "sergeant", "And you'll be the Unsworn. Step aside.")
 
 
-## Down the steps (and on to their mark), in `secs`.
+## Down the steps (and on to their mark), in `secs`. The walk belongs to the
+## walker, so it stops if they leave the scene first.
 static func _descend(w: World, who: String, from: Vector3, to: Vector3, secs: float) -> Signal:
 	var b := Cine.body(w, who)
 	var fig = Cine.fig(w, who)
 	if fig != null:
 		fig.walking = true
-	var tw := w.create_tween()
+		fig.face(to - from, w.cam)
+	var tw := b.create_tween()
 	tw.tween_property(b, "global_position", to, secs).from(from)
 	tw.tween_callback(func() -> void:
 		if fig != null and is_instance_valid(fig):
 			fig.walking = false)
 	return tw.finished
+
+
+## Someone walks off on level ground (out of the scene), their own walk.
+static func _walk(w: World, who: String, to: Vector3, speed := 1.4) -> Signal:
+	var b := Cine.body(w, who)
+	to.y = b.global_position.y
+	return _descend(w, who, b.global_position, to, b.global_position.distance_to(to) / maxf(speed, 0.1))
 
 
 static func _sergeant_choice(w: World) -> void:
@@ -998,43 +1055,54 @@ static func _patch_pip(w: World) -> void:
 	n.def["duel_flag"] = "side_pip_settled"
 	n.def["duel_needs"] = "side_pip_pending"
 	if pip_waiting():
-		n.def["side_home"] = n.body.global_position
+		# at work on the counting-house steps (Chapter 1's square leaves a
+		# person with "side_home" where the side stories put them)
+		Game.set_flag("pip_at_work")
+		n.def["side_home"] = n.def.get("pos", n.body.global_position)
 		n.body.global_position = SQ.pip_steps
+		n.body.visible = true
 		n.doll.look_toward(SQ.pell, w.cam)
 
 
-## Pip's talk: the errand while it's open; afterwards his own words, then
+## Pip's talk: the errand while it's open; otherwise his own words, then
 ## (whatever happened to the note) a place for him, if he hasn't one.
 static func talk_pip(w: World, npc, original: Array) -> void:
 	if bool(npc.get("side_met_now", false)):
 		return   # on his way to work
-	if pip_waiting() and s("side_pip") in ["", "seen", "pending"]:
+	if pip_waiting() and f("pip_at_work") and s("side_pip") in ["", "seen", "pending"]:
 		await _pip_errand(w)
 		return
-	var first: bool = not f("met_pip_before")
 	await w.run_steps(original, npc)
 	Game.set_flag("met_pip_before")
-	if first and pip_waiting():
-		# "Got to go. Work." He runs off to the counting-house steps.
+	if pip_waiting() and not f("pip_at_work"):
 		w.hud.dialogue.close()
-		npc["side_met_now"] = true
-		var b: Node3D = npc.body
-		npc.def["side_home"] = b.global_position
-		var to: Vector3 = SQ.pip_steps
-		var fig = npc.doll
-		fig.walking = true
-		if fig is Figure3D:
-			(fig as Figure3D).gait = "run"
-		var tw := w.create_tween()
-		tw.tween_property(b, "global_position", to, b.global_position.distance_to(to) / 4.0)
-		tw.tween_callback(func() -> void:
-			fig.walking = false
-			npc.erase("side_met_now")
-			fig.look_toward(SQ.pell, w.cam))
-		_extra(w, "pell", SQ.pell, SQ.pip_steps, true)
+		await _pip_to_work(w, npc)
 		return
 	if pip_done() and s("side_pip_place") == "":
 		await _pip_place(w)
+
+
+## "Got to go. Work." Pip runs off to the counting-house steps, where Mr Pell
+## waits with the notes.
+static func _pip_to_work(w: World, npc) -> void:
+	Game.set_flag("pip_at_work")
+	npc["side_met_now"] = true
+	var b: Node3D = npc.body
+	npc.def["side_home"] = npc.def.get("pos", b.global_position)
+	_extra(w, "pell", SQ.pell, SQ.pip_steps, true)
+	var to: Vector3 = SQ.pip_steps
+	var fig = npc.doll
+	fig.walking = true
+	fig.face(to - b.global_position, w.cam)
+	if fig is Figure3D:
+		(fig as Figure3D).gait = "run"
+	var tw := b.create_tween()
+	tw.tween_property(b, "global_position", to, b.global_position.distance_to(to) / 4.0)
+	tw.tween_callback(func() -> void:
+		fig.walking = false
+		npc.erase("side_met_now")
+		fig.look_toward(SQ.pell, w.cam)
+		w._refresh_markers())
 
 
 ## The errand, seen from the start the first time; after "Not now" or "Not
@@ -1117,8 +1185,13 @@ static func _pip_route(w: World, done: Array) -> void:
 	Cine.walk(w, "player", SQ.player_meet, 1.6)
 	await w.get_tree().create_timer(1.0).timeout
 	Cine.body(w, "pip").visible = true
-	await Cine.walk(w, "pip", SQ.pip_meet, 3.6, "run")
+	await Cine.path(w, "pip", [SQ.pip_way, SQ.pip_meet], 3.6, "run")
 	done[0] = true
+
+
+## Pip off up the hill to the side door (round the Sundial).
+static func _pip_up_the_hill(w: World) -> void:
+	await Cine.path(w, "pip", [SQ.pip_way, SQ.side_door], 3.6, "run")
 
 
 ## Pip and you in the market, by his steps (also where a resumed duel starts).
@@ -1129,12 +1202,12 @@ static func _pip_stage(w: World) -> void:
 
 ## "If Wren is with you and you ask her, she lifts one in the crowd."
 static func _wren_lifts(w: World) -> void:
-	var start := SQ.wren_lift + Vector3(2.0, 0, 1.5)
+	var start: Vector3 = SQ.wren_lift + Vector3(2.0, 0, 1.5)
 	if w._npc_by_id("wren") != null:
 		_put(w, "wren", start, "pip")
 	else:
 		_extra(w, "wren", start, "pip")
-	_shot(w, SQ.player_meet + Vector3(-4.6, 2.3, 4.6), SQ.pip_meet + Vector3(0, 0.9, 0), 40.0)
+	_shot(w, SQ.player_meet + Vector3(-4.0, 2.3, 4.0), SQ.pip_meet + Vector3(0, 0.9, 0), 40.0)
 	await Cine.walk(w, "wren", SQ.pip_meet + Vector3(0.5, 0, 0.6), 1.8)
 	await _see(w, "Wren lifts one in the crowd.")
 	await Cine.walk(w, "wren", SQ.player_meet + Vector3(-0.9, 0, 0.4), 1.8)
@@ -1151,7 +1224,7 @@ static func _pip_after(w: World, won: bool) -> void:
 		Game.set_flag("side_pip", "delivered")
 		Game.set_flag("side_pip_settled")
 		_remember("pip", 1, "He beat you fair for his note.")
-		await Cine.walk(w, "pip", SQ.side_door, 3.6, "run")
+		await _pip_up_the_hill(w)
 		return
 	await _pip_note(w)
 
@@ -1163,8 +1236,11 @@ static func _pip_note(w: World) -> void:
 	w.hud.dialogue.close()
 	await NoteView.read(w, NOTE)
 	if wren_with_you():
-		if Cine.body(w, "wren") == null:
+		var wb := Cine.body(w, "wren")
+		if wb == null:
 			_extra(w, "wren", SQ.player_meet + Vector3(-0.9, 0, 0.4), "player")
+		elif not wb.visible or wb.global_position.distance_to(SQ.player_meet) > 6.0:
+			_put(w, "wren", SQ.player_meet + Vector3(-0.9, 0, 0.4), "player")
 		await _say(w, "wren", "The Bread of Dawn. That's the loaf they give out at dawn prayers.")
 	await _see(w, "Pip reads over your arm, slowly.")
 	await _say(w, "pip", "What's that mean?")
@@ -1174,11 +1250,11 @@ static func _pip_note(w: World) -> void:
 		await _say(w, "pip", "Thanks. Don't follow me again.")
 		Game.set_flag("side_pip", "returned")
 		_remember("pip", 1, "You gave him his note back.")
-		await Cine.walk(w, "pip", SQ.side_door, 3.6, "run")
+		await _pip_up_the_hill(w)
 		return
 	await _say(w, "pip", "That's two crowns! And Mr Pell'll know!")
 	await _see(w, "He runs, not up the hill but away.")
-	Cine.walk(w, "pip", SQ.pip_meet + Vector3(4.0, 0, 9.0), 4.0, "run")
+	Cine.walk(w, "pip", SQ.pip_meet + Vector3(-0.6, 0, 11.0), 4.0, "run")
 	await w.get_tree().create_timer(0.8).timeout
 	if c == 1:
 		Game.set_flag("side_pip", "kept")
@@ -1186,12 +1262,13 @@ static func _pip_note(w: World) -> void:
 		w.hud.toast("Got: %s" % Items.ITEMS.get("pell_note", {}).get("name", "the note"))
 		_remember("pip", -2, "You kept his note, and his two crowns with it.")
 		return
-	# to Ser Aldric
-	var at: Vector3
-	if w._npc_by_id("aldric") != null:
-		at = Cine.body(w, "aldric").global_position
-	else:
-		at = Vector3(-9.0, 0, -9.6)
+	# to Ser Aldric (where he stands in the square, or by the Duelling Circle
+	# if he isn't about in the square just now)
+	var at := Vector3(-9.0, 0, -9.6)
+	var an = w._npc_by_id("aldric")
+	if an != null and (an.body as Node3D).visible:
+		at = (an.body as Node3D).global_position
+	elif an == null:
 		_extra(w, "aldric", at, null)
 	var you := at + Vector3(0.9, 0, 1.8)
 	await _cut(w, {"player": [you, "aldric"], "aldric": [at, "player"]}, you + Vector3(2.8, 1.6, 2.8), (at + you) * 0.5 + Vector3(0, 1.0, 0), 36.0)
@@ -1208,8 +1285,11 @@ static func _pip_note(w: World) -> void:
 static func _pip_home(w: World) -> void:
 	var n = w._npc_by_id("pip")
 	if n != null:
+		n.body.set_meta("cine_path", 0)
 		n.body.global_position = n.def.get("side_home", n.def.get("pos", n.body.global_position))
 		n.body.visible = true
+		n.def.erase("side_home")   # the square looks after him again
+	Game.set_flag("pip_at_work", false)
 	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
 	if ex.has("pell") and is_instance_valid(ex.pell.body):
 		(ex.pell.body as Node).queue_free()
@@ -1295,11 +1375,11 @@ static func talk_sundial(w: World, _npc = null) -> void:
 	w.hud.dialogue.close()
 	await w.hud.fade(1.0, 0.4)
 	Places.dawn(w, false)
-	var at: Vector3
-	if w._npc_by_id("maren") != null:
-		at = Cine.body(w, "maren").global_position
-	else:
-		at = Vector3(-10.4, 0, 4.4)
+	var at := Vector3(-10.4, 0, 4.4)
+	var mn = w._npc_by_id("maren")
+	if mn != null and (mn.body as Node3D).visible:
+		at = (mn.body as Node3D).global_position
+	elif mn == null:
 		_extra(w, "maren", at, null)
 	var you := at + Vector3(1.0, 0, 1.6)
 	await _cut(w, {"player": [you, "maren"], "maren": [at, "player"]}, you + Vector3(2.4, 1.5, 2.6), (at + you) * 0.5 + Vector3(0, 0.9, 0), 36.0)
@@ -1328,7 +1408,7 @@ static func talk_sundial(w: World, _npc = null) -> void:
 ## Someone paying for your good deed, and whether you let them (v3). Only if
 ## you made Hale open the gate for everyone.
 static func talk_barracks(w: World, _npc = null) -> void:
-	if not hale_open():
+	if not hale_open(w):
 		return
 	await _yard(w)
 	await _see(w, "The barracks yard. Hale stands without his white and gold, in a plain shirt, by the whipping post. The Captain reads from a paper.")
@@ -1473,6 +1553,7 @@ class NoteView:
 		layer.layer = 16
 		w.add_child(layer)
 		var v := NoteView.new()
+		v.name = "NoteView"
 		v.body = text
 		layer.add_child(v)
 		await v.closed

@@ -44,6 +44,7 @@ static func ask(parent: Node, p_info: Dictionary) -> bool:
 	layer.layer = 18
 	parent.add_child(layer)
 	var s := SwearScreen.new()
+	s.name = "SwearScreen"
 	s.info = p_info
 	layer.add_child(s)
 	var sworn: bool = await s.answered
