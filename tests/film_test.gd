@@ -8,10 +8,13 @@ extends Node
 ##       --fixed-fps 4 res://tests/film_test.tscn -- <out_dir> <part> 8
 ##
 ## part: corin (Corin to midnight, with Bram's deck), midnight, dawn, taproom,
-## burning, cellar (Ashford), or river, camp, road, ridge (the Thornwood).
-## Add "only" after the part to stop at the end of that part, and
+## burning, cellar (Ashford), or river, camp, morning, road, ridge (the
+## Thornwood). Add "only" after the part to stop at the end of that part,
 ## "read=<frames>" to leave each dialogue-box line up that long (as a player
-## reading it would) instead of tapping on at once.
+## reading it would) instead of tapping on at once, "choice=<n>" to answer
+## every choice with its nth answer (from 0), "box=<n>" for which of Bram's
+## four boxes to choose at the campfire, and flag=<name> to set a story flag
+## first (flag=tam_told, flag=want_solhaven).
 
 var out_dir := "user://"
 var every := 0
@@ -28,6 +31,8 @@ var _line_frames := 0
 var _start_part := ""
 var _ending := false
 var _read := 3
+var _choice := 0
+var _box := 1
 
 
 func _ready() -> void:
@@ -40,12 +45,16 @@ func _ready() -> void:
 	for a in args:
 		if String(a).begins_with("read="):
 			_read = int(String(a).substr(5))
+		elif String(a).begins_with("choice="):
+			_choice = int(String(a).substr(7))
+		elif String(a).begins_with("box="):
+			_box = int(String(a).substr(4))
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
 	for f in ["arrived_ashford", "ash_started", "ash_tam", "ash_tilly", "ash_nell", "ash_ready"]:
 		Game.set_flag(f)
-	var thorn := _part in ["river", "camp", "road", "ridge"]
+	var thorn := _part in ["river", "camp", "morning", "road", "ridge"]
 	if _part != "corin":
 		for f in ["first_deck", "ash_lantern_duel", "ash_won_lantern", "has_lantern_moth", "moth_given"]:
 			Game.set_flag(f)
@@ -53,10 +62,18 @@ func _ready() -> void:
 		Game.set_flag("ash_marked")
 		Game.set_flag("pro_part", _part if not thorn else "cellar")
 	if thorn:
-		Game.new_game("Ash", "tidegrove", true)
-		for f in ["ash_marked", "pro_tunnel_done", "bram_deck", "hob_gift", "arrived_thornwood", "arrived_thornwood_film"]:
+		if _part in ["river", "camp"]:
+			Game.player_name = "Ash"   # Bram's decks are opened at the campfire
+		else:
+			Game.new_game("Ash", "tidegrove", true)
+			for f in ["bram_deck", "hob_gift"]:
+				Game.set_flag(f)
+		for f in ["ash_marked", "pro_tunnel_done", "arrived_thornwood", "arrived_thornwood_film"]:
 			Game.set_flag(f)
 		Game.set_flag("thorn_part", _part)
+	for a in args:
+		if String(a).begins_with("flag="):
+			Game.set_flag(String(a).substr(5))
 	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
 	world.story_next.connect(func(what: String) -> void:
 		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())
@@ -103,7 +120,7 @@ func _process(_d: float) -> void:
 		else:
 			_line_frames = 0
 		if ov._choices.visible and ov._choices.get_child_count() > 0:
-			ov._chosen.emit(0)
+			ov._chosen.emit(mini(_choice, ov._choices.get_child_count() - 1))
 		for b in ov.find_children("*", "Button", true, false):
 			var bt := b as Button
 			if bt.is_visible_in_tree() and (bt.text == "That's me" or bt.text.begins_with("Choose ")):
@@ -111,6 +128,18 @@ func _process(_d: float) -> void:
 				break
 		if ov._chart != null:
 			ov._chart.call("tap")
+	# Bram's four boxes at the campfire: tap one, then the same one again
+	if world.has_meta("deck_boxes"):
+		var picker = world.get_meta("deck_boxes")
+		if is_instance_valid(picker) and picker.listening:
+			_box_frames += 1
+			if _box_frames > 10:
+				_box_frames = 0
+				var bi := clampi(_box, 0, picker.boxes.size() - 1)
+				# where a tap on that box's place on screen lands
+				var at: Vector2 = picker.cam.unproject_position((picker.boxes[bi] as Node3D).global_position)
+				print("FILM: deck box %d is at %s on screen; a tap there picks box %d" % [bi, at, picker.box_at(at)])
+				picker.tap(bi)
 	# Bram's tour of the pack: tap on, or do what he asks
 	for t in get_tree().root.find_children("*", "PackTour", true, false):
 		_drive_tour(t as PackTour)
@@ -173,6 +202,7 @@ func _frames(n: int) -> void:
 
 
 var _tour_frames := 0
+var _box_frames := 0
 
 
 func _drive_tour(t: PackTour) -> void:

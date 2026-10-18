@@ -55,12 +55,14 @@ var life_floor: Array = [0, 0]
 var totem_floor: Array = [0, 0]
 ## The Dominion Law this duel is fought under (a god's id, "ironvault" or ""). See DuelLaws.
 var law := ""
-## A story duel's own rules, {rule id: the side it binds}: "showboat" is
-## Corin's in the Lantern Duel (_rule_showboat). (Declared here until the
-## films branch, which declares it too, is merged.)
-var story_rules: Dictionary = {}
 ## Ward card uids that lie face up (Ysolde's Unveiling, or the Unveil Gift).
 var face_up := {}
+## A story duel's own rules (Master Script v3: every story duel has one rule
+## that says who the opponent is), as {rule id: the side it binds}. Each rule
+## is its own _rule_<id>() function under "story rules" below:
+## "run_to_ground" (Hunter Dask, the Thornwood road), "showboat" (Corin, the
+## Lantern Duel).
+var story_rules := {}
 
 
 # ------------------------------------------------------------------ setup ---
@@ -711,8 +713,25 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 			for f in foes:
 				top = maxi(top, f.hp_left())
 			out = foes.filter(func(f): return f.hp_left() == top)
+	out = _rule_run_to_ground(pi, out)
 	out = _rule_showboat_targets(pi, t, out)
 	return out
+
+
+# ------------------------------------------------------------ story rules ---
+
+## Run to Ground (Hunter Dask, on the Thornwood road): his hounds always go for
+## the Totem with the least Life left, never past it at anything else.
+func _rule_run_to_ground(pi: int, out: Array) -> Array:
+	if not story_rules.has("run_to_ground") or int(story_rules.run_to_ground) != pi:
+		return out
+	var foes := out.filter(func(x): return x is DuelTotem)
+	if foes.is_empty():
+		return out
+	var low: int = foes[0].hp_left()
+	for f in foes:
+		low = mini(low, (f as DuelTotem).hp_left())
+	return foes.filter(func(f): return (f as DuelTotem).hp_left() == low)
 
 
 func move_problem(pi: int, t, i: int, target = null, check_target: bool = false) -> String:

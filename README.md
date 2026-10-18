@@ -55,13 +55,34 @@ the die for who goes first, and the card panel on the right). Both decks are dea
 in order, the player goes first, Corin follows a script (`DuelHuman.Scripted`) and
 the player's Life and Totem can't drop to zero. It teaches only what's on the table
 that night; everything else is taught the first time it matters, in the same gated
-way, by Bram: the first condition or boon to land on either side (`fx_status`,
-which also gives it a Codex entry under *Conditions*), Wards and the element chart
-at the campfire before Dask's road duel (`prologue.gd`, with `ElementChart`), the
-first Ward set or sprung, and the first time an Ascension can be played. A duel
-with `spec.lessons = true` gets a tutor just for these one-off lessons
-(`DuelTutor.lesson()`); each is taught once ever (`Game.learn()`), and every line
-Bram has given is kept, in order, on the pause menu's **How to Duel** page.
+way, by Bram, at any duel he's at (Master Script v3: the practice round and Dask's
+road duel): the first condition or boon to land on either side (`fx_status`,
+which also gives it a Codex entry under *Conditions*), the first Ward set or
+sprung, the first hit on a weakness, a Guardian, a Gift, a Summon, and the first
+time an Ascension can be played. A duel with `spec.lessons = true` gets a tutor
+just for these one-off lessons (`DuelTutor.lesson()`); each is taught once ever
+(`Game.learn()`), and every line Bram has given is kept, in order, on the pause
+menu's **How to Duel** page.
+
+Story duels (Master Script v3) each have a rule of their own that says who the
+opponent is, as a real rule in the engine: `spec.story_rules = {rule id: side}`
+(`DuelGame.story_rules`, one `_rule_<id>()` each; Dask's is Run to Ground, his
+hounds always attack the Totem with the least Life left) and `spec.rule = [name,
+text]` for its banner. Their barks are tied to what happens on the board, once
+each per duel (`spec.bark_on`, `DuelScreen.story_bark()`). Losing a main story
+duel (`spec.retry`) plays the opponent's line for winning (`spec.win_line`), then
+Morrowen takes the story back with one line, never the same one twice running,
+then a page turning back and **Again** / **Change deck first**; after a second
+loss only the page (`scripts/duel_ui/story_loss.gd`; her voice is
+`assets/audio/vo/morrowen_loss_01.ogg` ... `_04`, the page `assets/sfx/page_turn.ogg`,
+each picked up when it exists). From the night of the Sigilfall on, the blank card
+sits in its own slot beside the deck in every story duel and flickers when Life
+runs low (`scripts/duel_ui/blank_card_slot.gd`).
+
+```sh
+godot --headless --script res://tests/story_rules_test.gd          # Run to Ground, and 120 duels under it
+xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/road_duel_test.tscn -- <dir>   # Dask's duel lost twice, then won
+```
 
 ```sh
 xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/creature_shot.tscn -- <dir> blazehound   # a duel with a given Totem on the field
@@ -260,15 +281,23 @@ it's levelled for the four of them. Tam's master file was 47 MB because it
 carried every source file's mesh and textures, unused; his game model, like
 the others, has only what it uses (about 2.5 MB, with a 2048 colour atlas).
 
-Everything after the Lantern Duel is a film in the game's own 3D: midnight,
-the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn, the taproom,
-Ashford burning, the cellar and Bram's decks (`ashford.gd`, parts saved in the
-`pro_part` flag so a closed game picks up where it was), then the Thornwood
-(`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd`): the
-riverbank, the campfire and its practice duel, Dask's road duel and dawn over
-Solhaven. Films are staged with `scripts/world/cine.gd` (shots, walks,
-spawns, reveals) and `scripts/world/cine_overlay.gd` (letterbox, subtitles,
-choices, the name prompt, the deck choice). Solhaven
+Everything after the Lantern Duel is a film in the game's own 3D, line for line
+from Master Script v3 (a copy is in `docs/script/v3_prologue_films.md`): midnight,
+the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn (its
+lantern shows the Champions it doesn't read out), the taproom, Ashford burning
+(Krell's terms, Tam's lie), the cellar and the tunnel (`ashford.gd`, parts saved
+in the `pro_part` flag so a closed game picks up where it was), then the
+Thornwood (`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd`):
+the riverbank, the campfire (Bram's four decks on a log, tap a box to see it and
+again to choose, `scripts/world/deck_boxes.gd`, then his walk round the deck
+screen, `PackTour.CAMP_DECK`), the practice round on the second morning, Dask's
+road duel and dawn over Solhaven. Films are staged with `scripts/world/cine.gd`
+(shots, walks, spawns, reveals) and `scripts/world/cine_overlay.gd` (letterbox,
+subtitles, choices, the name prompt). The Herald's voice plays from
+`assets/audio/vo/herald_NN.ogg` (01, 02, 03, 09, 10, 12, 13; .wav or .mp3 work
+too) and the Champions' faces from `assets/art/champions/<id>.png` (aldric, vorn,
+eiran, rook, silk, maelis, crane) once they exist; until then the lines are
+subtitles and each face is its Seat's sign. Solhaven
 (`scripts/world/areas/solhaven.gd`) is Chapter 1 as a hub: the gate
 and its refugees, Bram's wagon and Turnip, Wren, the Sun Court on the temple
 steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
@@ -284,7 +313,9 @@ xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resol
 ```
 
 To watch a film part by itself, tapping through every line (`corin`, `midnight`,
-`dawn`, `taproom`, `burning`, `cellar`, `river`, `camp`, `road`, `ridge`):
+`dawn`, `taproom`, `burning`, `cellar`, `river`, `camp`, `morning`, `road`, `ridge`;
+`choice=1` answers every choice the other way, `flag=tam_told` sets a story flag
+first, `box=2` picks another of Bram's decks):
 
 ```sh
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 10 \
@@ -320,7 +351,7 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 - **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line.
 - **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
 - **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
-- **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 has no lines for that tour and opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel no longer plays the tour or opens the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck from the cellar (flag `bram_deck`) is the first one the player can edit; old saves past Ashford have everything open.
+- **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel doesn't play the tour or open the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck, chosen at the campfire on the Thornwood road (flag `bram_deck`), is the first one the player can edit; old saves past Ashford have everything open.
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
 - **Standing** (`scripts/game/standing.gd`): how each god and person sees the player, -10 to +10. Story choices already recorded as flags count through `FLAG_EFFECTS`; a dialogue step `{"standing": {"tilly": 1}, "why": "..."}` nudges it directly, and `{"if": "standing:solmaris>=2"}` branches on it. A toast says "Tilly will remember that."
 - **Items** (`scripts/game/items.gd`): story items shown from flags, and equipment in three slots (charm, ring, deck case) that adds to attributes in every duel. A dialogue step `{"item": "<id>"}` gives one.
