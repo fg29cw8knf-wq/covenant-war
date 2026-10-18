@@ -480,9 +480,13 @@ func _start() -> void:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
 	game.law = String(spec.get("law", ""))
 	game.story_rules = spec.get("story_rules", {})
+	game.life_scale = float(spec.get("life_scale", 1.0))
+	game.kept_back = (spec.get("kept_back", [[], []]) as Array).duplicate(true)
+	game.puzzle = spec.get("puzzle", {})
 	game.presenter = self
 	sfx.play("shuffle")
-	Music.play(["arena_" + _arena_name] + Music.duel_theme())
+	# a story duel can name its own music (spec.music: tracks to try first)
+	Music.play((spec.get("music", ["arena_" + _arena_name]) as Array) + Music.duel_theme())
 	game.logged.connect(_on_log)
 	game.state_changed.connect(_refresh)
 	for side in 2:
@@ -1444,7 +1448,24 @@ func _life_center(pi: int) -> Vector2:
 
 
 func fx_start() -> void:
+	if not _started and not game.puzzle.is_empty():
+		# a set board (the Trial of Light) has no roll for the first turn
+		_started = true
+		await _opening_banners()
 	await pause(0.1)
+
+
+## "DUEL!", then the Law it's fought under and the story duel's own rule
+## (spec.rule = [name, what it does]).
+func _opening_banners() -> void:
+	sfx.play("duel_start")
+	await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
+	if game.law != "":
+		var god: String = game.law if Lore.GODS.has(game.law) else ""
+		await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+	var rule: Array = spec.get("rule", [])
+	if rule.size() >= 2:
+		await _banner(String(rule[0]).to_upper(), UITheme.GOLD, 2.2, 72, "", "Duel rule: " + String(rule[1]))
 
 
 ## Both duellists roll for the first turn, big in the middle of the Circle.
@@ -1461,11 +1482,7 @@ func fx_rolloff(r0: int, r1: int) -> void:
 	_rolloff = rv
 	if not _started:
 		_started = true
-		sfx.play("duel_start")
-		await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
-		if game.law != "":
-			var god: String = game.law if Lore.GODS.has(game.law) else ""
-			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+		await _opening_banners()
 		if tutor != null:
 			rv.waiting = true
 			await tutor.event("intro")   # ends with the player tapping their die
@@ -1963,6 +1980,11 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	if weak and att != null and att.owner == me and t.owner != me:
 		_coach("weakness")
 		story_bark("weakness_on_rival")
+	if att != null and att.owner == me and t.owner == rival:
+		if t.has_keyword("guardian"):
+			story_bark("rival_guardian_hit")
+		if amount >= 60:
+			story_bark("my_big_hit")
 	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80, 1.1 / speed, "WEAK!  ×1.5" if weak else "")
 	# knocked back, then settles
 	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
@@ -2023,9 +2045,48 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	tw.tween_property(p, "shake", 0.0, 0.45 / speed)
 	if pi == me:
 		_vignette(Color(1, 0.05, 0.1))
+	if pi == rival:
+		if att != null and att.owner == me and amount >= 60:
+			story_bark("my_big_hit")
+		_rival_life_barks()
 	await pause(0.5)
 	if field != null:
 		field.cam_home(0.7 / speed)
+	if pi == me:
+		await _blank_eye_check()
+
+
+## Story barks tied to the rival's Life: below a third ("rival_life_third"),
+## and the player pulling ahead ("my_lead": less of their Life left than of
+## yours, once they've lost a fifth of it).
+func _rival_life_barks() -> void:
+	var q: DuelPlayer = game.players[rival]
+	var p: DuelPlayer = game.players[me]
+	if q.life > 0 and q.life * 3 <= q.max_life:
+		story_bark("rival_life_third")
+	if q.max_life > 0 and p.max_life > 0 and q.life * 5 <= q.max_life * 4 \
+			and float(q.life) / q.max_life < float(p.life) / p.max_life:
+		story_bark("my_lead")
+
+
+## Aldric's duel (spec.blank_eye): the first time your Life drops below a
+## third, the duel freezes for a beat; the blank card in its slot flickers and
+## a faint image shows on it, a white eye inside a ring of runes, then fades.
+func _blank_eye_check() -> void:
+	if not spec.get("blank_eye", false) or _barked.has("_blank_eye") or game.over:
+		return
+	var p: DuelPlayer = game.players[me]
+	if p.life <= 0 or p.life * 3 > p.max_life:
+		return
+	_barked["_blank_eye"] = true
+	var slot := stage.get_node_or_null("BlankCardSlot")
+	if slot == null:
+		return
+	if field != null:
+		field.cam_home(0.3)
+	await pause(0.5)
+	await slot.show_eye(2.4 / speed)
+	await pause(0.4)
 
 
 func fx_heal(t: DuelTotem, amount: int) -> void:
@@ -2137,6 +2198,10 @@ func fx_ko(t: DuelTotem) -> void:
 	var ko_len := _clip(t, "ko", speed)
 	if t.owner == rival:
 		story_bark("rival_ko_own")
+		if t.has_keyword("guardian"):
+			story_bark("rival_guardian_ko")
+	else:
+		story_bark("rival_kos_mine")
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
 	# Violence setting: Full spills blood as it falls; Reduced bursts into crystal and light.
 	var gore: bool = String(Game.settings.get("violence", "full")) == "full"
@@ -2176,6 +2241,13 @@ func fx_ko(t: DuelTotem) -> void:
 func fx_summon(pi: int, card: DuelCard) -> void:
 	_hide_detail()
 	_layout_hand()
+	if pi == rival and spec.get("crowd_on", {}).has("rival_summons"):
+		# the crowd knows it from his banners before he can name it
+		await _crowd(String(spec.crowd_on.rival_summons))
+		story_bark("rival_summons")
+		await pause(2.4)
+	elif pi == me:
+		story_bark("my_summons")
 	if not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
 	var cine := SummonCine.new()
@@ -2228,9 +2300,64 @@ func fx_gift(pi: int, g: String) -> void:
 	DuelFX.flash(fx_layer, at, UITheme.GOLD, 260.0, 0.6 / speed)
 	DuelFX.rise(fx_layer, at + Vector2(0, 40), UITheme.GOLD, 160.0, 40, 1.2, speed)
 	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), "A Divine Gift from %s" % god)
+	if pi == rival:
+		story_bark("rival_gift")
 	_refresh()
 	if tutor != null:
 		await tutor.lesson("gift", "A Gift. A god's favour, bought with kneeling. Nobody gets many.", "Gifts")
+
+
+## Light Fingers (Wren): she's had a card out of your hand, and plays it as
+## her own straight after.
+func fx_light_fingers(pi: int, card: DuelCard) -> void:
+	_hide_detail()
+	_layout_hand()
+	if pi == rival:
+		story_bark("rival_steals")
+	sfx.play("card_fly")
+	var from := Vector2(FIELD_CX, HAND_Y + 60) if pi == rival else Vector2(FIELD_CX, 30)
+	await _show_card_big(card.id, "LIGHT FINGERS", UITheme.GOLD, 1.1, from)
+	if tutor != null and pi == rival:
+		await tutor.lesson("steal", "She's had a card off you. Don't sit on what you can play now.", "Your hand", "hand")
+
+
+## The Sunspire's Mirror (Aldric): at half Life the great mirror swings on its
+## chains to put the sun on his side of the Circle.
+func fx_mirror(pi: int) -> void:
+	_hide_detail()
+	sfx.play("ascend")
+	var col := Color(1.0, 0.92, 0.62)
+	_screen_flash(Color(1.0, 0.96, 0.82, 0.55))
+	if field != null:
+		var at := Vector3(0, 0, -1.6) if pi == rival else Vector3(0, 0, 1.6)
+		field.pillar(at, col, 14.0, 6.0, 1.6 / speed)
+		field.floor_wave(at, col, 10.0, 1.0 / speed)
+		field.flash_light(at + Vector3(0, 4, 0), col, 18.0, 1.4 / speed, 22.0)
+	var sub := String(spec.get("mirror_text", "The great mirror swings to %s side of the Circle. Radiant cards cost one less there, for the rest of the duel." % _whose(String(game.players[pi].player_name)).to_lower()))
+	await _banner("THE SUNSPIRE'S MIRROR", UITheme.GOLD, 2.0, 72, "", sub)
+	_refresh()
+
+
+## A shout from the crowd round the Circle, big across the top of the field.
+func _crowd(text: String) -> void:
+	sfx.play("duel_start")
+	var l := UITheme.label(text, 120, UITheme.GOLD, "display_bold", 18)
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	l.position = Vector2(FIELD_CX - 900, 120)
+	l.size = Vector2(1800, 170)
+	l.pivot_offset = l.size * 0.5
+	l.scale = Vector2(0.6, 0.6)
+	l.modulate.a = 0.0
+	fx_layer.add_child(l)
+	var tw := l.create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(l, "modulate:a", 1.0, 0.18 / speed)
+	tw.tween_property(l, "scale", Vector2(1, 1), 0.3 / speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.chain().tween_interval(1.4 / speed)
+	tw.chain().tween_property(l, "modulate:a", 0.0, 0.5 / speed)
+	tw.chain().tween_callback(l.queue_free)
+	shake(6.0)
+	await pause(1.3)
 
 
 func fx_message(text: String) -> void:
@@ -2382,7 +2509,7 @@ func _show_bark(line: String) -> void:
 		var v := VBoxContainer.new()
 		v.add_theme_constant_override("separation", 2)
 		_bark_box.add_child(v)
-		var who := UITheme.label(String(spec.get("names", ["", "Rival"])[1]).to_upper(), 20, UITheme.TEXT_DIM, "bold")
+		var who := UITheme.label(String(spec.get("bark_who", spec.get("names", ["", "Rival"])[1])).to_upper(), 20, UITheme.TEXT_DIM, "bold")
 		v.add_child(who)
 		_bark_label = UITheme.label("", 26, UITheme.TEXT)
 		_bark_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2515,6 +2642,9 @@ func _show_result(r: String) -> String:
 	if r != "won" and spec.get("retry", false) and not _watching():
 		# a main story duel: the story is taken back, and played again
 		return await StoryLoss.new().play(self)
+	if r != "won" and spec.get("trial", false) and not _watching():
+		# the Trial of Light: a mistake, and the mirrors simply begin again
+		return await _trial_reset()
 	var title: String = {"won": "VICTORY", "lost": "DEFEAT", "draw": "DRAW"}[r]
 	if _watching():
 		title = "%s WINS" % String(game.players[game.winner].player_name).to_upper() if game.winner in [0, 1] else "DRAW"
@@ -2606,6 +2736,59 @@ func _show_result(r: String) -> String:
 	while picked[0] == "":
 		await get_tree().process_frame
 	return picked[0]
+
+
+## The Trial of Light not passed: the mirrors flare white, the keeper of the
+## Trial says her line (spec.reset_lines: [on a reset, on the third reset]),
+## and the board is set again. Returns "again".
+func _trial_reset() -> String:
+	var n := int(spec.get("_resets", 0)) + 1
+	spec["_resets"] = n
+	var lines: Array = spec.get("reset_lines", ["Again."])
+	var line := String(lines[1]) if n == 3 and lines.size() > 1 else String(lines[0])
+	if hint != null:
+		hint.visible = false
+	var root := Control.new()
+	root.name = "TrialReset"
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.add_child(root)
+	var glare := ColorRect.new()
+	glare.color = Color(1.0, 0.98, 0.9, 0.0)
+	glare.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	glare.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(glare)
+	var tw := root.create_tween()
+	tw.tween_property(glare, "color:a", 0.85, 0.5)
+	tw.tween_property(glare, "color", Color(0.02, 0.02, 0.05, 0.8), 0.9)
+	sfx.play("ward_spring")
+	await tw.finished
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 10)
+	box.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	root.add_child(box)
+	var who := UITheme.label(String(spec.get("bark_who", "")).to_upper(), 34, UITheme.GOLD_DIM, "display_bold")
+	who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(who)
+	var say := UITheme.label(line, 44, UITheme.TEXT, "body")
+	say.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	say.custom_minimum_size = Vector2(minf(1300.0, size.x * 0.8), 0)
+	box.add_child(say)
+	await get_tree().process_frame
+	box.position = (root.size - box.size) * 0.5
+	box.modulate.a = 0.0
+	root.create_tween().tween_property(box, "modulate:a", 1.0, 0.4)
+	var tapped := [false]
+	root.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
+			tapped[0] = true)
+	var t := 0.0
+	var hold := 1.6 + line.length() * 0.06
+	while t < hold and not (tapped[0] and t > 0.6):
+		await get_tree().process_frame
+		t += get_process_delta_time()
+	return "again"
 
 
 ## What the win earned (v2 Resonance and Rank). In a story duel the

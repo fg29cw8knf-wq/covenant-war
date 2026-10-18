@@ -14,7 +14,7 @@ extends RefCounted
 static var _cache := {}
 
 ## Creatures that float rather than stand.
-const FLYERS := ["emberwisp", "bloomsprite", "lantern_moth"]
+const FLYERS := ["emberwisp", "bloomsprite", "lantern_moth", "sunlance_seraph"]
 
 ## Which arena each starter deck calls home.
 const DECK_ARENA := {

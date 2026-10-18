@@ -60,8 +60,26 @@ var face_up := {}
 ## A story duel's own rules (Master Script v3: every story duel has one rule
 ## that says who the opponent is), as {rule id: the side it binds}. Each rule
 ## is its own _rule_<id>() function under "story rules" below:
-## "run_to_ground" (Hunter Dask, the Thornwood road).
+## "run_to_ground" (Hunter Dask, the Thornwood road), "hold_the_gate" (Warden
+## Hale at Solhaven's gate), "light_fingers" (Wren in the alley),
+## "sunspire_mirror" (Ser Aldric on the Sunspire) and "mirror_trial" (the
+## Trial of Light: the mirrors set the board and watch; the other side must
+## win within puzzle.turns of its own turns).
 var story_rules := {}
+## Both duellists start on this share of their usual Life (Hale's short duel
+## at the gate is fought at half: "a test, not a fight").
+var life_scale := 1.0
+## Cards a story duellist keeps off their deck until a rule brings them out
+## ([side] -> card ids): Aldric's Dawnmane, for when he's losing.
+var kept_back: Array = [[], []]
+## A fixed board instead of the usual start (the Trial of Light): first, life,
+## essence_max (before the first turn's +1), board (per side, three slots of a
+## card id, an [id, ascension...] stack or null), hand, deck (drawn in the
+## order written) and turns (how many turns side `first` has to win in).
+var puzzle := {}
+## What the story rules remember during a duel (the mirror has swung, Wren's
+## hand has been in your pocket...).
+var rule_state := {}
 
 
 # ------------------------------------------------------------------ setup ---
@@ -110,6 +128,8 @@ func _setup_phase() -> void:
 		p.max_life = start_life if start_life > 0 else DuelRules.life_for(p.attributes())
 		if start_lives.size() == 2 and int(start_lives[p.index]) > 0:
 			p.max_life = int(start_lives[p.index])
+		if life_scale != 1.0:
+			p.max_life = maxi(10, int(round(p.max_life * life_scale / 10.0)) * 10)
 		p.life = p.max_life
 		p.fortune_left = mini(2, int(p.profile.get("fortune", 0)))
 		if law == "hethrin" and blessed(p.index):
@@ -118,6 +138,12 @@ func _setup_phase() -> void:
 			p.extra_ward_slots = 1
 	if law != "":
 		_log("This duel is fought under %s: %s" % [DuelLaws.law_name(law), DuelLaws.describe(law)])
+	if not puzzle.is_empty():
+		_setup_puzzle()
+		turn = 0
+		current = first_player
+		_changed()
+		return
 	# Both roll a d20; Swiftness adds its Fate modifier, so the swifter
 	# duellist goes first more often (but not always).
 	while first_forced >= 0:
@@ -157,6 +183,53 @@ func _setup_phase() -> void:
 	_changed()
 
 
+## A fixed board (the Trial of Light): no roll for first turn and no opening
+## hands; each side's Totems, hand, deck, Life and Essence are as written.
+func _setup_puzzle() -> void:
+	first_player = int(puzzle.get("first", 0))
+	for p in players:
+		var i: int = p.index
+		p.deck.clear()
+		p.hand.clear()
+		var lives: Array = puzzle.get("life", [])
+		if i < lives.size() and int(lives[i]) > 0:
+			p.max_life = int(lives[i])
+			p.life = p.max_life
+		var em: Array = puzzle.get("essence_max", [])
+		if i < em.size():
+			p.essence_max = int(em[i])
+		for id in (puzzle.get("hand", [[], []]) as Array)[i]:
+			p.hand.append(_new_card(String(id), i))
+		var dk: Array = (puzzle.get("deck", [[], []]) as Array)[i]
+		for k in range(dk.size() - 1, -1, -1):
+			p.deck.append(_new_card(String(dk[k]), i))   # the first written is drawn first
+		var board: Array = (puzzle.get("board", [[], []]) as Array)[i]
+		for s in mini(board.size(), DuelRules.SLOTS):
+			var e = board[s]
+			if e == null or (e is String and e == ""):
+				continue
+			var ids: Array = e if e is Array else [e]
+			var t := DuelTotem.new(_new_card(String(ids[0]), i), i, s, 0, p.attributes())
+			for k in range(1, ids.size()):
+				t.stack.append(_new_card(String(ids[k]), i))
+			p.slots[s] = t
+	if String(puzzle.get("log", "")) != "":
+		_log(String(puzzle.log))
+
+
+## A set board can hold a side's Essence where it is (puzzle.essence_fixed):
+## it refills each turn but never grows.
+func _essence_fixed(pi: int) -> bool:
+	var f: Array = puzzle.get("essence_fixed", [])
+	return pi < f.size() and bool(f[pi])
+
+
+func _new_card(id: String, owner: int) -> DuelCard:
+	var c := DuelCard.new(_next_uid, id, owner)
+	_next_uid += 1
+	return c
+
+
 # ------------------------------------------------------------------- turns ---
 
 func _take_turn() -> void:
@@ -172,7 +245,7 @@ func _take_turn() -> void:
 	for t in p.totems():
 		t.attacked = false
 		t.buff = 0
-	if p.essence_max < DuelRules.essence_cap:
+	if p.essence_max < DuelRules.essence_cap and not _essence_fixed(p.index):
 		p.essence_max += 1
 	p.essence = p.essence_max
 	if p.pending_essence > 0:
@@ -199,9 +272,15 @@ func _take_turn() -> void:
 	await _possessed_strikes(p)
 	if over:
 		return
+	await _rule_light_fingers(p)
+	if over:
+		return
+	await _rule_dawnmane(p)
+	if over:
+		return
 
 	var actions := 0
-	while not over:
+	while not over and not _rule_mirrors_watch(p):
 		actions += 1
 		if actions > DuelRules.MAX_ACTIONS_PER_TURN:
 			break
@@ -215,6 +294,9 @@ func _take_turn() -> void:
 	if over:
 		return
 	await _dusk(p)
+	_rule_mirror_trial_out(p)
+	if over:
+		return
 	current = 1 - current
 
 
@@ -458,12 +540,14 @@ func summon_cost(pi: int, card: DuelCard) -> int:
 
 ## A card's Essence cost under this duel's Law (never below 1 for a card
 ## that costs anything).
-func card_cost(_pi: int, card: DuelCard) -> int:
+func card_cost(pi: int, card: DuelCard) -> int:
 	var c := card.cost()
-	if c <= 0 or law == "":
+	if c <= 0:
 		return c
 	var el := card.element()
-	var d := 0
+	var d := _rule_sunspire_mirror_discount(pi, card)
+	if law == "" and d == 0:
+		return c
 	match law:
 		"pyrrhane":
 			if el == "fire": d -= 1
@@ -708,6 +792,7 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 				top = maxi(top, f.hp_left())
 			out = foes.filter(func(f): return f.hp_left() == top)
 	out = _rule_run_to_ground(pi, out)
+	out = _rule_hold_the_gate(pi, out)
 	return out
 
 
@@ -725,6 +810,162 @@ func _rule_run_to_ground(pi: int, out: Array) -> Array:
 	for f in foes:
 		low = mini(low, (f as DuelTotem).hp_left())
 	return foes.filter(func(f): return (f as DuelTotem).hp_left() == low)
+
+
+## Hold the Gate (Warden Hale, at Solhaven's Golden Gate): while one of his
+## Guardians stands, his Totems never go for your Life. He's there to hold,
+## not to win.
+func _rule_hold_the_gate(pi: int, out: Array) -> Array:
+	if not story_rules.has("hold_the_gate") or int(story_rules.hold_the_gate) != pi:
+		return out
+	if not players[pi].has_guardian():
+		return out
+	return out.filter(func(x): return not (x is String and x == LIFE))
+
+
+## Light Fingers (Wren, in the alley): once a duel, from her second turn on,
+## she takes a card out of your hand that she can play there and then, and
+## plays it as her own. She picks the best one going.
+func _rule_light_fingers(p: DuelPlayer) -> void:
+	if not story_rules.has("light_fingers") or int(story_rules.light_fingers) != p.index:
+		return
+	if rule_state.get("light_fingers", false) or turn < 3:
+		return
+	var foe := opponent(p.index)
+	var picks := foe.hand.duplicate()
+	picks.sort_custom(func(a, b): return _steal_value(a) > _steal_value(b))
+	for c in picks:
+		var card: DuelCard = c
+		# in her hand for a moment, to see whether she could play it now
+		var at := foe.hand.find(card)
+		foe.hand.remove_at(at)
+		p.hand.append(card)
+		card.owner = p.index
+		var act := _stolen_play(p.index, card)
+		if act.is_empty():
+			p.hand.erase(card)
+			foe.hand.insert(at, card)
+			card.owner = foe.index
+			continue
+		rule_state["light_fingers"] = true
+		rule_state["stolen"] = card.id
+		_log("Light Fingers: %s takes %s from %s hand, and plays it as her own." % [p.player_name, card.card_name(), whose(foe.player_name, true)], p.index)
+		await _fx("fx_light_fingers", [p.index, card])
+		if over:
+			return
+		await perform(p.index, act)
+		return
+
+
+## How much Wren wants a card from your hand.
+func _steal_value(c: DuelCard) -> float:
+	match c.kind():
+		"totem":
+			return 20.0 + c.cost() * 10.0 + c.tier() * 6.0 if c.is_basic_totem() else 0.0
+		"summon":
+			return 60.0 + c.cost() * 10.0
+		"rite":
+			return c.cost() * 10.0 + int(c.def.get("damage", 0)) * 0.2 + 2.0
+		"ward":
+			return c.cost() * 8.0 + 1.0
+	return 0.0
+
+
+## The play Wren makes with a card she's just taken ({} if she can't use it now).
+func _stolen_play(pi: int, card: DuelCard) -> Dictionary:
+	match card.kind():
+		"totem":
+			if card.is_basic_totem() and call_problem(pi, card) == "":
+				return {"type": "call", "card": card, "slot": players[pi].empty_slots()[0]}
+		"rite":
+			if rite_needs_target(card):
+				var ts := rite_targets(pi, card)
+				if card.def.get("target", "") == "foe_totem":
+					ts.sort_custom(func(a, b): return a.hp_left() < b.hp_left())
+				else:
+					ts.sort_custom(func(a, b): return a.damage > b.damage)
+				for t in ts:
+					if rite_problem(pi, card, t) == "":
+						return {"type": "rite", "card": card, "target": t}
+			elif rite_problem(pi, card) == "":
+				return {"type": "rite", "card": card}
+		"ward":
+			if ward_problem(pi, card) == "":
+				return {"type": "ward", "card": card}
+		"summon":
+			if summon_needs_target(card):
+				var ts := targetable(opponent(pi).totems())
+				ts.sort_custom(func(a, b): return a.hp_left() > b.hp_left())
+				for t in ts:
+					if summon_problem(pi, card, t) == "":
+						return {"type": "summon", "card": card, "target": t}
+			elif summon_problem(pi, card) == "" and not opponent(pi).totems().is_empty():
+				return {"type": "summon", "card": card}
+	return {}
+
+
+## The Sunspire's Mirror (Ser Aldric, on the Sunspire's roof): the first time
+## his Life is at half or less, the great mirror swings on its chains to put
+## the sun on his side of the Circle. For the rest of the duel his Radiant
+## cards cost one less, and what he kept back for when he's losing (Dawnmane)
+## comes to his hand.
+func _rule_sunspire_mirror_check(pi: int) -> void:
+	if not story_rules.has("sunspire_mirror") or int(story_rules.sunspire_mirror) != pi:
+		return
+	var p: DuelPlayer = players[pi]
+	if over or rule_state.get("mirror", false) or p.life <= 0 or p.life * 2 > p.max_life:
+		return
+	rule_state["mirror"] = true
+	_log("The great mirror swings to %s side of the Circle. %s Radiant cards cost one less." % [whose(p.player_name, true), whose(p.player_name)], pi)
+	for id in kept_back[pi]:
+		p.hand.append(_new_card(String(id), pi))
+	kept_back[pi] = []
+	await _fx("fx_mirror", [pi])
+
+
+## One less for a Radiant card once the mirror is on its owner's side.
+func _rule_sunspire_mirror_discount(pi: int, card: DuelCard) -> int:
+	if not story_rules.has("sunspire_mirror") or int(story_rules.sunspire_mirror) != pi:
+		return 0
+	if rule_state.get("mirror", false) and card.element() == "radiant":
+		return -1
+	return 0
+
+
+## What he kept back, he calls down the moment he can pay for it: Aldric lays
+## Dawnmane on the stone without a word.
+func _rule_dawnmane(p: DuelPlayer) -> void:
+	if not story_rules.has("sunspire_mirror") or int(story_rules.sunspire_mirror) != p.index:
+		return
+	if not rule_state.get("mirror", false) or rule_state.get("woken", false):
+		return
+	for c in p.hand:
+		var card: DuelCard = c
+		if not (card.is_summon() and card.element() == "radiant"):
+			continue
+		var act := _stolen_play(p.index, card)   # (the same choice of target)
+		if act.is_empty():
+			return
+		rule_state["woken"] = true
+		await perform(p.index, act)
+		return
+
+
+## The Trial of Light: the mirrors (the side this binds) set the board and
+## only watch.
+func _rule_mirrors_watch(p: DuelPlayer) -> bool:
+	return story_rules.has("mirror_trial") and int(story_rules.mirror_trial) == p.index
+
+
+## ...and the other side has puzzle.turns of its own turns to win in. A
+## mistake resets the board: the duel ends at the last of them.
+func _rule_mirror_trial_out(p: DuelPlayer) -> void:
+	if not story_rules.has("mirror_trial") or int(story_rules.mirror_trial) == p.index or over:
+		return
+	var n := int(rule_state.get("trial_turns", 0)) + 1
+	rule_state["trial_turns"] = n
+	if n >= int(puzzle.get("turns", 3)):
+		_finish(int(story_rules.mirror_trial), "The mirrors go dark. They begin again.")
 
 
 func move_problem(pi: int, t, i: int, target = null, check_target: bool = false) -> String:
@@ -1574,6 +1815,7 @@ func _hit_life(pi: int, amount: int, info: Dictionary = {}) -> int:
 		players[1 - pi].stats.life_damage_dealt += amt
 	_log("%s loses %d Life (%d left)." % [p.player_name, amt, maxi(0, p.life)], pi)
 	await _fx("fx_life_hit", [pi, amt, info])
+	await _rule_sunspire_mirror_check(pi)
 	await _check_life(pi)
 	return amt
 

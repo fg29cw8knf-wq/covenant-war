@@ -362,7 +362,35 @@ const CARDS := {
 		],
 		"art": "a swamp spider with an iridescent violet abdomen, legs dripping luminous venom, sitting in a dewy web over a bog",
 	},
+	# ================================================================ RADIANT
+	# Solhaven's own light (Master Script v3, Chapter 1: Ser Aldric's duel on
+	# the Sunspire). Paintings to come: cards/<id>.png, creatures/<id>.png.
+	"sunlance_seraph": {
+		"kind": "totem", "name": "Sunlance Seraph", "element": "radiant", "tier": 5, "stage": 0, "cost": 5,
+		"hp": 150, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 6, "damage": 20},
+		"moves": [
+			{"name": "Sunlance", "cost": 0, "damage": 30},
+			{"name": "Dawnbreak Lance", "cost": 3, "damage": 80, "effects": [{"op": "pierce"}]},
+		],
+		"art": "a six-winged seraph of white gold and living sunlight, a long lance of light levelled, a face hidden behind a sunburst helm, an heirloom of a knightly house",
+	},
+	"sunmane_lion": {
+		"kind": "totem", "name": "Sunmane Lion", "element": "radiant", "tier": 4, "stage": 0, "cost": 3,
+		"hp": 100, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 5, "damage": 10},
+		"moves": [
+			{"name": "Pounce", "cost": 0, "damage": 30},
+			{"name": "Mane of Dawn", "cost": 2, "damage": 50, "effects": [{"op": "boon", "who": "self", "boon": "blessed"}]},
+		],
+		"art": "a young lion made of cooling sunlight, its mane a ring of soft gold flame, Dawnmane made small, crouched to pounce",
+	},
 	# ================================================================ SUMMONS
+	"dawnmane": {
+		"kind": "summon", "name": "Dawnmane, the Sun Lion", "element": "radiant", "tier": 6, "cost": 7,
+		"affinity": "presence",
+		"move": {"name": "Dawn's Roar", "damage": 50, "target": "all_foes",
+			"effects": [{"op": "boon", "who": "allies", "boon": "blessed"}]},
+		"art": "a colossal lion of blazing dawn light leaping down from the sun, its mane a corona, roaring over a white city of gold domes",
+	},
 	"pyraxis": {
 		"kind": "summon", "name": "Pyraxis, Heart of the Pyre", "element": "fire", "tier": 6, "cost": 7,
 		"affinity": "might",
@@ -701,6 +729,37 @@ const NPC_DECKS := {
 			"blightrat": 3, "plague_asp": 1,
 			"jagged_shards": 2, "hunters_mark": 1, "forge_edge": 1, "healing_draught": 1, "essence_flask": 2,
 			"poison_trap": 2, "ambush_snare": 2, "iron_bastion": 1},
+	},
+	# Chapter 1, Solhaven (Master Script v3)
+	"gate_watch": {
+		"name": "The Gate Watch", "elements": ["metal", "earth"], "mascot": "brassback",
+		"desc": "Warden Hale's Guardians: shells and shields that hold a gate, not take a field.",
+		"attributes": {"resolve": 2, "presence": 1},
+		"cards": {"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1, "shellguard": 2,
+			"pebblit": 3, "boulderox": 1, "quarry_golem": 1,
+			"bulwark": 2, "healing_draught": 2, "essence_flask": 2, "forge_edge": 1, "sanctify": 1, "lure_bell": 1,
+			"clarity_tonic": 1, "travellers_pack": 1, "crystal_vein": 1,
+			"iron_bastion": 2},
+	},
+	"pickpocket": {
+		"name": "Pickpocket", "elements": ["psychic", "venom", "storm"], "mascot": "dreamfox",
+		"desc": "Wren's deck: quick hands, tricks, poison and things that aren't where you left them.",
+		"attributes": {"cunning": 2, "swiftness": 2},
+		"cards": {"dreamfox": 3, "veilfox": 2, "blightrat": 3, "plague_asp": 1, "mirewidow": 2,
+			"sparkkit": 3, "voltlynx": 1, "emberwisp": 2, "somnowl": 1,
+			"mind_fog": 1, "shadow_cloak": 2, "quicken": 1, "corrosive_spit": 1, "confounding_chime": 1,
+			"essence_flask": 2, "hex_mark": 1,
+			"mirror_veil": 1, "poison_trap": 1, "ambush_snare": 1},
+	},
+	"golden_oath": {
+		"name": "The Golden Oath", "elements": ["radiant", "metal", "fire"], "mascot": "gilded_sentinel",
+		"desc": "Ser Aldric Vane's deck: the Gilded Sentinel that lets nothing past, his house's Sunlance Seraph, and the sun at his back.",
+		"attributes": {"presence": 3, "resolve": 2},
+		"cards": {"gilded_sentinel": 1, "sunlance_seraph": 1, "brassback": 3, "ironhide": 2, "shieldhound": 3,
+			"pebblit": 2, "boulderox": 1, "hearth_salamander": 2, "cinderpup": 2, "blazehound": 1,
+			"sanctify": 2, "healing_draught": 2, "forge_edge": 1, "essence_flask": 2, "crystal_vein": 1,
+			"blinding_flare": 1,
+			"iron_bastion": 2, "last_stand": 1},
 	},
 }
 
