@@ -133,12 +133,20 @@ func event(name: String) -> void:
 	if lines.is_empty():
 		return
 	_shown[name] = true
+	await _rival_done()
 	for step in lines:
 		if (step as Dictionary).has("do"):
 			await _instruct(step)
 		else:
 			await _explain(step)
 	_show_head()
+
+
+## Bram lets the rival's line be read before he speaks (both at once, his box
+## lay over theirs).
+func _rival_done() -> void:
+	if screen != null and screen.has_method("_bark_gone"):
+		await screen._bark_gone()
 
 
 ## A one-off lesson for something seen for the first time (a condition, a
@@ -149,6 +157,7 @@ func lesson(id: String, text: String, p_group: String, p_focus: String = "", who
 		return
 	text = first_time_line(id, text)
 	Game.learn(id, p_group, who, text)
+	await _rival_done()
 	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
 	_show_head()
 

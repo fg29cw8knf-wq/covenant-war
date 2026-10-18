@@ -1912,6 +1912,8 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	var rattle := Sfx.has_file("dice_roll")
 	if rattle:
 		sfx.play("dice_roll")
+	if _pi == rival:
+		story_bark("rival_first_fate")   # (a plea as it rolls: "Six. Give me a six.")
 	for k in steps:
 		dv.face = randi_range(1, 20)
 		dv.spin += 0.5
@@ -1935,8 +1937,6 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	var col := UITheme.GOLD if int(info.roll) == 20 else (Color("ff6a5a") if int(info.roll) == 1 else Color(0.7, 0.6, 1.0))
 	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
-	if _pi == rival:
-		story_bark("rival_first_fate")
 	await pause(1.2)
 	if tutor != null:
 		# the die stays up while Bram explains it (the Lantern Duel's scripted
@@ -2424,6 +2424,7 @@ func _show_bark(line: String) -> void:
 	_bark_label.text = line
 	_bark_box.modulate.a = 0.0
 	_bark_box.visible = true
+	_bark_at = Time.get_ticks_msec()
 	await get_tree().process_frame
 	# just right of the rival's plate, below their hand, at the field's scale,
 	# and kept inside the screen's safe area
@@ -2444,6 +2445,29 @@ func _show_bark(line: String) -> void:
 
 
 var _bark_tw: Tween
+
+
+var _bark_at := 0
+
+
+## Bram waits for a line of the rival's to be read before he speaks (they
+## sat in the same corner, his box over theirs): it stays up two seconds,
+## then fades out at once.
+func _bark_gone() -> void:
+	if _bark_box == null or not _bark_box.visible or not is_inside_tree():
+		return
+	var left := 2.0 - float(Time.get_ticks_msec() - _bark_at) / 1000.0
+	if left > 0.0:
+		await get_tree().create_timer(left).timeout
+	if _bark_box == null or not _bark_box.visible:
+		return
+	if _bark_tw != null and _bark_tw.is_valid():
+		_bark_tw.kill()
+	var tw := _bark_box.create_tween()
+	_bark_tw = tw
+	tw.tween_property(_bark_box, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(func() -> void: _bark_box.visible = false)
+	await tw.finished
 
 
 ## Flips a card up in the middle of the Circle, flying in from `from`.
