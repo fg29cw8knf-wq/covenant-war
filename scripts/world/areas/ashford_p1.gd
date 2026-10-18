@@ -1585,14 +1585,18 @@ static func clear_cam(w: World, cands: Array, look: Vector3, people := ["player"
 		var b := Cine.body(w, who)
 		if b is CollisionObject3D:
 			skip.append((b as CollisionObject3D).get_rid())
-	# the extras (the children, the dancers) have no bodies to hit: anyone
-	# standing within a shoulder's width of the line of sight is in the way
+	# anyone else standing within a shoulder's width of the line of sight is
+	# in the way (the extras have no bodies for the ray to hit, and a
+	# villager just under the line still fills the bottom of the shot)
 	var extras: Array = []
 	var ex: Dictionary = w.get_meta("extras", {})
 	for id in ex:
 		var eb = ex[id].get("body", null)
 		if eb != null and is_instance_valid(eb) and (eb as Node3D).is_visible_in_tree():
 			extras.append((eb as Node3D).global_position)
+	for n in w.npcs:
+		if not (String(n.def.id) in people) and (n.body as Node3D).is_visible_in_tree():
+			extras.append((n.body as Node3D).global_position)
 	for c: Vector3 in cands:
 		if c.y < Cine.ground(w, c) + 0.6:
 			continue
