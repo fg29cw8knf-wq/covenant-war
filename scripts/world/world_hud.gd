@@ -382,7 +382,7 @@ func close_menu() -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _menu.visible or not visible:
 		return   # the pause menu handles its own keys; nothing while a duel is up
-	if event.is_action_pressed("menu") and _menu_btn.visible and not dialogue.visible:
+	if event.is_action_pressed("menu") and _menu_btn.visible and (not dialogue.visible or dialogue.barking()):
 		open_menu()
 		get_viewport().set_input_as_handled()
 

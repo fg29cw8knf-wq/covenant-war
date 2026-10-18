@@ -1,10 +1,14 @@
 extends RefCounted
 ## Ashford — the player's home village, on the last night of the Age.
-## Prologue scenes P1 (The Last Night) to P4 (Ashford burns), from the
-## Spoken Script. P1 is played on foot; from midnight on, the Prologue is a
-## film made in the village itself (Cine and CineOverlay): the Sigilfall,
-## the dawn and the Pale Herald, the taproom, the night Ashford burns and
-## Bram's cellar. Then the trapdoor, and the Thornwood (thornwood.gd).
+## Prologue P1 is played on foot, as Master Script v3 has it
+## (docs/script/v3_prologue_p1.md): the words, the talk trees and the
+## Lantern Duel are here; the staging (the attic and its mirror, the taproom,
+## the crate, the last lantern on the top hook, Tam's barrel and letter,
+## Nell's bench, Tilly's moth, the drum) is in ashford_p1.gd. From midnight
+## on, the Prologue is a film made in the village itself (Cine and
+## CineOverlay): the Sigilfall, the dawn and the Pale Herald, the taproom,
+## the night Ashford burns and Bram's cellar. Then the trapdoor, and the
+## Thornwood (thornwood.gd).
 ##
 ## Layout (metres): the Great Lantern stands at the centre of the green, the
 ## cottages ring it about 22 m out, the road runs past the south side and the
@@ -17,9 +21,9 @@ const BOUNDS := Rect2(-24.0, -24.0, 48.0, 44.0)
 const CAMERA_X_LIMIT := 13.0
 ## The village builds its own sky, moon, fog and lights.
 const CUSTOM_ENV := true
-## New Game opens on a flight over the festival before the player takes over (intro()).
+## New Game opens in the inn's attic (intro(): AshfordP1.opening).
 const INTRO := true
-## A Prologue left part-way through its film picks up where it was (resume()).
+## A Prologue left part-way picks up where it was (resume()).
 const RESUMES := true
 
 const SPAWNS := {
@@ -47,118 +51,123 @@ const CORIN_DECK := [
 ## Both start on 25 Life, so Brookfin's Undertow to the Life ends the lesson.
 const LANTERN_LIFE := 25
 
-## Bram shows the player their pack right after handing them the deck: the
-## Deck and the Codex open up, one gated step at a time (WorldHUD.pack_tour).
-const PACK_TOUR := [
-	{"say": "Before you go losing it: everything you carry lives in your pack. Tap it, up in the corner.", "do": "menu"},
-	{"say": "Tap Deck.", "do": "tab:deck"},
-	{"say": "That's the twelve you'll duel with tonight. Shuffled before every duel, and you draw from the top.", "focus": "deck_grid"},
-	{"say": "Twelve's a beginner's deck. A proper one is thirty, and you build it yourself from what you find. Not tonight."},
-	{"say": "Tap any card. It'll tell you everything about itself.", "do": "card"},
-	{"say": "What it costs, its element, what every move does. Read before you play. Corin never does.", "focus": "detail"},
-	{"say": "Close it.", "do": "close"},
-	{"say": "Now the Codex.", "do": "tab:codex"},
-	{"say": "Every card you find gets written in here: your own, and any you see played against you. It's short tonight. It won't stay short.", "focus": "codex_grid"},
-	{"say": "Close your pack. Corin's waiting, and patience was never his Sigil.", "do": "resume"},
-]
-
-## Bram teaches the duel from his stool, one step at a time (Spoken Script, P1:
-## the Lantern Duel). Each line waits for the player: an explanation until they
-## tap, an instruction until they've done it, and nothing else can be touched
-## meanwhile. See DuelTutor for the step format. It teaches only what's on
-## the table tonight (Totems, Rites, Essence, Life, attacking, one weakness,
-## Fate and the card panel); Wards, the element chart, conditions and
-## Ascension are taught the first time each matters, later on.
+## Bram teaches the duel from his stool, one step at a time (Master Script v3,
+## "P1 · Bram during the Lantern Duel"), if the player asked him to. Each line
+## waits for the player: an explanation until they tap, an instruction until
+## they've done it, and nothing else can be touched meanwhile; the light
+## shows where things are (Bram never says where on the screen). See
+## DuelTutor for the step format. Only lines v3 marks "(… lights up)" have a
+## focus. It teaches only what's on the table tonight (Totems, Rites,
+## Essence, Life, attacking, one weakness, Fate and the card panel); Wards,
+## the element chart, conditions and Ascension are taught the first time
+## each matters, later on.
 const LESSON := {
 	"events": {
 		"intro": [
 			{"say": "Right. Those cards are Sigils. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window."},
-			{"say": "Yours are Sparks, the smallest kind. That's the gods on a quiet day, mind. When they fight, it doesn't drip. It pours."},
-			{"say": "There's a lot to duelling. More than one night's worth. So tonight, just the basics. The rest you'll learn as more cards come your way."},
+			{"say": "Yours are Sparks, the smallest kind. That's the gods on a quiet day. When they fight, it doesn't drip. It pours."},
+			{"say": "There's more to duelling than one night's worth. Tonight, just the basics. The rest comes as the cards do."},
 			{"say": "Your Totems do the fighting. Bring his Life down to nothing and you've won.", "focus": "life"},
-			{"say": "Tap the die to roll for who goes first. Highest starts.", "do": "die"},
+			{"say": "Roll for who goes first. Highest starts.", "do": "die"},
 		],
 		"rival_call": [
-			{"say": "There's his Cinderpup. Fire, see the orb? Remember that.", "focus": "foe:cinderpup"},
+			{"say": "There's his Cinderpup. Fire. Remember it."},
 		],
 		"weakness": [
-			{"say": "See that? Water puts fire out. Hit a Totem's weakness and it hurts a good deal more. The orb on each card tells you its element.", "focus": "foe:cinderpup"},
+			{"say": "See that? Water puts fire out. Hit a Totem where it's weak and it hurts a good deal more. The sign on every card says what it fears.", "learn": "weakness"},
 		],
 		"rival_fate": [
-			{"say": "That's Fate. Some moves roll the die: roll high, hit hard; roll low, nothing. Corin loves those. Corin loves anything that can go wrong loudly.", "focus": "die", "learn": "fate"},
+			{"say": "That's Fate. Some moves roll the die: high, and they hit hard; low, nothing. His deck's full of them.", "learn": "fate"},
 		],
 		"absorbed": [
-			{"say": "And your Bulwark took the lot. Told you.", "focus": "totem:brookfin"},
+			{"say": "And the stone took the lot."},
 		],
 		"ko_rival": [
-			{"say": "Out it goes, back into its card. Nobody bleeds inside a circle. That's the law."},
+			{"say": "Out it goes, back into its card. Nobody bleeds inside a Circle. That's the law."},
 		],
 		"hit_mine": [
-			{"say": "He's throwing Rites now. That one got through, but Brookfin's tougher than it looks.", "focus": "totem:brookfin"},
+			{"say": "He's throwing Rites now. Brookfin's tougher than it looks."},
 		],
 	},
 	"turns": [
 		[
-			{"say": "Along the bottom, that's your hand. Five to start, and you draw one more every turn after this.", "focus": "hand"},
-			{"say": "Brookfin's your Totem: a Spark of river water. Tap it.", "do": "card:brookfin"},
-			{"say": "That panel on the right is the card up close: its cost, its element and what its moves do. Tap any card, yours or Corin's, whenever you want a closer look.", "focus": "detail"},
-			{"say": "Now tap the glowing slot. That calls it into the circle.", "do": "slot:1"},
-			{"say": "Calling it cost one Essence. That's the blue gems by your Life. You get one more every turn, so spend them. Nobody ever won a duel with savings.", "focus": "essence"},
-			{"say": "Nobody attacks on the first turn, and a Totem called this turn needs a moment to find its feet. So that's you done."},
-			{"say": "Tap End Turn.", "do": "end"},
-		],
-		[
-			{"say": "You drew a card. One every turn, like I said.", "focus": "hand"},
-			{"say": "Brookfin can fight now. Tap it.", "do": "totem:brookfin"},
-			{"say": "Pick a move. Splash costs nothing. Undertow costs one Essence, hits harder and heals Brookfin a little. Start with Splash.", "do": "move:0"},
-			{"say": "Now tap his Cinderpup.", "do": "target:cinderpup"},
-			{"say": "You've still two Essence. Not every card's a Totem. That Bulwark's a Rite: a bit of magic you cast once, then it's gone.", "focus": "card:bulwark"},
-			{"say": "Bulwark throws a wall of stone up round one of your own Totems. The next hit it takes, the stone takes first: up to fifty damage of it.", "focus": "card:bulwark"},
-			{"say": "Corin's pup will go for Brookfin on his turn. He never waits. So the wall goes up now, before he swings.", "focus": "foe:cinderpup"},
-			{"say": "Tap Bulwark.", "do": "card:bulwark"},
-			{"say": "Now tap Brookfin, so the stone goes up round it.", "do": "target:brookfin"},
-			{"say": "That'll do for this turn. End it.", "do": "end"},
-		],
-		[
-			{"say": "His pup's hurting. Undertow will finish it."},
-			{"say": "Tap Brookfin.", "do": "totem:brookfin"},
-			{"say": "Undertow, this time.", "do": "move:1"},
-			{"say": "And tap the Cinderpup.", "do": "target:cinderpup"},
-			{"say": "Nothing stands across from Brookfin now. Next turn it can go straight at Corin's Life.", "focus": "life"},
+			{"say": "That's your hand. Five to start, and one more every turn after this.", "focus": "hand"},
+			{"say": "Brookfin's your Totem: a Spark of river water. Pick it up.", "do": "card:brookfin"},
+			{"say": "That's the card up close: what it costs, what it is, what its moves do. You can look at any card like that, his or yours.", "focus": "detail"},
+			{"say": "Now call it into the Circle.", "do": "slot:1"},
+			{"say": "That cost one Essence. You get another every turn, and what you don't spend is gone, so spend it.", "focus": "essence"},
+			{"say": "Nobody attacks on the first turn, and a Totem that's just been called needs a moment to find its feet. That's you done."},
 			{"say": "End your turn.", "do": "end"},
 		],
 		[
-			{"say": "Now. Tap Brookfin.", "do": "totem:brookfin"},
-			{"say": "Undertow. Make it count.", "do": "move:1"},
-			{"say": "Tap Corin's Life. There's nothing in the way.", "do": "target:life"},
+			{"say": "You drew one. Every turn, like I said."},
+			{"say": "Brookfin can fight now.", "do": "totem:brookfin"},
+			{"say": "Splash costs nothing. Undertow costs one Essence, hits harder and mends Brookfin a little. Splash first.", "do": "move:0"},
+			{"say": "At his Cinderpup.", "do": "target:cinderpup"},
+			{"say": "You've still two Essence. Not every card's a Totem. That Bulwark's a Rite: magic you cast once, then it's gone.", "focus": "card:bulwark"},
+			{"say": "It throws a wall of stone round one of your Totems. The next hit it takes, the stone takes first, up to fifty of it."},
+			{"say": "He'll go straight for Brookfin on his turn. He always does. So the wall goes up now.", "focus": "foe:cinderpup"},
+			{"say": "Bulwark.", "do": "card:bulwark"},
+			{"say": "Round Brookfin.", "do": "target:brookfin"},
+			{"say": "That'll do. End it.", "do": "end"},
+		],
+		[
+			{"say": "His pup's hurting. Undertow will finish it."},
+			{"say": "Brookfin.", "do": "totem:brookfin"},
+			{"say": "Undertow.", "do": "move:1"},
+			{"say": "His Cinderpup.", "do": "target:cinderpup"},
+			{"say": "Nothing stands across from Brookfin now. Next turn it goes straight at Corin.", "focus": "life"},
+			{"say": "End your turn.", "do": "end"},
+		],
+		[
+			{"say": "Now. Brookfin.", "do": "totem:brookfin"},
+			{"say": "Undertow.", "do": "move:1"},
+			{"say": "Straight at him. Nothing's in the way.", "do": "target:life"},
 		],
 	],
 }
 
 ## Corin's side of the lesson, one list per turn (DuelHuman.Scripted): he calls
 ## his pup across from Brookfin, tries his luck with a Fate move (the roll is set
-## so the Bulwark holds), then throws a Rite.
+## so the Bulwark holds), then throws a Rite. The duel is dealt in this order
+## whether or not Bram coaches it (that's how it can't be lost).
 const CORIN_SCRIPT := [
 	[{"type": "call", "card": "cinderpup", "slot": "mirror"}],
 	[{"type": "attack", "attacker": "cinderpup", "move": 1, "target": "brookfin", "roll": 12}],
 	[{"type": "rite", "card": "firebrand", "target": "brookfin"}],
 ]
 
-## Corin's barks during the Lantern Duel, shown in rotation when he attacks.
-const CORIN_BARKS := ["Ha! Didn't see that coming, did you?", "That's a lucky draw, that's all.", "Cinderpup, do something!", "Fine. FINE. Good hit."]
+## Corin's barks, each on the moment v3 gives it (DuelScreen.story_bark).
+const CORIN_BARK_ON := {
+	"rival_first_fate": "Six. Give me a six.",
+	"weakness_on_rival": "Water. Course you'd bring water.",
+	"rival_ko_own": "Cinderpup! Get up!",
+}
+## Corin's duel rule (v3, "DUEL · The Lantern Duel"), named as the duel starts
+## and played by the rules engine (DuelGame story_rules "showboat").
+const SHOWBOAT := ["Showboat", "Corin's Cinderpup always attacks the moment it can, whatever's in its way."]
+## The rematch ("Again? Bram's not watching this one."): the same decks,
+## shuffled, nothing locked and nothing tuned; Corin plays it for real.
+const REMATCH_AI := 0.55
 
 
 static func npcs() -> Array:
+	# Bram's first lessons: until the player has found Tam, only Tam and Bram
+	# answer (and nobody, during the opening itself)
+	var opening: bool = in_opening()
+	var find_tam: bool = Game.flag("ash_started") and not Game.flag("ash_tam")
+	var held := func(id: String) -> bool:
+		return opening or (find_tam and not id in ["tam", "bram"])
 	return [
-		{"id": "bram", "look": "bram", "name": "Bram", "pos": Vector3(2.2, 0, 2.6), "talk": _bram()},
+		{"id": "bram", "look": "bram", "name": "Bram", "pos": AshfordP1.STOOL + Vector3(0, 0, 0.16), "talk": _bram(), "muted": held.call("bram")},
 		{"id": "corin", "look": "corin", "name": "Corin", "pos": Vector3(-8.6, 0, -2.4),
-			"duel_flag": "ash_lantern_duel", "talk": _corin()},
-		{"id": "tam", "look": "farmer", "name": "Tam", "pos": Vector3(6.4, 0, -2.6), "talk": _tam()},
-		{"id": "tilly", "look": "child", "name": "Tilly", "pos": Vector3(5.2, 0, 8.4), "talk": _tilly()},
-		{"id": "nell", "look": "elder", "name": "Old Nell", "pos": Vector3(-3.9, 0, 6.6), "talk": _nell()},
-		{"id": "seamus", "look": "fiddler", "name": "Seamus", "pos": Vector3(-1.6, 0, -6.4), "talk": _seamus()},
+			"duel_flag": "ash_lantern_duel", "duel_needs": "ash_tam", "talk": _corin(), "muted": held.call("corin")},
+		{"id": "tam", "look": "farmer", "name": "Tam", "pos": Vector3(6.4, 0, -2.6), "talk": _tam(), "muted": held.call("tam")},
+		{"id": "tilly", "look": "child", "name": "Tilly", "pos": Vector3(5.2, 0, 8.4), "talk": _tilly(), "muted": held.call("tilly")},
+		{"id": "nell", "look": "elder", "name": "Old Nell", "pos": AshfordP1.BENCH, "talk": _nell(), "muted": held.call("nell")},
+		{"id": "ned", "look": "fiddler", "name": "Ned", "pos": Vector3(-1.6, 0, -6.4), "talk": _ned(), "muted": held.call("ned")},
 		# out in the open on the east of the green, clear of Tilly's stall
-		{"id": "hob", "look": "hob", "name": "Hob", "pos": Vector3(10.8, 0, 1.6), "talk": _hob()},
+		{"id": "hob", "look": "hob", "name": "Hob", "pos": Vector3(10.8, 0, 1.6), "talk": _hob(), "muted": held.call("hob")},
 	]
 
 
@@ -174,6 +183,8 @@ static func build(root: Node3D) -> void:
 	(root as World).music = ["ashford_festival"]
 	if not Game.flag("ash_marked"):
 		Music.play((root as World).music, 2.0, true)
+	# Bram's stool, Nell's bench, the drum and the Great Lantern's hooks
+	AshfordP1.dress(root as World)
 
 
 static func village(w: Node) -> AshfordVillage:
@@ -182,230 +193,344 @@ static func village(w: Node) -> AshfordVillage:
 
 # ================================================================== story ===
 
-## P1, as built today: the player starts on the green, so Bram's taproom lines
-## and the controls lesson play here. (The attic, the crate and the lantern
-## hanging are still to build.)
+## P1 opens in the attic (intro(), AshfordP1.opening): nothing more to say
+## on arrival.
 static func arrival() -> Array:
-	return [
-		{"say": "[center][i]Nobody alive has seen an Age end. So Ashford has decided it ends with cider.[/i][/center]"},
-		{"who": "bram", "say": "There you are, Sprout. Thought you'd sleep through the end of the world."},
-		{"who": "bram", "say": "Once every two thousand years, an Age ends. Be a shame to be late for it."},
-		{"choice": ["What happens when it ends?", "I'm up, I'm up."], "then": [
-			[{"who": "bram", "say": "The gods fight over who sits the Throne next. We hang lanterns and drink to whoever wins. It's a better deal than it sounds."}],
-			[{"who": "bram", "say": "Good. You can carry the next crate, then. Builds character."}],
-		]},
-		{"who": "bram", "say": "Corin's telling everyone he'll duel at the Sun Court one day. Solhaven. Gold roofs and golden knights."},
-		{"choice": ["One day I will, too.", "Why would anyone want to?"], "then": [
-			[{"set": "want_solhaven"}, {"who": "bram", "say": "Nobody from Ashford goes to Solhaven, Sprout. Solhaven would have to know where Ashford is first."}],
-			[{"who": "bram", "say": "Because you're twenty and this is a small place."}],
-		]},
-		{"who": "bram", "say": "Here's how it goes. Tap the ground where you want to stand. Your legs know the rest."},
-		{"who": "bram", "say": "And if you need to stop, the little square up in the corner stops the world. Save there. Nobody will think less of you."},
-		{"who": "bram", "say": "Now the hard part. Half the village wants a hand with something, and you're the hand."},
-		{"who": "bram", "say": "Tam's at the hay cart, Tilly's by the stall and Old Nell's at the well. Walk up to someone and a mark shows over their head. Tap Talk, and they'll talk."},
-		{"who": "bram", "say": "Or go and shut Corin up first, if you must. He's by the well, telling people he's lighting the Great Lantern tonight. I'd like him to be wrong in front of a crowd."},
-		{"who": "bram", "say": "Your choice. But folk here remember who turned up."},
-		{"say": "[i]He glances up at the stars the way he'd watch a stranger's hands.[/i]"},
-		{"who": "bram", "say": "Go on. Folk are waiting."},
-		{"scene": "home"},
-		{"objective": "Duel Corin by the well. Tam, Tilly and Old Nell could use a hand first."},
-		{"set": "ash_started"},
-	]
+	return []
 
 
-## All three chores done: Hob remembers at the river.
-static func _chores_done() -> Array:
-	return [{"if": "ash_tam", "then": [{"if": "ash_tilly", "then": [{"if": "ash_nell", "then": [{"set": "ash_ready"}]}]}]}]
-
-
+## Master Script v3, "P1 · Bram, when you talk to him".
 static func _bram() -> Array:
 	return [
-		{"if": "ash_ready", "then": [
-			{"who": "bram", "say": "Everyone sorted? Good. Corin's by the well, warming up his audience. Go and spoil the ending. Leave the how to me. Whoever wins lights the Great Lantern at midnight."},
+		{"if": "!ash_tam", "then": [
+			{"who": "bram", "say": "Tam, Sprout. Hay cart. Go on."},
 		], "else": [
-			{"who": "bram", "say": "Still folk wanting a hand, Sprout, if you've the time before midnight."},
-			{"if": "!ash_tam", "then": [{"who": "bram", "say": "Tam's at the hay cart, losing an argument with a barrel."}]},
-			{"if": "!ash_tilly", "then": [{"who": "bram", "say": "Tilly's at the stall with something to show you. She'll burst if you don't look."}]},
-			{"if": "!ash_nell", "then": [{"who": "bram", "say": "And Old Nell's at the well. She'll want to tell you a story. Let her."}]},
+			{"if": "!ash_nell", "then": [
+				{"who": "bram", "say": "Nell's by the well. Sit with her a minute. She'll not ask twice."},
+			]},
+			{"who": "bram", "say": "Corin's been warming up an audience for an hour. Go and spoil it for him. Whoever wins lights the Great Lantern at midnight."},
 		]},
-		{"who": "bram", "say": "And Sprout. Stay where I can see you tonight. Humour an old man."},
+		{"who": "bram", "say": "And stay where I can see you tonight."},
 	]
 
 
+## "P1 · Tam and the note": the barrel to the stall between them, then the
+## letter he can't read. Whether the player tells him it says tonight is
+## remembered (tam_told).
 static func _tam() -> Array:
 	return [
 		{"if": "ash_tam", "then": [
-			{"who": "tam", "say": "Whatever's owed can stay owed till morning. If you see my Nell, tell her I'm saving her a dance. Knees or no knees."},
-		], "else": [
-			{"who": "tam", "say": "Evening. Take the other end of this, would you? Bram wants the cider at the stall before the dancing starts, and my back wants a word with Bram."},
-			{"scene": "tam_barrel"},
-			{"say": "[i]You heave the last barrel into place. Tam wipes his hands on his shirt and nods up the lane, towards the mill.[/i]"},
-			{"who": "tam", "say": "Ironvault's man came by this morning. Very polite about it. The mill's note falls due at the new moon."},
-			{"who": "tam", "say": "Forty years I've ground Ashford's flour, and a banker I've never met owns the stones. Ah, well. Not tonight."},
-			{"who": "tam", "say": "Solmaris kept the rain fair for two thousand years. Who knows what we get tomorrow. Fire, probably. Or frogs. Drink up while it's free."},
-			{"set": "ash_tam"},
-		]},
-	] + _chores_done()
-
-
-static func _tilly() -> Array:
-	return [
-		{"if": "ash_tilly", "then": [
-			{"who": "tilly", "say": "It's still glowing! It never glows this long for me."},
-		], "else": [
-			{"if": "ash_tilly_seen", "then": [
-				{"who": "tilly", "say": "You said not tonight. It's still glowing, though. Look!"},
-				{"who": "tilly", "say": "Will you wake it now?"},
+			{"if": "tam_told", "then": [
+				{"who": "tam", "say": "I'm going to dance with my wife. Ironvault can watch."},
 			], "else": [
-				{"who": "tilly", "say": "Look! Look, look, look! A Lantern Moth! Da found it in the barley. It's only a Spark. But it's mine."},
-				{"who": "tilly", "say": "Only Attuned can wake them. Corin says you're Attuned. He says he's more Attuned, but he says that about everything. Will you wake it?"},
+				{"who": "tam", "say": "Three weeks. I'll have Nell dancing before then, knees or no knees."},
 			]},
-			{"choice": ["Let me see it.", "Not tonight, Tilly."], "then": [
+		], "else": [
+			{"scene": "p1_unmute"},
+			{"who": "tam", "say": "Evening. Take the other end of this, would you? Stall wants it before the dancing."},
+			{"scene": "tam_lift"},
+			# "Carry the barrel to the stall with Tam. (Tap the stall.)"; you set it
+			# down together, and Tam doesn't let go of the barrel straight away
+			{"scene": "tam_carry"},
+			{"who": "tam", "say": "You read, don't you. Bram had you doing the inn's books at ten."},
+			{"who": "tam", "say": "Ironvault's man left this at the mill. Nell does my reading, as a rule. Rather she didn't do this one."},
+			# he holds out the letter: "Read Tam's letter. (Tap it.)"
+			{"scene": "tam_letter_out"},
+			{"scene": "tam_letter_read"},
+			{"who": "tam", "say": "Well? New moon, their man said. That's three weeks off. Time enough to sort something."},
+			{"choice": ["It says tonight.", "It says the new moon."], "then": [
 				[
-					{"say": "[i]You touch the card.[/i]"},
-					{"scene": "tilly_moth"},
-					{"say": "[i]A moth made of lamplight. It circled Tilly's head twice and settled back into the paper, still glowing.[/i]"},
-					{"who": "tilly", "say": "Again! Again! It never does that for Da. Corin can make it twitch, but it never flies for him."},
-					{"set": "ash_tilly"},
+					{"set": "tam_told"},
+					{"who": "tam", "say": "...Tonight.", "during": "letter_back"},
+					# he folds the letter very small and puts it back in his pocket
+					{"scene": "tam_folds"},
+					{"who": "tam", "say": "Forty years I've ground this village's flour. Never missed a day."},
+					{"who": "tam", "say": "Don't tell Nell. Not tonight. She's been looking forward to this since harvest."},
 				],
 				[
-					{"who": "tilly", "say": "Aww. That's all right. It glows brighter when you're near, though. Look!"},
-					{"say": "[i]The card in her hands brightens as you lean in. Not a flicker. Steady, the way a candle burns when every door is shut.[/i]"},
-					{"set": "ash_tilly_seen"},
+					{"who": "tam", "say": "There. Three weeks. That's a harvest supper and a bit of luck.", "during": "letter_back"},
+					{"scene": "tam_pockets"},
+					{"who": "tam", "say": "Thank you. Don't tell Nell I asked. She thinks I'm cleverer than I am."},
 				],
 			]},
+			{"set": "ash_tam"},
+			{"objective": "Duel Corin on the green. Nell's on the bench by the well, if you've time."},
+			{"scene": "p1_home"},
 		]},
-	] + _chores_done()
+	]
 
 
+## "P1 · Nell by the well (side story)": sit with her on her bench.
 static func _nell() -> Array:
 	return [
 		{"if": "ash_nell", "then": [
-			{"who": "nell", "say": "Lights in the sky, child. Mark an old woman's words."},
+			{"who": "nell", "say": "Go on with you. Tam's saving me a dance, and I've to think of a reason to refuse him."},
 		], "else": [
-			{"who": "nell", "say": "Sit with me a moment, child. My knees won't take the dancing. Don't tell Tam. He'll only try to carry me."},
-			{"who": "nell", "say": "My gran's gran used to say the last Age began with lights in the sky. Gods squabbling over a chair, she said, and the sparks falling on us."},
-			{"who": "nell", "say": "I've seen the sky do it once myself, years back. One light. Left a hole in the top field you could lose a cow in."},
-			{"who": "nell", "say": "Stay close to Bram tonight, child. Old bones feel things."},
+			{"scene": "nell_face"},
+			# she pats the bench beside her
+			{"who": "nell", "say": "Sit with me, love. My knees have given up dancing, and Tam's given up asking.", "during": "nell_pats"},
+			# "Sit with Nell. (Tap the bench.)"
+			{"scene": "nell_sit"},
+			{"who": "nell", "say": "Twenty years Bram's had the inn. Did you know I was the first one through the door?"},
+			{"who": "nell", "say": "He came down the Shardlands road in November with his coat off. He had you wrapped in it."},
+			{"who": "nell", "say": "Paid for the inn in gold, there and then. Nobody in Ashford had ever seen gold."},
+			{"who": "nell", "say": "The sky had been white all that night, out over the Shards. Like a lamp somebody'd left on."},
+			{"choice": ["He says he found me on the road.", "He's never told me."], "then": [
+				[
+					{"set": "nell_road"},
+					{"who": "nell", "say": "Does he."},
+					# she watches the dancers for a while
+					{"scene": "nell_watches"},
+					{"who": "nell", "say": "Well. It's a long road."},
+				],
+				[{"who": "nell", "say": "No. He wouldn't. Some men carry a thing so long they forget it's heavy."}],
+			]},
+			{"who": "nell", "say": "Stay near him tonight. I don't know why I'm saying it. Old women get notions."},
 			{"set": "ash_nell"},
+			{"scene": "nell_stand"},
 		]},
-	] + _chores_done()
+	]
 
 
-static func _seamus() -> Array:
+## "P1 · Tilly and the Lantern Moth": she runs up with her card (when the
+## player comes near her stall, once they've seen Tam; AshfordP1.watch).
+## ash_tilly: the moth woke for the player; ash_tilly_seen: they said it
+## would wake for her one day.
+static func _tilly() -> Array:
 	return [
-		{"who": "seamus", "say": "Requests? I know the Lantern Reel, the Lantern Reel played slow, and the Lantern Reel played drunk. Two of those I can still play."},
-		{"who": "seamus", "say": "They say this reel's as old as the Age. Somebody stood on this green and played it the last time the sky changed hands. I do wonder how his night went."},
+		{"if": "tilly_talked", "then": [
+			{"who": "tilly", "say": "It's still glowing. It never glows this long."},
+		], "else": [
+			{"set": "tilly_talked"},
+			{"scene": "tilly_up"},
+			{"who": "tilly", "say": "It's a Lantern Moth. My dad found it in the barley. It's mine."},
+			{"who": "tilly", "say": "It won't wake up for me. Corin says only Attuned can wake them up. He says you're Attuned."},
+			{"choice": ["Let me try.", "It'll wake for you one day."], "then": [
+				[
+					# "Wake the Lantern Moth. (Tap the card.)"; it circles the player,
+					# twice, settles on the back of their hand, and only goes back
+					# into the card when they hand it back to her
+					{"scene": "moth_wake"},
+					{"set": "ash_tilly"},
+					{"who": "tilly", "say": "...It likes you better."},
+					{"who": "tilly", "say": "That's all right. Corin says it's not a person. It's a Spark."},
+				],
+				[
+					{"set": "ash_tilly_seen"},
+					{"who": "tilly", "say": "Corin says I'm not."},
+					{"say": "[center][i]The card in her hands brightens as you lean in. Not a flicker. Steady, the way a candle burns when every door is shut.[/i][/center]",
+						"during": "tilly_leans"},
+					{"who": "tilly", "say": "Look. It does that when you're near."},
+				],
+			]},
+			{"scene": "p1_home"},
+		]},
+	]
+
+
+## "P1 · Ned the fiddler and Hob".
+static func _ned() -> Array:
+	return [
+		{"who": "ned", "say": "This reel's as old as the Age, they say. Somebody stood on this green and played it the last time the sky changed hands."},
+		{"who": "ned", "say": "I do wonder how his night went."},
 	]
 
 
 static func _hob() -> Array:
 	return [
-		{"who": "hob", "say": "Barley's in, roof's patched, cider's paid for. If the Age wants to end, it can end tonight. I'm free."},
-		{"who": "hob", "say": "My cabbages came up early this year. Can't think why."},
+		{"who": "hob", "say": "Barley's in. Roof's patched. If the Age wants to end, it can end tonight."},
+		{"who": "hob", "say": "Cabbages came up early this year. Ploughed three Sparks up with them. Can't think why."},
 	]
 
 
-## Corin and the Lantern Duel. The player is Attuned (every Spark in the
-## village sits up when they pass) but has never held a deck: Bram has kept
-## them out of it. When Corin points that out, Bram walks over and hands
-## the player their first deck, says what one is, shows them their pack, and
-## the duel begins.
+## "P1 · Corin, Bram's deck and the Lantern Duel". Corin calls out when the
+## player comes near (AshfordP1.watch); as he spots them, Bram gets up off
+## his stool by the Lantern with a worn card box in his hand, walks over and
+## stops a few steps off, listening. The player is Attuned (every Spark in
+## the village sits up when they pass) but has never held a deck: Bram has
+## kept them from it. When Corin says so, Bram steps in and hands it over.
 static func _corin() -> Array:
 	return [
 		{"if": "first_deck", "then": [
-			{"who": "corin", "say": "Deck in your hand and everything. Come on, then, before you lose your nerve."},
+			{"who": "corin", "say": "Deck in hand and everything. Come on, before you think better of it."},
+			{"if": "!coach_asked", "then": _coach_question()},
 		] + _lantern_duel(), "else": [
-			# Bram sets off the moment Corin starts, so he's there to step in
-			{"who": "corin", "say": "Oi! Ashford's other Attuned! Ready to lose? Or are you off helping old ladies first?",
+			{"set": "corin_met"},
+			# he calls them over, and they go up to him
+			{"scene": "corin_calls"},
+			{"who": "corin", "say": "There they are. Ashford's other Attuned. Come to lose in front of everyone?",
 				"during": "bram_sets_off"},
-			{"who": "corin", "say": "Either way, I'm here, deciding which side of my face the crowd gets."},
-			{"choice": ["Let's duel.", "Not yet."], "then": [
+			{"who": "corin", "say": "Half the green's waiting. I told the other half to hurry up."},
+			{"choice": ["Let's duel.", "What's that letter?"], "then": [
+				[],
 				[
-					{"who": "corin", "say": "Lantern Duel. Winner lights the Great Lantern at midnight. Loser carries the drum home."},
-					{"who": "corin", "say": "Only you've no deck, have you? Every Spark in Ashford sits up when you walk past, and Bram's never once let you hold one."},
-					{"who": "corin", "say": "So I win by default. Again. Shame. I'd practised my face."},
-					{"scene": "bram_comes"},
-					{"who": "bram", "say": "Nobody wins anything by default while I'm stood here."},
-					{"who": "bram", "say": "I've kept these out of your hands since you were small, Sprout. Reckon the last night of the Age is a fair night to stop."},
-					{"choice": ["Why now?", "Mine? To keep?"], "then": [
-						[{"who": "bram", "say": "Because tomorrow's a new Age, and I'd rather you met it with something in your hand."}],
-						[{"who": "bram", "say": "To keep. Twelve Sparks from the old box at the inn. I picked every one."}],
+					{"set": "corin_letter"},
+					{"who": "corin", "say": "This?"},
+					# he glances at the bakery door and lowers his voice
+					{"scene": "corin_glances"},
+					{"who": "corin", "say": "Ironvault's taking two Attuned from every village it lends to. Notaries."},
+					{"who": "corin", "say": "They write the contracts, and they duel anyone who won't honour one. Room, board and twenty crowns a month. I start in spring."},
+					{"who": "corin", "say": "Mam doesn't know."},
+					{"choice": ["You'd work for Ironvault?", "Good for you."], "then": [
+						[
+							{"who": "corin", "say": "Somebody's going to. Might as well be someone from here."},
+							{"scene": "beat"},
+							{"who": "corin", "say": "Don't look at me like that. You'd go too, if Bram ever let you out of his sight."},
+						],
+						[
+							{"set": "corin_good_for_you"},
+							{"who": "corin", "say": "Yeah?"},
+							{"scene": "beat"},
+							{"who": "corin", "say": "Yeah. Thanks."},
+						],
 					]},
-					{"scene": "first_deck"},
-					{"who": "bram", "say": "That's a deck. Shuffled, you draw from the top and play what you can."},
-					{"who": "bram", "say": "Anyone can work a Sigil's magic, mind. A Rite, a bit of magic you cast once and then it's gone, answers Tam as quick as it answers you."},
-					{"who": "bram", "say": "But calling a Totem up out of a card, so it stands and fights? That takes the Attuned. In Ashford, that's you, Corin, and an old innkeeper who should know better."},
-					{"who": "corin", "say": "You? Since when?"},
-					{"who": "bram", "say": "Since before you could spell it. Which, I'll grant, wasn't long ago."},
-					{"scene": "pack_tour"},
-				] + _lantern_duel(),
-				[{"who": "corin", "say": "Go on, then. Hurry up. My audience is getting cold.", "during": "bram_goes_back"}],
+					{"who": "corin", "say": "I put your name down as well. They want two. Don't tell Bram."},
+				],
 			]},
+			{"who": "corin", "say": "Anyway. Lantern Duel. Winner lights the Great Lantern at midnight. Loser carries the drum home."},
+			{"who": "corin", "say": "Only you've no deck, have you. Every Spark in Ashford sits up when you walk past, and Bram's never once let you hold one."},
+			{"who": "corin", "say": "So I win by default. Again."},
+			# Bram steps in beside the player, the card box in his hand
+			{"scene": "bram_comes"},
+			{"who": "bram", "say": "Nobody wins anything by default while I'm stood here."},
+			{"who": "bram", "say": "I've kept these from you since you were small. That was for my sake, not yours. Tonight seems a fair night to stop."},
+			{"choice": ["Why now?", "Mine? To keep?"], "then": [
+				[{"who": "bram", "say": "Because tomorrow's a new Age, and I'd rather you met it with something in your hands."}],
+				[{"who": "bram", "say": "To keep. Twelve Sparks out of the old box. I picked every one."}],
+			]},
+			# he holds the box out and the player takes it: YOUR FIRST DECK
+			{"scene": "first_deck"},
+			{"who": "bram", "say": "Anyone can burn a Sigil's magic. A Rite, cast once and gone, answers Tam as quick as it answers you."},
+			{"who": "bram", "say": "Calling a Totem up out of a card, so it stands and fights for you: that takes the Attuned. In Ashford, that's you, Corin, and an old innkeeper who should know better."},
+			{"who": "corin", "say": "You? Since when?"},
+			{"who": "bram", "say": "Since before you were born, lad."},
+		] + _coach_question() + _lantern_duel()},
+	]
+
+
+## Bram offers to call the player's turns from the stool.
+static func _coach_question() -> Array:
+	return [
+		{"set": "coach_asked"},
+		{"who": "bram", "say": "Want me calling your turns from the stool, Sprout? No shame in it."},
+		{"choice": ["Talk me through it.", "I've watched enough duels."], "then": [
+			[{"scene": "coach_on"}, {"who": "bram", "say": "Right. Listen for me."}],
+			[{"set": "coach_off"}, {"who": "bram", "say": "Then I'll keep quiet. Mostly."}],
 		]},
 	]
 
 
 static func _lantern_duel() -> Array:
 	return [
-		{"who": "corin", "say": "Finally. Half of Ashford's watching. I told the other half to hurry. And no going easy on me. I'd know."},
-		{"who": "bram", "say": "One Totem each. And nobody sets fire to a stall. I'm looking at you, Corin."},
+		{"who": "corin", "say": "Half of Ashford's watching. And don't go easy on me. I'd know."},
+		{"who": "bram", "say": "One Totem each. And nobody sets fire to a stall this year."},
 		{"who": "corin", "say": "That was one stall."},
-		{"who": "bram", "say": "Want me calling your turns from the stool, Sprout? No shame either way. A Totem in a slot, Essence to pay its way, nothing empty between him and your Life."},
-		{"choice": ["Talk me through it, Bram.", "I've watched enough duels."], "then": [
-			[{"who": "bram", "say": "Sensible. Listen for me."}],
-			[{"set": "coach_off"}, {"who": "bram", "say": "Then I'll keep my mouth shut and my eyebrows ready."}],
-		]},
+	] + _the_duel()
+
+
+## The Lantern Duel itself. It can't be lost; leaving it part-way is the
+## only way not to win, and then Morrowen takes the story back and it's
+## played again (v3, "Losing a story duel").
+static func _the_duel() -> Array:
+	return [
 		{"duel": {"v1": true, "id": "corin_lantern", "name": "Corin", "difficulty": 0.25},
-			"win": [
-				{"who": "corin", "say": "Fine. Fine! You were better. Tonight. You're still second-best in my book. Go on, light the thing. Next year it's mine."},
-				{"set": "ash_won_lantern"},
-			],
+			"win": _after_the_duel(),
 			"lose": [
-				{"who": "corin", "say": "Ha! Second-best, like I always say. You nearly had me, though. Nearly. Come on. Best view of the Lantern's next to me."},
+				{"who": "morrowen", "say": "No. That isn't how it went."},
+				{"goto_duel": "_the_duel"},
 			]},
-		# she runs over and holds it out; it passes into your hands on her
-		# words "You keep it", then the card shows: NEW SIGIL
+	]
+
+
+## Corin when the player wins; the rematch if they'd told Bram they'd watched
+## enough duels (it can be lost: the loser carries the drum home at midnight,
+## and the story goes on the same way); then Tilly's gift, and midnight.
+static func _after_the_duel() -> Array:
+	return [
+		{"set": "ash_won_lantern"},
+		{"who": "corin", "say": "Fine. Fine! You were better. Tonight."},
+		# he looks at the crowd, then at the player, and the grin comes back a beat late
+		{"scene": "corin_grin"},
+		{"who": "corin", "say": "Go on, then. You light it."},
+		{"if": "coach_off", "then": [
+			{"who": "corin", "say": "Again? Bram's not watching this one. Loser carries the drum."},
+			{"choice": ["Go on, then.", "Lantern first."], "then": [
+				[{"duel": {"v1": true, "id": "corin_rematch", "name": "Corin", "rematch": true},
+					"win": [
+						{"scene": "rematch_won"},
+						{"who": "corin", "say": "Two."},
+						# he picks up the drum himself
+						{"scene": "drum_to_corin"},
+						{"who": "corin", "say": "All right. Two."},
+					],
+					"lose": [
+						{"scene": "rematch_lost"},
+						{"who": "corin", "say": "Evens!"},
+						# he hands the player the drum, grinning
+						{"scene": "drum_to_player"},
+						{"who": "corin", "say": "Mind, it's heavy."},
+					]}],
+				[],
+			]},
+		]},
+		# she runs over and holds it out; it passes into the player's hands on
+		# her words "You keep it", then the card shows: NEW SIGIL
 		{"scene": "tilly_gift"},
 		{"if": "ash_tilly", "then": [
-			{"who": "tilly", "say": "For luck! You keep it. It glows better for you anyway.",
+			{"who": "tilly", "say": "For you. It was always trying to get to you anyway. You keep it.",
 				"during": "tilly_hands_over", "at": "You keep it"},
 		], "else": [
-			{"who": "tilly", "say": "For luck! It's a Lantern Moth. If it wakes for anyone, it'll wake for you. You keep it.",
+			{"who": "tilly", "say": "For luck. It glows when you're near. You keep it.",
 				"during": "tilly_hands_over", "at": "You keep it"},
 		]},
 		{"scene": "tilly_card"},
-		{"who": "bram", "say": "In your pack with it, Sprout. It'll keep."},
+		{"who": "bram", "say": "In your pack with it. It'll keep."},
 		{"set": "ash_lantern_duel"},
 		{"scene": "midnight"},
 	]
 
 
-## The duel spec World hands to Main for the Lantern Duel.
+## The duel spec World hands to Main for the Lantern Duel (and its rematch).
 static func duel_spec(spec: Dictionary) -> Dictionary:
 	var arena := "ashford" if DuelArt.arena("ashford") != null else "tidegrove"
-	return {
+	# the player has no name of their own until the Herald says it at dawn
+	# (only Bram calls them Sprout), so the nameplate just says You
+	var me := "You" if Game.player_name == "Sprout" else Game.player_name
+	var corin := Lore.new_profile("Corin")
+	corin["plate"] = "Ashford"   # (for the name plate: Corin is no Unsworn)
+	var out := {
 		"decks": [PLAYER_DECK.duplicate(), CORIN_DECK.duplicate()],
-		# the player has no name of their own until the Herald says it at dawn
-		# (only Bram calls them Sprout), so the nameplate just says You
-		"names": ["You" if Game.player_name == "Sprout" else Game.player_name, "Corin"],
-		"profiles": [Lore.new_profile("You" if Game.player_name == "Sprout" else Game.player_name), Lore.new_profile("Corin")],
+		"names": [me, "Corin"],
+		"profiles": [Lore.new_profile(me), corin],
+		"plates": ["", "Ashford"],
 		"ai": [false, true],
 		"difficulty": float(spec.get("difficulty", 0.3)),
 		"arena": arena,
 		"life": LANTERN_LIFE,
 		"story": true,
-		# dealt in order, the player first, and it can't be lost: a first duel
-		# should teach, not punish. Declining Bram's help still keeps those.
-		"stacked": [true, true],
-		"first": 0,
-		"life_floor": [1, 0],
-		"totem_floor": [1, 0],
-		"tutorial": {} if Game.flag("coach_off") else LESSON,
-		"rival_script": CORIN_SCRIPT,
-		"barks": CORIN_BARKS,
+		"rule": SHOWBOAT,
+		"story_rules": {"showboat": 1},
+		"bark_on": CORIN_BARK_ON,
 		"rewards": {"opponent": "village"},
 	}
+	if spec.get("rematch", false):
+		# nothing locked and nothing tuned: shuffled, a roll for who goes
+		# first, no floor under anyone, and the result stands
+		out["difficulty"] = REMATCH_AI
+		out["once"] = true
+		out["rematch"] = true
+		out["lesson_group"] = "The Lantern Duel"
+		return out
+	# dealt in order, the player first, and it can't be lost: a first duel
+	# should teach, not punish. With Bram coaching, every step is gated; if
+	# not, Corin still plays his script, so he never reaches the player's Life.
+	out["stacked"] = [true, true]
+	out["first"] = 0
+	out["life_floor"] = [1, 0]
+	out["totem_floor"] = [1, 0]
+	out["tutorial"] = {"quiet": true} if Game.flag("coach_off") else LESSON
+	out["rival_script"] = CORIN_SCRIPT
+	return out
 
 
 # ================================================================ scenes ===
@@ -413,12 +538,9 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 static func scene(name: String, w: World) -> void:
 	match name:
 		"midnight":
+			AshfordP1.undress(w)
 			await _midnight(w)
 			await _prologue_film(w, "dawn")
-		"tam_barrel":
-			await _tam_barrel(w)
-		"tilly_moth":
-			await _tilly_moth(w)
 		"bram_sets_off":
 			await _bram_sets_off(w)
 		"bram_goes_back":
@@ -427,27 +549,61 @@ static func scene(name: String, w: World) -> void:
 			await _bram_comes(w)
 		"first_deck":
 			await _first_deck(w)
-		"pack_tour":
-			await _pack_tour(w)
+		"coach_on":
+			Game.set_flag("coach_off", false)
+		"rematch_won":
+			Game.set_flag("lantern_rematch", "won")
+			Game.save_game()
+		"rematch_lost":
+			Game.set_flag("lantern_rematch", "lost")
+			Game.save_game()
 		"tilly_gift":
+			await AshfordP1.drum_down(w)
 			await _tilly_gift(w)
 		"tilly_hands_over":
 			await _tilly_hands_over(w)
 		"tilly_card":
 			await _tilly_card(w)
+		"p1_home":
+			await AshfordP1.home(w, 0.8)
 		"home":
 			await w.cine_home(1.2)
+		_:
+			await AshfordP1.scene(name, w)
 
 
-## Coming back to a Prologue film part-way through: start on black.
+## Is the opening (attic to top hook) under way, a game closed part-way
+## through it? (p1_stage is set from its first moment to "done".)
+static func in_opening() -> bool:
+	var s := String(Game.flag("p1_stage", ""))
+	return s != "" and s != "done" and not Game.flag("ash_started")
+
+
+## Coming back to a Prologue film part-way through, or into the opening
+## (New Game, or a game closed during it): start on black.
 static func starts_black() -> bool:
+	if not Game.flag("arrived_ashford") and not Game.flag("ash_started"):
+		return true   # New Game: black, then the caption
+	if in_opening():
+		return true
 	return Game.flag("ash_lantern_duel") and not Game.flag("pro_tunnel_done")
 
 
-## A Prologue film left part-way (the game was closed during it) picks up at
-## the start of the part it was in. Called by World on arrival.
+## Called by World on arrival: the opening, if a game was closed during it;
+## the green as the script has it until the Lantern Duel; or a Prologue film
+## left part-way (the game was closed during it) picks up at the start of the
+## part it was in.
 static func resume(w: World) -> void:
-	if not Game.flag("ash_lantern_duel") or Game.flag("pro_tunnel_done"):
+	if not Game.flag("ash_lantern_duel"):
+		AshfordP1.pose(w)
+		if in_opening():
+			await AshfordP1.opening(w)
+		elif Game.flag("ash_started") and not Game.flag("ash_tam") and String(Game.flag("objective_key", "")) != "tam":
+			# (a game from before v3: Bram's "Tam first" holds for it too)
+			AshfordP1.coach(w).objective("tam")
+		AshfordP1.watch(w)
+		return
+	if Game.flag("pro_tunnel_done"):
 		return
 	if not Game.flag("ash_marked"):
 		await _midnight(w)
@@ -459,257 +615,23 @@ static func resume(w: World) -> void:
 
 # ================================================================== intro ===
 
-const INTRO_FROM := Vector3(-30.0, 15.0, 48.0)
-
-## The first frame of New Game, set before the screen fades up.
+## The first frame of New Game, set before the screen fades up: black (the
+## festival drum carrying over from the movie).
 static func intro_frame(w: World) -> void:
 	w.cine = true
-	w.cam.global_position = INTRO_FROM
-	w.cam.look_at(Vector3(0, 3.0, 0), Vector3.UP)
+	Cine.overlay(w).black(true)
 
 
-## New Game's opening shot (after the movie): the camera comes in over the
-## fields and rooftops of Ashford, past the Great Lantern still waiting to be
-## lit, and down to the player on the green as Bram comes over. A tap speeds
-## it up.
+## New Game, after the opening movie: P1 from the attic (AshfordP1.opening).
+## (The old flight over Ashford is gone: v3 cuts from the movie's title to
+## black and the caption, straight into the attic. The village is seen
+## through the attic window and when the player steps out of the inn.)
 static func intro(w: World) -> void:
-	var v := village(w)
-	var p := w.player.global_position
-	var bram = w._npc_by_id("bram")
-	# a tap, click or key speeds it up (the touch pad is hidden during it)
-	var watching := [true]
-	var watch := func() -> void:
-		while watching[0] and is_instance_valid(w) and w.is_inside_tree():
-			if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or Input.is_action_pressed("interact") or Input.is_action_pressed("ui_accept"):
-				Engine.time_scale = 4.0
-			await w.get_tree().process_frame
-	watch.call()
-	await w.cine_to(Vector3(-12.0, 8.5, 30.0), Vector3(0.0, 4.0, -2.0), 5.5)
-	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
-	if bram != null:
-		_walk(w, bram, p + Vector3(1.0, 0.0, -1.7), 3.6)
-	await w.cine_to(Vector3(8.0, 5.2, 14.0), top - Vector3(0, 1.0, 0), 3.5)
-	await w.cine_to(p + Vector3(3.2, 2.5, 4.4), p + Vector3(0.4, 1.25, -0.9), 2.4)
-	if bram != null:
-		bram.doll.look_toward(p, w.cam)
-		w.player_doll.look_toward(bram.body.global_position, w.cam)
-	await w.get_tree().create_timer(0.3).timeout
-	watching[0] = false
-	Engine.time_scale = 1.0
-
-
-## Walks an NPC (or the player, with npc = null) to `to` over `secs`, facing the way they go.
-static func _walk(w: World, npc, to: Vector3, secs: float) -> void:
-	var body: Node3D = w.player if npc == null else npc.body
-	var doll: PaperDoll = w.player_doll if npc == null else npc.doll
-	var from := body.global_position
-	to.y = from.y
-	if from.distance_to(to) < 0.05:
-		return
-	doll.walking = true
-	doll.face(to - from, w.cam)
-	var tw := w.create_tween()
-	tw.tween_method(func(u: float) -> void: body.global_position = from.lerp(to, u), 0.0, 1.0, secs)
-	await tw.finished
-	doll.walking = false
+	AshfordP1.pose(w)
+	await AshfordP1.opening(w)
 
 
 # ================================================================ chores ===
-
-## Tam's barrel: the player takes one end, Tam the other, and they carry the
-## last cider barrel from the hay cart over to Tilly's stall.
-static func _tam_barrel(w: World) -> void:
-	var v := village(w)
-	var tam = w._npc_by_id("tam")
-	var b: Node3D = v.tam_barrel
-	if b == null or tam == null:
-		return
-	var start := b.global_position - Vector3(0, AshfordVillage.BARREL_HALF, 0)   # on the ground
-	var spot := v.barrel_spot
-	var dir := spot - start
-	dir.y = 0.0
-	dir = dir.normalized()
-	var side := dir.cross(Vector3.UP).normalized()
-	if side.dot(w.cam.global_transform.basis.x) < 0.0:
-		side = -side   # the player takes the end nearer the camera's right
-	var end := spot - dir * 0.75
-	# ahead of them and off the player's side, so both faces come towards the
-	# camera as they carry it (from behind, the hay cart was in the way)
-	w.cine = true
-	var cam_at := end + dir * 2.4 + side * 3.6 + Vector3(0, 1.9, 0)
-	w.cine_to(cam_at, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), 1.0)
-	# each takes an end
-	var held := BARREL_HOLD
-	_walk(w, null, start + side * held, 0.8)
-	await _walk(w, tam, start - side * held, 0.8)
-	w.player_doll.look_toward(start, w.cam)
-	tam.doll.look_toward(start, w.cam)
-	await w.get_tree().create_timer(0.25).timeout
-	# lift it onto its side, held between them: a 3D figure bends to it and
-	# takes hold of its end with both hands (hand holds on the barrel, so
-	# they go where it goes)
-	var b0 := b.basis
-	var lifted := Basis(dir, PI * 0.5)   # on its side, spanning the two of them
-	var lift_c := start + Vector3(0, 0.95, 0)
-	var holds := []
-	for who in [[w.player_doll, 1.0], [tam.doll, -1.0]]:
-		var f = who[0]
-		if f is Figure3D:
-			var e: Vector3 = side * float(who[1])
-			var grips := []
-			for fwd in [1.0, -1.0]:
-				var g := Node3D.new()
-				g.name = "BarrelGrip"
-				b.add_child(g)
-				# where the hand will be once it's lifted, in the barrel's own frame
-				g.position = lifted.inverse() * (e * (AshfordVillage.BARREL_HALF - 0.05) + dir * 0.17 * fwd - Vector3(0, 0.07, 0))
-				grips.append(g)
-			# its left hand takes the grip on its left as it faces the barrel
-			var left_fwd: bool = (-e).cross(Vector3.UP).dot(dir) < 0.0
-			(f as Figure3D).pose("lift", 0.45, 0.35)
-			(f as Figure3D).reach(grips[0] if left_fwd else grips[1], grips[1] if left_fwd else grips[0], 0.45)
-			holds.append_array(grips)
-	if not holds.is_empty():
-		await w.get_tree().create_timer(0.3).timeout
-	var tw := w.create_tween().set_parallel(true)
-	tw.tween_property(b, "global_position", lift_c, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_method(func(u: float) -> void: b.basis = Basis(b0.get_rotation_quaternion().slerp(lifted.get_rotation_quaternion(), u)), 0.0, 1.0, 0.5)
-	await tw.finished
-	# carry it over, side by side, at a heavy barrel's walk
-	var secs := maxf(2.2, start.distance_to(end) / BARREL_PACE)
-	var pace := start.distance_to(end) / secs
-	for f in [w.player_doll, tam.doll]:
-		if f is Figure3D:
-			(f as Figure3D).release(0.25)
-			(f as Figure3D).pace = pace
-	w.player_doll.walking = true
-	tam.doll.walking = true
-	w.player_doll.face(dir, w.cam)
-	tam.doll.face(dir, w.cam)
-	var pb: Node3D = w.player
-	var tb: Node3D = tam.body
-	var carry := w.create_tween()
-	carry.tween_method(func(u: float) -> void:
-		var c := start.lerp(end, u)
-		var bob := absf(sin(u * secs * 5.2)) * 0.035
-		b.global_position = c + Vector3(0, 0.95 + bob, 0)
-		pb.global_position = c + side * held
-		tb.global_position = c - side * held, 0.0, 1.0, secs)
-	Cine.drift(w, cam_at, cam_at + dir * 0.4 - side * 0.3, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), end + Vector3(0, 0.85, 0), secs)
-	await carry.finished
-	w.player_doll.walking = false
-	tam.doll.walking = false
-	for f in [w.player_doll, tam.doll]:
-		if f is Figure3D:
-			(f as Figure3D).pace = 0.0
-	# heave it up onto its end beside the others (letting go as it lands)
-	for f in [w.player_doll, tam.doll]:
-		if f is Figure3D:
-			(f as Figure3D).let_go(0.3)
-	var up_basis := Basis(Vector3.UP, 0.4)
-	var down := w.create_tween().set_parallel(true)
-	down.tween_property(b, "global_position", spot + Vector3(0, AshfordVillage.BARREL_HALF + 0.25, 0), 0.35).set_trans(Tween.TRANS_SINE)
-	down.tween_method(func(u: float) -> void: b.basis = Basis(lifted.get_rotation_quaternion().slerp(up_basis.get_rotation_quaternion(), u)), 0.0, 1.0, 0.35)
-	await down.finished
-	var thud := w.create_tween()
-	thud.tween_property(b, "global_position", spot + Vector3(0, AshfordVillage.BARREL_HALF, 0), 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	await thud.finished
-	v.dust_puff(spot)
-	w.shake(0.12)
-	for g in holds:
-		(g as Node).queue_free()
-	tam.doll.look_toward(pb.global_position, w.cam)
-	w.player_doll.look_toward(tb.global_position, w.cam)
-	await w.get_tree().create_timer(0.4).timeout
-	await w.cine_home(0.9)
-
-## How far from the barrel's middle each of them walks carrying it (m), and
-## how fast they go with it (m/s).
-const BARREL_HOLD := 0.7
-const BARREL_PACE := 1.7
-
-
-## Tilly's Lantern Moth: at the player's touch it unfolds out of her card, a
-## moth made of lamplight, circles her head twice and settles back into the card.
-static func _tilly_moth(w: World) -> void:
-	var v := village(w)
-	var tilly = w._npc_by_id("tilly")
-	if tilly == null:
-		return
-	var tp: Vector3 = tilly.body.global_position
-	var pp: Vector3 = w.player.global_position
-	# side on to the two of them, so nobody stands between the camera and the moth
-	var axis := tp - pp
-	axis.y = 0.0
-	axis = axis.normalized() if axis.length() > 0.01 else Vector3.FORWARD
-	var perp := axis.cross(Vector3.UP).normalized()
-	var to_cam := w.cam.global_position - tp
-	to_cam.y = 0.0
-	if perp.dot(to_cam) < 0.0:
-		perp = -perp
-	var card := tp - axis * 0.3 + Vector3(0, TILLY_HANDS, 0)
-	var head := tp + Vector3(0, TILLY_HEAD, 0)
-	var between := (tp + pp) * 0.5
-	# a 3D Tilly holds her card out to you in both hands, and the moth
-	# circles her own head
-	var tf = tilly.doll
-	var held: Node3D = null
-	if tf is Figure3D:
-		(tf as Figure3D).snap_face(-axis)
-		held = _moth_card(v)
-		(tf as Figure3D).carry(held, TILLY_HOLD)
-		_hands_on(tf, held, 0.4)
-		card = (tf as Figure3D).to_world(TILLY_HOLD)
-		head = Cine.head(w, "tilly") - Vector3(0, 0.06, 0)
-	w.cine = true
-	await w.cine_to(between + perp * 4.0 + axis * 0.6 + Vector3(0, 1.5, 0), tp - axis * 0.3 + Vector3(0, 1.05, 0), 1.0)
-	# the card glows, then the moth unfolds out of it
-	var glow: MeshInstance3D = v.glow_sprite(held if held != null else w, Vector3.ZERO if held != null else card, Color(1.0, 0.72, 0.32), 0.4, 0.7)
-	var gt := w.create_tween()
-	gt.tween_property(glow, "scale", Vector3.ONE * 1.1, 0.5).set_trans(Tween.TRANS_SINE)
-	await gt.finished
-	var moth := LanternMothFlight.new()
-	w.add_child(moth)
-	moth.global_position = card
-	moth.scale = Vector3.ONE * 0.05
-	var grow := w.create_tween()
-	grow.tween_property(moth, "scale", Vector3.ONE * MOTH_SIZE, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	# up, twice round her head, and back down into the card
-	var r := 0.72
-	var a0 := atan2(-axis.z, -axis.x)   # starts on her near side, between her and you
-	var flight := w.create_tween()
-	flight.tween_method(func(u: float) -> void:
-		var pos: Vector3
-		var ring := head + Vector3(cos(a0) * r, 0.0, sin(a0) * r)
-		if u < 0.15:
-			var k := u / 0.15
-			pos = card.lerp(ring, k * k * (3.0 - 2.0 * k)) + Vector3(0, sin(k * PI) * 0.3, 0)
-		elif u < 0.85:
-			var k2 := (u - 0.15) / 0.7
-			var a := a0 + k2 * TAU * 2.0
-			pos = head + Vector3(cos(a) * r, sin(k2 * TAU * 3.0) * 0.12, sin(a) * r)
-		else:
-			var k3 := (u - 0.85) / 0.15
-			pos = ring.lerp(card, k3 * k3)
-		moth.fly_to(pos), 0.0, 1.0, 6.5)
-	await flight.finished
-	var shrink := w.create_tween().set_parallel(true)
-	shrink.tween_property(moth, "scale", Vector3.ONE * 0.05, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	shrink.tween_property(glow, "scale", Vector3.ONE * 1.8, 0.35)
-	await shrink.finished
-	moth.queue_free()
-	var fade := w.create_tween()
-	fade.tween_property(glow, "scale", Vector3.ONE * 0.7, 0.6).set_trans(Tween.TRANS_SINE)
-	await fade.finished
-	glow.queue_free()
-	# she tucks it away again
-	if held != null:
-		(tf as Figure3D).let_go(0.35)
-		var away := w.create_tween()
-		away.tween_property(held, "scale", Vector3.ONE * 0.01, 0.35)
-		away.tween_callback(held.queue_free)
-	tilly.doll.look_toward(w.player.global_position, w.cam)
-	await w.cine_home(0.9)
 
 ## Where Tilly holds her card, and her head, in metres above the ground
 ## (her painted cut-out, drawn full height).
@@ -918,17 +840,18 @@ static func _round_lantern(w: World, from: Vector3, to: Vector3, depth := 0) -> 
 	return _round_lantern(w, from, p, depth + 1) + _round_lantern(w, p, to, depth + 1)
 
 
-## The moment the player starts talking to Corin, Bram leaves his spot and
-## heads over at a brisk walk, round the Great Lantern, to stand just off
-## the pair, listening. He's there to step in when Corin says "no deck".
+## The moment Corin spots the player, Bram gets up off his stool by the
+## Lantern with a worn card box in his hand and heads over at a brisk walk,
+## round the Great Lantern, to stand just off the pair, listening. He's there
+## to step in when Corin says "no deck".
 static func _bram_sets_off(w: World) -> void:
 	var bram := Cine.body(w, "bram")
 	if bram == null or Cine.body(w, "corin") == null:
 		return
-	if not w.has_meta("bram_post"):
-		w.set_meta("bram_post", bram.global_position)
 	var stop := _bram_stop(w)
 	w.set_meta("bram_stop", stop)
+	await AshfordP1.bram_stand(w)
+	_hold(w, "bram", _card_box())
 	var from := bram.global_position
 	var back := from - stop
 	back.y = 0.0
@@ -942,14 +865,12 @@ static func _bram_sets_off(w: World) -> void:
 		Cine.look(w, "bram", w.player.global_position)
 
 
-## "Not yet": Bram goes back to where he was.
+## "Not yet": Bram goes back to his stool.
 static func _bram_goes_back(w: World) -> void:
-	var bram := Cine.body(w, "bram")
-	if bram == null or not w.has_meta("bram_post"):
+	if Cine.body(w, "bram") == null or not w.has_meta("bram_stop"):
 		return
-	var post: Vector3 = w.get_meta("bram_post")
 	w.remove_meta("bram_stop")
-	await Cine.path(w, "bram", _round_lantern(w, bram.global_position, post), 1.5)
+	await AshfordP1.bram_to_stool(w)
 
 
 ## Bram steps in beside the player with a card box in his hand (he set off
@@ -972,7 +893,9 @@ static func _bram_comes(w: World) -> void:
 	w.cine = true
 	var mid := (p + c + stop) / 3.0
 	var side := -perp
-	Cine.move(w, mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid + Vector3(0, 1.2, 0), 0.8)
+	var look := mid + Vector3(0, 1.2, 0)
+	Cine.move(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
+		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look, 0.8)
 	_hold(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
@@ -983,7 +906,9 @@ static func _bram_comes(w: World) -> void:
 
 
 ## Bram holds out the box, the player takes it, and it's theirs: the Spark
-## deck, Deck and Codex open up in the pack.
+## deck, its twelve cards fanned out across the screen. (v3 opens the Deck
+## and Codex later, when the player chooses a deck at the campfire, so they
+## stay shut here.)
 static func _first_deck(w: World) -> void:
 	var stop: Vector3 = w.get_meta("bram_stop", Cine.body(w, "bram").global_position)
 	var p := w.player.global_position
@@ -991,7 +916,9 @@ static func _first_deck(w: World) -> void:
 	var d := stop - p
 	d.y = 0.0
 	var perp := d.normalized().cross(Vector3.UP)
-	Cine.shot(w, mid + perp * 2.6 + Vector3(0, 1.55, 0), mid + Vector3(0, 1.15, 0), 34.0)
+	var look := mid + Vector3(0, 1.15, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + perp * 2.6 + Vector3(0, 1.55, 0), mid - perp * 2.6 + Vector3(0, 1.55, 0),
+		mid + perp * 2.2 + Vector3(0, 2.3, 0), mid - perp * 2.2 + Vector3(0, 2.3, 0)], look, ["player", "bram"]), look, 34.0)
 	var f = Cine.fig(w, "bram")
 	if f is Figure3D:
 		(f as Figure3D).pose("play_card", 0.45)
@@ -1011,11 +938,10 @@ static func _first_deck(w: World) -> void:
 	_drop(w, "player")
 	if is_instance_valid(box):
 		box.queue_free()
-	w.hud.toast("New in your pack: Deck and Codex")
 	await Cine.wait(w, 0.3)
 
 
-## The Spark deck becomes the player's, and their pack opens up.
+## The Spark deck becomes the player's (Deck and Codex stay shut: see _first_deck).
 static func _give_first_deck() -> void:
 	if Game.has_method("give_first_deck"):
 		Game.call("give_first_deck", PLAYER_DECK)
@@ -1029,18 +955,8 @@ static func _give_first_deck() -> void:
 			v.collection[id] = int(v.collection.get(id, 0)) + 1
 			v.bonded[id] = true
 			v.codex[id] = "seen"
-	for feature in ["deck", "codex"]:
-		if Game.has_method("unlock"):
-			Game.call("unlock", feature)
 	Game.set_flag("first_deck")
 	Game.save_game()
-
-
-## Bram shows the player round their pack, one gated step at a time.
-static func _pack_tour(w: World) -> void:
-	await w.cine_home(0.6)
-	if w.hud.has_method("pack_tour"):
-		await w.hud.call("pack_tour", PACK_TOUR)
 
 
 ## After the duel, Tilly comes running through the crowd with her Lantern
@@ -1051,6 +967,7 @@ static func _tilly_gift(w: World) -> void:
 	var tilly := Cine.body(w, "tilly")
 	if tilly == null:
 		return
+	AshfordP1.tilly_card_away(w)
 	var p := w.player.global_position
 	var from := tilly.global_position
 	var d := from - p
@@ -1059,7 +976,9 @@ static func _tilly_gift(w: World) -> void:
 	var stop := p + d * 1.05
 	w.cine = true
 	var side := d.cross(Vector3.UP).normalized()
-	Cine.shot(w, p - d * 2.4 + side * 1.6 + Vector3(0, 1.9, 0), stop + Vector3(0, 0.9, 0), 38.0)
+	var look := stop + Vector3(0, 0.9, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [p - d * 2.4 + side * 1.6 + Vector3(0, 1.9, 0), p - d * 2.4 - side * 1.6 + Vector3(0, 1.9, 0),
+		p - d * 2.8 + Vector3(0, 2.8, 0)], look, ["player", "tilly"]), look, 38.0)
 	Cine.look(w, "player", from)
 	# her card glowing in her hands as she runs (a 3D Tilly holds it in both)
 	var v := village(w)
@@ -1078,10 +997,11 @@ static func _tilly_gift(w: World) -> void:
 	# side on, to see the card cross from her hands to yours (her painted
 	# cut-out is drawn full height, so that needs a wider shot than her model)
 	var mid := (p + stop) * 0.5
-	if tf is Figure3D:
-		Cine.shot(w, mid + side * 3.3 + Vector3(0, 1.3, 0), mid + Vector3(0, 1.0, 0), 38.0)
-	else:
-		Cine.shot(w, mid + side * 4.6 + Vector3(0, 1.45, 0), mid + Vector3(0, 1.15, 0), 38.0)
+	var back := 3.3 if tf is Figure3D else 4.6
+	var up := 1.3 if tf is Figure3D else 1.45
+	var at := mid + Vector3(0, 1.0 if tf is Figure3D else 1.15, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * back + Vector3(0, up, 0), mid - side * back + Vector3(0, up, 0),
+		mid + side * back * 0.85 + Vector3(0, up + 0.9, 0), mid - side * back * 0.85 + Vector3(0, up + 0.9, 0)], at, ["player", "tilly"]), at, 38.0)
 	# she holds it out to you, arms up and forward
 	var out := w.create_tween()
 	if tf is Figure3D:
@@ -1098,7 +1018,7 @@ static func _tilly_gift(w: World) -> void:
 ## On Tilly's words "You keep it" (played while her line is up), the light
 ## passes from her hands into the player's, and they take it.
 static func _tilly_hands_over(w: World) -> void:
-	var glow = w.get_meta("tilly_glow", null)
+	var glow = AshfordP1.meta(w, "tilly_glow")
 	if glow == null or not is_instance_valid(glow) or w.get_meta("tilly_handed", true):
 		return
 	var tilly := Cine.body(w, "tilly")
@@ -1141,7 +1061,7 @@ static func _tilly_hands_over(w: World) -> void:
 ## Lantern Moth. (If her line was tapped past before the card got there,
 ## it lands first.)
 static func _tilly_card(w: World) -> void:
-	var glow = w.get_meta("tilly_glow", null)
+	var glow = AshfordP1.meta(w, "tilly_glow")
 	var waited := 0.0
 	while glow != null and is_instance_valid(glow) and not w.get_meta("tilly_handed", true) and waited < 3.0:
 		await w.get_tree().process_frame

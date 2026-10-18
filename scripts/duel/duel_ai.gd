@@ -29,7 +29,11 @@ func choose_action(game: DuelGame, pi: int) -> Dictionary:
 	_game_ref = game
 	var best := {}
 	var best_score := 0.5
-	for cand in _candidates(game, pi):
+	var cands := _candidates(game, pi)
+	if not game.showboat_due(pi).is_empty():
+		cands = _rule_showboat_only(game, pi, cands)
+		best_score = -INF   # the attack is owed, however it scores
+	for cand in cands:
 		var s: float = cand.score
 		if difficulty < 1.0:
 			s += rng.randf_range(-25.0, 25.0) * (1.0 - difficulty)
@@ -39,6 +43,12 @@ func choose_action(game: DuelGame, pi: int) -> Dictionary:
 	if best.is_empty():
 		return {"type": "end"}
 	return best
+
+
+## Showboat (a story duel's rule, DuelGame.showboat_due): only the attacks the
+## rule allows, until every Totem that owes one has made it.
+func _rule_showboat_only(game: DuelGame, pi: int, cands: Array) -> Array:
+	return cands.filter(func(c): return game.action_problem(pi, c.action) == "")
 
 
 func choose_cards(game: DuelGame, pi: int, _prompt: String, cards: Array, min_n: int, max_n: int, context: Dictionary) -> Array:

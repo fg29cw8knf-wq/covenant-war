@@ -526,6 +526,7 @@ func _start() -> void:
 		panels[side].mine = side == me
 		ward_zones[side].player = game.players[side]
 		ward_zones[side].mine = side == me
+		ward_zones[side].face_up = game.face_up   # Wards that lie face up (Fen's Patter, the Unveiling)
 	BlankCardSlot.attach(self)   # the blank card, from the night of the Sigilfall on
 	_refresh()
 	await game.run()
@@ -1477,7 +1478,8 @@ func fx_start() -> void:
 
 
 ## "DUEL!", then the Law it's fought under and the story duel's own rule
-## (spec.rule = [name, what it does]).
+## (spec.rule = [name, what it does]: Corin's Showboat in the Lantern Duel,
+## Chapter 1's four).
 func _opening_banners() -> void:
 	sfx.play("duel_start")
 	await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
@@ -2571,6 +2573,14 @@ func story_bark(event: String) -> void:
 	_show_bark(String(lines[event]))
 
 
+## A story duel's own rule just made a difference on the board (DuelGame's
+## fx_rule: a free Rite under licence, Fen's Patter, Pip scrapping, the
+## Captain's discipline): the rival's line for it, once ("rule" in bark_on).
+func fx_rule(pi: int, _rule_id: String) -> void:
+	if pi == rival:
+		story_bark("rule")
+
+
 ## "my_lethal": checked each time the player is about to act.
 func _bark_if_lethal() -> void:
 	if not spec.get("bark_on", {}).has("my_lethal") or _barked.has("my_lethal") or game == null or game.over:
@@ -2796,7 +2806,8 @@ func _show_result(r: String) -> String:
 	var story: bool = spec.get("story", false)
 	var again := UITheme.button("Try again" if story else "Duel again", not story or r != "won", 340)
 	var back := UITheme.button("Continue" if story else "Back to the Lab", story and r == "won", 340)
-	again.visible = not (story and r == "won")
+	# spec.once: the result stands, win or lose (the Lantern Duel's rematch)
+	again.visible = not (story and r == "won") and not spec.get("once", false)
 	hb.add_child(again)
 	hb.add_child(back)
 	var picked := [""]

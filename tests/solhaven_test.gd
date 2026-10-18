@@ -116,6 +116,8 @@ func _play() -> void:
 		_check(Game.flag("c6_done") and Game.flag("beat_aldric"), "Aldric beaten")
 		_check(int(Game.v2.collection.get("sunmane_lion", 0)) == 1, "Sunmane Lion given (%d)" % int(Game.v2.collection.get("sunmane_lion", 0)))
 	for id in ["pip", "maren", "tamsin", "wren", "aldric", "hale", "gate_warden"]:
+		if id == "pip" and Game.flag("pip_at_work"):
+			continue   # (at work for Mr Pell: his talk is the side story's errand and wager now)
 		await _talk(id)
 	# Bram ends the day: Gold in the Dark (C7)
 	await _talk("bram")

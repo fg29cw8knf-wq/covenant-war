@@ -499,7 +499,7 @@ func _on_tap(pos: Vector2) -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
 	if not hit.is_empty() and hit.collider is Node and (hit.collider as Node).has_meta("npc"):
 		var n = _npc_by_id((hit.collider as Node).get_meta("npc"))
-		if n != null:
+		if n != null and not n.def.get("muted", false):
 			if player.global_position.distance_to(n.body.global_position) <= TALK_RANGE:
 				_talk(n)
 			else:
@@ -541,6 +541,8 @@ func _update_near() -> void:
 	var best_d := TALK_RANGE
 	if not busy:
 		for n in npcs:
+			if n.def.get("muted", false):
+				continue   # held back while a lesson step waits (Ashford's first steps)
 			var d := player.global_position.distance_to(n.body.global_position)
 			if d < best_d:
 				best_d = d
@@ -675,6 +677,10 @@ func run_steps(steps: Array, npc) -> void:
 		elif st.has("scene"):
 			hud.dialogue.close()
 			await area.scene(st.scene, self)
+		elif st.has("call"):
+			# code that plays a stretch of story: {"call": callable}, called with
+			# (world, npc) and awaited (Solhaven's side stories)
+			await (st.call as Callable).call(self, npc)
 	_refresh_markers()
 
 

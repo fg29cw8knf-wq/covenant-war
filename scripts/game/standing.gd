@@ -22,13 +22,22 @@ const PEOPLE := {
 	"tam": {"name": "Tam", "role": "Ashford farmer. Generous with the cider.", "look": "farmer"},
 	"tilly": {"name": "Tilly", "role": "Tam's daughter. Owner of one Lantern Moth.", "look": "child"},
 	"nell": {"name": "Old Nell", "role": "Ashford's oldest memory.", "look": "elder"},
-	"seamus": {"name": "Seamus", "role": "Fiddler. Knows one reel, three ways.", "look": "fiddler"},
+	"ned": {"name": "Ned", "role": "Fiddler. Knows one reel, three ways.", "look": "fiddler"},
 	"hob": {"name": "Hob", "role": "Miller. Grows suspiciously early cabbages.", "look": "hob"},
 	"hale": {"name": "Warden Hale", "role": "Keeps Solhaven's Golden Gate.", "look": "guard"},
 	"wren": {"name": "Wren", "role": "A thief who goes where the money is.", "look": "wren"},
 	"refugees": {"name": "The refugees", "role": "Families from the burned villages, at Solhaven's gate.", "look": "farmer"},
 	"aldric": {"name": "Ser Aldric Vane", "role": "Solhaven's Champion.", "look": "aldric"},
+	# Solhaven's side stories (scripts/world/areas/solhaven/solhaven_side.gd)
+	"ysa": {"name": "Ysa", "role": "From the gate, with her son Tobin. Prays to the Rootmother.", "look": "side_ysa"},
+	"anselm": {"name": "Brother Anselm", "role": "Heals under the dyers' bridge, for one word.", "look": "side_anselm"},
+	"fen": {"name": "Fen", "role": "Sold the Unsworn's blessing at the fountain.", "look": "side_fen"},
+	"corvin": {"name": "Father Corvin", "role": "A priest of the Sun Temple. Smiles a great deal.", "look": "side_corvin"},
 }
+
+## Old ids a person's standing was once kept under (Ned the fiddler was
+## Seamus before Master Script v3), still read as theirs from old saves.
+const OLD_IDS := {"ned": ["seamus"]}
 
 ## Choices the story already remembers, and what they mean to whom.
 ## value: only when the flag holds that value (for flags that store a word).
@@ -50,6 +59,8 @@ const FLAG_EFFECTS := [
 ## The player's standing with a god or a person.
 static func value(who: String) -> int:
 	var v := int(Game.standing.get(who, 0))
+	for old in OLD_IDS.get(who, []):
+		v += int(Game.standing.get(old, 0))
 	for e in FLAG_EFFECTS:
 		if e.who == who and _flag_matches(e):
 			v += int(e.by)
@@ -65,7 +76,8 @@ static func reasons(who: String) -> Array:
 		if e.who == who and _flag_matches(e):
 			out.append(String(e.why))
 	for r in Game.standing_log:
-		if String(r.get("who", "")) == who and String(r.get("why", "")) != "":
+		var rw := String(r.get("who", ""))
+		if (rw == who or (OLD_IDS.get(who, []) as Array).has(rw)) and String(r.get("why", "")) != "":
 			out.append(String(r.why))
 	if String(Game.profile.get("patron", "")) == who:
 		out.append("You swore yourself to %s." % Lore.GODS[who].name)

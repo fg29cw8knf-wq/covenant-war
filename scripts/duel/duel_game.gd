@@ -60,11 +60,14 @@ var face_up := {}
 ## A story duel's own rules (Master Script v3: every story duel has one rule
 ## that says who the opponent is), as {rule id: the side it binds}. Each rule
 ## is its own _rule_<id>() function under "story rules" below:
-## "run_to_ground" (Hunter Dask, the Thornwood road), "hold_the_gate" (Warden
-## Hale at Solhaven's gate), "light_fingers" (Wren in the alley),
-## "sunspire_mirror" (Ser Aldric on the Sunspire) and "mirror_trial" (the
-## Trial of Light: the mirrors set the board and watch; the other side must
-## win within puzzle.turns of its own turns).
+## "run_to_ground" (Hunter Dask, the Thornwood road), "showboat" (Corin, the
+## Lantern Duel), "hold_the_gate" (Warden Hale at Solhaven's gate),
+## "light_fingers" (Wren in the alley), "sunspire_mirror" (Ser Aldric on the
+## Sunspire), "mirror_trial" (the Trial of Light: the mirrors set the board
+## and watch; the other side must win within puzzle.turns of its own turns),
+## and the side stories' wagers, in their own section further down:
+## "licensed" (the Sergeant), "patter" (Fen), "scrapper" (Pip) and
+## "discipline" (the Captain).
 var story_rules := {}
 ## Both duellists start on this share of their usual Life (Hale's short duel
 ## at the gate is fought at half: "a test, not a fight").
@@ -289,6 +292,8 @@ func _take_turn() -> void:
 		if over:
 			return
 		if action == null or action.is_empty() or action.type == "end":
+			action = _rule_showboat_owed(current)   # no ending the turn with a Showboat attack owed
+		if action == null or action.is_empty() or action.type == "end":
 			break
 		await perform(current, action)
 	if over:
@@ -302,6 +307,7 @@ func _take_turn() -> void:
 
 func _dawn_conditions(p: DuelPlayer) -> void:
 	await _dawn_law(p)
+	await _rule_patter(p)   # (a story rule: Fen's Patter, as his turn starts)
 	if over:
 		return
 	for t in p.totems():
@@ -500,6 +506,9 @@ func action_problem(pi: int, action: Dictionary) -> String:
 		return "The duel is over."
 	if pi != current:
 		return "It isn't your turn."
+	var showboat := _rule_showboat(pi, action)
+	if showboat != "":
+		return showboat
 	match action.get("type", ""):
 		"call":
 			return call_problem(pi, action.get("card"), int(action.get("slot", -1)))
@@ -649,8 +658,8 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 		return "That card isn't in your hand."
 	if not card.is_rite():
 		return "That isn't a Rite."
-	if card_cost(pi, card) > p.essence:
-		return "Needs %d Essence." % card_cost(pi, card)
+	if rite_cost(pi, card) > p.essence:
+		return "Needs %d Essence." % rite_cost(pi, card)
 	var tk: String = card.def.get("target", "none")
 	if rite_needs_target(card):
 		var ts := rite_targets(pi, card)
@@ -792,6 +801,7 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 				top = maxi(top, f.hp_left())
 			out = foes.filter(func(f): return f.hp_left() == top)
 	out = _rule_run_to_ground(pi, out)
+	out = _rule_showboat_targets(pi, t, out)
 	out = _rule_hold_the_gate(pi, out)
 	return out
 
@@ -1116,6 +1126,66 @@ func can_do_anything_but_end(pi: int) -> bool:
 	return false
 
 
+# ------------------------------------------------- story rule: Showboat ---
+# Corin's rule in the Lantern Duel (story_rules["showboat"] = his side): "his
+# Cinderpup always attacks the moment it can, whatever's in its way". While a
+# Totem on that side could attack, nothing else may be done first and the
+# turn can't end; it goes at the Totem across from it, or straight at the
+# Life when nothing stands there.
+
+## The Totems on `pi`'s side that owe an attack right now ([] when none, or
+## when Showboat isn't theirs).
+func showboat_due(pi: int) -> Array:
+	if int(story_rules.get("showboat", -1)) != pi or over or pi != current or phase != "main":
+		return []
+	var out := []
+	for t in players[pi].totems():
+		for i in t.moves().size():
+			if t.move_target(i) in ["foe", "foe_totem", "all_foes"] and move_problem(pi, t, i) == "":
+				out.append(t)
+				break
+	return out
+
+
+## The attack a Showboat Totem makes when its side would rather end the turn:
+## its first move it can make, at whatever's in its way. {} when none is owed.
+func showboat_attack(pi: int) -> Dictionary:
+	for t in showboat_due(pi):
+		for i in (t as DuelTotem).moves().size():
+			if not (t.move_target(i) in ["foe", "foe_totem", "all_foes"]) or move_problem(pi, t, i) != "":
+				continue
+			var ts := attack_targets(pi, t, i)
+			if not ts.is_empty():
+				return {"type": "attack", "attacker": t, "move": i, "target": ts[0]}
+	return {}
+
+
+func _rule_showboat(pi: int, action: Dictionary) -> String:
+	var due := showboat_due(pi)
+	if due.is_empty():
+		return ""
+	if String(action.get("type", "")) == "attack" and due.has(action.get("attacker")):
+		return ""
+	return "Showboat: %s attacks the moment it can." % (due[0] as DuelTotem).card_name()
+
+
+## Whatever's in its way: the Totem across, or else the Life.
+func _rule_showboat_targets(pi: int, t: DuelTotem, out: Array) -> Array:
+	if int(story_rules.get("showboat", -1)) != pi:
+		return out
+	var across = opponent(pi).slots[t.slot]
+	if across != null and out.has(across):
+		return [across]
+	if out.has(LIFE):
+		return [LIFE]
+	return out
+
+
+func _rule_showboat_owed(pi: int):
+	var a := showboat_attack(pi)
+	return a if not a.is_empty() else null
+
+
 # ------------------------------------------------------------- calling ---
 
 func _act_call(pi: int, card: DuelCard, slot: int) -> void:
@@ -1173,6 +1243,9 @@ func _act_ward(pi: int, card: DuelCard) -> void:
 	if law == "ysolde" and not blessed(pi):
 		face_up[card.uid] = true
 		_log("%s sets %s face up, as the Unveiling demands." % [p.player_name, card.card_name()], pi)
+	elif int(story_rules.get("patter", -1)) == pi:
+		face_up[card.uid] = true   # Patter: he can't keep a secret
+		_log("%s sets %s face up." % [p.player_name, card.card_name()], pi)
 	else:
 		_log("%s sets a Ward face down." % p.player_name, pi)
 	await _fx("fx_ward_set", [pi, card])
@@ -1205,7 +1278,8 @@ func _act_shift(pi: int, t: DuelTotem, slot: int) -> void:
 
 func _act_rite(pi: int, card: DuelCard, target) -> void:
 	var p: DuelPlayer = players[pi]
-	_spend(p, card_cost(pi, card))
+	var licensed := card.cost() > 0 and rule_licensed(pi)
+	_spend(p, rite_cost(pi, card))
 	p.hand.erase(card)
 	p.stats.rites += 1
 	p.note_played(card.id)
@@ -1213,6 +1287,9 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 	if target is DuelTotem:
 		tname = " on %s" % target.card_name()
 	_log("%s casts %s%s." % [p.player_name, card.card_name(), tname], pi)
+	if licensed:
+		_log("Licensed: it costs %s nothing." % p.player_name, pi)
+		await _fx("fx_rule", [pi, "licensed"])
 	await _fx("fx_rite", [pi, card, target])
 	var res := await _spring_wards(1 - pi, "foe_rite", {"card": card})
 	if res.cancel_rite:
@@ -1247,6 +1324,8 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 	var amt := base + att.damage_bonus(i)
 	if players[att.owner].wrath:
 		amt += DuelRules.wrath_bonus
+	if rule_scrapper(att.owner):
+		amt += SCRAPPER_BONUS
 	if att.has_status("terrified"):
 		amt = _half(amt)
 	if att.has_status("staggered"):
@@ -1352,6 +1431,9 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 			_log("%s misses!" % t.card_name(), pi)
 	var pierce := effects.any(func(e): return e.op == "pierce")
 	var dealt := 0
+	if base > 0 and hostile and rule_scrapper(pi):
+		_log("%s is behind, and scrapping: +%d." % [p.player_name, SCRAPPER_BONUS], pi)
+		await _fx("fx_rule", [pi, "scrapper"])
 
 	if target is String and target == LIFE:
 		var amt := attack_amount(t, i, base, null) - int(res.reduce_life)
@@ -1730,6 +1812,10 @@ func _apply_status(t: DuelTotem, status: String, source = null, src_owner: int =
 	if t.is_boss and status in DuelConditions.BOSS_IMMUNE:
 		_log("%s can't be %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
 		return
+	if rule_discipline(t, status):
+		_log("%s holds its discipline: it can't be %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
+		await _fx("fx_rule", [t.owner, "discipline"])
+		return
 	if status == "burn" and t.has_status("soaked"):
 		_log("%s is too wet to burn." % t.card_name(), t.owner)
 		return
@@ -2100,3 +2186,66 @@ func _changed() -> void:
 ## The total number of cards each duellist owns (for the tests).
 func card_totals() -> Array:
 	return [players[0].total_card_count(), players[1].total_card_count()]
+
+# ------------------------------- story rules: Solhaven's sworn wagers ---
+# The side stories' wager duels (scripts/world/areas/solhaven/solhaven_side.gd),
+# each in story_rules as {rule id: the side it binds}: "licensed" (the
+# Sergeant), "patter" (Fen), "scrapper" (Pip) and "discipline" (the Captain of
+# the Sun Guard). When one of them changes something on the board the
+# presenter hears fx_rule(side, rule id).
+
+## What a Rite costs `pi` to cast: its card_cost(), or nothing under the
+## Sergeant's licence.
+func rite_cost(pi: int, card: DuelCard) -> int:
+	var c := card_cost(pi, card)
+	return 0 if c > 0 and rule_licensed(pi) else c
+
+
+## Licensed (the Sergeant of the Dawn Watch, under the dyers' bridge): his
+## Rites cost nothing while you have more Totems than he does. The Temple's
+## rules favour the Temple.
+func rule_licensed(pi: int) -> bool:
+	return int(story_rules.get("licensed", -1)) == pi \
+		and opponent(pi).totems().size() > players[pi].totems().size()
+
+
+## Patter (Fen, at the fountain): his Wards lie face up (_act_ward), and once
+## a turn, as his turn starts, he swaps the Ward that has been showing longest
+## for a different Ward from his hand. He talks too much to keep a secret.
+func _rule_patter(p: DuelPlayer) -> void:
+	if int(story_rules.get("patter", -1)) != p.index or p.wards.is_empty():
+		return
+	var shown: DuelCard = p.wards[0]
+	var fresh := p.hand.filter(func(c): return c.is_ward() and c.id != shown.id)
+	if fresh.is_empty():
+		return
+	var w: DuelCard = fresh[rng.randi_range(0, fresh.size() - 1)]
+	p.hand.erase(w)
+	p.wards.erase(shown)
+	p.wards.append(w)   # the newest now; the next one along has been showing longest
+	p.hand.append(shown)
+	face_up.erase(shown.uid)
+	face_up[w.uid] = true
+	p.note_played(w.id)
+	_log("%s takes back %s and sets %s face up instead." % [p.player_name, shown.card_name(), w.card_name()], p.index)
+	await _fx("fx_rule", [p.index, "patter"])
+	await _fx("fx_ward_set", [p.index, w])
+
+
+## Scrapper (Pip, on the fountain steps): his Totems hit 10 harder while he's
+## behind (his Life below yours).
+const SCRAPPER_BONUS := 10
+
+
+func rule_scrapper(pi: int) -> bool:
+	return int(story_rules.get("scrapper", -1)) == pi and players[pi].life < opponent(pi).life
+
+
+## Discipline (the Captain of the Sun Guard, in the barracks yard): her
+## Totems can't be Burned, Poisoned or Frozen. She plays by the book because
+## the book is all she has.
+const DISCIPLINE_IMMUNE := ["burn", "poison", "frozen"]
+
+
+func rule_discipline(t: DuelTotem, status: String) -> bool:
+	return t != null and int(story_rules.get("discipline", -1)) == t.owner and status in DISCIPLINE_IMMUNE

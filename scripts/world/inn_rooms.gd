@@ -11,6 +11,10 @@ extends RefCounted
 
 const TAPROOM_AT := Vector3(0.0, -40.0, 0.0)
 const CELLAR_AT := Vector3(30.0, -40.0, 0.0)
+## Prologue P1, the evening before: the attic the player wakes in, and the
+## taproom with Bram stacking paper lanterns into a crate (attic(), eve()).
+const ATTIC_AT := Vector3(0.0, -40.0, 30.0)
+const EVE_AT := Vector3(30.0, -40.0, 30.0)
 
 
 ## The taproom: plaster and black beams, a long bar, the hearth, a table with a
@@ -252,6 +256,327 @@ static func cellar(v: AshfordVillage) -> Dictionary:
 		"trap": root.to_global(Vector3(-0.9, 0, 0.7))}
 	v.set_meta("cellar", out)
 	return out
+
+
+## The inn's attic, where the Prologue opens (P1): low beams under a pitched
+## roof, a straw bed against the north wall with a candle by it, a cracked
+## mirror on the east gable and a little window in the west one, through
+## which the green can be seen filling up with lanterns (the real village,
+## seen from the inn's upper floor: view_of). The hatch to the stairs is in
+## the floor by the south-east corner.
+static func attic(v: AshfordVillage) -> Dictionary:
+	if v.has_meta("attic"):
+		return v.get_meta("attic")
+	var root := Node3D.new()
+	root.name = "Attic"
+	root.position = ATTIC_AT
+	v.add_child(root)
+	var W := 6.0       # gable to gable (x)
+	var D := 5.0       # eaves to eaves (z)
+	var K := 1.2       # the knee walls under the eaves
+	var R := 2.95      # the ridge
+	var boards: Material = v.mats.door_natural   # rough planks, walls and gables
+	v.box(root, Vector3(W + 0.5, 0.2, D + 0.5), Vector3(0, -0.1, 0), v.mats.wood_h)
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(W, K, 0.25), Vector3(0, K * 0.5, s * (D * 0.5 + 0.125)), boards)
+	# the roof's boards on their rafters, sloping up to the ridge
+	var run := D * 0.5
+	var rise := R - K
+	var ang := atan2(rise, run)
+	var slope := sqrt(run * run + rise * rise) + 0.35
+	for s in [-1.0, 1.0]:
+		var c := Vector3(0, K + rise * 0.5 + 0.1, s * run * 0.5)
+		v.box(root, Vector3(W + 0.6, 0.12, slope), c, v.mats.wood_h, Vector3(s * ang, 0, 0))
+		var inward := Vector3(0, -cos(ang), -s * sin(ang))
+		for x in [-2.4, -1.2, 0.0, 1.2, 2.4]:
+			v.box(root, Vector3(0.13, 0.15, slope - 0.2), c + inward * 0.13 + Vector3(x, 0, 0), v.mats.beam, Vector3(s * ang, 0, 0))
+	v.box(root, Vector3(W + 0.3, 0.22, 0.22), Vector3(0, R - 0.08, 0), v.mats.beam)
+	# low collar beams across, at head height: mind your head
+	var tie_y := 2.02
+	var tie_half := run * (R - tie_y) / rise + 0.15
+	for x in [-1.9, 0.0, 1.9]:
+		v.box(root, Vector3(0.16, 0.18, tie_half * 2.0), Vector3(x, tie_y, 0), v.mats.beam)
+	# the east gable, plain, with the mirror on it
+	v.box(root, Vector3(0.25, R + 0.1, D + 0.4), Vector3(W * 0.5 + 0.125, (R + 0.1) * 0.5, 0), boards)
+	# the west gable, round its little window
+	var win_c := Vector3(-W * 0.5 - 0.125, 1.55, 0.0)
+	var ww := 0.72
+	var wh := 0.62
+	var gx := -W * 0.5 - 0.125
+	v.box(root, Vector3(0.25, win_c.y - wh * 0.5, D + 0.4), Vector3(gx, (win_c.y - wh * 0.5) * 0.5, 0), boards)
+	var top_h := R + 0.1 - (win_c.y + wh * 0.5)
+	v.box(root, Vector3(0.25, top_h, D + 0.4), Vector3(gx, win_c.y + wh * 0.5 + top_h * 0.5, 0), boards)
+	var side_w := (D + 0.4) * 0.5 - ww * 0.5
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(0.25, wh, side_w), Vector3(gx, win_c.y, s * (ww * 0.5 + side_w * 0.5)), boards)
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(0.3, 0.07, ww + 0.14), Vector3(gx + 0.02, win_c.y + s * (wh * 0.5 + 0.035), 0), v.mats.beam)
+		v.box(root, Vector3(0.3, wh, 0.07), Vector3(gx + 0.02, win_c.y, s * (ww * 0.5 + 0.035)), v.mats.beam)
+	v.box(root, Vector3(0.06, wh, 0.04), Vector3(gx, win_c.y, 0), v.mats.beam)
+	v.box(root, Vector3(0.06, 0.04, ww), Vector3(gx, win_c.y, 0), v.mats.beam)
+	# the moon through it, onto the floorboards and the bed
+	var moon := SpotLight3D.new()
+	moon.light_color = Color(0.62, 0.72, 1.0)
+	moon.light_energy = 2.2
+	moon.spot_range = 7.0
+	moon.spot_angle = 24.0
+	moon.shadow_enabled = v.quality > 0
+	root.add_child(moon)
+	moon.position = Vector3(gx - 0.6, 2.2, 0.1)
+	moon.look_at(root.to_global(Vector3(-0.6, 0.0, -0.9)), Vector3.UP)
+	# the straw bed along the north wall: its head to the west
+	var bed := Vector3(-0.7, 0.0, -1.9)
+	v.box(root, Vector3(2.05, 0.3, 1.0), bed + Vector3(0, 0.15, 0), v.mats.wood)
+	v.box(root, Vector3(1.95, 0.14, 0.9), bed + Vector3(0, 0.37, 0), v.mats.hay)
+	v.box(root, Vector3(0.42, 0.1, 0.62), bed + Vector3(-0.72, 0.48, 0), v.mats.cloth_blue)
+	v.box(root, Vector3(1.15, 0.06, 0.94), bed + Vector3(0.35, 0.46, 0), v.mats.cloth_red, Vector3(0, 0, 0.03))
+	# a crate by its head with the candle on it
+	v.box(root, Vector3(0.42, 0.42, 0.42), Vector3(-2.1, 0.21, -1.95), v.mats.wood_h, Vector3(0, 0.2, 0))
+	v.cyl(root, 0.03, 0.035, 0.12, Vector3(-2.1, 0.48, -1.95), v.mats.stone_ww, 10)
+	v.glow_sprite(root, Vector3(-2.1, 0.58, -1.95), Color(1.0, 0.7, 0.35), 0.16, 0.9)
+	var cl := OmniLight3D.new()
+	cl.light_color = Color(1.0, 0.66, 0.34)
+	cl.light_energy = 1.3
+	cl.omni_range = 5.5
+	cl.shadow_enabled = true
+	cl.position = Vector3(-2.1, 0.75, -1.85)
+	root.add_child(cl)
+	v.flicker_lights.append([cl, 1.3])
+	var fill := OmniLight3D.new()
+	fill.light_color = Color(0.85, 0.72, 0.6)
+	fill.light_energy = 0.5
+	fill.omni_range = 7.0
+	fill.position = Vector3(1.2, 2.2, 0.8)
+	root.add_child(fill)
+	# a chest at the bed's foot, a coat on a peg
+	v.box(root, Vector3(0.75, 0.46, 0.46), Vector3(0.75, 0.23, -2.05), v.mats.wood)
+	v.box(root, Vector3(0.12, 0.05, 0.05), Vector3(-1.4, 0.85, D * 0.5 - 0.03), v.mats.beam)
+	v.box(root, Vector3(0.42, 0.62, 0.08), Vector3(-1.4, 0.55, D * 0.5 - 0.08), v.mats.cloth_blue)
+	# the cracked mirror on the east gable, in a dark wooden frame
+	var mz := 0.55
+	var my := 1.48
+	var mx := W * 0.5 - 0.02
+	v.box(root, Vector3(0.06, 0.98, 0.7), Vector3(mx - 0.03, my, mz), v.mats.beam)
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.5, 0.55, 0.6)
+	glass.metallic = 0.85
+	glass.roughness = 0.12
+	glass.emission_enabled = true
+	glass.emission = Color(0.12, 0.13, 0.16)
+	v.box(root, Vector3(0.02, 0.84, 0.56), Vector3(mx - 0.07, my, mz), glass)
+	var crack := StandardMaterial3D.new()
+	crack.albedo_color = Color(0.85, 0.9, 1.0)
+	crack.emission_enabled = true
+	crack.emission = Color(0.5, 0.55, 0.6)
+	for c2 in [[Vector3(0, 0.1, 0.05), 0.6, 0.5], [Vector3(0, -0.1, -0.06), 0.45, -0.7], [Vector3(0, 0.22, -0.1), 0.28, 1.4]]:
+		v.box(root, Vector3(0.005, 0.008, c2[1]), Vector3(mx - 0.085, my, mz) + c2[0], crack, Vector3(c2[2], 0, 0))
+	# the hatch down to the stairs, by the south-east corner
+	var hatch := Vector3(2.0, 0.0, 1.35)
+	v.box(root, Vector3(0.85, 0.015, 0.85), hatch + Vector3(0, 0.008, 0), v.mats.dark)
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(0.06, 0.95, 0.06), hatch + Vector3(s * 0.32, 0.47, 0.38), v.mats.beam_v)
+	_motes(v, root, Vector3(-0.8, 1.3, -0.4), Vector3(2.2, 0.8, 1.6))
+	var out := {"root": root, "bed": root.to_global(bed + Vector3(0, 0.44, 0)), "bed_head": root.to_global(bed + Vector3(-0.8, 0.44, 0)),
+		"bed_side": root.to_global(bed + Vector3(0.1, 0, 0.95)), "mirror": root.to_global(Vector3(mx - 0.09, my, mz)),
+		"mirror_stand": root.to_global(Vector3(mx - 0.72, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
+		"floor_y": ATTIC_AT.y, "view_quad": null}
+	# the green through the window: the village itself, from the inn's upper floor
+	var front := inn_front(v)
+	var eye: Vector3 = front.root.to_global(Vector3(2.2, 6.6, front.front_z + 0.4))
+	var q := view_of(v, root, eye, Vector3(0.0, 3.6, 0.0), Transform3D(Basis(Vector3.UP, PI * 0.5), win_c + Vector3(-0.85, 0.05, 0)), Vector2(2.2, 1.5))
+	out["view_quad"] = q
+	v.set_meta("attic", out)
+	return out
+
+
+## The taproom on the evening of the festival (P1), not the film's shuttered
+## afternoon after it: the good tankards already out on the green and the
+## shelves behind the bar bare, the hearth in, a lamp over the table where
+## Bram is packing paper lanterns into a crate, the stairs down from the
+## attic along the south wall, and the front door in the north wall, shut
+## until the player gets to it (`door` swings it open), the street beyond.
+## (The crate and the lanterns are the scene's own: AshfordP1.)
+static func eve(v: AshfordVillage) -> Dictionary:
+	if v.has_meta("eve"):
+		return v.get_meta("eve")
+	var root := Node3D.new()
+	root.name = "TaproomEve"
+	root.position = EVE_AT
+	v.add_child(root)
+	var W := 9.0
+	var D := 7.0
+	var H := 3.1
+	var dx := 2.2       # the front door's middle, along the north wall
+	var dw := 1.15
+	var dh := 2.15
+	var wall := plaster()
+	v.box(root, Vector3(W, 0.2, D), Vector3(0, -0.1, 0), v.mats.wood_h)
+	v.box(root, Vector3(W, 0.2, D), Vector3(0, H + 0.1, 0), v.mats.beam)
+	v.box(root, Vector3(W, H, 0.3), Vector3(0, H * 0.5, D * 0.5 + 0.15), wall)
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(0.3, H, D), Vector3(s * (W * 0.5 + 0.15), H * 0.5, 0), wall)
+	# the north wall, round the doorway
+	var left_w := W * 0.5 + dx - dw * 0.5
+	v.box(root, Vector3(left_w, H, 0.3), Vector3(-W * 0.5 + left_w * 0.5, H * 0.5, -D * 0.5 - 0.15), wall)
+	var right_w := W * 0.5 - dx - dw * 0.5
+	v.box(root, Vector3(right_w, H, 0.3), Vector3(W * 0.5 - right_w * 0.5, H * 0.5, -D * 0.5 - 0.15), wall)
+	v.box(root, Vector3(dw, H - dh, 0.3), Vector3(dx, dh + (H - dh) * 0.5, -D * 0.5 - 0.15), wall)
+	for s in [-1.0, 1.0]:
+		v.box(root, Vector3(0.16, dh, 0.36), Vector3(dx + s * (dw * 0.5 + 0.08), dh * 0.5, -D * 0.5 - 0.15), v.mats.beam_v)
+	v.box(root, Vector3(dw + 0.32, 0.18, 0.36), Vector3(dx, dh + 0.09, -D * 0.5 - 0.15), v.mats.beam)
+	# the door itself, hinged on its east side, opening in
+	var hinge := Node3D.new()
+	hinge.position = Vector3(dx + dw * 0.5, 0, -D * 0.5 + 0.02)
+	root.add_child(hinge)
+	v.box(hinge, Vector3(dw, dh - 0.02, 0.07), Vector3(-dw * 0.5, dh * 0.5, 0.0), v.mats.door_natural)
+	v.box(hinge, Vector3(0.05, 0.05, 0.08), Vector3(-dw + 0.12, 1.05, 0.06), v.mats.metal)
+	# beams round the walls and across
+	for x in [-4.3, -2.2, 0.0, 4.3]:
+		v.box(root, Vector3(0.22, H, 0.22), Vector3(x, H * 0.5, D * 0.5 - 0.05), v.mats.beam_v)
+	for z in [-2.6, -1.3, 0.0, 1.3, 2.6]:
+		v.box(root, Vector3(W, 0.24, 0.2), Vector3(0, H - 0.12, z), v.mats.beam)
+	# the bar along the west wall; the shelves behind it bare, hooks empty
+	v.box(root, Vector3(0.7, 1.05, 4.2), Vector3(-3.75, 0.525, -0.3), v.mats.wood)
+	v.box(root, Vector3(0.85, 0.08, 4.4), Vector3(-3.75, 1.09, -0.3), v.mats.beam)
+	for y in [1.5, 2.1]:
+		v.box(root, Vector3(0.3, 0.05, 3.9), Vector3(-W * 0.5 + 0.18, y, -0.3), v.mats.wood_h)
+	for k in 8:
+		v.box(root, Vector3(0.04, 0.09, 0.03), Vector3(-W * 0.5 + 0.12, 2.0, -2.0 + k * 0.48), v.mats.metal)
+	for p in [Vector3(-4.0, 0, -3.0), Vector3(-3.3, 0, -3.05)]:
+		var b := v.make_barrel()
+		b.position = p + Vector3(0, AshfordVillage.BARREL_HALF, 0)
+		root.add_child(b)
+	# the hearth in the east wall
+	v.box(root, Vector3(0.7, H, 2.2), Vector3(W * 0.5 - 0.35, H * 0.5, 0.9), v.mats.stone)
+	v.box(root, Vector3(0.3, 0.9, 1.1), Vector3(W * 0.5 - 0.62, 0.45, 0.9), v.mats.dark)
+	_hearth(v, root, Vector3(W * 0.5 - 0.75, 0.12, 0.9))
+	# the stairs down from the attic, along the south wall, rising to the west
+	for i in 10:
+		var top := 0.29 * (i + 1)
+		v.box(root, Vector3(0.38, top, 1.0), Vector3(-0.2 - i * 0.38, top * 0.5, D * 0.5 - 0.5), v.mats.wood_h)
+	v.box(root, Vector3(0.08, 1.0, 0.08), Vector3(0.05, 0.5, D * 0.5 - 1.02), v.mats.beam_v)
+	v.box(root, Vector3(3.9, 0.07, 0.07), Vector3(-1.85, 2.05, D * 0.5 - 1.02), v.mats.beam_v, Vector3(0, 0, 0.65))
+	# the table, two stools, and the lamp hung over it
+	var t := Vector3(0.6, 0.0, 0.3)
+	v.cyl(root, 0.8, 0.8, 0.07, t + Vector3(0, 0.78, 0), v.mats.wood_h, 24)
+	v.cyl(root, 0.1, 0.16, 0.76, t + Vector3(0, 0.38, 0), v.mats.beam_v, 10)
+	v.cyl(root, 0.32, 0.32, 0.05, t + Vector3(0, 0.02, 0), v.mats.beam_v, 16)
+	for p in [Vector3(-1.2, 0, 0.2), Vector3(1.15, 0, 0.55)]:
+		v.cyl(root, 0.22, 0.2, 0.46, t + p + Vector3(0, 0.23, 0), v.mats.wood, 14)
+	var lamp := v.box(root, Vector3(0.18, 0.26, 0.18), t + Vector3(0.1, 2.2, -0.1), v.mats.lamp_glass)
+	lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	v.box(root, Vector3(0.02, 0.6, 0.02), t + Vector3(0.1, 2.62, -0.1), v.mats.metal)
+	var ll := OmniLight3D.new()
+	ll.light_color = Color(1.0, 0.64, 0.32)
+	ll.light_energy = 1.9
+	ll.omni_range = 8.0
+	ll.shadow_enabled = true
+	ll.position = t + Vector3(0.1, 2.0, -0.1)
+	root.add_child(ll)
+	v.flicker_lights.append([ll, 1.9])
+	var fill := OmniLight3D.new()
+	fill.light_color = Color(0.9, 0.72, 0.56)
+	fill.light_energy = 0.7
+	fill.omni_range = 10.0
+	fill.position = Vector3(-1.5, 2.6, -1.0)
+	root.add_child(fill)
+	_motes(v, root, Vector3(0, 1.6, 0.0), Vector3(3.5, 1.2, 2.5))
+	var out := {"root": root, "door": hinge, "table": root.to_global(t), "table_top": root.to_global(t + Vector3(0, 0.815, 0)),
+		"bram": root.to_global(t + Vector3(0.0, 0, -1.05)), "player": root.to_global(t + Vector3(-0.15, 0, 1.15)),
+		"stairs_foot": root.to_global(Vector3(0.35, 0, D * 0.5 - 0.6)), "stairs_top": root.to_global(Vector3(-3.4, 2.9, D * 0.5 - 0.5)),
+		"door_in": root.to_global(Vector3(dx, 0, -D * 0.5 + 0.75)), "door_out": root.to_global(Vector3(dx, 0, -D * 0.5 - 0.7)),
+		"bar": root.to_global(Vector3(-3.1, 0, -0.3)), "hearth": root.to_global(Vector3(W * 0.5 - 0.8, 0, 0.9)),
+		# where the player may walk (in the room's own x/z), and what's in the way
+		"walk": Rect2(-3.15, -D * 0.5 + 0.35, 6.75, D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
+			[Vector2(t.x + 1.15, t.z + 0.55), 0.42]],
+		"floor_y": EVE_AT.y}
+	# the street through the doorway: the village itself, from the inn's door
+	var front := inn_front(v)
+	var eye: Vector3 = front.door + front.out * 0.6 + Vector3(0, 1.6, 0)
+	view_of(v, root, eye, eye + front.out * 10.0 + Vector3(0, -0.4, 0), Transform3D(Basis(), Vector3(dx, 1.25, -D * 0.5 - 1.6)), Vector2(3.4, 2.6))
+	v.set_meta("eve", out)
+	return out
+
+
+## Lime plaster for the inside walls: warm off-white, faintly mottled.
+static func plaster() -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.7, 0.64, 0.54)
+	m.roughness = 0.95
+	var nt := NoiseTexture2D.new()
+	var n := FastNoiseLite.new()
+	n.frequency = 0.03
+	nt.noise = n
+	nt.width = 256
+	nt.height = 256
+	nt.seamless = true
+	var ramp := Gradient.new()
+	ramp.set_color(0, Color(0.84, 0.82, 0.8))
+	ramp.set_color(1, Color(1.0, 1.0, 1.0))
+	nt.color_ramp = ramp
+	m.albedo_texture = nt
+	m.uv1_triplanar = true
+	m.uv1_scale = Vector3(0.6, 0.6, 0.6)
+	m.albedo_texture_force_srgb = true
+	return m
+
+
+## The front of the Crooked Lantern as it stands on its plot: its root node,
+## how far out its front face is (the model's +z), the middle of its door on
+## the ground, and the way out of the door. (Measured from Gary's model:
+## the door is half a metre left of the middle of the front.)
+static func inn_front(v: AshfordVillage) -> Dictionary:
+	for h in v.houses:
+		if not h.get("inn", false):
+			continue
+		var r: Node3D = h.root
+		var box := AABB()
+		var first := true
+		for mi: MeshInstance3D in r.find_children("*", "MeshInstance3D", true, false):
+			var b := (r.global_transform.affine_inverse() * mi.global_transform) * mi.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+		var out := r.global_transform.basis.z
+		out.y = 0.0
+		var door := r.to_global(Vector3(-0.53, 0.0, box.end.z))
+		door.y = v.height(door.x, door.z)
+		return {"root": r, "front_z": box.end.z, "door": door, "out": out.normalized()}
+	# the drawn stand-in: its door faces the green
+	var pos := Vector3(-24.0, 0.0, 6.0)
+	var o := -Vector3(pos.x, 0, pos.z).normalized()
+	return {"root": v, "front_z": 3.4, "door": pos + o * 3.4, "out": o}
+
+
+## A window onto the village from inside a room built below it: a camera at
+## `eye` looking at `look` renders the village once into a picture, shown on
+## a quad (`xf` in `root`'s space, facing +z) behind the window or doorway.
+## It's taken as the room is built, before the room's own lighting goes in.
+static func view_of(v: AshfordVillage, root: Node3D, eye: Vector3, look: Vector3, xf: Transform3D, size_m: Vector2) -> MeshInstance3D:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(640, int(640.0 * size_m.y / size_m.x))
+	vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+	vp.msaa_3d = Viewport.MSAA_DISABLED
+	root.add_child(vp)
+	var cam := Camera3D.new()
+	cam.fov = 48.0
+	cam.near = 0.3
+	cam.far = 200.0
+	vp.add_child(cam)
+	cam.global_position = eye
+	cam.look_at(look, Vector3.UP)
+	cam.current = true
+	var q := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = size_m
+	q.mesh = qm
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.albedo_texture = vp.get_texture()
+	q.material_override = m
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	q.transform = xf
+	root.add_child(q)
+	return q
 
 
 ## The blank card: plain white, faintly glowing, nothing on it.
