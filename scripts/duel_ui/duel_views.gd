@@ -459,6 +459,9 @@ class PlayerPanel:
 
 	var player: DuelPlayer = null
 	var mine := false
+	## The line under the name: "Sworn to <god>", "Unsworn" (the player, who
+	## kneels to no god), a rival's place, or nothing (a rival with no god).
+	var sub := ""
 	var active := false
 	var targetable := false
 	var shown_life := -1.0
@@ -534,8 +537,8 @@ class PlayerPanel:
 		var fnt := CardFace.font("display_bold")
 		var nm := player.player_name
 		CardFace.text(self, fnt, Vector2(142, 50), nm, CardFace.fit_size(fnt, nm, 28, m.end.x - 150), UITheme.TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, 4)
-		var sub := "Unsworn" if patron == "" else "Sworn to %s" % Lore.GODS[patron].name
-		CardFace.text(self, CardFace.font("body"), Vector2(143, 74), sub, 18, UITheme.TEXT_DIM)
+		if sub != "":
+			CardFace.text(self, CardFace.font("body"), Vector2(143, 74), sub, 18, UITheme.TEXT_DIM)
 		# Life: big number and a draining bar
 		var frac := clampf(shown_life / maxf(1.0, player.max_life), 0.0, 1.0)
 		var lag := clampf(lag_life / maxf(1.0, player.max_life), 0.0, 1.0)

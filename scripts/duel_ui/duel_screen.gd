@@ -499,6 +499,7 @@ func _start() -> void:
 	for side in 2:
 		panels[side].player = game.players[side]
 		panels[side].mine = side == me
+		panels[side].sub = _plate_line(side)
 		ward_zones[side].player = game.players[side]
 		ward_zones[side].mine = side == me
 	BlankCardSlot.attach(self)   # the blank card, from the night of the Sigilfall on
@@ -565,6 +566,24 @@ func _refresh() -> void:
 func _watching() -> bool:
 	var ai_flags: Array = spec.get("ai", [false, true])
 	return ai_flags[me]
+
+
+## The line under a duellist's name on their plate: spec.plates (or the
+## profile's "plate") when the story gives one (Corin is "Ashford"), else
+## "Sworn to <god>", else "Unsworn" for the player only. "The Unsworn" is
+## the player's name in the story, so a rival with no god (Bram, Dask) shows
+## nothing there.
+func _plate_line(side: int) -> String:
+	var plates: Array = spec.get("plates", [])
+	if side < plates.size():
+		return String(plates[side])
+	var p: DuelPlayer = game.players[side]
+	if p.profile.has("plate"):
+		return String(p.profile.plate)
+	if p.patron() != "":
+		return "Sworn to %s" % Lore.GODS[p.patron()].name
+	var ai_flags: Array = spec.get("ai", [false, true])
+	return "Unsworn" if side < ai_flags.size() and not ai_flags[side] else ""
 
 
 func _layout_hand() -> void:
@@ -2232,11 +2251,13 @@ func _bram_rival() -> bool:
 func fx_gift(pi: int, g: String) -> void:
 	sfx.play("gift")
 	var p: DuelPlayer = game.players[pi]
-	var god: String = "the Unsworn" if p.patron() == "" else Lore.GODS[p.patron()].name
+	# (a rival with no god isn't "the Unsworn": that's the player's name)
+	var from: String = "A Divine Gift from %s" % Lore.GODS[p.patron()].name if p.patron() != "" \
+		else ("A Divine Gift from the Unsworn" if pi == me else "Bound to no god")
 	var at: Vector2 = panels[pi].position + panels[pi].portrait_center()
 	DuelFX.flash(fx_layer, at, UITheme.GOLD, 260.0, 0.6 / speed)
 	DuelFX.rise(fx_layer, at + Vector2(0, 40), UITheme.GOLD, 160.0, 40, 1.2, speed)
-	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), "A Divine Gift from %s" % god)
+	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), from)
 	_refresh()
 	if tutor != null:
 		await tutor.lesson("gift", "A Gift. A god's favour, bought with kneeling. Nobody gets many.", "Gifts")
