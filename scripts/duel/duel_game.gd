@@ -820,7 +820,10 @@ func _rule_hold_the_gate(pi: int, out: Array) -> Array:
 		return out
 	if not players[pi].has_guardian():
 		return out
-	return out.filter(func(x): return not (x is String and x == LIFE))
+	var kept := out.filter(func(x): return not (x is String and x == LIFE))
+	if kept.size() != out.size():
+		rule_state["held"] = true   # (the gate held: Life was in reach, and left alone)
+	return kept
 
 
 ## Light Fingers (Wren, in the alley): once a duel, from her second turn on,

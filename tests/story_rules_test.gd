@@ -204,7 +204,7 @@ func _mirror_trial() -> void:
 	g.story_rules = spec.story_rules
 	g.puzzle = spec.puzzle
 	g._setup_phase()
-	_check(g.players[1].life == 120 and g.players[1].slots[1] != null and g.players[1].slots[1].id() == "gilded_sentinel", "the mirrors' board and Life are set")
+	_check(g.players[1].life == int(Duels.TRIALS.ironstone.life) and g.players[1].slots[1] != null and g.players[1].slots[1].id() == "gilded_sentinel", "the mirrors' board and Life are set (%d)" % g.players[1].life)
 	_check(g.players[0].hand.size() == 2 and g.players[0].hand[0].id == "grondmaw", "your hand is set: the Summon and a Ward")
 	_check(g.players[0].slots[0] != null and g.players[0].slots[2] != null, "your Totems are set")
 	_check(g.first_player == 0 and g.players[0].essence_max == 6, "you go first, with the Summon's cost in Essence")
