@@ -59,6 +59,7 @@ const OWN_GAIT := {
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
+const MAX_TURN := 10.0     # rad/s at most (a half turn in a third of a second)
 ## Clips that can't be done sitting down: asking for one stands them up.
 const STANDING_ONLY := ["walk", "run", "sneak", "strafe_left", "jump", "sit", "fall", "death", "roll", "flying_kick", "lift"]
 ## The bones sitting takes over from a clip (the rest go on as the clip has them).
@@ -425,9 +426,10 @@ func bone_pos(bone: String) -> Vector3:
 
 func _process(delta: float) -> void:
 	_t += delta
-	# turn towards where we're facing
+	# turn towards where we're facing (easing in, but never faster than a
+	# person turns: a half turn takes a third of a second, not a frame or two)
 	var d := wrapf(_want_yaw - _yaw, -PI, PI)
-	_yaw += d * minf(1.0, delta * TURN_RATE)
+	_yaw += clampf(d * minf(1.0, delta * TURN_RATE), -delta * MAX_TURN, delta * MAX_TURN)
 	_pivot.rotation = Vector3.ZERO
 	_pivot.position = Vector3.ZERO
 	if _lying > 0.001:
