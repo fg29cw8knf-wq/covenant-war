@@ -2660,6 +2660,12 @@ func _show_result(r: String) -> String:
 	box.scale = Vector2(k, k)
 	var bsz := box.size * k
 	var y := clampf(sr.position.y + sr.size.y * 0.56 - bsz.y * 0.5, sr.position.y + 40.0, sr.end.y - bsz.y - 40.0)
+	# below the big title (ResultBurst) where there's room: a win's box, with
+	# its rewards, is taller, and its top lay over the title's words
+	var tk := minf(overlay.size.x / 1920.0, overlay.size.y / 1080.0)
+	var under_title := overlay.size.y * 0.4 + 150.0 * tk * 0.55 + 16.0
+	if y < under_title:
+		y = maxf(y, minf(under_title, sr.end.y - bsz.y - 24.0))
 	box.position = Vector2(sr.position.x + (sr.size.x - bsz.x) * 0.5, y)
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
