@@ -12,6 +12,7 @@ extends Node
 ##   float    someone on screen stands well above or below the ground
 ##   vis      someone on screen appears or vanishes without a cut
 ##   lines    a subtitle and the dialogue box up at the same time
+##   short    a subtitle gone (or replaced) in under 20 frames: too quick to read
 ##   control  the player could walk during a film (busy off while cine is on)
 ##   stuck    nothing on (no film, no line, no menu) but the player can't move
 ##   music    the music changes track, stops, or starts a track from the top
@@ -81,10 +82,48 @@ func _context() -> String:
 	return s.left(70)
 
 
+## qa_trace=<who>:<from>-<to> on the command line prints that person's state
+## every frame in that window (clip, facing, head and hands, where they are).
+var _trace_who := ""
+var _trace_from := 0
+var _trace_to := -1
+
+
+func _read_trace_arg() -> void:
+	for a in OS.get_cmdline_user_args():
+		if String(a).begins_with("qa_trace="):
+			var s := String(a).substr(9)
+			_trace_who = s.get_slice(":", 0)
+			var ab := s.get_slice(":", 1).split("-")
+			_trace_from = int(ab[0])
+			_trace_to = int(ab[1]) if ab.size() > 1 else _trace_from + 30
+
+
+func _trace() -> void:
+	if _trace_who == "" or frame < _trace_from or frame > _trace_to:
+		return
+	for row in _people():
+		if String(row[0]) != _trace_who:
+			continue
+		var b: Node3D = row[1]
+		var f = row[2]
+		var s := "QA-TRACE f%d %s at %s" % [frame, _trace_who, _v(b.global_position)]
+		if f is Figure3D:
+			var g := f as Figure3D
+			s += " clip %s (anim %s %.2f/%.2f) yaw %.0f->%.0f lying %.2f seat %.2f walking %s head %s rhand %s" % [g._clip,
+				g.anim.current_animation, g.anim.current_animation_position, g.anim.current_animation_length,
+				rad_to_deg(g._yaw), rad_to_deg(g._want_yaw), g._lying, g.seat, g.walking,
+				_v(g.bone_pos("Head") - b.global_position), _v(g.bone_pos("RightHand") - b.global_position)]
+		print(s)
+
+
 func _sample() -> void:
 	if not is_instance_valid(w) or w.cam == null or not w.is_inside_tree():
 		return
+	if frame == 0:
+		_read_trace_arg()
 	frame += 1
+	_trace()
 	var now := Time.get_ticks_usec()
 	var dt := float(now - _t_prev) / 1000.0
 	_t_prev = now
@@ -285,6 +324,17 @@ func _check_lines() -> void:
 		_last_line = txt
 	if sub and box:
 		_note("lines", "a subtitle and the dialogue box at once")
+	# a subtitle that goes (or is replaced) before anyone could read it
+	var now_sub := txt if sub else ""
+	if now_sub != _sub_text:
+		if _sub_text != "" and frame - _sub_from < 20:
+			_note("short", "the subtitle \"%s\" was up for only %d frames" % [_sub_text.left(50), frame - _sub_from])
+		_sub_text = now_sub
+		_sub_from = frame
+
+
+var _sub_text := ""
+var _sub_from := 0
 
 
 # ----------------------------------------------------------------- control ---

@@ -23,7 +23,7 @@ extends Node
 ## you through the duel: no rematch), lose (Corin wins the rematch; it's won
 ## otherwise), every=<n> (a still every n frames as well), read=<n> (frames
 ## each line stays up, 6 by default), qa (watch for glitches as it plays:
-## QAMonitor).
+## tests/qa_monitor.gd), keys (draw only the frames kept: much faster).
 
 var out_dir := "user://"
 var part := "all"
@@ -44,6 +44,7 @@ var _mask := 0
 var _done := false
 var _props_hit := {}
 var _qa = null   # QA monitor (tests/qa_monitor.gd)
+var _keys := false   # "keys": draw only the frames that are kept (fast)
 
 const BODY := 0.3    # someone's half-width, about
 
@@ -68,6 +69,10 @@ func _ready() -> void:
 			read = int(s.substr(5))
 		elif s.is_valid_int():
 			every = int(s)
+		elif s == "keys":
+			_keys = true
+	if _keys:
+		RenderingServer.render_loop_enabled = false   # only the frames kept are drawn (fast)
 	Game.new_game("Sprout", "")
 	# a new player's (the opening must keep the world's standing hints off);
 	# a save past the opening has had Bram's lesson
@@ -482,7 +487,13 @@ func _shot(label: String) -> void:
 	_shots += 1
 	if DisplayServer.get_name() == "headless":
 		return   # (nothing is drawn: run for the checks only)
+	if _keys:
+		RenderingServer.render_loop_enabled = true
+		await get_tree().process_frame
+		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
+	if _keys:
+		RenderingServer.render_loop_enabled = false
 	var img := get_viewport().get_texture().get_image()
 	if img != null:   # (none when run headless)
 		img.save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
