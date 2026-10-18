@@ -84,6 +84,7 @@ var _arena_name := "solhaven"
 var _pinch := false
 var field: DuelField3D = null    # the 3D field, when the 3D setting is on
 var _herald: PaleHerald = null   # a Pale Herald watching at the Circle's edge (spec.herald_at)
+var _herald2d: Sprite2D = null    # the same on the flat (2D) field
 ## On screens wider than 16:9 the side columns move out to the screen's edges.
 var _edge := 0.0
 var _left_nodes := []          # [Control, design position]
@@ -156,6 +157,18 @@ func _ready() -> void:
 	if field != null:
 		field.stage = stage
 	_build()
+	if field == null and spec.has("herald_at"):
+		# (the flat field: the Herald as a pale figure at the Circle's far edge)
+		var tex := DollArt.texture("herald", "front")
+		_herald2d = Sprite2D.new()
+		_herald2d.texture = tex
+		_herald2d.centered = true
+		var k := 250.0 / float(maxi(1, tex.get_height()))
+		_herald2d.scale = Vector2(k, k)
+		_herald2d.position = Vector2(1770, 330)
+		_herald2d.modulate = Color(0.85, 0.88, 0.95, 0.5)
+		stage.add_child(_herald2d)
+		stage.move_child(_herald2d, 0)
 	fx_layer = Control.new()
 	fx_layer.size = DESIGN
 	fx_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2103,6 +2116,11 @@ func _blank_eye_check() -> void:
 		field.cam_focus(_herald.hood_pos(), 0.12, 0.8 / speed)
 		await pause(1.6)
 		field.cam_home(0.6)
+	elif _herald2d != null:
+		var tw := _herald2d.create_tween().set_parallel(true)
+		tw.tween_property(_herald2d, "skew", -0.12, 0.9 / speed).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(_herald2d, "scale:x", _herald2d.scale.x * 0.9, 0.9 / speed).set_trans(Tween.TRANS_SINE)
+		await pause(1.6)
 	await pause(0.4)
 
 

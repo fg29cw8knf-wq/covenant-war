@@ -193,6 +193,8 @@ func _rule_moment(which: String, ds: DuelScreen) -> void:
 			_check(ds._barked.has("_blank_eye"), "aldric: the seal shows on the blank card")
 			if ds.field != null:
 				_check(ds._herald != null and absf(ds._herald._hood_want) > 0.05, "aldric: the Pale Herald at the Circle's edge, its hood turned (%s)" % (ds._herald._hood_want if ds._herald != null else "none"))
+			else:
+				_check(ds._herald2d != null and absf(ds._herald2d.skew) > 0.05, "aldric: the Pale Herald at the Circle's edge (flat field), turned")
 		"trial":
 			var p0: DuelPlayer = g.players[0]
 			_check(p0.hand.size() >= 2 and p0.hand.any(func(c): return c.is_summon()), "trial: the Summon is in your hand")
