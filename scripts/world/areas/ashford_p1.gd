@@ -516,8 +516,7 @@ static func undress(w: World) -> void:
 				elif c.has_meta("p1_prop"):
 					c.queue_free()
 			(f as Figure3D).let_go(0.0)
-			if f.has_method("stand"):
-				f.call("stand", 0.0)
+			(f as Figure3D).stand(0.0)
 			(f as Figure3D).release(0.0)
 			(f as Figure3D).hand_light(null)
 		var b := Cine.body(w, who)
@@ -571,7 +570,7 @@ static func bram_sit(w: World) -> void:
 		return
 	var at := STOOL
 	at.y = village(w).height(at.x, at.z)
-	sit_down(w, "bram", at, BRAM_FACES, STOOL_H, 0.0, true)
+	sit_down(w, "bram", at, BRAM_FACES, STOOL_H, 0.0)
 	w.set_meta("bram_seated", true)
 
 
@@ -615,27 +614,18 @@ static func nell_sit(w: World) -> void:
 ## The tops of Bram's stool and Nell's bench (m).
 const STOOL_H := 0.46
 const BENCH_H := 0.475
-## Until a 3D figure can sit on a seat (Figure3D.sit(), coming with the
-## character models), the sit clip is held this far through, where it's
-## lowering itself onto a chair: hips `SIT_HIPS` up and `SIT_BACK` behind
-## the feet, knees at the seat's edge, feet on the ground (as measured on
-## the player's and Bram's models; the clip ends sat on the floor).
-const SIT_AT := 0.3
-const SIT_HIPS := 0.57
-const SIT_BACK := 0.28
 
 
-## Sits someone on a seat `height` m up, their hips over `at` (the ground
-## under the middle of the seat), facing `fwd`. While the player sits they
-## don't collide (the bench is solid, and Nell is beside them).
-## With `or_stand`, someone who can't sit properly yet stands beside the
-## seat instead (Bram by his stool: he's in a good many shots).
-static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45, or_stand := false) -> void:
+## Sits someone on a seat `height` m up (Figure3D.sit()), their hips over
+## `at` (the ground under the middle of the seat), facing `fwd`. While the
+## player sits they don't collide (the bench is solid, and Nell is beside
+## them). A cut-out can't sit: it stands beside the seat.
+static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
 	if b == null:
 		return
-	if not (f is Figure3D) or (or_stand and not f.has_method("sit")):
+	if not (f is Figure3D):
 		var by := at + fwd * 0.45 + fwd.cross(Vector3.UP) * 0.35
 		by.y = Cine.ground(w, by)
 		Cine.place(w, who, by, by + fwd)
@@ -643,50 +633,28 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 	if who == "player":
 		_solid(w, false)
 	var fig := f as Figure3D
-	var to := at
-	if not fig.has_method("sit"):
-		to = at + fwd * SIT_BACK + Vector3(0, maxf(0.0, height + 0.1 - SIT_HIPS), 0)
-	var can_sit := fig.has_method("sit")
 	if blend > 0.0:
-		# (from just in front of the seat: a step back and down onto it;
-		# Figure3D.sit() takes the spot they're on as the seat, so it waits)
+		# from just in front of the seat: a step back onto it (sit() takes
+		# the spot they're on as the seat, so it waits till they're there)
 		Cine.look(w, who, b.global_position + fwd)
 		var tw := w.create_tween()
-		tw.tween_property(b, "global_position", to, blend).set_trans(Tween.TRANS_SINE)
-		if not can_sit:
-			fig.pose("sit", SIT_AT, blend)
+		tw.tween_property(b, "global_position", at, blend).set_trans(Tween.TRANS_SINE)
 		await tw.finished
-		if can_sit:
-			fig.call("sit", height, blend)
+		fig.sit(height, blend)
 		return
-	Cine.place(w, who, to, to + fwd)
-	b.global_position = to
+	Cine.place(w, who, at, at + fwd)
+	b.global_position = at
 	fig.snap_face(fwd)
-	if can_sit:
-		fig.call("sit", height, 0.0)
-	else:
-		fig.pose("sit", SIT_AT, 0.0)
+	fig.sit(height, 0.0)
 
 
-## Up off a seat, standing on the ground in front of it.
+## Up off a seat. (The player stays unbumpable until they've stepped
+## clear of it: see nell_stand.)
 static func stand_up(w: World, who: String, blend := 0.4) -> void:
-	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
-	if b == null:
-		return
 	if f is Figure3D:
-		if f.has_method("stand"):
-			f.call("stand", blend)
-		else:
-			(f as Figure3D).release(blend)
-	var g := b.global_position
-	if Cine._on_terrain(w, b):
-		g.y = Cine.ground(w, g)
-	var tw := w.create_tween()
-	tw.tween_property(b, "global_position", g, blend).set_trans(Tween.TRANS_SINE)
-	await tw.finished
-	if who == "player":
-		_solid(w, true)
+		(f as Figure3D).stand(blend)
+	await Cine.wait(w, blend)
 
 
 ## The player's body solid (bumping into things) or not.
@@ -694,6 +662,17 @@ static func _solid(w: World, on: bool) -> void:
 	for c in w.player.get_children():
 		if c is CollisionShape3D:
 			(c as CollisionShape3D).set_deferred("disabled", not on)
+
+
+## The controls back on screen; the zoom buttons only where the game's own
+## camera is following the player (not in the attic or the taproom, nor in
+## a scene, where the shot is set).
+static func controls_on(w: World) -> void:
+	w.hud.set_controls_visible(true)
+	if w.cine:
+		for b in [w.hud._zoom_in, w.hud._zoom_out]:
+			if b != null:
+				(b as Control).visible = false
 
 
 ## Holds the NPCs back while a lesson step waits ("Find Tam"): none of them
@@ -732,7 +711,7 @@ static func use(w: World, target: Node3D, key: String, reach := 0.0, stand := Ve
 		w.busy = false
 		w.cine = false
 	w.hud.dialogue.close()
-	w.hud.set_controls_visible(true)
+	controls_on(w)
 	coach(w).objective(key)
 	await u.used
 	u.queue_free()
@@ -1072,7 +1051,7 @@ static func opening(w: World) -> void:
 	Game.save_game()
 	mute_all_but(w, ["tam", "bram"])
 	w.end_cine()
-	w.hud.set_controls_visible(true)
+	controls_on(w)
 	w.busy = false
 
 
@@ -1121,7 +1100,7 @@ static func _attic(w: World) -> void:
 	var face := Cine.head(w, "player") - Vector3(0, 0.12, 0)
 	Cine.move(w, a.mirror + Vector3(-0.06, 0.04, 0.0), face, 0.8, 56.0)
 	await Cine.wait(w, 0.9)
-	w.hud.set_controls_visible(true)
+	controls_on(w)
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
 	coach(w).objective("look")
 	await MirrorPicker.choose(w.hud._root)
@@ -1184,7 +1163,7 @@ static func _taproom(w: World) -> void:
 		await w.get_tree().process_frame
 	await _crate_to_player(w, cr)
 	# the walk: to the door, Bram following
-	w.hud.set_controls_visible(true)
+	controls_on(w)
 	w.hud._menu_btn.visible = false
 	coach(w).objective("crate")
 	var door_in: Vector3 = e.door_in
@@ -1357,7 +1336,7 @@ static func _street(w: World) -> void:
 	# their own feet now, Bram behind
 	mute_all_but(w, [], true)
 	coach(w).objective("crate")
-	w.hud.set_controls_visible(true)
+	controls_on(w)
 	w.busy = false
 	var following := [true]
 	follow(w, "bram", 1.8, following)
@@ -1578,7 +1557,7 @@ static func bram_to_stool(w: World) -> void:
 		return
 	w.set_meta("bram_to_stool", true)
 	await Cine.path(w, "bram", round_lantern(w, b.global_position, at), 1.5)
-	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5, true)
+	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
 	w.remove_meta("bram_to_stool")
 	w.set_meta("bram_seated", true)
 
@@ -2063,6 +2042,7 @@ static func nell_stand(w: World) -> void:
 	var tw := w.create_tween()
 	tw.tween_property(w.player, "global_position", bench_seat(w, true) + fwd * 0.75, 0.5).set_trans(Tween.TRANS_SINE)
 	await tw.finished
+	_solid(w, true)
 	await home(w, 0.8)
 
 

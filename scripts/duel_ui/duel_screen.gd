@@ -2399,7 +2399,7 @@ func story_bark(event: String) -> void:
 	_bark_label.text = line
 	_bark_box.modulate.a = 0.0
 	_bark_box.visible = true
-	_bark_box.position = Vector2(24, 72)
+	_bark_box.position = _safe_rect().position + Vector2(24, 72)
 	var tw := _bark_box.create_tween()
 	tw.tween_property(_bark_box, "modulate:a", 1.0, 0.3)
 	tw.tween_interval(3.0)
