@@ -1533,7 +1533,7 @@ static func _noon(w: World, strokes: int) -> void:
 	var hale_face: Vector3 = at.call("post") + Vector3(0, 1.5, 0.42)
 	var you_face: Vector3 = Cine.body(w, "player").global_position + Vector3(0, 1.45, 0)
 	if full:
-		_shot(w, at.call("post") + Vector3(1.6, 1.6, -1.1), hale_face, 30.0)   # past the post, not through it
+		_shot(w, at.call("post") + Vector3(2.1, 1.6, 0.25), hale_face, 30.0)   # from the side, clear of the post
 	else:
 		_shot(w, at.call("post") + Vector3(0.4, 1.7, 0.7), (Cine.body(w, "watch_a").global_position + Cine.body(w, "watch_b").global_position) * 0.5 + Vector3(0, 1.45, 0), 34.0)
 	var gap := 1.1 if strokes <= 10 else 0.7
