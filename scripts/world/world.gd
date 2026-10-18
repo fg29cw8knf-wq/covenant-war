@@ -799,10 +799,13 @@ func _on_menu(action: String) -> void:
 ## Glides the camera to `pos`, looking at `look`, over `secs` seconds.
 func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 	cine = true
+	var token := Cine.take_camera(self)   # (a film's glide still running stops)
 	var from_pos := cam.global_position
 	var from_look := from_pos + (-cam.global_transform.basis.z) * 10.0
 	var tw := create_tween()
 	tw.tween_method(func(u: float) -> void:
+		if not Cine.has_camera(self, token):
+			return
 		var e := u * u * (3.0 - 2.0 * u)
 		cam.global_position = from_pos.lerp(pos, e)
 		cam.look_at(from_look.lerp(look, e), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
@@ -811,6 +814,7 @@ func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 
 ## Hands the camera back to the player.
 func end_cine() -> void:
+	Cine.take_camera(self)   # (no glide left over from the film fights the player's camera)
 	cine = false
 
 
