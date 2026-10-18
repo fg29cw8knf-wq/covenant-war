@@ -32,6 +32,11 @@ after the Trial the player has the afternoon in the square (everyone's "after
 the Trial" lines) until they go back to Bram at the wagon: his line "once,
 after the Trial" ends the day, and Gold in the Dark follows.
 
+Not in the game yet: the chapter's last beat, "Next time the game opens"
+(dawn, the wagon rolling out, Bram's "Pyreholt's nearest." and the objective
+"Choose a kingdom."). It needs the map of Veyl, which doesn't exist yet; until
+then the game goes back to the square after the "End of Chapter One" caption.
+
 ### C1 · The Golden Gate
 
 _Solhaven revealed: white walls, gold domes, and the Sunspire, a tower crowned with a great mirror that throws the sun across the city. The road to the gate is crowded with refugees from villages the Sigilfall hit: carts, bundles, children asleep on sacks._
