@@ -490,6 +490,9 @@ static func _choose_deck(w: World, boxes: Array, ids: Array, lg: Dictionary) -> 
 		# back to the row, the card still up: tap it again to choose, or another
 		Cine.move(w, row_cam, mid + Vector3(0, 0.22, 0), 0.5, 40.0)
 	picker.hide_deck()
+	# the deck screen opens on its paintings in a moment: start loading them
+	# now, while he nods, so it comes up without a stall
+	CardFace.warm_art(DuelCards.card_list(chosen))
 	# that one: he nods slowly
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "That one.")
@@ -581,7 +584,9 @@ static func _morning(w: World) -> void:
 		if won:
 			# he studies the cards on the log a while
 			_cards_on_log(w, lg)
-			Cine.place(w, "bram", (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1), lg.mid)
+			# (on the ground beside the log: the log's middle is 0.2 m up)
+			var by_log: Vector3 = (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1)
+			Cine.place(w, "bram", Vector3(by_log.x, 0.0, by_log.z), lg.mid)
 			Cine.shot(w, (lg.mid as Vector3) + side * 1.9 + Vector3(0, 1.5, 0), (lg.mid as Vector3) + Vector3(0, 0.6, 0) - side * 0.4, 40.0)
 			if bf is Figure3D:
 				(bf as Figure3D).pose("sit", 0.22, 0.5)   # bent over them
@@ -684,6 +689,8 @@ static func _road(w: World) -> void:
 	_only(w, ["bram"])
 	await Cine.begin(w)
 	Cine.overlay(w).black(true)
+	# Dask's Shieldhound steps out of the trees mid-shot: loaded now, behind the black
+	Cine.keep(w, "res://assets/models/creatures/shieldhound.glb")
 	var r: Vector3 = ThornwoodSet.SPOTS.road
 	r.y = v.height(r.x, r.z)
 	Cine.place(w, "bram", r + Vector3(0.3, 0, -9.0), r + Vector3(0, 0, 10))
@@ -768,11 +775,26 @@ static func _road(w: World) -> void:
 		await Cine.wait(w, 1.8)
 		await Cine.say(w, "dask", "...Why?")
 		await Cine.wait(w, 0.6)
+		# he takes it (between the shots: it's in his hand as the wide one
+		# opens), and backs into the trees without another word
+		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
 		if pf is Figure3D:
 			(pf as Figure3D).hand_light(null)
 			(pf as Figure3D).release(0.4)
-		# he takes it, and backs into the trees without another word
-		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
+		if is_instance_valid(card):
+			var df = Cine.fig(w, "dask")
+			if df is Figure3D:
+				(df as Figure3D).hand_light(card)
+				card.position = Vector3(0.0, 0.06, 0.04)
+			else:
+				var db := Cine.body(w, "dask")
+				if card.get_parent() != null:
+					card.get_parent().remove_child(card)
+				db.add_child(card)
+				var to_p := w.player.global_position - db.global_position
+				to_p.y = 0.0
+				card.position = to_p.normalized() * 0.3 + Vector3(0, 0.95, 0)
+				card.rotation = Vector3(-0.4, atan2(to_p.x, to_p.z), 0)
 		Cine.path(w, "dhound", [dpos + Vector3(1.2, 0, 0.4), r + Vector3(6.0, 0, 7.0)], 1.4)
 		await Cine.path(w, "dask", [dpos + Vector3(0.0, 0, 0.8), r + Vector3(5.0, 0, 6.0)], 0.9)
 	else:
@@ -785,13 +807,15 @@ static func _road(w: World) -> void:
 		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
 		Cine.path(w, "dhound", [r + Vector3(6.0, 0, 7.0), r + Vector3(14.0, 0, 9.0)], 3.0)
 		await Cine.path(w, "dask", [r + Vector3(5.0, 0, 6.0), r + Vector3(12.0, 0, 8.0)], 1.6)
+	# Bram, to himself, looking after him: seen from the way Dask went, so
+	# Dask and his hound are gone behind the camera as it cuts, not vanishing
+	# in front of us (from over your shoulder, they were still in the shot)
+	Cine.look(w, "bram", r + Vector3(12, 0, 8))
+	_front_shot(w, "bram", r + Vector3(12, 0, 8), 30.0)
 	Cine.despawn(w, "dask")
 	Cine.despawn(w, "dhound")
 	if is_instance_valid(box):
 		box.queue_free()
-	# Bram, to himself
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
-	Cine.look(w, "bram", r + Vector3(12, 0, 8))
 	await Cine.say(w, "bram", "Morne.", 2.0)
 	await Cine.wait(w, 1.0)
 	# he keeps watch till dawn, and doesn't wake you for your turn
