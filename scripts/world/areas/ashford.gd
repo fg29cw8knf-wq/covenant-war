@@ -893,8 +893,9 @@ static func _bram_comes(w: World) -> void:
 	var mid := (p + c + stop) / 3.0
 	var side := -perp
 	var look := mid + Vector3(0, 1.2, 0)
-	Cine.move(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
-		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look, 0.8)
+	# a cut (a glide here swung half round them, through Corin and the drum)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
+		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look)
 	_hold(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
@@ -1031,8 +1032,23 @@ static func _tilly_hands_over(w: World) -> void:
 	# turns as it crosses so its face ends up towards you
 	var g3 := (glow as Node3D).get_parent() != w and tf is Figure3D
 	if g3:
+		# her hands stay where they held it and come down slowly (re-parenting
+		# the card took her hands' targets with it: her arms dropped at once)
+		var keep_l := Node3D.new()
+		var keep_r := Node3D.new()
+		var piv: Node3D = (glow as Node3D).get_parent()
+		piv.add_child(keep_l)
+		piv.add_child(keep_r)
+		keep_l.global_transform = (glow as Node3D).get_node("L").global_transform
+		keep_r.global_transform = (glow as Node3D).get_node("R").global_transform
+		(tf as Figure3D).reach(keep_l, keep_r, 0.0)
 		(glow as Node3D).reparent(w)
 		(tf as Figure3D).let_go(0.5)
+		var drop := w.create_tween()
+		drop.tween_interval(0.6)
+		drop.tween_callback(func() -> void:
+			keep_l.queue_free()
+			keep_r.queue_free())
 	# a little arc, brightening as it crosses
 	var from: Vector3 = glow.global_position
 	var to := p + Vector3(0, 1.05, 0) + d * 0.3
@@ -1475,6 +1491,12 @@ static func _corin_and_tilly(w: World, lane_a: Vector3, lane_b: Vector3) -> void
 	await Cine.path(w, "corin", [lane_a, lane_b], 3.6, "run")
 
 
+## In the fall clip (5.5 s: down on his back by 1.4 s, getting up from 2.8 s):
+## where Corin is held while he's pinned, and where his getting up starts.
+const CORIN_DOWN := 0.26
+const CORIN_UP := 0.51
+
+
 ## The cart: a strike lands beside it, it goes over on Corin, and Tilly
 ## screams for him. The player gets up and runs back; Bram is there too, and
 ## between them they heave it up off his leg.
@@ -1498,13 +1520,18 @@ static func _the_cart(w: World) -> void:
 	await Cine.wait(w, 0.28)
 	w.shake(0.7)
 	_sfx(w, "sigil_strike")
-	Cine.look(w, "corin", Cine.body(w, "tilly").global_position)
+	# he turns to the blast, and it throws him down on his back, his legs
+	# under the cart as it comes over (the fall clip, held down: a body
+	# tipped over stiff, as it used to be, looked like a plank falling)
+	Cine.look(w, "corin", cc)
 	v.tip_cart(1.0, 0.55)
 	await Cine.wait(w, 0.3)
 	var cf = Cine.fig(w, "corin")
-	Cine.place(w, "corin", cc + fd * 2.7, cc + fd * 9.0)
+	Cine.place(w, "corin", cc + fd * 2.7)
 	if cf is Figure3D:
-		(cf as Figure3D).lie_down(0.3)
+		(cf as Figure3D).pose("fall", CORIN_DOWN, 0.45)
+	else:
+		Cine.place(w, "corin", cc + fd * 2.7, cc)
 	await Cine.wait(w, 0.3)
 	v.dust_puff(cc + fd * 2.8)
 	v.dust_puff(cc + fd * 3.4 + al * 0.8)
@@ -1564,7 +1591,7 @@ static func _the_cart(w: World) -> void:
 		if f is Figure3D:
 			(f as Figure3D).release()
 	if cf is Figure3D:
-		await (cf as Figure3D).get_up(0.9)
+		await (cf as Figure3D).resume(CORIN_UP, 1.5)   # the fall's own getting up
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.place(w, "tilly", corin.global_position - al * 1.1 - fd * 0.45, corin.global_position)
 	# the two of them, the cart behind: he limps a step towards you
@@ -2539,8 +2566,9 @@ static func _burning(w: World) -> void:
 		await Cine.wait(w, 0.42)
 		_sfx(w, "hit_heavy", 0.8)
 		if tf is Figure3D:
+			# his own fall, backwards (not his standing pose tipped over stiff)
 			(tf as Figure3D).let_go(0.05)
-			(tf as Figure3D).lie_down(0.35, true)
+			_tam_down(tf as Figure3D, 0.15)
 		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
 		await Cine.wait(w, 0.35)
 	else:
@@ -2557,7 +2585,7 @@ static func _burning(w: World) -> void:
 	if not gore:
 		if tf is Figure3D:
 			(tf as Figure3D).let_go(0.05)
-			(tf as Figure3D).lie_down(0.01, true)
+			_tam_down(tf as Figure3D, 0.0)   # (the camera's on Nell: he's down when it comes back)
 		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
 	Cine.place(w, "hound1", KRELL_AT + Vector3(-1.2, 0, 1.0), tam_at)
 	await Cine.wait(w, 1.8)
@@ -2638,6 +2666,19 @@ static func _burning(w: World) -> void:
 		cap.queue_free()
 	for id in hunters + ["krell", "hound1", "hound2"]:
 		Cine.despawn(w, id)
+
+
+## Tam goes down, on his back: his own death clip, played (or, with blend 0,
+## already over: the camera was away), and held there; tipped over flat if a
+## model hasn't got one.
+static func _tam_down(f: Figure3D, blend: float) -> void:
+	if f.anim != null and f.anim.has_animation("death"):
+		if blend > 0.0:
+			f.hold("death", 1.3, blend)
+		else:
+			f.pose("death", 1.0, 0.01)
+	else:
+		f.lie_down(0.35 if blend > 0.0 else 0.01, true)
 
 
 ## Cuts the camera to a shot `after` seconds from now (while a line is up).
