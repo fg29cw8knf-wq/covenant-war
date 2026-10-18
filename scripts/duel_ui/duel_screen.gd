@@ -464,6 +464,7 @@ func _start() -> void:
 	if (not lesson.is_empty() or spec.get("lessons", false)) and not ai_flags[me]:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
 	game.law = String(spec.get("law", ""))
+	game.story_rules = spec.get("story_rules", {})   # (until the films branch, which sets this too, is merged)
 	game.presenter = self
 	sfx.play("shuffle")
 	Music.play(["arena_" + _arena_name] + Music.duel_theme())
@@ -1365,6 +1366,14 @@ func fx_start() -> void:
 	await pause(0.1)
 
 
+## A story duel's own rule, named as the duel starts (spec.rule = [name,
+## what it does]: Corin's Showboat in the Lantern Duel).
+func _story_rule_banner() -> void:
+	var r: Array = spec.get("rule", [])
+	if r.size() >= 2:
+		await _banner(String(r[0]).to_upper(), UITheme.GOLD, 2.4, 72, "", "Duel rule: " + String(r[1]))
+
+
 ## Both duellists roll for the first turn, big in the middle of the Circle.
 ## In the Lantern Duel Bram's intro ends with "tap the die", and the roll
 ## waits for that tap.
@@ -1384,6 +1393,7 @@ func fx_rolloff(r0: int, r1: int) -> void:
 		if game.law != "":
 			var god: String = game.law if Lore.GODS.has(game.law) else ""
 			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+		await _story_rule_banner()
 		if tutor != null:
 			rv.waiting = true
 			await tutor.event("intro")   # ends with the player tapping their die
@@ -1788,6 +1798,8 @@ func _impact(pos: Vector2, col: Color, amount: int) -> void:
 
 func fx_roll(_pi: int, info: Dictionary) -> void:
 	_coach("fate")
+	if _pi == rival:
+		story_bark("rival_first_fate")   # (stub call until the films branch is merged)
 	var dv := DuelViews.DiceView.new()
 	dv.info = info
 	dv.position = Vector2(FIELD_CX - 590, 276)
@@ -1889,6 +1901,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	await pause(0.36)
 	if field != null and att != null:
 		field.cam_home(0.7 / speed)
+	if weak and att != null and att.owner == me and t.owner != me:
+		story_bark("weakness_on_rival")   # (stub call until the films branch is merged)
 	if tutor != null:
 		if weak and att != null and att.owner == me and t.owner != me:
 			await tutor.event("weakness")
@@ -2075,6 +2089,8 @@ func fx_ko(t: DuelTotem) -> void:
 	v.set_totem(game.players[t.owner].slots[t.slot])
 	if field != null:
 		field.cam_home(0.7 / speed)
+	if t.owner == rival:
+		story_bark("rival_ko_own")   # (stub call until the films branch is merged)
 	if tutor != null and t.owner == rival:
 		await tutor.event("ko_rival")
 
@@ -2273,6 +2289,42 @@ func _bark() -> void:
 	tw.tween_callback(func() -> void: _bark_box.visible = false)
 
 
+## (Stub until the films branch is merged: it owns story_bark and its calls.)
+## The rival's line for a moment in the duel (spec.bark_on = {event: line}),
+## once a duel, in the bark box.
+var _story_barked := {}
+
+
+func story_bark(event: String) -> void:
+	var line := String(spec.get("bark_on", {}).get(event, ""))
+	if line == "" or _story_barked.has(event):
+		return
+	_story_barked[event] = true
+	if _bark_box == null:
+		_bark_box = PanelContainer.new()
+		_bark_box.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.88), UITheme.GOLD_DIM, 18, 2, 20))
+		_bark_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 2)
+		_bark_box.add_child(v)
+		var who := UITheme.label(String(spec.get("names", ["", "Rival"])[1]).to_upper(), 20, UITheme.TEXT_DIM, "bold")
+		v.add_child(who)
+		_bark_label = UITheme.label("", 26, UITheme.TEXT)
+		_bark_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_bark_label.custom_minimum_size = Vector2(460, 0)
+		v.add_child(_bark_label)
+		overlay.add_child(_bark_box)
+	_bark_label.text = line
+	_bark_box.modulate.a = 0.0
+	_bark_box.visible = true
+	_bark_box.position = Vector2(24, 72)
+	var tw := _bark_box.create_tween()
+	tw.tween_property(_bark_box, "modulate:a", 1.0, 0.3)
+	tw.tween_interval(3.0)
+	tw.tween_property(_bark_box, "modulate:a", 0.0, 0.5)
+	tw.tween_callback(func() -> void: _bark_box.visible = false)
+
+
 ## Flips a card up in the middle of the Circle, flying in from `from`.
 ## Returns the card's centre.
 func _show_card_big(id: String, tag: String, col: Color, hold: float, from := Vector2(-1, -1)) -> Vector2:
@@ -2442,7 +2494,8 @@ func _show_result(r: String) -> String:
 	var story: bool = spec.get("story", false)
 	var again := UITheme.button("Try again" if story else "Duel again", not story or r != "won", 340)
 	var back := UITheme.button("Continue" if story else "Back to the Lab", story and r == "won", 340)
-	again.visible = not (story and r == "won")
+	# spec.once: the result stands, win or lose (the Lantern Duel's rematch)
+	again.visible = not (story and r == "won") and not spec.get("once", false)
 	hb.add_child(again)
 	hb.add_child(back)
 	var picked := [""]

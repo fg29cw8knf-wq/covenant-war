@@ -25,7 +25,10 @@ extends RefCounted
 ## Every line is kept, in order, on the pause menu's How to Duel page
 ## (Game.lessons()). Later duels where Bram is about (spec.lessons = true)
 ## get a tutor with no script, just for lesson(): the first condition, Ward
-## or Ascension is explained the same gated way, once ever.
+## or Ascension is explained the same gated way, once ever, in the words of
+## Master Script v3 (FIRST_TIME). spec.tutorial = {"quiet": true} gives a
+## duel with no lessons at all: the Lantern Duel when the player told Bram
+## they'd watched enough duels ("Then I'll keep quiet. Mostly.").
 
 signal _tapped
 signal _did_step
@@ -143,11 +146,46 @@ func event(name: String) -> void:
 ## Ward, Ascension): one gated line from Bram, kept on the How to Duel page,
 ## never taught twice. `focus` spotlights what it's about.
 func lesson(id: String, text: String, p_group: String, p_focus: String = "", who: String = "Bram") -> void:
-	if Game.learned(id):
+	if Game.learned(id) or bool(data.get("quiet", false)):
 		return
+	text = first_time_line(id, text)
 	Game.learn(id, p_group, who, text)
 	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
 	_show_head()
+
+
+## Bram's first-time lines in Master Script v3's words ("Bram, the first time
+## each thing appears"), by lesson id. The Duel screen asks for each lesson
+## with its own (older) wording and the cards it's about filled in; where v3
+## rewrote the line, this gives v3's, with the same cards. "(mine)" is the
+## version for when Bram is the one across the Circle.
+const FIRST_TIME := {
+	"fate": "That's a Fate roll. High, and it hits hard; low, nothing. The die doesn't care who you are.",
+	"ward_set": "A Ward. Face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
+	"ward_set (mine)": "That's my Ward, face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
+	"ward_mine": "Yours is down. It'll spring on its own when its moment comes. Set them early, while they're cheap.",
+	"ward_spring": "There it goes. It's spent now. Next time, think what it's waiting for, and don't give it that.",
+	"summon (theirs)": "That was a Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
+	"summon (mine)": "That was my Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
+	"ascend": "That %s is an Ascension: %s, grown up. Play it on your %s and it steps into the same slot, bigger, with everything it had. It costs Essence, so think about when.",
+}
+
+
+static func first_time_line(id: String, text: String) -> String:
+	var mine := text.begins_with("That's my") or text.begins_with("That was my")
+	match id:
+		"fate", "ward_mine", "ward_spring":
+			return FIRST_TIME[id]
+		"ward_set":
+			return FIRST_TIME["ward_set (mine)" if mine else "ward_set"]
+		"summon":
+			if text.begins_with("That was"):
+				return FIRST_TIME["summon (mine)" if mine else "summon (theirs)"]
+		"ascend":
+			var m := RegEx.create_from_string("^That (.+) is an Ascension: (.+), grown up\\.").search(text)
+			if m != null:
+				return FIRST_TIME.ascend % [m.get_string(1), m.get_string(2), m.get_string(2)]
+	return text
 
 
 ## True while an instruction is waiting to be carried out.
