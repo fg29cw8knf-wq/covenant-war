@@ -483,20 +483,29 @@ func _press(code: Key) -> void:
 		await _frames(2)
 
 
+## (keys: two stills at once, from the line reader and the play-through, must
+## not switch drawing off under each other, or one waits for a frame forever)
+var _drawing := 0
+
+
 func _shot(label: String) -> void:
 	_shots += 1
+	var n := _shots
 	if DisplayServer.get_name() == "headless":
 		return   # (nothing is drawn: run for the checks only)
 	if _keys:
+		_drawing += 1
 		RenderingServer.render_loop_enabled = true
 		await get_tree().process_frame
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	if _keys:
-		RenderingServer.render_loop_enabled = false
+		_drawing -= 1
+		if _drawing == 0:
+			RenderingServer.render_loop_enabled = false
 	var img := get_viewport().get_texture().get_image()
 	if img != null:   # (none when run headless)
-		img.save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
+		img.save_png(out_dir.path_join("%03d_%s.png" % [n, label]))
 
 
 func _finish() -> void:
