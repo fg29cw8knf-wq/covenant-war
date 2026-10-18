@@ -167,6 +167,11 @@ static func hub(w: World) -> void:
 	# Tamsin's crier: once a day, while there's an advert to be had
 	Game.flags["crier_offer"] = String(Game.flag("crier_day", "")) != Time.get_date_string_from_system() and Ads.can_offer_rewarded()
 	people(w)
+	# the side stories: whoever the story so far has brought into the square
+	# (event "square", each time it's set up again after a film)
+	var s := side()
+	if s != null and s.has_method("event") and not w.attract:
+		s.event(w, "square")
 	Music.play(w.music, 1.5, true)
 	_mark(w)
 	if not w.has_node("SolhavenTriggers"):
@@ -251,22 +256,22 @@ static func _grey_coat(w: World) -> void:
 	if pip == null:
 		return
 	var b := Node3D.new()
-	b.name = "Extra_pell"
+	b.name = "Extra_grey_coat"
 	w.add_child(b)
 	b.global_position = Vector3(-13.0, 0, -12.0)
 	var d := Figure3D.make("trader", "pell")
 	b.add_child(d)
 	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
-	ex["pell"] = {"body": b, "doll": d}
+	ex["grey_coat"] = {"body": b, "doll": d}   # (Mr Pell; the side stories have their own)
 	w.set_meta("extras", ex)
-	Cine.path(w, "pell", [Vector3(-4.0, 0, -14.5), Vector3(8.0, 0, -13.0), Vector3(15.0, 0, -9.0)], 1.6)
+	Cine.path(w, "grey_coat", [Vector3(-4.0, 0, -14.5), Vector3(8.0, 0, -13.0), Vector3(15.0, 0, -9.0)], 1.6)
 	for i in 60:
 		if not is_instance_valid(b):
 			break
 		pip.doll.look_toward(b.global_position, w.cam)
 		await w.get_tree().create_timer(0.1).timeout
 	# (off, and freed once his walk's tween has run out)
-	Films._drop(w, "pell")
+	Films._drop(w, "grey_coat")
 	if is_instance_valid(pip.body):
 		pip.doll.look_toward(w.player.global_position, w.cam)
 

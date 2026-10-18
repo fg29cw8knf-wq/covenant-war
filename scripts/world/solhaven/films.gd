@@ -76,6 +76,11 @@ static func _extra(w: World, id: String, look: String, pos: Vector3, name := "",
 	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
 	ex[id] = {"body": b, "doll": d}
 	w.set_meta("extras", ex)
+	# (the films' own, so _clear() leaves the side stories' people be)
+	var mine: Array = w.get_meta("film_extras", []) if w.has_meta("film_extras") else []
+	if not mine.has(id):
+		mine.append(id)
+		w.set_meta("film_extras", mine)
 	if name != "":
 		Cine.call_by(w, id, name)
 	return b
@@ -97,11 +102,13 @@ static func _drop(w: World, id: String) -> void:
 		w.get_tree().create_timer(40.0).timeout.connect(b.queue_free)
 
 
-## Everyone a film brought on, sent off again.
+## Everyone a film brought on, sent off again (only the films' own: the
+## side stories' people about the square stay).
 static func _clear(w: World) -> void:
-	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
-	for id in ex.keys():
+	var mine: Array = w.get_meta("film_extras", []) if w.has_meta("film_extras") else []
+	for id in mine:
 		_drop(w, String(id))
+	w.set_meta("film_extras", [])
 	for n in ["PaleHerald", "Dawnmane", "Coin", "Seal", "CardFlight"]:
 		var x := w.get_node_or_null(n)
 		if x != null:
@@ -299,8 +306,8 @@ static func _give_card(w: World, id: String, title: String, sub: String) -> void
 
 ## The refugees on the road, by the verge: [id, look, model, where, name].
 const REFUGEES := [
-	["ysa", "refugee", "ysa", Vector3(-4.3, 0, 30.6), "Refugee"],
-	["tobin", "child_b", "tobin", Vector3(-4.0, 0, 30.9), ""],
+	["gate_ysa", "refugee", "ysa", Vector3(-4.3, 0, 30.6), "Refugee"],
+	["gate_tobin", "child_b", "tobin", Vector3(-4.0, 0, 30.9), ""],
 	["refugee_b", "farmer", "refugee_b", Vector3(4.8, 0, 31.4), "Refugee"],
 	["refugee", "refugee", "refugee", Vector3(5.6, 0, 33.6), "Refugee"],
 	["refugee_c", "child_c", "refugee_c", Vector3(-5.8, 0, 33.4), ""],
@@ -324,14 +331,14 @@ static func _gate_people(w: World) -> void:
 	for r in REFUGEES:
 		_extra(w, String(r[0]), String(r[1]), r[3], String(r[4]), String(r[2]))
 	# the woman with a sleeping boy across her lap, on a sack; the girl asleep on the sacks
-	var ysa = Cine.fig(w, "ysa")
+	var ysa = Cine.fig(w, "gate_ysa")
 	if ysa is Figure3D:
 		(ysa as Figure3D).sit(0.45)
-	var tob = Cine.fig(w, "tobin")
+	var tob = Cine.fig(w, "gate_tobin")
 	if tob is Figure3D:
 		(tob as Figure3D).lie_down(0.01, true)
 	else:
-		Cine.body(w, "tobin").position.y = -0.6
+		Cine.body(w, "gate_tobin").position.y = -0.6
 	var girl = Cine.fig(w, "refugee_c")
 	if girl is Figure3D:
 		(girl as Figure3D).lie_down(0.01, true)
@@ -343,7 +350,7 @@ static func _gate_people(w: World) -> void:
 			(f as Figure3D).lie_down(0.01, true)
 		else:
 			Cine.body(w, id).position.y = -0.6
-	for id in ["ysa", "refugee_b", "refugee", "ref_1", "ref_2", "ref_4", "ref_5", "ref_7"]:
+	for id in ["gate_ysa", "refugee_b", "refugee", "ref_1", "ref_2", "ref_4", "ref_5", "ref_7"]:
 		Cine.look(w, id, Vector3(0, 0, 33))
 	_extra(w, "hale_gate", "guard", HALE_AT, "Hale", "hale")
 	Cine.look(w, "hale_gate", Vector3(0, 0, 40))
@@ -387,10 +394,10 @@ static func _gate_meeting(w: World) -> void:
 	# a woman with a sleeping boy across her lap
 	Cine.walk(w, "bram", STOP_B, 1.2)
 	Cine.walk(w, "player", STOP_P, 1.2)
-	var ysa := Cine.body(w, "ysa").global_position
+	var ysa := Cine.body(w, "gate_ysa").global_position
 	Cine.shot(w, ysa + Vector3(2.4, 1.3, 1.6), ysa + Vector3(0, 0.8, 0), 34.0)
-	Cine.look(w, "ysa", Vector3(-0.7, 0, 36.0))
-	await Cine.say(w, "ysa", "Three days we've waited. They let the pilgrims through. Not us.")
+	Cine.look(w, "gate_ysa", Vector3(-0.7, 0, 36.0))
+	await Cine.say(w, "gate_ysa", "Three days we've waited. They let the pilgrims through. Not us.")
 	Cine.look(w, "refugee_b", w.player.global_position)
 	_front(w, "refugee_b", w.player.global_position, 30.0)
 	await Cine.say(w, "refugee_b", "We pray to the Rootmother where we're from. Seems that's the wrong god this year.")
@@ -487,26 +494,26 @@ static func _gate_after(w: World) -> void:
 				Cine.path(w, walkers[i], [Vector3(-1.0 + (i % 3) * 1.0, 0, 27.0), into[i % into.size()] + Vector3(0, 0, i * 0.7)], 1.3 + (i % 3) * 0.15)
 			await Cine.wait(w, 2.6)
 			# the woman with the sleeping boy stops in front of you
-			var ysaf = Cine.fig(w, "ysa")
+			var ysaf = Cine.fig(w, "gate_ysa")
 			if ysaf is Figure3D:
 				(ysaf as Figure3D).stand()
-			_drop(w, "tobin")
-			await Cine.walk(w, "ysa", w.player.global_position + Vector3(-0.9, 0, -1.3), 1.1)
-			Cine.look(w, "ysa", w.player.global_position)
-			Cine.look(w, "player", Cine.body(w, "ysa").global_position)
-			_front(w, "ysa", w.player.global_position, 30.0)
-			await Cine.say(w, "ysa", "What's your name?")
+			_drop(w, "gate_tobin")
+			await Cine.walk(w, "gate_ysa", w.player.global_position + Vector3(-0.9, 0, -1.3), 1.1)
+			Cine.look(w, "gate_ysa", w.player.global_position)
+			Cine.look(w, "player", Cine.body(w, "gate_ysa").global_position)
+			_front(w, "gate_ysa", w.player.global_position, 30.0)
+			await Cine.say(w, "gate_ysa", "What's your name?")
 			# you tell her
-			_ots(w, "ysa", "player", 1.0, 30.0)
+			_ots(w, "gate_ysa", "player", 1.0, 30.0)
 			var pf = Cine.fig(w, "player")
 			if pf is Figure3D:
 				(pf as Figure3D).talking = true
 			await Cine.wait(w, 1.4)
 			if pf is Figure3D:
 				(pf as Figure3D).talking = false
-			_front(w, "ysa", w.player.global_position, 30.0)
-			await Cine.say(w, "ysa", "I'll teach it to the boy.")
-			Cine.walk(w, "ysa", Vector3(-1.0, 0, 12.0), 1.2)
+			_front(w, "gate_ysa", w.player.global_position, 30.0)
+			await Cine.say(w, "gate_ysa", "I'll teach it to the boy.")
+			Cine.walk(w, "gate_ysa", Vector3(-1.0, 0, 12.0), 1.2)
 		1:
 			Game.set_flag("gate_choice", "children")
 			Game.set_flag("gate", "children")
@@ -520,10 +527,10 @@ static func _gate_after(w: World) -> void:
 			await Cine.say(w, "hale_gate", "Children, and one grown-up with each. That's my limit, and it's past the Hierarch's.")
 			await v.open_gate(true, 2.4)
 			# a third of the line goes through, the woman and her boy among them
-			var ysaf = Cine.fig(w, "ysa")
+			var ysaf = Cine.fig(w, "gate_ysa")
 			if ysaf is Figure3D:
 				(ysaf as Figure3D).stand()
-			_drop(w, "tobin")
+			_drop(w, "gate_tobin")
 			for id in ["refugee_c", "ref_3", "ref_6"]:
 				var f = Cine.fig(w, id)
 				if f is Figure3D:
@@ -531,7 +538,7 @@ static func _gate_after(w: World) -> void:
 				else:
 					Cine.body(w, id).position.y = 0.0
 			Cine.shot(w, Vector3(-7.0, 2.4, 22.0), Vector3(0, 1.2, 34.0), 44.0)
-			Cine.path(w, "ysa", [Vector3(-0.6, 0, 27.0), Vector3(-1.2, 0, 13.0)], 1.2)
+			Cine.path(w, "gate_ysa", [Vector3(-0.6, 0, 27.0), Vector3(-1.2, 0, 13.0)], 1.2)
 			Cine.path(w, "refugee_c", [Vector3(0.4, 0, 27.0), Vector3(-0.3, 0, 12.4)], 1.2)
 			Cine.path(w, "ref_3", [Vector3(0.6, 0, 27.0), Vector3(0.8, 0, 11.5)], 1.3)
 			Cine.path(w, "ref_2", [Vector3(1.2, 0, 27.0), Vector3(1.4, 0, 10.8)], 1.2)
@@ -614,8 +621,11 @@ static func _wagon(w: World) -> void:
 	await Cine.say(w, "bram", "That's the last of my money. We sleep here, we eat here, and you sort your cards on the tailboard.")
 	# Turnip bites your sleeve
 	await Cine.walk(w, "player", wg + Vector3(0.9, 0, -3.6), 1.4)
-	Cine.look(w, "player", wg + Vector3(0, 1.2, -4.4))
-	Cine.shot(w, wg + Vector3(2.8, 1.5, -2.0), wg + Vector3(0.4, 1.2, -4.0), 34.0)
+	var mule: Vector3 = v.turnip.global_position
+	Cine.look(w, "player", mule + Vector3(0, 1.2, 0))
+	# from the side: you and the mule, nose to sleeve
+	var mid := (mule + w.player.global_position) * 0.5
+	Cine.shot(w, mid + Vector3(-3.6, 1.5, 1.2), mid + Vector3(0, 1.05, 0), 36.0)
 	await Cine.wait(w, 0.4)
 	v.turnip_bite()
 	await _narrate(w, "Turnip bites your sleeve. Not hard.")
