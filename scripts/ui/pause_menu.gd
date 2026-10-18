@@ -1,6 +1,7 @@
 class_name PauseMenu
 extends Control
-## The pause menu over the walkable world: the player's stats (Hero), how the
+## The pause menu over the walkable world: the player's stats (Hero), the story
+## so far and everyone met (Morrowen's Ledger, Ledger), how the
 ## gods and people see them (Standing), their deck, the card collection
 ## (Codex), equipment and items, the controls for phone, tablet and
 ## computer, and the options. Emits action("resume" | "save" | "title").
@@ -14,7 +15,7 @@ extends Control
 
 signal action(what: String)
 
-const TABS := [["hero", "Hero"], ["standing", "Standing"], ["deck", "Deck"], ["codex", "Codex"],
+const TABS := [["hero", "Hero"], ["ledger", "Ledger"], ["standing", "Standing"], ["deck", "Deck"], ["codex", "Codex"],
 	["items", "Items"], ["howto", "How to Duel"], ["controls", "Controls"], ["options", "Options"]]
 ## Tabs that only appear once Game.unlocked() says so.
 const LOCKED_TABS := ["deck", "codex"]
@@ -189,6 +190,7 @@ func show_tab(key: String) -> void:
 	var page: Control
 	match key:
 		"hero": page = _hero()
+		"ledger": page = Ledger.new()   # Morrowen's Ledger: the story so far, and everyone met
 		"standing": page = _standing()
 		"deck": page = _deck()
 		"codex": page = _codex()
