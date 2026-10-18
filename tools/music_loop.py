@@ -100,13 +100,14 @@ def main():
     ap.add_argument("--check", help="write a seam-check mp3: the join as the game plays it, three times")
     ap.add_argument("--lufs", type=float, default=None, help="normalise the loop to this loudness")
     ap.add_argument("--no-refine", action="store_true")
+    ap.add_argument("--search", type=float, default=0.12, help="how far (s) either way to look for the end's beats lining up with the start's")
     a = ap.parse_args()
     bar = a.bar or a.fade
     stereo = decode(a.src, 2)
     mono = stereo.mean(axis=1)
     end = a.end
     if not a.no_refine:
-        end, c_beat, c_wave = refine_end(mono, a.start, a.end, bar)
+        end, c_beat, c_wave = refine_end(mono, a.start, a.end, bar, a.search)
         print("end %.3f -> %.4f s (beat match %.2f, waveform match %.2f)" % (a.end, end, c_beat, c_wave))
     out = bake(stereo, a.start, end, a.fade)
     encode(out, a.out, a.lufs)
@@ -116,6 +117,15 @@ def main():
         piece = np.concatenate([out[-n:], out[s:s + n]])
         encode(np.concatenate([piece, piece, piece]), a.check, a.lufs)
         print("seam check: %s (5 s before the join, then 5 s after it, three times)" % a.check)
+    # how the rhythm carries over the join: the beats of the bar after the
+    # join (the start) against the bar before it, compared with the same
+    # two bars as the track plays them straight through the start
+    env, hop = onset_env(np.concatenate([out[-int(bar * SR):], out[int(a.start * SR):int((a.start + bar) * SR)]]).mean(axis=1))
+    env_o, _ = onset_env(mono[int((a.start - bar) * SR):int((a.start + bar) * SR)])
+    n = min(len(env), len(env_o))
+    e1, e2 = env[:n] - env[:n].mean(), env_o[:n] - env_o[:n].mean()
+    flow = float(np.dot(e1, e2) / (np.linalg.norm(e1) * np.linalg.norm(e2) + 1e-9))
+    print("rhythm through the join: %.2f (1 is the track's own flow into the start)" % flow)
     print("Music.LOOP_START: %.3f" % a.start)
 
 

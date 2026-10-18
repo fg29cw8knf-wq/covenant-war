@@ -967,13 +967,19 @@ def build(args):
         dnames = standard_names(drig)
         corr = corrections_for(drig, dnames, tgt_wp)
         dk = rest_hips[1] / drig.wp[{v: k for k, v in dnames.items()}["Hips"]][1]
-        anims = {a["name"]: a for a in dj.get("animations", [])}
-        for nm in which.split(","):
+        anims = {a.get("name", "clip%d" % k): a for k, a in enumerate(dj.get("animations", []))}
+        for item in which.split(","):
+            # "theirs=ours" takes their clip under our name (a single-clip
+            # AssetFurnace file whose one clip is called whatever it's called)
+            src_nm, _, nm = item.partition("=")
+            nm = nm or src_nm
             if nm in clips:
                 report.append("%-12s own clip kept (not borrowed from %s)" % (nm, os.path.basename(path)))
                 continue
-            assert nm in anims, "%s has no clip %s" % (path, nm)
-            clips[nm] = fit_clip(drig, dnames, anims[nm], tgt_wp, corr, dk, rest_hips, nm)
+            if src_nm == "*" and len(anims) == 1:
+                src_nm = list(anims)[0]
+            assert src_nm in anims, "%s has no clip %s (it has %s)" % (path, src_nm, ", ".join(anims))
+            clips[nm] = fit_clip(drig, dnames, anims[src_nm], tgt_wp, corr, dk, rest_hips, nm)
             report.append("%-12s fitted from %s" % (nm, os.path.basename(path)))
     for spec in args.hold_arm:
         side, src_nm, which = spec.split(":")
@@ -1065,7 +1071,7 @@ def main():
     ap.add_argument("--height", type=float, default=0.0, help="metres, feet to crown (default: as made)")
     ap.add_argument("--cycle", action="append", default=[], help="a walking clip to cut to one cycle on the spot")
     ap.add_argument("--seam", action="append", default=[], help="a looping clip whose end is eased into its start")
-    ap.add_argument("--borrow", action="append", default=[], help="model.glb:clip,clip,... clips to fit from another model")
+    ap.add_argument("--borrow", action="append", default=[], help="model.glb:clip,clip,... clips to fit from another model (theirs=ours renames one; *=ours takes a single-clip file's only clip)")
     ap.add_argument("--texture-size", type=int, default=2048)
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
     ap.add_argument("--hold-arm", action="append", default=[],

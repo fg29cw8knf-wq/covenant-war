@@ -22,6 +22,8 @@ _Black. The festival drum from the movie keeps beating._
 
 _The inn's attic: low beams, a straw bed, a cracked mirror. Through the little window, the green is filling up with lanterns. The player wakes to the drum and looks in the mirror._
 
+_(Added 19 October at Gary's request, not yet in the master doc: before the player wakes, two seconds of the dream: a white sky, nothing in it, blooming to white; cut to black on the drum.)_
+
 **Narration:** Nobody alive has seen an Age end. So Ashford has decided it ends with cider.
 
 **Objective:** Choose your look. (Tap a face.)
@@ -53,6 +55,8 @@ _The player says nothing. Bram picks up the next lantern._
 **Bram:** Lanterns to the green, then. You know the way.
 
 **Objective:** Carry the lantern crate to the green. (Tap the ground to walk.)
+
+**Bram (if the player heads back up the stairs; added 19 October at Gary's request, not yet in the master doc):** Wrong way, Sprout. The green's out the door, not up the stairs.
 
 **Bram (as you reach the door):** And if you need to stop, stop. The world'll wait.
 

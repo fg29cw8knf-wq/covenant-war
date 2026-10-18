@@ -802,12 +802,15 @@ class Use:
 ## camera watching from `cam_at`, until `done.call(position)` says stop.
 ## `follower` (an NPC's id) walks after them. The room gives "walk" (the
 ## floor's free rectangle, in its own x/z) and "blocks" ([centre, radius]).
-static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callable, follower := "") -> void:
+static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callable, follower := "", stray := Callable()) -> void:
 	var root: Node3D = room.root
-	var rect: Rect2 = room.walk
-	var blocks: Array = room.blocks
 	var floor_y := float(room.floor_y)
 	var target = [null]
+	# "stray_zone": a patch of floor (the foot of the stairs) where `stray` is
+	# called when the player walks into it, once, and again if they come back
+	var zone: Rect2 = room.get("stray_zone", Rect2())
+	var in_zone := false
+	var strayed_at := -100.0
 	var on_tap := func(pos: Vector2) -> void:
 		if w.hud.menu_open():
 			return
@@ -854,19 +857,7 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 					move = to.normalized()
 		var np := p + move * 2.3 * dt
 		# stay on the floor, out of the furniture
-		var lp := root.to_local(np)
-		lp.x = clampf(lp.x, rect.position.x, rect.end.x)
-		lp.z = clampf(lp.z, rect.position.y, rect.end.y)
-		for b in blocks:
-			var c: Vector2 = b[0]
-			var off := Vector2(lp.x, lp.z) - c
-			var r: float = b[1]
-			if off.length() < r:
-				off = off.normalized() * r if off.length() > 0.001 else Vector2(0, r)
-				lp.x = c.x + off.x
-				lp.z = c.y + off.y
-		np = root.to_global(lp)
-		np.y = floor_y
+		np = room_clamp(room, np)
 		var moved := (np - p).length() / maxf(dt, 0.0001)
 		w.player.global_position = np
 		pf.walking = moved > 0.3
@@ -876,7 +867,16 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		if move.length() > 0.1:
 			pf.face(move, w.cam)
 		if follower != "":
-			_follow_step(w, follower, 1.6, dt, 2.0)
+			_follow_step(w, follower, 1.6, dt, 2.0, room)
+		if zone.size != Vector2.ZERO and stray.is_valid():
+			var lp := root.to_local(np)
+			var here := zone.has_point(Vector2(lp.x, lp.z))
+			var now := Time.get_ticks_msec() * 0.001
+			if here and not in_zone and now - strayed_at > 8.0:
+				strayed_at = now
+				target[0] = null   # (they stop: the way's wrong)
+				stray.call()
+			in_zone = here
 		# the camera stays up in its corner and turns to keep them in view
 		look = look.lerp(np + Vector3(0, 1.0, 0), minf(1.0, dt * 4.0))
 		w.cam.global_position = w.cam.global_position.lerp(cam_at, minf(1.0, dt * 3.0))
@@ -895,9 +895,48 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 			ff.walking = false
 
 
+## A spot in a room (walk_room's) kept on its floor and out of its
+## furniture: inside "walk", out of the round "blocks" and the square
+## "keep_out" patches (the stairs), in the room's own x/z.
+static func room_clamp(room: Dictionary, np: Vector3) -> Vector3:
+	var root: Node3D = room.root
+	var rect: Rect2 = room.walk
+	var lp := root.to_local(np)
+	lp.x = clampf(lp.x, rect.position.x, rect.end.x)
+	lp.z = clampf(lp.z, rect.position.y, rect.end.y)
+	for b in room.blocks:
+		var c: Vector2 = b[0]
+		var off := Vector2(lp.x, lp.z) - c
+		var r: float = b[1]
+		if off.length() < r:
+			off = off.normalized() * r if off.length() > 0.001 else Vector2(0, r)
+			lp.x = c.x + off.x
+			lp.z = c.y + off.y
+	for k: Rect2 in room.get("keep_out", []):
+		if k.has_point(Vector2(lp.x, lp.z)):
+			# out by the nearest side
+			var dl := lp.x - k.position.x
+			var dr := k.end.x - lp.x
+			var dt := lp.z - k.position.y
+			var db := k.end.y - lp.z
+			var m := minf(minf(dl, dr), minf(dt, db))
+			if m == dl:
+				lp.x = k.position.x
+			elif m == dr:
+				lp.x = k.end.x
+			elif m == dt:
+				lp.z = k.position.y
+			else:
+				lp.z = k.end.y
+	np = root.to_global(lp)
+	np.y = float(room.floor_y)
+	return np
+
+
 ## One frame of someone walking after the player, staying `keep` metres
-## behind (at up to `speed` m/s), looking at them when they stop.
-static func _follow_step(w: World, who: String, keep: float, dt: float, speed: float) -> void:
+## behind (at up to `speed` m/s), looking at them when they stop. In a
+## room (walk_room's), they keep out of its furniture too.
+static func _follow_step(w: World, who: String, keep: float, dt: float, speed: float, room := {}) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
 	if b == null or f == null:
@@ -912,6 +951,8 @@ static func _follow_step(w: World, who: String, keep: float, dt: float, speed: f
 		if Cine._on_terrain(w, b):
 			np = _round_props(w, np)
 			np.y = Cine.ground(w, np)
+		elif not room.is_empty():
+			np = room_clamp(room, np)
 		b.global_position = np
 		f.walking = true
 		if f is Figure3D:
@@ -989,6 +1030,8 @@ const TAPROOM := [
 const AT_DOOR := [{"who": "bram", "say": "And if you need to stop, stop. The world'll wait."}]
 ## If the player dawdles on the way (said in passing; they keep walking).
 const DAWDLE := "The green. Big pole, middle of it. You've walked there every day of your life."
+## If they head back up the stairs with the crate (Gary, 19 October).
+const WRONG_WAY := "Wrong way, Sprout. The green's out the door, not up the stairs."
 const AT_GREEN := [{"who": "bram", "say": "Top hook's yours. It always has been."}]
 const HUNG := [
 	{"who": "bram", "say": "Good. Now go and be useful."},
@@ -1066,26 +1109,40 @@ static func _attic(w: World) -> void:
 	ov.black(true)
 	w.cine = true
 	var pf = w.player_doll
-	# asleep on the straw, head to the west under the window
-	var feet: Vector3 = a.bed + Vector3(0.82, -0.08, 0.0)
-	Cine.place(w, "player", feet, feet + Vector3.RIGHT)
-	if pf is Figure3D:
-		(pf as Figure3D).snap_face(Vector3.RIGHT)
-		(pf as Figure3D).lie_down(0.0, true)
+	asleep(w)
 	var root: Node3D = a.root
 	Cine.shot(w, root.to_global(Vector3(2.45, 1.6, 1.3)), a.bed + Vector3(0.2, 0.15, 0.0), 46.0)
 	await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
+	# the dream they're about to tell Bram about: the white sky, two seconds
+	# of it, cut to black on the drum
+	await ov.dream_sky(2.2)
+	await Cine.wait(w, 0.5)
 	Cine.fade(w, 0.0, 1.4)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
 		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 4.0, 46.0)
 	await Cine.wait(w, 3.0)
-	# wakes to the drum: up, off the straw, onto the boards
+	# wakes to the drum: sits up, throws the blanket back, swings his legs
+	# over the side of the bed, sits there a breath, then stands up off it
 	var side: Vector3 = a.bed_side
 	if pf is Figure3D:
-		(pf as Figure3D).get_up(0.9)
-	var tw := w.create_tween()
-	tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.9).set_trans(Tween.TRANS_SINE)
-	await tw.finished
+		var fig := pf as Figure3D
+		fig.sit_long(a.bed_top, 1.0)
+		var bl: Node3D = a.blanket
+		if bl != null and is_instance_valid(bl):
+			var tb := w.create_tween()
+			tb.tween_property(bl, "transform", a.blanket_off as Transform3D, 0.9).set_trans(Tween.TRANS_SINE).set_delay(0.35)
+		await Cine.wait(w, 1.1)
+		fig.sit(a.bed_top, 1.0)
+		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.0)
+		await Cine.wait(w, 0.5)
+		fig.stand(0.7)
+		var tw := w.create_tween()
+		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await tw.finished
+	else:
+		var tw := w.create_tween()
+		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.9).set_trans(Tween.TRANS_SINE)
+		await tw.finished
 	Cine.look(w, "player", a.window)
 	await Cine.wait(w, 0.9)
 	# to the mirror, under the low beams
@@ -1108,6 +1165,44 @@ static func _attic(w: World) -> void:
 	w.hud.set_controls_visible(false)
 	await Cine.wait(w, 0.5)
 	await Cine.fade(w, 1.0, 0.7)
+
+
+## Under the title screen (World.prepare): the attic and the taproom built,
+## their window views taken, and the attic's first shot put to the camera
+## with the player asleep in it, so what the opening draws first has been
+## drawn already.
+static func warm(w: World) -> void:
+	var v := village(w)
+	pose(w)
+	var a := InnRooms.attic(v)
+	InnRooms.eve(v)
+	for k in 3:
+		await w.get_tree().process_frame   # (the views out of the window and the door)
+	if not w.held or not w.is_inside_tree():
+		return
+	go_inside(v)
+	w.cine = true
+	asleep(w)
+	Cine.shot(w, (a.root as Node3D).to_global(Vector3(2.45, 1.6, 1.3)), a.bed + Vector3(0.2, 0.15, 0.0), 46.0)
+
+
+## The player asleep in the attic bed: on his back on the mattress, head
+## to the west on the bolster, the blanket over him from the chest down.
+## (The attic's first shot, and World.prepare's warm-up of it.)
+static func asleep(w: World) -> void:
+	var a := InnRooms.attic(village(w))
+	var pf = w.player_doll
+	var at: Vector3 = a.lie_at
+	Cine.place(w, "player", at, at + Vector3.RIGHT)
+	if pf is Figure3D:
+		var fig := pf as Figure3D
+		fig.snap_face(Vector3.RIGHT)
+		fig.lie_on(a.bed_top, 0.0)
+	var bl: Node3D = a.blanket
+	if bl != null and is_instance_valid(bl) and not bl.has_meta("on"):
+		bl.set_meta("on", bl.transform)
+	elif bl != null and is_instance_valid(bl):
+		bl.transform = bl.get_meta("on")
 
 
 ## P1 · the taproom: Bram stacking paper lanterns into the crate, the shelves
@@ -1168,7 +1263,11 @@ static func _taproom(w: World) -> void:
 	coach(w).objective("crate")
 	var door_in: Vector3 = e.door_in
 	await walk_room(w, e, root.to_global(Vector3(3.6, 2.7, 2.95)), func(p: Vector3) -> bool:
-		return Vector2(p.x - door_in.x, p.z - door_in.z).length() < 0.85, "bram")
+		return Vector2(p.x - door_in.x, p.z - door_in.z).length() < 0.85, "bram",
+		func() -> void:
+			# back towards the stairs: Bram says so (the stairs are solid)
+			Cine.look(w, "bram", w.player.global_position)
+			w.hud.dialogue.bark(w._speaker("bram"), w._portrait("bram"), WRONG_WAY))
 	# at the door: stopping
 	w.hud.set_controls_visible(false)
 	w.hud._menu_btn.visible = true

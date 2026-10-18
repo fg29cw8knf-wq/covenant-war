@@ -4,6 +4,13 @@ extends Node
 
 var _current: Node = null
 var _world: World = null
+## New Game's Ashford, built under the title screen a piece a frame
+## (World.prepare), so the attic comes up the moment the opening movie ends or
+## is skipped instead of after a long wait; the game state from before it was
+## built goes back if the player picks anything but New Game.
+var _prepared: World = null
+var _kept := {}
+var _starting := false   # New Game pressed before the world could be prepared
 
 
 func _ready() -> void:
@@ -56,12 +63,51 @@ func show_title() -> void:
 	title.continue_game.connect(_on_continue)
 	title.watch_opening.connect(func() -> void:
 		await play_opening())
-	title.open_lab.connect(show_lab)
+	title.open_lab.connect(func() -> void:
+		_drop_prepared()
+		show_lab())
 	_swap(holder)
 	_world = null
+	_starting = false
+	_prepare_new_game()
+
+
+## Builds New Game's Ashford under the title screen, a piece a frame, once
+## the title has had a moment to paint. Nothing of it shows, and once built
+## it neither draws nor runs until _on_new_game lets it go.
+func _prepare_new_game() -> void:
+	if _prepared != null or not TitleScreen.has_art():
+		return
+	await get_tree().create_timer(0.5).timeout
+	if _current == null or _current.name != "Title" or _prepared != null or _starting:
+		return
+	_kept = Game.save_data()
+	Game.new_game("Sprout", "")
+	var w := World.new()
+	w.ahead = true
+	w.setup("ashford", "green")
+	w.duel_handler = run_duel
+	w.exit_to_title.connect(show_title)
+	w.story_next.connect(_on_story_next)
+	_prepared = w
+	add_child(w)
+	await w.prepare()
+
+
+## The world built for a New Game isn't wanted (Continue, the Duel Lab): it
+## goes, and the game as it was comes back.
+func _drop_prepared() -> void:
+	if _prepared == null:
+		return
+	_prepared.queue_free()
+	_prepared = null
+	if not _kept.is_empty():
+		Game.load_data(_kept)
+	_kept = {}
 
 
 func _on_continue() -> void:
+	_drop_prepared()
 	if Game.load_game():
 		go_world(Game.area, Game.spawn)
 	else:
@@ -73,9 +119,31 @@ func _on_new_game() -> void:
 	# festival and the Sigilfall are played in the village. The player's real
 	# name is asked later, when the herald reads it out. No cards yet: Bram
 	# hands over the first deck in Ashford, before the Lantern Duel.
-	await play_opening()
-	Game.new_game("Sprout", "")
-	go_world("ashford", "green")
+	if _prepared == null:
+		_starting = true
+		await play_opening()
+		Game.new_game("Sprout", "")
+		go_world("ashford", "green")
+		return
+	# Ashford was built under the title screen (or is still being built,
+	# under the movie now): the attic starts the moment the movie's done
+	await Packs.need("movie")
+	var movie := OpeningMovie.new()
+	add_child(movie)
+	var done := [false]
+	movie.finished.connect(func() -> void: done[0] = true)
+	_swap(null)   # the title screen's gone (under the movie anyway)
+	while not done[0] or _prepared == null or not _prepared.prepared:
+		await get_tree().process_frame
+	Game.settings["seen_opening"] = true
+	Game.save_settings()
+	var w := _prepared
+	_prepared = null
+	_kept = {}
+	_current = w
+	_world = w
+	w.release()
+	Game.save_game()
 
 
 # -------------------------------------------------------------- duel lab ---

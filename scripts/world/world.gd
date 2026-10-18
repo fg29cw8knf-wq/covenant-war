@@ -10,6 +10,8 @@ extends Node3D
 signal exit_to_title
 ## The area's story has moved on to something outside the walkable world.
 signal story_next(what: String)
+## A world built ahead of time (prepare()) has been let go: its story starts.
+signal released
 
 ## Loaded when the area is entered: on the web Solhaven's script comes in its own
 ## pack (Packs.need("solhaven") first).
@@ -65,6 +67,14 @@ var cine := false:         # a cutscene is driving the camera
 			_refresh_markers.call_deferred()
 var _shake := 0.0
 var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
+## Built ahead of time, under the title screen or the opening movie, so New
+## Game's attic comes up the moment the movie ends (or is skipped): add it to
+## the tree with `ahead = true`, `await prepare()` builds it a piece a frame,
+## then it waits, hidden and still, until release() starts its story.
+var ahead := false
+var held := false
+var prepared := false   # prepare() has finished building it
+var _held_layers: Array = []
 var _zoom := 1.0           # the zoom the camera is at now (it eases to the setting)
 var _cam_clear := 1.0      # how much of the way out the camera can go without entering a wall (eased)
 var _zoom_hold := 0.0      # a quick press of a zoom key or the stick zooms for at least this long
@@ -90,10 +100,59 @@ func setup(p_area: String, spawn: String) -> World:
 func _ready() -> void:
 	if area == null:
 		setup(Game.area, Game.spawn)
+	if ahead:
+		return   # prepare() builds it, a piece a frame
+	_build(false)
+
+
+## Builds the area a piece a frame, under whatever is showing, and holds its
+## story until release(). The HUD and the overlays stay hidden meanwhile (they
+## sit above the title screen), and once its shaders have had a few frames to
+## compile it stops drawing and processing altogether.
+func prepare() -> void:
+	held = true
+	busy = true
+	Cine.overlay(self)   # (made now, so a fade before release() finds it black)
+	await _build(true)
+	prepared = true
+	for i in 2:
+		await get_tree().process_frame
+	if held and area.has_method("warm"):
+		await area.warm(self)   # the area's own first scene, shown to the camera
+	for i in 3:
+		await get_tree().process_frame
+	if not held:
+		return
+	visible = false
+	process_mode = Node.PROCESS_MODE_DISABLED
+
+
+## Lets a prepared world go: it draws, runs, plays its music and starts.
+func release() -> void:
+	if not held:
+		return
+	held = false
+	visible = true
+	process_mode = Node.PROCESS_MODE_INHERIT
+	for l in _held_layers:
+		if is_instance_valid(l):
+			(l as CanvasLayer).visible = true
+	_held_layers.clear()
+	resume_music()
+	released.emit()
+
+
+func _build(spread: bool) -> void:
 	_build_environment()
-	area.build(self)
+	if spread:
+		await get_tree().process_frame
+		await area.build(self)
+	else:
+		area.build(self)
 	_spawn_player(area.SPAWNS.get(Game.spawn, area.SPAWNS.values()[0]))
 	for def in area.npcs():
+		if spread:
+			await get_tree().process_frame
 		_spawn_npc(def)
 	_build_camera()
 	# a story film picking up where it was starts on black, not on the world
@@ -116,10 +175,22 @@ func _ready() -> void:
 			_talk(_near))
 	hud.menu_action.connect(_on_menu)
 	_refresh_markers()
-	_arrive.call_deferred()
+	if spread:
+		# nothing of it shows over the title screen or the movie until it's let go
+		for c in get_children():
+			if c is CanvasLayer and (c as CanvasLayer).visible:
+				(c as CanvasLayer).visible = false
+				_held_layers.append(c)
+		_arrive()
+	else:
+		_arrive.call_deferred()
 
 
 func _arrive() -> void:
+	if held:
+		await released
+		if not is_inside_tree():
+			return
 	var key := "arrived_" + area_id
 	if not Game.flag(key) and area.get_script_constant_map().has("INTRO"):
 		area.intro_frame(self)   # start the camera on the intro's first shot before the fade

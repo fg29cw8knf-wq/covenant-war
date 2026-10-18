@@ -53,7 +53,29 @@ var hay_cart_tip := 0.0
 var stalls: Array = []
 
 
+## Built a piece a frame (build_spread()) rather than all at once in _ready:
+## a world made ahead of time under the title screen (World.prepare).
+var spread := false
+
+
 func _ready() -> void:
+	if spread:
+		return   # build_spread() does it
+	_build()
+
+
+func build_spread() -> void:
+	spread = true
+	await _build()
+
+
+## A frame's rest between the pieces of a spread build (none otherwise).
+func _breath() -> void:
+	if spread and is_inside_tree():
+		await get_tree().process_frame
+
+
+func _build() -> void:
 	var t0 := Time.get_ticks_msec()
 	quality = Gfx.level()   # phones play the lighter level 1 unless set to Full
 	args["grass"] = str([9000, 20000, 42000][quality])
@@ -67,13 +89,20 @@ func _ready() -> void:
 		mats.bulb.set_shader_parameter("energy", 3.0)
 	build_environment()
 	build_paths()
+	await _breath()
 	build_terrain()
-	build_village()
+	await _breath()
+	await build_village()
+	await _breath()
 	build_green()
+	await _breath()
 	build_walls_and_fences()
+	await _breath()
 	build_trees()
+	await _breath()
 	build_grass()
 	build_props()
+	await _breath()
 	build_sky_lanterns()
 	build_sigilfall()
 	if quality == 2:
@@ -485,14 +514,18 @@ func build_village() -> void:
 			continue   # the inn's model is bigger than the drawn one and fills this plot
 		if not model_house(mid, pos, i, i == 4):
 			house(pos, p[2], p[3], p[4], p[5], doors[i % 4], i, i == 4)
+		if i % 3 == 2:
+			await _breath()
 	# the Crooked Lantern inn, two storeys, on the west side
 	var inn_pos := Vector3(-24.0, 0.0, 6.0)
 	if not model_house("inn", inn_pos, 99, false):
 		house(inn_pos, 11.0, 6.4, 4.8, 0, "green", 99, false, true)
+	await _breath()
 	# farmhouses dotted over the hills, lights in their windows
 	for f in [Vector3(-70, 0, -40), Vector3(48, 0, 46), Vector3(95, 0, -30), Vector3(-95, 0, 20), Vector3(-30, 0, -95), Vector3(20, 0, -120)]:
 		if not model_house("cottage_b", f, 200 + int(f.x), false):
 			house(f, 7.0, 5.0, 2.6, 1, "natural", 200 + int(f.x), false)
+	await _breath()
 	build_mill(MILL_SPOT)
 
 

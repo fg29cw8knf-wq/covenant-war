@@ -174,15 +174,21 @@ static func npcs() -> Array:
 # ================================================================ scenery ===
 
 static func build(root: Node3D) -> void:
+	var w := root as World
 	var v := AshfordVillage.new()
 	v.name = "Village"
+	# a world built ahead of time (World.prepare) builds the village a piece
+	# a frame, and its music waits for the release
+	v.spread = w != null and w.ahead
 	root.add_child(v)
+	if v.spread:
+		await v.build_spread()
 	root.set_meta("village", v)
 	# the festival reel: its intro once, then the loop (Music.LOOP_START), and
 	# it carries on from where it was when a duel or a scene hands back
-	(root as World).music = ["ashford_festival"]
-	if not Game.flag("ash_marked"):
-		Music.play((root as World).music, 2.0, true)
+	w.music = ["ashford_festival"]
+	if not Game.flag("ash_marked") and not w.held:
+		Music.play(w.music, 2.0, true)
 	# Bram's stool, Nell's bench, the drum and the Great Lantern's hooks
 	AshfordP1.dress(root as World)
 
@@ -619,6 +625,15 @@ static func resume(w: World) -> void:
 static func intro_frame(w: World) -> void:
 	w.cine = true
 	Cine.overlay(w).black(true)
+
+
+## A world built ahead of time (World.prepare, under the title screen):
+## the opening's rooms are built and shown to the camera now, so their
+## shaders compile here rather than on the attic's first frames.
+static func warm(w: World) -> void:
+	if Game.flag("arrived_ashford"):
+		return
+	await AshfordP1.warm(w)
 
 
 ## New Game, after the opening movie: P1 from the attic (AshfordP1.opening).

@@ -226,6 +226,43 @@ func chart() -> void:
 var _chart: Control = null
 
 
+## The player's dream before they wake (P1): a white sky, hazy and
+## shadowless, slowly blooming to nothing but white, then cut to black.
+## Returns on the cut.
+func dream_sky(secs := 2.2) -> void:
+	var sky := ColorRect.new()
+	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+uniform float t = 0.0;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
+}
+void fragment() {
+	vec2 uv = UV;
+	float n = noise(uv * vec2(3.0, 2.0) + vec2(t * 0.25, -t * 0.1)) * 0.6 + noise(uv * vec2(7.0, 5.0) - vec2(t * 0.15, 0.0)) * 0.4;
+	// a sky with no sun in it: pale, high haze, lighter towards the top
+	vec3 sky = mix(vec3(0.80, 0.85, 0.93), vec3(0.95, 0.96, 1.0), clamp(1.0 - uv.y * 0.8 + n * 0.35, 0.0, 1.0));
+	float bloom = smoothstep(0.35, 1.0, t);
+	vec3 col = mix(sky, vec3(1.0), bloom);
+	float vig = 1.0 - smoothstep(0.5, 1.1, length(uv - 0.5) * 1.3) * 0.25 * (1.0 - bloom);
+	COLOR = vec4(col * vig, 1.0);
+}"""
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	sky.material = sm
+	_root.add_child(sky)
+	_root.move_child(sky, _black.get_index() + 1)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void: sm.set_shader_parameter("t", k), 0.0, 1.0, secs)
+	await tw.finished
+	sky.queue_free()
+	_black.modulate.a = 1.0
+
+
 ## Fades to black (1) or back (0).
 func fade(to_alpha: float, secs := 0.8) -> void:
 	var tw := create_tween()

@@ -200,12 +200,32 @@ Script" until they're rebuilt to v3. The words and talk trees are in
 `scripts/world/areas/ashford_p1.gd`.
 
 New Game opens on black and the caption "Ashford / The last night of the Age."
-in the inn's attic: the player wakes on the straw bed, goes to the cracked mirror
-and chooses their look (`scripts/ui/mirror_picker.gd`: only look A exists, so B,
-C and D show as coming soon). In the taproom Bram is stacking paper lanterns into
-a crate, the shelves behind the bar bare; he hands the crate over, the player
-carries it out of the inn and across to the green with Bram following, and hangs
-the last lantern on the Great Lantern's top hook with its hoist. Bram teaches
+in the inn's attic, then two seconds of the dream the player is about to tell
+Bram about (the white sky, `CineOverlay.dream_sky()`, cut to black on the drum):
+the player wakes in the bed (an oak cot with a straw mattress, a bolster and a
+wool blanket, `InnRooms._bed()`; Gary's own model takes its place from
+`assets/models/ashford/attic_bed.glb` when it exists), sits up, throws the
+blanket back, swings his legs over the side, sits a breath and stands
+(`Figure3D.lie_on()`, `sit_long()`, `sit()` with `shift_seat()`, `stand()`:
+poses built on the model's own idle, blended one into the next), goes to the
+cracked mirror and chooses their look (`scripts/ui/mirror_picker.gd`: only
+look A exists, so B, C and D show as coming soon). In the taproom Bram is
+stacking paper lanterns into a crate, the shelves behind the bar bare; he hands
+the crate over, the player carries it out of the inn and across to the green
+with Bram following (indoors he walks round the table and the stools, as the
+player must; the stairs are solid, and anyone carrying the crate back towards
+them gets "Wrong way, Sprout. The green's out the door, not up the stairs."),
+and hangs the last lantern on the Great Lantern's top hook with its hoist.
+
+New Game's Ashford is built before it's needed: the moment the title screen is
+up, `Main._prepare_new_game()` builds it underneath, a piece a frame
+(`World.prepare()`, `AshfordVillage.build_spread()`), builds the attic and the
+taproom and shows the attic's first shot to the camera so their shaders
+compile there (`Ashford.warm()`), then hides it and stops it. New Game plays
+the movie over it and `World.release()` starts the story the moment the movie
+ends or is skipped; Continue or the Duel Lab throw it away and put the game
+state back. `tests/start_time_probe.tscn` times the whole thing, title to
+attic. The movie's own loading (its pack, on the web) is as it was. Bram teaches
 walking, stopping, using and talking in his own words while the Objective line
 names the button for the device in hand (`scripts/ui/world_coach.gd`: phone,
 tablet, computer or controller, and it changes if a pad or a keyboard is picked
@@ -500,6 +520,13 @@ godot --headless --script res://tests/loop_probe.gd -- <name>      # where Godot
 `--start` and `--end` are a bar-aligned pair (the tool nudges `--end` onto the
 beat and adds the crossfade); put the start in `LOOP_START`. The seam-check mp3
 is the join as the game plays it, three times, for listening to.
+`tools/music_scout.py <mp3>` suggests the pair for a new track: the tempo and
+bar grid, the first downbeat where the intro has settled, and the latest
+bar-aligned end in the body of the piece whose run-in sounds like the run-in to
+the start (beats, timbre and harmony); it prints the `music_loop.py` arguments
+to use. `music_loop.py` ends with "rhythm through the join", the beats either
+side of the join against the track's own flow into the start (1 is perfect;
+the loops in the game are 0.5 to 0.96).
 
 On the web (phones), Godot's own audio can only loop a track by stopping at its
 end and starting again from the top, so the web build plays the music through

@@ -324,12 +324,9 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	root.add_child(moon)
 	moon.position = Vector3(gx - 0.6, 2.2, 0.1)
 	moon.look_at(root.to_global(Vector3(-0.6, 0.0, -0.9)), Vector3.UP)
-	# the straw bed along the north wall: its head to the west
+	# the bed along the north wall: its head to the west
 	var bed := Vector3(-0.7, 0.0, -1.9)
-	v.box(root, Vector3(2.05, 0.3, 1.0), bed + Vector3(0, 0.15, 0), v.mats.wood)
-	v.box(root, Vector3(1.95, 0.14, 0.9), bed + Vector3(0, 0.37, 0), v.mats.hay)
-	v.box(root, Vector3(0.42, 0.1, 0.62), bed + Vector3(-0.72, 0.48, 0), v.mats.cloth_blue)
-	v.box(root, Vector3(1.15, 0.06, 0.94), bed + Vector3(0.35, 0.46, 0), v.mats.cloth_red, Vector3(0, 0, 0.03))
+	var bed_parts := _bed(v, root, bed)
 	# a crate by its head with the candle on it
 	v.box(root, Vector3(0.42, 0.42, 0.42), Vector3(-2.1, 0.21, -1.95), v.mats.wood_h, Vector3(0, 0.2, 0))
 	v.cyl(root, 0.03, 0.035, 0.12, Vector3(-2.1, 0.48, -1.95), v.mats.stone_ww, 10)
@@ -376,8 +373,12 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	for s in [-1.0, 1.0]:
 		v.box(root, Vector3(0.06, 0.95, 0.06), hatch + Vector3(s * 0.32, 0.47, 0.38), v.mats.beam_v)
 	_motes(v, root, Vector3(-0.8, 1.3, -0.4), Vector3(2.2, 0.8, 1.6))
-	var out := {"root": root, "bed": root.to_global(bed + Vector3(0, 0.44, 0)), "bed_head": root.to_global(bed + Vector3(-0.8, 0.44, 0)),
+	var out := {"root": root, "bed": root.to_global(bed + Vector3(0, BED_TOP, 0)), "bed_head": root.to_global(bed + Vector3(-0.8, BED_TOP, 0)),
 		"bed_side": root.to_global(bed + Vector3(0.1, 0, 0.95)), "mirror": root.to_global(Vector3(mx - 0.09, my, mz)),
+		# where they lie (hips over it, head to the west), sit on the edge (hips
+		# over it, feet down the south side), and the mattress's height
+		"lie_at": root.to_global(bed + Vector3(-0.02, 0, 0)), "edge_at": root.to_global(bed + Vector3(0.12, 0, 0.33)),
+		"bed_top": BED_TOP, "blanket": bed_parts.blanket, "blanket_off": bed_parts.blanket_off,
 		"mirror_stand": root.to_global(Vector3(mx - 0.72, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
 		"floor_y": ATTIC_AT.y, "view_quad": null}
 	# the green through the window: the village itself, from the inn's upper floor
@@ -387,6 +388,108 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	out["view_quad"] = q
 	v.set_meta("attic", out)
 	return out
+
+
+## The height of the attic bed's mattress (the straw and the sacking over it)
+## off the attic floor.
+const BED_TOP := 0.52
+
+
+## The attic bed at `at` (the middle of its base), its head to the west: a
+## low oak cot with a slatted headboard and a footboard, a straw mattress in
+## a sacking cover, a bolster pillow and a wool blanket. The blanket is
+## returned with the transform it's thrown back to when the sleeper gets up
+## (`blanket_off`). Gary's own model takes its place the moment it exists
+## (assets/models/ashford/attic_bed.glb, 2.05 m long, 1 m wide, its origin
+## at the middle of its base, the head at -x).
+static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
+	var sack := v.shader_mat("cloth", {"col_a": Color(0.56, 0.5, 0.38), "col_b": Color(0.5, 0.45, 0.34), "stripes": 24.0})
+	var linen := v.shader_mat("cloth", {"col_a": Color(0.78, 0.74, 0.64), "col_b": Color(0.74, 0.7, 0.6), "stripes": 30.0})
+	var wool := v.shader_mat("cloth", {"col_a": Color(0.3, 0.1, 0.07), "col_b": Color(0.16, 0.15, 0.11), "stripes": 3.0})
+	var oak: Material = v.mats.wood_h
+	var post: Material = v.mats.beam_v
+	var L := 2.05
+	var W := 1.0
+	var rail_y := 0.3      # the side rails' middle
+	var model_path := "res://assets/models/ashford/attic_bed.glb"
+	if ResourceLoader.exists(model_path):
+		var inst: Node3D = load(model_path).instantiate()
+		inst.name = "AtticBed"
+		root.add_child(inst)
+		inst.position = at
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	else:
+		# four posts, the head pair tall for the headboard
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				var h := 0.98 if sx < 0.0 else 0.6
+				v.box(root, Vector3(0.09, h, 0.09), at + Vector3(sx * (L * 0.5 - 0.045), h * 0.5, sz * (W * 0.5 - 0.045)), post)
+		# side and end rails, and the slats across them
+		for sz in [-1.0, 1.0]:
+			v.box(root, Vector3(L - 0.18, 0.12, 0.05), at + Vector3(0, rail_y, sz * (W * 0.5 - 0.07)), oak)
+		for sx in [-1.0, 1.0]:
+			v.box(root, Vector3(0.05, 0.12, W - 0.18), at + Vector3(sx * (L * 0.5 - 0.07), rail_y, 0), v.mats.wood)
+		for i in 7:
+			v.box(root, Vector3(0.1, 0.03, W - 0.14), at + Vector3(-L * 0.5 + 0.2 + i * (L - 0.4) / 6.0, rail_y + 0.075, 0), oak)
+		# the headboard: two rails and five uprights between the tall posts
+		for y in [0.58, 0.88]:
+			v.box(root, Vector3(0.06, 0.07, W - 0.18), at + Vector3(-L * 0.5 + 0.045, y, 0), v.mats.wood)
+		for i in 5:
+			v.box(root, Vector3(0.04, 0.26, 0.05), at + Vector3(-L * 0.5 + 0.045, 0.73, -W * 0.5 + 0.17 + i * (W - 0.34) / 4.0), v.mats.wood)
+		# the footboard: one rail
+		v.box(root, Vector3(0.06, 0.07, W - 0.18), at + Vector3(L * 0.5 - 0.045, 0.52, 0), v.mats.wood)
+		# the straw, poking out under the sacking, and the mattress in its cover
+		v.box(root, Vector3(L - 0.12, 0.07, W - 0.1), at + Vector3(0, rail_y + 0.12, 0), v.mats.hay)
+		v.box(root, Vector3(L - 0.2, 0.12, W - 0.16), at + Vector3(0, BED_TOP - 0.06, 0), sack)
+		# the bolster at the head
+		var bolster := CapsuleMesh.new()
+		bolster.radius = 0.11
+		bolster.height = W - 0.3
+		v.add_mesh(root, bolster, linen, Transform3D(Basis.from_euler(Vector3(PI * 0.5, 0, 0)), at + Vector3(-L * 0.5 + 0.28, BED_TOP + 0.08, 0)))
+	# the blanket: draped over the sleeper from the chest down, high over
+	# the chest, lower over the legs, falling to the mattress at the sides
+	var blanket := v.add_mesh(root, _blanket_mesh(1.3, W - 0.04), wool, Transform3D(Basis.IDENTITY, at + Vector3(0.3, BED_TOP, 0)))
+	blanket.name = "Blanket"
+	# thrown back against the wall, in a heap, when they get up
+	var off := Transform3D(Basis.from_euler(Vector3(0.0, 0.0, 0.0)) * Basis.from_scale(Vector3(0.85, 1.3, 0.42)), at + Vector3(0.4, BED_TOP, -0.27))
+	return {"blanket": blanket, "blanket_off": off}
+
+
+## A blanket lying over someone on their back: `L` long (x, the head at -x)
+## and `W` wide (z), its origin at the mattress under its head end's middle.
+## Highest over the chest, lower down the legs, flat over the body's width
+## and falling to the mattress either side of it.
+static func _blanket_mesh(L: float, W: float) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nx := 16
+	var nz := 12
+	var pts: Array = []
+	for i in nx + 1:
+		var u := float(i) / nx
+		# the body under it: chest, hips, knees, feet
+		var h := 0.25 - 0.14 * u + 0.03 * sin(u * PI)
+		var row: Array = []
+		for j in nz + 1:
+			var vv := float(j) / nz * 2.0 - 1.0
+			var over := smoothstep(1.0, 0.4, absf(vv))
+			row.append(Vector3(-L * 0.5 + u * L, h * over + 0.015, vv * W * 0.5))
+		pts.append(row)
+	for i in nx:
+		for j in nz:
+			var a: Vector3 = pts[i][j]
+			var b: Vector3 = pts[i + 1][j]
+			var c: Vector3 = pts[i + 1][j + 1]
+			var d: Vector3 = pts[i][j + 1]
+			var ua := Vector2(float(i) / nx, float(j) / nz)
+			var uc := Vector2(float(i + 1) / nx, float(j + 1) / nz)
+			for tri in [[a, ua, c, uc, b, Vector2(uc.x, ua.y)], [a, ua, d, Vector2(ua.x, uc.y), c, uc]]:
+				st.set_uv(tri[1]); st.add_vertex(tri[0])
+				st.set_uv(tri[3]); st.add_vertex(tri[2])
+				st.set_uv(tri[5]); st.add_vertex(tri[4])
+	st.generate_normals()
+	return st.commit()
 
 
 ## The taproom on the evening of the festival (P1), not the film's shuttered
@@ -486,9 +589,14 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		"stairs_foot": root.to_global(Vector3(0.35, 0, D * 0.5 - 0.6)), "stairs_top": root.to_global(Vector3(-3.4, 2.9, D * 0.5 - 0.5)),
 		"door_in": root.to_global(Vector3(dx, 0, -D * 0.5 + 0.75)), "door_out": root.to_global(Vector3(dx, 0, -D * 0.5 - 0.7)),
 		"bar": root.to_global(Vector3(-3.1, 0, -0.3)), "hearth": root.to_global(Vector3(W * 0.5 - 0.8, 0, 0.9)),
-		# where the player may walk (in the room's own x/z), and what's in the way
+		# where the player may walk (in the room's own x/z), and what's in the way:
+		# round things (the table and the stools) and square ones (the stairs,
+		# their rail included), and the foot of the stairs, where Bram stops
+		# anyone heading back up them
 		"walk": Rect2(-3.15, -D * 0.5 + 0.35, 6.75, D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
 			[Vector2(t.x + 1.15, t.z + 0.55), 0.42]],
+		"keep_out": [Rect2(-3.95, D * 0.5 - 1.38, 4.3, 1.6)],
+		"stairs_zone": Rect2(-1.3, D * 0.5 - 1.95, 2.0, 1.2),
 		"floor_y": EVE_AT.y}
 	# the street through the doorway: the village itself, from the inn's door
 	var front := inn_front(v)

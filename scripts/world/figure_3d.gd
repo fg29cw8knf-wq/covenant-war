@@ -79,6 +79,9 @@ var pace := 0.0
 var seat := -1.0
 var _seat_at := Vector3.ZERO   # where they sat down
 var _seat_settle := 0
+## How they sit: "" on a seat's edge with the feet down (a bench), "long"
+## with the legs out along it (sat up in bed), "lying" flat on their back.
+var _seat_pose := ""
 var _clip := ""          # what's playing
 var _action := ""        # a one-shot or held clip, over the walk/idle choice
 var _held := false
@@ -316,6 +319,27 @@ func get_up(secs := 0.7) -> void:
 ## them sitting, with the clip's body, head and arms, until stand(); walking,
 ## or being moved off the spot (staged somewhere else), stands them up.
 func sit(height := 0.45, blend := 0.8) -> void:
+	_seat_pose = ""
+	_sit_as(height, blend)
+
+
+## Sat up on a bed `height` m off the ground with the legs out along it,
+## the way they face: hips over the spot, feet a leg's length ahead.
+func sit_long(height := 0.5, blend := 0.8) -> void:
+	_seat_pose = "long"
+	_sit_as(height, blend)
+
+
+## Flat on their back on a bed `height` m off the ground: hips over the
+## spot, head behind it (the way they face is the way their feet point).
+## Blends from, and into, sit_long() and sit(): lie_on then sit_long is
+## sitting up in bed; sit() facing the bed's side swings the legs over it.
+func lie_on(height := 0.5, blend := 0.8) -> void:
+	_seat_pose = "lying"
+	_sit_as(height, blend)
+
+
+func _sit_as(height: float, blend: float) -> void:
 	seat = maxf(height, 0.0)
 	_seat_at = global_position
 	_seat_settle = 2
@@ -324,8 +348,30 @@ func sit(height := 0.45, blend := 0.8) -> void:
 	_play(_base(), blend)
 
 
+## Moves them while they sit (swinging round to the bed's edge): the seat
+## comes with them, so it's not taken for walking off. `face_dir` is the
+## way to end up facing (a world direction), turned to over the move. What
+## moves is their body (the node they stand in), as walking moves it.
+func shift_seat(to: Vector3, face_dir: Vector3, secs := 0.9) -> void:
+	var mover: Node3D = get_parent() as Node3D if get_parent() is Node3D else self
+	var from := mover.global_position
+	var y0 := _yaw
+	face_dir.y = 0.0
+	var y1 := y0
+	if face_dir.length() > 0.001:
+		y1 = y0 + wrapf(atan2(face_dir.x, face_dir.z) - y0, -PI, PI)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:
+		mover.global_position = from.lerp(to, k)
+		_seat_at = global_position
+		_yaw = lerpf(y0, y1, k)
+		_want_yaw = _yaw, 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+
+
 func stand(blend := 0.6) -> void:
 	seat = -1.0
+	_seat_pose = ""
 	_action = ""
 	_held = false
 	_play(_base(), blend)
@@ -338,7 +384,7 @@ func _sat(clip: String) -> String:
 		seat = -1.0   # (it stands them up)
 	if seat < 0.0 or clip.begins_with("sat_") or _skel == null or anim == null or not anim.has_animation(clip):
 		return clip
-	var nm := "sat_%s_%d" % [clip, roundi(seat * 100.0)]
+	var nm := "sat_%s_%d%s" % [clip, roundi(seat * 100.0), "" if _seat_pose == "" else "_" + _seat_pose]
 	if anim.has_animation(nm):
 		return nm
 	var a := (anim.get_animation(clip) as Animation).duplicate(true) as Animation
@@ -377,6 +423,15 @@ func _seated_pose() -> Dictionary:
 	var hips_y := seat + SEAT_PAD * stature()
 	var pos := {"Hips": Vector3(rest.x, hips_y - (_skel.get_bone_global_rest(hb).origin.y - rest.y), rest.z)}
 	rot["Hips"] = Quaternion.IDENTITY
+	if _seat_pose == "lying":
+		# on their back: the whole body tipped back flat about the hips, the
+		# legs as they stand (straight), so the feet point the way they face
+		rot["Hips"] = Quaternion(Vector3.RIGHT, -PI * 0.5)
+		for side in ["Left", "Right"]:
+			for b in ["UpLeg", "Leg", "Foot", "ToeBase"]:
+				if _skel.find_bone(side + b) >= 0:
+					rot[side + b] = Quaternion.IDENTITY
+		return {"pos": pos, "rot": rot}
 	for side in ["Left", "Right"]:
 		var up := _skel.find_bone(side + "UpLeg")
 		var kn := _skel.find_bone(side + "Leg")
@@ -401,6 +456,10 @@ func _seated_pose() -> Dictionary:
 		var side_x := thigh.x / lt * 0.6
 		var t_dir := Vector3(side_x, -drop, sqrt(maxf(0.0, 1.0 - drop * drop - side_x * side_x)))
 		var s_dir := Vector3(0.0, -cos(tilt), sin(tilt))
+		if _seat_pose == "long":
+			# legs out along the bed, the knees a touch up
+			t_dir = Vector3(side_x, 0.1, sqrt(1.0 - 0.01 - side_x * side_x))
+			s_dir = Vector3(0.0, -0.1, sqrt(0.99))
 		var gu := Quaternion(thigh / lt, t_dir)
 		var gk := Quaternion(shin / ls, s_dir)
 		rot[side + "UpLeg"] = gu
