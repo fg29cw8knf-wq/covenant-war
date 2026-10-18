@@ -507,12 +507,8 @@ class Detail:
 				closed.emit())
 		add_child(dim)
 		var panel := PanelContainer.new()
-		panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		panel.offset_left = 60
-		panel.offset_right = -60
-		panel.offset_top = 40
-		panel.offset_bottom = -40
 		add_child(panel)
+		SafeArea.fit(panel, Vector2(60, 40), true)
 		var hb := HBoxContainer.new()
 		hb.add_theme_constant_override("separation", 40)
 		panel.add_child(hb)

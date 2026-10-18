@@ -159,20 +159,31 @@ func _ready() -> void:
 	overlay.z_index = 100
 	add_child(overlay)
 	resized.connect(_fit)
-	_fit()
+	SafeArea.watch(self, _fit)
 	_start.call_deferred()
 
 
+## The stage (cards, hand, Life, buttons) fits the screen's safe area, clear
+## of a phone's Dynamic Island and home bar; on screens wider than 16:9 its
+## side columns move out towards the edges. The arena and the 3D field fill
+## the whole screen around it.
 func _fit() -> void:
-	var k := minf(size.x / DESIGN.x, size.y / DESIGN.y)
+	var s := _safe_rect()
+	var k := minf(s.size.x / DESIGN.x, s.size.y / DESIGN.y)
 	_base_k = k
 	stage.scale = Vector2(k, k)
-	_stage_base = ((size - DESIGN * k) * 0.5).floor()
+	_stage_base = (s.position + (s.size - DESIGN * k) * 0.5).floor()
 	stage.position = _stage_base
-	_edge = maxf(0.0, (size.x / k - DESIGN.x) * 0.5) * 0.85
+	_edge = maxf(0.0, (s.size.x / k - DESIGN.x) * 0.5) * 0.85
 	_apply_edges()
 	if field != null:
 		field.fit_to_stage(_stage_base, k, size)
+
+
+## The safe area in this screen's own coordinates.
+func _safe_rect() -> Rect2:
+	var m := SafeArea.insets()
+	return Rect2(Vector2(m.x, m.y), size - Vector2(m.x + m.z, m.y + m.w))
 
 
 ## Pins a control to the left (or right) column so it hugs the screen edge.
@@ -197,6 +208,10 @@ func _detail_pos() -> Vector2:
 func _process(delta: float) -> void:
 	if stage == null:
 		return
+	if _view_save > 0.0:
+		_view_save -= delta
+		if _view_save <= 0.0:
+			Game.save_settings()
 	if field != null:
 		_sync_field()
 		for side in 2:
@@ -802,10 +817,74 @@ func _unhandled_input(e: InputEvent) -> void:
 
 
 ## A right-click cancels wherever the pointer is. The cards and Totems keep
-## clicks for themselves, so it's caught here, before they see it.
+## clicks for themselves, so it's caught here, before they see it. So is the
+## zoom (the cards and Totems would keep the wheel too).
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
 		_unhandled_input(e)
+	_zoom_input(e)
+
+
+var _touches := {}       # finger index -> where it is
+var _spread := 0.0       # how far apart two fingers were (0: not pinching)
+var _view_save := 0.0    # the zoom is saved once it has stopped changing for this long
+
+
+## A little zoom on the 3D field (DuelField3D.zoom_by): the mouse wheel, a
+## trackpad, or two fingers pinching. Not over the duel log or menu (they
+## scroll), nor while a question or a card picker is up.
+func _zoom_input(e: InputEvent) -> void:
+	if field == null or not is_visible_in_tree():
+		return
+	if e is InputEventScreenTouch:
+		if e.pressed:
+			_touches[e.index] = e.position
+		else:
+			_touches.erase(e.index)
+		_spread = _touch_spread()
+		return
+	if e is InputEventScreenDrag:
+		if _touches.has(e.index):
+			_touches[e.index] = e.position
+		var d := _touch_spread()
+		if _spread > 0.0 and d > 8.0 and not _over_panel(e.position):
+			_zoom_field(_spread / d)   # fingers apart: closer
+		_spread = d
+		return
+	var factor := 0.0
+	if e is InputEventMouseButton and e.pressed and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+		var notches: float = e.factor if e.factor > 0.0 else 1.0
+		factor = pow(0.95, notches if e.button_index == MOUSE_BUTTON_WHEEL_UP else -notches)
+	elif e is InputEventMagnifyGesture and e.factor > 0.0:
+		factor = 1.0 / e.factor
+	elif e is InputEventPanGesture:
+		factor = exp(clampf(e.delta.y, -4.0, 4.0) * 0.04)
+	if factor <= 0.0 or _over_panel(e.position):
+		return
+	_zoom_field(factor)
+	get_viewport().set_input_as_handled()
+
+
+func _touch_spread() -> float:
+	var ps: Array = _touches.values()
+	return (ps[0] as Vector2).distance_to(ps[1]) if ps.size() >= 2 else 0.0
+
+
+func _over_panel(p: Vector2) -> bool:
+	if mode == "over":
+		return true
+	for panel in [log_panel, lab_panel]:
+		if panel != null and panel.is_visible_in_tree() and panel.get_global_rect().has_point(p):
+			return true
+	for c in overlay.get_children():
+		if c is DuelViews.CardPicker or c is DuelViews.Dialog:
+			return true
+	return false
+
+
+func _zoom_field(factor: float) -> void:
+	field.zoom_by(factor)
+	_view_save = 0.8
 
 
 ## A tap on the bare board changes your mind, like Cancel. Only a tap well
@@ -2178,7 +2257,8 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: Stri
 	b.col = col
 	b.size_px = size_px
 	b.god = god
-	b.edge = _edge
+	# the band runs to the screen's edges, past the safe area kept for the stage
+	b.edge = maxf(_edge, maxf(_stage_base.x / _base_k, (size.x - _stage_base.x) / _base_k - DESIGN.x))
 	b.position = Vector2(0, 476)
 	b.size = Vector2(DESIGN.x, 1)
 	fx_layer.add_child(b)
@@ -2232,7 +2312,8 @@ func _coach(at: String) -> void:
 		_coach_box.visible = true
 		await get_tree().process_frame
 		# top right, clear of the rival's Totems and the turn banner
-		_coach_box.position = Vector2(overlay.size.x - _coach_box.size.x - 24, 72)
+		var sr := _safe_rect()
+		_coach_box.position = Vector2(sr.end.x - _coach_box.size.x - 24, sr.position.y + 72)
 		var tw := _coach_box.create_tween()
 		tw.tween_property(_coach_box, "modulate:a", 1.0, 0.35)
 		sfx.play("ui_select")
@@ -2314,10 +2395,16 @@ func _show_bark(line: String) -> void:
 	_bark_box.modulate.a = 0.0
 	_bark_box.visible = true
 	await get_tree().process_frame
-	# just right of the rival's plate, below their hand, at the field's scale
+	# just right of the rival's plate, below their hand, at the field's scale,
+	# and kept inside the screen's safe area
+	var sr := _safe_rect()
 	var plate: Control = panels[rival]
 	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15
-	_bark_box.position = plate.global_position + Vector2(plate.size.x + 12.0, 70.0) * _base_k
+	var at := plate.global_position + Vector2(plate.size.x + 12.0, 70.0) * _base_k
+	var bs := _bark_box.size * _bark_box.scale
+	at.x = clampf(at.x, sr.position.x + 8.0, maxf(sr.position.x + 8.0, sr.end.x - bs.x - 8.0))
+	at.y = clampf(at.y, sr.position.y + 8.0, maxf(sr.position.y + 8.0, sr.end.y - bs.y - 8.0))
+	_bark_box.position = at
 	var tw := _bark_box.create_tween()
 	_bark_tw = tw
 	tw.tween_property(_bark_box, "modulate:a", 1.0, 0.3)
@@ -2511,8 +2598,9 @@ func _show_result(r: String) -> String:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	# centred a little below the middle, and never off the bottom of the screen
-	var y := clampf(overlay.size.y * 0.56 - box.size.y * 0.5, 40.0, overlay.size.y - box.size.y - 40.0)
-	box.position = Vector2((overlay.size.x - box.size.x) * 0.5, y)
+	var sr := _safe_rect()
+	var y := clampf(sr.position.y + sr.size.y * 0.56 - box.size.y * 0.5, sr.position.y + 40.0, sr.end.y - box.size.y - 40.0)
+	box.position = Vector2(sr.position.x + (sr.size.x - box.size.x) * 0.5, y)
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
 	while picked[0] == "":
@@ -2648,10 +2736,7 @@ class Arena:
 	func _draw_overlay() -> void:
 		var k := stage.scale.x
 		var o := stage.position
-		# letterbox above and below the field on tall screens
-		if o.y > 0.5:
-			draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, o.y)), Color(0.02, 0.02, 0.04))
-			draw_rect(Rect2(Vector2(0, o.y + 1080.0 * k), Vector2(size.x, size.y)), Color(0.02, 0.02, 0.04))
+		# (the field fills the whole screen on any shape: DuelField3D.fit_to_stage)
 		var hand_top := o.y + 760.0 * k
 		CardFace.vgrad_rect(self, Rect2(Vector2(0, hand_top), Vector2(size.x, size.y - hand_top)), Color(0.01, 0.01, 0.03, 0.0), Color(0.01, 0.01, 0.03, 0.75))
 		CardFace.vgrad_rect(self, Rect2(Vector2.ZERO, Vector2(size.x, o.y + 110.0 * k)), Color(0.01, 0.01, 0.03, 0.5), Color(0.01, 0.01, 0.03, 0.0))

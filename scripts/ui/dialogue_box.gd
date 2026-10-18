@@ -89,21 +89,31 @@ func _ready() -> void:
 	_choices.visible = false
 	add_child(_choices)
 	resized.connect(_layout)
-	_layout()
+	SafeArea.watch(self, _layout)
 
 
+## The box sits low and centred in the safe area (clear of a phone's Dynamic
+## Island and home bar), drawn at the player's text size (SafeArea.ui_scale());
+## the whole screen still takes the taps.
 func _layout() -> void:
-	var w := minf(size.x - 80.0, 1560.0)
-	_panel.custom_minimum_size = Vector2(w, 0)
-	_panel.offset_left = -w * 0.5
-	_panel.offset_right = w * 0.5
-	_panel.offset_top = -330
-	_panel.offset_bottom = -34
-	var cw := minf(w * 0.6, 820.0)
-	_choices.offset_left = -cw * 0.5 + w * 0.22
-	_choices.offset_right = cw * 0.5 + w * 0.22
-	_choices.offset_bottom = -350
-	_choices.offset_top = -350 - _choices.get_combined_minimum_size().y
+	var m := SafeArea.insets()
+	var k := SafeArea.ui_scale()
+	var mid := (m.x - m.z) * 0.5
+	var w := minf(size.x - m.x - m.z - 80.0, 1560.0 * k)   # as drawn
+	var lift := maxf(34.0, m.w + 12.0)
+	_panel.scale = Vector2(k, k)
+	_panel.custom_minimum_size = Vector2(w / k, 0)
+	_panel.offset_left = mid - w * 0.5
+	_panel.offset_right = _panel.offset_left + w / k
+	_panel.offset_top = -lift - 296.0 * k
+	_panel.offset_bottom = _panel.offset_top + 296.0
+	var cw := minf(w * 0.6, 820.0 * k)
+	var ch := _choices.get_combined_minimum_size().y
+	_choices.scale = Vector2(k, k)
+	_choices.offset_left = mid - cw * 0.5 + w * 0.22
+	_choices.offset_right = _choices.offset_left + cw / k
+	_choices.offset_top = -lift - 296.0 * k - 20.0 - ch * k
+	_choices.offset_bottom = _choices.offset_top + ch
 
 
 ## Show a line and wait for the player to tap through it.
