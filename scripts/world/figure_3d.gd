@@ -11,26 +11,30 @@ extends PaperDoll
 ##   fig.hold("look_up")              plays a clip and stays in its last pose
 ##   fig.lie_down() / fig.get_up()    flat on the ground (under a cart, struck down)
 ##   fig.reach(l, r) / fig.let_go()   hands on things (a barrel, a card, a hand)
+##   fig.sit(0.45) / fig.stand()      sat on a bench that high (talking, acting, all sitting)
 ##
-## The models share one skeleton (the same bone names, fingers and all), so
-## a clip one of them lacks is borrowed from another (Corin borrows the
-## fall, Tam borrows Bram's lift). A borrowed clip is fitted to whoever
-## borrows it: its hip height is scaled to theirs (Tilly is a child, so
-## Bram's hips would lift her off the ground) and the tracks for bones they
-## haven't got (Bram's apron, the first player model's braid) are dropped.
+## The models share one skeleton's bone names, every bone's rest square to
+## the world, so a clip one of them lacks is borrowed from another. A
+## borrowed clip is fitted to whoever borrows it: its hip height is scaled
+## to theirs (Tilly is a child, so Bram's hips would lift her off the
+## ground) and the tracks for bones they haven't got (Bram's apron, fingers
+## Tam's and Nell's hands don't have: theirs are a thumb and the fingers as
+## one) are dropped.
 ##
 ## The player (player_a, Gary's young man, since 17 October) carries his own
 ## motion-captured clips (idle, walk, run, sneak, cheer, wave, jump, sit,
 ## fight_stance, punch, punch_combo, kick, roundhouse, flying_kick,
 ## sword_swing, kata, hit_react, death, dance, roll, strafe_left) and the
 ## game's (talk, duel_idle, play_card, victory, defeat, fall, look_up, lift)
-## fitted to his body by tools/rig_character.py. The clips everyone else
-## borrows are the first player model's, kept in clips/shared.glb.
+## fitted to his body by tools/rig_character.py. Corin, Tam, Tilly and Old
+## Nell (since 18 October) are built the same way by tools/rig_villager.sh,
+## each with their own clips and the game's. The game's clips are the first
+## player model's, kept in clips/shared.glb, and Bram's lift.
 
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play. Everyone else's model
-## is characters/<their id or look>.glb (nell, hob, seamus, krell, dask,
-## hunter), picked up the moment it exists.
+## is characters/<their id or look>.glb (hob, seamus, krell, dask, hunter),
+## picked up the moment it exists.
 const MODELS := {"player": "player_a"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
@@ -42,11 +46,24 @@ const DONORS := ["clips/shared", "bram", "corin", "player_a"]
 ## ground (m/s); shorter legs (Tilly's) take quicker steps.
 const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
 ## Models whose own walking clips go at their own pace (m/s, as
-## tools/rig_character.py measured them), not GAIT_SPEED's.
-const OWN_GAIT := {"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87}}
+## tools/rig_character.py measured them), not GAIT_SPEED's. (Corin walks
+## and runs as the player does, fitted to his legs.)
+const OWN_GAIT := {
+	"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87},
+	"corin": {"walk": 1.68, "run": 4.35},
+	"tam": {"walk": 1.63, "run": 4.12},
+	"tilly": {"walk": 1.00, "run": 2.54},
+	"nell": {"walk": 1.11, "run": 2.81},
+}
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
+## Clips that can't be done sitting down: asking for one stands them up.
+const STANDING_ONLY := ["walk", "run", "sneak", "strafe_left", "jump", "sit", "fall", "death", "roll", "flying_kick", "lift"]
+## The bones sitting takes over from a clip (the rest go on as the clip has them).
+const SIT_BONES := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
+## How far a grown-up's hip joints sit above the seat (m).
+const SEAT_PAD := 0.1
 
 var model: Node3D
 var anim: AnimationPlayer
@@ -56,6 +73,10 @@ var talking := false
 ## Metres a second the character is being moved at (cutscenes set it so the
 ## walk cycle keeps pace; 0 = the clip's own pace).
 var pace := 0.0
+## The height of the seat they're sitting on (m), -1 standing: sit(), stand().
+var seat := -1.0
+var _seat_at := Vector3.ZERO   # where they sat down
+var _seat_settle := 0
 var _clip := ""          # what's playing
 var _action := ""        # a one-shot or held clip, over the walk/idle choice
 var _held := false
@@ -76,8 +97,9 @@ var _pose_n := 0
 static var _donor_cache := {}
 
 ## Whether the characters who have a model use it. Bram, Corin and the
-## player became 3D on 15 October, Tam and Tilly on 16 October; the rest
-## (Nell, Hob, Seamus, the crowd, Krell and her hunters) stay cut-outs until
+## player became 3D on 15 October, Tam and Tilly on 16 October, Old Nell on
+## 18 October (when Corin, Tam and Tilly got Gary's new models too); the
+## rest (Hob, Seamus, the crowd, Krell and her hunters) stay cut-outs until
 ## their models exist. false puts everyone back to cut-outs.
 const USE_MODELS := true
 
@@ -160,7 +182,10 @@ func _ready() -> void:
 
 ## Where the marker floats: a hand's breadth over their head.
 func _marker_y() -> float:
-	return _top + 0.55
+	var y := _top + 0.55
+	if seat >= 0.0:
+		y -= maxf(0.0, _hips - seat - SEAT_PAD * stature())
+	return y
 
 
 func _apply_texture() -> void:
@@ -200,6 +225,7 @@ func facing() -> Vector3:
 func act(clip: String, speed := 1.0, blend := 0.2) -> void:
 	if not _ensure(clip):
 		return
+	clip = _sat(clip)
 	_action = clip
 	_held = false
 	_play(clip, blend, speed)
@@ -213,6 +239,7 @@ func act(clip: String, speed := 1.0, blend := 0.2) -> void:
 func hold(clip: String, speed := 1.0, blend := 0.25) -> void:
 	if not _ensure(clip):
 		return
+	clip = _sat(clip)
 	_action = clip
 	_held = true
 	_play(clip, blend, speed)
@@ -224,6 +251,7 @@ func hold(clip: String, speed := 1.0, blend := 0.25) -> void:
 func pose(clip: String, at: float, blend := 0.2) -> void:
 	if not _ensure(clip):
 		return
+	clip = _sat(clip)
 	_action = clip
 	_held = true
 	_pose_n += 1
@@ -258,6 +286,105 @@ func get_up(secs := 0.7) -> void:
 	var tw := create_tween()
 	tw.tween_property(self, "_lying", 0.0, secs).set_trans(Tween.TRANS_SINE)
 	await tw.finished
+
+
+## Sits them on a seat `height` m off the ground (Nell's bench, a stool), the
+## way they face: their hips go over the spot they stand on, thighs along the
+## seat and shins over its edge, feet on the ground if they reach it (Tilly's
+## swing). Everything they do sitting (idle, talking, act, hold, pose) keeps
+## them sitting, with the clip's body, head and arms, until stand(); walking,
+## or being moved off the spot (staged somewhere else), stands them up.
+func sit(height := 0.45, blend := 0.8) -> void:
+	seat = maxf(height, 0.0)
+	_seat_at = global_position
+	_seat_settle = 2
+	_action = ""
+	_held = false
+	_play(_base(), blend)
+
+
+func stand(blend := 0.6) -> void:
+	seat = -1.0
+	_action = ""
+	_held = false
+	_play(_base(), blend)
+
+
+## The sitting version of a clip (built the first time it's asked for, for
+## this seat), or the clip itself when they're standing or it can't be sat.
+func _sat(clip: String) -> String:
+	if seat < 0.0 or clip in STANDING_ONLY or clip.begins_with("sat_") or _skel == null or anim == null or not anim.has_animation(clip):
+		return clip
+	var nm := "sat_%s_%d" % [clip, roundi(seat * 100.0)]
+	if anim.has_animation(nm):
+		return nm
+	var a := (anim.get_animation(clip) as Animation).duplicate(true) as Animation
+	var prefix := ""
+	for t in range(a.get_track_count() - 1, -1, -1):
+		var p := a.track_get_path(t)
+		var bone := String(p.get_concatenated_subnames())
+		if bone == "":
+			continue
+		prefix = String(p.get_concatenated_names())
+		if bone in SIT_BONES:
+			a.remove_track(t)
+	var pose := _seated_pose()
+	for kind in ["pos", "rot"]:
+		for bone: String in pose[kind]:
+			var t := a.add_track(Animation.TYPE_POSITION_3D if kind == "pos" else Animation.TYPE_ROTATION_3D)
+			a.track_set_path(t, NodePath(prefix + ":" + bone))
+			for at in [0.0, a.length]:
+				if kind == "pos":
+					a.position_track_insert_key(t, at, pose.pos[bone])
+				else:
+					a.rotation_track_insert_key(t, at, pose.rot[bone])
+	if not anim.has_animation_library(""):
+		anim.add_animation_library("", AnimationLibrary.new())
+	anim.get_animation_library("").add_animation(nm, a)
+	return nm
+
+
+## The hips and legs sitting on the seat: {"pos": {bone: position},
+## "rot": {bone: turn}} (the models' bones all rest square to the world, so
+## a turn here is the bone's turn from standing straight).
+func _seated_pose() -> Dictionary:
+	var rot := {}
+	var hb := _skel.find_bone("Hips")
+	var rest := _skel.get_bone_rest(hb).origin
+	var hips_y := seat + SEAT_PAD * stature()
+	var pos := {"Hips": Vector3(rest.x, hips_y - (_skel.get_bone_global_rest(hb).origin.y - rest.y), rest.z)}
+	rot["Hips"] = Quaternion.IDENTITY
+	for side in ["Left", "Right"]:
+		var up := _skel.find_bone(side + "UpLeg")
+		var kn := _skel.find_bone(side + "Leg")
+		var ft := _skel.find_bone(side + "Foot")
+		if up < 0 or kn < 0 or ft < 0:
+			continue
+		var pu := _skel.get_bone_global_rest(up).origin
+		var pk := _skel.get_bone_global_rest(kn).origin
+		var pf := _skel.get_bone_global_rest(ft).origin
+		var thigh := pk - pu
+		var shin := pf - pk
+		var lt := thigh.length()
+		var ls := shin.length()
+		var tilt := deg_to_rad(8.0)   # shins a little forward of the knees
+		var hip_joint := hips_y + (pu.y - _skel.get_bone_global_rest(hb).origin.y)
+		# the thighs slope down (or up) just enough to put the feet on the
+		# ground; if that would be too steep (a child on a grown-up's bench)
+		# they stay level and the feet swing
+		var drop := maxf((hip_joint - ls * cos(tilt) - pf.y) / lt, -0.6)
+		if drop > 0.6:
+			drop = 0.1
+		var side_x := thigh.x / lt * 0.6
+		var t_dir := Vector3(side_x, -drop, sqrt(maxf(0.0, 1.0 - drop * drop - side_x * side_x)))
+		var s_dir := Vector3(0.0, -cos(tilt), sin(tilt))
+		var gu := Quaternion(thigh / lt, t_dir)
+		var gk := Quaternion(shin / ls, s_dir)
+		rot[side + "UpLeg"] = gu
+		rot[side + "Leg"] = gu.inverse() * gk
+		rot[side + "Foot"] = gk.inverse()   # flat
+		rot[side + "ToeBase"] = Quaternion.IDENTITY
+	return {"pos": pos, "rot": rot}
 
 
 ## A light in the character's hand (the blank card, a taper, the mark).
@@ -310,6 +437,11 @@ func _process(delta: float) -> void:
 		_pivot.rotation.y = _yaw
 	if anim == null:
 		return
+	if seat >= 0.0 and _seat_settle > 0:
+		_seat_settle -= 1   # (placed on the seat just after sitting: that's the seat)
+		_seat_at = global_position
+	elif seat >= 0.0 and (walking or global_position.distance_to(_seat_at) > 0.3):
+		stand(0.0 if not walking else 0.3)   # walked off, or put somewhere else
 	if _action == "":
 		var want := _base()
 		if want != _clip:
@@ -334,8 +466,8 @@ func _base() -> String:
 	if walking:
 		return gait if anim != null and anim.has_animation(gait) else "walk"
 	if talking and anim != null and anim.has_animation("talk"):
-		return "talk"
-	return "idle"
+		return _sat("talk")
+	return _sat("idle")
 
 
 func _play(clip: String, blend := 0.2, speed := 1.0) -> void:
