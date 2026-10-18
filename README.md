@@ -75,6 +75,43 @@ god's Law.
 Safari use Share > Add to Home Screen for a full-screen app icon). Rebuild it with `tools/build_web.sh`
 and push `build/web` to the `gh-pages` branch.
 
+**Edge to edge on a phone.** The game fills any screen shape (an iPhone 16 Pro Max
+held sideways is 2.17:1): the 1920 x 1080 base stretches sideways (`canvas_items` +
+`expand`), the opening movie's paintings and clips fill the screen (cropping a
+little top and bottom, `OpeningMovie.frame_rect()`), and the duel's 3D field
+covers the whole screen on any shape, the iPad's 4:3 included
+(`DuelField3D.fit_to_stage()` widens the lens to match). The buttons and words
+keep clear of the Dynamic Island, the rounded corners and the home bar through
+one helper, `SafeArea` (`scripts/ui/safe_area.gd`): `SafeArea.fit(control)` keeps
+a full-screen control inside the safe area, `SafeArea.rect()` / `insets()` give
+the margins. It reads `DisplayServer.get_display_safe_area()` in the apps and the
+page's CSS `env(safe-area-inset-*)` on the phone link (`tools/build_web.sh` adds
+`viewport-fit=cover` to the page so Safari doesn't leave bars beside the island;
+the Home Screen app is full screen, `progressive_web_app/display`). The iPhone
+app hides the status bar and the home bar and holds back the edge swipes
+(`display/window/ios/*` in `project.godot`). Check every screen at a phone's
+shape with a pretend safe area:
+
+```sh
+xvfb-run -a -s "-screen 0 2900x2200x24" godot --rendering-driver opengl3 --resolution 1434x660 \
+    res://tests/screen_fit_test.tscn -- /tmp/fit --safe-area=93,0,93,32 mark   # an iPhone 16 Pro Max at half size
+```
+
+`--safe-area=L,T,R,B` (window pixels) works on any run of the game; `mark` draws
+the island and home bar on the screenshots, and the test lists any button
+outside the safe area. The phone link's page is checked in Chromium dressed as
+the iPhone held sideways, with its safe area:
+
+```sh
+tools/build_web.sh && python3 tests/web_fit_check.py build/web /tmp/webfit   # viewport-fit, full-screen app, canvas, safe area; screenshots
+```
+
+Options also has **Text and buttons size** (Normal, Larger, Largest,
+`SafeArea.ui_scale()`), which draws the world's buttons, the conversation box,
+the pause menu, a card's detail and the films' words bigger for a small phone
+(add `ui=1.3` to the screen-fit test to see it). The title, the notice, the
+duel and the Duel Lab keep their size.
+
 A phone browser runs out of memory if it loads the whole game at once, so the web
 build comes in parts (`tools/web_packs.py` says what's in each, and `build_web.sh`
 keeps the export presets in step with it): a main pack (title, menus, Ashford,
@@ -145,10 +182,9 @@ Tilly running up with her Lantern Moth (it circles the player and settles on the
 back of their hand), Ned the fiddler, Hob, dancers and children with paper
 lanterns, and Corin, whose mam (extra `corin_mam`) watches from the bakery door.
 Corin calls out when the player comes near; Bram gets up off his stool with the
-card box and hands over the first deck when Corin says there isn't one. (People
-sit with `Figure3D.sit()` where the model has it; until then `AshfordP1.sit_down`
-holds the sit clip at the moment it reaches a seat's height for the player on
-Nell's bench, and Bram stands by his stool.) Every staged camera
+card box and hands over the first deck when Corin says there isn't one. (Bram on
+his stool, Nell on her bench and the player beside her sit with
+`Figure3D.sit()`, through `AshfordP1.sit_down`.) Every staged camera
 on the green is checked for anything solid or anyone standing in the way
 (`AshfordP1.clear_cam`). The
 Lantern Duel has Corin's own rule, Showboat: his Cinderpup attacks the moment it
@@ -164,15 +200,20 @@ player's hands on her words "You keep it", and midnight begins. A dialogue line
 can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
 "<words>"}` starts the scene as the line types out as far as those words.
 
-Bram, Corin, Tam, Tilly and the player are their 3D models everywhere
-(`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October); the other
-villagers stay cut-outs until their models exist, and a model dropped into
+Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
+everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
+Nell since 18 October); the other villagers (Hob, Ned, the crowd) stay
+cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. The models share
-one skeleton, so a clip one lacks is borrowed from another and fitted to
-their height (Tilly is a child), and `reach()` puts hands on things: Tam and
-the player carry the barrel by its ends, Tilly holds her moth's card out in
-both hands, Corin leads her up the lane by the hand and holds it on the
-riverbank, Tam levels his pitchfork.
+one skeleton's bone names, so a clip one lacks is borrowed from another and
+fitted to their height (Tilly is a child, Nell small and stooped);
+`reach()` puts hands on things: Tam and the player carry the barrel by its
+ends, Tilly holds her moth's card out in both hands, Corin leads her up the
+lane by the hand and holds it on the riverbank, Tam levels his pitchfork.
+`sit(height)` sits someone on a bench that high where they stand (Nell on
+hers, the player beside her): hips on the seat, thighs along it, feet on
+the ground (Tilly's swing); whatever they do sitting (talking, a wave, a
+held pose) stays sitting until `stand()` or they walk off.
 
 The player (look A) is Gary's young man since 17 October, from AssetFurnace
 with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
@@ -190,16 +231,34 @@ him from Gary's master file:
 tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>
 godot --headless --import
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
-godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses
+godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses, and sit
 xvfb-run -a -s "-screen 0 800x800x24" godot --rendering-driver opengl3 --resolution 640x640 \
-    --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, and in every clip
+    --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, in every clip, the cast on a bench
 ```
 
 His own clips besides the game's: sneak, strafe_left, jump, sit,
 fight_stance, punch, punch_combo, kick, roundhouse, flying_kick,
 sword_swing, kata, hit_react, death, dance, wave and roll (the roll, the
 flying kick, the punch combo, the strafe and the death travel as made, so
-whoever plays one moves the figure to where it ends).
+whoever plays one moves the figure to where it ends). The `sit` clips
+(everyone's) sit down on the ground; a bench is `Figure3D.sit()`.
+
+Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
+built the same way by `tools/rig_villager.sh <who> <master.glb>` (then the
+import, their portrait and the checks above, with their id): Corin stands
+1.72 m, Tam 1.88 m, Tilly 1.25 m and Nell 1.50 m. Each keeps its own clips
+besides the game's: Corin cheer, dance, death, fight_stance, flying_kick,
+hit_react, jump, kata, kick, punch and punch_combo (he came without a walk,
+so he walks, runs, sits and waves as the player does); Tam and Tilly jump,
+sit, wave, cheer, dance, kick, punch and death; Nell jump, sit, wave, cheer,
+dance, punch and death. Their rigs are smaller than the player's: Tam's and
+Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
+groups, and Nell has 29 bones in all. Nell's walking stick is part of her
+mesh, in her right hand, so that arm stays as in her idle when she talks,
+cheers, walks or runs. AssetFurnace's walk and run tip the head back, so
+it's levelled for the four of them. Tam's master file was 47 MB because it
+carried every source file's mesh and textures, unused; his game model, like
+the others, has only what it uses (about 2.5 MB, with a 2048 colour atlas).
 
 Everything after the Lantern Duel is a film in the game's own 3D: midnight,
 the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn, the taproom,
@@ -259,7 +318,8 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 ## Menus, standing, items and adverts
 
 - **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line.
-- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, violence, 3D field, advert previews, save, quit).
+- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
+- **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
 - **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 has no lines for that tour and opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel no longer plays the tour or opens the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck from the cellar (flag `bram_deck`) is the first one the player can edit; old saves past Ashford have everything open.
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
 - **Standing** (`scripts/game/standing.gd`): how each god and person sees the player, -10 to +10. Story choices already recorded as flags count through `FLAG_EFFECTS`; a dialogue step `{"standing": {"tilly": 1}, "why": "..."}` nudges it directly, and `{"if": "standing:solmaris>=2"}` branches on it. A toast says "Tilly will remember that."
@@ -277,7 +337,7 @@ xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 res://te
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/props_shot.tscn -- /tmp/props [thornwood]   # the windmill (turning, then burning) and the oaks
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/walls_shot.tscn -- /tmp/walls   # the walls, fence, sacks and crates, and what each view draws
 godot --headless --fixed-fps 10 res://tests/props_clear_test.tscn -- /tmp/clear burning 0 only   # nobody in the film walks through them (corin, midnight, dawn, burning)
-godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse); also runs under xvfb-run
+godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse, wheel, fingers); also runs under xvfb-run
 ```
 
 ## Running the tests

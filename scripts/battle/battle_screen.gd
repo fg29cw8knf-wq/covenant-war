@@ -105,13 +105,16 @@ func _ready() -> void:
 
 
 func _fit() -> void:
-	var k := minf(size.x / DESIGN.x, size.y / DESIGN.y)
+	# the table keeps to the safe area (clear of a phone's Dynamic Island and home bar)
+	var m := SafeArea.insets()
+	var room := size - Vector2(m.x + m.z, m.y + m.w)
+	var k := minf(room.x / DESIGN.x, room.y / DESIGN.y)
 	stage.scale = Vector2(k, k)
-	stage.position = ((size - DESIGN * k) * 0.5).floor()
+	stage.position = (Vector2(m.x, m.y) + (room - DESIGN * k) * 0.5).floor()
 	# Spread the layout into any spare room: panels to the edges, the two
 	# sides of the table apart.
-	_ex = maxf(0.0, (size.x / k - DESIGN.x) * 0.5)
-	_ey = maxf(0.0, (size.y / k - DESIGN.y) * 0.5)
+	_ex = maxf(0.0, (room.x / k - DESIGN.x) * 0.5)
+	_ey = maxf(0.0, (room.y / k - DESIGN.y) * 0.5)
 	for pi in 2:
 		for s in slots[pi]:
 			var base: Vector2 = s.get_meta("base")

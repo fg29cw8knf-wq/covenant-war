@@ -1,19 +1,31 @@
 class_name WorldHUD
 extends CanvasLayer
 ## Everything drawn over the walkable world: the touch pad (drag = joystick,
-## tap = walk there / talk), the Talk button, the pause menu (PauseMenu), the
-## area title, the dialogue box, reward pop-ups and screen fades.
+## tap = walk there / talk, pinch or wheel = zoom), the Talk button, the zoom
+## buttons, the pause menu (PauseMenu), the area title, the dialogue box,
+## reward pop-ups and screen fades. The buttons and words sit inside the
+## screen's safe area (SafeArea), clear of a phone's Dynamic Island and home
+## bar; the pad, the vignette and the fades cover the whole screen.
 
 signal talk_pressed
 signal menu_action(action: String)
 signal tapped(viewport_pos: Vector2)
+## The camera's distance times `factor` (under 1 comes closer): a pinch, the
+## wheel, a trackpad, or the + / - buttons.
+signal zoom_by(factor: float)
+
+## How far one tap of + or - zooms.
+const ZOOM_STEP := 0.8
 
 var pad: TouchPad
 var dialogue: DialogueBox
 var _root: Control
+var _safe: Control         # the safe area: everything to read or tap goes in here
 var _talk: TalkButton
 var _talk_name: Label
 var _menu_btn: IconButton
+var _zoom_in: IconButton
+var _zoom_out: IconButton
 var _menu: Control
 var _title: Control
 var _fade: ColorRect
@@ -45,7 +57,13 @@ func _ready() -> void:
 	pad = TouchPad.new()
 	pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	pad.tapped.connect(func(p: Vector2) -> void: tapped.emit(p))
+	pad.zoomed.connect(func(f: float) -> void: zoom_by.emit(f))
 	_root.add_child(pad)
+
+	_safe = Control.new()
+	_safe.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_safe)
+	SafeArea.fit(_safe, Vector2.ZERO, true)   # at the player's text and buttons size
 
 	_talk = TalkButton.new()
 	_talk.anchor_left = 1.0
@@ -58,7 +76,7 @@ func _ready() -> void:
 	_talk.offset_bottom = -60
 	_talk.visible = false
 	_talk.pressed.connect(func() -> void: talk_pressed.emit())
-	_root.add_child(_talk)
+	_safe.add_child(_talk)
 	_talk_name = UITheme.label("", 28, UITheme.TEXT, "display_bold", 8)
 	_talk_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_talk_name.anchor_left = 1.0
@@ -70,7 +88,7 @@ func _ready() -> void:
 	_talk_name.offset_top = -300
 	_talk_name.offset_bottom = -256
 	_talk_name.visible = false
-	_root.add_child(_talk_name)
+	_safe.add_child(_talk_name)
 
 	_menu_btn = IconButton.new()
 	_menu_btn.glyph = "menu"
@@ -81,20 +99,31 @@ func _ready() -> void:
 	_menu_btn.offset_top = 36
 	_menu_btn.offset_bottom = 146
 	_menu_btn.pressed.connect(open_menu)
-	_root.add_child(_menu_btn)
+	_safe.add_child(_menu_btn)
 
+	# zoom: + over -, small, at the right-hand edge halfway down
+	_zoom_in = _zoom_button("plus", -112, ZOOM_STEP)
+	_zoom_out = _zoom_button("minus", 16, 1.0 / ZOOM_STEP)
+
+	# the toast stays a child of the root (the pack tour lifts it over itself)
 	_toast = UITheme.label("", 34, UITheme.GOLD, "display_bold", 10)
 	_toast.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_toast.offset_left = -700
-	_toast.offset_right = 700
-	_toast.offset_top = 60
-	_toast.offset_bottom = 120
 	_toast.modulate.a = 0.0
 	_root.add_child(_toast)
+	SafeArea.watch(_toast, func() -> void:
+		var m := SafeArea.insets()
+		var k := SafeArea.ui_scale()
+		var mid := (m.x - m.z) * 0.5
+		var w := minf(700.0 * k, SafeArea.rect().size.x * 0.5 - 20.0)
+		_toast.add_theme_font_size_override("font_size", roundi(34 * k))
+		_toast.offset_left = mid - w
+		_toast.offset_right = mid + w
+		_toast.offset_top = m.y + 60 * k
+		_toast.offset_bottom = m.y + 120 * k)
 
 	_title = _make_title()
-	_root.add_child(_title)
+	_safe.add_child(_title)
 
 	# first-steps hints ("Tap the ground to walk"), bottom centre
 	_hint = PanelContainer.new()
@@ -115,7 +144,7 @@ func _ready() -> void:
 	hl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_hint.add_child(hl)
-	_root.add_child(_hint)
+	_safe.add_child(_hint)
 	# the current objective, top left
 	_objective = UITheme.label("", 30, UITheme.GOLD, "bold", 10)
 	_objective.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -126,7 +155,7 @@ func _ready() -> void:
 	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_objective.modulate.a = 0.0
 	_objective.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(_objective)
+	_safe.add_child(_objective)
 
 	dialogue = DialogueBox.new()
 	_root.add_child(dialogue)
@@ -171,6 +200,8 @@ func talk_showing() -> bool:
 func set_controls_visible(v: bool) -> void:
 	pad.visible = v
 	_menu_btn.visible = v
+	_zoom_in.visible = v
+	_zoom_out.visible = v
 	if not v:
 		_talk.visible = false
 		_talk_name.visible = false
@@ -306,6 +337,23 @@ func pack_tour(steps: Array = []) -> void:
 
 # ---------------------------------------------------------------- build ---
 
+## A small + or - at the right-hand edge, `top` below the middle of the screen.
+func _zoom_button(glyph: String, top: float, factor: float) -> IconButton:
+	var b := IconButton.new()
+	b.glyph = glyph
+	b.anchor_left = 1.0
+	b.anchor_right = 1.0
+	b.anchor_top = 0.5
+	b.anchor_bottom = 0.5
+	b.offset_left = -136
+	b.offset_right = -40
+	b.offset_top = top
+	b.offset_bottom = top + 96
+	b.pressed.connect(func() -> void: zoom_by.emit(factor))
+	_safe.add_child(b)
+	return b
+
+
 func _make_title() -> Control:
 	var c := VBoxContainer.new()
 	c.set_anchors_preset(Control.PRESET_CENTER_TOP)
@@ -341,17 +389,24 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ============================================================== widgets ===
 
-## Full-screen touch surface: drag for a floating joystick, tap to walk/talk.
+## Full-screen touch surface: drag for a floating joystick, tap to walk/talk;
+## two fingers pinch to zoom, as do the mouse wheel and a trackpad.
 class TouchPad:
 	extends Control
 	signal tapped(pos: Vector2)
+	## The camera's distance times this (under 1 comes closer).
+	signal zoomed(factor: float)
 	const RADIUS := 120.0
+	## One notch of a mouse wheel.
+	const WHEEL_STEP := 0.9
 	var vector := Vector2.ZERO
 	var _down := false
 	var _drag := false
 	var _start := Vector2.ZERO
 	var _pos := Vector2.ZERO
 	var _t0 := 0
+	var _touches := {}          # finger index -> where it is
+	var _pinch := 0.0           # how far apart two fingers were (0: not pinching)
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -360,10 +415,60 @@ class TouchPad:
 		_down = false
 		_drag = false
 		vector = Vector2.ZERO
+		_touches.clear()
+		_pinch = 0.0
 		queue_redraw()
 
+	## The distance between the first two fingers down.
+	func _spread() -> float:
+		var ps: Array = _touches.values()
+		return (ps[0] as Vector2).distance_to(ps[1]) if ps.size() >= 2 else 0.0
+
 	func _gui_input(e: InputEvent) -> void:
+		# two fingers: a pinch, which also lets go of the joystick (and the tap)
+		if e is InputEventScreenTouch:
+			if e.pressed:
+				_touches[e.index] = e.position
+			else:
+				_touches.erase(e.index)
+			if _touches.size() >= 2:
+				_down = false
+				_drag = false
+				vector = Vector2.ZERO
+				_pinch = _spread()
+				queue_redraw()
+			else:
+				_pinch = 0.0
+			accept_event()
+			return
+		if e is InputEventScreenDrag:
+			if _touches.has(e.index):
+				_touches[e.index] = e.position
+			if _pinch > 0.0 and _touches.size() >= 2:
+				var d := _spread()
+				if d > 8.0:
+					zoomed.emit(_pinch / d)   # fingers apart: closer
+					_pinch = d
+			accept_event()
+			return
+		if e is InputEventMagnifyGesture:   # a Mac trackpad's pinch
+			if e.factor > 0.0:
+				zoomed.emit(1.0 / e.factor)
+			accept_event()
+			return
+		if e is InputEventPanGesture:   # two fingers sliding on a trackpad: like the wheel
+			zoomed.emit(exp(clampf(e.delta.y, -4.0, 4.0) * 0.08))
+			accept_event()
+			return
+		if e is InputEventMouseButton and e.pressed and (e.button_index == MOUSE_BUTTON_WHEEL_UP or e.button_index == MOUSE_BUTTON_WHEEL_DOWN):
+			var notches: float = e.factor if e.factor > 0.0 else 1.0
+			zoomed.emit(pow(WHEEL_STEP, notches if e.button_index == MOUSE_BUTTON_WHEEL_UP else -notches))
+			accept_event()
+			return
 		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT:
+			if _touches.size() >= 2:
+				accept_event()   # the first finger of a pinch, lifting: not a tap
+				return
 			if e.pressed:
 				_down = true
 				_drag = false
@@ -375,7 +480,7 @@ class TouchPad:
 					tapped.emit(get_global_transform_with_canvas() * e.position)
 				reset()
 			accept_event()
-		elif e is InputEventMouseMotion and _down:
+		elif e is InputEventMouseMotion and _down and _touches.size() < 2:
 			_pos = e.position
 			if not _drag and _pos.distance_to(_start) > 24.0:
 				_drag = true

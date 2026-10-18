@@ -44,6 +44,8 @@ const SHAPES := {
 	"talk": "<path fill='#fff' d='M14 14 H86 C92 14 96 18 96 24 V62 C96 68 92 72 86 72 H46 L24 90 L28 72 H14 C8 72 4 68 4 62 V24 C4 18 8 14 14 14 Z'/><circle fill='#000' fill-opacity='0.35' cx='30' cy='43' r='7'/><circle fill='#000' fill-opacity='0.35' cx='50' cy='43' r='7'/><circle fill='#000' fill-opacity='0.35' cx='70' cy='43' r='7'/>",
 	"duel": "<g fill='#fff'><path d='M20 18 H56 C59 18 61 20 61 23 V77 C61 80 59 82 56 82 H20 C17 82 15 80 15 77 V23 C15 20 17 18 20 18 Z' transform='rotate(-16 38 50)'/><path d='M44 18 H80 C83 18 85 20 85 23 V77 C85 80 83 82 80 82 H44 C41 82 39 80 39 77 V23 C39 20 41 18 44 18 Z' transform='rotate(16 62 50)'/></g><path fill='#000' fill-opacity='0.3' d='M62 34 L70 50 L62 66 L54 50 Z' transform='rotate(16 62 50)'/>",
 	"menu": "<g fill='#fff'><rect x='12' y='18' width='76' height='12' rx='6'/><rect x='12' y='44' width='76' height='12' rx='6'/><rect x='12' y='70' width='76' height='12' rx='6'/></g>",
+	"plus": "<g fill='#fff'><rect x='12' y='43' width='76' height='14' rx='7'/><rect x='43' y='12' width='14' height='76' rx='7'/></g>",
+	"minus": "<rect fill='#fff' x='12' y='43' width='76' height='14' rx='7'/>",
 	"coin": "<circle fill='#fff' cx='50' cy='50' r='44'/><circle fill='#000' fill-opacity='0.25' cx='50' cy='50' r='34'/><path fill='#fff' d='M50 22 L58 42 L78 44 L62 58 L68 78 L50 66 L32 78 L38 58 L22 44 L42 42 Z'/>",
 }
 

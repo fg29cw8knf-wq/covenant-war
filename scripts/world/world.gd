@@ -23,6 +23,18 @@ const SPEED := 5.4
 const TALK_RANGE := 2.4
 const CAM_OFFSET := Vector3(0, 8.2, 11.5)
 const CAM_FOV := 32.0
+## The camera looks at this point above the ground under the player.
+const CAM_LOOK := Vector3(0, 1.1, 0)
+## Camera zoom (Game.settings.cam_zoom): 1 is the usual view and higher comes
+## closer, along the same line, so the angle never changes. Pinch, the mouse
+## wheel, a trackpad, the + and - keys and buttons, and a pad's right stick
+## change it; the Options page has a slider and a reset.
+const ZOOM_MIN := 0.7      # furthest out
+const ZOOM_MAX := 1.8      # closest in
+## Holding a zoom key or the stick: the distance changes by e^this a second.
+const ZOOM_RATE := 0.9
+## How far the camera keeps from walls, roofs and trees (metres).
+const CAM_CLEARANCE := 0.45
 
 var duel_handler: Callable
 var attract := false       # title-screen mode: no player control, a slow camera drift
@@ -43,6 +55,11 @@ var _stuck_time := 0.0
 var cine := false          # a cutscene is driving the camera
 var _shake := 0.0
 var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
+var _zoom := 1.0           # the zoom the camera is at now (it eases to the setting)
+var _cam_clear := 1.0      # how much of the way out the camera can go without entering a wall (eased)
+var _zoom_hold := 0.0      # a quick press of a zoom key or the stick zooms for at least this long
+var _zoom_dir := 0.0
+var _zoom_save := 0.0      # the setting is saved once the zoom has stopped changing for this long
 
 
 ## Brings the area's music back after a duel or a scene took it over; it
@@ -83,6 +100,7 @@ func _ready() -> void:
 	hud = WorldHUD.new()
 	add_child(hud)
 	hud.tapped.connect(_on_tap)
+	hud.zoom_by.connect(zoom_by)
 	hud.talk_pressed.connect(func() -> void:
 		if _near != null and not busy:
 			_talk(_near))
@@ -260,6 +278,7 @@ func _build_camera() -> void:
 	cam.attributes = attrs
 	add_child(cam)
 	_focus = _cam_focus_target()
+	_zoom = zoom_setting()
 	_place_camera()
 	cam.make_current()
 
@@ -271,9 +290,125 @@ func _cam_focus_target() -> Vector3:
 		clampf(p.z, b.position.y + 5.0, b.end.y - 4.0))
 
 
-func _place_camera() -> void:
-	cam.global_position = _focus + CAM_OFFSET
-	cam.look_at(_focus + Vector3(0, 1.1, 0), Vector3.UP)
+## The camera's place behind the player at the zoom the player chose, before
+## anything in the way is allowed for.
+func _cam_offset(z: float = -1.0) -> Vector3:
+	return CAM_LOOK + (CAM_OFFSET - CAM_LOOK) / (z if z > 0.0 else zoom_setting())
+
+
+## Puts the camera behind the player, at the zoom eased so far, and in front of
+## any wall, roof or tree it would otherwise end up inside. `delta` < 0 snaps.
+func _place_camera(delta: float = -1.0) -> void:
+	var look := _focus + CAM_LOOK
+	var want := _focus + _cam_offset(_zoom)
+	var clear := _clear_way(look, want)
+	if delta < 0.0 or clear < _cam_clear:
+		_cam_clear = clear   # in front of a wall at once...
+	else:
+		_cam_clear = lerpf(_cam_clear, clear, minf(1.0, delta * 2.5))   # ...and out again gently
+	cam.global_position = look.lerp(want, _cam_clear)
+	cam.look_at(look, Vector3.UP)
+	var ca := cam.attributes as CameraAttributesPractical
+	if ca != null and ca.dof_blur_far_enabled:
+		var d := cam.global_position.distance_to(look)
+		ca.dof_blur_far_distance = d + 9.0
+		ca.dof_blur_near_distance = maxf(0.5, d - 8.0)
+
+
+# ================================================================ zoom ===
+
+## The zoom the player has chosen (1 is the usual view, higher is closer).
+static func zoom_setting() -> float:
+	return clampf(float(Game.settings.get("cam_zoom", 1.0)), ZOOM_MIN, ZOOM_MAX)
+
+
+## Moves the camera's distance by `factor` (under 1 comes closer), within the
+## limits. Not while a film has the camera, or the player isn't free to walk.
+func zoom_by(factor: float) -> void:
+	if attract or cine or busy or factor <= 0.0 or (hud != null and hud.menu_open()):
+		return
+	var z := clampf(zoom_setting() / factor, ZOOM_MIN, ZOOM_MAX)
+	if absf(z - zoom_setting()) < 0.0001:
+		return
+	Game.settings["cam_zoom"] = z
+	_zoom_save = 0.8
+
+
+## The + / - keys and the right stick: a press zooms a little, holding keeps going.
+func _zoom_input(delta: float) -> void:
+	if _zoom_save > 0.0:
+		_zoom_save -= delta
+		if _zoom_save <= 0.0:
+			Game.save_settings()
+	if cine or busy or hud.menu_open():
+		_zoom_hold = 0.0
+		return
+	var v := Input.get_axis("zoom_in", "zoom_out")
+	if absf(v) < 0.2 and _zoom_hold > 0.0:
+		v = _zoom_dir
+	_zoom_hold = maxf(0.0, _zoom_hold - delta)
+	if absf(v) >= 0.2:
+		zoom_by(exp(v * ZOOM_RATE * delta))
+
+
+## How far along the line from `look` out to `want` (0 to 1) the camera can
+## sit without being inside a building, a roof or a tree, judged by the boxes
+## round their meshes. Only the camera's own spot has to be clear: the view
+## past a roof to the player is as it always was.
+func _clear_way(look: Vector3, want: Vector3) -> float:
+	var seg := want - look
+	var length := seg.length()
+	if length < 0.01:
+		return 1.0
+	var boxes := []   # [inverse transform, grown local box]
+	for id in RenderingServer.instances_cull_ray(look, want, get_world_3d().scenario):
+		var mi := instance_from_id(id) as MeshInstance3D
+		if mi == null or not _blocks_camera(mi):
+			continue
+		var inv := mi.global_transform.affine_inverse()
+		var sc := mi.global_transform.basis.get_scale()
+		var g := Vector3(CAM_CLEARANCE / maxf(sc.x, 0.001), CAM_CLEARANCE / maxf(sc.y, 0.001), CAM_CLEARANCE / maxf(sc.z, 0.001))
+		var box := mi.get_aabb()
+		box = AABB(box.position - g, box.size + g * 2.0)
+		if box.has_point(inv * look):
+			continue   # standing under its eaves or its branches: it can't be helped
+		boxes.append([inv, box])
+	var k := 1.0
+	for i in 4:   # move in front of the box the camera is in, then check again
+		var p := look + seg * k
+		var moved := false
+		for b in boxes:
+			var inv: Transform3D = b[0]
+			var box: AABB = b[1]
+			if not box.has_point(inv * p):
+				continue
+			var hit = box.intersects_segment(inv * look, inv * p)
+			var t := 0.0
+			if hit is Vector3:
+				t = (inv.affine_inverse() * (hit as Vector3)).distance_to(look) / length
+			k = minf(k, maxf(0.0, t - 0.02))
+			moved = true
+		if not moved:
+			break
+	return k
+
+
+## Something the camera mustn't end up inside: a big, solid, shadow-casting
+## mesh that isn't a person.
+func _blocks_camera(mi: MeshInstance3D) -> bool:
+	if not mi.is_visible_in_tree() or mi.cast_shadow == GeometryInstance3D.SHADOW_CASTING_SETTING_OFF:
+		return false
+	var ab := mi.global_transform * mi.get_aabb()
+	if ab.size.y < 1.0 or ab.end.y < 1.5 or ab.size.x > 80.0 or ab.size.z > 80.0:
+		return false   # the ground, paths, low props, the sky
+	var n: Node = mi.get_parent()
+	for i in 10:
+		if n == null or n == self:
+			break
+		if n is PaperDoll or n is CharacterBody3D:
+			return false   # the player, the villagers and anyone a film brings on
+		n = n.get_parent()
+	return true
 
 
 # ============================================================ movement ===
@@ -347,10 +482,12 @@ func _process(delta: float) -> void:
 		cam.h_offset = randf_range(-1, 1) * _shake * 0.25
 		cam.v_offset = randf_range(-1, 1) * _shake * 0.25
 	_move(delta)   # (the title screen's drifting camera returned above)
+	_zoom_input(delta)
 	if cine:
-		return
+		return   # a film has the camera; the player's zoom waits for it to end
 	_focus = _focus.lerp(_cam_focus_target(), minf(1.0, delta * 5.0))
-	_place_camera()
+	_zoom = lerpf(_zoom, zoom_setting(), minf(1.0, delta * 8.0))
+	_place_camera(delta)
 
 
 func _on_tap(pos: Vector2) -> void:
@@ -457,6 +594,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("interact") and _near != null and hud.talk_showing():
 		get_viewport().set_input_as_handled()
 		_talk(_near)
+	for a in ["zoom_in", "zoom_out"]:
+		if event.is_action_pressed(a):
+			_zoom_hold = 0.2
+			_zoom_dir = -1.0 if a == "zoom_in" else 1.0
+			get_viewport().set_input_as_handled()
 
 
 # =============================================================== talking ===
@@ -672,10 +814,15 @@ func end_cine() -> void:
 	cine = false
 
 
-## Glides the camera back behind the player, then hands it back.
+## Glides the camera back behind the player, at the zoom they chose, then
+## hands it back.
 func cine_home(secs: float = 1.0) -> void:
 	var f := _cam_focus_target()
-	await cine_to(f + CAM_OFFSET, f + Vector3(0, 1.1, 0), secs)
+	var look := f + CAM_LOOK
+	_zoom = zoom_setting()
+	var want := f + _cam_offset(_zoom)
+	_cam_clear = _clear_way(look, want)
+	await cine_to(look.lerp(want, _cam_clear), look, secs)
 	_focus = f
 	cine = false
 

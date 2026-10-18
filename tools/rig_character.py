@@ -4,7 +4,10 @@ into one of the game's 3D characters, the way Figure3D expects them:
   - the shared skeleton: Root, Hips, Spine, Spine1, Spine2, Neck, Head, Left/Right
     Shoulder, Arm, ForeArm, Hand, the fingers (Thumb, Index, Middle, Ring, Pinky
     1-3), UpLeg, Leg, Foot, ToeBase. Bones called bone_0, bone_1... are named by
-    where they sit (the model faces +Z, its left is +X);
+    where they sit (the model faces +Z, its left is +X). Smaller AssetFurnace
+    rigs have what they have: a thumb and the fingers as one (Middle: Tam's,
+    Old Nell's), or a thumb and two groups (Index, Ring: Tilly's); no Spine1
+    (Nell's);
   - every bone's rest square to the world (no roll), as Bram's, Corin's... are, so
     clips pass from one model to another;
   - feet on the ground at a chosen height;
@@ -17,6 +20,8 @@ into one of the game's 3D characters, the way Figure3D expects them:
   - clips it lacks (--borrow) fitted from other models: arms and legs point
     where the other model's did, the body, head and fingers move as theirs did
     from the rest pose, the hips' travel scaled to the leg length;
+  - one arm kept as it is in another of its clips (--hold-arm), for a hand
+    on a walking stick that's part of the mesh (Old Nell's);
   - its textures beside it as <stem>_atlas.png and <stem>_mr.png (and
     <stem>_normal.png with --normal-map), imported once with our settings.
     The player's AssetFurnace normal map shades his face in two halves and
@@ -27,6 +32,10 @@ into one of the game's 3D characters, the way Figure3D expects them:
       --cycle walk --cycle run --cycle sneak --seam idle --seam fight_stance --seam dance \\
       --borrow assets/models/characters/clips/shared.glb:talk,duel_idle,play_card \\
       --borrow assets/models/characters/bram.glb:lift
+
+  (tools/rig_player_a.sh and tools/rig_villager.sh hold each character's settings.)
+  Only what the model uses is written: AssetFurnace's combined files can carry
+  every source file's mesh and textures, unused (Tam's master was 47 MB).
 
   python3 tools/rig_character.py --library IN.glb OUT.glb
       the skeleton and clips of a game model, with a stand-in mesh, for borrowing from
@@ -145,11 +154,17 @@ for _s in ["Left", "Right"]:
 for _s in ["Left", "Right"]:
     CANON += [_s + "UpLeg", _s + "Leg", _s + "Foot", _s + "ToeBase"]
 
-# a bone's direction is from it to this child: arms and legs are fitted to it
+# the bones a model must have; the rest (a neck, fingers) are used when it has them
+REQUIRED = ["Hips", "Spine", "Head"] + [_s + _b for _s in ["Left", "Right"] for _b in
+                                        ["Arm", "ForeArm", "Hand", "UpLeg", "Leg", "Foot", "ToeBase"]]
+
+# a bone's direction is from it to the first of these children both models have:
+# arms and legs are fitted to it
 PRIMARY = {}
 for _s in ["Left", "Right"]:
-    PRIMARY.update({_s + "Arm": _s + "ForeArm", _s + "ForeArm": _s + "Hand", _s + "Hand": _s + "HandMiddle1",
-                    _s + "UpLeg": _s + "Leg", _s + "Leg": _s + "Foot", _s + "Foot": _s + "ToeBase"})
+    PRIMARY.update({_s + "Arm": [_s + "ForeArm"], _s + "ForeArm": [_s + "Hand"],
+                    _s + "Hand": [_s + "HandMiddle1", _s + "HandIndex1", _s + "HandRing1"],
+                    _s + "UpLeg": [_s + "Leg"], _s + "Leg": [_s + "Foot"], _s + "Foot": [_s + "ToeBase"]})
 
 
 class Rig:
@@ -224,8 +239,14 @@ def name_bones(rig):
         out[hips] = "Root"
         hips = kids[hips][0]
     out[hips] = "Hips"
-    up = [c for c in kids[hips] if P[c][1] > P[hips][1]]
-    down = [c for c in kids[hips] if P[c][1] <= P[hips][1]]
+
+    def lowest(i):
+        return min([P[i][1]] + [lowest(c) for c in kids[i]])
+    # the legs are the branches that reach the feet (Old Nell's start a little
+    # above her hips bone)
+    knee_high = P[hips][1] - 0.4 * (P[hips][1] - min(P[i][1] for i in js))
+    up = [c for c in kids[hips] if lowest(c) > knee_high]
+    down = [c for c in kids[hips] if lowest(c) <= knee_high]
     assert len(up) == 1 and len(down) == 2, "Hips should have a spine and two legs"
     # the spine, up to the chest (where the neck and the shoulders branch)
     chain, b = [], up[0]
@@ -240,9 +261,16 @@ def name_bones(rig):
         out[b] = nm
     ck = kids[chest]
     neck = max(ck, key=lambda c: P[c][1] - abs(P[c][0] - P[chest][0]))
-    out[neck] = "Neck"
     if kids[neck]:
-        out[kids[neck][0]] = "Head"
+        out[neck] = "Neck"
+        b, k = kids[neck][0], 0
+        while True:
+            out[b] = "Head" if k == 0 else "HeadTop_End%s" % ("" if k == 1 else k)
+            if not kids[b]:
+                break
+            b, k = kids[b][0], k + 1
+    else:
+        out[neck] = "Head"   # one bone for the neck and head (Old Nell's)
     for sh in [c for c in ck if c != neck]:
         side = "Left" if P[sh][0] > P[chest][0] else "Right"
         b = sh
@@ -253,10 +281,14 @@ def name_bones(rig):
                 b = kids[b][0]
         hand = b
         fingers = list(kids[hand])
-        if len(fingers) == 5:
+        if 2 <= len(fingers) <= 5:
+            # the thumb starts nearest the wrist; the fingers go from the front
+            # (index) back. A hand with fewer fingers has them in groups: two
+            # (the fingers as one, Tam's and Nell's) or three (Tilly's)
             thumb = min(fingers, key=lambda c: np.linalg.norm(P[c] - P[hand]))
             rest = sorted([c for c in fingers if c != thumb], key=lambda c: -P[c][2])
-            for f, nm in zip([thumb] + rest, FINGERS):
+            labels = {4: FINGERS[1:], 3: ["Index", "Middle", "Ring"], 2: ["Index", "Ring"], 1: ["Middle"]}[len(rest)]
+            for f, nm in zip([thumb] + rest, ["Thumb"] + labels):
                 b, k = f, 1
                 while True:
                     out[b] = "%sHand%s%d" % (side, nm, k) if k <= 3 else "%sHand%s%d_End" % (side, nm, k)
@@ -398,8 +430,8 @@ def corrections_for(src, src_names, tgt_wp):
     for nm in CANON:
         if nm == "Root":
             continue
-        c = PRIMARY.get(nm)
-        if c and nm in sp and c in sp and nm in tgt_wp and c in tgt_wp:
+        c = next((c for c in PRIMARY.get(nm, []) if c in sp and c in tgt_wp), None)
+        if c and nm in sp and nm in tgt_wp:
             out[nm] = arc(tgt_wp[c] - tgt_wp[nm], sp[c] - sp[nm])
         else:
             p = parent_name(nm)
@@ -477,6 +509,30 @@ def head_up(clip, deg):
         q = np.array([math.sin(a), 0.0, 0.0, math.cos(a)])
         n = len(clip.times)
         clip.rot[nm] = qnorm(qmul(np.repeat(q[None], n, 0), clip.rot.get(nm, np.repeat(I4[None], n, 0))))
+    return clip
+
+
+def arm_bones(side):
+    """The shoulder, arm, hand and fingers on one side ("Left"/"Right")."""
+    return [nm for nm in CANON if nm.startswith(side) and not any(x in nm for x in ("Leg", "Foot", "Toe"))]
+
+
+def hold_arm(clip, src, side):
+    """Keeps one arm (the hand on a walking stick) moving as it does in clip
+    `src` (idle) for the whole of `clip`, so the stick doesn't swing through
+    the body: src runs a whole number of times over the clip so a loop still
+    meets its start, or stays at its first moment in a short clip (a step)."""
+    n = len(clip.times)
+    L = clip.length
+    if L < 0.5 * src.length:
+        u = np.zeros(n)
+    else:
+        k = max(1, round(L / src.length))
+        # (src's end meets its start: its loop is eased with --seam)
+        u = np.minimum(np.mod(clip.times * k * src.length / max(L, 1e-6), src.length), src.length)
+    for nm in arm_bones(side):
+        if nm in src.rot:
+            clip.rot[nm] = sample(src.times, src.rot[nm], u, "LINEAR", True)
     return clip
 
 
@@ -633,8 +689,10 @@ def build(args):
     j, b = load(args.input)
     src = Rig(j, b)
     names = standard_names(src)
-    missing = [nm for nm in CANON if nm != "Root" and nm not in names.values()]
+    missing = [nm for nm in REQUIRED if nm not in names.values()]
     assert not missing, "couldn't find bones: " + ", ".join(missing)
+    unnamed = [src.name[i] for i in src.joints if i not in names]
+    assert not unnamed, "couldn't place bones: " + ", ".join(unnamed)
     for i, nm in names.items():
         PARENTS.setdefault(nm, None)
     for i in src.joints:
@@ -784,6 +842,12 @@ def build(args):
             assert nm in anims, "%s has no clip %s" % (path, nm)
             clips[nm] = fit_clip(drig, dnames, anims[nm], tgt_wp, corr, dk, rest_hips, nm)
             report.append("%-12s fitted from %s" % (nm, os.path.basename(path)))
+    for spec in args.hold_arm:
+        side, src_nm, which = spec.split(":")
+        for nm in which.split(","):
+            if nm in clips:
+                hold_arm(clips[nm], clips[src_nm], side)
+        report.append("%s arm kept as in %s in %s" % (side.lower(), src_nm, which))
     for spec in args.head_up:
         deg, _, which = spec.partition(":")
         for nm in which.split(","):
@@ -871,6 +935,8 @@ def main():
     ap.add_argument("--borrow", action="append", default=[], help="model.glb:clip,clip,... clips to fit from another model")
     ap.add_argument("--texture-size", type=int, default=2048)
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
+    ap.add_argument("--hold-arm", action="append", default=[],
+                    help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM (a walking stick's hand)")
     ap.add_argument("--normal-map", action="store_true", help="use the model's normal map (off by default: see above)")
     ap.add_argument("--double-sided", action="store_true")
     args = ap.parse_args()

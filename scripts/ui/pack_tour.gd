@@ -301,10 +301,11 @@ func _place_box() -> void:
 	var sz := box.get_combined_minimum_size()
 	box.size = sz
 	var f := _rect(_spot()).grow(24.0)
-	var x := (size.x - sz.x) * 0.5
-	var low := size.y - sz.y - 36.0
-	var spots := [Vector2(x, low), Vector2(size.x - sz.x - 36.0, low), Vector2(36.0, low),
-		Vector2(x, 36.0), Vector2(x, (size.y - sz.y) * 0.5)]
+	var s := SafeArea.rect()   # clear of a phone's Dynamic Island and home bar
+	var x := s.position.x + (s.size.x - sz.x) * 0.5
+	var low := s.end.y - sz.y - 36.0
+	var spots := [Vector2(x, low), Vector2(s.end.x - sz.x - 36.0, low), Vector2(s.position.x + 36.0, low),
+		Vector2(x, s.position.y + 36.0), Vector2(x, s.position.y + (s.size.y - sz.y) * 0.5)]
 	var best: Vector2 = spots[0]
 	var least := INF
 	for p in spots:
