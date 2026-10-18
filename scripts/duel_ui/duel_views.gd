@@ -544,7 +544,7 @@ class PlayerPanel:
 		var lag := clampf(lag_life / maxf(1.0, player.max_life), 0.0, 1.0)
 		var lcol := Color("ff5d73") if frac > 0.3 else Color("ff2d3d")
 		CardFace.text(self, CardFace.font("bold"), Vector2(142, 118), "LIFE", 17, Color(lcol.lightened(0.35), 0.95))
-		CardFace.text(self, fnt, Vector2(190, 124), str(int(round(shown_life))), 50, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT, m.end.x - 204, 7)
+		CardFace.text(self, fnt, Vector2(190, 124), str(maxi(0, int(round(shown_life)))), 50, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT, m.end.x - 204, 7)
 		var br := Rect2(Vector2(142, 132), Vector2(m.end.x - 156, 11))
 		CardFace.box(self, br, 5.5, Color(0, 0, 0, 0.75))
 		if lag > frac:

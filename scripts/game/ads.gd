@@ -84,10 +84,10 @@ func rewarded_left_today() -> int:
 
 ## Plays an advert the player chose to watch; true if it was watched to the
 ## end (only then is the reward given).
-func rewarded(_reason: String) -> bool:
+func rewarded(reason: String) -> bool:
 	if not can_offer_rewarded():
 		return false
-	var done: bool = await _show("rewarded")
+	var done: bool = await _show("rewarded", reason)
 	if done:
 		var st := _state()
 		if String(st.get("day", "")) != _today():
@@ -113,7 +113,7 @@ func _now() -> float:
 
 ## Shows one advert: the real network's when the plugin is in, otherwise the
 ## placeholder (or nothing, with previews off). Returns true when completed.
-func _show(kind: String) -> bool:
+func _show(kind: String, reason := "") -> bool:
 	var real := _real_network()
 	if real != null:
 		# The AdMob plugin's interstitial / rewarded calls go here once it is
@@ -127,6 +127,7 @@ func _show(kind: String) -> bool:
 	add_child(layer)
 	var card := AdPlaceholder.new()
 	card.kind = kind
+	card.reason = reason
 	card.seconds = REWARDED_SECONDS if kind == "rewarded" else PLACEHOLDER_SECONDS
 	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	card.theme = UITheme.make()
@@ -146,7 +147,10 @@ func _real_network() -> Object:
 class AdPlaceholder:
 	extends Control
 	signal closed(completed: bool)
+	## What a rewarded advert pays, by the reason it was asked for.
+	const WHY := {"tamsin_crier": "Heard out to the end, it's a sealed cache from Tamsin's stall."}
 	var kind := "interstitial"
+	var reason := ""
 	var seconds := 4.0
 	var _t := 0.0
 	var _btn: Button
@@ -174,7 +178,7 @@ class AdPlaceholder:
 		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		box.add_child(head)
 		var why := UITheme.label("Placeholder for this early build. Adverts help keep The Covenant War free." if kind == "interstitial"
-			else "Watched to the end, it doubles the Resonance from this win.", 30, UITheme.TEXT)
+			else String(WHY.get(reason, "Watched to the end, it doubles the Resonance from this win.")), 30, UITheme.TEXT)
 		why.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		why.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		why.custom_minimum_size = Vector2(1000, 0)

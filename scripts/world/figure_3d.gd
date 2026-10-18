@@ -33,10 +33,10 @@ extends PaperDoll
 
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play (Ned the fiddler's is
-## Gary's seamus.glb, from before he was renamed). Everyone else's model is
-## characters/<their id or look>.glb (hob, krell, dask, hunter), picked up
-## the moment it exists.
-const MODELS := {"player": "player_a", "ned": "seamus"}
+## Gary's seamus.glb, from before he was renamed; Solhaven's gate warden wears
+## the Sun Guard's). Everyone else's model is characters/<their id or
+## look>.glb (hob, krell, dask, hunter), picked up the moment it exists.
+const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
 ## Where to borrow a clip from when a model doesn't have it: the shared

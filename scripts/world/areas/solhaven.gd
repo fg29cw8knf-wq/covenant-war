@@ -1,645 +1,545 @@
 extends RefCounted
-## Solhaven — the Sun Square. The first kingdom of the vertical slice.
+## Solhaven — Chapter 1: The Sun's Court (Master Script v3; a copy of its
+## lines is in docs/script/v3_chapter1.md).
 ##
-## Layout (metres): the camera looks north (towards -z). The player enters
-## through the south gate, the Temple of Solmaris fills the north side, the
-## Duelling Circle sits to the west and the market and inn to the east.
+## Seven scenes. The Golden Gate (C1, Warden Hale's duel) and the wagon (C2)
+## play as one film on arrival; then the Sun Square is the hub: Bram at the
+## wagon, Tamsin's stall, Pip at the fountain, Old Maren on the temple steps,
+## the notice board. On the way to the Sun Court the crowd thickens and Wren
+## takes the blank card (C3: the chase, the alley duel); the temple's doors
+## open on the Sun Court (C4: Solmaris stops time) and, next time, on the Hall
+## of Mirrors (C5: the Trial of Light); the Sunspire's door, west, leads up to
+## Ser Aldric (C6). Afterwards, Bram at the wagon ends the day: Gold in the
+## Dark (C7) closes the chapter. Each film saves where it is (flag sol_film),
+## so a closed game picks it up again; a duel it was in goes straight back to
+## the duel.
+##
+## The place is the SolhavenSet (scripts/world/solhaven/solhaven_set.gd), the
+## films are in films.gd and the duels in duels.gd beside it: all of it travels
+## in the web build's Solhaven pack.
+##
+## The five side stories hook in through
+## scripts/world/areas/solhaven/solhaven_side.gd when it exists (see side()
+## below): build() calls its setup(world), which spawns its own people and
+## marks in the square; if it has event(world, name), it's told when the main
+## story starts one of its stories ("pips_errands", "sundial_scar",
+## "hales_orders"). The flags it reads are set here: gate (and gate_choice),
+## wren_declined, hale_stripped, beat_hale, beat_wren, beat_aldric.
+
+const SolSet := preload("res://scripts/world/solhaven/solhaven_set.gd")
+const Films := preload("res://scripts/world/solhaven/films.gd")
 
 const NAME := "Solhaven"
 const SUBTITLE := "The Sun Square"
 
-const BOUNDS := Rect2(-15.5, -18.0, 31.0, 32.0)  # x, z, width, depth the player can walk
+const BOUNDS := Rect2(-15.5, -18.4, 31.0, 41.8)  # x, z, width, depth the player can walk
 const CAMERA_X_LIMIT := 7.0
+## The set builds its own sky and light (day, the Sun Court, the field at night...).
+const CUSTOM_ENV := true
+## Arriving for the first time is the film of the Golden Gate (intro_frame()).
+const INTRO := true
+## A film left part-way picks up where it was (resume()).
+const RESUMES := true
 
 const SPAWNS := {
-	"gate": Vector3(0, 0, 12.5),
+	"gate": Vector3(0, 0, 21.0),
+	"road": Vector3(0, 0, 34.0),
+	"wagon": Vector3(10.4, 0, -1.2),
 	"inn": Vector3(10.5, 0, 1.5),
-	"circle": Vector3(-8.5, 0, -6.0),
-	"temple": Vector3(0, 0, -14.0),
+	"temple": Vector3(0, 0, -15.5),
+	"circle": Vector3(-12.0, 0, -9.0),
 }
-
-const ENV := {
-	"sky_top": "3f7fcf",
-	"sky_horizon": "f4d9a8",
-	"ground_horizon": "d9c49a",
-	"sun_color": "ffe2b0",
-	"sun_energy": 1.1,
-	"sun_angle": Vector3(-38, -32, 0),
-	"ambient": 0.4,
-	"fog": "f1dcb6",
-	"fog_density": 0.004,
-}
+const ENV := {}
+## The square's music between scenes (Gary's solhaven_town when it's in).
+const MUSIC := ["solhaven_town", "solhaven_dawn"]
+const SIDE := "res://scripts/world/areas/solhaven/solhaven_side.gd"
 
 
-## NPCs: look (DollArt id), display name, position, and what happens on talk.
-## Chapter 1 as a hub: the gate (Hale), the wagon (Bram), the market (Wren,
-## Tamsin), the square (Pip, Maren), the temple steps (the Hierarch, the Herald,
-## Liora) and the Duelling Circle (Aldric). The Sun Court, the Trial of Light
-## and the Sunspire play here until their own scenes are built.
+## The side stories' script, when it's there (null otherwise).
+static func side() -> Script:
+	return load(SIDE) if ResourceLoader.exists(SIDE) else null
+
+
+## Tells the side stories the main story has just started one of theirs.
+static func side_event(w: World, name: String) -> void:
+	Game.set_flag("side_started_" + name)
+	var s := side()
+	if s != null and s.has_method("event"):
+		await s.event(w, name)
+
+
+## The people of the square. Who is actually there depends on how far the
+## story has gone (people()); the side stories add their own.
 static func npcs() -> Array:
-	return [
-		{"id": "hale", "look": "guard", "name": "Warden Hale", "pos": Vector3(3.2, 0, 11.0), "duel_flag": "beat_hale", "talk": _hale()},
-		{"id": "bram", "look": "bram", "name": "Bram", "pos": Vector3(10.2, 0, -0.2), "talk": _bram()},
-		{"id": "wren", "look": "wren", "name": "Wren", "pos": Vector3(8.8, 0, 7.6), "duel_flag": "beat_wren", "talk": _wren()},
-		{"id": "pip", "look": "child", "name": "Pip", "pos": Vector3(-2.6, 0, -1.6), "talk": _pip()},
-		{"id": "maren", "look": "elder", "name": "Old Maren", "pos": Vector3(-10.4, 0, 4.4), "talk": _maren()},
-		{"id": "tamsin", "look": "merchant", "name": "Tamsin", "pos": Vector3(12.6, 0, 5.2), "talk": _tamsin()},
-		{"id": "hierarch", "look": "hierarch", "name": "Hierarch Aurel", "pos": Vector3(-3.6, 0, -14.6), "talk": _hierarch()},
-		{"id": "herald", "look": "herald", "name": "The Pale Herald", "pos": Vector3(-7.2, 0, -16.0), "talk": _herald()},
-		{"id": "liora", "look": "acolyte", "name": "Acolyte Liora", "pos": Vector3(3.2, 0, -14.6), "duel_flag": "temple_leave", "duel_needs": "sun_court_done", "talk": _liora()},
-		{"id": "aldric", "look": "aldric", "name": "Ser Aldric Vane", "pos": Vector3(-9.0, 0, -9.6), "duel_flag": "beat_aldric", "duel_needs": "temple_leave", "talk": _aldric()},
+	var out := [
+		{"id": "bram", "look": "bram", "name": "Bram", "pos": Vector3(10.6, 0, -1.6), "talk": _bram()},
+		{"id": "tamsin", "look": "merchant", "name": "Tamsin", "pos": Vector3(11.5, 0, 6.4), "talk": _tamsin()},
+		{"id": "pip", "look": "child", "name": "Pip", "pos": Vector3(-3.4, 0, -1.4), "talk": _pip()},
+		{"id": "maren", "look": "elder", "name": "Old Maren", "pos": Vector3(-6.4, 0, -17.5), "talk": _maren()},
+		{"id": "board", "look": "courtier", "name": "The notice board", "pos": Vector3(-12.6, 0, 2.0), "talk": _board()},
+		{"id": "wren", "look": "wren", "name": "Wren", "pos": Vector3(14.6, 0, -2.4), "talk": _wren()},
+		{"id": "liora", "look": "acolyte", "name": "Liora", "pos": Vector3(6.2, 0, -17.5), "talk": _liora()},
+		{"id": "aldric", "look": "aldric", "name": "Ser Aldric Vane", "pos": Vector3(-4.0, 0, -11.0), "talk": _aldric()},
+		{"id": "hale", "look": "guard", "name": "Warden Hale", "pos": Vector3(3.4, 0, 21.4), "talk": _hale()},
+		{"id": "gate_warden", "look": "guard", "name": "Gate warden", "pos": Vector3(3.4, 0, 21.4), "talk": _gate_warden()},
 	]
+	return out
 
 
-# ================================================================ scenery ===
+## Whether each of the square's people is in it right now.
+static func present(id: String) -> bool:
+	match id:
+		"wren":
+			return (Game.flag("c3_done") and Game.flag("wren_joined")) or Game.flag("ch1_done")
+		"liora":
+			return Game.flag("c5_done")
+		"aldric", "hale", "gate_warden":
+			if not Game.flag("c6_done"):
+				return false
+			if id == "aldric":
+				return true
+			var opened := String(Game.flag("gate_choice", "")) == "all"
+			return opened if id == "gate_warden" else not opened
+	return true
+
+
+# ================================================================ the place ===
 
 static func build(root: Node3D) -> void:
-	var K := LevelKit
-	# ground: the square, grass beyond, hills in the distance
-	var ground := MeshInstance3D.new()
-	var pm := PlaneMesh.new()
-	pm.size = Vector2(120, 120)
-	ground.mesh = pm
-	ground.material_override = K.mat("grass")
-	root.add_child(ground)
-	var gbody := StaticBody3D.new()
-	var gcs := CollisionShape3D.new()
-	gcs.shape = WorldBoundaryShape3D.new()
-	gbody.add_child(gcs)
-	root.add_child(gbody)
-	K.box(root, Vector3(0, -0.2, -2), Vector3(38, 0.24, 42), "cobble", false)
-	K.box(root, Vector3(0, -0.19, 14), Vector3(8, 0.24, 30), "flagstone", false)  # south road
-	K.box(root, Vector3(0, -0.18, -4), Vector3(10, 0.24, 20), "flagstone", false)  # processional way
-
-	_temple(root)
-	_fountain(root, Vector3(0, 0, -3.5))
-	_duel_circle(root, Vector3(-9.0, 0, -8.2))
-	_gate(root)
-
-	# west side: houses and the old quarter
-	K.house(root, Vector3(-20, 0, -12), Vector3(7, 7.5, 8), "plaster", "roof_teal", 90)
-	K.house(root, Vector3(-20, 0, -2), Vector3(7, 6.0, 8), "sandstone", "roof_terracotta", 90)
-	K.house(root, Vector3(-20, 0, 8), Vector3(8, 6.5, 8), "plaster", "roof_teal", 90)
-	K.house(root, Vector3(-27, 0, 0), Vector3(8, 9.0, 12), "plaster", "roof_terracotta", 90)
-	# east side: the inn (the Gilded Hearth), shops
-	K.house(root, Vector3(19.5, 0, -1), Vector3(9, 7.0, 8), "sandstone", "roof_terracotta", -90)
-	K.box(root, Vector3(14.9, 2.8, -1), Vector3(0.1, 1.0, 2.6), "dark_wood", false)  # inn sign
-	K.house(root, Vector3(19.5, 0, -12), Vector3(7, 8.0, 8), "plaster", "roof_teal", -90)
-	K.house(root, Vector3(19.5, 0, 9), Vector3(7, 6.0, 7), "plaster", "roof_teal", -90)
-	K.house(root, Vector3(27, 0, -4), Vector3(8, 10.0, 14), "sandstone", "roof_teal", -90)
-
-	# the stable yard: Bram's wagon, the Crooked Lantern's lantern on its hook, and Turnip
-	_wagon(root, Vector3(12.6, 0, -4.2))
-
-	# market
-	K.stall(root, Vector3(12.8, 0, 3.2), -90, "awning_red")
-	K.stall(root, Vector3(12.8, 0, 7.4), -90, "awning_blue")
-	K.crate(root, Vector3(14.2, 0, 9.4), 0.8, 12)
-	K.crate(root, Vector3(14.6, 0, 10.3), 0.6, -20)
-	K.barrel(root, Vector3(13.6, 0, 0.6))
-	K.barrel(root, Vector3(14.4, 0, 1.2))
-
-	# greenery, lamps, banners, benches
-	for z in [-15.0, -7.0, 1.0, 9.0]:
-		K.cypress(root, Vector3(-14.4, 0, z), 5.5)
-		K.cypress(root, Vector3(14.9, 0, z - 3.5), 5.0)
-	K.tree(root, Vector3(-12.2, 0, 9.5), 1.1)
-	K.tree(root, Vector3(-6.5, 0, 12.5), 0.9)
-	K.lamp(root, Vector3(-4.6, 0, 3.6), true)
-	K.lamp(root, Vector3(4.6, 0, 3.6))
-	K.lamp(root, Vector3(-4.6, 0, -10.5))
-	K.lamp(root, Vector3(4.6, 0, -10.5), true)
-	K.bench(root, Vector3(-10.4, 0, 3.0))
-	K.bench(root, Vector3(-3.8, 0, -7.6), 90)
-	for x in [-5.8, 5.8]:
-		K.banner(root, Vector3(x, 7.6, -18.9), 0)
-	K.banner(root, Vector3(-15.4, 5.5, -2), 90, "radiant")
-	K.banner(root, Vector3(15.45, 5.2, -12), -90, "radiant")
-
-	# far backdrop: city wall and distant hills beyond the temple
-	K.box(root, Vector3(0, 0, -44), Vector3(90, 7, 2), "sandstone", false)
-	for i in 9:
-		var x := -40.0 + i * 10.0
-		K.cylinder(root, Vector3(x, 0, -44), 1.8, 10.5, "sandstone", false, 1.8, 12)
-		K.cylinder(root, Vector3(x, 10.5, -44), 2.0, 2.2, "roof_teal", false, 0.0, 12)
-	for h in [[-38, -70, 22], [-5, -80, 28], [30, -72, 24], [55, -60, 18], [-60, -58, 20]]:
-		var hill := K.sphere(root, Vector3(h[0], -h[2] * 0.55, h[1]), h[2], "hill", 0.6)
-		hill.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-
-	# keep the player in the square
-	var b := BOUNDS
-	K.wall(root, Vector3(b.position.x, 0, b.position.y), Vector3(b.end.x, 0, b.position.y))
-	K.wall(root, Vector3(b.position.x, 0, b.position.y), Vector3(b.position.x, 0, b.end.y))
-	K.wall(root, Vector3(b.end.x, 0, b.position.y), Vector3(b.end.x, 0, b.end.y))
-	K.wall(root, Vector3(b.position.x, 0, b.end.y), Vector3(b.end.x, 0, b.end.y))
-	# Chapter 1's side stories, from their own file (solhaven/solhaven_side.gd); nothing happens without it
-	var side = load("res://scripts/world/areas/solhaven/solhaven_side.gd") if ResourceLoader.exists("res://scripts/world/areas/solhaven/solhaven_side.gd") else null
-	if side != null:
-		side.setup(root)
+	var v := SolSet.new()
+	v.name = "Solhaven"
+	root.add_child(v)
+	root.set_meta("solhaven_set", v)
+	(root as World).music = MUSIC.duplicate()
+	# Chapter 1's side stories, from their own file; nothing happens without it
+	var s := side()
+	if s != null and s.has_method("setup") and not (root as World).attract:
+		s.setup(root)
 
 
-## A battered wagon with a lantern on a hook, and a grey mule with one ear
-## that won't stand up.
-static func _wagon(root: Node3D, c: Vector3) -> void:
-	var K := LevelKit
-	K.box(root, c + Vector3(0, 0.75, 0), Vector3(2.0, 0.2, 3.6), "dark_wood", true)       # bed
-	K.box(root, c + Vector3(-0.95, 1.2, 0), Vector3(0.1, 0.7, 3.6), "wood", false)         # sides
-	K.box(root, c + Vector3(0.95, 1.2, 0), Vector3(0.1, 0.7, 3.6), "wood", false)
-	K.box(root, c + Vector3(0, 1.2, -1.75), Vector3(2.0, 0.7, 0.1), "wood", false)
-	K.box(root, c + Vector3(0, 1.2, 1.75), Vector3(2.0, 0.5, 0.1), "wood", false)          # tailboard
-	K.box(root, c + Vector3(0, 2.3, -0.4), Vector3(2.3, 0.12, 2.6), "cloth_white", false)  # canvas hoop
-	for s in [-1, 1]:
-		for z in [-1.1, 1.1]:
-			var wh := K.cylinder(root, c + Vector3(s * 1.1, 0, z), 0.55, 0.16, "dark_wood", false, -1.0, 16)
-			wh.position = c + Vector3(s * 1.1, 0.55, z)
-			wh.rotation.z = PI * 0.5
-	K.box(root, c + Vector3(0, 0.5, 2.9), Vector3(0.14, 0.14, 2.4), "wood", false)         # shaft
-	K.cylinder(root, c + Vector3(0.9, 1.6, 1.9), 0.03, 0.9, "bronze", false, -1.0, 8)      # lantern hook
-	var lamp := K.sphere(root, c + Vector3(0.9, 2.3, 1.9), 0.18, "lamp_glow")
-	lamp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var l := OmniLight3D.new()
-	l.position = c + Vector3(0.9, 2.3, 1.9)
-	l.light_color = Color("ffc67a")
-	l.light_energy = 1.0
-	l.omni_range = 5.0
-	root.add_child(l)
-	# Turnip
-	var m := c + Vector3(0.4, 0, 4.9)
-	K.box(root, m + Vector3(0, 0.95, 0), Vector3(0.7, 0.7, 1.5), "rock", true)             # body
-	K.box(root, m + Vector3(0, 1.45, -0.95), Vector3(0.4, 0.5, 0.5), "rock", false)        # neck
-	K.box(root, m + Vector3(0, 1.7, -1.35), Vector3(0.36, 0.34, 0.6), "rock", false)       # head
-	K.box(root, m + Vector3(-0.14, 2.0, -1.2), Vector3(0.08, 0.34, 0.1), "rock", false)    # the ear that stands
-	var ear := K.box(root, m + Vector3(0.16, 1.9, -1.2), Vector3(0.08, 0.34, 0.1), "rock", false)
-	ear.rotation.z = -1.1                                                                   # the ear that won't
-	for s in [-1, 1]:
-		for z in [-0.5, 0.5]:
-			K.box(root, m + Vector3(s * 0.22, 0.3, z), Vector3(0.14, 0.6, 0.14), "rock", false)
+static func set_of(w: Node) -> Node3D:
+	return w.get_meta("solhaven_set") as Node3D
 
 
-static func _temple(root: Node3D) -> void:
-	var K := LevelKit
-	var z0 := -19.0
-	# stepped platform
-	for i in 4:
-		K.box(root, Vector3(0, i * 0.3, z0 - 1.0 - i * 0.7), Vector3(22 - i * 0.8, 0.3, 4.0 + i * 1.4), "marble", i == 0)
-	K.box(root, Vector3(0, 1.2, -26), Vector3(20, 0.2, 12), "marble", false)
-	# portico columns
-	for i in 7:
-		var x := -8.1 + i * 2.7
-		K.column(root, Vector3(x, 1.2, z0 - 3.0), 7.0, 0.45)
-	K.box(root, Vector3(0, 8.2, z0 - 3.4), Vector3(19.6, 0.9, 2.2), "marble", false)
-	K.gable(root, Vector3(0, 9.1, z0 - 3.4), 20.4, 2.4, 2.4, "marble")
-	K.box(root, Vector3(0, 9.1, z0 - 2.25), Vector3(1.6, 1.6, 0.1), "gold", false)
-	# cella and dome
-	K.box(root, Vector3(0, 1.2, -27), Vector3(16, 8.5, 10), "marble")
-	K.box(root, Vector3(0, 1.2, z0 - 4.95), Vector3(3.2, 5.2, 0.2), "gold", false)  # great door
-	K.cylinder(root, Vector3(0, 9.7, -27), 5.2, 2.2, "marble", false, 5.2, 32)
-	K.dome(root, Vector3(0, 11.9, -27), 5.0, "gold")
-	K.sphere(root, Vector3(0, 17.4, -27), 0.7, "sun_glow")
-	# flanking towers
-	for x in [-11.0, 11.0]:
-		K.cylinder(root, Vector3(x, 1.2, -25), 1.6, 11.0, "marble", true, 1.5, 20)
-		K.cylinder(root, Vector3(x, 12.2, -25), 1.8, 3.4, "gold", false, 0.0, 20)
+## The first frame: black, before the gate film.
+static func intro_frame(w: World) -> void:
+	w.cine = true
+	Cine.overlay(w).black(true)
 
 
-static func _fountain(root: Node3D, c: Vector3) -> void:
-	var K := LevelKit
-	K.cylinder(root, c, 3.2, 0.25, "marble", true, 3.2, 40)
-	var rim := K.torus(root, c + Vector3(0, 0.42, 0), 2.85, 3.3, "marble")
-	rim.scale.y = 1.6
-	var w := K.cylinder(root, c + Vector3(0, 0.25, 0), 2.95, 0.22, "water", false, 2.95, 40)
-	w.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	K.cylinder(root, c, 0.45, 2.6, "marble", false, 0.3, 16)
-	K.cylinder(root, c + Vector3(0, 2.3, 0), 1.1, 0.25, "marble", false, 1.3, 24)
-	var sun := K.sphere(root, c + Vector3(0, 3.2, 0), 0.55, "sun_glow")
-	sun.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	for i in 8:
-		var a := TAU * i / 8.0
-		var ray := K.box(root, c + Vector3(cos(a) * 0.85, 3.08, sin(a) * 0.85), Vector3(0.5, 0.08, 0.12), "gold", false)
-		ray.rotation.y = -a
-	var l := OmniLight3D.new()
-	l.position = c + Vector3(0, 3.3, 0)
-	l.light_color = Color("ffd88a")
-	l.light_energy = 1.2
-	l.omni_range = 7.0
-	root.add_child(l)
+static func intro(_w: World) -> void:
+	pass
 
 
-static func _duel_circle(root: Node3D, c: Vector3) -> void:
-	var K := LevelKit
-	K.cylinder(root, c, 4.2, 0.18, "marble", false, 4.2, 48)
-	var ring := K.torus(root, c + Vector3(0, 0.2, 0), 3.55, 3.75, "ring_glow")
-	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var inner := K.torus(root, c + Vector3(0, 0.2, 0), 1.3, 1.42, "ring_glow")
-	inner.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	for i in 6:
-		var a := TAU * i / 6.0 + 0.5
-		var p := c + Vector3(cos(a), 0, sin(a)) * 4.8
-		K.cylinder(root, p, 0.28, 1.6, "marble", true, 0.22, 12)
-		var s := K.sphere(root, p + Vector3(0, 1.8, 0), 0.22, "lamp_glow")
-		s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+## A film to pick up, or the very first arrival: start on black.
+static func starts_black() -> bool:
+	return not Game.flag("arrived_solhaven") or String(Game.flag("sol_film", "")) != ""
 
 
-static func _gate(root: Node3D) -> void:
-	# The south gate stands behind the camera's view line, so it frames the
-	# bottom of the screen without hiding the player.
-	var K := LevelKit
-	var z := 21.0
-	for x in [-6.0, 6.0]:
-		K.box(root, Vector3(x, 0, z), Vector3(3.0, 5.0, 3.0), "sandstone")
-		K.gable(root, Vector3(x, 5.0, z), 3.6, 3.6, 1.4, "roof_teal")
-		K.banner(root, Vector3(x, 4.4, z - 1.56), 0, "radiant")
-	for sx in [-1, 1]:
-		K.box(root, Vector3(sx * 13.5, 0, z), Vector3(12, 2.2, 1.0), "sandstone")
+static func arrival() -> Array:
+	return [{"scene": "arrive"}]
+
+
+## Back in Solhaven (a saved game, or after the arrival film): a film it was
+## closed in the middle of carries on; otherwise the square, as the story
+## has left it.
+static func resume(w: World) -> void:
+	var f := String(Game.flag("sol_film", ""))
+	if f != "":
+		people(w)   # (nobody in the square who isn't there yet)
+		await Films.run(w, f)
+	if not w.is_inside_tree():
+		return
+	await hub(w)
+
+
+## The Sun Square as the story has left it: who's there, the music, the
+## light over the next door, the triggers.
+static func hub(w: World) -> void:
+	var v := set_of(w)
+	v.set_scene("day")
+	v.wagon_to("wagon")
+	v.light_wagon_lamp(Game.flag("c2_done"))
+	if Game.flag("c1_done"):
+		# (open only if you had Hale open it to everyone)
+		v.open_gate(String(Game.flag("gate_choice", "")) == "all", 0.01)
+	v.write_board()
+	# Tamsin's crier: once a day, while there's an advert to be had
+	Game.flags["crier_offer"] = String(Game.flag("crier_day", "")) != Time.get_date_string_from_system() and Ads.can_offer_rewarded()
+	people(w)
+	# the side stories: whoever the story so far has brought into the square
+	# (event "square", each time it's set up again after a film)
+	var s := side()
+	if s != null and s.has_method("event") and not w.attract:
+		s.event(w, "square")
+	Music.play(w.music, 1.5, true)
+	_mark(w)
+	if not w.has_node("SolhavenTriggers"):
+		var t := Triggers.new()
+		t.name = "SolhavenTriggers"
+		t.world = w
+		w.add_child(t)
+
+
+## Puts the square's people where they stand, or out of it.
+static func people(w: World) -> void:
+	for n in w.npcs:
+		var def: Dictionary = n.def
+		var id := String(def.get("id", ""))
+		var body: Node3D = n.body
+		if not _mine(id) or def.has("side_home"):
+			continue   # the side stories' people, or one of ours they've sent somewhere
+		var here := present(id)
+		body.global_position = def.pos if here else Vector3(1000, -100, 1000)
+		body.visible = here
+		if id == "board":
+			# the board answers when you walk up to it; nobody stands there
+			var d = n.doll
+			if d is PaperDoll and not (d is Figure3D):
+				(d as PaperDoll)._sprite.visible = false
+				(d as PaperDoll)._shadow.visible = false
+		if id == "maren" and here:
+			var f = n.doll
+			if f is Figure3D:
+				(f as Figure3D).sit(0.6)
+		if here:
+			var f = n.doll
+			if f != null and id != "board":
+				f.look_toward(w.player.global_position if w.player != null else def.pos + Vector3(0, 0, 3), w.cam)
+	w._refresh_markers()
+
+
+static func _mine(id: String) -> bool:
+	return id in ["bram", "tamsin", "pip", "maren", "board", "wren", "liora", "aldric", "hale", "gate_warden"]
+
+
+## The light over where the story goes next.
+static func _mark(w: World) -> void:
+	var v := set_of(w)
+	if not Game.flag("c2_done") or Game.flag("ch1_done"):
+		v.mark("")
+	elif not Game.flag("c3_done"):
+		v.mark("")   # Wren finds you on the way
+	elif not Game.flag("c5_done"):
+		v.mark("temple_door")
+	elif not Game.flag("c6_done"):
+		v.mark("spire_door")
+	else:
+		v.mark("wagon")
+
+
+static func scene(name: String, w: World) -> void:
+	match name:
+		"arrive":
+			people(w)   # (nobody in the square who isn't there yet)
+			await Films.run(w, "gate")
+		"deck":
+			await _deck(w)
+		"crier":
+			await _crier(w)
+		"pip_grey_coat":
+			await _grey_coat(w)
+		"night":
+			# Bram ends the day after the Trial: Gold in the Dark
+			await Films.run(w, "vault")
+			if w.is_inside_tree():
+				await hub(w)
+		_:
+			if name.begins_with("side:"):
+				await side_event(w, name.substr(5))
+
+
+## A man in a grey coat crosses the far side of the square. Pip watches him go.
+static func _grey_coat(w: World) -> void:
+	w.hud.dialogue.close()
+	var pip = w._npc_by_id("pip")
+	if pip == null:
+		return
+	var b := Node3D.new()
+	b.name = "Extra_grey_coat"
+	w.add_child(b)
+	b.global_position = Vector3(-13.0, 0, -12.0)
+	var d := Figure3D.make("trader", "pell")
+	b.add_child(d)
+	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
+	ex["grey_coat"] = {"body": b, "doll": d}   # (Mr Pell; the side stories have their own)
+	w.set_meta("extras", ex)
+	Cine.path(w, "grey_coat", [Vector3(-4.0, 0, -14.5), Vector3(8.0, 0, -13.0), Vector3(15.0, 0, -9.0)], 1.6)
+	for i in 60:
+		if not is_instance_valid(b):
+			break
+		pip.doll.look_toward(b.global_position, w.cam)
+		await w.get_tree().create_timer(0.1).timeout
+	# (off, and freed once his walk's tween has run out)
+	Films._drop(w, "grey_coat")
+	if is_instance_valid(pip.body):
+		pip.doll.look_toward(w.player.global_position, w.cam)
+
+
+## "Change my deck": the deck screen opens, on the tailboard.
+static func _deck(w: World) -> void:
+	w.hud.dialogue.close()
+	w.hud.open_menu("deck")
+	while w.is_inside_tree() and w.hud.menu_open():
+		await w.get_tree().process_frame
+
+
+## Tamsin's crier, once a day: hear him out (an advert, when the adverts are
+## in) and there's a cache in it: three cards, sealed and certified.
+static func _crier(w: World) -> void:
+	var today := Time.get_date_string_from_system()
+	if String(Game.flag("crier_day", "")) == today:
+		return
+	if not Ads.can_offer_rewarded():
+		return
+	var pick: int = await w.hud.dialogue.choose(["Hear him out.", "Not today."])
+	if pick != 0:
+		return
+	w.hud.dialogue.close()
+	if not await Ads.rewarded("tamsin_crier"):
+		return
+	Game.set_flag("crier_day", today)
+	Game.flags["crier_offer"] = false
+	var cache := _cache_cards(3)
+	for id in cache:
+		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
+		if not Game.v2.codex.has(id):
+			Game.v2.codex[id] = "seen"
+	Game.save_game()
+	await Cine.reveal(w, cache, "A SIGIL CACHE", "sealed and certified, from Tamsin's stall")
+
+
+## Three cards a cache might hold: Sparks and Glimmers, Totems and Rites.
+static func _cache_cards(n: int) -> Array:
+	var pool := []
+	for id in DuelCards.CARDS:
+		var d: Dictionary = DuelCards.CARDS[id]
+		if int(d.get("tier", 1)) <= 2 and d.kind != "summon" and not DuelCards.is_ascension(id) and String(d.get("element", "")) != "radiant":
+			pool.append(id)
+	var out := []
+	for i in n:
+		out.append(pool[randi() % pool.size()])
+	return out
 
 
 # =============================================================== dialogue ===
-# Steps: {"say", "who"} · {"if": flag, "then", "else"} · {"choice": [...], "then": [[...], ...]}
-# {"duel": {...}, "win": [...], "lose": [...]} · {"set": flag} · {"give": card} · {"save": true}
-# {"objective": text} · {"scene": name}. "{name}" is replaced with the player's name.
-# A flag starting with "!" means "not".
-
-## C1 · The Golden Gate, then C2 · the stable yard. Plays the first time the
-## player enters: Hale bars the gate until the Unsworn is tested.
-static func arrival() -> Array:
-	return [
-		{"say": "[center][i]Three days after the fire, you reach Solhaven with the smoke still in your clothes. So does everyone else on the road.[/i][/center]"},
-		{"say": "Three days we've waited. They let the pilgrims in. Not us.", "who": "refugee"},
-		{"say": "Gate's closed. By order of the Hierarch, only sun-marked pilgrims enter Solhaven during the Turning.", "who": "hale"},
-		{"say": "We're not pilgrims. Show him, Sprout.", "who": "bram"},
-		{"say": "[i]You raise your hand. The white mark glows.[/i]"},
-		{"say": "...White. I had a crown on it being a forgery. They sell those by the dozen in the Shardlands.", "who": "hale"},
-		{"say": "You'd bar the Unsworn from the Sun Court? The Herald sent for them.", "who": "bram"},
-		{"say": "The Herald sends for a lot of people. I'd test one.", "who": "hale"},
-		{"set": "met_hale"},
-		{"choice": ["Then test me.", "I don't have time for this."], "then": [
-			[{"say": "Gladly.", "who": "hale"}],
-			[{"say": "Then you'd best duel quickly.", "who": "hale"}],
-		]},
-		{"goto_duel": "hale_duel"},
-		# the stable yard
-		{"say": "[i]The stable yard. Bram counts his last coins into a horse-trader's palm. In return: a battered wagon with a lantern on a hook, and a grey mule with one ear that won't stand up.[/i]"},
-		{"say": "Mule's called Turnip. Bites. Not hard.", "who": "trader"},
-		{"say": "The Crooked Lantern rides again.", "who": "bram"},
-		{"say": "This is home now, Sprout. Sleep here, sort your deck here. Turnip says you're welcome.", "who": "bram"},
-		{"say": "[i]Turnip bites your sleeve. Not hard.[/i]"},
-		{"objective": "Present your mark at the Sun Court: the Hierarch, on the temple steps."},
-	]
-
-
-static func _hale() -> Array:
-	return [
-		{"if": "beat_aldric", "then": [
-			{"say": "I watched from the wall. The whole Watch did. Half of them owe me money now.", "who": "hale"},
-			{"if": "let_refugees_in", "then": [
-				{"say": "The ones you let in have told the whole lower town what you did. I've had three offers of marriage on your behalf. I said you'd think about it.", "who": "hale"},
-			], "else": [
-				{"say": "{name}. The people outside the walls. If you ever have the ear of someone who matters, remember them. I can't.", "who": "hale"},
-			]},
-		], "else": [
-			{"if": "beat_hale", "then": [
-				{"say": "Keep your cards close in the market, {name}. Not everyone in Solhaven is as holy as the paintwork.", "who": "hale"},
-			], "else": [
-				{"say": "The gate's still shut to the untested, {name}. The offer stands.", "who": "hale"},
-				{"choice": ["Then test me.", "Not now"], "then": [[{"goto_duel": "hale_duel"}], []]},
-			]},
-		]},
-	]
-
-
-## The Gate Duel (v1 rules). Tips introduce Guardians and Divine Gifts.
-static func hale_duel() -> Array:
-	return [
-		{"duel": {"deck": "solhaven_guard", "name": "Warden Hale", "look": "guard", "patron": "solmaris", "attrs": {"resolve": 1}},
-			"win": [
-				{"set": "beat_hale"},
-				{"say": "That mark's real. Heaven help the rest of us. The gate's open to you.", "who": "hale"},
-				{"choice": ["Let these people in too.", "Thank you, Warden."], "then": [
-					[
-						{"say": "The Hierarch's orders are...", "who": "hale"},
-						{"say": "[i]You hold his eye. He let a stranger in for a mark on their hand. These people's homes burned.[/i]"},
-						{"say": "...Open it wide. All of them. If anyone asks, you threatened me.", "who": "hale"},
-						{"say": "[i]The refugees pour through. A woman grips your hand as she passes.[/i]"},
-						{"say": "We won't forget this.", "who": "refugee"},
-						{"set": "let_refugees_in"},
-					],
-					[
-						{"say": "Don't thank me. Thank whatever chose you. I'm sorry for them. I have my orders.", "who": "hale"},
-					],
-				]},
-			],
-			"lose": [
-				{"say": "Solhaven's gate still stands. Don't take it hard. Sharpen that deck and come back. I'm not going anywhere.", "who": "hale"},
-			]},
-	]
-
+# The square's conversations (the dialogue box): v3 "C2 · Bram at the wagon",
+# "Tamsin's card stall", "Pip at the fountain", "Old Maren, on the temple
+# steps", "The notice board", "C3 · Wren at the wagon, afterwards", C5's
+# "Liora (afterwards, on the temple steps)", C6's "Aldric (afterwards, in the
+# square)" and "Warden Hale, afterwards". A dialogue box holds two sentences
+# at most; a (beat) in the script is the break between two boxes.
 
 static func _bram() -> Array:
 	return [
-		{"if": "beat_aldric", "then": [
-			{"if": "!bram_after_trial", "then": [
-				{"set": "bram_after_trial"},
-				{"say": "You beat Solhaven's Champion, Sprout. By nightfall half of Veyl will know your name. I liked it better when nobody did.", "who": "bram"},
+		{"if": "c6_done", "then": [
+			{"if": "!c7_done", "then": [
+				{"say": "You beat their champion in front of the whole city. By nightfall half of Veyl will know your name.", "who": "bram"},
+				{"say": "I liked it better when nobody did.", "who": "bram"},
+				{"scene": "night"},
+			], "else": _bram_menu()},
+		], "else": [
+			{"if": "!c3_done", "then": [
+				{"if": "met_bram_square", "then": [
+					{"say": "Sun Court's up the hill. It's the gold one.", "who": "bram"},
+				]},
+			], "else": [
+				{"if": "!c4_done", "then": [
+					{"say": "Sun Court's up the hill. It's the gold one.", "who": "bram"},
+				]},
 			]},
-		]},
-		{"say": "There you are. What do you need?", "who": "bram"},
-		{"choice": ["Any advice?", "Rest and save", "Tell me about the gods", "About Morne..."], "then": [
+			{"set": "met_bram_square"},
+		] + _bram_menu()},
+	]
+
+
+static func _bram_menu() -> Array:
+	return [
+		{"say": "What do you need?", "who": "bram"},
+		{"choice": ["Any advice?", "Rest and save", "Change my deck", "Tell me about the gods", "About Morne..."], "then": [
 			[
-				{"say": "Read the orb on a Totem's card before you read anything else. That's its element. Hit a weakness and it takes half again as much damage.", "who": "bram"},
-				{"say": "Then read yourself. Every card leans on one of your attributes: Might, Resolve, Swiftness and the rest.", "who": "bram"},
-				{"say": "Meet the card's mark and it wakes for you. Attuned. More damage, more life, cheaper attacks. The gold line on the card tells you what.", "who": "bram"},
+				{"say": "Read the sign on a Totem's card before anything else. That's its element, and what it fears.", "who": "bram"},
+				{"say": "Then read yourself. Some cards want a strong arm, some a cool head. Give a card what it wants and it'll wake for you properly.", "who": "bram"},
 			],
 			[
 				{"save": true},
-				{"say": "Go on, get some sleep. I'll keep the lamp lit. (Game saved.)", "who": "bram"},
+				{"say": "Get some sleep. I'll keep the lamp lit. (Game saved.)", "who": "bram"},
 			],
 			[
-				{"say": "Hundreds of gods up there, Sprout, and seven with a real claim on the Throne of Ages. Every one of them wants you wearing their colours.", "who": "bram"},
-				{"say": "Swear to one and they'll bless you for it: a stronger attribute, and a Gift you can call once a duel.", "who": "bram"},
-				{"say": "Stay Unsworn and you get a little of everything, and nobody's leash round your neck. Your choice, when the time comes. Don't let anyone hurry it. Least of all a god.", "who": "bram"},
+				{"say": "Tailboard's yours. Turnip's been told.", "who": "bram"},
+				{"scene": "deck"},
 			],
 			[
-				{"say": "He's a banker. Owns Ironvault, and the note on half of everything that isn't. Men like that don't want a thing, Sprout. They collect it.", "who": "bram"},
-				{"say": "How do I know? ...Eat something. We'll go home when there's a home to go to. I swore that on the Lantern.", "who": "bram"},
+				{"say": "Hundreds of them up there, and seven with a real claim on the Throne. Every one of them will want you in their colours before the year's out.", "who": "bram"},
+				{"say": "Swear to one and you get a blessing for it, and a leash. Stay Unsworn and you get a bit of everything and nobody's hand on your collar.", "who": "bram"},
+				{"say": "Your choice, when it comes. Don't let anyone hurry it. Least of all a god.", "who": "bram"},
 			],
-		]},
-		{"if": "!sun_court_done", "then": [
-			{"say": "Sun Court's up the hill. Can't miss it. It's the bit that's gold.", "who": "bram"},
-		]},
-	]
-
-
-## C3 · Wren, as a market duel until the chase is built.
-static func _wren() -> Array:
-	return [
-		{"if": "beat_wren", "then": [
-			{"say": "Don't look so pleased. I let you win. Mostly.", "who": "wren"},
-			{"say": "Everyone watches the lantern. Nobody watches the moth. So: you watch the lantern. I'll watch the hands.", "who": "wren"},
-			{"if": "beat_aldric", "then": [
-				{"say": "You beat the golden knight in front of his whole city. I'd have charged for that. Tell me you at least charged.", "who": "wren"},
-			], "else": [
-				{"say": "One for free, and I don't do free. Aldric's deck has a Legend in it. A real one. Sunlance Seraph, his house's heirloom. Don't let it settle on the field.", "who": "wren"},
-			]},
-		], "else": [
-			{"say": "Well, well. The famous Unsworn. I pictured someone taller. Possibly glowing.", "who": "wren"},
-			{"say": "I had my hand in your pocket back there, you know. That blank card of yours bit me. That's not a card. That's a curse with corners.", "who": "wren"},
-			{"choice": ["That's mine.", "Who sent you?"], "then": [
-				[{"say": "Clearly. It's very loyal. Like a dog. A dog that bites.", "who": "wren"}],
-				[{"say": "Nobody sends me. I go where the money is, and that thing is the most money I've ever seen.", "who": "wren"}],
-			]},
-			{"say": "Tell you what. Beat me, and I'll tell you what you're worth, and who's paying. Lose, and you buy me dinner. I'm not greedy.", "who": "wren"},
-			{"choice": ["Duel Wren", "Not now"], "then": [[
-				{"duel": {"deck": "wren", "name": "Wren", "look": "wren", "patron": "", "attrs": {"cunning": 2}},
-					"win": [
-						{"set": "beat_wren"},
-						{"say": "...All right. All right. A deal's a deal.", "who": "wren"},
-						{"say": "Ten thousand crowns. That's the price on a blank Sigil and the hand that holds it, in every black market in Veyl. Sealed with this.", "who": "wren"},
-						{"say": "[i]She flicks you a wax seal: a coin crossed with a key.[/i]"},
-						{"say": "Ironvault. You've met their hunters. Now everyone who can count to ten thousand is a hunter. You'll want someone who knows where they drink.", "who": "wren"},
-						{"choice": ["Are you offering to help?", "Why should we trust a thief?"], "then": [
-							[{"say": "I'm offering to be nearby when the money happens. Call it help if you like.", "who": "wren"}],
-							[{"say": "You shouldn't. That's why I'm useful. I know exactly how people like me think.", "who": "wren"}],
-						]},
-						{"say": "Anyway. I'm coming. It isn't up to you, or the old man.", "who": "wren"},
-						{"say": "[i]She pulls on a pair of fingerless gloves. As the glove goes on, a small moth tattoo shows on her wrist, and is gone.[/i]"},
-						{"say": "I'm Wren. Call me when you need a hand in someone else's pocket.", "who": "wren"},
-						{"give": "wren"},
-					],
-					"lose": [
-						{"say": "Too slow! Dinner's on you. Somewhere with tablecloths. Then we'll go again.", "who": "wren"},
-					]},
-			], []]},
-		]},
-	]
-
-
-static func _pip() -> Array:
-	return [
-		{"if": "beat_aldric", "then": [
-			{"say": "You beat him. You actually beat him! ...He's still the best. But you're second-best. In the whole world!", "who": "pip"},
-		], "else": [
-			{"say": "Hah! Hyah! ...You're the Unsworn! Everyone says! Is it true you haven't got a god? Everybody's got a god. Even my nan's got a god, and she doesn't like anybody.", "who": "pip"},
-			{"say": "Ser Aldric's never lost a Trial. His Gilded Sentinel never lets anyone through. You'd have to go round it. You can't go round it.", "who": "pip"},
-			{"say": "I'm going to be his squire. He doesn't know yet.", "who": "pip"},
-		]},
-	]
-
-
-static func _maren() -> Array:
-	return [
-		{"if": "beat_aldric", "then": [
-			{"say": "The Sun's own knight, beaten in the Sun's own city. Oh, the priests will be smiling at you now. Count their teeth.", "who": "maren"},
-		], "else": [
-			{"say": "Sit, sit. You've the look of someone who's walked a long way to be lied to.", "who": "maren"},
-			{"say": "Two thousand years Solmaris has sat the Throne of Ages. Two thousand years of sun on these stones. Lovely weather.", "who": "maren"},
-			{"say": "There's an old story the Temple doesn't tell. The last Age was the Burning Crown's to win, plain as day. Then the Great Sundial ran slow.", "who": "maren"},
-			{"say": "Nine days slow. Funny, that. Don't tell the priests I said so.", "who": "maren"},
-			{"choice": ["What happened then?", "Why tell me?"], "then": [
-				[{"say": "The Sun's Champion caught up, and here we all are. And mind yourself when the priests start smiling at you.", "who": "maren"}],
-				[{"say": "Because you're the first in two thousand years the priests can't tell to hush. And mind yourself when they start smiling at you.", "who": "maren"}],
-			]},
+			[
+				{"say": "Caldus Morne. Owns Ironvault, and the note on half of everything that isn't Ironvault.", "who": "bram"},
+				{"say": "Men like that don't want a thing. They want it owed to them.", "who": "bram"},
+				{"choice": ["How do you know him?", "Leave it."], "then": [
+					[{"say": "I don't. I knew his father. Get some sleep.", "who": "bram"}],
+					[{"say": "I will.", "who": "bram"}],
+				]},
+			],
 		]},
 	]
 
 
 static func _tamsin() -> Array:
 	return [
-		{"if": "beat_aldric", "then": [
-			{"say": "The Unsworn, at my stall! Everything's a crown dearer today, love. Fame has a price, and I've just set it.", "who": "tamsin"},
+		{"if": "c6_done", "then": [
+			{"say": "The Unsworn, at my stall. Everything's dearer today, love. Fame has a price, and I've just set it.", "who": "tamsin"},
 		], "else": [
-			{"say": "Sigil caches! Fresh from the Shardlands, sealed and certified, never opened by a dishonest hand! Mine are honest. Nearly all of them.", "who": "tamsin"},
-			{"say": "Crowns for caches. Win duels, earn crowns, come back. Simple.", "who": "tamsin"},
-			{"say": "The Hrimmark caravan's a week late. Snow, at harvest. They say the boy-king's goddess has stopped minding the calendar.", "who": "tamsin"},
+			{"say": "Sigil caches! Fresh out of the Shardlands, sealed and certified! Sealed, anyway.", "who": "tamsin"},
+			{"say": "Crowns for caches. Win duels, earn crowns, come back. That's the whole of it.", "who": "tamsin"},
+			{"say": "Hrimmark caravan's a week late. Snow, at harvest. They say the boy-king's goddess has stopped minding the calendar.", "who": "tamsin"},
+		]},
+		{"if": "crier_offer", "then": [
+			{"say": "There's a crier pays me to let him talk at my customers. Stand and hear him out, and there's a cache in it for you.", "who": "tamsin"},
+			{"scene": "crier"},
 		]},
 	]
 
 
-static func _herald() -> Array:
+static func _pip() -> Array:
 	return [
-		{"say": "[i]The Pale Herald says nothing. The empty hood turns, very slightly, to follow you.[/i]"},
-	]
-
-
-## C4 · The Sun Court, played on the temple steps until the hall is built.
-static func _hierarch() -> Array:
-	return [
-		{"if": "sun_court_done", "then": [
-			{"if": "beat_aldric", "then": [
-				{"say": "Enjoy your afternoon, Unsworn. The Goddess has a long memory, and so do I.", "who": "hierarch"},
-			], "else": [
-				{"say": "You have the Court's leave to be tested. Do not mistake it for welcome.", "who": "hierarch"},
+		{"if": "c6_done", "then": [
+			{"say": "You beat him.", "who": "pip"},
+			{"say": "He's still the best. You just beat him, that's all.", "who": "pip"},
+		], "else": [
+			{"say": "You're the Unsworn. Everyone says.", "who": "pip"},
+			{"say": "Doesn't look like much.", "who": "pip"},
+			{"say": "Ser Aldric's never lost a Trial. His Sentinel won't let anything past. You'd have to go round it.", "who": "pip"},
+			{"say": "You can't go round it.", "who": "pip"},
+			{"say": "I'm going to carry his shield one day. He doesn't know yet.", "who": "pip"},
+			{"if": "!pip_errands_begun", "then": [
+				{"scene": "pip_grey_coat"},
+				{"say": "Got to go. Work.", "who": "pip"},
+				{"set": "pip_errands_begun"},
+				{"scene": "side:pips_errands"},
 			]},
-		], "else": [
-			{"say": "[i]Courtiers whisper on the steps as you climb.[/i]"},
-			{"say": "That's the Unsworn? It's so... small.", "who": "courtier"},
-			{"say": "From a farming village. Can you imagine.", "who": "courtier"},
-			{"say": "So. The Covenant's little accident. You'll present your mark, as the law requires.", "who": "hierarch"},
-			{"say": "[i]You raise your hand; the mark glows.[/i]"},
-			{"say": "Yes, yes. Very pretty. And you'll surrender that card to the Goddess's vault, for safekeeping. A blank Sigil in a farmhand's pocket is a danger to us all.", "who": "hierarch"},
-			{"say": "The Covenant forbids it.", "who": "herald"},
-			{"say": "[i]The steps go silent.[/i]"},
-			{"say": "Of course. I only meant to offer.", "who": "hierarch"},
-			{"say": "Then let the Unsworn be tested, honestly. No challenger enters the Turning without the Sun Court's Trial, so I'll give it myself, before the whole city. Your Grace?", "who": "aldric"},
-			{"say": "...Very well. But first the Unsworn passes the Trial of Light in the Sun Temple, as every pilgrim does. If they can.", "who": "hierarch"},
-			{"scene": "solmaris"},
-			{"say": "[i]Aldric catches up with you at the foot of the steps, away from the courtiers.[/i]"},
-			{"say": "The Goddess spoke to you. I saw your eyes change.", "who": "aldric"},
-			{"say": "She hasn't spoken to me in a month.", "who": "aldric"},
-			{"say": "[i]He walks away before you can answer.[/i]"},
-			{"set": "sun_court_done"},
-			{"objective": "Pass the Trial of Light: Acolyte Liora, on the temple steps."},
 		]},
 	]
 
 
-## C5 · The Trial of Light, as a duel against Liora until the mirror puzzle is built.
+static func _maren() -> Array:
+	return [
+		{"if": "c6_done", "then": [
+			{"say": "The Sun's own knight, beaten in the Sun's own city. The priests will be smiling at you now. Count their teeth.", "who": "maren"},
+		], "else": [
+			{"say": "Sit, sit. You've the look of someone who's walked a long way to be lied to.", "who": "maren"},
+			{"say": "Two thousand years of sun on these stones. Not one bad harvest in Solhaven. Lovely weather.", "who": "maren"},
+			{"say": "I was a scribe in that Temple thirty years. I copied the Great Sundial's reading every noon.", "who": "maren"},
+			{"say": "Every single noon.", "who": "maren"},
+			{"say": "Then I found the old books. The readings from the last Turning.", "who": "maren"},
+			{"say": "The shadows are nine days wrong.", "who": "maren"},
+			{"choice": ["Wrong how?", "Why tell me?"], "then": [
+				[
+					{"say": "Somebody slowed the sun, child. Nine days of it. Long enough for the right Champion to catch up.", "who": "maren"},
+					{"say": "They threw me out for asking which one.", "who": "maren"},
+				],
+				[
+					{"say": "Because you're the first person in two thousand years the priests can't tell to hush. They'll try, mind.", "who": "maren"},
+				],
+			]},
+			{"say": "Go and look at the Sundial at dawn. The oldest stone, under the steps. Then come and tell me I'm mad.", "who": "maren"},
+			{"if": "!sundial_scar_begun", "then": [
+				{"set": "sundial_scar_begun"},
+				{"scene": "side:sundial_scar"},
+			]},
+		]},
+	]
+
+
+static func _board() -> Array:
+	return [
+		{"say": "The Seat roll, in gold leaf: seven kingdoms, and the Champion who holds each."},
+		{"say": "Underneath, in fresh black ink: {name}, the Unsworn, challenger. Someone has scratched a small coin beside it, crossed with a key."},
+	]
+
+
+static func _wren() -> Array:
+	return [
+		{"if": "c7_done", "then": [
+			{"say": "Half the city's seen your face now. Mind your pocket.", "who": "wren"},
+		], "else": [
+			{"say": "You check that pocket every time someone passes. Stop it. It tells people where to look.", "who": "wren"},
+			{"if": "c6_done", "then": [
+				{"say": "Half the city's seen your face now. Mind your pocket.", "who": "wren"},
+			], "else": [
+				{"say": "One for free, and I don't do free. Aldric's deck has a Legend in it: Sunlance Seraph.", "who": "wren"},
+				{"say": "And he keeps something bigger back for when he's losing. Everyone in Solhaven knows its name.", "who": "wren"},
+				{"say": "Nobody's seen it, because nobody's ever had him losing.", "who": "wren"},
+			]},
+		]},
+	]
+
+
 static func _liora() -> Array:
 	return [
-		{"if": "temple_leave", "then": [
-			{"say": "The Sun go with you, Unsworn. The Circle won't turn you away now. I haven't told anyone about the mirrors. I shan't.", "who": "liora"},
-		], "else": [
-			{"if": "!sun_court_done", "then": [
-				{"say": "Oh! You're the... yes. The Hierarch hasn't sent for you yet. Present your mark to him first. He's the gold one. On the steps. Sorry.", "who": "liora"},
-			], "else": [
-				{"say": "Oh! You're early. I mean, you're on time. I'm early. I mean... welcome, pilgrim. Challenger. Unsworn. Sorry. Nobody's ever been all three.", "who": "liora"},
-				{"say": "The Trial of Light. A duel, before the mirrors of the Sun Temple. They watch every Rite. They're very old. And very fussy.", "who": "liora"},
-				{"say": "If you fall, the mirrors simply begin again. They're patient. More patient than me.", "who": "liora"},
-				{"choice": ["Take the Trial of Light", "Not yet"], "then": [[
-					{"duel": {"deck": "temple_acolyte", "name": "Acolyte Liora", "look": "acolyte", "patron": "solmaris", "attrs": {"insight": 2}},
-						"win": [
-							{"set": "temple_leave"},
-							{"say": "You've passed. You may challenge the Sun's Champion.", "who": "liora"},
-							{"say": "Take this candle. Every pilgrim who passes gets one. Not many do. It has carried more than one Totem back from the dark.", "who": "liora"},
-							{"give": "revival_candle"},
-							{"say": "Can I tell you something? The mirrors showed you twice. Once as you are. And once all in white.", "who": "liora"},
-							{"say": "They've never done that. Not for anyone.", "who": "liora"},
-							{"choice": ["What does it mean?", "Don't tell anyone."], "then": [
-								[{"say": "I don't know. And I don't want to.", "who": "liora"}],
-								[{"say": "I wasn't going to. Nobody listens to an acolyte. Tonight I'm glad of it.", "who": "liora"}],
-							]},
-							{"objective": "Face Ser Aldric at the Duelling Circle, west of the fountain."},
-						],
-						"lose": [
-							{"say": "The mirrors would like you to try again. Politely.", "who": "liora"},
-						]},
-				], []]},
-			]},
-		]},
+		{"say": "I haven't told anyone about the mirrors. I've been praying about it.", "who": "liora"},
+		{"say": "She doesn't answer me either.", "who": "liora"},
 	]
 
 
-## C6 · The Golden Knight, at the square's Duelling Circle until the Sunspire is built.
 static func _aldric() -> Array:
 	return [
-		{"if": "beat_aldric", "then": [
-			{"say": "I have served the Sun since I could hold a sword. I did not expect to be taught humility by someone with no god at all.", "who": "aldric"},
-			{"say": "Go carefully, Unsworn. The Hierarch will not forgive this as easily as I do.", "who": "aldric"},
+		{"say": "Go carefully. The Hierarch won't forgive this as easily as I do.", "who": "aldric"},
+	]
+
+
+static func _hale() -> Array:
+	return [
+		{"if": "gate_children", "then": [
+			{"say": "Half a day's pay docked for every child. Cheapest thing I've bought in years.", "who": "hale"},
 		], "else": [
-			{"if": "!temple_leave", "then": [
-				{"say": "So. The eighth mark. I did not know the Covenant had a sense of humour.", "who": "aldric"},
-				{"say": "They say the sky fell on your village, and men with torches came after it. I am sorry. Nobody in this city will say that to you, so I will.", "who": "aldric"},
-				{"if": "sun_court_done", "then": [
-					{"say": "But I do not duel the untested. Pass the Temple's Trial of Light, and I will meet you here.", "who": "aldric"},
-				], "else": [
-					{"say": "But I do not duel the unblessed on a whim. Present your mark to the Hierarch, pass the Temple's Trial of Light, and I will meet you here.", "who": "aldric"},
-				]},
-			], "else": [
-				{"say": "[i]The stands around the Circle are packed with the people of Solhaven. Pip is on someone's shoulders, waving his wooden sword.[/i]"},
-				{"say": "ALDRIC! ALDRIC! ALDRIC!", "who": "pip"},
-				{"say": "Whatever you are, I will fight you fairly. It is the only promise anyone can make in this Trial.", "who": "aldric"},
-				{"choice": ["Same to you.", "May the best duellist win."], "then": [
-					[{"say": "Then the Goddess will judge us both.", "who": "aldric"}],
-					[{"say": "They usually do.", "who": "aldric"}],
-				]},
-				{"say": "The Sun Court's Trial, by the Covenant. If the Unsworn wins, they may challenge any Champion in Veyl until the Turning closes. Begin.", "who": "herald"},
-				{"choice": ["Begin the Trial", "Give me a moment"], "then": [[
-					{"duel": {"deck": "ser_aldric", "name": "Ser Aldric Vane", "look": "aldric", "patron": "solmaris", "attrs": {"presence": 3, "resolve": 1}, "trial": true},
-						"win": [
-							{"set": "beat_aldric"},
-							{"say": "[i]Aldric's last Totem falls, and the magic it sheds pours into your hand. Silence across the stands.[/i]"},
-							{"say": "The Unsworn is tested and found worthy. Challenge whom you will.", "who": "herald"},
-							{"say": "[i]The light his fallen Totems shed gathers in your open hand, and cools into a card: a lion of your own.[/i]"},
-							{"give": "sunmane_lion"},
-							{"say": "My Lion's light, made yours. Treat it well.", "who": "aldric"},
-							{"say": "[i]Silence. Then one small voice from the stands.[/i]"},
-							{"say": "...That was AMAZING!", "who": "pip"},
-							{"say": "[i]Pip cheers, then the person beside him, then the whole square. Aldric watches you through the noise.[/i]"},
-							{"say": "You fight like someone with nothing to lose.", "who": "aldric"},
-							{"choice": ["I've already lost my home.", "Maybe I don't."], "then": [
-								[{"say": "Then I'm sorry. Truly.", "who": "aldric"}],
-								[{"say": "Everyone has something. You'll find yours. That's when it gets hard.", "who": "aldric"}],
-							]},
-							{"say": "Solmaris will know of this before the sun sets. Not from me. I'd have to hear from her first.", "who": "aldric"},
-							{"objective": ""},
-							{"scene": "vault"},
-						],
-						"lose": [
-							{"say": "Well fought. There's no shame in it. A defeat is a lesson, not a debt. Come back when you've learned it.", "who": "aldric"},
-						]},
-				], []]},
-			]},
+			{"say": "{name}. The people outside the walls.", "who": "hale"},
+			{"say": "If you ever have the ear of somebody who matters, remember them. I can't.", "who": "hale"},
 		]},
 	]
 
 
-# ================================================================ scenes ===
-
-static func scene(name: String, w: World) -> void:
-	match name:
-		"solmaris":
-			await _solmaris(w)
-		"vault":
-			await _vault(w)
-
-
-## The sun-window blazes white and sound stops: Solmaris leans down out of the glare.
-static func _solmaris(w: World) -> void:
-	var hud := w.hud
-	hud.dialogue.close()
-	Music.stinger("the_marking")
-	await w.flash(Color(1.0, 0.98, 0.9), 0.5, 0.8)
-	await hud.dialogue.say("", null, "[i]The light blazes white and sound stops. The courtiers, the Hierarch and Aldric turn to statues of light mid-gesture. Only you can move.[/i]")
-	await hud.dialogue.say("", null, "[i]Above the temple, something vast leans down out of the glare: Solmaris, white and gold, her face lost in light.[/i]")
-	await hud.dialogue.say("Solmaris", null, "Little mark. You were not meant to be.")
-	await hud.dialogue.say("Solmaris", null, "Kneel, and I will carry the weight of that card for you. No hunter will touch you in my city. No harm will find you in my Age.")
-	var pick := await hud.dialogue.choose(["I'll think about it.", "I kneel to no one.", "What is this card?"])
-	match pick:
-		0:
-			Game.set_flag("solmaris_favour", "unsure")
-			await hud.dialogue.say("Solmaris", null, "Think quickly. Ages are long, but Trials are short.")
-		1:
-			Game.set_flag("solmaris_favour", "defiant")
-			await hud.dialogue.say("Solmaris", null, "Everyone kneels, little mark. Some simply take longer.")
-		_:
-			Game.set_flag("solmaris_favour", "curious")
-			await hud.dialogue.say("Solmaris", null, "Something that should have stayed buried.")
-	await hud.dialogue.say("", null, "[i]The light folds away and time returns. Nobody else saw a thing.[/i]")
-	hud.dialogue.close()
-	await w.flash(Color(1.0, 0.98, 0.9), 0.15, 0.9)
+static func _gate_warden() -> Array:
+	return [
+		{"say": "Hale? Stripped of his command this morning, Hierarch's orders.", "who": "gate_warden"},
+		{"say": "He's in the barracks yard, if you want him.", "who": "gate_warden"},
+		{"if": "!hales_orders_begun", "then": [
+			{"set": "hales_orders_begun"},
+			{"scene": "side:hales_orders"},
+		]},
+	]
 
 
-## C7 · Gold in the Dark, then the end of the chapter.
-static func _vault(w: World) -> void:
-	var hud := w.hud
-	hud.dialogue.close()
-	await hud.fade(1.0, 1.2)
-	await hud.dialogue.say("", null, "[i]Night. The wagon in a field outside Solhaven's walls, Turnip asleep. Bram sits on the tailboard, turning the blank card under the lamp.[/i]")
-	await hud.dialogue.say("", null, "[i]A faint image shows on it: a white eye inside a ring of runes. Then it fades.[/i]")
-	await hud.dialogue.say("Bram", DollArt.portrait("bram"), "A seal. ...Oh, Sprout. It's the seal.")
-	await hud.dialogue.say("", null, "[i]He hides the card in his coat and stares into the dark for a long time. In the shadow of the wagon wheel, Wren is awake. She heard. She says nothing.[/i]")
-	await hud.dialogue.say("", null, "[i]Ironvault. A vault of iron racks and glowing cards climbing into darkness, a ledger desk, a gold case with eight empty slots.[/i]")
-	await hud.dialogue.say("", null, "[i]For the first time, a face: Caldus Morne, silver-gold hair, black velvet, rings on every finger, a calm and pleasant smile. Huntmaster Krell kneels before the desk.[/i]")
-	await hud.dialogue.say("Huntmaster Krell", DollArt.portrait("krell"), "The Unsworn beat the Sun's knight.")
-	await hud.dialogue.say("Caldus Morne", DollArt.portrait("morne"), "Good. Let them all grow strong.")
-	await hud.dialogue.say("", null, "[i]He closes a ledger with eight names on its cover.[/i]")
-	await hud.dialogue.say("Caldus Morne", DollArt.portrait("morne"), "A harvest should be ripe before it's cut.")
-	await hud.dialogue.say("Huntmaster Krell", DollArt.portrait("krell"), "There's an old man travelling with them. Big. An innkeeper. Calls himself Bram.")
-	await hud.dialogue.say("", null, "[i]Morne's hand stops on the ledger.[/i]")
-	await hud.dialogue.say("Caldus Morne", DollArt.portrait("morne"), "Holloway. My father paid him once, in advance. He never delivered.")
-	await hud.dialogue.say("Caldus Morne", DollArt.portrait("morne"), "Old debts, Krell. I always collect.")
-	await hud.dialogue.say("", null, "[i]He sets a single gold coin on the eighth name. Yours.[/i]")
-	await hud.dialogue.say("", null, "[center][b]End of Chapter One: The Sun's Court.[/b][/center]\n[center]The Unsworn is tested and found worthy. Six kingdoms wait, and the Turning has a year to run.[/center]")
-	await hud.dialogue.say("", null, "[center]Thank you for playing this early slice of The Covenant War.\nYou can keep exploring Solhaven and duelling.[/center]")
-	hud.dialogue.close()
-	Game.save_game()
-	await hud.fade(0.0, 1.2)
+# =============================================================== triggers ===
+
+## Where walking takes the story on: north past the fountain the crowd
+## thickens (C3, Wren); the temple's doors (C4, then C5); the Sunspire's
+## door (C6). Only while the player is free to walk.
+class Triggers:
+	extends Node
+	var world: World
+	var _cool := 0.0
+
+	func _process(delta: float) -> void:
+		_cool = maxf(0.0, _cool - delta)
+		if world == null or world.busy or world.cine or world.hud == null or world.hud.menu_open() or _cool > 0.0:
+			return
+		var p := world.player.global_position
+		var film := ""
+		if Game.flag("c2_done") and not Game.flag("c3_done") and p.z < -6.5:
+			film = "thief"
+		elif Game.flag("c3_done") and not Game.flag("c5_done") and Vector2(p.x, p.z).distance_to(Vector2(0, -18.0)) < 2.6:
+			film = "court" if not Game.flag("c4_done") else "trial"
+		elif Game.flag("c5_done") and not Game.flag("c6_done") and Vector2(p.x, p.z).distance_to(Vector2(-15.0, -9.0)) < 2.8:
+			film = "spire"
+		if film == "":
+			return
+		_cool = 2.0
+		_play(film)
+
+	func _play(film: String) -> void:
+		var area: Script = world.area
+		await area.Films.run(world, film)
+		if world != null and world.is_inside_tree():
+			await area.hub(world)

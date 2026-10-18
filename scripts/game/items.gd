@@ -28,6 +28,10 @@ const ITEMS := {
 		"text": "Thirty cards of hounds, traps and poison, won from Hunter Dask by sworn wager on the road to Solhaven."},
 	"ironvault_seal": {"kind": "story", "name": "Ironvault wax seal", "flag": "beat_wren",
 		"text": "A coin crossed with a key. Wren's proof of the ten-thousand-crown price on a blank Sigil and the hand that holds it."},
+	"wren_tag": {"kind": "story", "name": "Wren's tin tag", "flag": "wren_tag",
+		"text": "A black-market marker on a cord: real tin, a real stamp, a Shardlands fence's mark, and Wren's name. She has another."},
+	"revival_candle": {"kind": "story", "name": "The Revival Candle", "flag": "trial_light_passed",
+		"text": "Given to every pilgrim who passes the Trial of Light in the Sun Temple. It has carried more than one Totem back from the dark."},
 	# ---- equipment (not yet given anywhere in the story) ---------------------------
 	"hearth_charm": {"kind": "gear", "slot": "charm", "name": "Hearthstone Charm", "bonus": {"resolve": 1},
 		"text": "A smooth stone from a village hearth, still faintly warm."},
