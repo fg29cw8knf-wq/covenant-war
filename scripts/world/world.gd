@@ -123,6 +123,11 @@ func _arrive() -> void:
 	var key := "arrived_" + area_id
 	if not Game.flag(key) and area.get_script_constant_map().has("INTRO"):
 		area.intro_frame(self)   # start the camera on the intro's first shot before the fade
+	if not Game.flag(key):
+		# the arrival film has the player from the first frame: no walking
+		# off (or buttons) while it fades in
+		busy = true
+		hud.set_controls_visible(false)
 	await hud.fade(0.0, 0.6)
 	# no place-name card over a story film picking up part-way
 	if not (area.get_script_constant_map().has("RESUMES") and area.starts_black()):
