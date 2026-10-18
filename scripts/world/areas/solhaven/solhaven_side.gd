@@ -658,7 +658,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "healer": [Places.spot("camp", "healer"), Places.spot("camp", "tobin")],
 			"player": [Places.spot("camp", "player"), "ysa"], "ref_a": [Places.spot("camp", "ref_a"), Places.spot("camp", "ysa")],
 			"ref_b": [Places.spot("camp", "ref_b"), Places.spot("camp", "ysa")], "ref_c": [Places.spot("camp", "ref_c"), Places.spot("camp", "ysa")]},
-			Places.spot("camp", "ysa") + Vector3(4.6, 2.1, 6.6), Places.spot("camp", "ysa") + Vector3(0.0, 0.9, 0.4), 36.0, "camp")
+			Places.spot("camp", "ysa") + Vector3(0.9, 1.8, 5.6), Places.spot("camp", "ysa") + Vector3(0.85, 0.95, 0.35), 36.0, "camp")
 		_tobin(w, Places.spot("camp", "tobin"), 0.2)
 	await _see(w, "Tobin lies on a blanket with a burn fever from the night the sky fell. A Temple healer in white is packing up her bag.")
 	await _say(w, "healer", "Forty crowns, or swear to the Goddess and it's a copper. I don't set the price.")
@@ -755,7 +755,7 @@ static func _anselm(w: World) -> void:
 		await _cut(w, {"ysa": [SQ.ysa_in, "player"], "player": [SQ.player_ysa, "ysa"]}, SQ.ysa_cam, _ysa_look(), 36.0)
 	else:
 		await _cut(w, {"ysa": [Places.spot("camp", "ysa"), "player"], "player": [Places.spot("camp", "player"), "ysa"]},
-			Places.spot("camp", "ysa") + Vector3(4.6, 2.1, 6.6), Places.spot("camp", "ysa") + Vector3(0.0, 0.9, 0.4), 36.0)
+			Places.spot("camp", "ysa") + Vector3(0.9, 1.8, 5.6), Places.spot("camp", "ysa") + Vector3(0.85, 0.95, 0.35), 36.0)
 	await _see(w, "Back at the camp, Ysa listens to what Anselm wants, and is quiet for a long moment.")
 	await _say(w, "ysa", "One name. | The Rootmother won't mind. She's not here.")
 	# at Anselm's: the name, and the leaf on the lantern

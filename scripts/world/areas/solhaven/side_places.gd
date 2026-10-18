@@ -27,8 +27,8 @@ const ORIGIN := {
 ## Spots in each place, from its origin. The camera looks in from +z.
 const MARKS := {
 	"camp": {
-		"ysa": Vector3(0.2, 0, -0.2), "tobin": Vector3(-1.2, 0, 0.3), "healer": Vector3(1.5, 0, -0.9),
-		"player": Vector3(0.9, 0, 2.3), "healer_off": Vector3(9.0, 0, 6.0),
+		"ysa": Vector3(0.2, 0, -0.2), "tobin": Vector3(-1.2, 0, 0.3), "healer": Vector3(1.0, 0, -1.4),
+		"player": Vector3(1.9, 0, 0.5), "healer_off": Vector3(9.0, 0, 6.0),
 		"ref_a": Vector3(-4.4, 0, -1.4), "ref_b": Vector3(4.6, 0, -2.6), "ref_c": Vector3(-2.6, 0, -5.2),
 	},
 	"anselm": {
