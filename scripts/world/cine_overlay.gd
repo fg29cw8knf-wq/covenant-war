@@ -107,7 +107,7 @@ func _ready() -> void:
 	_choices.visible = false
 	_root.add_child(_choices)
 	_root.resized.connect(_layout)
-	_layout()
+	SafeArea.watch(_root, _layout)
 	_hide_line()
 
 
@@ -127,6 +127,8 @@ func _bar_h() -> float:
 	return _root.size.y * BAR
 
 
+## The bars span the whole width; the words keep to the safe area (clear of
+## a phone's Dynamic Island and home bar).
 func _layout() -> void:
 	var h := _bar_h()
 	var k := 1.0 if _bars_on else 0.0
@@ -134,25 +136,34 @@ func _layout() -> void:
 	_top.offset_bottom = h * k
 	_bot.offset_top = -h * k
 	_bot.offset_bottom = h * (1.0 - k)
-	var w := minf(_root.size.x - 120.0, 1500.0)
+	var m := SafeArea.insets()
+	var ts := SafeArea.ui_scale()   # the player's text size
+	var mid := (m.x - m.z) * 0.5
+	var w := minf(_root.size.x - m.x - m.z - 120.0, 1500.0 * ts)
+	for f in ["normal_font_size", "italics_font_size", "bold_font_size"]:
+		_line.add_theme_font_size_override(f, roundi(38 * ts))
+	_who.add_theme_font_size_override("font_size", roundi(30 * ts))
 	# the line sits on the lower bar's edge, the name just above it
-	var base := -maxf(h, 60.0) - 18.0
-	_line.offset_left = -w * 0.5
-	_line.offset_right = w * 0.5
+	var low := maxf(h, 60.0 + m.w)
+	var base := -low - 18.0
+	_line.offset_left = mid - w * 0.5
+	_line.offset_right = mid + w * 0.5
 	_line.offset_bottom = base
-	_line.offset_top = base - 150.0
+	_line.offset_top = base - 150.0 * ts
 	_line.size.y = 0.0
-	_who.offset_left = -w * 0.5
-	_who.offset_right = w * 0.5
-	_hint.offset_left = -110
-	_hint.offset_right = -60
-	_hint.offset_top = -maxf(h, 60.0) * 0.5 - 24.0
+	_who.offset_left = mid - w * 0.5
+	_who.offset_right = mid + w * 0.5
+	_hint.offset_left = -110 - m.z
+	_hint.offset_right = -60 - m.z
+	_hint.offset_top = -(low + m.w) * 0.5 - 24.0
 	_hint.offset_bottom = _hint.offset_top + 48.0
-	var cw := minf(_root.size.x - 160.0, 900.0)
-	_choices.offset_left = -cw * 0.5
-	_choices.offset_right = cw * 0.5
-	_choices.offset_bottom = base
-	_choices.offset_top = base - _choices.get_combined_minimum_size().y
+	var cw := minf(_root.size.x - m.x - m.z - 160.0, 900.0 * ts)
+	var ch := _choices.get_combined_minimum_size().y
+	_choices.scale = Vector2(ts, ts)
+	_choices.offset_left = mid - cw * 0.5
+	_choices.offset_right = _choices.offset_left + cw / ts
+	_choices.offset_top = base - ch * ts
+	_choices.offset_bottom = _choices.offset_top + ch
 
 
 ## Slides the black bars in (or out).
@@ -256,7 +267,7 @@ func _place_line() -> void:
 	var lh := _line.get_content_height()
 	_line.offset_top = _line.offset_bottom - lh
 	_who.offset_bottom = _line.offset_top - 2.0
-	_who.offset_top = _who.offset_bottom - 44.0
+	_who.offset_top = _who.offset_bottom - 44.0 * SafeArea.ui_scale()
 
 
 func _hide_line() -> void:

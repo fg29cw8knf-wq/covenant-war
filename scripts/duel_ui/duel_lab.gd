@@ -59,15 +59,19 @@ func _ready() -> void:
 	add_child(stage)
 	resized.connect(_fit)
 	_build()
-	_fit()
+	SafeArea.watch(self, _fit)
 	if "--lab-watch" in OS.get_cmdline_user_args():
 		_play(true)
 
 
+## The set-up fits the safe area (clear of a phone's Dynamic Island and home
+## bar); the arena painting behind fills the screen.
 func _fit() -> void:
-	var k := minf(size.x / DESIGN.x, size.y / DESIGN.y)
+	var m := SafeArea.insets()
+	var s := Rect2(Vector2(m.x, m.y), size - Vector2(m.x + m.z, m.y + m.w))
+	var k := minf(s.size.x / DESIGN.x, s.size.y / DESIGN.y)
 	stage.scale = Vector2(k, k)
-	stage.position = ((size - DESIGN * k) * 0.5).floor()
+	stage.position = (s.position + (s.size - DESIGN * k) * 0.5).floor()
 
 
 func _build() -> void:

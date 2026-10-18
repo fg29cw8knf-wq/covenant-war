@@ -93,18 +93,14 @@ func _ready() -> void:
 	black.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(black)
 
-	# clips keep their 16:9 shape on any screen, framed like the paintings
-	var frame := AspectRatioContainer.new()
-	frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	frame.ratio = 16.0 / 9.0
-	frame.stretch_mode = AspectRatioContainer.STRETCH_FIT
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_root.add_child(frame)
+	# clips keep their 16:9 shape and fill the screen, framed like the paintings (frame_rect)
 	_video = VideoStreamPlayer.new()
 	_video.expand = true
 	_video.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_video.visible = false
-	frame.add_child(_video)
+	_root.add_child(_video)
+	_root.resized.connect(_fit_video)
+	_fit_video()
 
 	_stage = ShotView.new()
 	_stage.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -126,11 +122,16 @@ func _ready() -> void:
 	_skip = UITheme.button("Skip", false, 200)
 	_skip.anchor_left = 1.0
 	_skip.anchor_right = 1.0
-	_skip.offset_left = -250
-	_skip.offset_right = -40
-	_skip.offset_top = 36
-	_skip.offset_bottom = 132
 	_skip.modulate.a = 0.0
+	# the words and Skip keep clear of a phone's Dynamic Island and home bar
+	SafeArea.watch(_skip, func() -> void:
+		var m := SafeArea.insets()
+		_sub.offset_top = -190 - m.w
+		_sub.offset_bottom = -60 - m.w
+		_skip.offset_left = -250 - m.z
+		_skip.offset_right = -40 - m.z
+		_skip.offset_top = 36 + m.y
+		_skip.offset_bottom = 132 + m.y)
 	_skip.focus_mode = Control.FOCUS_NONE   # keys are handled in _unhandled_input
 	_skip.pressed.connect(_finish)
 	_root.add_child(_skip)
@@ -144,6 +145,27 @@ func _ready() -> void:
 	_voice = AudioStreamPlayer.new()
 	add_child(_voice)
 	_play.call_deferred()
+
+
+## How far a 16:9 picture may be enlarged past fitting whole to fill the
+## screen: a wide phone (2.17:1 needs 1.22) is filled edge to edge, cropping
+## a little top and bottom; an iPad (4:3 would need 1.33) keeps thin bands.
+const MAX_FILL := 1.25
+
+
+## Where a picture of this shape goes on a screen of size `s`: as big as
+## fills the screen, up to MAX_FILL times its whole-picture size, centred.
+static func frame_rect(s: Vector2, aspect: float = 16.0 / 9.0) -> Rect2:
+	var fit_h := minf(s.x / aspect, s.y)
+	var h := minf(maxf(s.x / aspect, s.y), fit_h * MAX_FILL)
+	var sz := Vector2(h * aspect, h)
+	return Rect2((s - sz) * 0.5, sz)
+
+
+func _fit_video() -> void:
+	var fr := frame_rect(_root.size)
+	_video.position = fr.position
+	_video.size = fr.size
 
 
 func _play() -> void:
@@ -360,8 +382,7 @@ class ShotView:
 		var title_t := _t - float(shot.get("title_at", 0.0)) if shot.get("title", false) else -1.0
 		if overlay_only:
 			# a clip plays underneath: the 16:9 frame it fills, then the lights and title over it
-			var k16 := minf(r.size.x / 16.0, r.size.y / 9.0)
-			_still_rect = Rect2((r.size - Vector2(16, 9) * k16) * 0.5, Vector2(16, 9) * k16)
+			_still_rect = OpeningMovie.frame_rect(r.size)
 			if String(shot.get("fx", "")) == "orbit":
 				_draw_orbit(r)
 			if title_t >= 0.0:
@@ -380,9 +401,9 @@ class ShotView:
 			draw_rect(Rect2(0, 0, r.size.x, bar), Color.BLACK)
 			draw_rect(Rect2(0, r.size.y - bar, r.size.x, bar), Color.BLACK)
 
-	## The whole painting stays in view: it's fitted inside the screen (black
-	## at the sides on a wide phone, like a cinema frame) and the camera moves
-	## are gentle, never cropping more than a few percent.
+	## The painting fills the screen (OpeningMovie.frame_rect: a wide phone
+	## loses a little top and bottom, never the sides) and the camera moves
+	## are gentle, never showing past its edges.
 	func _draw_still(r: Rect2, k: float) -> void:
 		var e := k * k * (3.0 - 2.0 * k)
 		var zoom := 1.0
@@ -405,9 +426,15 @@ class ShotView:
 				zoom = 1.03
 				off = Vector2(lerpf(-0.015, 0.015, e), 0)
 		var ts := Vector2(still.get_width(), still.get_height())
-		var fit := minf(r.size.x / ts.x, r.size.y / ts.y) * zoom
-		var sz := ts * fit
+		var sz := OpeningMovie.frame_rect(r.size, ts.x / ts.y).size * zoom
 		var pos := (r.size - sz) * 0.5 + off * r.size
+		if shot.has("orbit_at"):
+			# crop round the lights (low in the picture), so they stay where the
+			# whole painting would have them, above the words
+			pos.y = (r.size.y - sz.y) * (shot.orbit_at as Vector2).y + off.y * r.size.y
+		for i in 2:   # where it covers the screen, the moves never show past its edge
+			if sz[i] >= r.size[i]:
+				pos[i] = clampf(pos[i], r.size[i] - sz[i], 0.0)
 		_still_rect = Rect2(pos, sz)
 		draw_texture_rect(still, _still_rect, false)
 
