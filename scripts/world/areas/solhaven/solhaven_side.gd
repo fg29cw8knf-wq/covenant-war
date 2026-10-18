@@ -760,9 +760,9 @@ static func _anselm(w: World) -> void:
 	await _say(w, "ysa", "One name. | The Rootmother won't mind. She's not here.")
 	# at Anselm's: the name, and the leaf on the lantern
 	var room := func(m: String) -> Vector3: return Places.spot("anselm", m)
-	await _cut(w, {"ysa": [room.call("shrine") + Vector3(-1.0, 0, 0.5), room.call("lantern")], "anselm": [room.call("anselm"), "ysa"],
+	await _cut(w, {"ysa": [room.call("shrine") + Vector3(-1.3, 0, 0.6), room.call("lantern")], "anselm": [room.call("anselm"), "ysa"],
 		"player": [room.call("player"), "ysa"]},
-		room.call("shrine") + Vector3(0.4, 1.5, 2.7), room.call("lantern") + Vector3(-0.45, -0.15, 0.1), 38.0, "anselm")
+		room.call("shrine") + Vector3(0.6, 1.6, 3.6), room.call("lantern") + Vector3(-0.6, -0.2, 0.2), 38.0, "anselm")
 	_tobin(w, room.call("tobin"), 0.0)
 	Game.set_flag("ilvane_name_said")
 	await _see(w, "At Anselm's, Ysa says the name once, quietly. Then she unties her green leaf and loops it on the handle of the shrine lantern.")

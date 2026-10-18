@@ -61,14 +61,11 @@ const HUB := {
 
 ## Chapter 1's square (the SolhavenSet: the world has meta "solhaven_set")
 ## runs further south, with the notice board where the barracks gateway was
-## and a tree in the way of Ysa's corner: these spots replace HUB's and
-## SQUARE's there.
+## and a solid gate: these spots replace HUB's and SQUARE's there.
 const HUB_SET := {
 	"barracks": Vector3(-16.1, 0, 14.2), "barracks_talk": Vector3(-14.9, 0, 14.2),   # between the houses, south of the board
 }
 const SQUARE_SET := {
-	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.6),
-	"player_ysa": Vector3(-7.6, 0, 8.1), "ysa_cam": Vector3(-8.9, 1.7, 12.95),
 	"ysa_gate": Vector3(-1.2, 0, 23.4),   # the shut gate, from inside: the way out to her camp
 }
 
@@ -622,8 +619,9 @@ static func _barracks(root: Node3D) -> void:
 ## Where the people of the side stories stand in the square, and the
 ## child lying by Ysa (inside the walls, among the families Hale let in).
 const SQUARE := {
-	"ysa_in": Vector3(-8.9, 0, 11.4), "tobin_in": Vector3(-10.0, 0, 12.0), "healer_in": Vector3(-7.8, 0, 10.6),
-	"player_ysa": Vector3(-7.1, 0, 12.1), "ysa_cam": Vector3(-9.2, 1.7, 16.9),
+	# Ysa's corner, between the trees (seen from the south, clear of them)
+	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.6),
+	"player_ysa": Vector3(-7.6, 0, 8.1), "ysa_cam": Vector3(-8.9, 1.7, 12.95),
 	"ysa_gate": Vector3(-2.4, 0, 13.3),
 	"fen": Vector3(1.7, 0.74, -0.9), "fen_player": Vector3(2.4, 0, 2.2), "fen_wash": Vector3(2.05, 0, -0.4),
 	"fen_cam": Vector3(-1.6, 3.4, 7.6), "fen_look": Vector3(1.4, 1.2, -0.4),   # over the crowd, clear of the lamps
