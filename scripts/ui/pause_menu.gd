@@ -240,7 +240,7 @@ func _hero() -> Control:
 	xb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	rk.add_child(xb)
 	var seals: Array = v.get("seals", [])
-	right.add_child(UITheme.label("Seals %d of 7  ·  your Rank can climb to %d (each kingdom's Seal raises it)  ·  cards up to %s answer you" % [
+	right.add_child(_wrap("Seals %d of 7  ·  your Rank can climb to %d (each kingdom's Seal raises it)  ·  cards up to %s answer you" % [
 		seals.size(), Game.rank_cap(), Lore.TIER_NAMES[DuelRewards.tier_cap(rank)]], 24, UITheme.TEXT_DIM))
 	var pts := int(v.get("points", 0))
 	var head := HBoxContainer.new()
@@ -248,7 +248,7 @@ func _hero() -> Control:
 	head.add_child(UITheme.label("ATTRIBUTES", 32, UITheme.GOLD, "display_bold"))
 	var pl := UITheme.label("   %d point%s to place: tap +" % [pts, "" if pts == 1 else "s"] if pts > 0 else "   Rank up to earn points to place", 26, UITheme.GOLD if pts > 0 else UITheme.TEXT_DIM)
 	head.add_child(pl)
-	right.add_child(UITheme.label("Each point adds %d Life in a duel and helps the Fate rolls of cards that draw on it." % DuelRules.life_per_attribute, 22, UITheme.TEXT_DIM))
+	right.add_child(_wrap("Each point adds %d Life in a duel and helps the Fate rolls of cards that draw on it." % DuelRules.life_per_attribute, 22, UITheme.TEXT_DIM))
 	var gear := Items.gear_bonus(Game.equipped)
 	for a in Lore.ATTRIBUTES:
 		var row := HBoxContainer.new()
@@ -940,7 +940,9 @@ func _gap(h: int) -> Control:
 
 func _scroll(inner: Control) -> ScrollContainer:
 	var s := ScrollContainer.new()
-	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# a page too wide for the panel (a big text size on a small screen) scrolls
+	# sideways rather than pushing the menu off the screen
+	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.add_child(inner)
