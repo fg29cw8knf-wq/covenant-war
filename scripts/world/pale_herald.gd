@@ -1,14 +1,17 @@
 class_name PaleHerald
 extends Node3D
 ## A Pale Herald, Morrowen's own: a grey horse that leaves no prints, and a
-## rider whose hood is empty. Built from mist rather than flesh, so it reads
-## as something not quite there: pale, see-through at the middle, bright at
-## the edges, trailing fog from its hooves.
+## rider whose hood is empty, carrying a staff topped with a pale lantern.
+## Built from mist rather than flesh, so it reads as something not quite
+## there: pale, see-through at the middle, bright at the edges, trailing fog
+## from its hooves.
 ##
 ##   var h := PaleHerald.new(); add_child(h)
 ##   h.walking = true          # the slow, gliding walk
 ##   h.look_dir(Vector3.LEFT)  # turns (the whole of it)
 ##   h.turn_hood(target)       # just the empty hood turns to look
+##   h.lantern_pos()           # where its lantern hangs (the visions come out of it)
+##   h.lantern_flare(1.0)      # the lantern brightens (0 back to its glow)
 
 const SHADER := """
 shader_type spatial;
@@ -52,6 +55,12 @@ var _hood: Node3D
 var _mat: ShaderMaterial
 var _void: ShaderMaterial
 var _mist: GPUParticles3D
+var _lantern: Node3D
+var _lantern_light: OmniLight3D
+var _lantern_glow: MeshInstance3D
+var _lantern_flame: MeshInstance3D
+var _flare := 0.0
+var _flare_to := 0.0
 var _yaw := 0.0
 var _want_yaw := 0.0
 var _hood_yaw := 0.0
@@ -155,6 +164,78 @@ func _ready() -> void:
 	hole2.material_override = vm
 	hole2.position = Vector3(0, -0.02, 0.215)
 	_hood.add_child(hole2)
+	# the staff in its right hand, upright, and the pale lantern at the top
+	var staff := Node3D.new()
+	staff.position = Vector3(-0.42, 0.35, 0.28)
+	staff.rotation = Vector3(0.12, 0, 0.05)
+	_rider.add_child(staff)
+	var pole := MeshInstance3D.new()
+	var pm0 := CylinderMesh.new()
+	pm0.top_radius = 0.022
+	pm0.bottom_radius = 0.03
+	pm0.height = 2.6
+	pm0.radial_segments = 8
+	pole.mesh = pm0
+	pole.material_override = _mat
+	pole.position = Vector3(0, 0.5, 0)
+	staff.add_child(pole)
+	var hook := MeshInstance3D.new()
+	var hm0 := TorusMesh.new()
+	hm0.inner_radius = 0.07
+	hm0.outer_radius = 0.1
+	hook.mesh = hm0
+	hook.material_override = _mat
+	hook.position = Vector3(0, 1.84, 0.06)
+	hook.rotation = Vector3(0, 0, PI / 2)
+	staff.add_child(hook)
+	_lantern = Node3D.new()
+	_lantern.position = Vector3(0, 1.62, 0.14)
+	staff.add_child(_lantern)
+	var cage := MeshInstance3D.new()
+	var cm0 := CylinderMesh.new()
+	cm0.top_radius = 0.07
+	cm0.bottom_radius = 0.1
+	cm0.height = 0.24
+	cm0.radial_segments = 6
+	cage.mesh = cm0
+	cage.material_override = _mat
+	_lantern.add_child(cage)
+	var glass := StandardMaterial3D.new()
+	glass.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glass.albedo_color = Color(0.9, 0.95, 1.0)
+	glass.emission_enabled = true
+	glass.emission = Color(0.82, 0.9, 1.0)
+	glass.emission_energy_multiplier = 2.5
+	var flame := MeshInstance3D.new()
+	var fm0 := SphereMesh.new()
+	fm0.radius = 0.055
+	fm0.height = 0.13
+	flame.mesh = fm0
+	flame.material_override = glass
+	_lantern.add_child(flame)
+	_lantern_flame = flame
+	_lantern_glow = MeshInstance3D.new()
+	var gq := QuadMesh.new()
+	gq.size = Vector2(0.9, 0.9)
+	_lantern_glow.mesh = gq
+	var gm := StandardMaterial3D.new()
+	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var gg := Gradient.new(); gg.set_color(0, Color(1, 1, 1, 1)); gg.set_color(1, Color(1, 1, 1, 0))
+	var ggt := GradientTexture2D.new(); ggt.gradient = gg; ggt.fill = GradientTexture2D.FILL_RADIAL
+	ggt.fill_from = Vector2(0.5, 0.5); ggt.fill_to = Vector2(0.5, 0.0)
+	gm.albedo_texture = ggt
+	gm.albedo_color = Color(0.75, 0.85, 1.0, 0.55)
+	_lantern_glow.material_override = gm
+	_lantern_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lantern.add_child(_lantern_glow)
+	_lantern_light = OmniLight3D.new()
+	_lantern_light.light_color = Color(0.78, 0.86, 1.0)
+	_lantern_light.light_energy = 0.8
+	_lantern_light.omni_range = 5.0
+	_lantern.add_child(_lantern_light)
 	# a cold light about it, and mist off its hooves
 	var l := OmniLight3D.new()
 	l.light_color = Color(0.75, 0.8, 0.95)
@@ -245,6 +326,16 @@ func hood_pos() -> Vector3:
 	return _hood.global_position
 
 
+## Where the lantern on its staff hangs.
+func lantern_pos() -> Vector3:
+	return _lantern.global_position
+
+
+## The lantern brightens (1) as it shows something, or settles back (0).
+func lantern_flare(to: float) -> void:
+	_flare_to = to
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	_yaw += wrapf(_want_yaw - _yaw, -PI, PI) * minf(1.0, delta * 2.5)
@@ -257,3 +348,8 @@ func _process(delta: float) -> void:
 		hip.rotation.x = sin(_t * 3.4 + float(leg[1])) * 0.32 * k
 	_body.position.y = (absf(sin(_t * 3.4)) * 0.05 * k) + sin(_t * 0.9) * 0.03
 	_rider.rotation.z = sin(_t * 1.7) * 0.02
+	_flare = move_toward(_flare, _flare_to, delta * 2.5)
+	if _lantern_light != null:
+		_lantern_light.light_energy = (0.8 + _flare * 3.2 + sin(_t * 2.3) * 0.08) * fade
+		_lantern_glow.scale = Vector3.ONE * (1.0 + _flare * 1.6) * maxf(0.01, fade)
+		_lantern_flame.visible = fade > 0.25

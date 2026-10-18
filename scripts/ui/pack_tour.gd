@@ -16,7 +16,9 @@ extends Control
 ##   resume      close the pack (Resume, or Esc)
 ## "focus" (on an explanation) spotlights deck_grid or codex_grid (the cards in
 ## view), detail (the open card's face), tabs or menu_button. Every line is
-## kept on the How to Duel page, under "Your pack".
+## kept on the How to Duel page, under "Your pack". An instruction with no
+## "say" shows no box at all: only the light on what to tap (Bram never
+## describes the screen).
 
 signal _tapped
 
@@ -32,6 +34,19 @@ const FIRST_DECK := [
 	{"say": "Now the Codex.", "do": "tab:codex"},
 	{"say": "Every card you find gets written in here: your own, and any you see played against you. It's short tonight. It won't stay short.", "focus": "codex_grid"},
 	{"say": "Close your pack. Corin's waiting, and patience was never his Sigil.", "do": "resume"},
+]
+
+## Bram's walk round the deck screen at the campfire (Master Script v3, P5),
+## the first time it opens, just after the player chooses one of his old
+## decks: one gated line at a time, and the light on each thing to tap.
+const CAMP_DECK := [
+	{"say": "Thirty cards. You build it yourself from what you find, and you change it whenever you like.", "focus": "deck_grid"},
+	{"do": "card"},
+	{"say": "What it costs, what it is, what it does. Read before you play. Corin never did.", "focus": "detail"},
+	{"do": "close"},
+	{"do": "tab:codex"},
+	{"say": "Every card you own goes in here, and every card anybody plays against you. It's short. It won't stay short.", "focus": "codex_grid"},
+	{"do": "resume"},
 ]
 
 ## The How to Duel heading the lines are kept under.
@@ -275,6 +290,9 @@ func _rect(what: String) -> Rect2:
 
 
 func _show_box(st: Dictionary, footer: String) -> void:
+	if String(st.get("say", "")) == "":
+		box.visible = false   # an instruction with no words: the light shows it
+		return
 	var who := String(st.get("who", "Bram"))
 	who_label.text = who.to_upper()
 	text_label.text = String(st.get("say", ""))

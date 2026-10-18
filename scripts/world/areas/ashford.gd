@@ -1189,7 +1189,7 @@ static func _give_card(id: String) -> void:
 const MID := {
 	"player": Vector3(-0.8, 0, 4.6), "bram": Vector3(1.5, 0, 5.0), "corin": Vector3(-2.6, 0, 4.0),
 	"tilly": Vector3(3.8, 0, 0.9), "tam": Vector3(5.4, 0, -0.8), "nell": Vector3(-4.2, 0, 1.6),
-	"hob": Vector3(6.2, 0, 1.6), "seamus": Vector3(-5.2, 0, -0.4),
+	"hob": Vector3(6.2, 0, 1.6), "ned": Vector3(-5.2, 0, -0.4),
 }
 ## The rest of Ashford, round the green (cut-outs until there are villagers).
 ## They stand on the far side of the Lantern and round its flanks, so the
@@ -1205,6 +1205,11 @@ const CROWD := [["v1", "farmer", Vector3(-2.4, 0, -3.0)], ["v2", "merchant", Vec
 static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 	for who in marks:
 		var at: Vector3 = marks[who]
+		# anyone still down in the taproom or the cellar (built well below the
+		# village) comes up onto the ground first, so place() sets them on it
+		var sb := Cine.body(w, String(who))
+		if sb != null and sb.global_position.y < Cine.ground(w, at) - 5.0:
+			sb.global_position = Vector3(at.x, Cine.ground(w, at), at.z)
 		var face_to = look_at
 		if face_to == null:
 			face_to = Vector3.ZERO
@@ -1224,7 +1229,7 @@ static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 ## The night the riders come, they stand bunched on the near side of the
 ## green, facing the road.
 const CROWD_NIGHT := [Vector3(-3.1, 0, 8.1), Vector3(-0.7, 0, 8.5), Vector3(2.1, 0, 8.9), Vector3(-5.2, 0, 8.6),
-	Vector3(-1.6, 0, 7.1), Vector3(5.4, 0, 4.3), Vector3(-8.5, 0, 4.9), Vector3(3.6, 0, 1.9),
+	Vector3(-1.6, 0, 7.1), Vector3(-6.4, 0, 10.6), Vector3(-8.5, 0, 4.9), Vector3(2.8, 0, 10.4),
 	Vector3(-5.8, 0, 1.9), Vector3(0.8, 0, 9.9)]
 
 
@@ -1267,10 +1272,11 @@ static func _prologue_film(w: World, part: String) -> void:
 
 # ------------------------------------------------------- P2 · midnight ---
 
-## Midnight: the Great Lantern is lit, the sky lanterns go up and stop, the sky
-## tears, the Sigils fall. Corin is pinned under Tam's cart and dragged clear;
-## one white light comes down to the player, and leaves them a blank card and
-## a mark on their hand.
+## Midnight (Master Script v3, P2): the player lights the Great Lantern, Tam
+## dances with Nell, badly; the sky lanterns go up and stop, the sky tears,
+## the Sigils fall. Corin is pinned under Tam's cart and dragged clear; one
+## white light comes down to the player, and leaves them a blank card and a
+## mark on their hand.
 static func _midnight(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
@@ -1285,12 +1291,13 @@ static func _midnight(w: World) -> void:
 	_bell(w, 12)
 	await Cine.say(w, "", "Midnight. The chapel bell counts twelve, and all of Ashford counts with it.")
 	await Cine.wait(w, 1.0)
-	# the winner lights it
-	var lighter := "player" if Game.flag("ash_won_lantern") else "corin"
-	var at: Vector3 = Vector3(-0.3, 0, 1.85) if lighter == "player" else Vector3(-0.9, 0, 1.75)
+	# you walk up with a lit taper and light it (the Lantern Duel can't be lost)
+	var lighter := "player"
+	var at: Vector3 = Vector3(-0.3, 0, 1.85)
 	var taper := _taper(v)
 	_hold(w, lighter, taper)
-	Cine.shot(w, at + Vector3(1.8, 1.3, 2.4), at + Vector3(-0.3, 1.5, -0.6), 40.0)
+	# from the west side of the green: you walk up to the Lantern's steps
+	Cine.shot(w, Vector3(-3.6, 1.35, 2.6), Vector3(-0.4, 1.3, 2.8), 40.0)
 	await Cine.walk(w, lighter, at, 1.2)
 	Cine.look(w, lighter, Vector3.ZERO)
 	Cine.shot(w, at + Vector3(1.2, 0.5, 2.0), top - Vector3(0, 1.2, 0), 46.0)
@@ -1302,40 +1309,65 @@ static func _midnight(w: World) -> void:
 	w.shake(0.15)
 	_drop(w, lighter)
 	await Cine.wait(w, 0.5)
-	Cine.drift(w, Vector3(5.5, 2.2, 13.0), Vector3(4.5, 2.6, 11.5), Vector3(0, 3.0, 2.0), Vector3(0, 3.4, 2.0), 3.5, 42.0)
+	Cine.drift(w, Vector3(-3.8, 2.2, 7.6), Vector3(-3.2, 2.5, 6.6), Vector3(0, 3.0, 0.6), Vector3(0, 3.4, 0.6), 3.5, 44.0)
 	for c in CROWD:
 		Cine.hop(w, String(c[0]), 0.22)
 	for who in ["tilly", "hob", "tam"]:
 		Cine.act(w, who, "cheer")   # a cut-out (Hob) hops
-	for who in ["bram", "corin", "player"]:
-		if who != lighter:
-			Cine.act(w, who, "cheer")
-	if lighter == "corin":
-		Cine.act(w, "corin", "victory")
+	for who in ["bram", "corin"]:
+		Cine.act(w, who, "cheer")
 	await Cine.wait(w, 2.6)
 	Cine.walk(w, lighter, MID[lighter], 1.3)
-	await Cine.wait(w, 1.2)
-	# by the lantern's new light
+	# Tam is dancing with Nell, badly
+	var dance := _dance_spot()
+	Cine.place(w, "tam", dance[0], dance[1])
+	Cine.place(w, "nell", dance[1], dance[0])
+	for who in ["tam", "nell"]:
+		var df = Cine.fig(w, who)
+		if df is Figure3D:
+			(df as Figure3D).hold("dance")
+	var dmid: Vector3 = (dance[0] + dance[1]) * 0.5
+	Cine.shot(w, dmid + Vector3(-2.0, 1.45, 3.6), dmid + Vector3(0, 1.0, 0), 36.0)
+	if not (Cine.fig(w, "nell") is Figure3D):
+		for k in 3:   # a cut-out Nell bobs along
+			await Cine.hop(w, "nell", 0.08)
+			await Cine.wait(w, 0.35)
+	else:
+		await Cine.wait(w, 2.4)
+	# by the lantern's new light: Corin beside you, watching the crowd
+	Cine.look(w, "corin", dmid)
+	Cine.look(w, "player", dmid)
 	Cine.two_shot(w, "corin", "player", 3.6, 1.55, -1.0, 34.0)
-	Cine.look(w, "corin", Cine.body(w, "player").global_position)
-	await Cine.say(w, "corin", "It's a good village, this. Don't tell anyone I said so. I've a reputation.")
+	await Cine.say(w, "corin", "It's a good village, this. Don't tell anyone I said so.")
 	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
 	Cine.look(w, "bram", top)
-	await Cine.say(w, "bram", "Folk will tell you we send them up for the gods. We don't. A lantern's for whoever is out in the dark, so they know which way is home.")
+	await Cine.say(w, "bram", "Folk think we send them up for the gods. We don't. A lantern's for whoever's out in the dark, so they know which way is home.")
 	await Cine.say(w, "bram", "Two thousand years. Wonder who'll be sitting up there tomorrow.")
 	Cine.look(w, "bram", Cine.body(w, "player").global_position)
-	var pick := await Cine.choose(w, ["Does it matter to us?", "Whoever it is, I hope they like lanterns."])
-	await Cine.say(w, "bram", "It shouldn't. It always seems to." if pick == 0 else "From your mouth to their ears.")
-	# the sky lanterns go up, and stop
+	var pick := await Cine.choose(w, ["Does it matter to us?", "Whoever it is owes us a better year."])
+	if pick == 0:
+		await Cine.say(w, "bram", "It shouldn't. It always seems to.")
+	else:
+		# a short laugh, then
+		var bf0 = Cine.fig(w, "bram")
+		if bf0 is Figure3D:
+			(bf0 as Figure3D).talking = true
+		await Cine.wait(w, 0.5)
+		await Cine.say(w, "bram", "Write and tell them. See who writes back.")
+	# the sky lanterns go up, and stop; the fiddle trails off
 	v.release_lanterns()
-	for who in ["bram", "corin", "player", "tam", "tilly"]:
+	for who in ["tam", "nell"]:
+		var df = Cine.fig(w, who)
+		if df is Figure3D:
+			(df as Figure3D).release(0.6)
+	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		Cine.look(w, who, top)
 	Cine.shot(w, Vector3(1.0, 0.6, 9.0), Vector3(0.0, 6.0, -2.0), 52.0)
 	await Cine.drift(w, Vector3(1.0, 0.6, 9.0), Vector3(-2.0, 5.5, 14.0), Vector3(0.0, 6.0, -2.0), Vector3(4.0, 22.0, -18.0), 7.0, 52.0)
 	Music.stop(3.0)
 	await Cine.drift(w, Vector3(-2.0, 5.5, 14.0), Vector3(-3.0, 7.0, 16.0), Vector3(4.0, 22.0, -18.0), Vector3(8.0, 30.0, -24.0), 4.0)
 	# heads up, and they stay up (the clip looks up and comes back down)
-	for who in ["bram", "corin", "player", "tam", "tilly"]:
+	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		var f = Cine.fig(w, who)
 		if f is Figure3D:
 			(f as Figure3D).pose("look_up", 0.5, 0.9)
@@ -1344,7 +1376,7 @@ static func _midnight(w: World) -> void:
 	await Cine.wait(w, 1.8)
 	Cine.shot(w, Vector3(4.0, 1.2, 8.8), Vector3(8.0, 40.0, -30.0), 50.0)
 	await Cine.wait(w, 2.2)
-	await Cine.say(w, "corin", "Bram... is it meant to do that?")
+	await Cine.say(w, "corin", "Bram. Is it meant to do that?")
 	# the sky tears
 	Cine.shot(w, Vector3(6.0, 3.0, 20.0), Vector3(34.0, 22.0, -40.0), 50.0)
 	await Cine.wait(w, 0.6)
@@ -1377,21 +1409,45 @@ static func _midnight(w: World) -> void:
 	v.fire_mill()
 	w.shake(0.25)
 	await Cine.wait(w, 1.4)
-	var nell_cam: Vector3 = Cine.body(w, "nell").global_position + Vector3(1.4, 1.5, 2.2)
-	Cine.shot(w, nell_cam, Cine.head(w, "nell"), 34.0)
-	Cine.look(w, "nell", nell_cam)
-	await Cine.say(w, "nell", "Fire! The mill's on fire!", 2.0)
-	for who in ["bram", "corin", "player", "tam", "tilly"]:
+	# Nell, and the mill burning up the hill behind her
+	var np0 := Cine.body(w, "nell").global_position
+	var dm := mill_top - np0
+	dm.y = 0.0
+	dm = dm.normalized()
+	var sd := dm.cross(Vector3.UP)
+	Cine.look(w, "nell", mill_top)
+	# her face, the fire in her eyes (the mill is behind the camera)
+	Cine.shot(w, np0 + dm * 2.8 + sd * 1.6 + Vector3(0, 1.45, 0), np0 + Vector3(0, 1.45, 0), 34.0)
+	await Cine.say(w, "nell", "The mill! The mill's on fire!", 2.2)
+	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		var f = Cine.fig(w, who)
 		if f is Figure3D:
 			(f as Figure3D).release()
 	Cine.look(w, "bram", Cine.body(w, "player").global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 28.0)
 	w.shake(0.2)
-	await Cine.say(w, "bram", "Inside! All of you, inside! Sprout, to the inn. Now!", 2.6)
+	await Cine.say(w, "bram", "Inside! Everyone inside! Sprout, the inn. Now!", 2.6)
 	await _the_run(w)
 	await _the_cart(w)
 	await _the_white_light(w)
+
+
+## Where Tam and Nell dance at midnight, on the open east side of the green,
+## clear of the crowd: [Tam, Nell].
+static func _dance_spot() -> Array:
+	return [Vector3(5.0, 0, 3.4), Vector3(5.8, 0, 3.9)]
+
+
+## Cine.drift, but handing back its tween so a cut can stop it.
+static func _drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> Tween:
+	w.cine = true
+	if fov > 0.0:
+		w.cam.fov = fov
+	var tw := w.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		w.cam.global_position = pos_a.lerp(pos_b, u)
+		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
+	return tw
 
 
 ## The bell at midnight: six tolls as it counts twelve.
@@ -1441,12 +1497,15 @@ static func _sfx(w: World, sound: String, pitch := 1.0) -> void:
 static func _the_run(w: World) -> void:
 	var v := village(w)
 	# everyone scatters for their doors
+	# (Nell and the child on the south-west side go round behind the camera
+	# that follows you, not through it)
 	var doors := {"v1": Vector3(-14, 0, 14), "v2": Vector3(4, 0, 18), "v3": Vector3(16, 0, 12), "v4": Vector3(-17, 0, 8),
-		"v5": Vector3(-6, 0, 16), "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
-		"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": Vector3(-10, 0, 12), "hob": Vector3(16, 0, 6),
-		"seamus": Vector3(-15, 0, -6), "tam": Vector3(12, 0, -16)}
+		"v5": [Vector3(2, 0, 12), Vector3(-6, 0, 16)], "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
+		"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": [Vector3(0, 0, 13), Vector3(-10, 0, 12)], "hob": Vector3(16, 0, 6),
+		"ned": Vector3(-15, 0, -6), "tam": Vector3(12, 0, -16)}
 	for who in doors:
-		Cine.path(w, String(who), [doors[who]], 3.0 + randf() * 1.2, "run")
+		var way: Array = doors[who] if doors[who] is Array else [doors[who]]
+		Cine.path(w, String(who), way, 3.0 + randf() * 1.2, "run")
 	# Corin grabs Tilly and runs her up the lane towards the mill, past the cart
 	var cc := v.cart_centre()
 	var fd := v.cart_fall_dir()
@@ -1566,9 +1625,9 @@ static func _the_cart(w: World) -> void:
 	Cine.place(w, "tilly", cc + fd * 3.0 + al * 3.1, corin.global_position)
 	# under the cart: from the open side, the cart, Corin and the two of them
 	Cine.shot(w, cc + fd * 7.6 + al * 0.6 + Vector3(0, 1.6, 0), cc + fd * 3.3 + Vector3(0, 0.8, 0), 40.0)
-	await Cine.say(w, "corin", "Help! My leg's stuck. I can't...")
+	await Cine.say(w, "corin", "My leg. It's stuck, I can't, I can't get it —")
 	Cine.place(w, "bram", lift_b, cc)
-	await Cine.say(w, "bram", "Get the other side. On three. One, two...", 2.6)
+	await Cine.say(w, "bram", "Other side. On three. One, two —", 2.6)
 	# the heave
 	for who in ["bram", "player"]:
 		var f = Cine.fig(w, who)
@@ -1593,10 +1652,70 @@ static func _the_cart(w: World) -> void:
 		await (cf as Figure3D).get_up(0.9)
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.place(w, "tilly", corin.global_position - al * 1.1 - fd * 0.45, corin.global_position)
-	# the two of them, the cart behind
+	# the two of them, the cart behind: he limps a step towards you
 	var mid := (corin.global_position + w.player.global_position) * 0.5
 	Cine.shot(w, mid + fd * 3.4 + al * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
-	await Cine.say(w, "corin", "I'm all right. I'm all right. That was... I'm all right.")
+	var to_p := w.player.global_position - corin.global_position
+	to_p.y = 0.0
+	await _limp(w, "corin", corin.global_position + to_p.normalized() * minf(0.8, to_p.length() - 0.9), 1.4)
+	Cine.look(w, "corin", w.player.global_position)
+	await Cine.say(w, "corin", "I'm all right. I'm all right.")
+	# he isn't: his hands are shaking
+	if cf is Figure3D:
+		(cf as Figure3D).pose("play_card", 0.3, 0.4)
+	var hands: Vector3 = (cf as Figure3D).bone_pos("RightHand") if cf is Figure3D else corin.global_position + Vector3(0, 1.0, 0)
+	var cdir := corin.global_position.direction_to(w.player.global_position)
+	cdir.y = 0.0
+	Cine.shot(w, hands + cdir * 1.1 + cdir.cross(Vector3.UP) * 0.5 + Vector3(0, 0.25, 0), hands + Vector3(0, -0.05, 0), 30.0)
+	await _tremble(w, "corin", 2.2, 0.02)
+	if cf is Figure3D:
+		(cf as Figure3D).release(0.4)
+
+
+## A few limping steps to `to` over `secs`: a dip on every other step.
+static func _limp(w: World, who: String, to: Vector3, secs: float) -> void:
+	var b := Cine.body(w, who)
+	var f = Cine.fig(w, who)
+	if b == null:
+		return
+	var from := b.global_position
+	to.y = from.y
+	if from.distance_to(to) < 0.05:
+		return
+	if f != null:
+		f.face(to - from, w.cam)
+		f.walking = true
+		if f is Figure3D:
+			(f as Figure3D).pace = from.distance_to(to) / secs
+	var tw := w.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		if is_instance_valid(b):
+			var at := from.lerp(to, u)
+			at.y = Cine.ground(w, at) - absf(sin(u * PI * 2.0)) * 0.06
+			b.global_position = at, 0.0, 1.0, secs)
+	await tw.finished
+	if f != null and is_instance_valid(f):
+		f.walking = false
+		if f is Figure3D:
+			(f as Figure3D).pace = 0.0
+
+
+## Someone shaking (hands that won't keep still): the whole figure trembles,
+## very slightly, for `secs`.
+static func _tremble(w: World, who: String, secs: float, amp := 0.015) -> void:
+	var f = Cine.fig(w, who)
+	if f == null or not (f is Node3D):
+		await Cine.wait(w, secs)
+		return
+	var n: Node3D = f
+	var base := n.rotation
+	var t := 0.0
+	while t < secs and is_instance_valid(n):
+		t += w.get_process_delta_time()
+		n.rotation = base + Vector3(sin(t * 61.0) * amp * 0.6, 0.0, sin(t * 47.0 + 1.3) * amp)
+		await w.get_tree().process_frame
+	if is_instance_valid(n):
+		n.rotation = base
 
 
 ## The white light: slow, silent, it passes Bram, passes Corin and stops at the
@@ -1687,21 +1806,46 @@ static func _the_white_light(w: World) -> void:
 	var mid := (Cine.body(w, "corin").global_position + p) * 0.5
 	Cine.shot(w, mid + open * 3.4 + along * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
 	Cine.look(w, "corin", p)
-	await Cine.say(w, "corin", "It came to you. It just... came to you.")
-	await Cine.say(w, "corin", "And your hand. What's that on your hand?")
-	# Bram takes your wrist, sees the mark, and folds your fingers over the card
+	await Cine.say(w, "corin", "It came to you.")
+	# he looks down at his own empty hand
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D:
+		(cf as Figure3D).pose("play_card", 0.42, 0.5)
+		await Cine.wait(w, 0.5)
+		var ch: Vector3 = (cf as Figure3D).bone_pos("RightHand")
+		var cfw: Vector3 = (cf as Figure3D).facing()
+		var crt := cfw.cross(Vector3.UP)   # his right
+		Cine.shot(w, ch + crt * 1.5 + cfw * 0.45 + Vector3(0, 0.3, 0), (ch + Cine.head(w, "corin")) * 0.5, 32.0)
+	await Cine.wait(w, 1.8)
+	await Cine.say(w, "corin", "It just came to you.")
+	if cf is Figure3D:
+		(cf as Figure3D).release(0.5)
+	# Bram crosses to you and closes your fingers over the card; its glow dies
+	# between them, and his hand is shaking too
 	var bram := Cine.body(w, "bram")
 	var to_p := p - bram.global_position
 	to_p.y = 0.0
-	await Cine.walk(w, "bram", p - to_p.normalized() * 0.75, 1.2)
+	await Cine.walk(w, "bram", p - to_p.normalized() * 0.62, 1.4)
 	Cine.look(w, "bram", p)
 	Cine.look(w, "player", bram.global_position)
 	var mb := (bram.global_position + p) * 0.5
 	Cine.shot(w, mb + open * 2.8 + along * 0.6 + Vector3(0, 1.55, 0), mb + Vector3(0, 1.35, 0), 32.0)
+	var bfig = Cine.fig(w, "bram")
+	if bfig is Figure3D:
+		(bfig as Figure3D).reach(holder, null, 0.6)   # his left hand, over your right
+	await Cine.wait(w, 0.7)
+	var cardp: Vector3 = holder.global_position
+	var pside2 := (cardp - bram.global_position).cross(Vector3.UP).normalized()
+	Cine.shot(w, cardp + pside2 * 0.75 + Vector3(0, 0.3, 0) - to_p.normalized() * 0.15, cardp, 28.0)
 	var gt := w.create_tween().set_parallel(true)
-	gt.tween_property(cl, "light_energy", 0.0, 1.2)
-	gt.tween_property(g, "scale", Vector3.ONE * 0.05, 1.2)
-	await Cine.say(w, "bram", "Put that in your pocket, Sprout. Don't show anyone. Not anyone.")
+	gt.tween_property(cl, "light_energy", 0.0, 1.6)
+	gt.tween_property(g, "scale", Vector3.ONE * 0.02, 1.6)
+	gt.tween_property(mark, "scale", Vector3.ONE * 0.02, 1.6)
+	await _tremble(w, "bram", 2.0, 0.012)
+	Cine.shot(w, mb + open * 2.8 + along * 0.6 + Vector3(0, 1.55, 0), mb + Vector3(0, 1.35, 0), 32.0)
+	await Cine.say(w, "bram", "Put that away. Don't show anyone. Not anyone.")
+	if bfig is Figure3D:
+		(bfig as Figure3D).let_go(0.4)
 	_drop(w, "player")
 	if pf is Figure3D:
 		(pf as Figure3D).release()
@@ -1711,29 +1855,40 @@ static func _the_white_light(w: World) -> void:
 
 # ------------------------------------------------------- P3 · dawn ---
 
-## Where everyone stands on the green at dawn, looking up the road.
+## Where everyone stands on the green at dawn, looking up the road. Bram is
+## at the player's right shoulder, close enough to put a hand on it.
 const DAWN := {
-	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(1.9, 0, 11.6), "corin": Vector3(-1.0, 0, 10.4),
+	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(0.42, 0, 11.68), "corin": Vector3(-1.0, 0, 10.4),
 	"tilly": Vector3(-3.2, 0, 13.0), "nell": Vector3(-2.2, 0, 9.4), "tam": Vector3(3.2, 0, 9.6),
-	"hob": Vector3(2.4, 0, 15.8), "seamus": Vector3(-4.6, 0, 10.6),
+	"hob": Vector3(2.4, 0, 15.8), "ned": Vector3(-4.6, 0, 10.6),
 }
 ## Where the Herald stops, and the road it comes down.
 const HERALD_AT := Vector3(9.0, 0, 13.4)
 const HERALD_ROAD := [Vector3(44.0, 0, 11.6), Vector3(30.0, 0, 13.4), Vector3(18.0, 0, 14.4), Vector3(9.0, 0, 13.4)]
-const SEATS := [
-	["solmaris", "Solhaven, for Solmaris the Radiant: Ser Aldric Vane."],
-	["pyrrhane", "Pyreholt, for Pyrrhane the Burning Crown: Warlord Vorn."],
-	["vaelith", "Hrimmark, for Vaelith the Frost Queen: Eiran, its King."],
-	["ixara", "Stormreach, for Ixara the Storm Herald: Rook, of the Gale's Debt."],
-	["nocthra", "Umbravel, for Nocthra the Veiled Mother: Silk."],
-	["oriel", "Somnara, for Oriel the Dreaming Eye: Sister Maelis."],
-	["aldrith", "Glyphmere, for Aldrith the Runeweaver: Magister Tobias Crane."],
+## The Champions of the Turning, as the Herald's lantern shows them (v3: it
+## reads out only Aldric and Crane; the other five are faces with a name
+## under each, too quick to hold). [id, the Seat's god, the name written].
+## Gary's portrait in assets/art/champions/<id>.png (or .jpg / .webp) is used
+## when it exists; until then the Seat's sign stands in for the face, with the
+## name under it.
+const CHAMPIONS := [
+	["aldric", "solmaris", "Ser Aldric Vane"],
+	["vorn", "pyrrhane", "Warlord Vorn"],
+	["eiran", "vaelith", "King Eiran"],
+	["rook", "ixara", "Captain Rook"],
+	["silk", "nocthra", "Silk"],
+	["maelis", "oriel", "Sister Maelis"],
+	["crane", "aldrith", "Magister Tobias Crane"],
 ]
+## Everyone on the green who kneels when the Herald comes.
+const KNEELERS := ["nell", "tam", "hob", "ned", "corin", "tilly", "kid"]
 
 
-## Dawn comes anyway. Smoke over the hills, children picking Sparks out of the
-## furrows, Hob's cabbages. A mist comes down the road against the wind with
-## a Pale Herald in it, and it names the Seats of Veyl, and then the player.
+## Dawn (v3, P3): smoke over the hills, the mill a black shell, children
+## picking Sparks out of the furrows, Hob's cabbages. A mist comes down the
+## road against the wind with a Pale Herald in it; the village kneels, Bram's
+## hand on your shoulder bringing you down. It reads the Covenant and two
+## Champions, its lantern shows the other five, and then it names the player.
 static func _dawn(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
@@ -1744,6 +1899,7 @@ static func _dawn(w: World) -> void:
 		v.ignite_roof()
 		v.fire_mill()
 		v.set_time("dawn")
+	_char_mill(v)
 	_clear_crowd(w)
 	_stage(w, DAWN, HERALD_ROAD[1])
 	Cine.place(w, "tilly", DAWN.tilly, Vector3(-4.6, 0, 13.6))
@@ -1755,6 +1911,17 @@ static func _dawn(w: World) -> void:
 	Cine.shot(w, Vector3(-30.0, 14.0, 40.0), Vector3(8.0, 4.0, -16.0), 46.0)
 	Cine.fade(w, 0.0, 1.6)
 	await Cine.drift(w, Vector3(-30.0, 14.0, 40.0), Vector3(-18.0, 8.0, 31.0), Vector3(8.0, 4.0, -16.0), Vector3(6.0, 3.0, -12.0), 6.0)
+	# the mill, a black shell
+	if v.mill_root != null:
+		# from down the lane, against the sunrise
+		var mb := v.mill_root.global_position
+		var ml := Vector3(mb.x, v.height(mb.x, mb.z) + 9.0, mb.z)
+		var m0 := mb + Vector3(-26.0, 0, 29.0)
+		var m1 := mb + Vector3(-24.0, 0, 26.5)
+		m0.y = v.height(m0.x, m0.z) + 6.0
+		m1.y = v.height(m1.x, m1.z) + 5.8
+		Cine.drift(w, m0, m1, ml, ml + Vector3(0, -0.5, 0), 3.0, 28.0)
+		await Cine.wait(w, 2.8)
 	# children picking Sparks out of the furrows like conkers
 	var glints: Array = []
 	for i in 6:
@@ -1770,6 +1937,8 @@ static func _dawn(w: World) -> void:
 		t.tween_property(gl, "scale", Vector3.ONE * 0.02, 0.3)
 		t.tween_callback(gl.queue_free)
 	await Cine.wait(w, 0.8)
+	for gl in glints:
+		(gl as Node).queue_free()
 	# Hob, with his cabbage crop of cards
 	var fan := Node3D.new()
 	for i in 4:
@@ -1802,33 +1971,87 @@ static func _dawn(w: World) -> void:
 	var mist := _mist_bank(v, herald)
 	for who in ["bram", "corin", "player", "nell", "tam", "hob"]:
 		Cine.look(w, who, road[1])
-	Cine.shot(w, Vector3(6.0, 1.9, 16.5), road[0] + Vector3(-6.0, 2.0, 0.0), 30.0)
+	# from the road, up the rise it comes over
+	var rc := Vector3(21.0, 0, 14.2)
+	rc.y = v.height(rc.x, rc.z) + 1.7
+	Cine.shot(w, rc, road[0] + Vector3(0, 2.5, 0), 30.0)
 	var walk := _herald_walk(w, herald, road, 2.4)
-	await Cine.wait(w, 3.6)
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
-	Cine.look(w, "bram", Cine.body(w, "player").global_position)
-	await Cine.say(w, "bram", "A Pale Herald. Morrowen's own. Keep your head down and your hand in your pocket.")
-	Cine.look(w, "bram", road[2])
+	await Cine.wait(w, 3.0)
+	# the village kneels without being told
+	Cine.shot(w, Vector3(5.6, 1.5, 11.2), Vector3(-1.0, 0.9, 11.6), 44.0)
+	for who in KNEELERS:
+		Cine.look(w, who, road[2])
+		_kneel(w, who)
+		await Cine.wait(w, 0.22)
+	await Cine.wait(w, 0.6)
+	# and Bram's hand on your shoulder brings you down with them
+	var shoulder := _shoulder_point(w, "player")
+	var bf = Cine.fig(w, "bram")
+	var pp := w.player.global_position
+	Cine.shot(w, pp + Vector3(2.4, 1.15, -0.6), pp + Vector3(0.0, 1.05, 0.35), 34.0)
+	if bf is Figure3D:
+		(bf as Figure3D).reach(shoulder, null, 0.5)   # his left hand, on your right shoulder
+	await Cine.wait(w, 0.6)
+	_kneel(w, "bram", 0.9)
+	_kneel(w, "player", 0.9)
+	await Cine.wait(w, 1.0)
+	await Cine.say(w, "bram", "A Pale Herald. Morrowen's own. Head down. Hand in your pocket.")
 	Cine.shot(w, HERALD_AT + Vector3(-5.5, 1.0, 3.5), HERALD_AT + Vector3(0, 2.4, 0), 40.0)
 	while is_instance_valid(walk) and not walk.get_meta("done", false):
 		await w.get_tree().process_frame
 	herald.walking = false
 	herald.look_dir(Vector3(-1, 0, -0.15))
-	for who in ["bram", "corin", "player", "nell", "tam", "hob", "tilly", "kid", "seamus"]:
+	for who in ["bram", "corin", "player", "nell", "tam", "hob", "tilly", "kid", "ned"]:
 		Cine.look(w, who, HERALD_AT)
 	await Cine.wait(w, 1.2)
 	# the Covenant
 	Cine.shot(w, HERALD_AT + Vector3(-3.6, 0.9, 2.4), herald.hood_pos() + Vector3(0, -0.15, 0), 36.0)
 	await _herald_say(w, 1, "Hear the Covenant.")
-	Cine.drift(w, Vector3(-1.6, 2.1, 12.8), Vector3(0.6, 2.2, 13.0), HERALD_AT + Vector3(1.0, 2.6, 0), HERALD_AT + Vector3(1.6, 2.7, 0), 14.0, 40.0)
-	await _herald_say(w, 2, "The Age of Solmaris is ending. By the Covenant, the Turning begins. For one year, every Seat in Veyl may be challenged by anyone.")
-	var banners: Array = []
-	for i in SEATS.size():
-		banners.append(_banner(w, herald, i, String(SEATS[i][0])))
-		await _herald_say(w, 3 + i, String(SEATS[i][1]))
+	var cov := _drift_tween(w, Vector3(-1.6, 2.1, 12.8), Vector3(0.6, 2.2, 13.0), HERALD_AT + Vector3(1.0, 2.6, 0), HERALD_AT + Vector3(1.6, 2.7, 0), 14.0, 40.0)
+	await _herald_say(w, 2, "The Age of Solmaris is ending. By the Covenant, the Turning begins. For one year, any Seat in Veyl may be challenged by anyone.")
+	cov.kill()
+	# Solhaven: the lantern shows a knight kneeling in a sun chapel
+	herald.lantern_flare(1.0)
+	var vis := _vision(w, herald, 0)
+	var vc := vis.global_position
+	Cine.shot(w, vc + Vector3(-5.6, -2.9, -0.9), vc + Vector3(0.6, -0.75, 0.0), 40.0)
+	await _herald_say(w, 3, "Solhaven, for Solmaris: Ser Aldric Vane.")
+	await _vision_out(w, vis)
+	# then five more faces, a name under each, too quick to hold; the camera
+	# stays mostly on Ashford's faces, lit by them
+	var faces := [
+		[Vector3(-4.0, 1.7, 15.6), Vector3(4.0, 2.6, 12.0)],                             # from behind the village, the faces above the Herald
+		[DAWN.nell + Vector3(1.9, 0.75, 1.2), DAWN.nell + Vector3(0.0, 0.85, 0.0)],      # Nell
+		[DAWN.tam + Vector3(1.8, 0.75, -1.1), DAWN.tam + Vector3(0.0, 0.85, 0.0)],       # Tam
+		[DAWN.corin + Vector3(1.9, 0.8, 0.9), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],   # Corin and you
+		[DAWN.hob + Vector3(2.0, 0.8, -1.0), DAWN.hob + Vector3(0.0, 0.85, 0.0)],        # Hob
+	]
+	var flick := Cine.light(w, HERALD_AT + Vector3(-2.0, 3.0, 0.0), Color(0.8, 0.86, 1.0), 0.0, 22.0)
+	for i in 5:
+		var sh: Array = faces[i]
+		Cine.shot(w, sh[0], sh[1], 34.0 if i > 0 else 40.0)
+		var fv := _vision(w, herald, i + 1, 0.12)
+		var god: String = CHAMPIONS[i + 1][1]
+		flick.light_color = Lore.color(String(Lore.GODS[god].element), 1).lerp(Color(0.85, 0.9, 1.0), 0.5)
+		var ft := w.create_tween()
+		ft.tween_property(flick, "light_energy", 2.2, 0.12)
+		ft.tween_property(flick, "light_energy", 0.4, 0.6)
+		await Cine.wait(w, 0.75)
+		_vision_out(w, fv, 0.18)
+	var fo := w.create_tween()
+	fo.tween_property(flick, "light_energy", 0.0, 0.3)
+	fo.tween_callback(flick.queue_free)
+	# Glyphmere: and at the name, Bram's hand tightens on your shoulder
+	Cine.shot(w, HERALD_AT + Vector3(-3.6, 0.9, 2.4), herald.hood_pos() + Vector3(0, -0.15, 0), 36.0)
+	var cv := _vision(w, herald, 6)
+	_hand_tightens(w, shoulder, 1.7)
+	await _herald_say(w, 9, "Glyphmere, for Aldrith: Magister Tobias Crane.")
+	await _vision_out(w, cv)
+	herald.lantern_flare(0.0)
 	Cine.shot(w, HERALD_AT + Vector3(-4.0, 1.1, 3.0), herald.hood_pos(), 34.0)
-	banners.append(_banner(w, herald, 7, ""))
-	await _herald_say(w, 10, "And one more. Bound to no god, holding no Seat. Marked by the Covenant itself.")
+	var eighth := _vision(w, herald, -1, 0.35)
+	await _herald_say(w, 10, "And one more. Bound to no god. Holding no Seat. Marked by the Covenant itself.")
+	_vision_out(w, eighth, 0.6)
 	# the mark blazes through your pocket; every head turns
 	var blaze := Node3D.new()
 	var bg := v.glow_sprite(blaze, Vector3.ZERO, Color(0.9, 0.95, 1.0), 1.6, 2.0)
@@ -1838,19 +2061,20 @@ static func _dawn(w: World) -> void:
 	bl.omni_range = 9.0
 	blaze.add_child(bl)
 	w.player.add_child(blaze)
-	blaze.position = Vector3(0.22, 0.95, 0.1)
+	blaze.position = Vector3(0.22, 0.6, 0.1)
 	_sfx(w, "gift")
 	await w.flash(Color(0.9, 0.95, 1.0), 0.05, 0.9)
 	w.shake(0.2)
 	var p := w.player.global_position
-	Cine.shot(w, p + Vector3(5.0, 2.2, -4.0), p + Vector3(-0.5, 1.2, 1.0), 40.0)
-	for who in ["bram", "corin", "nell", "tam", "hob", "tilly", "kid", "seamus"]:
+	Cine.shot(w, p + Vector3(5.0, 2.2, -4.0), p + Vector3(-0.5, 0.9, 1.0), 40.0)
+	for who in ["bram", "corin", "nell", "tam", "hob", "tilly", "kid", "ned"]:
 		await Cine.wait(w, 0.18)
 		Cine.look(w, who, p)
 	await Cine.wait(w, 1.0)
+	# last of all, slowly, the empty hood
 	Cine.shot(w, herald.hood_pos() + Vector3(-1.6, -0.2, 1.4), herald.hood_pos(), 30.0)
 	await Cine.wait(w, 0.4)
-	herald.turn_hood(p + Vector3(0, 1.5, 0))
+	herald.turn_hood(p + Vector3(0, 1.0, 0))
 	await Cine.wait(w, 2.2)
 	var nm := await Cine.overlay(w).ask_name("Nobody has told the Herald your name. The empty hood speaks it anyway. What does it say?", "Ash")
 	Game.player_name = nm
@@ -1858,7 +2082,7 @@ static func _dawn(w: World) -> void:
 	await _herald_say(w, 12, "The Unsworn.")
 	Cine.shot(w, HERALD_AT + Vector3(-3.6, 0.9, 2.4), herald.hood_pos() + Vector3(0, -0.15, 0), 36.0)
 	await _herald_say(w, 13, "Present your mark at the Sun Court of Solhaven before the new moon, or forfeit it.")
-	# and back into the mist, and the mist goes with it
+	# it rides back into the mist, and the mist goes with it
 	var bt := w.create_tween().set_parallel(true)
 	bt.tween_property(bl, "light_energy", 0.0, 1.5)
 	bt.tween_property(bg, "scale", Vector3.ONE * 0.05, 1.5)
@@ -1867,20 +2091,22 @@ static func _dawn(w: World) -> void:
 	back.reverse()
 	Cine.shot(w, Vector3(0.5, 1.8, 15.5), HERALD_AT + Vector3(8.0, 1.8, -1.0), 38.0)
 	_herald_walk(w, herald, back, 2.2)
-	var ft := w.create_tween().set_parallel(true)
-	ft.tween_property(herald, "fade", 0.0, 6.0).set_delay(1.5)
-	for b in banners:
-		var bnode: Node3D = b
-		ft.tween_property(bnode, "scale", Vector3(1.0, 0.01, 1.0), 2.5).set_delay(0.6)
+	var ft2 := w.create_tween().set_parallel(true)
+	ft2.tween_property(herald, "fade", 0.0, 6.0).set_delay(1.5)
 	_fade_mist(w, mist, 6.5)
 	await Cine.wait(w, 5.0)
+	# nobody speaks; Tilly, uncertain, gets up and waves at the place where it was
+	if bf is Figure3D:
+		(bf as Figure3D).let_go(0.5)
 	Cine.shot(w, Vector3(-2.0, 1.0, 16.4), Cine.body(w, "tilly").global_position + Vector3(0, 0.9, 0), 36.0)
 	await Cine.wait(w, 0.8)
+	_stand(w, "tilly")
+	await Cine.wait(w, 0.9)
 	Cine.look(w, "tilly", HERALD_AT + Vector3(10, 0, 0))
-	# then Tilly waves (a cut-out hops instead)
+	# (a cut-out hops instead)
 	if Cine.fig(w, "tilly") is Figure3D:
-		Cine.act(w, "tilly", "wave")
-		await Cine.wait(w, 2.3)
+		Cine.act(w, "tilly", "wave", 0.8)
+		await Cine.wait(w, 2.6)
 	else:
 		Cine.hop(w, "tilly", 0.22)
 		await Cine.wait(w, 0.5)
@@ -1890,29 +2116,207 @@ static func _dawn(w: World) -> void:
 	herald.queue_free()
 	if is_instance_valid(mist):
 		mist.queue_free()
-	for b in banners:
-		if is_instance_valid(b):
-			(b as Node).queue_free()
 	if is_instance_valid(blaze):
 		blaze.queue_free()
+	for who in KNEELERS + ["bram", "player"]:
+		_stand(w, who, 0.01)
+	_free_tracker(shoulder)
 	Cine.despawn(w, "kid")
 
 
-## One of the Herald's lines; its recorded voice (assets/audio/vo/herald_NN.ogg)
-## plays with it once Gary records them.
+## At Crane's name (`after` seconds into it): close on Bram's hand on your
+## shoulder, and it tightens.
+static func _hand_tightens(w: World, shoulder: Node3D, after: float) -> void:
+	await Cine.wait(w, after)
+	if not is_instance_valid(shoulder):
+		return
+	var sp: Vector3 = shoulder.global_position
+	var to_cam := Vector3(1.0, 0.0, -0.75).normalized()
+	Cine.shot(w, sp + to_cam * 1.15 + Vector3(0, 0.3, 0), sp + Vector3(-0.1, 0.05, 0.15), 30.0)
+	await Cine.wait(w, 0.35)
+	_tremble(w, "bram", 0.6, 0.012)
+
+
+## Kneeling: the 3D cast go down low, heads bowed (the way down of the sit
+## clip, held: there is no kneel among the shared clips); a cut-out sinks a
+## little, as far as a kneeling figure would.
+const KNEEL := ["sit", 0.3]
+
+
+static func _kneel(w: World, who: String, secs := 0.6) -> void:
+	var f = Cine.fig(w, who)
+	if f is Figure3D:
+		(f as Figure3D).pose(String(KNEEL[0]), float(KNEEL[1]), secs)
+	elif f != null and not (f as Node3D).has_meta("knelt"):
+		var n: Node3D = f
+		n.set_meta("knelt", n.position.y)
+		w.create_tween().tween_property(n, "position:y", n.position.y - 0.42, secs)
+
+
+static func _stand(w: World, who: String, secs := 0.6) -> void:
+	var f = Cine.fig(w, who)
+	if f is Figure3D:
+		(f as Figure3D).release(secs)
+	elif f != null and (f as Node3D).has_meta("knelt"):
+		var n: Node3D = f
+		w.create_tween().tween_property(n, "position:y", float(n.get_meta("knelt")), maxf(0.01, secs))
+		n.remove_meta("knelt")
+
+
+## A point on top of someone's right shoulder that stays there as they move
+## and kneel (for a hand to rest on). _free_tracker() lets it go.
+static func _shoulder_point(w: World, who: String) -> Node3D:
+	var n := Node3D.new()
+	w.add_child(n)
+	var f = Cine.fig(w, who)
+	var b := Cine.body(w, who)
+	var track := func() -> void:
+		while is_instance_valid(n) and is_instance_valid(b):
+			if f is Figure3D:
+				var fwd: Vector3 = (f as Figure3D).facing()
+				n.global_position = (f as Figure3D).bone_pos("RightArm") + Vector3(0, 0.07, 0) - fwd * 0.02
+			else:
+				n.global_position = b.global_position + Vector3(0, 1.45, 0)
+			await w.get_tree().process_frame
+	track.call()
+	return n
+
+
+static func _free_tracker(n: Node3D) -> void:
+	if is_instance_valid(n):
+		n.queue_free()
+
+
+## One of the Herald's lines; its recorded voice plays with it once Gary
+## records it: assets/audio/vo/herald_NN.ogg (or .wav / .mp3), numbered as
+## in his list (01, 02, 03, 09, 10, 12, 13; 11 is the player's name and has
+## no recording).
 static func _herald_say(w: World, n: int, text: String, skip_text := false) -> void:
 	if skip_text:
 		return
-	var path := "res://assets/audio/vo/herald_%02d.ogg" % n
 	var hold := -1.0
-	if ResourceLoader.exists(path):
-		var ap := AudioStreamPlayer.new()
-		ap.stream = load(path)
-		w.add_child(ap)
-		ap.play()
-		ap.finished.connect(ap.queue_free)
-		hold = ap.stream.get_length() + 0.5
+	for ext in ["ogg", "wav", "mp3"]:
+		var path := "res://assets/audio/vo/herald_%02d.%s" % [n, ext]
+		if ResourceLoader.exists(path):
+			var ap := AudioStreamPlayer.new()
+			ap.stream = load(path)
+			w.add_child(ap)
+			ap.play()
+			ap.finished.connect(ap.queue_free)
+			hold = ap.stream.get_length() + 0.5
+			break
 	await Cine.say(w, "herald", text, hold)
+
+
+## A Champion's face shown by the Herald's lantern: pale, flickering, hanging
+## in the mist above it towards the village, with the name written under it.
+## i indexes CHAMPIONS; -1 is the eighth, an empty pale frame. Fades in over
+## `secs`; _vision_out() takes it away.
+const VISION_SHADER := """
+shader_type spatial;
+render_mode unshaded, blend_add, cull_disabled, depth_draw_never, shadows_disabled;
+uniform sampler2D tex : source_color, filter_linear_mipmap;
+uniform float fade = 0.0;
+uniform float empty = 0.0;
+uniform vec3 tint : source_color = vec3(0.78, 0.86, 1.0);
+void vertex() {
+	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
+}
+void fragment() {
+	vec4 c4 = texture(tex, UV);
+	float l = mix(dot(c4.rgb, vec3(0.3, 0.55, 0.15)) * c4.a, 0.0, empty);
+	vec2 d = (UV - 0.5) * 2.0;
+	float edge = clamp(1.0 - pow(length(d * vec2(0.95, 0.8)), 2.6), 0.0, 1.0);
+	float frame = empty * smoothstep(0.86, 0.9, max(abs(d.x), abs(d.y))) * (1.0 - smoothstep(0.94, 0.98, max(abs(d.x), abs(d.y))));
+	float flick = 0.86 + 0.14 * sin(TIME * 23.0 + UV.y * 40.0);
+	ALBEDO = tint * (pow(l, 0.85) * 1.5 + frame) * flick;
+	ALPHA = fade * max(edge * (0.2 + l * 0.8) * (1.0 - empty), frame);
+}
+"""
+
+
+static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3D:
+	var root := Node3D.new()
+	w.add_child(root)
+	root.global_position = herald.lantern_pos() + Vector3(-1.5, 0.7, 0.0)
+	var q := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(1.5, 1.9)
+	q.mesh = qm
+	var m := ShaderMaterial.new()
+	m.shader = Shader.new()
+	m.shader.code = VISION_SHADER
+	if i >= 0:
+		var tex := _champion_tex(i)
+		m.set_shader_parameter("tex", tex)
+		if tex != null:
+			qm.size = Vector2(1.5, 1.5 * float(tex.get_height()) / maxf(1.0, float(tex.get_width())))
+	else:
+		m.set_shader_parameter("empty", 1.0)
+	q.material_override = m
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(q)
+	if i >= 0:
+		var lb := Label3D.new()
+		lb.text = String(CHAMPIONS[i][2])
+		lb.font = CardFace.font("display")
+		lb.font_size = 72
+		lb.pixel_size = 0.0028
+		lb.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		lb.no_depth_test = true
+		lb.modulate = Color(0.86, 0.9, 1.0, 0.0)
+		lb.outline_modulate = Color(0.0, 0.02, 0.06, 0.0)
+		lb.outline_size = 10
+		lb.position = Vector3(0, -1.12, 0)
+		root.add_child(lb)
+		root.set_meta("label", lb)
+	root.set_meta("mat", m)
+	var tw := w.create_tween().set_parallel(true)
+	tw.tween_method(func(a: float) -> void: m.set_shader_parameter("fade", a), 0.0, 1.0, secs)
+	if root.has_meta("label"):
+		var lb2: Label3D = root.get_meta("label")
+		tw.tween_property(lb2, "modulate:a", 0.95, secs)
+		tw.tween_property(lb2, "outline_modulate:a", 0.8, secs)
+	return root
+
+
+static func _vision_out(w: World, root: Node3D, secs := 0.5) -> void:
+	if not is_instance_valid(root):
+		return
+	var m: ShaderMaterial = root.get_meta("mat")
+	var tw := w.create_tween().set_parallel(true)
+	tw.tween_method(func(a: float) -> void: m.set_shader_parameter("fade", a), 1.0, 0.0, secs)
+	if root.has_meta("label"):
+		var lb: Label3D = root.get_meta("label")
+		tw.tween_property(lb, "modulate:a", 0.0, secs)
+		tw.tween_property(lb, "outline_modulate:a", 0.0, secs)
+	await tw.finished
+	if is_instance_valid(root):
+		root.queue_free()
+
+
+## A Champion's picture for the Herald's lantern: Gary's portrait when there is
+## one, else the sign of the Seat's god.
+static func _champion_tex(i: int) -> Texture2D:
+	var id: String = CHAMPIONS[i][0]
+	for ext in ["png", "jpg", "webp"]:
+		var p := "res://assets/art/champions/%s.%s" % [id, ext]
+		if ResourceLoader.exists(p):
+			return load(p)
+	return Glyphs.tex(String(Lore.GODS[String(CHAMPIONS[i][1])].element), 256)
+
+
+## The mill after the night: a black shell (its timbers charred).
+static func _char_mill(v: AshfordVillage) -> void:
+	if v.mill_root == null or v.mill_root.has_meta("charred"):
+		return
+	v.mill_root.set_meta("charred", true)
+	var soot := StandardMaterial3D.new()
+	soot.albedo_color = Color(0.02, 0.015, 0.012, 0.82)
+	soot.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	soot.roughness = 1.0
+	for mi in v.mill_root.find_children("*", "MeshInstance3D", true, false):
+		(mi as MeshInstance3D).material_overlay = soot
 
 
 ## Walks the Herald down a road (each point in turn). The returned node has
@@ -1983,70 +2387,11 @@ static func _fade_mist(w: World, mist: Node3D, secs: float) -> void:
 		tw.tween_property(m, "albedo_color:a", 0.0, secs)
 
 
-## A banner of light for a Seat, unfurling in the mist behind the Herald: the
-## god's colour and sign. god "" is the eighth, white and bare.
-static func _banner(w: World, herald: Node3D, i: int, god: String) -> Node3D:
-	var n := Node3D.new()
-	w.add_child(n)
-	# a crown of banners round the back of it, opening towards the village
-	var a := deg_to_rad(-66.0 + i * 18.86)
-	n.global_position = herald.global_position + Vector3(1.2 + 3.0 * cos(a), 3.1, 3.9 * sin(a))
-	n.look_at(herald.global_position + Vector3(-8, 3.0, 0), Vector3.UP)
-	n.rotate_object_local(Vector3.UP, PI)
-	var col := Color(0.92, 0.94, 1.0) if god == "" else Lore.color(String(Lore.GODS[god].element), 1)
-	var cloth := MeshInstance3D.new()
-	var q := QuadMesh.new()
-	q.size = Vector2(1.15, 2.9)
-	cloth.mesh = q
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	m.albedo_color = Color(col.r, col.g, col.b, 0.55)
-	var g := Gradient.new()
-	g.set_color(0, Color(1, 1, 1, 0.0))
-	g.add_point(0.15, Color(1, 1, 1, 1))
-	g.add_point(0.85, Color(1, 1, 1, 1))
-	g.set_color(1, Color(1, 1, 1, 0.0))
-	var gt := GradientTexture2D.new()
-	gt.gradient = g
-	gt.fill_from = Vector2(0.5, 1.0)
-	gt.fill_to = Vector2(0.5, 0.0)
-	m.albedo_texture = gt
-	cloth.material_override = m
-	cloth.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	n.add_child(cloth)
-	if god != "":
-		var gl := MeshInstance3D.new()
-		var gq := QuadMesh.new()
-		gq.size = Vector2(0.75, 0.75)
-		gl.mesh = gq
-		var gm := StandardMaterial3D.new()
-		gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		gm.cull_mode = BaseMaterial3D.CULL_DISABLED
-		gm.albedo_texture = Glyphs.tex(String(Lore.GODS[god].element), 128)
-		gm.albedo_color = Color(1, 1, 1, 0.95)
-		gl.material_override = gm
-		gl.position = Vector3(0, 0.45, 0.01)
-		n.add_child(gl)
-	var l := OmniLight3D.new()
-	l.light_color = col
-	l.light_energy = 0.8
-	l.omni_range = 4.0
-	l.position = Vector3(0, 0, 0.6)
-	n.add_child(l)
-	# it unfurls downwards out of the mist
-	n.scale = Vector3(1.0, 0.02, 1.0)
-	var tw := w.create_tween()
-	tw.tween_property(n, "scale", Vector3.ONE, 0.7).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	return n
-
-
 # ---------------------------------------------------- P3 · the taproom ---
 
-## That afternoon, shutters closed: Bram turns the blank card over in the
-## lamplight, says the little he knows, and hands it back.
+## That afternoon (v3, P3), shutters closed: Bram turns the blank card over
+## in the lamplight the way he'd check a coin, says he's frightened of it,
+## says Solhaven before the new moon, and hands it back.
 static func _taproom(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
@@ -2077,21 +2422,34 @@ static func _taproom(w: World) -> void:
 		(bf as Figure3D).pose("play_card", 0.4)
 	Cine.shot(w, table + Vector3(1.9, 1.5, 0.2), Cine.head(w, "bram") + Vector3(0, -0.25, 0), 30.0)
 	await Cine.wait(w, 1.6)
-	await Cine.say(w, "bram", "Thirty years duelling, and I never saw a Sigil with nothing on it.")
+	await Cine.say(w, "bram", "Thirty years with cards, and I never saw one with nothing on it.")
 	Cine.over_shoulder(w, "bram", "player", 1.0, 30.0)
-	var a := await Cine.choose(w, ["What does it do?", "Can I give it back?"])
+	var a := await Cine.choose(w, ["What does it do?", "You know what it is."])
+	if a == 0:
+		Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+		await Cine.say(w, "bram", "Nothing I can see. That's what frightens me.")
+	else:
+		# he doesn't look up from the card
+		Cine.look(w, "bram", card.global_position if is_instance_valid(card) else table)
+		Cine.shot(w, table + Vector3(1.9, 1.5, 0.2), Cine.head(w, "bram") + Vector3(0, -0.25, 0), 30.0)
+		await Cine.say(w, "bram", "I know I'm frightened of it. That'll have to do for today.")
+	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
-	await Cine.say(w, "bram", "Nothing I can see. That's what worries me." if a == 0 else "To who? The sky?")
-	await Cine.say(w, "bram", "Heard of one, once. In a story nobody believed.")
+	await Cine.say(w, "bram", "Solhaven, then. Before the new moon.")
+	if Game.flag("want_solhaven"):
+		await Cine.say(w, "bram", "You always wanted the Sun Court. I'd have given a lot for you to want something else.")
+	else:
+		await Cine.say(w, "bram", "You never wanted Solhaven. Seems Solhaven wants you.")
 	Cine.over_shoulder(w, "bram", "player", 1.0, 30.0)
-	var b := await Cine.choose(w, ["What story?", "And the Sun Court?"])
+	var b := await Cine.choose(w, ["Come with me.", "I can go alone."])
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	if b == 0:
-		await Cine.say(w, "bram", "An old one. Eat something.")
-	elif Game.flag("want_solhaven"):
-		await Cine.say(w, "bram", "You wanted Solhaven. The sky was listening. Eat something.")
+		await Cine.say(w, "bram", "As if you'd get past the end of the lane without me.")
 	else:
-		await Cine.say(w, "bram", "You asked why anyone would want Solhaven. Now you'll find out. Eat something.")
+		await Cine.say(w, "bram", "No.")
+		await Cine.wait(w, 0.9)
+		await Cine.say(w, "bram", "No.")
+	await Cine.say(w, "bram", "We go in the morning. Eat something.")
 	# he hands it back, and doesn't look at it again
 	Cine.two_shot(w, "bram", "player", 2.8, 1.35, 1.0, 34.0)
 	if bf is Figure3D:
@@ -2122,7 +2480,7 @@ static func _taproom(w: World) -> void:
 const NIGHT := {
 	"player": Vector3(-11.6, 0, 7.6), "bram": Vector3(-12.4, 0, 8.3), "corin": Vector3(-3.2, 0, 6.0),
 	"tilly": Vector3(-3.9, 0, 6.6), "nell": Vector3(0.2, 0, 5.2), "tam": Vector3(1.6, 0, 4.8),
-	"hob": Vector3(-1.4, 0, 4.4), "seamus": Vector3(-5.4, 0, 4.6),
+	"hob": Vector3(-1.4, 0, 4.4), "ned": Vector3(-5.4, 0, 4.6),
 }
 const KRELL_AT := Vector3(6.2, 0, 6.4)
 ## The woodpile behind the inn, and the way through the back gardens to its back door.
@@ -2131,32 +2489,38 @@ const GARDENS := [Vector3(-25.0, 0, 17.5), Vector3(-30.5, 0, 14.5), Vector3(-31.
 const BACK_DOOR := Vector3(-30.2, 0, 5.6)
 
 
-## Hoofbeats on the road: Ironvault's hunters, Huntmaster Krell and her
-## hounds. Nobody gives the Unsworn up. Tam goes at Krell with a pitchfork.
-## Then the torches go into the thatch, and Bram gets the player out through
-## the back gardens to the burning inn.
+## That night (v3, P4): riders in black and gold come onto the green, torches
+## high, metal hounds beside them, and at their head Huntmaster Krell with a
+## ledger open in her hand. She reads Ashford its terms: every roof but one,
+## or a single card. Nobody points. She offers Tam the mill, and Tam lies for
+## the player, and the hound takes him. Then "Burn the inn", and Bram gets
+## the player out behind the woodpile and through the back gardens to the
+## back door of the burning Crooked Lantern.
 static func _burning(w: World) -> void:
 	var v := village(w)
 	var gore: bool = String(Game.settings.get("violence", "full")) == "full"
+	var told: bool = Game.flag("tam_told")
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.01)
 	v.set_time("burning")
 	v.set_cart_tip(1.0)
+	_char_mill(v)
 	_clear_crowd(w)
 	_crowd(w, CROWD_NIGHT, Vector3(14, 0, 8))
 	_stage(w, NIGHT, Vector3(14.0, 0, 8.0))
 	Music.play(["ashford_burns", "sigilfall"], 1.0, false)
 	await Cine.caption(w, "That night")
-	# the riders' torches coming fast down the road
+	# riders onto the green, torches high, the hounds beside them
 	var hunters := ["h1", "h2", "h3", "h4", "h5", "h6"]
 	var line := [Vector3(9.5, 0, 3.4), Vector3(10.2, 0, 5.4), Vector3(10.4, 0, 7.6), Vector3(10.0, 0, 9.8), Vector3(9.2, 0, 11.8), Vector3(11.6, 0, 6.6)]
 	for i in hunters.size():
 		var start := Vector3(46.0 + i * 3.0, 0, 10.0 + (i % 3) * 1.2)
 		Cine.spawn(w, hunters[i], "hunter", start, "Hunter")
 		_torch(v, Cine.body(w, hunters[i]))
-	Cine.spawn(w, "krell", "krell", Vector3(42.0, 0, 11.0), "Huntmaster Krell")
+	Cine.spawn(w, "krell", "krell", Vector3(42.0, 0, 11.0), "Krell")
 	Cine.beast(w, "hound1", "shieldhound", Vector3(44.0, 0, 13.0), Color(1.0, 0.8, 0.35, 1.0))
 	Cine.beast(w, "hound2", "shieldhound", Vector3(45.0, 0, 8.0), Color(1.0, 0.8, 0.35, 1.0))
+	var ledger := _ledger(w, "krell")
 	Cine.shot(w, Vector3(3.0, 2.0, 12.5), Vector3(36.0, 1.5, 10.5), 32.0)
 	Cine.fade(w, 0.0, 1.0)
 	for i in hunters.size():
@@ -2167,94 +2531,168 @@ static func _burning(w: World) -> void:
 	for i in hunters.size():
 		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
 	Cine.look(w, "krell", Vector3(-2, 0, 5))
-	# Krell
-	Cine.shot(w, KRELL_AT + Vector3(-4.2, 1.5, 2.2), KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
-	await Cine.say(w, "krell", "Evening, Ashford. Nice lanterns.")
-	await Cine.say(w, "krell", "Ironvault holds the note on every roof in this village. Mill, inn, barns, the lot. One card settles it. Every debt, gone.")
+	# you and Bram watch from the dark of the inn yard
+	var pp: Vector3 = Cine.body(w, "player").global_position
+	Cine.shot(w, pp + Vector3(-1.6, 1.55, 1.3), KRELL_AT + Vector3(0, 1.2, 0), 30.0)
+	await Cine.wait(w, 1.6)
+	# Krell reads Ashford its terms
+	var krell_cam := KRELL_AT + Vector3(-4.2, 1.5, 2.2)
+	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	await Cine.say(w, "krell", "Good evening. Sabine Krell, for Ironvault. I'll be brief; it's late.")
+	if not told:
+		# Tam's face changes at "fell due at midnight"
+		_cut_later(w, 1.3, Cine.body(w, "tam").global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 30.0)
+	await Cine.say(w, "krell", "Every note in Ashford fell due at midnight. The mill. Eleven farms. Every roof in this village but one. Under the terms, Ironvault may take possession of all of it, tonight.")
+	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	await Cine.say(w, "krell", "Or I can burn the notes. Every one. For a single card.")
 	Cine.shot(w, KRELL_AT + Vector3(-4.2, 1.7, 2.0), KRELL_AT + Vector3(0, 1.4, 0), 30.0)
 	await Cine.say(w, "krell", "Where is the Unsworn?")
-	# silence; nobody points
+	# silence: Nell looks at the ground, Hob looks at Nell, nobody points
 	Music.stop(1.0)
-	# the village, from where the riders stand: nobody moves
 	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
-	await Cine.wait(w, 1.8)
-	Cine.shot(w, KRELL_AT + Vector3(-2.6, 1.6, -0.4), Cine.body(w, "nell").global_position + Vector3(0, 1.2, 0), 32.0)
 	await Cine.wait(w, 1.6)
-	Cine.shot(w, Vector3(-9.0, 1.6, 9.6), Vector3(4.0, 1.4, 5.6), 34.0)
-	await Cine.wait(w, 1.4)
-	# Tam: forty years of flour, a note he could never pay, and a pitchfork
-	var fork := _pitchfork(v)
-	var tam_f = Cine.fig(w, "tam")
-	if tam_f is Figure3D:
-		# levelled in both hands, tines forward
-		(tam_f as Figure3D).carry(fork, Vector3(-0.05, 1.0, 0.15))
-		fork.rotation = Vector3(deg_to_rad(68), 0.0, 0.0)
-		var grips := []
-		for at in [0.22, -0.32]:   # left hand up the shaft, right hand down it
-			var g := Node3D.new()
-			g.position = Vector3(0, at, 0)
-			fork.add_child(g)
-			grips.append(g)
-		(tam_f as Figure3D).reach(grips[0], grips[1], 0.25)
-	else:
-		Cine.body(w, "tam").add_child(fork)
-		fork.position = Vector3(0.35, 0.95, 0.1)
-	Cine.shot(w, Vector3(0.0, 1.4, 9.0), KRELL_AT + Vector3(-1.5, 1.0, -0.5), 38.0)
-	await Cine.wait(w, 0.4)
-	Cine.path(w, "tam", [KRELL_AT + Vector3(-2.2, 0, -0.6)], 4.2, "run")
-	await Cine.wait(w, 0.7)
-	Cine.hop(w, "krell", 0.1)
-	_sfx(w, "ui_tap", 0.7)
-	Cine.beast_play(w, "hound1", "attack", 1.2)
-	await Cine.path(w, "hound1", [KRELL_AT + Vector3(-2.0, 0, 0.2)], 9.0)
-	# cut away as he goes down, to Nell
-	Cine.fig(w, "tam").visible = false
-	if tam_f is Figure3D:
-		(tam_f as Figure3D).let_go(0.0)
-	fork.reparent(v)
-	fork.global_position = KRELL_AT + Vector3(-2.6, 0.05, -0.4)
-	fork.rotation = Vector3(0, 0.6, PI * 0.5)
-	if gore:
-		_blood(v, KRELL_AT + Vector3(-2.3, 0.04, -0.5))
-	# from behind Nell, to where he fell
+	# Tam, Nell and Hob in one shot, from Krell's side of the green
 	var np := Cine.body(w, "nell").global_position
-	var to_k := KRELL_AT - np
+	Cine.shot(w, np + Vector3(4.4, 1.7, -3.6), np + Vector3(-0.4, 1.1, -0.4), 34.0)
+	Cine.look(w, "nell", np + Vector3(-1.5, 0, 0.6))
+	var nf = Cine.fig(w, "nell")
+	if nf is Figure3D:
+		(nf as Figure3D).pose("defeat", 0.3, 0.6)   # her head goes down
+	await Cine.wait(w, 1.3)
+	Cine.look(w, "hob", np)
+	await Cine.wait(w, 1.7)
+	Cine.shot(w, Vector3(-11.0, 2.4, 10.4), Vector3(4.0, 1.2, 5.6), 30.0)
+	await Cine.wait(w, 1.2)
+	# Krell turns a page
+	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.6, 1.4), KRELL_AT + Vector3(0, 1.3, 0), 28.0)
+	await _turn_page(w, ledger)
+	Cine.look(w, "krell", Cine.body(w, "tam").global_position)
+	await Cine.say(w, "krell", "Mr Hayes. The mill, its stones and its house. Eleven hundred crowns. You would be clear.")
+	# Tam looks at the dark of the inn yard, at you
+	var tb := Cine.body(w, "tam")
+	var tam_cam := tb.global_position + Vector3(0.4, 1.5, -2.2)   # his face side-on, whichever way he looks
+	Cine.shot(w, tam_cam, Cine.head(w, "tam"), 28.0)
+	await Cine.wait(w, 0.4)
+	Cine.look(w, "tam", pp)
+	if told:
+		# once; his face doesn't change at all
+		await Cine.wait(w, 0.9)
+		Cine.look(w, "tam", KRELL_AT)
+		await Cine.wait(w, 0.7)
+	else:
+		# you watch him understand, and then you watch him decide
+		await Cine.wait(w, 1.0)
+		Cine.shot(w, pp + Vector3(-0.8, 1.6, 0.9), tb.global_position + Vector3(0, 1.4, 0), 18.0)
+		await Cine.wait(w, 1.8)
+		Cine.look(w, "tam", KRELL_AT)
+		Cine.shot(w, tb.global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 28.0)
+		await Cine.wait(w, 1.4)
+	# he steps forward, cap in his hands
+	var cap := _cap_in_hands(w, "tam")
+	Cine.shot(w, Vector3(0.4, 1.6, 7.6), (tb.global_position + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
+	await Cine.walk(w, "tam", tb.global_position + (KRELL_AT - tb.global_position).normalized() * 1.4, 1.0)
+	# his lie, to her face (the camera beside her)
+	Cine.shot(w, tb.global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 28.0)
+	await Cine.say(w, "tam", "They left at noon. Took the Solhaven road. Bram and the youngster both.")
+	# she looks at him for a long moment
+	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.65, 1.4), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
+	await Cine.wait(w, 2.2)
+	await Cine.say(w, "krell", "No. They didn't.")
+	# she closes the ledger; a Shieldhound moves
+	await _close_ledger(w, ledger)
+	var tam_at: Vector3 = tb.global_position
+	var to_tam := tam_at - KRELL_AT
+	to_tam.y = 0.0
+	Cine.shot(w, KRELL_AT + Vector3(-1.0, 1.0, 3.6), (KRELL_AT + tam_at) * 0.5 + Vector3(0, 0.8, 0), 40.0)
+	Cine.beast_play(w, "hound1", "attack", 1.3)
+	Cine.path(w, "hound1", [tam_at - to_tam.normalized() * 0.5], 9.0)
+	var tf = Cine.fig(w, "tam")
+	var fall_at := tam_at + to_tam.normalized() * 0.3
+	if gore:
+		# Full: quick and brutal, at the throat
+		await Cine.wait(w, 0.42)
+		_sfx(w, "hit_heavy", 0.8)
+		if tf is Figure3D:
+			(tf as Figure3D).let_go(0.05)
+			(tf as Figure3D).lie_down(0.35, true)
+		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
+		await Cine.wait(w, 0.35)
+	else:
+		# Reduced: the camera is on Nell before it reaches him
+		await Cine.wait(w, 0.2)
+	# from behind Nell, as she watches
+	var to_k := tam_at - np
 	to_k.y = 0.0
 	to_k = to_k.normalized()
-	Cine.shot(w, np - to_k * 3.6 + to_k.cross(Vector3.UP) * 1.2 + Vector3(0, 1.6, 0), KRELL_AT + Vector3(-2.3, 0.5, -0.5), 34.0)
-	Cine.place(w, "nell", np, KRELL_AT)
-	await Cine.wait(w, 1.6)
+	Cine.shot(w, np - to_k * 3.1 + to_k.cross(Vector3.UP) * 1.4 + Vector3(0, 1.6, 0), np + to_k * 1.7 + Vector3(0, 0.9, 0), 32.0)
+	if nf is Figure3D:
+		(nf as Figure3D).release(0.3)
+	Cine.place(w, "nell", np, tam_at)
+	if not gore:
+		if tf is Figure3D:
+			(tf as Figure3D).let_go(0.05)
+			(tf as Figure3D).lie_down(0.01, true)
+		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
+	Cine.place(w, "hound1", KRELL_AT + Vector3(-1.2, 0, 1.0), tam_at)
+	await Cine.wait(w, 1.8)
+	# back: Full, his blood between the cobbles and his cap where he fell;
+	# Reduced, he is still
+	if gore:
+		_blood(v, fall_at + Vector3(0, 0.04, 0))
+	Cine.shot(w, fall_at + Vector3(-2.2, 1.3, 2.0), fall_at + Vector3(0.2, 0.1, 0.2), 34.0)
+	await Cine.wait(w, 2.0)
+	Cine.shot(w, tam_at + to_k * 1.4 - to_k.cross(Vector3.UP) * 1.0 + Vector3(0, 1.3, 0), Cine.head(w, "nell") + Vector3(0, -0.1, 0), 22.0)
 	await Cine.say(w, "nell", "Tam.", 3.0)
 	await Cine.wait(w, 0.8)
 	Cine.shot(w, KRELL_AT + Vector3(-4.0, 1.6, 3.0), KRELL_AT + Vector3(0, 1.4, 0), 34.0)
-	await Cine.say(w, "krell", "Anyone else? No? Then burn the note.")
-	# the torches go into the thatch
+	await Cine.say(w, "krell", "Burn the inn. If they're inside, they'll come out.")
+	# the hunters go for the inn with their torches; Bram pulls you into the dark
 	Music.play(["ashford_burns", "sigilfall"], 0.5, true)
-	var targets := v.houses_near(Vector3(16, 0, 0)).slice(0, 3)
-	Cine.shot(w, Vector3(-4.0, 3.5, 16.0), Vector3(10.0, 3.0, -2.0), 46.0)
-	for k in targets.size():
-		var hn: Dictionary = v.houses[targets[k]]
-		_throw_torch(w, Cine.body(w, hunters[k]).global_position + Vector3(0, 1.4, 0), (hn.root as Node3D).global_position + Vector3(0, float(hn.top) * 0.62, 0), targets[k])
-		await Cine.wait(w, 0.45)
-	await Cine.wait(w, 2.4)
-	# the hunters spread out to search; Bram pulls the player into the dark
-	for i in hunters.size():
-		Cine.path(w, hunters[i], [Vector3(randf_range(-8, 8), 0, randf_range(-6, 10))], 3.0, "run")
-	Cine.path(w, "bram", [WOODPILE + Vector3(-0.6, 0, 0.5)], 4.4, "run")
-	Cine.shot(w, WOODPILE + Vector3(2.5, 1.5, 3.4), WOODPILE + Vector3(0, 1.1, 0), 40.0)
-	await Cine.path(w, "player", [WOODPILE + Vector3(0.4, 0, -0.1)], 4.6, "run")
+	var inn_i := v.inn_index()
+	var inn_at: Vector3 = (v.houses[inn_i].root as Node3D).global_position if inn_i >= 0 else Vector3(-24, 0, 6)
+	var throw_from := [inn_at + Vector3(7.5, 0, -3.5), inn_at + Vector3(8.5, 0, -1.0), inn_at + Vector3(8.0, 0, 1.5)]
+	for k in 3:
+		Cine.path(w, hunters[k], [Vector3(-2.0, 0, 1.0 + k), throw_from[k]], 5.0, "run")
+	# the rest go to search the barns on the east side (clear of the
+	# villagers, Tam, and Gary's sacks behind the hay cart)
+	var barns := [Vector3(14.0, 0, 14.0), Vector3(14.5, 0, 9.0), Vector3(15.0, 0, 3.0)]
+	for k in range(3, hunters.size()):
+		Cine.path(w, hunters[k], [barns[(k - 3) % barns.size()]], 3.0, "run")
 	_woodpile(v, WOODPILE + Vector3(1.4, 0, -1.4))
+	Cine.path(w, "bram", [WOODPILE + Vector3(-0.6, 0, 0.5)], 4.4, "run")
+	var wy := v.height(WOODPILE.x, WOODPILE.z)
+	Cine.shot(w, WOODPILE + Vector3(-2.2, wy + 1.5, 3.2), WOODPILE + Vector3(0.2, wy + 1.1, -0.2), 40.0)
+	await Cine.path(w, "player", [WOODPILE + Vector3(0.4, 0, -0.1)], 4.6, "run")
+	# the torches go into the inn's thatch, and the wind takes it to the next roof
+	Cine.shot(w, inn_at + Vector3(14.0, 4.0, -9.0), inn_at + Vector3(0, 4.0, 0), 44.0)
+	for k in 3:
+		_throw_torch(w, Cine.body(w, hunters[k]).global_position + Vector3(0, 1.4, 0), inn_at + Vector3(randf_range(-2.5, 2.5), 5.2, randf_range(-1.5, 1.5)), inn_i)
+		await Cine.wait(w, 0.35)
+	await Cine.wait(w, 2.2)
+	var next_roof: int = -1
+	for hi in v.houses_near(inn_at):
+		if hi != inn_i:
+			next_roof = hi
+			break
+	if next_roof >= 0:
+		v.burn_house(next_roof)
+	await Cine.wait(w, 1.0)
+	# behind the woodpile
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.look(w, "player", Cine.body(w, "bram").global_position)
 	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
-	await Cine.say(w, "bram", "Listen to me. They can't just take it off you. A Sigil taken by force turns to dust. The Covenant sees to that.")
+	await Cine.say(w, "bram", "Listen to me. That card won't stay with anyone who takes it. They can't just have it off you.")
 	await Cine.say(w, "bram", "They need you to stake it in a sworn duel and lose. Or they need you dead.")
-	var c1 := await Cine.choose(w, ["Then I'll duel them.", "What do we do?"])
-	await Cine.say(w, "bram", "Them and their dogs? Not tonight. Not ever, if I can help it." if c1 == 0 else "We go. Quiet, and now. Stay behind me.")
+	var c1 := await Cine.choose(w, ["Then I'll duel them.", "They killed Tam."])
+	if c1 == 0:
+		await Cine.say(w, "bram", "Them and their dogs? Not tonight. Not while I've breath.")
+	else:
+		await Cine.say(w, "bram", "I saw.")
+		await Cine.wait(w, 1.0)
+		await Cine.say(w, "bram", "Later. Now we go. Quiet, and stay behind me.")
 	# through the back gardens, hedge to hedge, out of the lantern beams
 	await _gardens(w, hunters)
-	# the Crooked Lantern is burning
-	v.burn_house(v.inn_index())
+	# the Crooked Lantern is burning; Bram stops at the back door
 	Cine.shot(w, BACK_DOOR + Vector3(-6.0, 1.6, 4.0), BACK_DOOR + Vector3(2.0, 3.0, 0.0), 44.0)
 	await Cine.path(w, "bram", [BACK_DOOR + Vector3(-0.6, 0, 0.5)], 3.6, "run")
 	await Cine.path(w, "player", [BACK_DOOR + Vector3(-1.4, 0, 1.4)], 3.6, "run")
@@ -2263,13 +2701,133 @@ static func _burning(w: World) -> void:
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "My decks are in the cellar. I'm not leaving them to Ironvault.")
-	var c2 := await Cine.choose(w, ["I'm coming with you.", "Bram, the roof's coming down!"])
-	await Cine.say(w, "bram", "Course you are. Stubborn. Wonder where you got that." if c2 == 0 else "Then we'd best be quick.")
+	var c2 := await Cine.choose(w, ["I'm coming with you.", "Bram, the roof!"])
+	await Cine.say(w, "bram", "Course you are." if c2 == 0 else "Then don't stand there watching it.")
 	Cine.path(w, "bram", [BACK_DOOR + Vector3(1.5, 0, 0)], 2.4, "run")
 	await Cine.wait(w, 0.4)
 	await Cine.fade(w, 1.0, 0.8)
+	if tf is Figure3D:
+		(tf as Figure3D).get_up(0.01)
+	if is_instance_valid(cap):
+		cap.queue_free()
 	for id in hunters + ["krell", "hound1", "hound2"]:
 		Cine.despawn(w, id)
+
+
+## Cuts the camera to a shot `after` seconds from now (while a line is up).
+static func _cut_later(w: World, after: float, pos: Vector3, look: Vector3, fov: float) -> void:
+	var ov := Cine.overlay(w)
+	var line := ov._line_no + 1   # the line about to be said
+	await Cine.wait(w, after)
+	if ov._line_no == line and ov._waiting:
+		Cine.shot(w, pos, look, fov)
+
+
+## Krell's ledger, open in her hand (a 3D Krell holds it; a cut-out's is only
+## heard: its page turning, and its closing).
+static func _ledger(w: World, who: String) -> Node3D:
+	var f = Cine.fig(w, who)
+	if not (f is Figure3D):
+		return null
+	var v := village(w)
+	var book := Node3D.new()
+	var cover := StandardMaterial3D.new()
+	cover.albedo_color = Color(0.12, 0.08, 0.06)
+	cover.roughness = 0.7
+	var paper := StandardMaterial3D.new()
+	paper.albedo_color = Color(0.86, 0.82, 0.72)
+	for side in [-1, 1]:
+		var leaf := Node3D.new()
+		leaf.name = "L" if side < 0 else "R"
+		book.add_child(leaf)
+		v.box(leaf, Vector3(0.11, 0.006, 0.16), Vector3(0.055 * side, 0, 0), cover)
+		v.box(leaf, Vector3(0.1, 0.008, 0.15), Vector3(0.052 * side, 0.006, 0), paper)
+	(f as Figure3D).carry(book, Vector3(0.0, 1.05, 0.3))
+	book.rotation = Vector3(-0.7, 0, 0)
+	return book
+
+
+static func _turn_page(w: World, book: Node3D) -> void:
+	_sfx(w, "card_flip", 0.6)
+	if book == null or not is_instance_valid(book):
+		await Cine.wait(w, 0.6)
+		return
+	var v := village(w)
+	var page := Node3D.new()
+	book.add_child(page)
+	var paper := StandardMaterial3D.new()
+	paper.albedo_color = Color(0.9, 0.86, 0.76)
+	v.box(page, Vector3(0.1, 0.004, 0.15), Vector3(0.05, 0.012, 0), paper)
+	var tw := w.create_tween()
+	tw.tween_property(page, "rotation:z", PI, 0.6).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	page.queue_free()
+
+
+static func _close_ledger(w: World, book: Node3D) -> void:
+	_sfx(w, "card_flip", 0.4)
+	if book == null or not is_instance_valid(book):
+		await Cine.wait(w, 0.5)
+		return
+	var leaf: Node3D = book.get_node("R")
+	var tw := w.create_tween()
+	tw.tween_property(leaf, "rotation:z", PI * 0.98, 0.35).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tw.finished
+
+
+## Tam's cap, held in front of him in both hands.
+static func _cap_in_hands(w: World, who: String) -> Node3D:
+	var f = Cine.fig(w, who)
+	var cap := Node3D.new()
+	var felt := StandardMaterial3D.new()
+	felt.albedo_color = Color(0.22, 0.2, 0.17)
+	felt.roughness = 1.0
+	var crown := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.085
+	cm.bottom_radius = 0.1
+	cm.height = 0.07
+	crown.mesh = cm
+	crown.material_override = felt
+	cap.add_child(crown)
+	var peak := MeshInstance3D.new()
+	var pm := CylinderMesh.new()
+	pm.top_radius = 0.075
+	pm.bottom_radius = 0.075
+	pm.height = 0.01
+	peak.mesh = pm
+	peak.material_override = felt
+	peak.position = Vector3(0, -0.03, 0.06)
+	peak.scale = Vector3(1.0, 1.0, 0.6)
+	cap.add_child(peak)
+	if f is Figure3D:
+		(f as Figure3D).carry(cap, Vector3(0.0, 1.0, 0.28))
+		cap.rotation = Vector3(-1.2, 0, 0)
+		var grips := []
+		for x in [0.09, -0.09]:
+			var g := Node3D.new()
+			g.position = Vector3(x, 0.0, 0.0)
+			cap.add_child(g)
+			grips.append(g)
+		(f as Figure3D).reach(grips[0], grips[1], 0.4)
+	else:
+		Cine.body(w, who).add_child(cap)
+		cap.position = Vector3(0.0, 1.0, 0.3)
+	return cap
+
+
+## The cap falls where he fell.
+static func _drop_cap(w: World, cap: Node3D, at: Vector3) -> void:
+	if cap == null or not is_instance_valid(cap):
+		return
+	cap.reparent(w)
+	for c in cap.get_children():
+		if not (c is MeshInstance3D):
+			c.queue_free()
+	at.y = Cine.ground(w, at) + 0.03
+	var tw := w.create_tween().set_parallel(true)
+	tw.tween_property(cap, "global_position", at, 0.4).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_property(cap, "rotation", Vector3(0.15, randf() * TAU, 0.1), 0.4)
 
 
 ## The hunters' lantern beams sweep the back gardens while Bram and the
@@ -2322,7 +2880,7 @@ static func _gardens(w: World, hunters: Array) -> void:
 	Cine.shot(w, Vector3(-17.5, 4.5, 24.0), Vector3(-27.0, 0.8, 14.5), 46.0)
 	Cine.path(w, "bram", [GARDENS[0]], 2.6, "run")
 	await Cine.path(w, "player", [GARDENS[0] + Vector3(0.9, 0, 0.6)], 2.6, "run")
-	await Cine.say(w, "h3", "Check the barns!", 1.6)
+	await Cine.say(w, "h3", "Voss! Check the barns!", 1.8)
 	Cine.path(w, "bram", [GARDENS[1]], 2.6, "run")
 	await Cine.path(w, "player", [GARDENS[1] + Vector3(0.8, 0, 0.6)], 2.6, "run")
 	# a hound comes along the lane; they freeze
@@ -2341,6 +2899,9 @@ static func _gardens(w: World, hunters: Array) -> void:
 	Cine.shot(w, hc, g1 + Vector3(0, 1.0, 0), 38.0)
 	await Cine.say(w, "h4", "Nothing here.", 1.4)
 	await Cine.say(w, "h3", "Huntmaster wants the innkeeper alive.", 2.2)
+	await Cine.wait(w, 0.5)
+	await Cine.say(w, "h4", "Did you hear that?", 1.8)
+	await Cine.wait(w, 1.2)
 	Cine.despawn(w, "hound3")
 	Cine.path(w, "bram", [GARDENS[2]], 2.8, "run")
 	await Cine.path(w, "player", [GARDENS[2] + Vector3(0.8, 0, 0.5)], 2.8, "run")
@@ -2396,17 +2957,6 @@ static func _throw_torch(w: World, from: Vector3, to: Vector3, house_i: int) -> 
 	v.burn_house(house_i)
 
 
-## Tam's pitchfork.
-static func _pitchfork(v: AshfordVillage) -> Node3D:
-	var n := Node3D.new()
-	v.cyl(n, 0.02, 0.025, 1.7, Vector3(0, 0.0, 0), v.mats.beam_v, 8)
-	for x in [-0.07, 0.0, 0.07]:
-		v.cyl(n, 0.006, 0.01, 0.3, Vector3(x, 0.98, 0), v.mats.metal, 6)
-	v.box(n, Vector3(0.18, 0.025, 0.025), Vector3(0, 0.84, 0), v.mats.metal)
-	n.rotation = Vector3(0, 0, -0.25)
-	return n
-
-
 ## Blood between the cobbles (Violence: Full).
 static func _blood(v: AshfordVillage, at: Vector3) -> void:
 	var dm := QuadMesh.new(); dm.size = Vector2(1.6, 1.1); dm.orientation = PlaneMesh.FACE_Y
@@ -2438,8 +2988,10 @@ static func _woodpile(v: AshfordVillage, at: Vector3) -> void:
 
 # ---------------------------------------------------- P4 · the cellar ---
 
-## The cellar, smoke under the door: Bram's iron-bound chest and four old
-## decks. The player picks one. Then the rug, the trapdoor, and away.
+## The cellar (v3, P4), smoke curling under the door: Bram heaves open his
+## iron-bound chest, sweeps four worn card boxes into a sack, and drags a rug
+## aside: a trapdoor, and below it a tunnel shored with old timber. (The
+## decks are opened at the campfire, in the Thornwood.)
 static func _cellar(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
@@ -2469,23 +3021,37 @@ static func _cellar(w: World) -> void:
 	await lt.finished
 	w.shake(0.08)
 	Cine.shot(w, r.chest + Vector3(0.3, 1.25, 0.8), r.chest + Vector3(0, 0.6, 0), 32.0)
-	await Cine.wait(w, 1.2)
-	Cine.look(w, "bram", w.player.global_position)
-	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
-	await Cine.say(w, "bram", "My old decks. One for every kind of fight I ever had. Pick the one that feels like yours.")
-	var deck := await Cine.overlay(w).choose_deck("Choose your deck")
-	_keep_spark_cards_through(deck)
-	Game.set_flag("bram_deck")
-	Prologue.prologue_gifts()
-	var tails := {
-		"emberstorm": "Emberstorm. Hits first and hits hardest. I won a duke's bet with that one.",
-		"tidegrove": "Tidegrove. Patient. Heals what the others break, then drowns them. Nobody ever thanked me for a win with it.",
-		"ironstone": "Ironstone. Takes a beating and gives it back twice as hard. The one I'd pick, if I'm honest about myself.",
-		"veilwild": "Veilwild. Tricks and dreams. Wins duels nobody thinks it can. Including me, most nights.",
-	}
-	await Cine.say(w, "bram", String(tails.get(deck, "That one. Good.")))
-	await Cine.say(w, "bram", "Good. That one was always going to be yours.")
-	# the rug pulled aside, the trapdoor up
+	await Cine.wait(w, 1.0)
+	# and sweeps them into a sack
+	var sack := _sack(v)
+	var bp := Cine.body(w, "bram").global_position
+	var side: Vector3 = (bp - (r.chest as Vector3))
+	side.y = 0.0
+	sack.global_position = (r.chest as Vector3) + side.normalized().cross(Vector3.UP) * 0.85 + Vector3(0, 0.0, 0)
+	var perp := side.normalized().cross(Vector3.UP)
+	Cine.shot(w, (r.chest as Vector3) - perp * 1.6 + side.normalized() * 0.5 + Vector3(0, 1.25, 0), (r.chest as Vector3) + perp * 0.35 + Vector3(0, 0.4, 0), 38.0)
+	if bf is Figure3D:
+		(bf as Figure3D).pose("lift", 0.35, 0.3)
+	for b in r.boxes:
+		var box: Node3D = b
+		var tw := w.create_tween()
+		var from := box.global_position
+		var to := sack.global_position + Vector3(0, 0.35, 0)
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(box):
+				box.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.25, 0), 0.0, 1.0, 0.32)
+		tw.tween_callback(func() -> void:
+			if is_instance_valid(box):
+				box.visible = false)
+		_sfx(w, "card_fly", 0.8)
+		await Cine.wait(w, 0.22)
+	await Cine.wait(w, 0.4)
+	if bf is Figure3D:
+		(bf as Figure3D).release(0.3)
+		sack.reparent(bf, true)
+		(bf as Figure3D).carry(sack, Vector3(0.32, 0.5, 0.05))
+		sack.rotation = Vector3.ZERO
+	# the rug pulled aside, the trapdoor up, and a tunnel shored with old timber
 	var trap: Vector3 = r.trap
 	Cine.walk(w, "bram", trap + Vector3(0.9, 0, -0.2), 1.6)
 	Cine.shot(w, trap + Vector3(1.8, 1.5, 1.6), trap, 38.0)
@@ -2500,20 +3066,64 @@ static func _cellar(w: World) -> void:
 	var tt := w.create_tween()
 	tt.tween_property(td, "rotation:x", -1.75, 0.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await tt.finished
+	_tunnel_timbers(v, trap)
 	w.shake(0.06)
+	Cine.shot(w, trap + Vector3(2.0, 1.6, 1.9), trap + Vector3(0.3, 0.45, 0.0), 46.0)
+	await Cine.wait(w, 1.2)
+	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
-	await Cine.say(w, "bram", "Every inn worth its beer has one of these.")
+	await Cine.say(w, "bram", "Dug this the year I came. Never told you. Never told anyone.")
 	await Cine.fade(w, 1.0, 1.0)
+	if is_instance_valid(sack):
+		sack.queue_free()
 	InnRooms.outside(v)
 	for n in w.npcs:
 		n.doll.visible = true
 
 
-## Bram's deck becomes the player's real deck. The Spark deck and the Lantern
-## Moth stay in the collection (Game.new_game keeps the collection).
-static func _keep_spark_cards_through(deck: String) -> void:
-	Game.new_game(Game.player_name, deck, true)
-	# still in the cellar: a save now must bring the player back here, not
-	# on to Solhaven (new_game points the save there)
-	Game.area = "ashford"
-	Game.spawn = "green"
+## Bram's sack: rough cloth, tied at the neck.
+static func _sack(v: AshfordVillage) -> Node3D:
+	var n := Node3D.new()
+	v.add_child(n)
+	var cloth := StandardMaterial3D.new()
+	cloth.albedo_color = Color(0.5, 0.41, 0.28)
+	cloth.roughness = 1.0
+	var body := MeshInstance3D.new()
+	var sm := SphereMesh.new()
+	sm.radius = 0.2
+	sm.height = 0.5
+	body.mesh = sm
+	body.material_override = cloth
+	body.position = Vector3(0, 0.24, 0)
+	body.scale = Vector3(1.0, 1.0, 0.85)
+	n.add_child(body)
+	var neck := MeshInstance3D.new()
+	var nm := CylinderMesh.new()
+	nm.top_radius = 0.06
+	nm.bottom_radius = 0.035
+	nm.height = 0.12
+	neck.mesh = nm
+	neck.material_override = cloth
+	neck.position = Vector3(0, 0.52, 0)
+	n.add_child(neck)
+	return n
+
+
+## Under the trapdoor: the tunnel's mouth framed in old timber, and the top of
+## a ladder going down into the dark.
+static func _tunnel_timbers(v: AshfordVillage, trap: Vector3) -> void:
+	if v.has_meta("tunnel_timbers"):
+		return
+	v.set_meta("tunnel_timbers", true)
+	var n := Node3D.new()
+	v.add_child(n)
+	n.global_position = trap
+	for z in [-0.48, 0.48]:
+		v.box(n, Vector3(1.08, 0.07, 0.12), Vector3(0, 0.035, z), v.mats.beam)
+	for x in [-0.48, 0.48]:
+		v.box(n, Vector3(0.12, 0.07, 0.84), Vector3(x, 0.035, 0), v.mats.beam)
+	for x in [-0.2, 0.2]:
+		var rail := v.box(n, Vector3(0.05, 0.9, 0.05), Vector3(x, 0.12, 0.36), v.mats.beam_v)
+		rail.rotation.x = -0.25
+	for k in 2:
+		v.box(n, Vector3(0.42, 0.035, 0.035), Vector3(0, 0.1 + k * 0.24, 0.34 + k * 0.06), v.mats.wood_h)

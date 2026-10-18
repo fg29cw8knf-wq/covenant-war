@@ -78,17 +78,6 @@ func _on_new_game() -> void:
 	go_world("ashford", "green")
 
 
-## The rest of the Prologue after the marking: the heralds, the fire, the deck
-## choice and the road duel, then on to Solhaven.
-func _after_marking() -> void:
-	var story := StoryScreen.new()
-	_swap(story)
-	await Prologue.play_after_marking(story, self)
-	story.queue_free()
-	_current = null
-	go_world("solhaven", "gate")
-
-
 # -------------------------------------------------------------- duel lab ---
 
 func show_lab() -> void:
@@ -113,8 +102,6 @@ func go_world(area: String, spawn: String) -> void:
 ## The story moving on from one place to the next.
 func _on_story_next(what: String) -> void:
 	match what:
-		"prologue_heralds":
-			_after_marking()
 		"thornwood":
 			go_world("thornwood", "river")
 		"solhaven":
