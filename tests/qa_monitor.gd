@@ -5,6 +5,9 @@ extends Node
 ##   pop      someone or something on screen jumps more than a stride in one
 ##            frame without a cut (teleport), or just after a cut (a frame of
 ##            the new shot with them in the wrong place)
+##   snap     a hand or the head of someone on screen jumps in one frame (a
+##            clip changed with no blend, a hand put on something at once)
+##   turn     someone on screen turns round in one frame
 ##   slide    someone on screen moves along the ground without a walking clip
 ##   float    someone on screen stands well above or below the ground
 ##   vis      someone on screen appears or vanishes without a cut
@@ -97,7 +100,21 @@ func _sample() -> void:
 
 # ------------------------------------------------------------------ frames ---
 
+var _nodes := 0
+var _objs := 0
+var _res := 0
+
+
 func _check_hitch(ms: float) -> void:
+	var nodes := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
+	var objs := int(Performance.get_monitor(Performance.OBJECT_COUNT))
+	var res := int(Performance.get_monitor(Performance.OBJECT_RESOURCE_COUNT))
+	var dn := nodes - _nodes
+	var dobj := objs - _objs
+	var dres := res - _res
+	_nodes = nodes
+	_objs = objs
+	_res = res
 	if frame < 30:
 		_dts.append(ms)
 		return
@@ -105,10 +122,19 @@ func _check_hitch(ms: float) -> void:
 	sorted_dts.sort()
 	var med: float = sorted_dts[sorted_dts.size() / 2]
 	if ms > maxf(med * 3.0, 45.0):
-		_note("hitch", "%.0f ms (usual %.0f)" % [ms, med])
+		_note("hitch", "%.0f ms (usual %.0f): %+d nodes, %+d objects, %+d resources%s" % [ms, med, dn, dobj, dres,
+			", screen black" if _black() else ""])
 	_dts.append(ms)
 	if _dts.size() > 90:
 		_dts.pop_front()
+
+
+func _black() -> bool:
+	if w.has_meta("cine_overlay"):
+		var ov = w.get_meta("cine_overlay")
+		if is_instance_valid(ov) and ov._black.modulate.a > 0.9:
+			return true
+	return w.hud != null and w.hud._fade != null and w.hud._fade.modulate.a > 0.9
 
 
 # ------------------------------------------------------------------ camera ---
@@ -121,7 +147,10 @@ func _check_cam() -> bool:
 		var turned := rad_to_deg((-xf.basis.z).angle_to(-_cam_xf.basis.z))
 		if moved > 0.6 or turned > 14.0:
 			cut = true
-			_note("cut", "camera %.1f m, %.0f deg" % [moved, turned])
+			var short := float(w.get_meta("cine_cam_cut_short", 0.0))
+			_note("cut", "camera %.1f m, %.0f deg%s" % [moved, turned,
+				(", cutting short a camera move with %.1f s to go" % short) if short > 0.0 else ""])
+			w.set_meta("cine_cam_cut_short", 0.0)
 	_cam_xf = xf
 	_cam_ok = true
 	return cut
@@ -144,12 +173,7 @@ func _people() -> Array:
 func _on_screen(p: Vector3) -> bool:
 	if not w.cam.is_position_in_frustum(p):
 		return false
-	# not hidden by black (a fade) or behind the camera
-	if w.has_meta("cine_overlay"):
-		var ov = w.get_meta("cine_overlay")
-		if is_instance_valid(ov) and ov._black.modulate.a > 0.9:
-			return false
-	return true
+	return not _black()   # (hidden by a fade to black)
 
 
 const GAITS := ["walk", "run", "sneak", "strafe_left", "roll", "flying_kick", "jump", "punch_combo", "death", "lift", "fall"]
@@ -189,8 +213,27 @@ func _check_people(cut: bool) -> void:
 		# appearing / vanishing
 		if vis != bool(p.vis) and (on or was_on) and not cut:
 			_note("vis", "%s %s on screen" % [id, "appears" if vis else "vanishes"])
-		# sliding: moving without a walking clip
 		var fig3 := d as Figure3D if d is Figure3D else null
+		# a pose that snaps (a clip changed with no blend, a hand grabbing at
+		# something at once): a hand or the head jumps against the body
+		if fig3 != null and fig3._skel != null:
+			var parts := {}
+			for bn in ["Head", "LeftHand", "RightHand"]:
+				parts[bn] = fig3.bone_pos(bn) - pos
+			var yaw: float = fig3._yaw
+			var pp = p.get("parts")
+			if pp != null and on and was_on and not cut and step < 0.7:
+				for bn in parts:
+					var jump: float = ((parts[bn] as Vector3) - (pp[bn] as Vector3)).length()
+					if jump > 0.35:
+						_note("snap", "%s's %s jumps %.2f m (clip %s)" % [id, bn, jump, fig3._clip])
+						break
+				var turn := rad_to_deg(absf(angle_difference(yaw, float(p.get("yaw", yaw)))))
+				if turn > 50.0:
+					_note("turn", "%s turns %.0f deg in one frame (clip %s)" % [id, turn, fig3._clip])
+			_prev[key]["parts"] = parts
+			_prev[key]["yaw"] = yaw
+		# sliding: moving without a walking clip
 		var moving := step > 0.012 and step <= 0.7
 		var gait := false
 		if fig3 != null:

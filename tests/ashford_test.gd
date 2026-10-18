@@ -479,9 +479,11 @@ func _press(code: Key) -> void:
 
 
 func _shot(label: String) -> void:
+	_shots += 1
+	if DisplayServer.get_name() == "headless":
+		return   # (nothing is drawn: run for the checks only)
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
-	_shots += 1
 	if img != null:   # (none when run headless)
 		img.save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
 

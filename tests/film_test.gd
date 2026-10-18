@@ -17,7 +17,9 @@ extends Node
 ## first (flag=tam_told, flag=want_solhaven). "qa" watches the film for
 ## glitches as it plays (QAMonitor: jumps, slides, pops after cuts, two lines
 ## at once, music, hitches); "notap" leaves the subtitles to go by themselves,
-## as they do for a player who just watches.
+## as they do for a player who just watches; "frames=a-b" (or
+## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
+## close look at a moment the watch pointed at.
 
 var out_dir := "user://"
 var every := 0
@@ -38,6 +40,9 @@ var _choice := 0
 var _box := 1
 var _qa = null   # QA monitor (tests/qa_monitor.gd)
 var _notap := false
+var _from := -1
+var _to := -1
+var _windows: Array = []
 
 
 func _ready() -> void:
@@ -55,6 +60,16 @@ func _ready() -> void:
 			_choice = int(String(a).substr(7))
 		elif String(a).begins_with("box="):
 			_box = int(String(a).substr(4))
+		elif String(a).begins_with("frames="):
+			# frames=a-b: the stills every_n_frames only between those frames
+			# (a close look at a moment the QA watch pointed at)
+			var ab := String(a).substr(7).split("-")
+			_from = int(ab[0])
+			_to = int(ab[1]) if ab.size() > 1 else _from + 60
+		elif String(a).begins_with("frames_list="):
+			for s in String(a).substr(12).split(","):
+				var ab2 := s.split("-")
+				_windows.append([int(ab2[0]), int(ab2[1]) if ab2.size() > 1 else int(ab2[0]) + 30])
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
@@ -161,7 +176,7 @@ func _process(_d: float) -> void:
 		if ov2._waiting and _line_frames == 4:
 			_shot("line_%04d" % _frame)
 		_was_waiting = ov2._waiting
-	if every > 0 and _frame % every == 0:
+	if every > 0 and _frame % every == 0 and _in_window():
 		_shot("f%04d" % _frame)
 	# "only": stop when the film moves on to its next part
 	if _only and _start_part != "" and not _ending and _frame > 30:
@@ -171,6 +186,17 @@ func _process(_d: float) -> void:
 			print("FILM: part over after ", _frame, " frames (", now, ")")
 			await _shot("end")
 			get_tree().quit()
+
+
+func _in_window() -> bool:
+	if _from < 0 and _windows.is_empty():
+		return true
+	if _from >= 0 and _frame >= _from and _frame <= _to:
+		return true
+	for wnd in _windows:
+		if _frame >= int(wnd[0]) and _frame <= int(wnd[1]):
+			return true
+	return false
 
 
 ## "trace": each dialogue-box line as it comes up, with where Bram is.
