@@ -313,7 +313,9 @@ func stand(blend := 0.6) -> void:
 ## The sitting version of a clip (built the first time it's asked for, for
 ## this seat), or the clip itself when they're standing or it can't be sat.
 func _sat(clip: String) -> String:
-	if seat < 0.0 or clip in STANDING_ONLY or clip.begins_with("sat_") or _skel == null or anim == null or not anim.has_animation(clip):
+	if seat >= 0.0 and clip in STANDING_ONLY:
+		seat = -1.0   # (it stands them up)
+	if seat < 0.0 or clip.begins_with("sat_") or _skel == null or anim == null or not anim.has_animation(clip):
 		return clip
 	var nm := "sat_%s_%d" % [clip, roundi(seat * 100.0)]
 	if anim.has_animation(nm):
