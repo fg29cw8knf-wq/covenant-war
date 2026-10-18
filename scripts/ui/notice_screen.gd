@@ -74,10 +74,12 @@ func _ready() -> void:
 	cp.anchor_right = 1.0
 	cp.anchor_top = 1.0
 	cp.anchor_bottom = 1.0
-	cp.offset_top = -64
-	cp.offset_bottom = -24
 	cp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_root.add_child(cp)
+	SafeArea.watch(cp, func() -> void:   # above a phone's home bar
+		var b := maxf(24.0, SafeArea.insets().w)
+		cp.offset_top = -40 - b
+		cp.offset_bottom = -b)
 
 	_root.modulate.a = 0.0
 	create_tween().tween_property(_root, "modulate:a", 1.0, 0.8)

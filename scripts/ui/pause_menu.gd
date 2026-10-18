@@ -51,13 +51,9 @@ func _ready() -> void:
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
 	_panel = PanelContainer.new()
-	_panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_panel.offset_left = 28
-	_panel.offset_right = -28
-	_panel.offset_top = 24
-	_panel.offset_bottom = -24
 	_panel.add_theme_stylebox_override("panel", UITheme.sb(Color(0.04, 0.05, 0.09, 0.97), UITheme.PANEL_EDGE, 22, 2, 22))
 	add_child(_panel)
+	SafeArea.fit(_panel, Vector2(28, 24), true)   # clear of a phone's Dynamic Island and home bar, at the text size chosen
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 18)
 	_panel.add_child(col)
@@ -89,11 +85,13 @@ func _ready() -> void:
 	_toast.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_toast.offset_left = -800
 	_toast.offset_right = 800
-	_toast.offset_top = -110
-	_toast.offset_bottom = -60
 	_toast.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.modulate.a = 0.0
 	add_child(_toast)
+	SafeArea.watch(_toast, func() -> void:
+		var b := SafeArea.insets().w
+		_toast.offset_top = -110 - b
+		_toast.offset_bottom = -60 - b)
 
 
 func open(at_tab: String = "") -> void:
@@ -242,7 +240,7 @@ func _hero() -> Control:
 	xb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	rk.add_child(xb)
 	var seals: Array = v.get("seals", [])
-	right.add_child(UITheme.label("Seals %d of 7  ·  your Rank can climb to %d (each kingdom's Seal raises it)  ·  cards up to %s answer you" % [
+	right.add_child(_wrap("Seals %d of 7  ·  your Rank can climb to %d (each kingdom's Seal raises it)  ·  cards up to %s answer you" % [
 		seals.size(), Game.rank_cap(), Lore.TIER_NAMES[DuelRewards.tier_cap(rank)]], 24, UITheme.TEXT_DIM))
 	var pts := int(v.get("points", 0))
 	var head := HBoxContainer.new()
@@ -250,7 +248,7 @@ func _hero() -> Control:
 	head.add_child(UITheme.label("ATTRIBUTES", 32, UITheme.GOLD, "display_bold"))
 	var pl := UITheme.label("   %d point%s to place: tap +" % [pts, "" if pts == 1 else "s"] if pts > 0 else "   Rank up to earn points to place", 26, UITheme.GOLD if pts > 0 else UITheme.TEXT_DIM)
 	head.add_child(pl)
-	right.add_child(UITheme.label("Each point adds %d Life in a duel and helps the Fate rolls of cards that draw on it." % DuelRules.life_per_attribute, 22, UITheme.TEXT_DIM))
+	right.add_child(_wrap("Each point adds %d Life in a duel and helps the Fate rolls of cards that draw on it." % DuelRules.life_per_attribute, 22, UITheme.TEXT_DIM))
 	var gear := Items.gear_bonus(Game.equipped)
 	for a in Lore.ATTRIBUTES:
 		var row := HBoxContainer.new()
@@ -579,6 +577,7 @@ const CONTROLS := {
 			["Talk or duel", "Walk up to someone and tap the round button (bottom right), or tap them."],
 			["Next line", "Tap the conversation box."],
 			["Answer", "Tap the answer you want."],
+			["Zoom", "Pinch with two fingers, or tap + or − at the right."],
 			["Pause menu", "Tap ☰ at the top right."],
 		],
 		"duel": [
@@ -589,6 +588,7 @@ const CONTROLS := {
 			["Your god's Gift", "Tap the medallion beside End Turn (once a duel)."],
 			["End your turn", "Tap the big emblem, bottom right."],
 			["Change your mind", "Tap Cancel, or tap an empty part of the board."],
+			["Zoom the field", "Pinch with two fingers (a little in or out)."],
 			["Duel menu", "Tap ☰ at the top right: speed, the duel log, restart."],
 		],
 	},
@@ -600,6 +600,7 @@ const CONTROLS := {
 			["Talk or duel", "Tap the round button (bottom right) when it appears, or tap the person."],
 			["Next line", "Tap the conversation box."],
 			["Answer", "Tap the answer you want."],
+			["Zoom", "Pinch with two fingers, or tap + or − at the right."],
 			["Pause menu", "Tap ☰ at the top right."],
 		],
 		"duel": [
@@ -610,6 +611,7 @@ const CONTROLS := {
 			["Your god's Gift", "Tap the medallion beside End Turn."],
 			["End your turn", "Tap the big emblem, bottom right."],
 			["Change your mind", "Tap Cancel."],
+			["Zoom the field", "Pinch with two fingers (a little in or out)."],
 			["Duel menu", "Tap ☰ at the top right."],
 		],
 	},
@@ -622,6 +624,7 @@ const CONTROLS := {
 			["Talk or duel", "E, Space or Enter when the round button shows, or click the person."],
 			["Next line", "Click, or E / Space / Enter."],
 			["Answer", "Click it, or pick it with the arrow keys and press Enter (or E)."],
+			["Zoom", "Mouse wheel, pinch on a trackpad, the + and − keys, or click + or −."],
 			["Pause menu", "Esc or Tab."],
 		],
 		"duel": [
@@ -632,6 +635,7 @@ const CONTROLS := {
 			["Your god's Gift", "Click the medallion beside End Turn."],
 			["End your turn", "Space (with nothing selected), or click the big emblem."],
 			["Change your mind", "Esc or right-click."],
+			["Zoom the field", "Mouse wheel, or pinch on a trackpad (a little in or out)."],
 			["Duel menu", "Esc with nothing selected, or click ☰."],
 			["Bram's lessons", "Click, or E / Space / Enter, to go on."],
 		],
@@ -644,6 +648,7 @@ const CONTROLS := {
 			["Talk or duel", "A (Cross on PlayStation)."],
 			["Next line", "A (Cross)."],
 			["Answer", "Left stick or d-pad to choose, then A (Cross)."],
+			["Zoom", "Right stick up (closer) and down (further)."],
 			["Pause menu", "Start (Options)."],
 		],
 		"duel": [
@@ -755,6 +760,38 @@ func _options() -> Control:
 	v.add_child(_slider("Music", "music", 0.8, func() -> void: Music.apply_volume()))
 	v.add_child(_slider("Sound effects", "sfx", 0.9, func() -> void: pass))
 	v.add_child(_slider("Text speed", "text_speed", 1.0, func() -> void: pass, 0.5, 2.5))
+	# the walking camera: left is further out, right closer in (World eases to it)
+	var zoom := _slider("Camera zoom", "cam_zoom", 1.0, func() -> void: pass, World.ZOOM_MIN, World.ZOOM_MAX)
+	var zs: HSlider = zoom.get_child(1)
+	var reset := UITheme.button("Reset", false, 170)
+	reset.custom_minimum_size = Vector2(170, 64)
+	reset.add_theme_font_size_override("font_size", 26)
+	reset.pressed.connect(func() -> void: zs.value = 1.0)
+	zoom.add_child(reset)
+	v.add_child(zoom)
+	# bigger words and buttons in the world, its menus and films, for a small phone (SafeArea.ui_scale())
+	var sizes := HBoxContainer.new()
+	sizes.add_theme_constant_override("separation", 24)
+	var sl := UITheme.label("Text and buttons size", 30, UITheme.TEXT, "bold")
+	sl.custom_minimum_size = Vector2(300, 0)
+	sizes.add_child(sl)
+	var size_btns := []
+	for nm in SafeArea.UI_SCALES:
+		var val: float = SafeArea.UI_SCALES[nm]
+		var b := UITheme.button(nm, false, 200)
+		b.toggle_mode = true
+		b.button_pressed = is_equal_approx(SafeArea.ui_scale(), val)
+		b.custom_minimum_size = Vector2(200, 64)
+		b.add_theme_font_size_override("font_size", 26)
+		b.pressed.connect(func() -> void:
+			Game.settings["ui_scale"] = val
+			Game.save_settings()
+			for o in size_btns:
+				o.button_pressed = o == b
+			SafeArea.refresh())
+		size_btns.append(b)
+		sizes.add_child(b)
+	v.add_child(sizes)
 	v.add_child(_check("Full violence (blood when Totems fall)", String(Game.settings.get("violence", "full")) == "full", func(on: bool) -> void:
 		Game.settings["violence"] = "full" if on else "reduced"))
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
@@ -903,7 +940,9 @@ func _gap(h: int) -> Control:
 
 func _scroll(inner: Control) -> ScrollContainer:
 	var s := ScrollContainer.new()
-	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	# a page too wide for the panel (a big text size on a small screen) scrolls
+	# sideways rather than pushing the menu off the screen
+	s.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	s.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	inner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.add_child(inner)

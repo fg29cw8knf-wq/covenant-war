@@ -75,6 +75,43 @@ god's Law.
 Safari use Share > Add to Home Screen for a full-screen app icon). Rebuild it with `tools/build_web.sh`
 and push `build/web` to the `gh-pages` branch.
 
+**Edge to edge on a phone.** The game fills any screen shape (an iPhone 16 Pro Max
+held sideways is 2.17:1): the 1920 x 1080 base stretches sideways (`canvas_items` +
+`expand`), the opening movie's paintings and clips fill the screen (cropping a
+little top and bottom, `OpeningMovie.frame_rect()`), and the duel's 3D field
+covers the whole screen on any shape, the iPad's 4:3 included
+(`DuelField3D.fit_to_stage()` widens the lens to match). The buttons and words
+keep clear of the Dynamic Island, the rounded corners and the home bar through
+one helper, `SafeArea` (`scripts/ui/safe_area.gd`): `SafeArea.fit(control)` keeps
+a full-screen control inside the safe area, `SafeArea.rect()` / `insets()` give
+the margins. It reads `DisplayServer.get_display_safe_area()` in the apps and the
+page's CSS `env(safe-area-inset-*)` on the phone link (`tools/build_web.sh` adds
+`viewport-fit=cover` to the page so Safari doesn't leave bars beside the island;
+the Home Screen app is full screen, `progressive_web_app/display`). The iPhone
+app hides the status bar and the home bar and holds back the edge swipes
+(`display/window/ios/*` in `project.godot`). Check every screen at a phone's
+shape with a pretend safe area:
+
+```sh
+xvfb-run -a -s "-screen 0 2900x2200x24" godot --rendering-driver opengl3 --resolution 1434x660 \
+    res://tests/screen_fit_test.tscn -- /tmp/fit --safe-area=93,0,93,32 mark   # an iPhone 16 Pro Max at half size
+```
+
+`--safe-area=L,T,R,B` (window pixels) works on any run of the game; `mark` draws
+the island and home bar on the screenshots, and the test lists any button
+outside the safe area. The phone link's page is checked in Chromium dressed as
+the iPhone held sideways, with its safe area:
+
+```sh
+tools/build_web.sh && python3 tests/web_fit_check.py build/web /tmp/webfit   # viewport-fit, full-screen app, canvas, safe area; screenshots
+```
+
+Options also has **Text and buttons size** (Normal, Larger, Largest,
+`SafeArea.ui_scale()`), which draws the world's buttons, the conversation box,
+the pause menu, a card's detail and the films' words bigger for a small phone
+(add `ui=1.3` to the screen-fit test to see it). The title, the notice, the
+duel and the Duel Lab keep their size.
+
 A phone browser runs out of memory if it loads the whole game at once, so the web
 build comes in parts (`tools/web_packs.py` says what's in each, and `build_web.sh`
 keeps the export presets in step with it): a main pack (title, menus, Ashford,
@@ -215,7 +252,8 @@ godot --headless --script res://tests/lantern_sim.gd -- 80 1.0 0.25             
 ## Menus, standing, items and adverts
 
 - **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line.
-- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, violence, 3D field, advert previews, save, quit).
+- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
+- **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
 - **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs Bram's gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Bram's 30-card deck from the cellar (flag `bram_deck`) is the first one the player can edit; old saves past Ashford have everything open.
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
 - **Standing** (`scripts/game/standing.gd`): how each god and person sees the player, -10 to +10. Story choices already recorded as flags count through `FLAG_EFFECTS`; a dialogue step `{"standing": {"tilly": 1}, "why": "..."}` nudges it directly, and `{"if": "standing:solmaris>=2"}` branches on it. A toast says "Tilly will remember that."
@@ -233,7 +271,7 @@ xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 res://te
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/props_shot.tscn -- /tmp/props [thornwood]   # the windmill (turning, then burning) and the oaks
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/walls_shot.tscn -- /tmp/walls   # the walls, fence, sacks and crates, and what each view draws
 godot --headless --fixed-fps 10 res://tests/props_clear_test.tscn -- /tmp/clear burning 0 only   # nobody in the film walks through them (corin, midnight, dawn, burning)
-godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse); also runs under xvfb-run
+godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse, wheel, fingers); also runs under xvfb-run
 ```
 
 ## Running the tests

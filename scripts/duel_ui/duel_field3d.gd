@@ -33,6 +33,13 @@ var _home_look := Vector3(0, 0.8, 1.3)
 var _shake := 0.0
 var _punch := 0.0
 var _cam_tw: Tween
+var _view_k := 1.0        # how much taller the view is than the stage (fit_to_stage)
+## The player's zoom on the field (Game.settings.duel_view, from a pinch or the
+## mouse wheel): the lens times this, under 1 is closer. Kept within limits
+## that leave every slot clear of the hand and the side columns.
+const VIEW_MIN := 0.88
+const VIEW_MAX := 1.2
+var _view := 1.0          # eases to the setting
 
 
 class Slot:
@@ -81,16 +88,27 @@ func _init() -> void:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_view = view_setting()
 	_build()
 
 
-## Covers the stage's 16:9 rectangle, extended sideways to the screen edges
-## (so wide phones get more arena, never black bars).
+## Fills the whole screen, never black bars: a wide phone, a 4:3 iPad and the
+## margins kept for a phone's Dynamic Island and home bar all just see more
+## arena. The view is centred on the stage's 16:9 rectangle (so it may run a
+## little past one edge of the screen) and widened by _view_k, so that
+## rectangle shows exactly the field it always did and the 2D cards and
+## Totem plates stay on their slots.
 func fit_to_stage(stage_pos: Vector2, stage_scale: float, screen: Vector2) -> void:
-	var h := 1080.0 * stage_scale
+	var st := Vector2(1920.0, 1080.0) * stage_scale
+	var c := stage_pos + st * 0.5
+	var half := Vector2(maxf(c.x, screen.x - c.x), maxf(c.y, screen.y - c.y))
+	var pos := (c - half).floor()
+	var sz := (c + half).ceil() - pos
+	_view_k = sz.y / maxf(st.y, 1.0)
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
-	set_deferred("position", Vector2(0, stage_pos.y))
-	set_deferred("size", Vector2(screen.x, h))
+	set_deferred("position", pos)
+	set_deferred("size", sz)
+	_place_camera()
 
 
 # ================================================================== build ===
@@ -370,6 +388,7 @@ func _process(delta: float) -> void:
 	# the camera: its target, a slow idle drift, shake and punch
 	_shake = move_toward(_shake, 0.0, delta * 1.2)
 	_punch = move_toward(_punch, 0.0, delta * 0.12)
+	_view = lerpf(_view, view_setting(), minf(1.0, delta * 8.0))
 	_place_camera()
 
 
@@ -380,11 +399,22 @@ func _place_camera() -> void:
 	var jolt := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake
 	cam.position = cam_pos + drift + jolt
 	cam.look_at(cam_look + jolt * 0.3, Vector3.UP)
-	# This container covers the stage's rectangle (see fit_to_stage), so the
-	# view of the field is identical on any screen shape; wider phones see the
-	# same field with a little extra at the sides.
+	# This container is centred on the stage's rectangle and _view_k times its
+	# height (see fit_to_stage): the lens is widened to match, so the stage
+	# sees the same field on any screen shape and the rest is extra arena.
 	cam.keep_aspect = Camera3D.KEEP_HEIGHT
-	cam.fov = cam_fov * (1.0 - _punch)
+	var half := deg_to_rad(cam_fov * (1.0 - _punch)) * 0.5
+	cam.fov = rad_to_deg(2.0 * atan(tan(half) * _view_k * _view))
+
+
+## The zoom the player has chosen for the field (1 is the usual view).
+static func view_setting() -> float:
+	return clampf(float(Game.settings.get("duel_view", 1.0)), VIEW_MIN, VIEW_MAX)
+
+
+## Zooms the field by `factor` (under 1 comes closer), within the limits.
+func zoom_by(factor: float) -> void:
+	Game.settings["duel_view"] = clampf(view_setting() * factor, VIEW_MIN, VIEW_MAX)
 
 
 # ============================================================ coordinates ===

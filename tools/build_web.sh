@@ -13,6 +13,8 @@
 # The music isn't in the web pack: tools/web_music.py makes an MP3 of each
 # track in build/web/music/ and puts the page's own music player (which loops
 # them seamlessly, see scripts/ui/music_web.js) into index.html.
+# The page fills a phone's screen edge to edge (viewport-fit=cover, below, and
+# the head lines and full-screen Home Screen app in export_presets.cfg).
 set -e
 GODOT=${GODOT:-godot}
 . tools/build_info.sh
@@ -28,6 +30,20 @@ for pack in movie duel solhaven; do
 done
 printf '\n[packs]\n\nsizes={%s}\n' "${SIZES%, }" >> build_info.cfg
 "$GODOT" --headless --export-release "Web" build/web/index.html
+# Edge to edge on a phone: viewport-fit=cover lets the page (and the game) run
+# under the iPhone's Dynamic Island and home bar instead of Safari leaving bars
+# beside them; the game keeps its buttons clear of them itself (SafeArea, which
+# reads the page's env(safe-area-inset-*)). Godot's own page doesn't say it.
+python3 - build/web/index.html <<'EOF'
+import re, sys
+path = sys.argv[1]
+page = open(path).read()
+m = re.search(r'<meta name="viewport" content="([^"]*)">', page)
+assert m, "index.html has no viewport line to add viewport-fit=cover to"
+if "viewport-fit" not in m.group(1):
+	page = page.replace(m.group(0), '<meta name="viewport" content="%s, viewport-fit=cover">' % m.group(1), 1)
+	open(path, "w").write(page)
+EOF
 if [ "$1" = "--lab" ]; then
 	sed -i.bak 's/"args":\[\]/"args":["--","--lab"]/' build/web/index.html && rm -f build/web/index.html.bak
 fi
