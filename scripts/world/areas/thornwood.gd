@@ -190,7 +190,9 @@ static func _river(w: World) -> void:
 	Cine.shot(w, from_near, Vector3(hp.x, 0.6, 5.5), 36.0)
 	await Cine.walk(w, "hob", wade, 1.3)
 	Cine.look(w, "hob", w.player.global_position)
-	Cine.shot(w, from_near, Cine.head(w, "hob") + Vector3(0, -0.45, 0), 30.0)
+	# (a little wider and higher than his head: tighter, the folk on the far
+	# bank behind him had their heads cut off by the top of the picture)
+	Cine.shot(w, from_near, Cine.head(w, "hob") + Vector3(0, -0.1, 0), 34.0)
 	await Cine.say(w, "hob", "These came up in my cabbages. Tam said this morning you'd need them more than me.")
 	await _skim(w, hob.global_position + Vector3(0, 1.2, 0), w.player.global_position + Vector3(0.5, 0.1, 0.6))
 	Prologue.hob_sparks()
@@ -835,7 +837,8 @@ static func _road(w: World) -> void:
 		(pf2 as Figure3D).lie_down(0.01, true)
 	Cine.place(w, "bram", r + Vector3(-0.6, 0, -1.2), r + Vector3(2.0, 0, 6.0))
 	var watch := Cine.light(w, r + Vector3(-1.4, 0.4, -1.8), Color(1.0, 0.55, 0.25), 1.2, 6.0)
-	Cine.shot(w, r + Vector3(-4.6, 1.3, -4.8), r + Vector3(-1.2, 0.8, -1.4), 38.0)
+	# (looking down a little more: level, only your boots showed at the bottom)
+	Cine.shot(w, r + Vector3(-4.8, 1.8, -5.0), r + Vector3(-1.6, 0.4, -1.8), 38.0)
 	await Cine.fade(w, 0.0, 1.2)
 	await Cine.wait(w, 3.0)
 	await Cine.fade(w, 1.0, 1.6)
@@ -985,8 +988,9 @@ static func _kneel_cutout(w: World, who: String, down: bool) -> void:
 		else:
 			(f as Figure3D).release(0.4)
 	elif f != null:
+		# (squashed down onto its feet, not sunk into the road)
 		var n: Node3D = f
-		w.create_tween().tween_property(n, "position:y", -0.35 if down else 0.0, 0.35)
+		w.create_tween().tween_property(n, "scale:y", 0.8 if down else 1.0, 0.35)
 
 
 ## Someone shaking: the whole figure trembles, very slightly, for `secs`.
