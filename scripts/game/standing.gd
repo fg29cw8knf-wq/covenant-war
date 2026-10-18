@@ -28,6 +28,11 @@ const PEOPLE := {
 	"wren": {"name": "Wren", "role": "A thief who goes where the money is.", "look": "wren"},
 	"refugees": {"name": "The refugees", "role": "Families from the burned villages, at Solhaven's gate.", "look": "farmer"},
 	"aldric": {"name": "Ser Aldric Vane", "role": "Solhaven's Champion.", "look": "aldric"},
+	# Solhaven's side stories (scripts/world/areas/solhaven/solhaven_side.gd)
+	"ysa": {"name": "Ysa", "role": "From the gate, with her son Tobin. Prays to the Rootmother.", "look": "side_ysa"},
+	"anselm": {"name": "Brother Anselm", "role": "Heals under the dyers' bridge, for one word.", "look": "side_anselm"},
+	"fen": {"name": "Fen", "role": "Sold the Unsworn's blessing at the fountain.", "look": "side_fen"},
+	"corvin": {"name": "Father Corvin", "role": "A priest of the Sun Temple. Smiles a great deal.", "look": "side_corvin"},
 }
 
 ## Old ids a person's standing was once kept under (Ned the fiddler was

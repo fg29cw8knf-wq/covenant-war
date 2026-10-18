@@ -42,7 +42,7 @@ PACKS = {
 	},
 	"solhaven": {
 		"title": "Solhaven",
-		"files": ["scripts/world/areas/solhaven.gd", "assets/*/solhaven/*", "assets/*/*/solhaven/*"],
+		"files": ["scripts/world/areas/solhaven.gd", "scripts/*/solhaven/*", "assets/*/solhaven/*", "assets/*/*/solhaven/*"],
 	},
 }
 

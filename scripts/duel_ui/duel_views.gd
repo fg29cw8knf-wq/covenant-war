@@ -592,6 +592,8 @@ class WardZone:
 	var player: DuelPlayer = null
 	var mine := false
 	var reveal := false
+	## Ward uids lying face up for everyone to read (DuelGame.face_up).
+	var face_up := {}
 	var _t := 0.0
 
 	const CARD := Vector2(78, 109)
@@ -616,7 +618,7 @@ class WardZone:
 			var r := card_rect(i)
 			if i < player.wards.size():
 				DuelFX.draw_glow(self, r.get_center(), r.size * 0.95, Color(DuelCardFace.WARD_COL, 0.35 + 0.1 * sin(_t * 2.0 + i)))
-				if reveal:
+				if reveal or face_up.has(player.wards[i].uid):
 					DuelCardFace.draw_card(self, r, player.wards[i].id, {"compact": true})
 				else:
 					CardFace.draw_back(self, r)

@@ -699,6 +699,10 @@ func run_steps(steps: Array, npc) -> void:
 		elif st.has("scene"):
 			hud.dialogue.close()
 			await area.scene(st.scene, self)
+		elif st.has("call"):
+			# code that plays a stretch of story: {"call": callable}, called with
+			# (world, npc) and awaited (Solhaven's side stories)
+			await (st.call as Callable).call(self, npc)
 	_refresh_markers()
 
 

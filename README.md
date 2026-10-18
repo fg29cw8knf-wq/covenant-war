@@ -369,6 +369,8 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
 - **Standing** (`scripts/game/standing.gd`): how each god and person sees the player, -10 to +10. Story choices already recorded as flags count through `FLAG_EFFECTS`; a dialogue step `{"standing": {"tilly": 1}, "why": "..."}` nudges it directly, and `{"if": "standing:solmaris>=2"}` branches on it. A toast says "Tilly will remember that."
 - **Items** (`scripts/game/items.gd`): story items shown from flags, and equipment in three slots (charm, ring, deck case) that adds to attributes in every duel. A dialogue step `{"item": "<id>"}` gives one.
+- **Morrowen's Ledger** (`scripts/ui/ledger.gd`, the Ledger tab after Hero): the quest log in Morrowen's voice, as the Keeper of the Dead's record of the Age (Master Script v3, Side Quests). *Accounts* lists the main story and the side stories, those still open first, then the settled ones, newest first, a sentence or two each in the past tense; *People* has everyone met, by place, with their face (`assets/art/characters/<id>_portrait.png`, or their cut-out's until it exists), one line on what's known of them and, where it's kept, how they stand with you. The words, and the flags that pick between them, are in `scripts/story/ledger_entries.gd`, from the Prologue on.
+- **Sworn wagers** (`scripts/ui/swear_screen.gd`): before a one-shot wager duel, the swear screen says who's across the Circle and with what deck, what each side stakes, the opponent's duel rule, and "A sworn wager. Win or lose, it stands.", with **Not yet** and **Swear now** (armed after a moment, so a thumb tapping through talk can't swear by accident). The oath is saved (`wager_<id>`, `wagers_sworn`); the duel has no Try again (`spec.once`), and a game closed in the middle of one goes straight back into it.
 - **Adverts** (`scripts/game/ads.gd`, autoload `Ads`): one full-screen advert at most every 3 story duels and 5 minutes (never in the Prologue, never mid-duel), retries always free, and an optional advert after a story win that doubles its Resonance (3 a day; never offered in the Prologue either, `Ads.in_prologue()`). Until the AdMob plugin (poingstudios/godot-admob-plugin) is added to the iOS and Android exports, a labelled placeholder shows where each would play; Options turns previews off.
 
 Ashford's cottages, the Crooked Lantern, the windmill (its sails turn until the thatch catches at midnight) and the oaks round the village are Gary's models (`assets/models/ashford/`; an `oak_b.glb`, `oak_c.glb`... is used alongside `oak_a` as soon as it's there); each has a `<id>_glow.png` window mask made from its colour atlas, so the windows light up at night. Missing models fall back to the drawn stand-ins.
@@ -383,6 +385,36 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/p
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/walls_shot.tscn -- /tmp/walls   # the walls, fence, sacks and crates, and what each view draws
 godot --headless --fixed-fps 10 res://tests/props_clear_test.tscn -- /tmp/clear burning 0 only   # nobody in the film walks through them (corin, midnight, dawn, burning)
 godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse, wheel, fingers); also runs under xvfb-run
+```
+
+## Solhaven's side stories
+
+Chapter 1's five side stories (Master Script v3, Side Quests; the lines are copied
+into `docs/script/v3_side_quests.md`) live in `scripts/world/areas/solhaven/`:
+`solhaven_side.gd` (the stories, their people, their wagers and their decks) and
+`side_places.gd` (their places). Solhaven calls `setup(world)` once its square is
+built, and `event(world, name)` when the main story starts one of them
+("pips_errands", "sundial_scar", "hales_orders"); the square's spots fit either
+Solhaven square (`Places.square()`).
+
+- **The Price of Mercy** (Ysa, after the gate; in the square if she got in, at the gate if not): swear, pay the Temple's forty crowns, leave it to her, or find Brother Anselm under the dyers' bridge, and the Sergeant of the Dawn Watch (rule *Licensed*: his Rites cost nothing while you have more Totems).
+- **The Second Unsworn** (Fen on the fountain's rim): his soup line behind the fountain, then the truth, carry on, or a wager (rule *Patter*: his Wards lie face up and he swaps one each turn).
+- **Pip's Errands** (once Pip's gone to work on the counting-house steps): follow him, then a wager for one note (rule *Scrapper*: his Totems hit 10 harder while he's behind), or Wren lifts one; the note on screen, and what you do with it; then a place for him.
+- **The Sundial's Scar** (after Old Maren's talk): the oldest steps at dawn, Father Corvin, and Maren's forty pages.
+- **Hale's Orders** (only if Hale opened the gate to everyone, once you know he's been stripped of his command): the barracks yard at noon; stand with him, or a wager with the Captain of the Sun Guard (rule *Discipline*: her Totems can't be Burned, Poisoned or Frozen). The lashing follows the violence setting.
+
+Each place loads Gary's model by its name in "Solhaven: Your Step-by-Step" the
+moment it's there (`assets/models/solhaven/anselm_room.glb`, `shrine_lantern.glb`,
+`sundial_steps.glb`, `barracks_yard.glb`; people from `assets/models/characters/`:
+`ysa`, `tobin`, `temple_healer`, `anselm`, `sergeant`, `sun_guard`, `fen`, `pell`,
+`corvin`, `captain`, `hale`), and is a drawn stand-in until then.
+
+```sh
+godot --headless --script res://tests/story_rules_test.gd          # the four wager rules, and 30 duels under each
+godot --headless res://tests/side_quests_test.tscn -- /tmp/side    # all five, each branch, wagers won and lost: just the checks
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 15 \
+    res://tests/side_quests_test.tscn -- /tmp/side mercy_won      # with screenshots (scenarios: hub mercy_won mercy_lost
+#   mercy_swore fen_won fen_lost resume pip_aldric pip_lost pip_wren scar_told scar_nothing hale_won hale_lost hale_stood noon ledger)
 ```
 
 ## Running the tests
