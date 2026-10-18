@@ -276,7 +276,14 @@ dance, punch and death. Their rigs are smaller than the player's: Tam's and
 Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
 groups, and Nell has 29 bones in all. Nell's walking stick is part of her
 mesh, in her right hand, so that arm stays as in her idle when she talks,
-cheers, walks or runs. AssetFurnace's walk and run tip the head back, so
+cheers, walks or runs. Tilly's leather satchel hangs by her left hand, so
+AssetFurnace bound part of it (and of its strap over her right shoulder) to
+her arms, and it stretched after her hand when she held her card out:
+`--free-of-arms R,G,B:TOL` gives the big patches of the leather's colour the
+body's weights instead (a few shaded spots of skin of about that colour on a
+forearm stay with the arm), and leaves out the few triangles that fused her
+hand to the bag where it rests on it (a triangle that's all arm at one corner
+and no arm at another). AssetFurnace's walk and run tip the head back, so
 it's levelled for the four of them. Tam's master file was 47 MB because it
 carried every source file's mesh and textures, unused; his game model, like
 the others, has only what it uses (about 2.5 MB, with a 2048 colour atlas).
