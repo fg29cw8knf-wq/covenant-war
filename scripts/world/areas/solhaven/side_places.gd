@@ -632,8 +632,11 @@ const SQUARE := {
 	"soup": Vector3(1.1, 0, -8.0), "debtor": Vector3(2.4, 0, -8.6), "line_a": Vector3(3.5, 0, -9.0), "line_b": Vector3(4.6, 0, -9.2),
 	"soup_cam": Vector3(4.2, 2.0, -13.0), "soup_look": Vector3(1.4, 1.0, -8.4),   # from up the hill, the fountain behind
 	"pip_steps": Vector3(13.5, 0, -12.7), "pell": Vector3(14.1, 0, -11.6), "side_door": Vector3(10.6, 0, -17.6),
-	"pip_way": Vector3(12.2, 0, -13.0),   # round the Sundial's east side, to and from the side door
-	"pip_meet": Vector3(8.8, 0, -8.6), "player_meet": Vector3(7.7, 0, -7.4), "player_follow": Vector3(11.2, 0, -9.4),
-	"market": [Vector3(10.8, 0, -7.6), Vector3(6.4, 0, -9.6), Vector3(9.6, 0, -6.2)],
-	"wren_lift": Vector3(8.2, 0, -4.8),
+	# from the fountain steps up to the side door, clear of the lamp and the Sundial
+	"pip_way": [Vector3(3.4, 0, -11.2), Vector3(6.2, 0, -15.2)],
+	# the fountain steps (v3: "The Fountain Steps"), where Pip comes back down to
+	"pip_meet": Vector3(2.6, 0, -6.0), "player_meet": Vector3(4.0, 0, -7.2), "player_follow": Vector3(11.2, 0, -9.4),
+	"meet_cam": Vector3(6.2, 1.9, -3.3),   # side on to the two of you
+	"market": [Vector3(-0.8, 0, -6.8), Vector3(4.4, 0, -10.4), Vector3(1.0, 0, -9.8)],
+	"wren_lift": Vector3(5.0, 0, -6.5),
 }

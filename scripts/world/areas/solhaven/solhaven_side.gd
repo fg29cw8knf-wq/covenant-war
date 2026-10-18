@@ -1164,16 +1164,27 @@ static func _pip_errand(w: World) -> void:
 static func _pip_run(w: World) -> void:
 	await _cut(w, {"pip": [SQ.pip_steps, "pell"], "pell": [SQ.pell, "pip"], "player": [SQ.player_follow, "pip"]},
 		Vector3(7.6, 2.4, -7.8), Vector3(12.8, 1.0, -12.0), 40.0)
-	for i in 3:
-		_extra(w, "market_%d" % (i + 1), SQ.market[i], SQ.pip_meet)
 	var done := [false]
 	_pip_route(w, done)
 	await _see(w, "Pip takes a sealed note from a man in grey by the counting-house steps, and runs it up the hill to a side door of the Sun Court. He comes back with another.")
 	while not done[0]:
 		await w.get_tree().process_frame
-	_shot(w, SQ.player_meet + Vector3(-3.4, 1.9, 3.4), (SQ.pip_meet + SQ.player_meet) * 0.5 + Vector3(0, 0.95, 0), 36.0)
+	_market(w)
+	_meet_shot(w)
 	_face(w, "pip", "player")
 	_face(w, "player", "pip")
+
+
+## People about the fountain where you and Pip meet.
+static func _market(w: World) -> void:
+	for i in 3:
+		_extra(w, "market_%d" % (i + 1), SQ.market[i], (SQ.pip_meet + SQ.player_meet) * 0.5)
+
+
+## You and Pip on the fountain steps, side on (wider for Wren's lift).
+static func _meet_shot(w: World, wide := false) -> void:
+	var look: Vector3 = (SQ.pip_meet + SQ.player_meet) * 0.5 + Vector3(0, 0.95, 0)
+	_shot(w, SQ.meet_cam + (Vector3(-0.3, 0.4, 1.4) if wide else Vector3.ZERO), look, 40.0 if wide else 36.0)
 
 
 static func _pip_route(w: World, done: Array) -> void:
@@ -1185,19 +1196,20 @@ static func _pip_route(w: World, done: Array) -> void:
 	Cine.walk(w, "player", SQ.player_meet, 1.6)
 	await w.get_tree().create_timer(1.0).timeout
 	Cine.body(w, "pip").visible = true
-	await Cine.path(w, "pip", [SQ.pip_way, SQ.pip_meet], 3.6, "run")
+	await Cine.path(w, "pip", [SQ.pip_way[1], SQ.pip_way[0], SQ.pip_meet], 3.6, "run")
 	done[0] = true
 
 
-## Pip off up the hill to the side door (round the Sundial).
+## Pip off up the hill to the side door.
 static func _pip_up_the_hill(w: World) -> void:
-	await Cine.path(w, "pip", [SQ.pip_way, SQ.side_door], 3.6, "run")
+	await Cine.path(w, "pip", [SQ.pip_way[0], SQ.pip_way[1], SQ.side_door], 3.6, "run")
 
 
-## Pip and you in the market, by his steps (also where a resumed duel starts).
+## Pip and you on the fountain steps (also where a resumed duel starts).
 static func _pip_stage(w: World) -> void:
 	await _cut(w, {"pip": [SQ.pip_meet, "player"], "player": [SQ.player_meet, "pip"], "pell": [SQ.pell, SQ.pip_meet]},
-		SQ.player_meet + Vector3(-3.4, 1.9, 3.4), (SQ.pip_meet + SQ.player_meet) * 0.5 + Vector3(0, 0.95, 0), 36.0)
+		SQ.meet_cam, (SQ.pip_meet + SQ.player_meet) * 0.5 + Vector3(0, 0.95, 0), 36.0)
+	_market(w)
 
 
 ## "If Wren is with you and you ask her, she lifts one in the crowd."
@@ -1207,7 +1219,7 @@ static func _wren_lifts(w: World) -> void:
 		_put(w, "wren", start, "pip")
 	else:
 		_extra(w, "wren", start, "pip")
-	_shot(w, SQ.player_meet + Vector3(-4.0, 2.3, 4.0), SQ.pip_meet + Vector3(0, 0.9, 0), 40.0)
+	_meet_shot(w, true)
 	await Cine.walk(w, "wren", SQ.pip_meet + Vector3(0.5, 0, 0.6), 1.8)
 	await _see(w, "Wren lifts one in the crowd.")
 	await Cine.walk(w, "wren", SQ.player_meet + Vector3(-0.9, 0, 0.4), 1.8)
@@ -1254,7 +1266,7 @@ static func _pip_note(w: World) -> void:
 		return
 	await _say(w, "pip", "That's two crowns! And Mr Pell'll know!")
 	await _see(w, "He runs, not up the hill but away.")
-	Cine.walk(w, "pip", SQ.pip_meet + Vector3(-0.6, 0, 11.0), 4.0, "run")
+	Cine.walk(w, "pip", SQ.pip_meet + Vector3(6.0, 0, 4.4), 4.0, "run")
 	await w.get_tree().create_timer(0.8).timeout
 	if c == 1:
 		Game.set_flag("side_pip", "kept")
