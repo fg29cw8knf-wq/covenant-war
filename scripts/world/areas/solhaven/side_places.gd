@@ -60,10 +60,12 @@ const HUB := {
 }
 
 ## Chapter 1's square (the SolhavenSet: the world has meta "solhaven_set")
-## runs further south, with the notice board where the barracks gateway was
-## and a solid gate: these spots replace HUB's and SQUARE's there.
+## has the notice board where the barracks gateway was, and a solid gate:
+## these spots replace HUB's and SQUARE's there.
 const HUB_SET := {
-	"barracks": Vector3(-16.1, 0, 14.2), "barracks_talk": Vector3(-14.9, 0, 14.2),   # between the houses, south of the board
+	# the north-west corner, by the temple (the south-west one is too close
+	# to the city wall for the camera)
+	"barracks": Vector3(-16.1, 0, -17.6), "barracks_talk": Vector3(-14.9, 0, -17.6),
 }
 const SQUARE_SET := {
 	"ysa_gate": Vector3(-1.2, 0, 23.4),   # the shut gate, from inside: the way out to her camp
