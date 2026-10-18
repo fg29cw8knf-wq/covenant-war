@@ -51,22 +51,18 @@ const MARKS := {
 }
 
 ## In the Sun Square: the Great Sundial (temple square), the barracks
-## gateway (west) and the counting-house steps (east), and where to stand
-## to use each.
+## gateway (north-west, beside the temple steps, facing south so the camera
+## sees it; the west walls are past the camera's reach) and the
+## counting-house steps (east), and where to stand to use each.
 const HUB := {
 	"sundial": Vector3(9.2, 0, -13.6), "sundial_talk": Vector3(9.2, 0, -11.5),
-	"barracks": Vector3(-16.1, 0, 3.0), "barracks_talk": Vector3(-14.9, 0, 3.0),
+	"barracks": Vector3(-14.4, 0, -19.9), "barracks_talk": Vector3(-13.9, 0, -17.6),
 	"counting_house": Vector3(15.0, 0, -12.4),
 }
 
 ## Chapter 1's square (the SolhavenSet: the world has meta "solhaven_set")
-## has the notice board where the barracks gateway was, and a solid gate:
-## these spots replace HUB's and SQUARE's there.
-const HUB_SET := {
-	# the north-west corner, by the temple (the south-west one is too close
-	# to the city wall for the camera)
-	"barracks": Vector3(-16.1, 0, -17.6), "barracks_talk": Vector3(-14.9, 0, -17.6),
-}
+## has a solid gate: these spots replace HUB's and SQUARE's there.
+const HUB_SET := {}
 const SQUARE_SET := {
 	"ysa_gate": Vector3(-1.2, 0, 23.4),   # the shut gate, from inside: the way out to her camp
 }
@@ -130,7 +126,7 @@ static func hub(w: World) -> void:
 	w.set_meta("side_hub", root)
 	var at := hubs(w)
 	_hub_sundial(root, at.sundial)
-	_hub_barracks(root, at.barracks)
+	_hub_barracks(root, at.barracks, -PI * 0.5)   # facing south, into the square
 	_hub_counting_house(root, at.counting_house)
 
 
@@ -162,21 +158,27 @@ static func _gnomon(root: Node3D, base: Vector3, length: float, thick: float) ->
 	g.position = base + Vector3(0, length * 0.5, 0)
 
 
-## The barracks gateway on the west side: a white wall with a gateway, a gold
-## sun painted over it, and the dark of the yard beyond.
-static func _hub_barracks(root: Node3D, c: Vector3) -> void:
+## The barracks gateway: a white wall with a gateway, a gold sun painted over
+## it, and the dark of the yard beyond. Built facing +x, then turned by `yaw`
+## (radians) about its middle.
+static func _hub_barracks(root: Node3D, c: Vector3, yaw := 0.0) -> void:
 	var K := LevelKit
-	K.box(root, c + Vector3(0, 0, -2.05), Vector3(0.7, 3.8, 2.3), "plaster")
-	K.box(root, c + Vector3(0, 0, 2.05), Vector3(0.7, 3.8, 2.3), "plaster")
-	K.box(root, c + Vector3(0, 3.0, 0), Vector3(0.7, 0.8, 1.8), "plaster", false)
-	var dark := K.box(root, c + Vector3(-0.55, 0, 0), Vector3(0.3, 3.0, 1.8), "dark_wood", false)
+	var g := Node3D.new()
+	g.name = "BarracksGateway"
+	root.add_child(g)
+	g.position = c
+	g.rotation.y = yaw
+	K.box(g, Vector3(0, 0, -2.05), Vector3(0.7, 3.8, 2.3), "plaster")
+	K.box(g, Vector3(0, 0, 2.05), Vector3(0.7, 3.8, 2.3), "plaster")
+	K.box(g, Vector3(0, 3.0, 0), Vector3(0.7, 0.8, 1.8), "plaster", false)
+	var dark := K.box(g, Vector3(-0.55, 0, 0), Vector3(0.3, 3.0, 1.8), "dark_wood", false)
 	dark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var sun := K.cylinder(root, c + Vector3(0.37, 3.55, 0), 0.34, 0.04, "gold", false, 0.34, 24)
+	var sun := K.cylinder(g, Vector3(0.37, 3.55, 0), 0.34, 0.04, "gold", false, 0.34, 24)
 	sun.rotation.z = PI * 0.5
-	sun.position = c + Vector3(0.37, 3.55, 0)
+	sun.position = Vector3(0.37, 3.55, 0)
 	for i in 8:
 		var a := TAU * i / 8.0
-		var ray := K.box(root, c + Vector3(0.38, 3.55 + cos(a) * 0.5 - 0.06, sin(a) * 0.5), Vector3(0.03, 0.12, 0.22), "gold", false)
+		var ray := K.box(g, Vector3(0.38, 3.55 + cos(a) * 0.5 - 0.06, sin(a) * 0.5), Vector3(0.03, 0.12, 0.22), "gold", false)
 		ray.rotation.x = -a
 
 
