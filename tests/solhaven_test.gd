@@ -63,6 +63,12 @@ func _skip_to(part: String) -> void:
 	for i in order.find(part):
 		Game.set_flag("c%d_done" % (i + 1))
 	Game.set_flag("gate_choice", ["all", "children", "shut"][clampi(_choice, 0, 2)])
+	if order.find(part) > 0:
+		Game.set_flag("beat_hale")
+	if order.find(part) > 3:
+		Game.set_flag("solmaris_favour", "refused")
+	if order.find(part) > 4:
+		Game.set_flag("trial_light_passed")
 	if order.find(part) > 2:
 		Game.set_flag("wren_joined", _choice == 0)
 		Game.set_flag("beat_wren")

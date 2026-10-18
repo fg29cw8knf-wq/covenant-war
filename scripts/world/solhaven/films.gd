@@ -1668,7 +1668,7 @@ static func _sleeper(w: World, at: Vector3, along: Vector3) -> Node3D:
 	root.add_child(cloak)
 	var eyes := Node3D.new()
 	eyes.visible = false
-	eyes.position = Vector3(0, 0.34, -0.62)
+	eyes.position = Vector3(0, 0.27, -0.8)   # (just past the hood, out of the cloak)
 	root.add_child(eyes)
 	for x in [-0.05, 0.05]:
 		var e := MeshInstance3D.new()
@@ -1718,7 +1718,7 @@ static func _vault(w: World) -> void:
 		Cine.body(w, "film_wren").visible = false
 		eyes = _sleeper(w, wheel, along)
 	# from outside the wheels, low, on her face end (where her eyes open)
-	var under_at: Vector3 = wheel + along * 0.6 + Vector3(0, 0.3, 0)
+	var under_at: Vector3 = wheel + along * 0.8 + Vector3(0, 0.28, 0)
 	var under_cam: Vector3 = under_at + out * 3.2 + along * 1.4 + Vector3(0, 0.45, 0)
 	var turnip_was: float = v.turnip.rotation.z
 	v.turnip.rotation.z = 0.0
@@ -1747,7 +1747,7 @@ static func _vault(w: World) -> void:
 		(bf as Figure3D).release(0.6)
 	Cine.shot(w, f + Vector3(-5.0, 1.5, 5.0), v.wagon.global_position + Vector3(0, 1.0, 0), 38.0)
 	await _narrate(w, "He puts the card in his coat and stares into the dark for a long time.")
-	Cine.shot(w, under_cam, under_at, 22.0)
+	Cine.shot(w, under_cam, under_at, 28.0)
 	if eyes != null:
 		eyes.visible = true   # her eyes open, catching the lamp
 	await _narrate(w, "In the shadow of the wagon wheel, Wren is awake.")
