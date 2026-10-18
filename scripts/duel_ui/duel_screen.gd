@@ -501,6 +501,7 @@ func _start() -> void:
 		panels[side].mine = side == me
 		ward_zones[side].player = game.players[side]
 		ward_zones[side].mine = side == me
+		ward_zones[side].face_up = game.face_up   # Wards that lie face up (Fen's Patter, the Unveiling)
 	BlankCardSlot.attach(self)   # the blank card, from the night of the Sigilfall on
 	_refresh()
 	await game.run()
@@ -2373,6 +2374,14 @@ func story_bark(event: String) -> void:
 		return
 	_barked[event] = true
 	_show_bark(String(lines[event]))
+
+
+## A story duel's own rule just made a difference on the board (DuelGame's
+## fx_rule: a free Rite under licence, Fen's Patter, Pip scrapping, the
+## Captain's discipline): the rival's line for it, once ("rule" in bark_on).
+func fx_rule(pi: int, _rule_id: String) -> void:
+	if pi == rival:
+		story_bark("rule")
 
 
 ## "my_lethal": checked each time the player is about to act.

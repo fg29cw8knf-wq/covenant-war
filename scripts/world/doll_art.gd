@@ -37,6 +37,16 @@ const LOOKS := {
 	"trader": {"skin": "d2a07a", "hair": "4a3a2a", "style": "short", "outfit": "7a5a3a", "trim": "b89a5a", "legs": "3a3226", "extras": ["beard"]},
 	"refugee": {"skin": "dcb08e", "hair": "3a2a20", "style": "long", "outfit": "8a7a6a", "trim": "5a4a3a", "legs": "4a3a30", "cloak": "6a5a4a"},
 	"courtier": {"skin": "f0d0b0", "hair": "7a4a2a", "style": "long", "outfit": "d8c070", "trim": "f6e8b0", "legs": "c0a858"},
+	# Solhaven's side stories (scripts/world/areas/solhaven/solhaven_side.gd), until their models exist
+	"side_ysa": {"skin": "d9ab86", "hair": "3a2a20", "style": "long", "outfit": "6f7a52", "trim": "4f8a3a", "legs": "4a3a30", "cloak": "7a6a52"},
+	"side_healer": {"skin": "c99a74", "hair": "2a1c14", "style": "long", "outfit": "f4efe2", "trim": "e2b64a", "legs": "f0ead8", "cloak": "f7f3ea", "extras": ["robe", "hood"]},
+	"side_anselm": {"skin": "e3c3a6", "hair": "b8b4ac", "style": "short", "outfit": "85857f", "trim": "8a6a3a", "legs": "6e6e6a", "extras": ["robe"]},
+	"side_sergeant": {"skin": "d2a07a", "hair": "1e1a18", "style": "bald", "outfit": "ece6d4", "trim": "d1a43c", "legs": "6b4a2e", "extras": ["armor", "beard"]},
+	"side_fen": {"skin": "6e4630", "hair": "1a1210", "style": "short", "outfit": "d9a43a", "trim": "2c4f8a", "legs": "6b4a2e"},
+	"side_pell": {"skin": "efd8c4", "hair": "8a7a60", "style": "short", "outfit": "707074", "trim": "f2f2f2", "legs": "55555c"},
+	"side_corvin": {"skin": "f2c4b2", "hair": "b08a5a", "style": "bald", "outfit": "f4efe2", "trim": "e6b84f", "legs": "f0ead8", "extras": ["robe"]},
+	"side_captain": {"skin": "6e4a34", "hair": "cfcfcf", "style": "short", "outfit": "ece6d4", "trim": "e0b040", "legs": "8a8a92", "extras": ["armor"]},
+	"side_hale": {"skin": "e2b18c", "hair": "6a5a4a", "style": "short", "outfit": "d6cdb8", "trim": "6b4a2e", "legs": "6b4a2e", "extras": ["beard"]},
 }
 
 static var _cache := {}
