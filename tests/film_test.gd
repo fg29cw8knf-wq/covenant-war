@@ -14,7 +14,10 @@ extends Node
 ## reading it would) instead of tapping on at once, "choice=<n>" to answer
 ## every choice with its nth answer (from 0), "box=<n>" for which of Bram's
 ## four boxes to choose at the campfire, and flag=<name> to set a story flag
-## first (flag=tam_told, flag=want_solhaven).
+## first (flag=tam_told, flag=want_solhaven). "qa" watches the film for
+## glitches as it plays (QAMonitor: jumps, slides, pops after cuts, two lines
+## at once, music, hitches); "notap" leaves the subtitles to go by themselves,
+## as they do for a player who just watches.
 
 var out_dir := "user://"
 var every := 0
@@ -33,6 +36,8 @@ var _ending := false
 var _read := 3
 var _choice := 0
 var _box := 1
+var _qa = null   # QA monitor (tests/qa_monitor.gd)
+var _notap := false
 
 
 func _ready() -> void:
@@ -42,6 +47,7 @@ func _ready() -> void:
 	every = int(args[2]) if args.size() > 2 else 0
 	_only = "only" in args
 	_keys = "keys" in args
+	_notap = "notap" in args
 	for a in args:
 		if String(a).begins_with("read="):
 			_read = int(String(a).substr(5))
@@ -79,8 +85,12 @@ func _ready() -> void:
 		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())
 		await _shot("end")
 		print("FILM: done")
+		if _qa != null:
+			print(_qa.summary())
 		get_tree().quit())
 	add_child(world)
+	if "qa" in args:
+		_qa = preload("res://tests/qa_monitor.gd").watch(world)
 	await _frames(20)
 	if _part == "corin":
 		var c = world._npc_by_id("corin")
@@ -114,7 +124,7 @@ func _process(_d: float) -> void:
 		# sees each one on screen
 		if ov._waiting:
 			_line_frames += 1
-			if _line_frames > 12:
+			if _line_frames > 12 and not _notap:
 				_line_frames = 0
 				ov._next.emit()
 		else:
