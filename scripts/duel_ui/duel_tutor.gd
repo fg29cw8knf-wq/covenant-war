@@ -25,9 +25,11 @@ extends RefCounted
 ## Every line is kept, in order, on the pause menu's How to Duel page
 ## (Game.lessons()). Later duels where Bram is about (spec.lessons = true)
 ## get a tutor with no script, just for lesson(): the first condition, Ward
-## or Ascension is explained the same gated way, once ever.
+## or Ascension is explained the same gated way, once ever, in the words of
+## Master Script v3 (FIRST_TIME). spec.tutorial = {"quiet": true} gives a
+## duel with no lessons at all: the Lantern Duel when the player told Bram
+## they'd watched enough duels ("Then I'll keep quiet. Mostly.").
 
-signal _tapped
 signal _did_step
 
 var screen   # DuelScreen
@@ -143,11 +145,46 @@ func event(name: String) -> void:
 ## Ward, Ascension): one gated line from Bram, kept on the How to Duel page,
 ## never taught twice. `focus` spotlights what it's about.
 func lesson(id: String, text: String, p_group: String, p_focus: String = "", who: String = "Bram") -> void:
-	if Game.learned(id):
+	if Game.learned(id) or bool(data.get("quiet", false)):
 		return
+	text = first_time_line(id, text)
 	Game.learn(id, p_group, who, text)
 	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
 	_show_head()
+
+
+## Bram's first-time lines in Master Script v3's words ("Bram, the first time
+## each thing appears"), by lesson id. The Duel screen asks for each lesson
+## with its own (older) wording and the cards it's about filled in; where v3
+## rewrote the line, this gives v3's, with the same cards. "(mine)" is the
+## version for when Bram is the one across the Circle.
+const FIRST_TIME := {
+	"fate": "That's a Fate roll. High, and it hits hard; low, nothing. The die doesn't care who you are.",
+	"ward_set": "A Ward. Face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
+	"ward_set (mine)": "That's my Ward, face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
+	"ward_mine": "Yours is down. It'll spring on its own when its moment comes. Set them early, while they're cheap.",
+	"ward_spring": "There it goes. It's spent now. Next time, think what it's waiting for, and don't give it that.",
+	"summon (theirs)": "That was a Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
+	"summon (mine)": "That was my Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
+	"ascend": "That %s is an Ascension: %s, grown up. Play it on your %s and it steps into the same slot, bigger, with everything it had. It costs Essence, so think about when.",
+}
+
+
+static func first_time_line(id: String, text: String) -> String:
+	var mine := text.begins_with("That's my") or text.begins_with("That was my")
+	match id:
+		"fate", "ward_mine", "ward_spring":
+			return FIRST_TIME[id]
+		"ward_set":
+			return FIRST_TIME["ward_set (mine)" if mine else "ward_set"]
+		"summon":
+			if text.begins_with("That was"):
+				return FIRST_TIME["summon (mine)" if mine else "summon (theirs)"]
+		"ascend":
+			var m := RegEx.create_from_string("^That (.+) is an Ascension: (.+), grown up\\.").search(text)
+			if m != null:
+				return FIRST_TIME.ascend % [m.get_string(1), m.get_string(2), m.get_string(2)]
+	return text
 
 
 ## True while an instruction is waiting to be carried out.
@@ -213,12 +250,27 @@ func did(kind: String, what = null) -> void:
 
 
 ## Shows the explanations at the front of the queue, then the next instruction.
+## One run at a time: asked again while it's running (the duel coming back
+## to the main phase while a line is still up), it waits for that run to
+## finish instead of starting a second over the same lines, which would
+## take two lines away with one tap.
 func _continue() -> void:
+	if _continuing:
+		await _continued
+		return
+	_continuing = true
 	while not queue.is_empty() and not (queue[0] as Dictionary).has("do"):
-		await _explain(queue[0])
-		if not queue.is_empty():
+		var step: Dictionary = queue[0]
+		await _explain(step)
+		if not queue.is_empty() and is_same(queue[0], step):
 			queue.pop_front()
+	_continuing = false
 	_show_head()
+	_continued.emit()
+
+
+signal _continued
+var _continuing := false
 
 
 ## Something else was tapped: shake the instruction so the eye finds it.
@@ -238,6 +290,9 @@ func nudge() -> void:
 func finish() -> void:
 	queue.clear()
 	event_step = {}
+	_line_up = false
+	_waiting.clear()
+	_continuing = false
 	blocking = false
 	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hide()
@@ -250,18 +305,48 @@ func tap() -> void:
 
 # ------------------------------------------------------------------ drawing ---
 
+## An explanation, up until the player taps. Lines take turns: one that
+## comes while another is up (Bram's "See that?" as the hit lands, while the
+## line queued behind the attack is showing) waits until that one has been
+## tapped, so a single tap never carries two lines away.
 func _explain(step: Dictionary) -> void:
+	if _line_up:
+		var turn := Turn.new()
+		_waiting.append(turn)
+		await turn.go   # (handed the box by the line before, still marked up)
+	_line_up = true
+	_put_up(step)
+	await _tapped
+	if screen.sfx != null:
+		screen.sfx.play("ui_tap")
+	blocking = false
+	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _waiting.is_empty():
+		_line_up = false
+	else:
+		# (next frame: not from inside this tap, which it mustn't also take)
+		var nxt: Turn = _waiting.pop_front()
+		nxt.go.emit.call_deferred()
+
+
+signal _tapped
+var _line_up := false
+## Lines waiting for the box, first come first shown.
+var _waiting: Array = []
+
+
+class Turn:
+	extends RefCounted
+	signal go
+
+
+func _put_up(step: Dictionary) -> void:
 	blocking = true
 	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
 	_show_box(step, "TAP TO CONTINUE  ▸")
 	focus = String(step.get("focus", ""))
 	spot.dim = 0.42 if focus == "" else 0.55
 	_shown_at = Time.get_ticks_msec()
-	await _tapped
-	if screen.sfx != null:
-		screen.sfx.play("ui_tap")
-	blocking = false
-	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## An instruction inside an event: up until the player does it.
@@ -274,6 +359,8 @@ func _instruct(step: Dictionary) -> void:
 
 
 func _show_head() -> void:
+	if _line_up:
+		return   # a line is still up (or waiting): the head shows when it's done
 	if queue.is_empty() or not (queue[0] as Dictionary).has("do"):
 		_hide()
 		return

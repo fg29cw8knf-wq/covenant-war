@@ -60,7 +60,8 @@ var face_up := {}
 ## A story duel's own rules (Master Script v3: every story duel has one rule
 ## that says who the opponent is), as {rule id: the side it binds}. Each rule
 ## is its own _rule_<id>() function under "story rules" below:
-## "run_to_ground" (Hunter Dask, the Thornwood road).
+## "run_to_ground" (Hunter Dask, the Thornwood road), "showboat" (Corin, the
+## Lantern Duel).
 var story_rules := {}
 
 
@@ -209,6 +210,8 @@ func _take_turn() -> void:
 		var action = await p.controller.choose_action(self, current)
 		if over:
 			return
+		if action == null or action.is_empty() or action.type == "end":
+			action = _rule_showboat_owed(current)   # no ending the turn with a Showboat attack owed
 		if action == null or action.is_empty() or action.type == "end":
 			break
 		await perform(current, action)
@@ -419,6 +422,9 @@ func action_problem(pi: int, action: Dictionary) -> String:
 		return "The duel is over."
 	if pi != current:
 		return "It isn't your turn."
+	var showboat := _rule_showboat(pi, action)
+	if showboat != "":
+		return showboat
 	match action.get("type", ""):
 		"call":
 			return call_problem(pi, action.get("card"), int(action.get("slot", -1)))
@@ -709,6 +715,7 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 				top = maxi(top, f.hp_left())
 			out = foes.filter(func(f): return f.hp_left() == top)
 	out = _rule_run_to_ground(pi, out)
+	out = _rule_showboat_targets(pi, t, out)
 	return out
 
 
@@ -871,6 +878,66 @@ func can_do_anything_but_end(pi: int) -> bool:
 			if move_problem(pi, t, i) == "":
 				return true
 	return false
+
+
+# ------------------------------------------------- story rule: Showboat ---
+# Corin's rule in the Lantern Duel (story_rules["showboat"] = his side): "his
+# Cinderpup always attacks the moment it can, whatever's in its way". While a
+# Totem on that side could attack, nothing else may be done first and the
+# turn can't end; it goes at the Totem across from it, or straight at the
+# Life when nothing stands there.
+
+## The Totems on `pi`'s side that owe an attack right now ([] when none, or
+## when Showboat isn't theirs).
+func showboat_due(pi: int) -> Array:
+	if int(story_rules.get("showboat", -1)) != pi or over or pi != current or phase != "main":
+		return []
+	var out := []
+	for t in players[pi].totems():
+		for i in t.moves().size():
+			if t.move_target(i) in ["foe", "foe_totem", "all_foes"] and move_problem(pi, t, i) == "":
+				out.append(t)
+				break
+	return out
+
+
+## The attack a Showboat Totem makes when its side would rather end the turn:
+## its first move it can make, at whatever's in its way. {} when none is owed.
+func showboat_attack(pi: int) -> Dictionary:
+	for t in showboat_due(pi):
+		for i in (t as DuelTotem).moves().size():
+			if not (t.move_target(i) in ["foe", "foe_totem", "all_foes"]) or move_problem(pi, t, i) != "":
+				continue
+			var ts := attack_targets(pi, t, i)
+			if not ts.is_empty():
+				return {"type": "attack", "attacker": t, "move": i, "target": ts[0]}
+	return {}
+
+
+func _rule_showboat(pi: int, action: Dictionary) -> String:
+	var due := showboat_due(pi)
+	if due.is_empty():
+		return ""
+	if String(action.get("type", "")) == "attack" and due.has(action.get("attacker")):
+		return ""
+	return "Showboat: %s attacks the moment it can." % (due[0] as DuelTotem).card_name()
+
+
+## Whatever's in its way: the Totem across, or else the Life.
+func _rule_showboat_targets(pi: int, t: DuelTotem, out: Array) -> Array:
+	if int(story_rules.get("showboat", -1)) != pi:
+		return out
+	var across = opponent(pi).slots[t.slot]
+	if across != null and out.has(across):
+		return [across]
+	if out.has(LIFE):
+		return [LIFE]
+	return out
+
+
+func _rule_showboat_owed(pi: int):
+	var a := showboat_attack(pi)
+	return a if not a.is_empty() else null
 
 
 # ------------------------------------------------------------- calling ---

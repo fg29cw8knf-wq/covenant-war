@@ -32,10 +32,11 @@ extends PaperDoll
 ## player model's, kept in clips/shared.glb, and Bram's lift.
 
 const DIR := "res://assets/models/characters/"
-## Model files that aren't named after who they play. Everyone else's model
-## is characters/<their id or look>.glb (hob, seamus, krell, dask, hunter),
-## picked up the moment it exists.
-const MODELS := {"player": "player_a"}
+## Model files that aren't named after who they play (Ned the fiddler's is
+## Gary's seamus.glb, from before he was renamed). Everyone else's model is
+## characters/<their id or look>.glb (hob, krell, dask, hunter), picked up
+## the moment it exists.
+const MODELS := {"player": "player_a", "ned": "seamus"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
 ## Where to borrow a clip from when a model doesn't have it: the shared
@@ -99,7 +100,7 @@ static var _donor_cache := {}
 ## Whether the characters who have a model use it. Bram, Corin and the
 ## player became 3D on 15 October, Tam and Tilly on 16 October, Old Nell on
 ## 18 October (when Corin, Tam and Tilly got Gary's new models too); the
-## rest (Hob, Seamus, the crowd, Krell and her hunters) stay cut-outs until
+## rest (Hob, Ned, the crowd, Krell and her hunters) stay cut-outs until
 ## their models exist. false puts everyone back to cut-outs.
 const USE_MODELS := true
 
