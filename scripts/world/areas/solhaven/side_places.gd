@@ -620,7 +620,7 @@ static func _barracks(root: Node3D) -> void:
 ## child lying by Ysa (inside the walls, among the families Hale let in).
 const SQUARE := {
 	# Ysa's corner, between the trees (seen from the south, clear of them)
-	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.6),
+	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.9, 0, 5.8),
 	"player_ysa": Vector3(-7.6, 0, 8.1), "ysa_cam": Vector3(-8.9, 1.7, 12.95),
 	"ysa_gate": Vector3(-2.4, 0, 13.3),
 	"fen": Vector3(1.7, 0.74, -0.9), "fen_player": Vector3(2.4, 0, 2.2), "fen_wash": Vector3(2.05, 0, -0.4),
