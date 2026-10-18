@@ -118,6 +118,7 @@ func _world() -> void:
 	dlg = hud.dialogue
 	await secs(0.5)
 	await _walking()
+	await _zooming()
 	await _talking()
 	await _answers()
 	await _pause_menu()
@@ -171,6 +172,80 @@ func _walking() -> void:
 	await secs(1.4)
 	var miss := Vector2(world.player.global_position.x - goal.x, world.player.global_position.z - goal.z).length()
 	check("click the ground to walk there", miss < 0.8, "%.2f m short" % miss)
+
+
+## Zoom: the wheel, a trackpad, two fingers, + and - (keys, keypad and the
+## buttons), the right stick; within its limits, eased, remembered, and never
+## while a film has the camera.
+func _zooming() -> void:
+	var zoom := func() -> float: return World.zoom_setting()
+	var reset := func() -> void: Game.settings["cam_zoom"] = 1.0
+	var spot := Vector2(700, 520)   # bare ground, clear of the buttons
+	var ways := [
+		["zoom in with the mouse wheel", 1, func() -> void: await wheel(spot, MOUSE_BUTTON_WHEEL_UP)],
+		["zoom out with the mouse wheel", -1, func() -> void: await wheel(spot, MOUSE_BUTTON_WHEEL_DOWN)],
+		["zoom in with + (the = key)", 1, func() -> void: await press(KEY_EQUAL)],
+		["zoom out with -", -1, func() -> void: await press(KEY_MINUS)],
+		["zoom in with keypad +", 1, func() -> void: await press(KEY_KP_ADD)],
+		["zoom out with keypad -", -1, func() -> void: await press(KEY_KP_SUBTRACT)],
+		["zoom in with the right stick (up)", 1, func() -> void:
+			stick(JOY_AXIS_RIGHT_Y, -1.0)
+			await secs(0.4)
+			stick(JOY_AXIS_RIGHT_Y, 0.0)],
+		["zoom out with the right stick (down)", -1, func() -> void:
+			stick(JOY_AXIS_RIGHT_Y, 1.0)
+			await secs(0.4)
+			stick(JOY_AXIS_RIGHT_Y, 0.0)],
+		["zoom in by spreading two fingers", 1, func() -> void: await pinch(spot, 80.0, 260.0)],
+		["zoom out by pinching two fingers", -1, func() -> void: await pinch(spot, 260.0, 80.0)],
+		["zoom in with a trackpad pinch", 1, func() -> void: await magnify(spot, 1.25)],
+		["zoom out with a trackpad pinch", -1, func() -> void: await magnify(spot, 0.8)],
+		["tap + to zoom in", 1, func() -> void: await click(center_of(hud._zoom_in))],
+		["tap - to zoom out", -1, func() -> void: await click(center_of(hud._zoom_out))],
+	]
+	for w in ways:
+		reset.call()
+		var p0 := world.player.global_position
+		await w[2].call()
+		await secs(0.4)   # a key's tap glides on a moment
+		var z: float = zoom.call()
+		check(w[0], z > 1.02 if w[1] > 0 else z < 0.98, "zoom %.3f" % z)
+		check("%s doesn't walk or tap the ground" % w[0], world.player.global_position.distance_to(p0) < 0.05 and world._move_target == null)
+	# the camera follows, smoothly, and stops at the limits
+	reset.call()
+	await secs(1.0)
+	var look := func() -> float: return world.cam.global_position.distance_to(world._focus + World.CAM_LOOK)
+	var d0: float = look.call()
+	for i in 12:
+		await click(center_of(hud._zoom_in))
+	var d_mid: float = look.call()
+	await secs(1.2)
+	var d_in: float = look.call()
+	check("zooming in stops at the limit", is_equal_approx(zoom.call(), World.ZOOM_MAX))
+	check("the camera glides in (not a jump)", d_mid > d_in + 0.5 and d_in < d0 - 3.0, "usual %.1f, just after %.1f, then %.1f" % [d0, d_mid, d_in])
+	for i in 12:
+		await click(center_of(hud._zoom_out))
+	await secs(1.2)
+	check("zooming out stops at the limit", is_equal_approx(zoom.call(), World.ZOOM_MIN))
+	check("the camera moves out", look.call() > d0 + 3.0, "%.1f m" % look.call())
+	# remembered with the settings
+	await secs(1.0)
+	var saved = JSON.parse_string(FileAccess.get_file_as_string(Game.SETTINGS_PATH)) if FileAccess.file_exists(Game.SETTINGS_PATH) else null
+	check("the zoom is saved with the settings", saved is Dictionary and is_equal_approx(float(saved.get("cam_zoom", 0.0)), World.ZOOM_MIN))
+	# a film has the camera: no zooming, and the player's zoom comes back after
+	reset.call()
+	world.cine = true
+	await wheel(spot, MOUSE_BUTTON_WHEEL_UP)
+	await press(KEY_EQUAL)
+	await click(center_of(hud._zoom_in))
+	check("no zooming while a film has the camera", is_equal_approx(zoom.call(), 1.0), "zoom %.3f" % zoom.call())
+	Game.settings["cam_zoom"] = 1.5
+	await world.cine_home(0.2)
+	await secs(0.3)
+	var want := (World.CAM_OFFSET - World.CAM_LOOK).length() / 1.5 * world._cam_clear
+	check("after a film the camera comes back at the player's zoom", absf(look.call() - want) < 0.6, "%.1f m, want %.1f" % [look.call(), want])
+	reset.call()
+	await secs(0.8)
 
 
 ## Stands the player in front of an NPC, close enough for the round button.
@@ -534,6 +609,26 @@ func _duel() -> void:
 		check("duel: reaches the player's turn", false)
 		return
 	await secs(0.6)
+	# zoom the 3D field a little: the wheel, two fingers, a trackpad; within limits
+	if ds.field != null:
+		var view := func() -> float: return DuelField3D.view_setting()
+		var board := ds.stage.get_global_transform_with_canvas() * Vector2(1000, 476)
+		for w in [["duel: zoom the field in with the mouse wheel", 1, func() -> void: await wheel(board, MOUSE_BUTTON_WHEEL_UP)],
+				["duel: zoom the field out with the mouse wheel", -1, func() -> void: await wheel(board, MOUSE_BUTTON_WHEEL_DOWN)],
+				["duel: zoom the field in by spreading two fingers", 1, func() -> void: await pinch(board, 80.0, 240.0)],
+				["duel: zoom the field out by pinching two fingers", -1, func() -> void: await pinch(board, 240.0, 80.0)],
+				["duel: zoom the field in with a trackpad pinch", 1, func() -> void: await magnify(board, 1.2)]]:
+			Game.settings["duel_view"] = 1.0
+			await w[2].call()
+			var v: float = view.call()
+			check(w[0], v < 0.99 if w[1] > 0 else v > 1.01, "view %.3f" % v)
+		for i in 30:
+			await wheel(board, MOUSE_BUTTON_WHEEL_UP)
+		check("duel: the field's zoom stops at its limit", is_equal_approx(view.call(), DuelField3D.VIEW_MIN))
+		Game.settings["duel_view"] = 1.0
+		await secs(0.5)
+		if ds.sel_card != null or ds.sel_totem != null or ds.pending != "":
+			ds._back_out()
 	await press(KEY_ESCAPE)
 	check("duel: Esc with nothing selected opens the duel menu", ds.lab_panel.visible)
 	await press(KEY_ESCAPE)
@@ -738,6 +833,59 @@ func click(p: Vector2, button: MouseButton = MOUSE_BUTTON_LEFT) -> void:
 	await frames(1)
 	mouse_button(p, true, button)
 	mouse_button(p, false, button)
+	await frames(2)
+
+
+## One notch of a mouse wheel (or button WHEEL_DOWN) with the pointer at `p`.
+func wheel(p: Vector2, button: MouseButton) -> void:
+	mouse_to(p)
+	await frames(1)
+	for down in [true, false]:
+		var e := InputEventMouseButton.new()
+		e.position = _win(p)
+		e.global_position = e.position
+		e.button_index = button
+		e.pressed = down
+		e.factor = 1.0
+		_send(e)
+	await frames(2)
+
+
+## Two fingers on the screen around `c`, `from` apart, moving to `to` apart.
+func pinch(c: Vector2, from: float, to: float) -> void:
+	var at := func(i: int, d: float) -> Vector2: return c + Vector2(d * 0.5 * (1 if i == 1 else -1), 0)
+	for i in 2:
+		var t := InputEventScreenTouch.new()
+		t.index = i
+		t.position = _win(at.call(i, from))
+		t.pressed = true
+		_send(t)
+		await frames(1)
+	for k in 6:
+		var d := lerpf(from, to, (k + 1) / 6.0)
+		for i in 2:
+			var g := InputEventScreenDrag.new()
+			g.index = i
+			g.position = _win(at.call(i, d))
+			g.relative = Vector2((to - from) / 12.0 * (1 if i == 1 else -1), 0)
+			_send(g)
+		await frames(1)
+	for i in 2:
+		var t := InputEventScreenTouch.new()
+		t.index = i
+		t.position = _win(at.call(i, to))
+		t.pressed = false
+		_send(t)
+		await frames(1)
+	await frames(2)
+
+
+## A trackpad's pinch (a Mac's magnify gesture): over 1 spreads.
+func magnify(p: Vector2, factor: float) -> void:
+	var e := InputEventMagnifyGesture.new()
+	e.position = _win(p)
+	e.factor = factor
+	_send(e)
 	await frames(2)
 
 

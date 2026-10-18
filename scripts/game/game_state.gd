@@ -24,7 +24,8 @@ var flags: Dictionary = {}
 var area := "solhaven"
 var spawn := "gate"
 var play_seconds := 0.0
-var settings := {"music": 0.8, "sfx": 0.9, "text_speed": 1.0, "violence": "full"}
+## cam_zoom: the world camera's zoom (World.zoom_setting(); 1 is the usual view).
+var settings := {"music": 0.8, "sfx": 0.9, "text_speed": 1.0, "violence": "full", "cam_zoom": 1.0}
 ## v2 progress (see DuelRewards and "Duel Rules v2"): the player's v2 card
 ## collection, Sigil Rank, Seals, Codex, Resonance and Attunement.
 var v2 := {}
@@ -596,6 +597,9 @@ func _setup_input() -> void:
 		"move_down": [KEY_S, KEY_DOWN],
 		"interact": [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER],
 		"menu": [KEY_ESCAPE, KEY_TAB],
+		# the camera in the world: + (the = key) and - on the main keys or the keypad
+		"zoom_in": [KEY_EQUAL, KEY_KP_ADD],
+		"zoom_out": [KEY_MINUS, KEY_KP_SUBTRACT],
 	}
 	for action in keys:
 		if InputMap.has_action(action):
@@ -614,7 +618,8 @@ func _setup_input() -> void:
 		ev.button_index = pads[action]
 		InputMap.action_add_event(action, ev)
 	var axes := {"move_left": [JOY_AXIS_LEFT_X, -1.0], "move_right": [JOY_AXIS_LEFT_X, 1.0],
-		"move_up": [JOY_AXIS_LEFT_Y, -1.0], "move_down": [JOY_AXIS_LEFT_Y, 1.0]}
+		"move_up": [JOY_AXIS_LEFT_Y, -1.0], "move_down": [JOY_AXIS_LEFT_Y, 1.0],
+		"zoom_in": [JOY_AXIS_RIGHT_Y, -1.0], "zoom_out": [JOY_AXIS_RIGHT_Y, 1.0]}
 	for action in axes:
 		var ev := InputEventJoypadMotion.new()
 		ev.axis = axes[action][0]
