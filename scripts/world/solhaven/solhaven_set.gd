@@ -473,6 +473,11 @@ func _build_road() -> void:
 		var p := Vector3(side * rng.randf_range(4.6, 7.6), 0, 28.5 + i * 1.6 + rng.randf_range(-0.4, 0.4))
 		var b := LevelKit.box(self, p, Vector3(rng.randf_range(0.5, 0.9), rng.randf_range(0.25, 0.45), rng.randf_range(0.4, 0.7)), "cloth_white" if i % 3 == 0 else "wood", false, rng.randf_range(0, 180))
 		b.material_override = _mat(Color.from_hsv(rng.randf_range(0.05, 0.12), rng.randf_range(0.2, 0.45), rng.randf_range(0.35, 0.65)), 0.95)
+	# the Circle on the road, where the Watch tests whoever comes ("Circle's there")
+	var circ := (SPOTS.road as Vector3) + Vector3(0, 0, -2.6)
+	LevelKit.cylinder(self, circ, 3.3, 0.08, "marble", false, 3.3, 40)
+	var rr := LevelKit.torus(self, circ + Vector3(0, 0.1, 0), 2.85, 3.0, "ring_glow")
+	rr.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	# a few cold campfires
 	for p in [Vector3(-6.6, 0, 40.0), Vector3(6.8, 0, 50.0), Vector3(-6.8, 0, 60.0)]:
 		for i in 7:

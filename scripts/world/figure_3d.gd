@@ -35,7 +35,7 @@ const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play. Everyone else's model
 ## is characters/<their id or look>.glb (hob, seamus, krell, dask, hunter),
 ## picked up the moment it exists.
-const MODELS := {"player": "player_a"}
+const MODELS := {"player": "player_a", "gate_warden": "sun_guard"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
 ## Where to borrow a clip from when a model doesn't have it: the shared

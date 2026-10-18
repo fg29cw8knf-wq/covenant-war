@@ -66,10 +66,27 @@ menu's **How to Duel** page.
 
 Story duels (Master Script v3) each have a rule of their own that says who the
 opponent is, as a real rule in the engine: `spec.story_rules = {rule id: side}`
-(`DuelGame.story_rules`, one `_rule_<id>()` each; Dask's is Run to Ground, his
-hounds always attack the Totem with the least Life left) and `spec.rule = [name,
-text]` for its banner. Their barks are tied to what happens on the board, once
-each per duel (`spec.bark_on`, `DuelScreen.story_bark()`). Losing a main story
+(`DuelGame.story_rules`, one `_rule_<id>()` each) and `spec.rule = [name, text]`
+for its banner, shown after "DUEL!". The Prologue's: Dask's Run to Ground (his
+hounds always attack the Totem with the least Life left). Chapter 1's
+(`scripts/world/solhaven/duels.gd`): Warden Hale's Hold the Gate (while his
+Guardian stands his Totems never go for your Life; the duel is at half Life,
+`spec.life_scale`), Wren's Light Fingers (once a duel, from her second turn,
+she takes the best card she can play out of your hand and plays it as hers),
+Ser Aldric's Sunspire's Mirror (at half Life his Radiant cards cost one less and
+Dawnmane, kept off his deck in `spec.kept_back`, comes to his hand and is called
+down the moment he can pay; the crowd names it, `spec.crowd_on`; the first time
+your Life drops below a third the blank card shows the seal, `spec.blank_eye`)
+and the Trial of Light's `mirror_trial` (a set board, `spec.puzzle`: the
+mirrors only watch, your Essence is the Summon's cost every turn, and you have
+three turns; a mistake is `spec.trial`, Liora's line and the board set again).
+Their barks are tied to what happens on the board, once each per duel
+(`spec.bark_on`, `DuelScreen.story_bark()`: the rival's first Fate roll, a
+Poisoning, a Ward springing, your lethal, a weakness hit, one of theirs or yours
+knocked out, their Guardian hit or falling, their Gift, their steal, their
+Summon, your Summon, your 60-or-more hit, their Life under a third, you pulling
+ahead), said by `spec.bark_who` if it isn't the rival; a duel can name its music
+(`spec.music`). Losing a main story
 duel (`spec.retry`) plays the opponent's line for winning (`spec.win_line`), then
 Morrowen takes the story back with one line, never the same one twice running,
 then a page turning back and **Again** / **Change deck first**; after a second
@@ -80,8 +97,11 @@ sits in its own slot beside the deck in every story duel and flickers when Life
 runs low (`scripts/duel_ui/blank_card_slot.gd`).
 
 ```sh
-godot --headless --script res://tests/story_rules_test.gd          # Run to Ground, and 120 duels under it
+godot --headless --script res://tests/story_rules_test.gd          # every story duel's rule, and 120 duels under each
+godot --headless --script res://tests/trial_puzzle_test.gd -- 4000 # each Trial board's answer wins; no line without the Summon on turn 1 does
 xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/road_duel_test.tscn -- <dir>   # Dask's duel lost twice, then won
+xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/solhaven_duels_test.tscn -- <dir> [hale|wren|trial|aldric]
+    # Chapter 1's duels: played by the computer under each rule, lost (the Trial reset three times), then won
 ```
 
 ```sh
@@ -164,7 +184,7 @@ and press Run. `docs/iphone.md` has the steps, including for a free Apple ID.
 `main` changes. The app has everything in one pack at full quality: Forward+ (as on
 the Mac; Android keeps the Mobile renderer) and ASTC textures.
 
-The story's duels still use the older rules below until the v1 duel is signed off.
+Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, `BattleScreen`) are only what `Main.run_duel` falls back to for a spec without decks.
 
 ## Story mode
 
@@ -260,13 +280,35 @@ subtitles, choices, the name prompt). The Herald's voice plays from
 `assets/audio/vo/herald_NN.ogg` (01, 02, 03, 09, 10, 12, 13; .wav or .mp3 work
 too) and the Champions' faces from `assets/art/champions/<id>.png` (aldric, vorn,
 eiran, rook, silk, maelis, crane) once they exist; until then the lines are
-subtitles and each face is its Seat's sign. Solhaven
-(`scripts/world/areas/solhaven.gd`) is Chapter 1 as a hub: the gate
-and its refugees, Bram's wagon and Turnip, Wren, the Sun Court on the temple
-steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
-Aldric at the Circle and Morne's vault to close the chapter. Still to build
-from the script: the attic and lantern hanging, Wren's chase, the mirror
-puzzle and the Sunspire.
+subtitles and each face is its Seat's sign.
+
+Chapter 1, The Sun's Court, is Solhaven, line for line from Master Script v3 (a
+copy is in `docs/script/v3_chapter1.md`). `scripts/world/areas/solhaven.gd` is
+the Sun Square as a hub (who is there as the story goes on, and what they say:
+Bram's wagon menu, Tamsin and her once-a-day crier, Pip, Old Maren, the notice
+board, Wren, Liora, Aldric, Hale or the gate warden), with the places that start
+each film: north past the fountain (Wren), the temple's doors (the Sun Court,
+then the Trial of Light) and the Sunspire's door in the west wall; a pillar of
+light marks the next one. The films are in `scripts/world/solhaven/films.gd`
+(the Golden Gate and Hale's duel, the wagon and Turnip, Wren and the alley duel,
+the Sun Court where Solmaris stops time, the Trial in the Hall of Mirrors, Ser
+Aldric on the Sunspire, and after the Trial, back at the wagon, Gold in the Dark
+and Morne's vault), saved by part in the `sol_film` flag, a duel resumed by its
+own flag; Wren's chase is `chase.gd` (tap each glowing ledge to vault or slide);
+the place is `solhaven_set.gd`, stand-ins that give way to Gary's Solhaven models
+(`assets/models/solhaven/<name>.glb`, the names in "Solhaven: Your
+Step-by-Step") and his people (`assets/models/characters/<id>.glb`: hale,
+sun_guard, ysa, tobin, refugee_b, refugee_c, horse_trader, turnip, tamsin, pip,
+maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Voices
+play from `assets/audio/vo/` (`herald_14`..`16`, `solmaris_01`..`09`,
+`morne_01`..`08`), the square's music is `solhaven_town`. The side stories come
+in through `scripts/world/areas/solhaven/solhaven_side.gd` (`setup(world)`).
+
+```sh
+godot --headless --fixed-fps 10 res://tests/solhaven_test.tscn -- <dir> [choice=1]    # the whole chapter, every line tapped on, its checks
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 10 \
+    res://tests/solhaven_test.tscn -- <dir> keys [from=court]    # a still on every line (from= starts at a film part)
+```
 
 Dialogue portraits for the 3D characters are rendered from their models into
 `assets/art/characters/<id>_portrait.png` (the dialogue box uses someone's own
