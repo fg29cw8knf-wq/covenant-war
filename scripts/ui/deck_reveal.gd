@@ -92,4 +92,5 @@ func _draw() -> void:
 		CardFace.text(self, CardFace.font("body"), Vector2(0, top_y - 50), subtitle, 30, Color(1, 1, 1, 0.85 * ease), HORIZONTAL_ALIGNMENT_CENTER, size.x, 6, Color(0, 0, 0, 0.8 * ease))
 	if _ready_to_close:
 		var bottom := c.y + ch * (0.5 if n == 1 else 0.7)
-		CardFace.text(self, CardFace.font("body"), Vector2(0, minf(bottom + 56, size.y - 30)), "Tap to continue", 30, Color(1, 1, 1, 0.6 + 0.3 * sin(_t * 4.0)), HORIZONTAL_ALIGNMENT_CENTER, size.x)
+		var low := size.y - maxf(30.0, SafeArea.insets().w + 16.0)   # above a phone's home bar
+		CardFace.text(self, CardFace.font("body"), Vector2(0, minf(bottom + 56, low)), "Tap to continue", 30, Color(1, 1, 1, 0.6 + 0.3 * sin(_t * 4.0)), HORIZONTAL_ALIGNMENT_CENTER, size.x)

@@ -2240,7 +2240,8 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: Stri
 	b.col = col
 	b.size_px = size_px
 	b.god = god
-	b.edge = _edge
+	# the band runs to the screen's edges, past the safe area kept for the stage
+	b.edge = maxf(_edge, maxf(_stage_base.x / _base_k, (size.x - _stage_base.x) / _base_k - DESIGN.x))
 	b.position = Vector2(0, 476)
 	b.size = Vector2(DESIGN.x, 1)
 	fx_layer.add_child(b)
