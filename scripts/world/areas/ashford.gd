@@ -1229,7 +1229,7 @@ static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 ## The night the riders come, they stand bunched on the near side of the
 ## green, facing the road.
 const CROWD_NIGHT := [Vector3(-3.1, 0, 8.1), Vector3(-0.7, 0, 8.5), Vector3(2.1, 0, 8.9), Vector3(-5.2, 0, 8.6),
-	Vector3(-1.6, 0, 7.1), Vector3(5.4, 0, 4.3), Vector3(-8.5, 0, 4.9), Vector3(3.6, 0, 1.9),
+	Vector3(-1.6, 0, 7.1), Vector3(5.4, 0, 4.3), Vector3(-8.5, 0, 4.9), Vector3(2.8, 0, 10.4),
 	Vector3(-5.8, 0, 1.9), Vector3(0.8, 0, 9.9)]
 
 
@@ -1417,7 +1417,7 @@ static func _midnight(w: World) -> void:
 	var sd := dm.cross(Vector3.UP)
 	Cine.look(w, "nell", mill_top)
 	# her face, the fire in her eyes (the mill is behind the camera)
-	Cine.shot(w, np0 + dm * 2.3 + sd * 1.36 + Vector3(0, 1.45, 0), np0 + Vector3(0, 1.5, 0), 32.0)
+	Cine.shot(w, np0 + dm * 2.8 + sd * 1.6 + Vector3(0, 1.45, 0), np0 + Vector3(0, 1.45, 0), 34.0)
 	await Cine.say(w, "nell", "The mill! The mill's on fire!", 2.2)
 	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		var f = Cine.fig(w, who)
@@ -1497,12 +1497,15 @@ static func _sfx(w: World, sound: String, pitch := 1.0) -> void:
 static func _the_run(w: World) -> void:
 	var v := village(w)
 	# everyone scatters for their doors
+	# (Nell and the child on the south-west side go round behind the camera
+	# that follows you, not through it)
 	var doors := {"v1": Vector3(-14, 0, 14), "v2": Vector3(4, 0, 18), "v3": Vector3(16, 0, 12), "v4": Vector3(-17, 0, 8),
-		"v5": Vector3(-6, 0, 16), "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
-		"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": Vector3(-10, 0, 12), "hob": Vector3(16, 0, 6),
+		"v5": [Vector3(2, 0, 12), Vector3(-6, 0, 16)], "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
+		"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": [Vector3(0, 0, 13), Vector3(-10, 0, 12)], "hob": Vector3(16, 0, 6),
 		"ned": Vector3(-15, 0, -6), "tam": Vector3(12, 0, -16)}
 	for who in doors:
-		Cine.path(w, String(who), [doors[who]], 3.0 + randf() * 1.2, "run")
+		var way: Array = doors[who] if doors[who] is Array else [doors[who]]
+		Cine.path(w, String(who), way, 3.0 + randf() * 1.2, "run")
 	# Corin grabs Tilly and runs her up the lane towards the mill, past the cart
 	var cc := v.cart_centre()
 	var fd := v.cart_fall_dir()
@@ -2538,7 +2541,7 @@ static func _burning(w: World) -> void:
 	await Cine.say(w, "krell", "Good evening. Sabine Krell, for Ironvault. I'll be brief; it's late.")
 	if not told:
 		# Tam's face changes at "fell due at midnight"
-		_cut_later(w, 1.3, Cine.body(w, "tam").global_position + Vector3(-1.6, 1.5, 1.5), Cine.head(w, "tam"), 30.0)
+		_cut_later(w, 1.3, Cine.body(w, "tam").global_position + Vector3(1.6, 1.5, 0.7), Cine.head(w, "tam"), 30.0)
 	await Cine.say(w, "krell", "Every note in Ashford fell due at midnight. The mill. Eleven farms. Every roof in this village but one. Under the terms, Ironvault may take possession of all of it, tonight.")
 	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
 	await Cine.say(w, "krell", "Or I can burn the notes. Every one. For a single card.")
@@ -2567,7 +2570,7 @@ static func _burning(w: World) -> void:
 	await Cine.say(w, "krell", "Mr Hayes. The mill, its stones and its house. Eleven hundred crowns. You would be clear.")
 	# Tam looks at the dark of the inn yard, at you
 	var tb := Cine.body(w, "tam")
-	var tam_cam := tb.global_position + Vector3(-1.5, 1.5, 1.6)
+	var tam_cam := tb.global_position + Vector3(0.4, 1.5, -2.2)   # his face side-on, whichever way he looks
 	Cine.shot(w, tam_cam, Cine.head(w, "tam"), 28.0)
 	await Cine.wait(w, 0.4)
 	Cine.look(w, "tam", pp)
@@ -2638,7 +2641,7 @@ static func _burning(w: World) -> void:
 		_blood(v, fall_at + Vector3(0, 0.04, 0))
 	Cine.shot(w, fall_at + Vector3(-2.2, 1.3, 2.0), fall_at + Vector3(0.2, 0.1, 0.2), 34.0)
 	await Cine.wait(w, 2.0)
-	Cine.shot(w, np - to_k * 3.1 + to_k.cross(Vector3.UP) * 1.4 + Vector3(0, 1.6, 0), np + to_k * 1.7 + Vector3(0, 0.9, 0), 32.0)
+	Cine.shot(w, tam_at + to_k * 1.4 - to_k.cross(Vector3.UP) * 1.0 + Vector3(0, 1.3, 0), np + Vector3(0, 1.2, 0), 34.0)
 	await Cine.say(w, "nell", "Tam.", 3.0)
 	await Cine.wait(w, 0.8)
 	Cine.shot(w, KRELL_AT + Vector3(-4.0, 1.6, 3.0), KRELL_AT + Vector3(0, 1.4, 0), 34.0)
@@ -3061,8 +3064,9 @@ static func _cellar(w: World) -> void:
 	tt.tween_property(td, "rotation:x", -1.75, 0.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await tt.finished
 	_tunnel_timbers(v, trap)
+	var hole_glow := Cine.light(w, trap + Vector3(0, -0.9, 0), Color(1.0, 0.62, 0.32), 0.7, 3.0)
 	w.shake(0.06)
-	Cine.shot(w, trap + Vector3(0.6, 1.25, 0.9), trap + Vector3(0, -0.6, 0), 40.0)
+	Cine.shot(w, trap + Vector3(1.4, 1.8, 1.8), trap + Vector3(0.2, -0.4, 0), 42.0)
 	await Cine.wait(w, 1.2)
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
@@ -3070,6 +3074,8 @@ static func _cellar(w: World) -> void:
 	await Cine.fade(w, 1.0, 1.0)
 	if is_instance_valid(sack):
 		sack.queue_free()
+	if is_instance_valid(hole_glow):
+		hole_glow.queue_free()
 	InnRooms.outside(v)
 	for n in w.npcs:
 		n.doll.visible = true
