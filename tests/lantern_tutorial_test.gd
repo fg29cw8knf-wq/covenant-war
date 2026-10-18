@@ -3,7 +3,7 @@ extends Node
 ## line, taps exactly what Bram asks, and first tries a wrong tap at each
 ## instruction to check the lesson won't move on until the right thing is done.
 ## Saves a screenshot of every lesson step and prints the result.
-##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/lantern_tutorial_test.tscn -- <out_dir>
+##   xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/lantern_tutorial_test.tscn -- <out_dir> [ui=1.3]
 
 var out_dir := "user://"
 var n := 0
@@ -16,6 +16,9 @@ func _ready() -> void:
 	if args.size() > 0:
 		out_dir = args[0]
 	Game.new_game("Sprout", "emberstorm")
+	for a in args:
+		if a.begins_with("ui="):
+			Game.settings["ui_scale"] = float(a.trim_prefix("ui="))   # Options > Text and buttons size
 	Game.settings["duel_speed"] = 4.0
 	var area = load("res://scripts/world/areas/ashford.gd")
 	var spec: Dictionary = area.duel_spec({"difficulty": 0.25})

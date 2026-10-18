@@ -130,8 +130,12 @@ tools/build_web.sh && python3 tests/web_fit_check.py build/web /tmp/webfit   # v
 Options also has **Text and buttons size** (Normal, Larger, Largest,
 `SafeArea.ui_scale()`), which draws the world's buttons, the conversation box,
 the pause menu, a card's detail and the films' words bigger for a small phone
-(add `ui=1.3` to the screen-fit test to see it). The title, the notice, the
-duel and the Duel Lab keep their size.
+(add `ui=1.3` to the screen-fit test to see it); also the title screen's
+buttons (the title above them shrinks a little if they need its room), the
+opening notice (as big as fits), the campfire's deck card and objective,
+Bram's pack tour box, and in a duel Bram's lesson box, the rival's barks and
+the result box. The rest of the duel (its board is one fixed layout) and
+the Duel Lab (a test bench) keep their size.
 
 A phone browser runs out of memory if it loads the whole game at once, so the web
 build comes in parts (`tools/web_packs.py` says what's in each, and `build_web.sh`

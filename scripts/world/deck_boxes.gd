@@ -49,7 +49,7 @@ func _ready() -> void:
 	_catch.gui_input.connect(_on_input)
 	_root.add_child(_catch)
 	# the objective, top left, like the world's own
-	_objective = UITheme.label(OBJECTIVE, 30, UITheme.GOLD, "bold", 10)
+	_objective = UITheme.label(OBJECTIVE, roundi(30 * SafeArea.ui_scale()), UITheme.GOLD, "bold", 10)
 	_objective.position = Vector2(40, 96)
 	_objective.size = Vector2(1100, 50)
 	_objective.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -175,9 +175,15 @@ func show_deck(i: int) -> void:
 	col.add_child(desc)
 	_root.add_child(_info)
 	_info.reset_size()
+	# drawn at the player's text size (Options: Text and buttons size), as
+	# much of it as fits between the film's bars
 	var vs := _root.get_viewport_rect().size
 	var m := SafeArea.insets()
-	_info.position = Vector2(vs.x - m.z - _info.size.x - 48, (vs.y - _info.size.y) * 0.42)
+	var room := vs.y * (1.0 - 2.0 * CineOverlay.BAR) - 24.0
+	var k := clampf(room / maxf(1.0, _info.size.y), 0.7, SafeArea.ui_scale())
+	_info.scale = Vector2(k, k)
+	var sz := _info.size * k
+	_info.position = Vector2(vs.x - m.z - sz.x - 48, maxf(vs.y * CineOverlay.BAR + 12.0, (vs.y - sz.y) * 0.42))
 	_info.modulate.a = 0.0
 	create_tween().tween_property(_info, "modulate:a", 1.0, 0.3)
 

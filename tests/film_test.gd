@@ -19,7 +19,8 @@ extends Node
 ## at once, music, hitches); "notap" leaves the subtitles to go by themselves,
 ## as they do for a player who just watches; "frames=a-b" (or
 ## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
-## close look at a moment the watch pointed at.
+## close look at a moment the watch pointed at. "ui=1.3" plays it at the
+## biggest Text and buttons size.
 
 var out_dir := "user://"
 var every := 0
@@ -95,6 +96,8 @@ func _ready() -> void:
 	for a in args:
 		if String(a).begins_with("flag="):
 			Game.set_flag(String(a).substr(5))
+		elif String(a).begins_with("ui="):
+			Game.settings["ui_scale"] = float(String(a).substr(3))   # Options > Text and buttons size
 	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
 	world.story_next.connect(func(what: String) -> void:
 		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())

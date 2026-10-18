@@ -2429,7 +2429,7 @@ func _show_bark(line: String) -> void:
 	# and kept inside the screen's safe area
 	var sr := _safe_rect()
 	var plate: Control = panels[rival]
-	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15
+	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15 * SafeArea.ui_scale()   # (the player's text size)
 	var at := plate.global_position + Vector2(plate.size.x + 12.0, 70.0) * _base_k
 	var bs := _bark_box.size * _bark_box.scale
 	at.x = clampf(at.x, sr.position.x + 8.0, maxf(sr.position.x + 8.0, sr.end.x - bs.x - 8.0))
@@ -2628,10 +2628,15 @@ func _show_result(r: String) -> String:
 	box.modulate.a = 0.0
 	await get_tree().process_frame
 	await get_tree().process_frame
-	# centred a little below the middle, and never off the bottom of the screen
+	# centred a little below the middle, and never off the bottom of the
+	# screen; drawn at the player's text size, as big as fits
 	var sr := _safe_rect()
-	var y := clampf(sr.position.y + sr.size.y * 0.56 - box.size.y * 0.5, sr.position.y + 40.0, sr.end.y - box.size.y - 40.0)
-	box.position = Vector2(sr.position.x + (sr.size.x - box.size.x) * 0.5, y)
+	var k := minf(SafeArea.ui_scale(), minf((sr.size.x - 40.0) / maxf(1.0, box.size.x), (sr.size.y - 80.0) / maxf(1.0, box.size.y)))
+	k = maxf(k, 0.5)
+	box.scale = Vector2(k, k)
+	var bsz := box.size * k
+	var y := clampf(sr.position.y + sr.size.y * 0.56 - bsz.y * 0.5, sr.position.y + 40.0, sr.end.y - bsz.y - 40.0)
+	box.position = Vector2(sr.position.x + (sr.size.x - bsz.x) * 0.5, y)
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
 	while picked[0] == "":

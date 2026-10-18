@@ -418,8 +418,11 @@ func _hide() -> void:
 
 ## Top centre, unless that would cover what's being pointed at.
 func _place_box() -> void:
-	var sz := box.get_combined_minimum_size()
-	box.size = sz
+	# drawn at the player's text size (Options: Text and buttons size)
+	var k := SafeArea.ui_scale()
+	box.scale = Vector2(k, k)
+	box.size = box.get_combined_minimum_size()
+	var sz := box.size * k
 	var x := (1920.0 - sz.x) * 0.5
 	var f: Rect2 = screen.tutor_rect(focus) if focus != "" else Rect2()
 	var spots := [Vector2(x, 92), Vector2(x, 470 - sz.y * 0.5), Vector2(x, 600)]
