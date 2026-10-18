@@ -100,8 +100,8 @@ runs low (`scripts/duel_ui/blank_card_slot.gd`).
 godot --headless --script res://tests/story_rules_test.gd          # every story duel's rule, and 120 duels under each
 godot --headless --script res://tests/trial_puzzle_test.gd -- 4000 # each Trial board's answer wins; no line without the Summon on turn 1 does
 xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/road_duel_test.tscn -- <dir>   # Dask's duel lost twice, then won
-xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/solhaven_duels_test.tscn -- <dir> [hale|wren|trial|aldric]
-    # Chapter 1's duels: played by the computer under each rule, lost (the Trial reset three times), then won
+xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/solhaven_duels_test.tscn -- <dir> [hale|wren|trial|aldric] [2d]
+    # Chapter 1's duels: played by the computer under each rule, lost (the Trial reset three times), then won (2d: the flat field)
 ```
 
 ```sh
