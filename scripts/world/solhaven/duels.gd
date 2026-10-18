@@ -121,7 +121,7 @@ static func aldric_spec() -> Dictionary:
 		"crowd_on": {"rival_summons": "DAWNMANE!"},
 		"blank_eye": true,
 		# the Pale Herald at the Circle's edge (its hood turns at the blank card)
-		"herald_at": Vector3(7.4, 0, -1.8),
+		"herald_at": Vector3(6.3, 0, -2.9),
 		"herald_scale": 0.85,
 		"win_line": "Well fought. Solhaven keeps its knight.",
 		"rewards": {"opponent": "champion"},
