@@ -202,3 +202,7 @@ func _process(delta: float) -> void:
 	if _glow != null and is_instance_valid(_glow) and _glow.get_parent() != null:
 		_glow.light_energy = 1.2 + 0.3 * sin(_t * 3.0)
 	_objective.modulate.a = 1.0 if listening or _info != null else 0.7
+	# just under the film's top bar, whatever the screen
+	var vs := _root.get_viewport_rect().size
+	_objective.position = Vector2(40, vs.y * CineOverlay.BAR + 14.0)
+	_objective.size.x = minf(1100.0, vs.x - 80.0)

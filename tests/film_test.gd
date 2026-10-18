@@ -135,7 +135,11 @@ func _process(_d: float) -> void:
 			_box_frames += 1
 			if _box_frames > 10:
 				_box_frames = 0
-				picker.tap(clampi(_box, 0, picker.boxes.size() - 1))
+				var bi := clampi(_box, 0, picker.boxes.size() - 1)
+				# where a tap on that box's place on screen lands
+				var at: Vector2 = picker.cam.unproject_position((picker.boxes[bi] as Node3D).global_position)
+				print("FILM: deck box %d is at %s on screen; a tap there picks box %d" % [bi, at, picker.box_at(at)])
+				picker.tap(bi)
 	# Bram's tour of the pack: tap on, or do what he asks
 	for t in get_tree().root.find_children("*", "PackTour", true, false):
 		_drive_tour(t as PackTour)
