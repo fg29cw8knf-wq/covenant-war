@@ -77,6 +77,7 @@ func _ready() -> void:
 	resume.pressed.connect(request_close)
 	bar.add_child(resume)
 	_resume = resume
+	_panel.resized.connect(_fit_tabs)
 	_content = MarginContainer.new()
 	_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_content.add_theme_constant_override("margin_left", 8)
@@ -110,6 +111,32 @@ static func tab_open(key: String) -> bool:
 func _refresh_tabs() -> void:
 	for k in _tab_btns:
 		_tab_btns[k].visible = tab_open(k)
+	_fit_tabs()
+
+
+## Keeps the tab bar inside the panel at any text size (a phone held
+## sideways at Largest): the tabs' padding, then their words, get a little
+## smaller until the whole bar fits.
+func _fit_tabs() -> void:
+	if _tab_bar == null:
+		return
+	# the width SafeArea.fit() gives the panel (it grows past that if the bar won't fit)
+	var m := SafeArea.insets()
+	var room := (SafeArea.screen().size.x - maxf(m.x, 28.0) - maxf(m.z, 28.0)) / SafeArea.ui_scale() - 44.0
+	for step in [[28, 18], [28, 12], [26, 10], [24, 8], [22, 8], [20, 6]]:
+		var need := 0.0
+		for b: Button in _tab_bar.get_children():
+			if b != _resume:
+				b.add_theme_font_size_override("font_size", step[0])
+				for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+					var s := b.get_theme_stylebox(st).duplicate() as StyleBox
+					s.content_margin_left = step[1]
+					s.content_margin_right = step[1]
+					b.add_theme_stylebox_override(st, s)
+			if b.visible:
+				need += b.get_combined_minimum_size().x + 8.0
+		if need - 8.0 <= room:
+			return
 
 
 ## Resume: commits a changed deck if it's legal, or asks what to do.
