@@ -163,15 +163,20 @@ passes into the player's hands on her words "You keep it". A dialogue line can
 play a scene while it's up: `{"say": ..., "during": "<scene>", "at": "<words>"}`
 starts the scene as the line types out as far as those words.
 
-Bram, Corin, Tam, Tilly and the player are their 3D models everywhere
-(`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October); the other
-villagers stay cut-outs until their models exist, and a model dropped into
+Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
+everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
+Nell since 18 October); the other villagers (Hob, Seamus, the crowd) stay
+cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. The models share
-one skeleton, so a clip one lacks is borrowed from another and fitted to
-their height (Tilly is a child), and `reach()` puts hands on things: Tam and
-the player carry the barrel by its ends, Tilly holds her moth's card out in
-both hands, Corin leads her up the lane by the hand and holds it on the
-riverbank, Tam levels his pitchfork.
+one skeleton's bone names, so a clip one lacks is borrowed from another and
+fitted to their height (Tilly is a child, Nell small and stooped);
+`reach()` puts hands on things: Tam and the player carry the barrel by its
+ends, Tilly holds her moth's card out in both hands, Corin leads her up the
+lane by the hand and holds it on the riverbank, Tam levels his pitchfork.
+`sit(height)` sits someone on a bench that high where they stand (Nell on
+hers, the player beside her): hips on the seat, thighs along it, feet on
+the ground (Tilly's swing); whatever they do sitting (talking, a wave, a
+held pose) stays sitting until `stand()` or they walk off.
 
 The player (look A) is Gary's young man since 17 October, from AssetFurnace
 with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
@@ -189,16 +194,34 @@ him from Gary's master file:
 tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>
 godot --headless --import
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
-godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses
+godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses, and sit
 xvfb-run -a -s "-screen 0 800x800x24" godot --rendering-driver opengl3 --resolution 640x640 \
-    --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, and in every clip
+    --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, in every clip, the cast on a bench
 ```
 
 His own clips besides the game's: sneak, strafe_left, jump, sit,
 fight_stance, punch, punch_combo, kick, roundhouse, flying_kick,
 sword_swing, kata, hit_react, death, dance, wave and roll (the roll, the
 flying kick, the punch combo, the strafe and the death travel as made, so
-whoever plays one moves the figure to where it ends).
+whoever plays one moves the figure to where it ends). The `sit` clips
+(everyone's) sit down on the ground; a bench is `Figure3D.sit()`.
+
+Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
+built the same way by `tools/rig_villager.sh <who> <master.glb>` (then the
+import, their portrait and the checks above, with their id): Corin stands
+1.72 m, Tam 1.88 m, Tilly 1.25 m and Nell 1.50 m. Each keeps its own clips
+besides the game's: Corin cheer, dance, death, fight_stance, flying_kick,
+hit_react, jump, kata, kick, punch and punch_combo (he came without a walk,
+so he walks, runs, sits and waves as the player does); Tam and Tilly jump,
+sit, wave, cheer, dance, kick, punch and death; Nell jump, sit, wave, cheer,
+dance, punch and death. Their rigs are smaller than the player's: Tam's and
+Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
+groups, and Nell has 29 bones in all. Nell's walking stick is part of her
+mesh, in her right hand, so that arm stays as in her idle when she talks,
+cheers, walks or runs. AssetFurnace's walk and run tip the head back, so
+it's levelled for the four of them. Tam's master file was 47 MB because it
+carried every source file's mesh and textures, unused; his game model, like
+the others, has only what it uses (about 2.5 MB, with a 2048 colour atlas).
 
 Everything after the Lantern Duel is a film in the game's own 3D: midnight,
 the Sigilfall, the run, the cart, the white light, the Pale Herald at dawn, the taproom,
