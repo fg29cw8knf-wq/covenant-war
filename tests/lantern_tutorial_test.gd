@@ -135,6 +135,10 @@ func _do(d: String) -> void:
 
 
 func _shot(tag: String) -> void:
-	await RenderingServer.frame_post_draw
 	n += 1
-	get_viewport().get_texture().get_image().save_png(out_dir.path_join("tut_%02d_%s.png" % [n, tag]))
+	if DisplayServer.get_name() == "headless":
+		return   # (nothing is drawn: run for the order of the lines only)
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	if img != null:   # (none when run headless, just for the order of the lines)
+		img.save_png(out_dir.path_join("tut_%02d_%s.png" % [n, tag]))

@@ -236,7 +236,12 @@ func allows(kind: String, what = null) -> bool:
 
 
 ## The player did what was asked (call after allows() said yes). Any
-## explanations queued behind it show now, before the next instruction.
+## explanations queued behind it show now, before the next instruction;
+## except after a step the duel then plays out (an attack or a Rite on its
+## target, a Totem called into its slot): those wait until the duel comes
+## back to the player (at_main()), so a line the play itself brings (Bram's
+## "See that?" as the hit lands on a weakness, "Out it goes" at a knockout)
+## comes first, in the script's order, not behind the next one.
 func did(kind: String, what = null) -> void:
 	if _current_do().is_empty() or not allows(kind, what):
 		return
@@ -246,6 +251,10 @@ func did(kind: String, what = null) -> void:
 		_did_step.emit()
 		return
 	queue.pop_front()
+	if kind in ["target", "slot"]:
+		if not _line_up:
+			_hide()
+		return
 	_continue()
 
 
