@@ -265,10 +265,10 @@ player's hands on her words "You keep it", and midnight begins. A dialogue line
 can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
 "<words>"}` starts the scene as the line types out as far as those words.
 
-Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
+Bram, Corin, Tam, Tilly, Old Nell, Hob and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
-Nell since 18 October); the other villagers (Hob, Ned, the crowd) stay
-cut-outs until their models exist, and a model dropped into
+Nell since 18 October, Hob since 19 October); the other villagers (Ned, the
+crowd) stay cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
 shows the camera its painted front, turned left or right (its back picture
 read as a blank white card in a film), and kneels by crouching onto its feet
@@ -312,9 +312,13 @@ whoever plays one moves the figure to where it ends). The `sit` clips
 (everyone's) sit down on the ground; a bench is `Figure3D.sit()`.
 
 Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
-built the same way by `tools/rig_villager.sh <who> <master.glb>` (then the
-import, their portrait and the checks above, with their id): Corin stands
-1.72 m, Tam 1.88 m, Tilly 1.25 m and Nell 1.50 m. Each keeps its own clips
+and Hob his 19 October one, built the same way by
+`tools/rig_villager.sh <who> <master.glb>` (then the import, their portrait
+and the checks above, with their id): Corin stands 1.72 m, Tam 1.88 m, Tilly
+1.25 m, Nell 1.50 m and Hob 1.80 m (his own idle, walk, run, jump, sit, wave,
+cheer and death). `rig_villager.sh corin <folder>` also takes a folder of
+single-clip AssetFurnace files (one clip each, the same rig) for the day
+Corin's own walk, run, sit and wave arrive. Each keeps its own clips
 besides the game's: Corin cheer, dance, death, fight_stance, flying_kick,
 hit_react, jump, kata, kick, punch and punch_combo (he came without a walk,
 so he walks, runs, sits and waves as the player does); Tam and Tilly jump,

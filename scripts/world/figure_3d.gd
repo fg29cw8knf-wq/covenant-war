@@ -47,11 +47,12 @@ const DONORS := ["clips/shared", "bram", "corin", "player_a"]
 ## ground (m/s); shorter legs (Tilly's) take quicker steps.
 const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
 ## Models whose own walking clips go at their own pace (m/s, as
-## tools/rig_character.py measured them), not GAIT_SPEED's. (Corin walks
-## and runs as the player does, fitted to his legs.)
+## tools/rig_character.py measured them), not GAIT_SPEED's. (Corin's own
+## walk and run since 19 October; Hob's since the same day.)
 const OWN_GAIT := {
 	"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87},
-	"corin": {"walk": 1.68, "run": 4.35},
+	"corin": {"walk": 1.27, "run": 3.23},
+	"hob": {"walk": 1.65, "run": 4.17},
 	"tam": {"walk": 1.63, "run": 4.12},
 	"tilly": {"walk": 1.00, "run": 2.54},
 	"nell": {"walk": 1.11, "run": 2.81},

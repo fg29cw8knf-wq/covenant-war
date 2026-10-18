@@ -4,7 +4,7 @@ extends SceneTree
 ##   xvfb-run -a -s "-screen 0 800x800x24" godot --rendering-driver opengl3 --resolution 640x640 \
 ##       --script res://tests/model_sheet.gd -- <out_dir> [model id, default player_a] [clip,clip... | none]
 ## (a list of clips renders only those; "none" just the cast and the close-ups)
-const CAST := ["player_a", "bram", "corin", "tam", "tilly", "nell"]
+const CAST := ["player_a", "bram", "corin", "tam", "tilly", "nell", "hob"]
 const BENCH := 0.45   # a bench's seat (m)
 var out := "/tmp/sheet"
 var id := "player_a"

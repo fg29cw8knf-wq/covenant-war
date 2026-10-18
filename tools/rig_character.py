@@ -946,27 +946,26 @@ def build(args):
     rest_hips = tgt_wp["Hips"]
     clips = {}
     ident = {nm: I4 for nm in CANON}
+    renames = dict(r.split("=", 1) for r in args.rename)
     for an in j.get("animations", []):
         nm = an.get("name", "clip")
+        nm = renames.get(nm, nm)
         clips[nm] = fit_clip(src, names, an, tgt_wp, ident, s, rest_hips, nm)
     report = []
-    for nm in args.cycle:
-        if nm in clips:
-            c = make_cycle(clips[nm], rest_hips)
-            clips[nm] = c
-            report.append("%-12s one cycle %.2f s (from %.2f to %.2f s, mismatch %.1f, turned %.1f deg), natural speed %.2f m/s"
-                          % (nm, c.length, c.cut[0], c.cut[1], c.cut[2], -c.cut[3], c.speed))
-    for nm in args.seam:
-        if nm in clips:
-            ease_seam(clips[nm])
-            report.append("%-12s end eased into its start" % nm)
     for spec in args.borrow:
         path, _, which = spec.rpartition(":")
         dj, db = load(path)
         drig = Rig(dj, db)
         dnames = standard_names(drig)
-        corr = corrections_for(drig, dnames, tgt_wp)
-        dk = rest_hips[1] / drig.wp[{v: k for k, v in dnames.items()}["Hips"]][1]
+        d_hips = drig.wp[{v: k for k, v in dnames.items()}["Hips"]]
+        if len(drig.joints) == len(src.joints) and np.allclose(d_hips, src.wp[by["Hips"]], atol=1e-3):
+            # the model's own rig, in another of its files (a single-clip
+            # AssetFurnace export): its clips fit as the model's own do
+            corr = ident
+            dk = s
+        else:
+            corr = corrections_for(drig, dnames, tgt_wp)
+            dk = rest_hips[1] / d_hips[1]
         anims = {a.get("name", "clip%d" % k): a for k, a in enumerate(dj.get("animations", []))}
         for item in which.split(","):
             # "theirs=ours" takes their clip under our name (a single-clip
@@ -981,6 +980,18 @@ def build(args):
             assert src_nm in anims, "%s has no clip %s (it has %s)" % (path, src_nm, ", ".join(anims))
             clips[nm] = fit_clip(drig, dnames, anims[src_nm], tgt_wp, corr, dk, rest_hips, nm)
             report.append("%-12s fitted from %s" % (nm, os.path.basename(path)))
+    # (after the borrowing: a walk that came from a single-clip file of the
+    # model's own is cut to its cycle like one it carried itself)
+    for nm in args.cycle:
+        if nm in clips:
+            c = make_cycle(clips[nm], rest_hips)
+            clips[nm] = c
+            report.append("%-12s one cycle %.2f s (from %.2f to %.2f s, mismatch %.1f, turned %.1f deg), natural speed %.2f m/s"
+                          % (nm, c.length, c.cut[0], c.cut[1], c.cut[2], -c.cut[3], c.speed))
+    for nm in args.seam:
+        if nm in clips:
+            ease_seam(clips[nm])
+            report.append("%-12s end eased into its start" % nm)
     for spec in args.hold_arm:
         side, src_nm, which = spec.split(":")
         for nm in which.split(","):
@@ -1072,6 +1083,7 @@ def main():
     ap.add_argument("--cycle", action="append", default=[], help="a walking clip to cut to one cycle on the spot")
     ap.add_argument("--seam", action="append", default=[], help="a looping clip whose end is eased into its start")
     ap.add_argument("--borrow", action="append", default=[], help="model.glb:clip,clip,... clips to fit from another model (theirs=ours renames one; *=ours takes a single-clip file's only clip)")
+    ap.add_argument("--rename", action="append", default=[], help="theirs=ours: one of the model's own clips under our name")
     ap.add_argument("--texture-size", type=int, default=2048)
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
     ap.add_argument("--hold-arm", action="append", default=[],

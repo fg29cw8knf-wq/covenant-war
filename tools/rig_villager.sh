@@ -20,12 +20,13 @@ out="assets/models/characters/$who.glb"
 GAME="talk,duel_idle,play_card,victory,defeat,fall,look_up"
 case "$who" in
 corin)
-	# a young man a little shorter than the player. Gary's 19 October set is
-	# ten single-clip AssetFurnace files in one folder (..._idle.glb, _walk,
-	# _run, _jump, _sit, _wave, _cheer, _dance, _punch, _death): the idle file
-	# is the body and the others lend their one clip each (the same rig), so
-	# he walks, runs, sits and waves as himself now; his 18 October fighting
-	# clips come over from the model he had
+	# a young man a little shorter than the player. Given a folder of
+	# single-clip AssetFurnace files (..._idle.glb, _walk, _run, _jump, _sit,
+	# _wave, _cheer, _dance, _punch, _death), the idle file is the body and
+	# the others lend their one clip each (the same rig), so he'd walk, run,
+	# sit and wave as himself; his 18 October fighting clips come over from
+	# the model he had. (The "corin model" folder of 19 October turned out to
+	# hold Old Nell's files, so his 18 October model stands until his come.)
 	if [ -d "$src" ]; then
 		# (copied to a folder with no spaces in its name first)
 		tmp=$(mktemp -d)
@@ -36,10 +37,11 @@ corin)
 			f=$(ls "$tmp"/*_$c.glb 2>/dev/null | head -1)
 			test -n "$f" && borrow="$borrow --borrow $f:*=$c"
 		done
-		old=assets/models/characters/corin.glb
-		test -f "$old" && cp "$old" /tmp/corin_18oct.glb
+		# (his 18 October model, as committed: the one with the fighting clips)
+		git show 0afe166:assets/models/characters/corin.glb > /tmp/corin_18oct.glb
 		set -f   # (the "*=" in $borrow is for rig_character.py, not the shell)
 		python3 tools/rig_character.py "$idle" "$out" --name Corin --height 1.72 \
+			--rename ArmatureAction=idle \
 			--cycle walk --cycle run --seam idle --seam dance \
 			$borrow \
 			--borrow "assets/models/characters/clips/shared.glb:$GAME" \
