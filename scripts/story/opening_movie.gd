@@ -7,53 +7,67 @@ extends CanvasLayer
 ##   2. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
 ##      or the still res://assets/art/movie/<shot>.png (or .jpg) animated in the engine,
 ##      or, when neither exists yet, an animatic card describing the shot.
-## Narration subtitles follow the Master Script v2 timings (2:24, the title at 2:14).
-## Voice lines (res://assets/audio/vo/vo_<n>.ogg) and music (res://assets/audio/opening_theme.ogg)
-## play when present. Tap to show Skip. The files to make are listed in
-## "Opening Movie: Your Step-by-Step".
+## Shots, lines and pictures follow the "Opening movie" table of Master Script v3
+## (2:24 in all, in time with opening_theme; the title rises at 2:14.5 to meet its
+## final chord). Morrowen's voice lines (res://assets/audio/vo/vo_<n>.ogg, made from
+## Gary's recordings with tools/vo_master.py) and the music
+## (res://assets/audio/opening_theme.ogg) play when present. Tap to show Skip. The
+## files to make are listed in "Opening Movie: Your Step-by-Step".
 
 signal finished
 
-## Script: start time (s), length (s), narration, what we see, camera move, overlay effect.
+## Script: length (s), Morrowen's line (the words exactly as recorded, which are
+## also the subtitle), when it starts (vo_at: seconds after its shot's cut), what we
+## see, camera move, overlay effect. The shots' lengths are v3's timings, so the
+## pictures cut with the music. The longer lines run on past their cut, and the
+## next line waits for them: vo_at is set from the recordings' lengths so that
+## every line starts in its own shot, a breath after the one before (09b runs
+## straight on from 09a, on the cut to the card), and the last ends before the
+## title. tests/movie_shot.gd prints the timeline and checks it.
 const SHOTS := [
-	{"id": "shot_01", "len": 8.0, "vo": "Before the first king, before the first card, there was the Throne.",
+	{"id": "shot_01", "len": 8.0, "vo": "I have watched every Age end, and written down what each one cost.", "vo_at": 0.5,
 		"see": "Black. A spark rises; a sea of golden clouds; the Throne tiny on a distant floating peak.", "move": "in", "fx": "motes_gold"},
-	{"id": "shot_02", "len": 8.0, "vo": "Whoever sits upon it commands every drop of magic in creation.",
+	{"id": "shot_02", "len": 8.0, "vo": "Whoever sits on that Throne rules every other god, and decides where the rain falls.", "vo_at": 0.1,
 		"see": "The empty Throne; rivers of light flow up into it.", "move": "up", "fx": "motes_gold"},
-	{"id": "shot_03", "len": 9.0, "vo": "Once, the gods fought over it, and the heavens broke. So the first gods wrote the Covenant.",
+	{"id": "shot_03", "len": 9.0, "vo": "To end their wars, the first gods carved the Covenant into the sky. It didn't end them. It scheduled them.", "vo_at": 1.72,
 		"see": "Giant god silhouettes carve runes into a floating stone ring.", "move": "right", "fx": "sparks"},
-	{"id": "shot_04", "len": 11.0, "vo": "One god would rule for one Age: two thousand years. No god may destroy another. And all magic that falls to the world below must obey its law.",
+	{"id": "shot_04", "len": 11.0, "vo": "One god rules for one Age: two thousand years. And nobody asked the world below whether it agreed.", "vo_at": 4.15,
 		"see": "The rune ring locks around the Throne; a shockwave rolls across the clouds.", "move": "out", "fx": "motes_gold"},
-	{"id": "shot_05", "len": 8.0, "vo": "For two thousand years, the Throne has belonged to Solmaris, the Radiant Sovereign.",
+	{"id": "shot_05", "len": 8.0, "vo": "This Age belongs to Solmaris, and the sun has kept perfect time.", "vo_at": 2.48,
 		"see": "Solmaris on the Throne, eyes closed, serene and cold.", "move": "in", "fx": "motes_gold"},
-	{"id": "shot_06", "len": 6.0, "vo": "Now her Age is ending.",
+	{"id": "shot_06", "len": 6.0, "vo": "Now her Age falls due.", "vo_at": 0.5,
 		"see": "Her eyes open; the shadow of the sky-sized sundial touches the last rune.", "move": "up", "fx": "flash"},
-	{"id": "shot_07a", "len": 2.0, "vo": "And the others are coming for her crown.",
+	{"id": "shot_07a", "len": 2.0, "vo": "The other six would like her gone.", "vo_at": 0.4,
 		"see": "Pyrrhane, the Burning Crown, rises from a sea of fire.", "move": "in", "fx": "embers", "god": "pyrrhane"},
 	{"id": "shot_07b", "len": 2.0, "vo": "", "see": "Vaelith, the Frost Queen, on still black water.", "move": "in", "fx": "snow", "god": "vaelith"},
 	{"id": "shot_07c", "len": 2.0, "vo": "", "see": "Ixara, the Storm Herald, bursts through the storm.", "move": "in", "fx": "flash", "god": "ixara"},
 	{"id": "shot_07d", "len": 2.0, "vo": "", "see": "Nocthra, the Veiled Mother, and a thousand moths.", "move": "in", "fx": "moths", "god": "nocthra"},
 	{"id": "shot_07e", "len": 2.0, "vo": "", "see": "Oriel, the Dreaming Eye, opens her many eyes.", "move": "in", "fx": "motes", "god": "oriel"},
 	{"id": "shot_07f", "len": 2.0, "vo": "", "see": "Aldrith, the Runeweaver, locks his rune circles.", "move": "in", "fx": "motes", "god": "aldrith"},
-	{"id": "shot_08", "len": 8.0, "vo": "Gods cannot kill gods. So they will fight through us.",
+	{"id": "shot_08", "len": 8.0, "vo": "Gods can break the sky, but not each other. So they spend the living instead.", "vo_at": 0.4,
 		"see": "The seven powers collide; the sky shatters like glass.", "move": "in", "fx": "flash"},
-	{"id": "shot_09a", "len": 5.0, "vo": "Every blow tears the sky, and their magic falls to the world of Veyl,",
+	{"id": "shot_09a", "len": 5.0, "vo": "Their magic has always spilled into the world below,", "vo_at": 0.68,
 		"see": "Light falls to Veyl.", "move": "down", "fx": "falling"},
-	{"id": "shot_09b", "len": 5.0, "vo": "crystallised into Sigils.",
+	{"id": "shot_09b", "len": 5.0, "vo": "and cooled into cards.", "vo_at": 0.0,
 		"see": "One streak cools into a card in a field.", "move": "in", "fx": "sparks"},
-	{"id": "shot_10", "len": 9.0, "vo": "Those who can wield a Sigil can summon what sleeps inside it.",
+	# music only: Bram explains the first Totem that night, in his own words
+	{"id": "shot_10", "len": 9.0, "vo": "",
 		"see": "A duellist raises a card and Blazehound bursts out onto a rune circle.", "move": "in", "fx": "embers"},
-	{"id": "shot_11", "len": 9.0, "vo": "Kingdoms rose on Sigil wealth. Now wars are fought with cards, not swords.",
+	{"id": "shot_11", "len": 9.0, "vo": "Kingdoms were built on cards. Now they fight with them, not swords. Fewer die that way. I notice the difference.", "vo_at": 0.1,
 		"see": "Two armies at dusk; Boulderox and Voltlynx clash above a giant duelling circle.", "move": "up", "fx": "sparks"},
-	{"id": "shot_12", "len": 10.0, "vo": "Each kingdom is ruled by a Champion sworn to a god. When an Age ends, anyone may challenge them, and the seven who still stand fight for the Throne.",
+	{"id": "shot_12", "len": 10.0, "vo": "Each kingdom has a Champion, marked by a god. Anyone may challenge one for the mark. The last one standing crowns their god.", "vo_at": 1.32,
 		"see": "Seven beams fall on seven kingdoms; seven marks burn onto seven hands.", "move": "out", "fx": "falling"},
-	{"id": "shot_12b", "len": 10.0, "vo": "And in Ironvault, a mortal king who owns half the world has begun to wonder why the other half belongs to the gods.",
-		"see": "A vault of glowing cards; a gold-ringed hand turns over a card beside a gold case with eight empty slots. The face is never shown.", "move": "left", "fx": "motes_gold"},
-	{"id": "shot_13", "len": 8.0, "vo": "But on the last night of the Age, over a village no one had ever heard of...",
-		"see": "Ashford at night; the sky tears open.", "move": "in", "fx": "falling"},
-	{"id": "shot_15", "len": 18.0, "vo": "...the Covenant did something it had never done before.",
-		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites and joins them.", "move": "out", "fx": "orbit",
-		"orbit_at": Vector2(0.5, 0.79), "orbit_r": Vector2(0.13, 0.04), "white_at": 4.0,
+	{"id": "shot_12b", "len": 10.0, "vo": "And in Ironvault, a man who holds half the world in debt has started to ask what the gods are for.", "vo_at": 1.84,
+		"see": "A vault of glowing cards; a gold-ringed hand turns a page in a ledger beside a gold case with eight empty slots. The face is never shown.", "move": "left", "fx": "motes_gold"},
+	# the white streak sets off on "over a village" and comes down on Ashford on
+	# "anyway" (seconds into the line), a moment before the cut
+	{"id": "shot_13", "len": 8.0, "vo": "On the last night of the Age, over a village that had hung its lanterns anyway...", "vo_at": 2.25,
+		"see": "Ashford at night; the sky tears open, and one white streak falls towards the village.", "move": "in", "fx": "streak",
+		"streak": [3.07, 5.28], "streak_from": Vector2(0.455, 0.05), "streak_to": Vector2(0.578, 0.745)},
+	# the eighth light ignites on "marked", 0.86 s into the line
+	{"id": "shot_15", "len": 18.0, "vo": "...the Covenant marked an eighth Champion, and left the god's name blank.", "vo_at": 0.75,
+		"see": "The Throne with seven orbiting lights; an eighth, pure white, ignites on \"marked\" and joins them.", "move": "out", "fx": "orbit",
+		"orbit_at": Vector2(0.5, 0.79), "orbit_r": Vector2(0.13, 0.04), "white_word": 0.86,
 		"title": true, "title_at": 8.5},
 ]
 
@@ -71,12 +85,18 @@ var _done := false
 var _skip_timer: SceneTreeTimer
 var _skip_up := false        # Skip is showing: the next E, Space, Enter or A skips
 var _focus_before: Control   # the button underneath that had the keyboard focus
-var _queue: Array = []
 var _duck_tween: Tween
+var _ducked := false
 var _clock := 0.0
-var _voice_until := -1.0
+var _lines: Array = []       # schedule(): when each line starts and ends
+var _next_line := 0          # the next line to start
+var _line_end := -1.0        # when the line speaking now ends (-1: none)
 ## How far the music drops while Morrowen speaks.
 const DUCK_DB := -8.0
+## A subtitle stays up this long after its line ends, unless the next line takes over.
+const SUB_HOLD := 0.6
+## The music comes back up between lines only when the next one is further off than this.
+const UNDUCK_GAP := 1.5
 
 
 func _ready() -> void:
@@ -147,6 +167,7 @@ func _ready() -> void:
 
 
 func _play() -> void:
+	_lines = schedule()
 	if ResourceLoader.exists(MUSIC):
 		_music.stream = load(MUSIC)
 		_music.play()
@@ -157,25 +178,21 @@ func _play() -> void:
 	_finish()
 
 
+## The finished cut has the narration in it: only the subtitles follow its clock.
 func _play_full_cut() -> void:
 	_stage.visible = false
 	_video.stream = load(MOVIE)
 	_video.visible = true
 	_video.play()
-	var t := 0.0
-	var i := 0
-	var start := 0.0
 	while _video.is_playing() and not _done:
 		await get_tree().process_frame
-		t = _video.stream_position
-		while i < SHOTS.size() and t >= start + float(SHOTS[i].len):
-			start += float(SHOTS[i].len)
-			i += 1
-		_set_sub(SHOTS[i].vo if i < SHOTS.size() else "")
+		_clock = _video.stream_position
+		_tick_lines(false)
 
 
 func _play_shots() -> void:
 	var n := 0
+	var cut := 0.0
 	for shot in SHOTS:
 		if _done:
 			return
@@ -183,15 +200,7 @@ func _play_shots() -> void:
 		var id: String = shot.id
 		var clip := "res://assets/movies/shots/%s.ogv" % id
 		var still := _still_path(id)
-		var vo_path := "res://assets/audio/vo/vo_%s.ogg" % id.trim_prefix("shot_")
-		if ResourceLoader.exists(vo_path):
-			# the line goes up when its voice starts, which may be a moment after the cut
-			_queue.append({"path": vo_path, "text": String(shot.vo)})
-			_speak_next()
-		elif String(shot.vo) != "":
-			_set_sub(String(shot.vo))
-		elif _voice_until < 0.0 and _queue.is_empty():
-			_set_sub("")
+		var line_at := _line_start(id) - cut
 		if ResourceLoader.exists(clip):
 			# the clip plays; the stage stays up only to draw the title over it
 			_video.stream = load(clip)
@@ -199,45 +208,79 @@ func _play_shots() -> void:
 			_video.play()
 			_stage.visible = shot.get("title", false) or String(shot.get("fx", "")) == "orbit"
 			_stage.overlay_only = true
-			_stage.show_shot(shot, null, n)
+			_stage.show_shot(shot, null, n, line_at)
 		else:
 			_video.stop()
 			_video.visible = false
 			_stage.visible = true
 			_stage.overlay_only = false
-			_stage.show_shot(shot, load(still) if still != "" else null, n)
-		await _wait(float(shot.len))
+			_stage.show_shot(shot, load(still) if still != "" else null, n, line_at)
+		# each cut lands on the movie clock, so the pictures never drift from the music
+		cut += float(shot.len)
+		await _wait_until(cut)
 
 
-## Lines never overlap or get cut off: a line still playing when the next shot
-## cuts finishes first, and the next line follows it. The music ducks under
-## every line. Timing runs on the movie clock, not the audio driver, so the
-## subtitles stay right even when the sound can't play.
-func _speak_next() -> void:
-	if _clock < _voice_until or _queue.is_empty():
-		return
-	var line: Dictionary = _queue.pop_front()
-	var stream: AudioStream = load(line.path)
-	_voice.stream = stream
-	_voice.play()
-	_voice_until = _clock + stream.get_length() + 0.15
-	_set_sub(String(line.text))
-	_duck(true)
-	if OS.is_debug_build():
-		print("movie: %s at %d:%04.1f" % [String(line.path).get_file(), int(_clock) / 60, fmod(_clock, 60.0)])
+## When each of Morrowen's lines starts and ends, on the movie clock: at its
+## shot's cut plus vo_at, or, if a re-recorded line before it has grown too long
+## to finish by then, a moment after that one ends, so lines never overlap or get
+## cut off. A line whose recording isn't there yet gets a reading-time estimate.
+static func schedule() -> Array:
+	var out := []
+	var cut := 0.0
+	var free_at := 0.0
+	for shot in SHOTS:
+		var text := String(shot.vo)
+		if text != "":
+			var id: String = shot.id
+			var path := "res://assets/audio/vo/vo_%s.ogg" % id.trim_prefix("shot_")
+			var length := 1.0 + text.length() * 0.07
+			if ResourceLoader.exists(path):
+				length = (load(path) as AudioStream).get_length()
+			else:
+				path = ""
+			var start := maxf(cut + float(shot.get("vo_at", 0.0)), free_at)
+			out.append({"shot": id, "text": text, "path": path, "start": start, "end": start + length})
+			free_at = start + length + 0.05
+		cut += float(shot.len)
+	return out
 
 
-func _tick_voice() -> void:
-	if _clock < _voice_until or _voice_until < 0.0:
-		return
-	_voice_until = -1.0
-	if _queue.is_empty():
-		_duck(false)
-	else:
-		_speak_next()
+## Where the line for this shot starts on the movie clock (-1: the shot has none).
+func _line_start(shot_id: String) -> float:
+	for l in _lines:
+		if l.shot == shot_id:
+			return l.start
+	return -1.0
+
+
+## Starts each line on time, takes its subtitle down after it, and ducks the
+## music under the voice. Timing runs on the movie clock, not the audio driver,
+## so the subtitles stay right even when the sound can't play.
+func _tick_lines(speak := true) -> void:
+	if _next_line < _lines.size() and _clock >= float(_lines[_next_line].start):
+		var line: Dictionary = _lines[_next_line]
+		_next_line += 1
+		_line_end = float(line.end)
+		_set_sub(String(line.text))
+		if speak and line.path != "":
+			_voice.stream = load(line.path)
+			_voice.play()
+			_duck(true)
+		if OS.is_debug_build():
+			print("movie: %s at %d:%06.3f" % [String(line.shot).replace("shot", "vo"), int(_clock) / 60, fmod(_clock, 60.0)])
+	if _line_end >= 0.0 and _clock >= _line_end:
+		var next_at: float = _lines[_next_line].start if _next_line < _lines.size() else INF
+		if speak and next_at - _line_end > UNDUCK_GAP:
+			_duck(false)
+		if _clock >= _line_end + SUB_HOLD:
+			_line_end = -1.0
+			_set_sub("")
 
 
 func _duck(down: bool) -> void:
+	if down == _ducked:
+		return
+	_ducked = down
 	if _duck_tween:
 		_duck_tween.kill()
 	_duck_tween = create_tween()
@@ -253,13 +296,12 @@ static func _still_path(id: String) -> String:
 	return ""
 
 
-func _wait(sec: float) -> void:
-	var t := 0.0
-	while t < sec and not _done:
+## Runs the movie clock (and the lines on it) until it reaches `t`.
+func _wait_until(t: float) -> void:
+	while _clock < t and not _done:
 		await get_tree().process_frame
-		t += get_process_delta_time()
 		_clock += get_process_delta_time()
-		_tick_voice()
+		_tick_lines()
 
 
 func _set_sub(text: String) -> void:
@@ -306,7 +348,6 @@ func _finish() -> void:
 		return
 	_done = true
 	_video.stop()
-	_queue.clear()
 	if _duck_tween:
 		_duck_tween.kill()
 	var tw := create_tween()
@@ -332,14 +373,19 @@ class ShotView:
 	var _still_rect := Rect2()
 	## True while a video clip plays underneath: only the title is drawn.
 	var overlay_only := false
+	## Seconds into the shot when its line starts: effects timed to Morrowen's
+	## words (the eighth light, the white streak) count from here.
+	var line_at := 0.0
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	func show_shot(s: Dictionary, tex: Texture2D, n: int) -> void:
+	## at: when the shot's line starts, in seconds after the cut (below 0: its vo_at).
+	func show_shot(s: Dictionary, tex: Texture2D, n: int, at := -1.0) -> void:
 		shot = s
 		still = tex
 		number = n
+		line_at = at if at >= 0.0 else float(s.get("vo_at", 0.0))
 		_t = 0.0
 		_rng.seed = hash(String(s.id))
 		_parts.clear()
@@ -490,6 +536,55 @@ class ShotView:
 					draw_rect(r, Color(1, 1, 1, 0.5 * f))
 			"orbit":
 				_draw_orbit(r)
+			"streak":
+				_draw_streak(r)
+
+	## Shot 13: one white streak breaks out of the torn sky as Morrowen says "over
+	## a village" and comes down on Ashford as she says "anyway" (the shot's
+	## "streak" times, seconds into its line), half a second before the cut to the
+	## Throne: long enough to see it strike, and its light is still on the village
+	## as the picture changes.
+	func _draw_streak(r: Rect2) -> void:
+		var times: Array = shot.get("streak", [3.0, 5.3])
+		var t0 := line_at + float(times[0])
+		var t1 := line_at + float(times[1])
+		if _t < t0:
+			return
+		var sr := _still_rect if still != null else r
+		var k := sr.size.y / 1080.0
+		var from := sr.position + Vector2(shot.get("streak_from", Vector2(0.46, 0.05))) * sr.size
+		var to := sr.position + Vector2(shot.get("streak_to", Vector2(0.58, 0.75))) * sr.size
+		var u := clampf((_t - t0) / maxf(t1 - t0, 0.1), 0.0, 1.0)
+		var head := from.lerp(to, pow(u, 1.6))   # it gathers speed as it falls
+		var since := _t - t1                       # after it lands
+		# the beam it leaves, from the tear to its head, fading away once it has landed
+		var beam := clampf(1.0 - since / 0.7, 0.0, 1.0) if since > 0.0 else 1.0
+		var n := 32
+		for s in n:
+			var a := head.lerp(from, float(s) / n)
+			var b := head.lerp(from, float(s + 1) / n)
+			var f := pow(1.0 - float(s) / n, 1.5) * beam
+			draw_line(a, b, Color(0.75, 0.88, 1.0, 0.18 * f), 34.0 * k, true)
+			draw_line(a, b, Color(0.9, 0.96, 1.0, 0.45 * f), 14.0 * k, true)
+			draw_line(a, b, Color(1, 1, 1, f), 5.0 * k, true)
+		if since < 0.0:
+			_glow(head, 70.0 * k, Color(0.9, 0.95, 1.0), 0.7)
+			draw_circle(head, 9.0 * k, Color.WHITE)
+			return
+		# it strikes: a flash, a burst of light on the village, a ring running out
+		var flash := clampf(1.0 - since / 0.4, 0.0, 1.0)
+		if flash > 0.0:
+			draw_rect(r, Color(1, 1, 1, 0.45 * flash * flash))
+		_glow(to, (150.0 + 90.0 * minf(since, 1.0)) * k, Color(0.92, 0.96, 1.0), 0.8 + 0.5 * flash)
+		var ring := minf(since / 1.0, 1.0)
+		draw_arc(to, (30.0 + 300.0 * ring) * k, 0.0, TAU, 64, Color(1, 1, 1, 0.8 * (1.0 - ring)), 6.0 * k * (1.0 - ring) + 1.0, true)
+		draw_circle(to, 14.0 * k, Color.WHITE)
+
+	## A soft round glow: circles stacked so it's brightest in the middle.
+	func _glow(at: Vector2, radius: float, col: Color, strength: float) -> void:
+		for i in 18:
+			var f := 1.0 - i / 18.0
+			draw_circle(at, radius * f * f, Color(col, strength / 10.0))
 
 	## Shot 15: the seven gods' lights circle the Throne; then an eighth, pure
 	## white, ignites out of nothing and joins them.
@@ -509,14 +604,15 @@ class ShotView:
 			var t := TAU * i / 64.0
 			path.append(c + Vector2(cos(t) * R.x, sin(t) * R.y))
 		draw_polyline(path, Color(UITheme.GOLD, 0.12), 2.0 * k, true)
-		var white_at := float(shot.get("white_at", 4.0))
+		# it ignites as Morrowen says "marked"
+		var white_at := line_at + float(shot.get("white_word", 0.0))
 		var lights := []
 		for i in 8:
 			var ang := _t * 0.5 + TAU * i / 8.0
 			var depth := sin(ang)          # +1 in front of the Throne, -1 behind it
 			var a := 1.0
 			if i == 7:
-				a = clampf((_t - white_at) / 0.8, 0.0, 1.0)
+				a = clampf((_t - white_at) / 0.3, 0.0, 1.0)
 				if a <= 0.0:
 					continue
 			var el := "any" if i == 7 else String(Lore.GODS[Lore.GREAT_GODS[i]].element)
@@ -533,12 +629,18 @@ class ShotView:
 				draw_circle(pos, sz * (6.0 - g), Color(col, 0.06 * a))
 			draw_circle(pos, sz * 1.4, Color(col, 0.6 * a))
 			draw_circle(pos, sz * 0.8, Color(col.lightened(0.7), 0.98 * a))
-		# the eighth light's ignition: a ring of white that blooms and fades
+		# the eighth light's ignition: a flare of white that blooms and fades, and a ring
 		var since := _t - white_at
 		if since >= 0.0 and since < 1.6:
 			var ang7 := _t * 0.5 + TAU * 7.0 / 8.0
 			var p7 := Vector2(c.x + cos(ang7) * R.x, c.y + sin(ang7) * R.y)
 			var u := since / 1.6
+			var flare := clampf(1.0 - since / 0.6, 0.0, 1.0)
+			if flare > 0.0:
+				_glow(p7, 110.0 * k, Color.WHITE, 0.6 * flare)
+				var ray := (40.0 + 200.0 * flare) * k
+				draw_line(p7 - Vector2(ray, 0), p7 + Vector2(ray, 0), Color(1, 1, 1, 0.8 * flare), 2.5 * k, true)
+				draw_line(p7 - Vector2(0, ray * 0.6), p7 + Vector2(0, ray * 0.6), Color(1, 1, 1, 0.6 * flare), 2.0 * k, true)
 			draw_arc(p7, (20.0 + 160.0 * u) * k, 0.0, TAU, 48, Color(1, 1, 1, 0.7 * (1.0 - u)), 3.0 * k, true)
 			draw_circle(p7, (40.0 * (1.0 - u)) * k, Color(1, 1, 1, 0.5 * (1.0 - u)))
 

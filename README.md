@@ -285,11 +285,37 @@ browser loops them sample-accurately. Check it in a real browser with:
 tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the join, the crossfades, the volume
 ```
 
-## Opening movie clips
+## Opening movie
 
-The opening movie plays each shot's painting with a slow camera move, or a video
-clip where one exists. To add clips made with an image-to-video tool, name them
-after their shots (`shot_08.mp4`) and run:
+The opening movie (`scripts/story/opening_movie.gd`) follows the "Opening movie"
+table of the Master Script v3: 21 shots in 2:24, cut in time with
+`opening_theme` (the title rises at 2:14.5 to meet its last chord). Morrowen
+narrates fifteen lines (`assets/audio/vo/`); shot 10 is music only. Each line
+starts `vo_at` seconds after its shot's cut, and its subtitle is the words as
+recorded. Some lines are longer than their shots, so they run on past the cut and
+the next one follows a breath later, still inside its own shot (09b runs straight
+on from 09a, on the cut to the card); none overlaps another, and all end before
+the title. Two effects follow her words, timed in seconds into the line: shot
+13's white streak sets off on "over a village" and lands on Ashford on "anyway",
+just before the cut (`streak`), and the eighth light round the Throne ignites on
+"marked" (`white_word`).
+
+The lines are made from Gary's recordings, kept as he sent them in
+`assets/audio/source/vo/` with his line sheet and voice notes. `tools/vo_master.py`
+trims each to its words, levels it (about -16 LUFS, peaks under -1 dBTP) and
+writes the game's Ogg files. After a line is re-recorded, run it again, then the
+check, and move the `vo_at`s if it reports a problem:
+
+```sh
+python3 tools/vo_master.py assets/audio/source/vo             # -> assets/audio/vo/vo_<n>.ogg
+godot --headless --fixed-fps 20 res://tests/movie_shot.tscn   # every line against the shots, and the checks
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 20 \
+    res://tests/movie_shot.tscn -- /tmp/movie 2:05.6 2:07.7   # plus stills: half a second into each line, and at these times
+```
+
+Each shot plays its painting with a slow camera move, or a video clip where one
+exists. To add clips made with an image-to-video tool, name them after their
+shots (`shot_08.mp4`) and run:
 
 ```sh
 python3 tools/movie_clips.py <folder of clips>     # -> assets/movies/shots/<shot>.ogv, trimmed to each shot
