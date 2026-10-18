@@ -922,7 +922,7 @@ static func talk_fen(w: World, _npc = null) -> void:
 		await _say(w, "fen", "In the Circle, then. If you win, I wash my hand. If I win, I keep the name.")
 		await _fen_wager(w)
 		return
-	await _cut(w, {"player": [SQ.fen_player, "fen"]}, Vector3(5.6, 2.3, 7.4), Vector3(1.6, 1.3, 0.2), 38.0)
+	await _cut(w, {"player": [SQ.fen_player, "fen"]}, SQ.fen_cam, SQ.fen_look, 38.0)
 	for i in 5:
 		_face(w, "crowd_%d" % (i + 1), SQ.fen)
 	await _see(w, "A crowd round a fountain. A young man stands on the rim with a painted white mark on the back of his hand, touching people's foreheads for a copper each.")
@@ -946,7 +946,7 @@ static func talk_fen(w: World, _npc = null) -> void:
 	# behind the fountain: the soup line
 	await _cut(w, {"fen": [SQ.behind_fen, SQ.soup], "player": [SQ.behind_player, "fen"], "soup": [SQ.soup, "fen"],
 		"debtor": [SQ.debtor, "player"], "line_a": [SQ.line_a, SQ.soup], "line_b": [SQ.line_b, SQ.soup]},
-		Vector3(-5.2, 2.2, -4.2), Vector3(1.0, 1.0, -8.4), 38.0)
+		SQ.soup_cam, SQ.soup_look, 38.0)
 	_soup_pot(w)
 	await _see(w, "Behind the fountain, he tips most of the day's takings into the pot of a woman running a soup line for the refugees.")
 	_face(w, "fen", "player")
@@ -982,8 +982,8 @@ static func _soup_pot(w: World) -> void:
 	var n := Node3D.new()
 	n.name = "SoupPot"
 	w.add_child(n)
-	n.global_position = SQ.soup + Vector3(0.0, 0, 0.75)
-	LevelKit.box(n, Vector3.ZERO, Vector3(1.2, 0.8, 0.6), "wood", false)
+	n.global_position = SQ.soup + Vector3(0.7, 0, -0.1)   # between her and the line
+	LevelKit.box(n, Vector3.ZERO, Vector3(0.6, 0.8, 1.2), "wood", false)
 	LevelKit.cylinder(n, Vector3(0, 0.8, 0), 0.3, 0.36, "bronze", false, 0.34, 16)
 	w.set_meta(key, n)
 	var list: Array = w.get_meta("side_props", []) if w.has_meta("side_props") else []
@@ -993,7 +993,7 @@ static func _soup_pot(w: World) -> void:
 
 ## Fen and the crowd at the fountain, for the duel's outcome.
 static func _fen_stage(w: World) -> void:
-	await _cut(w, {"fen": [SQ.fen, "player"], "player": [SQ.fen_player, "fen"]}, Vector3(5.6, 2.3, 7.4), Vector3(1.6, 1.3, 0.2), 38.0)
+	await _cut(w, {"fen": [SQ.fen, "player"], "player": [SQ.fen_player, "fen"]}, SQ.fen_cam, SQ.fen_look, 38.0)
 
 
 static func _fen_wager(w: World) -> void:

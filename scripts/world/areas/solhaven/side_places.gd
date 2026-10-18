@@ -625,10 +625,12 @@ const SQUARE := {
 	"ysa_in": Vector3(-8.9, 0, 11.4), "tobin_in": Vector3(-10.0, 0, 12.0), "healer_in": Vector3(-7.8, 0, 10.6),
 	"player_ysa": Vector3(-7.1, 0, 12.1), "ysa_cam": Vector3(-9.2, 1.7, 16.9),
 	"ysa_gate": Vector3(-2.4, 0, 13.3),
-	"fen": Vector3(1.7, 0.74, -0.9), "fen_player": Vector3(1.2, 0, 2.7), "fen_wash": Vector3(2.05, 0, -0.4),
-	"crowd": [Vector3(0.4, 0, 1.4), Vector3(2.4, 0, 1.6), Vector3(3.8, 0, 0.7), Vector3(4.4, 0, -0.8), Vector3(-0.9, 0, 0.5)],
+	"fen": Vector3(1.7, 0.74, -0.9), "fen_player": Vector3(2.4, 0, 2.2), "fen_wash": Vector3(2.05, 0, -0.4),
+	"fen_cam": Vector3(-1.6, 3.4, 7.6), "fen_look": Vector3(1.4, 1.2, -0.4),   # over the crowd, clear of the lamps
+	"crowd": [Vector3(-0.5, 0, 1.3), Vector3(3.3, 0, 0.9), Vector3(4.6, 0, 0.3), Vector3(4.4, 0, -1.7), Vector3(-1.7, 0, 0.1)],
 	"behind_fen": Vector3(-0.4, 0, -7.6), "behind_player": Vector3(-1.4, 0, -8.6),
 	"soup": Vector3(1.1, 0, -8.0), "debtor": Vector3(2.4, 0, -8.6), "line_a": Vector3(3.5, 0, -9.0), "line_b": Vector3(4.6, 0, -9.2),
+	"soup_cam": Vector3(4.2, 2.0, -13.0), "soup_look": Vector3(1.4, 1.0, -8.4),   # from up the hill, the fountain behind
 	"pip_steps": Vector3(13.5, 0, -12.7), "pell": Vector3(14.1, 0, -11.6), "side_door": Vector3(10.6, 0, -17.6),
 	"pip_way": Vector3(12.2, 0, -13.0),   # round the Sundial's east side, to and from the side door
 	"pip_meet": Vector3(8.8, 0, -8.6), "player_meet": Vector3(7.7, 0, -7.4), "player_follow": Vector3(11.2, 0, -9.4),

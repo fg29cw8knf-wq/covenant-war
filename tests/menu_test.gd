@@ -66,6 +66,12 @@ func _ready() -> void:
 		menu.show_tab(t[0])
 		await _frames(12)
 		await _shot(t[0])
+	# Morrowen's Ledger: its People page too
+	Ledger.section = "people"
+	menu.show_tab("ledger")
+	await _frames(12)
+	await _shot("ledger_people")
+	Ledger.section = "accounts"
 	# the Codex's Conditions page
 	menu.show_tab("codex")
 	await _frames(6)

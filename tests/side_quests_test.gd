@@ -110,7 +110,7 @@ func _hub() -> void:
 	var sq: Dictionary = side.SQ
 	var hub: Dictionary = side.HUB
 	for look in [[sq.ysa_in + Vector3(5.9, 3.2, 6.6), sq.ysa_in + Vector3(-0.1, 0.8, 0.2), "ysa_inside"],
-			[Vector3(6.4, 3.0, 7.8), Vector3(1.6, 1.0, -0.6), "fen_fountain"],
+			[sq.fen_cam, sq.fen_look, "fen_fountain"],
 			[hub.sundial + Vector3(-3.6, 3.4, 7.6), hub.sundial + Vector3(0, 0.8, 0), "great_sundial"],
 			[hub.barracks + Vector3(7.1, 3.2, 4.0), hub.barracks + Vector3(0.1, 1.6, 0), "barracks_gate"],
 			[hub.counting_house + Vector3(-6.0, 3.0, 5.4), hub.counting_house + Vector3(-0.6, 1.0, 0.2), "counting_house"]]:
