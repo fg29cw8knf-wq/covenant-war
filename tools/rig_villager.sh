@@ -35,12 +35,15 @@ tam)
 		--head-up=-12:walk,run
 	;;
 tilly)
-	# a girl of about seven
+	# a girl of about seven; her leather satchel and its strap (bound to her
+	# arms by AssetFurnace: the bag stretched after her hand when she held her
+	# card out) move with her body
 	python3 tools/rig_character.py "$src" "$out" --name Tilly --height 1.25 \
 		--cycle walk --cycle run --seam idle --seam dance \
 		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
 		--borrow assets/models/characters/bram.glb:lift \
-		--head-up=-12:walk,run
+		--head-up=-12:walk,run \
+		--free-of-arms 0.40,0.27,0.21:0.14
 	;;
 nell)
 	# a small, stooped old woman with a walking stick (part of her mesh, in her

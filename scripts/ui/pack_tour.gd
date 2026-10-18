@@ -316,8 +316,11 @@ func _hide() -> void:
 ## Bottom centre, unless that would cover what's lit; then bottom right or
 ## left, then the top, then the middle (the least covered, if all would).
 func _place_box() -> void:
-	var sz := box.get_combined_minimum_size()
-	box.size = sz
+	# drawn at the player's text size (Options: Text and buttons size)
+	var k := SafeArea.ui_scale()
+	box.scale = Vector2(k, k)
+	box.size = box.get_combined_minimum_size()
+	var sz := box.size * k
 	var f := _rect(_spot()).grow(24.0)
 	var s := SafeArea.rect()   # clear of a phone's Dynamic Island and home bar
 	var x := s.position.x + (s.size.x - sz.x) * 0.5

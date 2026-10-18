@@ -538,8 +538,7 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 static func scene(name: String, w: World) -> void:
 	match name:
 		"midnight":
-			AshfordP1.undress(w)
-			await _midnight(w)
+			await _midnight(w)   # (it clears the green behind its fade: AshfordP1.undress)
 			await _prologue_film(w, "dawn")
 		"bram_sets_off":
 			await _bram_sets_off(w)
@@ -850,6 +849,9 @@ static func _bram_sets_off(w: World) -> void:
 		return
 	var stop := _bram_stop(w)
 	w.set_meta("bram_stop", stop)
+	# the Spark deck's twelve cards fan out on screen in a minute: their
+	# paintings start loading now, so it opens without a stall
+	CardFace.warm_art(PLAYER_DECK + ["lantern_moth"])
 	await AshfordP1.bram_stand(w)
 	_hold(w, "bram", _card_box())
 	var from := bram.global_position
@@ -894,8 +896,9 @@ static func _bram_comes(w: World) -> void:
 	var mid := (p + c + stop) / 3.0
 	var side := -perp
 	var look := mid + Vector3(0, 1.2, 0)
-	Cine.move(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
-		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look, 0.8)
+	# a cut (a glide here swung half round them, through Corin and the drum)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
+		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look)
 	_hold(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
@@ -1032,8 +1035,23 @@ static func _tilly_hands_over(w: World) -> void:
 	# turns as it crosses so its face ends up towards you
 	var g3 := (glow as Node3D).get_parent() != w and tf is Figure3D
 	if g3:
+		# her hands stay where they held it and come down slowly (re-parenting
+		# the card took her hands' targets with it: her arms dropped at once)
+		var keep_l := Node3D.new()
+		var keep_r := Node3D.new()
+		var piv: Node3D = (glow as Node3D).get_parent()
+		piv.add_child(keep_l)
+		piv.add_child(keep_r)
+		keep_l.global_transform = (glow as Node3D).get_node("L").global_transform
+		keep_r.global_transform = (glow as Node3D).get_node("R").global_transform
+		(tf as Figure3D).reach(keep_l, keep_r, 0.0)
 		(glow as Node3D).reparent(w)
 		(tf as Figure3D).let_go(0.5)
+		var drop := w.create_tween()
+		drop.tween_interval(0.6)
+		drop.tween_callback(func() -> void:
+			keep_l.queue_free()
+			keep_r.queue_free())
 	# a little arc, brightening as it crosses
 	var from: Vector3 = glow.global_position
 	var to := p + Vector3(0, 1.05, 0) + d * 0.3
@@ -1201,6 +1219,9 @@ static func _midnight(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.6)
+	# the evening's extras go and everyone's hands are emptied, behind the
+	# black (in view, the dancers would vanish and poses snap)
+	AshfordP1.undress(w)
 	_stage(w, MID)
 	_crowd(w)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
@@ -1247,6 +1268,10 @@ static func _midnight(w: World) -> void:
 		if df is Figure3D:
 			(df as Figure3D).hold("dance")
 	var dmid: Vector3 = (dance[0] + dance[1]) * 0.5
+	# Hob steps off to the side, out of the shot: on his mark he stood right
+	# behind Tam, and Tam's arms swung across his face (and clear of where the
+	# camera stands for Nell and the burning mill)
+	Cine.place(w, "hob", Vector3(8.6, 0, 4.6), dmid)
 	Cine.shot(w, dmid + Vector3(-2.0, 1.45, 3.6), dmid + Vector3(0, 1.0, 0), 36.0)
 	if not (Cine.fig(w, "nell") is Figure3D):
 		for k in 3:   # a cut-out Nell bobs along
@@ -1306,9 +1331,11 @@ static func _midnight(w: World) -> void:
 	await w.flash(Color(0.9, 0.92, 1.0), 0.25, 1.2)
 	Cine.drift(w, Vector3(6.0, 3.0, 20.0), Vector3(4.0, 2.2, 16.0), Vector3(34.0, 22.0, -40.0), Vector3(20.0, 16.0, -40.0), 4.0)
 	await Cine.wait(w, 1.6)
-	# for a breath the children cheer
-	var kids_cam := Vector3(1.8, 0.9, 1.7)
-	Cine.shot(w, kids_cam, Vector3(1.5, 1.0, -2.3), 40.0)
+	# for a breath the children cheer (from across the green, the Lantern's
+	# foot behind them: from beside it, its base filled half the shot and hid
+	# the boy)
+	var kids_cam := Vector3(4.5, 1.2, -6.0)
+	Cine.shot(w, kids_cam, Vector3(1.5, 1.0, -2.2), 30.0)
 	for id in ["v5", "v9"]:
 		Cine.look(w, id, kids_cam)
 		Cine.hop(w, id, 0.3)
@@ -1360,14 +1387,7 @@ static func _dance_spot() -> Array:
 
 ## Cine.drift, but handing back its tween so a cut can stop it.
 static func _drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> Tween:
-	w.cine = true
-	if fov > 0.0:
-		w.cam.fov = fov
-	var tw := w.create_tween()
-	tw.tween_method(func(u: float) -> void:
-		w.cam.global_position = pos_a.lerp(pos_b, u)
-		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
-	return tw
+	return Cine.drift_tween(w, pos_a, pos_b, look_a, look_b, secs, fov)
 
 
 ## The bell at midnight: six tolls as it counts twelve.
@@ -1480,6 +1500,12 @@ static func _corin_and_tilly(w: World, lane_a: Vector3, lane_b: Vector3) -> void
 	await Cine.path(w, "corin", [lane_a, lane_b], 3.6, "run")
 
 
+## In the fall clip (5.5 s: down on his back by 1.4 s, getting up from 2.8 s):
+## where Corin is held while he's pinned, and where his getting up starts.
+const CORIN_DOWN := 0.26
+const CORIN_UP := 0.51
+
+
 ## The cart: a strike lands beside it, it goes over on Corin, and Tilly
 ## screams for him. The player gets up and runs back; Bram is there too, and
 ## between them they heave it up off his leg.
@@ -1503,13 +1529,18 @@ static func _the_cart(w: World) -> void:
 	await Cine.wait(w, 0.28)
 	w.shake(0.7)
 	_sfx(w, "sigil_strike")
-	Cine.look(w, "corin", Cine.body(w, "tilly").global_position)
+	# he turns to the blast, and it throws him down on his back, his legs
+	# under the cart as it comes over (the fall clip, held down: a body
+	# tipped over stiff, as it used to be, looked like a plank falling)
+	Cine.look(w, "corin", cc)
 	v.tip_cart(1.0, 0.55)
 	await Cine.wait(w, 0.3)
 	var cf = Cine.fig(w, "corin")
-	Cine.place(w, "corin", cc + fd * 2.7, cc + fd * 9.0)
+	Cine.place(w, "corin", cc + fd * 2.7)
 	if cf is Figure3D:
-		(cf as Figure3D).lie_down(0.3)
+		(cf as Figure3D).pose("fall", CORIN_DOWN, 0.45)
+	else:
+		Cine.place(w, "corin", cc + fd * 2.7, cc)
 	await Cine.wait(w, 0.3)
 	v.dust_puff(cc + fd * 2.8)
 	v.dust_puff(cc + fd * 3.4 + al * 0.8)
@@ -1569,7 +1600,7 @@ static func _the_cart(w: World) -> void:
 		if f is Figure3D:
 			(f as Figure3D).release()
 	if cf is Figure3D:
-		await (cf as Figure3D).get_up(0.9)
+		await (cf as Figure3D).resume(CORIN_UP, 1.5)   # the fall's own getting up
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.place(w, "tilly", corin.global_position - al * 1.1 - fd * 0.45, corin.global_position)
 	# the two of them, the cart behind: he limps a step towards you
@@ -1941,9 +1972,9 @@ static func _dawn(w: World) -> void:
 	# stays mostly on Ashford's faces, lit by them
 	var faces := [
 		[Vector3(-4.0, 1.7, 15.6), Vector3(4.0, 2.6, 12.0)],                             # from behind the village, the faces above the Herald
-		[DAWN.nell + Vector3(1.9, 0.75, 1.2), DAWN.nell + Vector3(0.0, 0.85, 0.0)],      # Nell
+		[DAWN.nell + Vector3(1.6, 0.75, -1.3), DAWN.nell + Vector3(0.0, 0.85, 0.0)],     # Nell (from her other side: Corin knelt between)
 		[DAWN.tam + Vector3(1.8, 0.75, -1.1), DAWN.tam + Vector3(0.0, 0.85, 0.0)],       # Tam
-		[DAWN.corin + Vector3(1.9, 0.8, 0.9), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],   # Corin and you
+		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 0.85, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],   # Corin and you (from in front, off to the side so he isn't behind you: from his side, the camera was in your chest)
 		[DAWN.hob + Vector3(2.0, 0.8, -1.0), DAWN.hob + Vector3(0.0, 0.85, 0.0)],        # Hob
 	]
 	var flick := Cine.light(w, HERALD_AT + Vector3(-2.0, 3.0, 0.0), Color(0.8, 0.86, 1.0), 0.0, 22.0)
@@ -2058,9 +2089,11 @@ static func _hand_tightens(w: World, shoulder: Node3D, after: float) -> void:
 
 
 ## Kneeling: the 3D cast go down low, heads bowed (the way down of the sit
-## clip, held: there is no kneel among the shared clips); a cut-out sinks a
-## little, as far as a kneeling figure would.
+## clip, held: there is no kneel among the shared clips); a cut-out crouches,
+## squashed down onto its feet as far as a kneeling figure would go (sunk
+## into the ground instead, it stood waist deep in the grass).
 const KNEEL := ["sit", 0.3]
+const CUTOUT_KNEEL := 0.76
 
 
 static func _kneel(w: World, who: String, secs := 0.6) -> void:
@@ -2069,8 +2102,8 @@ static func _kneel(w: World, who: String, secs := 0.6) -> void:
 		(f as Figure3D).pose(String(KNEEL[0]), float(KNEEL[1]), secs)
 	elif f != null and not (f as Node3D).has_meta("knelt"):
 		var n: Node3D = f
-		n.set_meta("knelt", n.position.y)
-		w.create_tween().tween_property(n, "position:y", n.position.y - 0.42, secs)
+		n.set_meta("knelt", true)
+		w.create_tween().tween_property(n, "scale:y", CUTOUT_KNEEL, secs)
 
 
 static func _stand(w: World, who: String, secs := 0.6) -> void:
@@ -2079,7 +2112,7 @@ static func _stand(w: World, who: String, secs := 0.6) -> void:
 		(f as Figure3D).release(secs)
 	elif f != null and (f as Node3D).has_meta("knelt"):
 		var n: Node3D = f
-		w.create_tween().tween_property(n, "position:y", float(n.get_meta("knelt")), maxf(0.01, secs))
+		w.create_tween().tween_property(n, "scale:y", 1.0, maxf(0.01, secs))
 		n.remove_meta("knelt")
 
 
@@ -2164,8 +2197,7 @@ static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3
 	qm.size = Vector2(1.5, 1.9)
 	q.mesh = qm
 	var m := ShaderMaterial.new()
-	m.shader = Shader.new()
-	m.shader.code = VISION_SHADER
+	m.shader = vision_shader()
 	if i >= 0:
 		var tex := _champion_tex(i)
 		m.set_shader_parameter("tex", tex)
@@ -2198,6 +2230,18 @@ static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3
 		tw.tween_property(lb2, "modulate:a", 0.95, secs)
 		tw.tween_property(lb2, "outline_modulate:a", 0.8, secs)
 	return root
+
+
+## One shader for all the visions (each its own copy would be compiled again,
+## a stall on a phone as each face comes up).
+static var _vision_sh: Shader = null
+
+
+static func vision_shader() -> Shader:
+	if _vision_sh == null:
+		_vision_sh = Shader.new()
+		_vision_sh.code = VISION_SHADER
+	return _vision_sh
 
 
 static func _vision_out(w: World, root: Node3D, secs := 0.5) -> void:
@@ -2533,8 +2577,9 @@ static func _burning(w: World) -> void:
 		await Cine.wait(w, 0.42)
 		_sfx(w, "hit_heavy", 0.8)
 		if tf is Figure3D:
+			# his own fall, backwards (not his standing pose tipped over stiff)
 			(tf as Figure3D).let_go(0.05)
-			(tf as Figure3D).lie_down(0.35, true)
+			_tam_down(tf as Figure3D, 0.15)
 		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
 		await Cine.wait(w, 0.35)
 	else:
@@ -2551,7 +2596,7 @@ static func _burning(w: World) -> void:
 	if not gore:
 		if tf is Figure3D:
 			(tf as Figure3D).let_go(0.05)
-			(tf as Figure3D).lie_down(0.01, true)
+			_tam_down(tf as Figure3D, 0.0)   # (the camera's on Nell: he's down when it comes back)
 		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
 	Cine.place(w, "hound1", KRELL_AT + Vector3(-1.2, 0, 1.0), tam_at)
 	await Cine.wait(w, 1.8)
@@ -2632,6 +2677,19 @@ static func _burning(w: World) -> void:
 		cap.queue_free()
 	for id in hunters + ["krell", "hound1", "hound2"]:
 		Cine.despawn(w, id)
+
+
+## Tam goes down, on his back: his own death clip, played (or, with blend 0,
+## already over: the camera was away), and held there; tipped over flat if a
+## model hasn't got one.
+static func _tam_down(f: Figure3D, blend: float) -> void:
+	if f.anim != null and f.anim.has_animation("death"):
+		if blend > 0.0:
+			f.hold("death", 1.3, blend)
+		else:
+			f.pose("death", 1.0, 0.01)
+	else:
+		f.lie_down(0.35 if blend > 0.0 else 0.01, true)
 
 
 ## Cuts the camera to a shot `after` seconds from now (while a line is up).

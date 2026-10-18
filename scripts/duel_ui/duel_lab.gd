@@ -10,6 +10,14 @@ const DESIGN := Vector2(1920, 1080)
 const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith",
 	"vexa", "verdanthe", "maerith", "aster", "hethrin", "ysolde"]
 const LEVELS := {"Easy": 0.45, "Normal": 0.8, "Hard": 1.0}
+## The set-up's columns (design units): the two sides, then the rules to tune
+## with the Kingdom Law under them, all above the row of buttons at y 956.
+const SIDE_W := 600
+const SIDE_H := 812
+const SIDE_STEP := 616
+const TUNE_X := 1292
+const TUNE_W := 568
+const TUNE_LIST_H := 562
 
 var cfg := {
 	"deck": ["emberstorm", "tidegrove"],
@@ -81,15 +89,19 @@ func _build() -> void:
 	var sub := UITheme.label("Test the v2 duel rules. Pick decks, patrons and a Kingdom Law, then duel the computer or watch it play itself.", 26, UITheme.TEXT_DIM)
 	sub.position = Vector2(64, 88)
 	stage.add_child(sub)
+	# the two sides, then the rules to tune, side by side; each scrolls if
+	# what's in it is taller than its panel, so nothing runs into the buttons
 	for side in 2:
 		var panel := PanelContainer.new()
 		panel.add_theme_stylebox_override("panel", UITheme.sb(UITheme.PANEL, UITheme.MINE if side == 0 else UITheme.THEIRS, 20, 2, 26))
-		panel.position = Vector2(60 + side * 620, 136)
-		panel.size = Vector2(590, 790)
+		panel.position = Vector2(60 + side * SIDE_STEP, 136)
 		stage.add_child(panel)
+		var sc := _scroller(Vector2(SIDE_W - 52, SIDE_H - 32))
+		panel.add_child(sc)
 		var box := VBoxContainer.new()
-		box.add_theme_constant_override("separation", 8)
-		panel.add_child(box)
+		box.add_theme_constant_override("separation", 6)
+		box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		sc.add_child(box)
 		_side_boxes[side] = box
 		_fill_side(side)
 	_build_tuning()
@@ -111,8 +123,8 @@ func _build() -> void:
 	back.pressed.connect(func() -> void: closed.emit())
 	row.add_child(back)
 	_result = UITheme.label("", 22, UITheme.TEXT)
-	_result.position = Vector2(1340, 940)
-	_result.size = Vector2(540, 110)
+	_result.position = Vector2(1340, 956)
+	_result.size = Vector2(520, 96)
 	_result.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_result.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	stage.add_child(_result)
@@ -122,15 +134,16 @@ func _fill_side(side: int) -> void:
 	var box: VBoxContainer = _side_boxes[side]
 	for c in box.get_children():
 		c.queue_free()
-	box.add_child(UITheme.label("You" if side == 0 else "Rival (computer)", 36, UITheme.MINE if side == 0 else UITheme.THEIRS, "display_bold"))
+	box.add_child(UITheme.label("You" if side == 0 else "Rival (computer)", 32, UITheme.MINE if side == 0 else UITheme.THEIRS, "display_bold"))
 	box.add_child(UITheme.label("Deck", 22, UITheme.TEXT_DIM, "bold"))
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 10)
-	grid.add_theme_constant_override("v_separation", 10)
+	grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(grid)
 	for d in DuelCards.DECKS:
 		var b := _toggle(DuelCards.DECKS[d].name, cfg.deck[side] == d, 264)
+		b.custom_minimum_size.y = 58
 		b.pressed.connect(func() -> void:
 			cfg.deck[side] = d
 			_changed(side))
@@ -143,13 +156,14 @@ func _fill_side(side: int) -> void:
 	var pg := GridContainer.new()
 	pg.columns = 4
 	pg.add_theme_constant_override("h_separation", 8)
-	pg.add_theme_constant_override("v_separation", 8)
+	pg.add_theme_constant_override("v_separation", 6)
 	box.add_child(pg)
 	for g in PATRONS:
 		var nm: String = "Unsworn" if g == "" else Lore.GODS[g].name
 		var b := _toggle(nm, cfg.patron[side] == g, 128)
-		b.add_theme_font_size_override("font_size", 20)
-		b.custom_minimum_size = Vector2(128, 56)
+		b.add_theme_font_size_override("font_size", 19)
+		b.custom_minimum_size = Vector2(128, 48)
+		_compact(b)   # four to a row inside the panel
 		b.pressed.connect(func() -> void:
 			cfg.patron[side] = g
 			_changed(side))
@@ -163,7 +177,7 @@ func _fill_side(side: int) -> void:
 		cfg.level[side] = maxi(1, int(cfg.level[side]) - 1)
 		_changed(side))
 	lv.add_child(minus)
-	lv.add_child(UITheme.label(str(cfg.level[side]), 34, UITheme.TEXT, "display_bold"))
+	lv.add_child(UITheme.label(str(cfg.level[side]), 30, UITheme.TEXT, "display_bold"))
 	var plus := _step_button("+")
 	plus.pressed.connect(func() -> void:
 		cfg.level[side] = mini(8, int(cfg.level[side]) + 1)
@@ -176,12 +190,12 @@ func _fill_side(side: int) -> void:
 		dl.add_child(UITheme.label("Skill", 24, UITheme.TEXT_DIM, "bold"))
 		for k in LEVELS:
 			var b := _toggle(k, cfg.difficulty == k, 150)
-			b.custom_minimum_size = Vector2(150, 58)
+			b.custom_minimum_size = Vector2(150, 54)
 			b.pressed.connect(func() -> void:
 				cfg.difficulty = k
 				_changed(side))
 			dl.add_child(b)
-	var info := UITheme.label("", 22, UITheme.TEXT)
+	var info := UITheme.label("", 21, UITheme.TEXT)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(538, 0)
 	box.add_child(info)
@@ -199,9 +213,32 @@ func _toggle(text: String, on: bool, w: int) -> Button:
 	return b
 
 
+## Narrow padding, and the name kept inside the button.
+func _compact(b: Button, low := false) -> void:
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		# (its own, or the game theme's: it isn't in the tree yet)
+		var sbox: StyleBox = b.get_theme_stylebox(st) if b.has_theme_stylebox_override(st) else UITheme.make().get_stylebox(st, "Button")
+		if sbox is StyleBoxFlat:
+			var c := (sbox as StyleBoxFlat).duplicate() as StyleBoxFlat
+			c.content_margin_left = 6
+			c.content_margin_right = 6
+			if low:
+				c.content_margin_top = 2
+				c.content_margin_bottom = 2
+			b.add_theme_stylebox_override(st, c)
+	b.clip_text = true
+
+
+func _scroller(sz: Vector2) -> ScrollContainer:
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = sz
+	return sc
+
+
 func _step_button(t: String) -> Button:
 	var b := UITheme.button(t, false, 72)
-	b.custom_minimum_size = Vector2(72, 58)
+	b.custom_minimum_size = Vector2(72, 54)
 	return b
 
 
@@ -251,14 +288,19 @@ const TUNE_LABELS := {
 func _build_tuning() -> void:
 	var panel := PanelContainer.new()
 	panel.add_theme_stylebox_override("panel", UITheme.sb(UITheme.PANEL, UITheme.GOLD_DIM, 20, 2, 18))
-	panel.position = Vector2(1320, 136)
-	panel.size = Vector2(540, 700)
+	panel.position = Vector2(TUNE_X, 136)
 	stage.add_child(panel)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 6)
+	panel.add_child(col)
+	var head := HBoxContainer.new()
+	col.add_child(head)
+	var sc := _scroller(Vector2(TUNE_W - 36, TUNE_LIST_H))
+	col.add_child(sc)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 0)
-	panel.add_child(v)
-	var head := HBoxContainer.new()
-	v.add_child(head)
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(v)
 	var tl := UITheme.label("Tune the rules", 34, UITheme.GOLD, "display_bold")
 	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(tl)
@@ -279,6 +321,7 @@ func _build_tuning() -> void:
 		var m := _step_button("−")
 		m.custom_minimum_size = Vector2(56, 40)
 		m.add_theme_font_size_override("font_size", 22)
+		_compact(m, true)
 		m.pressed.connect(func() -> void: _nudge(key, -1))
 		row.add_child(m)
 		var val := UITheme.label("", 22, UITheme.GOLD, "bold")
@@ -288,6 +331,7 @@ func _build_tuning() -> void:
 		var p := _step_button("+")
 		p.custom_minimum_size = Vector2(56, 40)
 		p.add_theme_font_size_override("font_size", 22)
+		_compact(p, true)
 		p.pressed.connect(func() -> void: _nudge(key, 1))
 		row.add_child(p)
 		_tune_rows[key] = val
@@ -297,8 +341,8 @@ func _build_tuning() -> void:
 ## The Kingdom Law both duellists fight under (v2 rules).
 func _build_law() -> void:
 	var row := HBoxContainer.new()
-	row.position = Vector2(1320, 848)
-	row.size = Vector2(540, 70)
+	row.position = Vector2(TUNE_X, 136 + TUNE_LIST_H + 94)
+	row.size = Vector2(TUNE_W, 62)
 	row.add_theme_constant_override("separation", 12)
 	stage.add_child(row)
 	var l := UITheme.label("Kingdom Law", 24, UITheme.TEXT_DIM, "bold")
@@ -318,9 +362,10 @@ func _build_law() -> void:
 		_changed(0)
 		_show_law())
 	row.add_child(pick)
-	_law_text = UITheme.label("", 19, UITheme.TEXT)
-	_law_text.position = Vector2(1324, 912)
-	_law_text.size = Vector2(536, 40)
+	_law_text = UITheme.label("", 18, UITheme.TEXT)
+	_law_text.position = Vector2(TUNE_X + 4, row.position.y + 64)
+	_law_text.size = Vector2(TUNE_W - 4, 950 - row.position.y - 64)
+	_law_text.clip_text = true
 	_law_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stage.add_child(_law_text)
 	_show_law()

@@ -130,8 +130,12 @@ tools/build_web.sh && python3 tests/web_fit_check.py build/web /tmp/webfit   # v
 Options also has **Text and buttons size** (Normal, Larger, Largest,
 `SafeArea.ui_scale()`), which draws the world's buttons, the conversation box,
 the pause menu, a card's detail and the films' words bigger for a small phone
-(add `ui=1.3` to the screen-fit test to see it). The title, the notice, the
-duel and the Duel Lab keep their size.
+(add `ui=1.3` to the screen-fit test to see it); also the title screen's
+buttons (the title above them shrinks a little if they need its room), the
+opening notice (as big as fits), the campfire's deck card and objective,
+Bram's pack tour box, and in a duel Bram's lesson box, the rival's barks and
+the result box. The rest of the duel (its board is one fixed layout) and
+the Duel Lab (a test bench) keep their size.
 
 A phone browser runs out of memory if it loads the whole game at once, so the web
 build comes in parts (`tools/web_packs.py` says what's in each, and `build_web.sh`
@@ -225,7 +229,10 @@ Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
 Nell since 18 October); the other villagers (Hob, Ned, the crowd) stay
 cut-outs until their models exist, and a model dropped into
-`assets/models/characters/<id>.glb` is picked up by itself. The models share
+`assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
+shows the camera its painted front, turned left or right (its back picture
+read as a blank white card in a film), and kneels by crouching onto its feet
+rather than sinking into the ground. The models share
 one skeleton's bone names, so a clip one lacks is borrowed from another and
 fitted to their height (Tilly is a child, Nell small and stooped);
 `reach()` puts hands on things: Tam and the player carry the barrel by its
@@ -276,7 +283,14 @@ dance, punch and death. Their rigs are smaller than the player's: Tam's and
 Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
 groups, and Nell has 29 bones in all. Nell's walking stick is part of her
 mesh, in her right hand, so that arm stays as in her idle when she talks,
-cheers, walks or runs. AssetFurnace's walk and run tip the head back, so
+cheers, walks or runs. Tilly's leather satchel hangs by her left hand, so
+AssetFurnace bound part of it (and of its strap over her right shoulder) to
+her arms, and it stretched after her hand when she held her card out:
+`--free-of-arms R,G,B:TOL` gives the big patches of the leather's colour the
+body's weights instead (a few shaded spots of skin of about that colour on a
+forearm stay with the arm), and leaves out the few triangles that fused her
+hand to the bag where it rests on it (a triangle that's all arm at one corner
+and no arm at another). AssetFurnace's walk and run tip the head back, so
 it's levelled for the four of them. Tam's master file was 47 MB because it
 carried every source file's mesh and textures, unused; his game model, like
 the others, has only what it uses (about 2.5 MB, with a 2048 colour atlas).
@@ -357,7 +371,7 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 - **Items** (`scripts/game/items.gd`): story items shown from flags, and equipment in three slots (charm, ring, deck case) that adds to attributes in every duel. A dialogue step `{"item": "<id>"}` gives one.
 - **Morrowen's Ledger** (`scripts/ui/ledger.gd`, the Ledger tab after Hero): the quest log in Morrowen's voice, as the Keeper of the Dead's record of the Age (Master Script v3, Side Quests). *Accounts* lists the main story and the side stories, those still open first, then the settled ones, newest first, a sentence or two each in the past tense; *People* has everyone met, by place, with their face (`assets/art/characters/<id>_portrait.png`, or their cut-out's until it exists), one line on what's known of them and, where it's kept, how they stand with you. The words, and the flags that pick between them, are in `scripts/story/ledger_entries.gd`, from the Prologue on.
 - **Sworn wagers** (`scripts/ui/swear_screen.gd`): before a one-shot wager duel, the swear screen says who's across the Circle and with what deck, what each side stakes, the opponent's duel rule, and "A sworn wager. Win or lose, it stands.", with **Not yet** and **Swear now** (armed after a moment, so a thumb tapping through talk can't swear by accident). The oath is saved (`wager_<id>`, `wagers_sworn`); the duel has no Try again (`spec.once`), and a game closed in the middle of one goes straight back into it.
-- **Adverts** (`scripts/game/ads.gd`, autoload `Ads`): one full-screen advert at most every 3 story duels and 5 minutes (never in the Prologue, never mid-duel), retries always free, and an optional advert after a story win that doubles its Resonance (3 a day). Until the AdMob plugin (poingstudios/godot-admob-plugin) is added to the iOS and Android exports, a labelled placeholder shows where each would play; Options turns previews off.
+- **Adverts** (`scripts/game/ads.gd`, autoload `Ads`): one full-screen advert at most every 3 story duels and 5 minutes (never in the Prologue, never mid-duel), retries always free, and an optional advert after a story win that doubles its Resonance (3 a day; never offered in the Prologue either, `Ads.in_prologue()`). Until the AdMob plugin (poingstudios/godot-admob-plugin) is added to the iOS and Android exports, a labelled placeholder shows where each would play; Options turns previews off.
 
 Ashford's cottages, the Crooked Lantern, the windmill (its sails turn until the thatch catches at midnight) and the oaks round the village are Gary's models (`assets/models/ashford/`; an `oak_b.glb`, `oak_c.glb`... is used alongside `oak_a` as soon as it's there); each has a `<id>_glow.png` window mask made from its colour atlas, so the windows light up at night. Missing models fall back to the drawn stand-ins.
 

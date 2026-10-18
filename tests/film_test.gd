@@ -14,7 +14,13 @@ extends Node
 ## reading it would) instead of tapping on at once, "choice=<n>" to answer
 ## every choice with its nth answer (from 0), "box=<n>" for which of Bram's
 ## four boxes to choose at the campfire, and flag=<name> to set a story flag
-## first (flag=tam_told, flag=want_solhaven).
+## first (flag=tam_told, flag=want_solhaven). "qa" watches the film for
+## glitches as it plays (QAMonitor: jumps, slides, pops after cuts, two lines
+## at once, music, hitches); "notap" leaves the subtitles to go by themselves,
+## as they do for a player who just watches; "frames=a-b" (or
+## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
+## close look at a moment the watch pointed at. "ui=1.3" plays it at the
+## biggest Text and buttons size.
 
 var out_dir := "user://"
 var every := 0
@@ -33,6 +39,11 @@ var _ending := false
 var _read := 3
 var _choice := 0
 var _box := 1
+var _qa = null   # QA monitor (tests/qa_monitor.gd)
+var _notap := false
+var _from := -1
+var _to := -1
+var _windows: Array = []
 
 
 func _ready() -> void:
@@ -42,6 +53,7 @@ func _ready() -> void:
 	every = int(args[2]) if args.size() > 2 else 0
 	_only = "only" in args
 	_keys = "keys" in args
+	_notap = "notap" in args
 	for a in args:
 		if String(a).begins_with("read="):
 			_read = int(String(a).substr(5))
@@ -49,6 +61,16 @@ func _ready() -> void:
 			_choice = int(String(a).substr(7))
 		elif String(a).begins_with("box="):
 			_box = int(String(a).substr(4))
+		elif String(a).begins_with("frames="):
+			# frames=a-b: the stills every_n_frames only between those frames
+			# (a close look at a moment the QA watch pointed at)
+			var ab := String(a).substr(7).split("-")
+			_from = int(ab[0])
+			_to = int(ab[1]) if ab.size() > 1 else _from + 60
+		elif String(a).begins_with("frames_list="):
+			for s in String(a).substr(12).split(","):
+				var ab2 := s.split("-")
+				_windows.append([int(ab2[0]), int(ab2[1]) if ab2.size() > 1 else int(ab2[0]) + 30])
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
@@ -74,13 +96,19 @@ func _ready() -> void:
 	for a in args:
 		if String(a).begins_with("flag="):
 			Game.set_flag(String(a).substr(5))
+		elif String(a).begins_with("ui="):
+			Game.settings["ui_scale"] = float(String(a).substr(3))   # Options > Text and buttons size
 	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
 	world.story_next.connect(func(what: String) -> void:
 		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())
 		await _shot("end")
 		print("FILM: done")
+		if _qa != null:
+			print(_qa.summary())
 		get_tree().quit())
 	add_child(world)
+	if "qa" in args:
+		_qa = preload("res://tests/qa_monitor.gd").watch(world)
 	await _frames(20)
 	if _part == "corin":
 		var c = world._npc_by_id("corin")
@@ -114,7 +142,7 @@ func _process(_d: float) -> void:
 		# sees each one on screen
 		if ov._waiting:
 			_line_frames += 1
-			if _line_frames > 12:
+			if _line_frames > 12 and not _notap:
 				_line_frames = 0
 				ov._next.emit()
 		else:
@@ -151,7 +179,7 @@ func _process(_d: float) -> void:
 		if ov2._waiting and _line_frames == 4:
 			_shot("line_%04d" % _frame)
 		_was_waiting = ov2._waiting
-	if every > 0 and _frame % every == 0:
+	if every > 0 and _frame % every == 0 and _in_window():
 		_shot("f%04d" % _frame)
 	# "only": stop when the film moves on to its next part
 	if _only and _start_part != "" and not _ending and _frame > 30:
@@ -161,6 +189,17 @@ func _process(_d: float) -> void:
 			print("FILM: part over after ", _frame, " frames (", now, ")")
 			await _shot("end")
 			get_tree().quit()
+
+
+func _in_window() -> bool:
+	if _from < 0 and _windows.is_empty():
+		return true
+	if _from >= 0 and _frame >= _from and _frame <= _to:
+		return true
+	for wnd in _windows:
+		if _frame >= int(wnd[0]) and _frame <= int(wnd[1]):
+			return true
+	return false
 
 
 ## "trace": each dialogue-box line as it comes up, with where Bram is.

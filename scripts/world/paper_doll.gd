@@ -2,7 +2,8 @@ class_name PaperDoll
 extends Node3D
 ## A character drawn as a painted cut-out standing in the 3D world: always
 ## upright and facing the camera, with a soft shadow, a little bounce when
-## walking, and a front/back picture depending on which way they're heading.
+## walking, and its picture turned left or right with the way they're heading
+## (always the front: a cut-out never shows the camera its back).
 
 var char_id := "player"
 var walking := false
@@ -72,12 +73,11 @@ func face(dir: Vector3, cam: Camera3D) -> void:
 	_dir = Vector3(dir.x, 0.0, dir.z).normalized()
 	_cam_basis = cam.global_transform.basis
 	var right := cam.global_transform.basis.x
-	var fwd := -cam.global_transform.basis.z
-	fwd.y = 0
-	fwd = fwd.normalized()
 	var x := dir.dot(right)
-	var z := dir.dot(fwd)
-	var back := z > 0.35
+	# a cut-out always shows its painted front, turned left or right, as a
+	# paper theatre's figures face the audience: its back is only the outline
+	# filled in, which in a film reads as a blank white card
+	var back := false
 	var left := x < -0.15 if absf(x) > 0.15 else facing_left
 	if back != facing_back or left != facing_left:
 		facing_back = back

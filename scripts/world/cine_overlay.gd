@@ -127,6 +127,15 @@ func _bar_h() -> float:
 	return _root.size.y * BAR
 
 
+## Room kept clear down the right-hand side (the campfire's deck card, while
+## Bram talks about the deck): the words keep to the left of it.
+var keep_right := 0.0:
+	set(v):
+		keep_right = v
+		if _root != null:
+			_layout()
+
+
 ## The bars span the whole width; the words keep to the safe area (clear of
 ## a phone's Dynamic Island and home bar).
 func _layout() -> void:
@@ -138,8 +147,9 @@ func _layout() -> void:
 	_bot.offset_bottom = h * (1.0 - k)
 	var m := SafeArea.insets()
 	var ts := SafeArea.ui_scale()   # the player's text size
-	var mid := (m.x - m.z) * 0.5
-	var w := minf(_root.size.x - m.x - m.z - 120.0, 1500.0 * ts)
+	var right := maxf(m.z, keep_right)
+	var mid := (m.x - right) * 0.5
+	var w := minf(_root.size.x - m.x - right - 120.0, 1500.0 * ts)
 	for f in ["normal_font_size", "italics_font_size", "bold_font_size"]:
 		_line.add_theme_font_size_override(f, roundi(38 * ts))
 	_who.add_theme_font_size_override("font_size", roundi(30 * ts))

@@ -112,12 +112,19 @@ void fragment() {
 	var movie := UITheme.button("Watch the opening", false, 500)
 	movie.pressed.connect(func() -> void: watch_opening.emit())
 	box.add_child(movie)
-	# on a short safe area (a phone's home bar) the buttons and title move up to fit
+	# on a short safe area (a phone's home bar) the buttons and title move up to
+	# fit; the buttons are drawn at the player's text size (Options), and the
+	# title gets smaller only if they've taken its room
 	SafeArea.watch(box, func() -> void:
+		var k := SafeArea.ui_scale()
+		box.scale = Vector2(k, k)
 		var need := box.get_combined_minimum_size().y
-		box.offset_top = minf(584.0, SafeArea.rect().size.y - need - 24.0)
+		box.offset_top = minf(584.0, SafeArea.rect().size.y - need * k - 24.0)
 		box.offset_bottom = box.offset_top + need
-		_logo.offset_top = clampf(box.offset_top - 452.0, 24.0, 96.0)
+		box.offset_right = box.offset_left + 500.0
+		var ls := clampf((box.offset_top - 48.0) / 452.0, 0.6, 1.0)
+		_logo.scale = Vector2(ls, ls)
+		_logo.offset_top = clampf(box.offset_top - 452.0 * ls, 24.0, 96.0)
 		_logo.offset_bottom = _logo.offset_top + 404.0)
 
 	var ver := UITheme.label("%s   ·   Early build %s" % [NoticeScreen.COPYRIGHT, Packs.build_label()], 22, Color(1, 1, 1, 0.6), "body", 6)

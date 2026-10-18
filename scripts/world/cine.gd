@@ -91,9 +91,40 @@ static func wait(w: World, secs: float) -> void:
 
 # ---------------------------------------------------------------- camera ---
 
+## Every shot, move, drift or follow takes the camera from whatever had it:
+## the latest one wins. A move still running (one nobody waited for) stops
+## touching the camera the moment a newer shot is called, so a cut is never
+## overridden by an older glide and the shot it cut to always shows. (Anyone
+## awaiting the older move still waits its full time.)
+static func take_camera(w: World) -> int:
+	var token := int(w.get_meta("cine_cam", 0)) + 1
+	w.set_meta("cine_cam", token)
+	# (for the tests: how much of the move it took over from was left)
+	var left := 0.0
+	if w.has_meta("cine_cam_tween"):
+		var old = w.get_meta("cine_cam_tween")
+		if old is Tween and (old as Tween).is_valid() and (old as Tween).is_running():
+			left = float(w.get_meta("cine_cam_secs", 0.0)) - (old as Tween).get_total_elapsed_time()
+		w.remove_meta("cine_cam_tween")
+	w.set_meta("cine_cam_cut_short", left if left > 0.05 else 0.0)
+	return token
+
+
+## (A camera move's tween, so the next shot can tell it was cut short.)
+static func _cam_tween(w: World, tw: Tween, secs: float) -> void:
+	w.set_meta("cine_cam_tween", tw)
+	w.set_meta("cine_cam_secs", secs)
+
+
+## Does this move still have the camera?
+static func has_camera(w: World, token: int) -> bool:
+	return is_instance_valid(w) and int(w.get_meta("cine_cam", 0)) == token
+
+
 ## Cuts the camera straight to a shot. fov < 0 keeps the lens.
 static func shot(w: World, pos: Vector3, look: Vector3, fov := -1.0) -> void:
 	w.cine = true
+	take_camera(w)
 	w.cam.global_position = pos
 	w.cam.look_at(look, Vector3.UP)
 	if fov > 0.0:
@@ -103,29 +134,42 @@ static func shot(w: World, pos: Vector3, look: Vector3, fov := -1.0) -> void:
 ## Glides the camera to a shot over `secs`, easing in and out.
 static func move(w: World, pos: Vector3, look: Vector3, secs: float, fov := -1.0) -> void:
 	w.cine = true
+	var token := take_camera(w)
 	var from_pos := w.cam.global_position
 	var from_look := from_pos + (-w.cam.global_transform.basis.z) * from_pos.distance_to(look)
 	var f0 := w.cam.fov
 	var f1 := fov if fov > 0.0 else f0
 	var tw := w.create_tween()
 	tw.tween_method(func(u: float) -> void:
+		if not has_camera(w, token):
+			return
 		var e := u * u * (3.0 - 2.0 * u)
 		w.cam.global_position = from_pos.lerp(pos, e)
 		w.cam.look_at(from_look.lerp(look, e), Vector3.UP)
 		w.cam.fov = lerpf(f0, f1, e), 0.0, 1.0, maxf(secs, 0.01))
+	_cam_tween(w, tw, secs)
 	await tw.finished
 
 
 ## A slow, steady camera move (no easing): a push-in, a crane, a pan.
 static func drift(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> void:
+	await drift_tween(w, pos_a, pos_b, look_a, look_b, secs, fov).finished
+
+
+## drift(), handing back its tween (to wait for, or to stop).
+static func drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> Tween:
 	w.cine = true
+	var token := take_camera(w)
 	if fov > 0.0:
 		w.cam.fov = fov
 	var tw := w.create_tween()
 	tw.tween_method(func(u: float) -> void:
+		if not has_camera(w, token):
+			return
 		w.cam.global_position = pos_a.lerp(pos_b, u)
 		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
-	await tw.finished
+	_cam_tween(w, tw, secs)
+	return tw
 
 
 ## Keeps the camera with someone moving for `secs`: it sits at `offset` from
@@ -136,15 +180,17 @@ static func follow(w: World, who: String, offset: Vector3, look_off: Vector3, se
 	if b == null:
 		await wait(w, secs)
 		return
+	var token := take_camera(w)
 	var t := 0.0
 	var look := b.global_position + look_off
 	while t < secs and is_instance_valid(b):
 		var dt := w.get_process_delta_time()
 		t += dt
-		var k := minf(1.0, dt * lag)
-		w.cam.global_position = w.cam.global_position.lerp(b.global_position + offset, k)
-		look = look.lerp(b.global_position + look_off, minf(1.0, dt * lag * 1.5))
-		w.cam.look_at(look, Vector3.UP)
+		if has_camera(w, token):
+			var k := minf(1.0, dt * lag)
+			w.cam.global_position = w.cam.global_position.lerp(b.global_position + offset, k)
+			look = look.lerp(b.global_position + look_off, minf(1.0, dt * lag * 1.5))
+			w.cam.look_at(look, Vector3.UP)
 		await w.get_tree().process_frame
 
 
@@ -360,10 +406,19 @@ static func let_go_hands(w: World, a: String, b: String, secs := 0.25) -> void:
 			(meet as Node).queue_free()
 
 
-## A cut-out's way of showing a feeling: a quick hop on the spot.
+## A cut-out's way of showing a feeling: a quick hop on the spot. (A 3D
+## figure jumps with its own jump clip, if it has one: lifted bodily, a
+## model just floated up and down, stiff.)
 static func hop(w: World, who: String, height := 0.18) -> void:
 	var b := body(w, who)
 	if b == null:
+		return
+	var f = fig(w, who)
+	if f is Figure3D:
+		var f3 := f as Figure3D
+		if f3.anim != null and f3._ensure("jump") and f3.seat < 0.0:
+			f3.act("jump", 1.4, 0.12)
+		await wait(w, 0.3)
 		return
 	var y := b.global_position.y
 	var tw := w.create_tween()
@@ -464,6 +519,19 @@ static func beast(w: World, id: String, model_id: String, pos: Vector3, eyes := 
 	ex[id] = {"body": root, "doll": null}
 	w.set_meta("extras", ex)
 	return root
+
+
+## Loads something a scene needs in a moment (a creature's model) now, while
+## the screen is black, and keeps it loaded while this world lasts: when it
+## comes on screen mid-shot there's no stall while it loads.
+static func keep(w: World, path: String) -> void:
+	if not ResourceLoader.exists(path):
+		return
+	var kept: Array = w.get_meta("cine_kept", []) if w.has_meta("cine_kept") else []
+	var r := load(path)
+	if r != null and not kept.has(r):
+		kept.append(r)
+	w.set_meta("cine_kept", kept)
 
 
 ## Plays one of a creature's clips ("attack", "run", "idle"...); waits for a

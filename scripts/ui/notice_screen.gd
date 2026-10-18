@@ -68,6 +68,23 @@ func _ready() -> void:
 	_continue.pressed.connect(_finish)
 	_continue.modulate.a = 0.0
 	col.add_child(_continue)
+	# drawn at the player's text size (Options), as big as fits in the safe
+	# area (clear of a phone's Dynamic Island and home bar), centred in it
+	SafeArea.watch(col, func() -> void:
+		var r := SafeArea.rect()
+		r.position.y += 16.0
+		r.size.y -= 16.0 + 64.0   # (the copyright line at the foot)
+		var need := col.get_combined_minimum_size()
+		var w := maxf(need.x, 1280.0)
+		var h := maxf(need.y, 1.0)
+		var k := minf(SafeArea.ui_scale(), minf((r.size.x - 40.0) / w, r.size.y / h))
+		col.pivot_offset = Vector2(w, h) * 0.5
+		col.scale = Vector2(k, k)
+		var c := r.get_center() - SafeArea.screen().get_center()
+		col.offset_left = -w * 0.5 + c.x
+		col.offset_right = w * 0.5 + c.x
+		col.offset_top = -h * 0.5 + c.y
+		col.offset_bottom = h * 0.5 + c.y)
 
 	var cp := UITheme.label(COPYRIGHT, 22, Color(1, 1, 1, 0.45))
 	cp.anchor_left = 0.0

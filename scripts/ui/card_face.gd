@@ -176,13 +176,43 @@ static func art(card_id: String) -> Texture2D:
 	if _art.has(card_id):
 		return _art[card_id]
 	var tex: Texture2D = null
+	if _warming.has(card_id):
+		# started in the background (warm_art): done by now, or nearly
+		tex = ResourceLoader.load_threaded_get(String(_warming[card_id])) as Texture2D
+		_warming.erase(card_id)
+	else:
+		var p := _art_path(card_id)
+		if p != "":
+			tex = load(p)
+	_art[card_id] = tex
+	return tex
+
+
+static func _art_path(card_id: String) -> String:
 	for ext in ["png", "jpg", "webp"]:
 		var p := "res://assets/art/cards/%s.%s" % [card_id, ext]
 		if ResourceLoader.exists(p):
-			tex = load(p)
-			break
-	_art[card_id] = tex
-	return tex
+			return p
+	return ""
+
+
+static var _warming := {}
+
+
+## Starts loading these cards' paintings in the background, so a screen that
+## shows them in a moment (the deck screen opening at the campfire) comes up
+## without a stall while they load. Only where the game can load on another
+## thread (not the phone link without threads, where it would stall now).
+static func warm_art(ids: Array) -> void:
+	if not OS.has_feature("threads") and OS.has_feature("web"):
+		return
+	for id in ids:
+		var cid := String(id)
+		if _art.has(cid) or _warming.has(cid):
+			continue
+		var p := _art_path(cid)
+		if p != "" and ResourceLoader.load_threaded_request(p) == OK:
+			_warming[cid] = p
 
 
 ## Draws `tex` so it fills `r` completely (cropping the edges if needed).
