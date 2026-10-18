@@ -849,6 +849,9 @@ static func _bram_sets_off(w: World) -> void:
 		return
 	var stop := _bram_stop(w)
 	w.set_meta("bram_stop", stop)
+	# the Spark deck's twelve cards fan out on screen in a minute: their
+	# paintings start loading now, so it opens without a stall
+	CardFace.warm_art(PLAYER_DECK + ["lantern_moth"])
 	await AshfordP1.bram_stand(w)
 	_hold(w, "bram", _card_box())
 	var from := bram.global_position

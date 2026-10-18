@@ -151,6 +151,7 @@ static func _river(w: World) -> void:
 	Cine.place(w, "nell", fb + Vector3(4.6, 0, -0.6), near)
 	Cine.place(w, "corin_mam", fb + Vector3(3.95, 0, -0.35), near)
 	_corin_holds_tilly(w, near)
+	CardFace.warm_art(Prologue.HOB_SPARKS)   # (Hob's nine fan out on screen later)
 	Music.play(["river_farewell", "menu_theme"], 2.0, true)
 	# from behind the villagers, across the water, up to the burning crest
 	Cine.shot(w, fb + Vector3(-2.6, 3.4, 11.0), crest + Vector3(0, 1.0, 0), 42.0)
@@ -715,6 +716,7 @@ static func _road(w: World) -> void:
 		won = await w._duel(Prologue.road_duel_spec())
 	Game.set_flag("road_duel_on", false)
 	Game.set_flag("beat_hunter")
+	CardFace.warm_art(DuelCards.card_list("dask_hounds"))   # (his deck fans out on screen soon)
 	# beaten: he stares at the ring of light as it fades
 	Cine.overlay(w).black(true)
 	var ring := _ring(w, mid, 1.0)
