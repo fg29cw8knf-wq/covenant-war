@@ -782,7 +782,8 @@ static func _alley(w: World, resumed: bool) -> void:
 		w.add_child(fly)
 		fly.global_position = from
 		(fly.material_override as StandardMaterial3D).emission_energy_multiplier = 4.0
-		Cine.shot(w, (from + me_at) * 0.5 + Vector3(2.4, 1.4, 0.0), (from + me_at) * 0.5 + Vector3(0, 1.2, 0), 40.0)
+		# (along the alley: it's too narrow to stand off to the side)
+		Cine.shot(w, (from + me_at) * 0.5 + Vector3(1.5, 1.3, 2.8), (from + me_at) * 0.5 + Vector3(-0.2, 1.2, -0.6), 46.0)
 		var tw := w.create_tween()
 		tw.tween_property(fly, "global_position", me_at + Vector3(0.25, 1.05, -0.3), 0.7).set_trans(Tween.TRANS_SINE)
 		tw.parallel().tween_property(fly, "rotation", Vector3(0, TAU * 2.0, 0), 0.7)
@@ -843,7 +844,7 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 	seal.material_override = sm
 	w.add_child(seal)
 	seal.global_position = Cine.head(w, "film_wren") + Vector3(0, -0.4, 0)
-	Cine.shot(w, (seal.global_position + me_at) * 0.5 + Vector3(1.8, 0.6, 0), (seal.global_position + me_at) * 0.5 + Vector3(0, 1.0, 0), 34.0)
+	Cine.shot(w, (seal.global_position + me_at) * 0.5 + Vector3(1.3, 0.4, 2.2), (seal.global_position + me_at) * 0.5 + Vector3(-0.2, 1.0, -0.5), 40.0)
 	var tw := w.create_tween()
 	tw.tween_property(seal, "global_position", me_at + Vector3(0.25, 1.05, -0.25), 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.parallel().tween_property(seal, "rotation", Vector3(TAU * 3.0, 0, 0), 0.55)
@@ -993,10 +994,11 @@ static func _court(w: World) -> void:
 	# Aldric steps forward
 	await Cine.walk(w, "aldric_court", throne + Vector3(1.2, 0, 1.4), 1.0)
 	Cine.look(w, "aldric_court", throne)
-	_front(w, "aldric_court", throne, 30.0)
+	# (seen from the aisle side: the throne's back is behind him)
+	_front(w, "aldric_court", w.player.global_position, 30.0)
 	await Cine.say(w, "aldric_court", "Then let the Unsworn be tested, honestly. No challenger enters the Turning without the Sun Court's Trial.")
 	await Cine.say(w, "aldric_court", "I'll give it myself, before the whole city. Your Grace?")
-	_front(w, "hierarch", Cine.body(w, "aldric_court").global_position, 30.0, 1.9)
+	_front(w, "hierarch", (Cine.body(w, "aldric_court").global_position + w.player.global_position) * 0.5, 30.0, 1.9)
 	await Cine.wait(w, 1.0)
 	await Cine.say(w, "hierarch", "As you wish, Ser Aldric. After the Trial of Light, as every pilgrim must.")
 	await Cine.say(w, "hierarch", "If they pass it.")
@@ -1452,7 +1454,7 @@ static func _roof_people(w: World, top: Vector3) -> void:
 static func _herald_shot(w: World, herald: PaleHerald, top: Vector3) -> void:
 	var at := herald.global_position
 	var into := (top - at) * Vector3(1, 0, 1)
-	var cam := at + into.normalized() * 4.6 + into.normalized().cross(Vector3.UP) * 1.2 + Vector3(0, 1.7, 0)
+	var cam := at + into.normalized() * 4.2 + into.normalized().cross(Vector3.UP) * 0.8 + Vector3(0, 2.7, 0)
 	Cine.shot(w, cam, herald.hood_pos() - Vector3(0, 0.5, 0), 40.0)
 
 
@@ -1668,11 +1670,11 @@ static func _sleeper(w: World, at: Vector3, along: Vector3) -> Node3D:
 	eyes.visible = false
 	eyes.position = Vector3(0, 0.34, -0.62)
 	root.add_child(eyes)
-	for x in [-0.045, 0.045]:
+	for x in [-0.05, 0.05]:
 		var e := MeshInstance3D.new()
 		var sm := SphereMesh.new()
-		sm.radius = 0.012
-		sm.height = 0.024
+		sm.radius = 0.018
+		sm.height = 0.036
 		e.mesh = sm
 		var em := StandardMaterial3D.new()
 		em.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -1715,8 +1717,9 @@ static func _vault(w: World) -> void:
 		# (a cut-out can't lie down: a cloaked shape rolled in the wheel's shadow)
 		Cine.body(w, "film_wren").visible = false
 		eyes = _sleeper(w, wheel, along)
-	var under_cam: Vector3 = wheel + out * 2.4 + along * 0.9 + Vector3(0, 0.55, 0)
-	var under_at: Vector3 = wheel + Vector3(0, 0.28, 0)
+	# from outside the wheels, low, on her face end (where her eyes open)
+	var under_at: Vector3 = wheel + along * 0.6 + Vector3(0, 0.3, 0)
+	var under_cam: Vector3 = under_at + out * 3.2 + along * 1.4 + Vector3(0, 0.45, 0)
 	var turnip_was: float = v.turnip.rotation.z
 	v.turnip.rotation.z = 0.0
 	# the blank card, turned under the lamp
@@ -1744,7 +1747,7 @@ static func _vault(w: World) -> void:
 		(bf as Figure3D).release(0.6)
 	Cine.shot(w, f + Vector3(-5.0, 1.5, 5.0), v.wagon.global_position + Vector3(0, 1.0, 0), 38.0)
 	await _narrate(w, "He puts the card in his coat and stares into the dark for a long time.")
-	Cine.shot(w, under_cam, under_at, 34.0)
+	Cine.shot(w, under_cam, under_at, 22.0)
 	if eyes != null:
 		eyes.visible = true   # her eyes open, catching the lamp
 	await _narrate(w, "In the shadow of the wagon wheel, Wren is awake.")

@@ -1040,7 +1040,8 @@ func court_blaze(k: float, secs := 0.8) -> void:
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(sl, "light_energy", 6.0 * k, secs)
 	tw.tween_property(solmaris, "scale", Vector3.ONE * (1.0 if k > 0.0 else 0.85), secs)
-	tw.tween_property(shaft.material_override, "albedo_color:a", 0.16 + 0.5 * k, secs)
+	# (the column of light thins as she takes its place, so she can be seen)
+	tw.tween_property(shaft.material_override, "albedo_color:a", lerpf(0.16, 0.03, k), secs)
 	tw.tween_property(court_window.material_override, "emission_energy_multiplier", 4.0 + 12.0 * k, secs)
 	await tw.finished
 	if k <= 0.0:
