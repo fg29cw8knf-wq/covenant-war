@@ -263,11 +263,15 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 
 Ashford's cottages, the Crooked Lantern, the windmill (its sails turn until the thatch catches at midnight) and the oaks round the village are Gary's models (`assets/models/ashford/`; an `oak_b.glb`, `oak_c.glb`... is used alongside `oak_a` as soon as it's there); each has a `<id>_glow.png` window mask made from its colour atlas, so the windows light up at night. Missing models fall back to the drawn stand-ins.
 
+So are the dry-stone walls round the fields, the fence along the inn's yard, the grain sacks and the crates (since 18 October; each model's texture is beside it, `tools/split_glb.py`, 1024 pixels). The walls are Gary's 4.2 m length laid end to end along the field lines (`FIELD_WALLS` in `ashford_village.gd`), each fitted to its stretch, set into the ground and leaning with the slope, some turned round; they're drawn in batches of about 32 m so far ones use simpler versions, and the phones leave out those past 85 m. Gateways are left where the riders and hounds come down the east road (`WALL_GAPS`). The fence is laid from Gary's model split into its bays and one post, so every join has a single post; its gap is where Bram and the player go through to the gardens (`INN_FENCE`). Sacks stand by the mill door, behind Tam's cart and by the blue stall; crates by the inn's door and the blue stall (`build_props()`). `make_crate()` gives the lantern crate on its own for carrying (origin at the middle of its base).
+
 ```sh
 xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 res://tests/menu_test.tscn -- /tmp/menu 1600x900   # every menu tab, card detail, notice, advert
 xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 res://tests/pack_tour_test.tscn -- /tmp/tour 1600x900   # Bram's pack tour, tap by tap
 xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 res://tests/village_shot.tscn -- /tmp/village       # Ashford's buildings and the roof fire
 xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/props_shot.tscn -- /tmp/props [thornwood]   # the windmill (turning, then burning) and the oaks
+xvfb-run -a -s "-screen 0 1280x720x24" godot --resolution 1280x720 res://tests/walls_shot.tscn -- /tmp/walls   # the walls, fence, sacks and crates, and what each view draws
+godot --headless --fixed-fps 10 res://tests/props_clear_test.tscn -- /tmp/clear burning 0 only   # nobody in the film walks through them (corin, midnight, dawn, burning)
 godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse); also runs under xvfb-run
 ```
 
@@ -324,11 +328,37 @@ browser loops them sample-accurately. Check it in a real browser with:
 tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the join, the crossfades, the volume
 ```
 
-## Opening movie clips
+## Opening movie
 
-The opening movie plays each shot's painting with a slow camera move, or a video
-clip where one exists. To add clips made with an image-to-video tool, name them
-after their shots (`shot_08.mp4`) and run:
+The opening movie (`scripts/story/opening_movie.gd`) follows the "Opening movie"
+table of the Master Script v3: 21 shots in 2:24, cut in time with
+`opening_theme` (the title rises at 2:14.5 to meet its last chord). Morrowen
+narrates fifteen lines (`assets/audio/vo/`); shot 10 is music only. Each line
+starts `vo_at` seconds after its shot's cut, and its subtitle is the words as
+recorded. Some lines are longer than their shots, so they run on past the cut and
+the next one follows a breath later, still inside its own shot (09b runs straight
+on from 09a, on the cut to the card); none overlaps another, and all end before
+the title. Two effects follow her words, timed in seconds into the line: shot
+13's white streak sets off on "over a village" and lands on Ashford on "anyway",
+just before the cut (`streak`), and the eighth light round the Throne ignites on
+"marked" (`white_word`).
+
+The lines are made from Gary's recordings, kept as he sent them in
+`assets/audio/source/vo/` with his line sheet and voice notes. `tools/vo_master.py`
+trims each to its words, levels it (about -16 LUFS, peaks under -1 dBTP) and
+writes the game's Ogg files. After a line is re-recorded, run it again, then the
+check, and move the `vo_at`s if it reports a problem:
+
+```sh
+python3 tools/vo_master.py assets/audio/source/vo             # -> assets/audio/vo/vo_<n>.ogg
+godot --headless --fixed-fps 20 res://tests/movie_shot.tscn   # every line against the shots, and the checks
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 20 \
+    res://tests/movie_shot.tscn -- /tmp/movie 2:05.6 2:07.7   # plus stills: half a second into each line, and at these times
+```
+
+Each shot plays its painting with a slow camera move, or a video clip where one
+exists. To add clips made with an image-to-video tool, name them after their
+shots (`shot_08.mp4`) and run:
 
 ```sh
 python3 tools/movie_clips.py <folder of clips>     # -> assets/movies/shots/<shot>.ogv, trimmed to each shot

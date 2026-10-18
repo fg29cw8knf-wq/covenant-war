@@ -49,6 +49,8 @@ const HAY_CART_HALF_WIDTH := 1.25   # centre to the outside of a wheel
 var hay_cart: Node3D
 var hay_cart_rest := Transform3D.IDENTITY
 var hay_cart_tip := 0.0
+## The festival stalls on the green: Tilly's red one, and the blue one.
+var stalls: Array = []
 
 
 func _ready() -> void:
@@ -71,6 +73,7 @@ func _ready() -> void:
 	build_walls_and_fences()
 	build_trees()
 	build_grass()
+	build_props()
 	build_sky_lanterns()
 	build_sigilfall()
 	if quality == 2:
@@ -937,7 +940,7 @@ func build_green() -> void:
 		solid_round(wp, 1.15)
 	# festival stalls (the red one is Tilly's, where Tam's cider goes)
 	var red := stall(g, Vector3(7.5, 0, 6.0), deg_to_rad(-30), mats.cloth_red)
-	stall(g, Vector3(-4.0, 0, -8.5), deg_to_rad(160), mats.cloth_blue)
+	stalls = [red, stall(g, Vector3(-4.0, 0, -8.5), deg_to_rad(160), mats.cloth_blue)]
 	# the barrel goes down just past the stall's left-hand post
 	var beside := Vector3(-2.35 if red.has_meta("model") else -2.1, 0.0, 0.05)
 	barrel_spot = red.to_global(beside) if red.is_inside_tree() else red.transform * beside
@@ -1069,6 +1072,24 @@ func make_barrel() -> Node3D:
 		hoop.top_radius = r; hoop.bottom_radius = r; hoop.height = 0.045; hoop.radial_segments = 18
 		add_mesh(body, hoop, iron, Transform3D(Basis(), Vector3(0, y, 0)))
 	return b
+
+## Gary's lantern crate (crate.glb, front +Z): width, height and depth in metres.
+const CRATE_MODEL := "res://assets/models/ashford/crate.glb"
+const CRATE_SIZE := Vector3(1.11, 0.85, 0.93)
+## The lantern crate on its own, for carrying: its origin is the middle of its
+## base, and it has no footprint or solid body (whoever uses it places it).
+## A plain wooden box of the same size when the model isn't there.
+func make_crate() -> Node3D:
+	var c := Node3D.new()
+	c.name = "Crate"
+	if ResourceLoader.exists(CRATE_MODEL):
+		var inst: Node3D = load(CRATE_MODEL).instantiate()
+		c.add_child(inst)
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	else:
+		box(c, CRATE_SIZE, Vector3(0, CRATE_SIZE.y * 0.5, 0), mats.wood_h)
+	return c
 
 ## Puffs of dust where something heavy lands.
 func dust_puff(at: Vector3) -> void:
@@ -1212,21 +1233,221 @@ func rock_mesh(seed_i: int) -> ArrayMesh:
 	st.generate_normals()
 	return st.commit()
 
+## The dry-stone walls round the fields: lines of points (x, z) along both
+## sides of the road in and out of the village, and over the hills.
+const FIELD_WALLS := [
+	[Vector2(-125, 34), Vector2(-70, 28), Vector2(-36, 21)],
+	[Vector2(-125, 26), Vector2(-70, 20), Vector2(-36, 12.5)],
+	[Vector2(42, 16), Vector2(80, 6), Vector2(125, -6)],
+	[Vector2(42, 8), Vector2(80, -2), Vector2(125, -14)],
+	[Vector2(-40, -30), Vector2(-60, -70), Vector2(-50, -130)],
+	[Vector2(30, -30), Vector2(10, -70), Vector2(-10, -140)],
+	[Vector2(-36, 21), Vector2(-50, 60), Vector2(-40, 110)],
+	[Vector2(70, 10), Vector2(90, 60), Vector2(70, 120)],
+	[Vector2(-60, -70), Vector2(10, -70)],
+]
+## Gateways left open in them, [centre, half its width]: where the lane up to
+## the mill goes through, and the night Ashford burns, where Krell's riders
+## come down the east road (ashford.gd, _burning): one starts in the field
+## south of it and crosses the wall at a slant, one starts close by, and a
+## hound runs past the end of the north wall.
+const WALL_GAPS := [[Vector2(24.0, -41.9), 1.6], [Vector2(55.4, 12.5), 3.6], [Vector2(42.0, 8.0), 3.6]]
+## Past this far from the green the phone renderers leave the walls out.
+const WALL_NEAR := 85.0
+## Gary's dry-stone wall (stone_wall.glb): a straight length 4.2 m long, 1.05
+## high and 0.57 thick, its origin at the middle of its foot, along X.
+const STONE_WALL_MODEL := "res://assets/models/ashford/stone_wall.glb"
+const WALL_LENGTH := 4.2
+const WALL_HALF_DEPTH := 0.28
+const WALL_STEP := 4.05       # how far apart the lengths are laid, about
+const WALL_OVERLAP := 0.08    # each runs this far past the joins either side
+const WALL_CORNER := 0.2      # and a line this far past its corners, to close the angle
+const WALL_SINK := 0.08       # its foot this far into the lowest ground under it
+const WALL_CHUNK := 32.0      # drawn in squares this size, so the far ones use the model's simpler versions
+## The fence along the Crooked Lantern's yard, beside the road: two runs
+## [from, to], with the gap between them where Bram and the player go through
+## from the woodpile to the back gardens, and the west run stopping short of
+## where they come back to the back door (ashford.gd, _burning and _gardens).
+const INN_FENCE := [[Vector2(-29.2, 13.5), Vector2(-23.0, 13.5)], [Vector2(-20.3, 13.5), Vector2(-17.2, 13.5)]]
+## Gary's post-and-rail fence (fence.glb): three posts in a row along X,
+## 1.56 m apart, with two courses of rails, the middle post's foot at its origin.
+const FENCE_MODEL := "res://assets/models/ashford/fence.glb"
+const FENCE_SPAN := 3.12      # end post to end post
+const FENCE_POST := 0.11      # a post's half-width
+const FENCE_SINK := 0.1       # the posts this far into the ground
+
 func build_walls_and_fences() -> void:
-	var lines := [
-		[Vector2(-125, 34), Vector2(-70, 28), Vector2(-36, 21)],
-		[Vector2(-125, 26), Vector2(-70, 20), Vector2(-36, 12.5)],
-		[Vector2(42, 16), Vector2(80, 6), Vector2(125, -6)],
-		[Vector2(42, 8), Vector2(80, -2), Vector2(125, -14)],
-		[Vector2(-40, -30), Vector2(-60, -70), Vector2(-50, -130)],
-		[Vector2(30, -30), Vector2(10, -70), Vector2(-10, -140)],
-		[Vector2(-36, 21), Vector2(-50, 60), Vector2(-40, 110)],
-		[Vector2(70, 10), Vector2(90, 60), Vector2(70, 120)],
-		[Vector2(-60, -70), Vector2(10, -70)],
-	]
+	if ResourceLoader.exists(STONE_WALL_MODEL):
+		lay_walls()
+		_roll_rock_dice()
+	else:
+		rock_walls()
+	if ResourceLoader.exists(FENCE_MODEL):
+		lay_fences(INN_FENCE)
+	else:
+		box_fences(INN_FENCE)
+
+## The meshes in one of Gary's models, each with where it sits in the model:
+## [Mesh, Transform3D], for drawing many copies with MultiMeshes.
+var _model_parts := {}
+func model_parts(path: String) -> Array:
+	if not _model_parts.has(path):
+		var out: Array = []
+		var inst: Node3D = load(path).instantiate()
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			out.append([mi.mesh, _local_to(mi, inst)])
+		inst.free()
+		_model_parts[path] = out
+	return _model_parts[path]
+
+func _local_to(n: Node3D, root: Node3D) -> Transform3D:
+	var xf := Transform3D.IDENTITY
+	while n != root:
+		xf = n.transform * xf
+		n = n.get_parent() as Node3D
+	return xf
+
+## Gary's dry-stone wall laid length after length along FIELD_WALLS (where,
+## wall_sections()), drawn with one MultiMesh for each WALL_CHUNK square of
+## the map, so the far ones drop to the model's simpler versions and the ones
+## off screen aren't drawn; the phone renderers leave out those past
+## WALL_NEAR and draw no shadows from them, as they did for the drawn walls.
+func lay_walls() -> void:
+	var root := Node3D.new()
+	root.name = "FieldWalls"
+	add_child(root)
+	var chunks := {}
+	for s in wall_sections():
+		if quality < 2 and bool(s[1]):
+			continue
+		var xf: Transform3D = s[0]
+		var key := Vector2i(floori(xf.origin.x / WALL_CHUNK), floori(xf.origin.z / WALL_CHUNK))
+		if not chunks.has(key):
+			chunks[key] = []
+		(chunks[key] as Array).append(xf)
+	for key: Vector2i in chunks:
+		for part in model_parts(STONE_WALL_MODEL):
+			var xfs: Array = []
+			for xf: Transform3D in chunks[key]:
+				xfs.append(xf * (part[1] as Transform3D))
+			var mi := multimesh(root, part[0], null, xfs, [], quality == 2)
+			mi.name = "Walls_%d_%d" % [key.x, key.y]
+			mi.lod_bias = 0.5 if quality == 0 else 1.0
+
+## Where every length of wall goes: [its transform, whether it's past
+## WALL_NEAR], for all of FIELD_WALLS. Each line is laid a stretch at a time,
+## corner to corner and round the gateways, the lengths in a stretch
+## stretched or squeezed a few per cent to fit it exactly (_wall_stretch).
+func wall_sections() -> Array:
+	var r := RandomNumberGenerator.new()
+	r.seed = 1173
+	var out: Array = []
+	for line in FIELD_WALLS:
+		for i in line.size() - 1:
+			var a: Vector2 = line[i]
+			var b: Vector2 = line[i + 1]
+			var dir := (b - a).normalized()
+			for span in _open_spans(a - dir * WALL_CORNER, b + dir * WALL_CORNER):
+				out.append_array(_wall_stretch(span[0], span[1], r))
+	return out
+
+## The parts of the line from `a` to `b` that stay walled, round WALL_GAPS:
+## [[from, to], ...], none shorter than half a length.
+func _open_spans(a: Vector2, b: Vector2) -> Array:
+	var L := a.distance_to(b)
+	var dir := (b - a) / L
+	var cuts: Array = []
+	for g in WALL_GAPS:
+		var c: Vector2 = g[0]
+		var half: float = g[1]
+		var off := absf((c - a).cross(dir))
+		if off < half:
+			var t := (c - a).dot(dir)
+			var h := sqrt(half * half - off * off)
+			cuts.append([t - h, t + h])
+	cuts.sort_custom(func(x: Array, y: Array) -> bool: return float(x[0]) < float(y[0]))
+	var out: Array = []
+	var t0 := 0.0
+	for c in cuts:
+		var t1 := minf(float(c[0]), L)
+		if t1 - t0 > WALL_LENGTH * 0.5:
+			out.append([a + dir * t0, a + dir * t1])
+		t0 = maxf(t0, float(c[1]))
+	if L - t0 > WALL_LENGTH * 0.5:
+		out.append([a + dir * t0, b])
+	return out
+
+## One straight stretch of wall from `a` to `b`, in lengths. Each length is
+## set into the lowest ground at both ends and leans with the slope, its
+## stones still upright (its transform shears rather than tilts); where the
+## ground dips between two joins the joins go down with it, so no length is
+## left with its foot in the air. About half are turned end for end, and each
+## is a touch taller or lower, thicker or thinner and off the line than the
+## next, so the copies don't repeat.
+func _wall_stretch(a: Vector2, b: Vector2, r: RandomNumberGenerator) -> Array:
+	var L := a.distance_to(b)
+	var n := maxi(1, roundi(L / WALL_STEP))
+	var dir := (b - a) / L
+	var face := Vector2(-dir.y, dir.x) * WALL_HALF_DEPTH
+	var pts: Array = []
+	var ys: Array = []
+	for k in n + 1:
+		var p := a.lerp(b, float(k) / n)
+		pts.append(p)
+		ys.append(minf(ground_y(p.x + face.x, p.y + face.y), ground_y(p.x - face.x, p.y - face.y)) - WALL_SINK)
+	var drop: Array = []
+	drop.resize(n + 1)
+	drop.fill(0.0)
+	for i in n:
+		var need := 0.0
+		for t in [0.25, 0.5, 0.75]:
+			var q: Vector2 = (pts[i] as Vector2).lerp(pts[i + 1], t)
+			var y := lerpf(ys[i], ys[i + 1], t)
+			for s in [-1.0, 0.0, 1.0]:
+				need = maxf(need, y - ground_y(q.x + face.x * s, q.y + face.y * s) + WALL_SINK * 0.5)
+		drop[i] = maxf(drop[i], need)
+		drop[i + 1] = maxf(drop[i + 1], need)
+	var reach := (L / n + 2.0 * WALL_OVERLAP) / (L / n)
+	var out: Array = []
+	for i in n:
+		var pa: Vector2 = pts[i]
+		var pb: Vector2 = pts[i + 1]
+		var p := Vector3(pa.x, ys[i] - drop[i], pa.y)
+		var q := Vector3(pb.x, ys[i + 1] - drop[i + 1], pb.y)
+		if r.randf() < 0.5:
+			var t := p
+			p = q
+			q = t
+		var along := ((q - p) * reach / WALL_LENGTH).rotated(Vector3.UP, r.randf_range(-0.015, 0.015))
+		var across := Vector3(along.x, 0.0, along.z).normalized().cross(Vector3.UP)
+		var basis := Basis(along, Vector3.UP * r.randf_range(0.94, 1.06), across * r.randf_range(0.92, 1.08))
+		var mid := (p + q) * 0.5 + across * r.randf_range(-0.03, 0.03)
+		out.append([Transform3D(basis, mid), Vector2(mid.x, mid.z).length() > WALL_NEAR])
+	return out
+
+## The drawn walls rolled the village's dice for every stone they built (five
+## randf()s and a randi() each, three stones every 0.36 m); Gary's walls have
+## dice of their own, so the same rolls are made here and the trees, grass,
+## sky lanterns and Sigils after them come out where they always have.
+func _roll_rock_dice() -> void:
+	for line in FIELD_WALLS:
+		for i in line.size() - 1:
+			var a: Vector2 = line[i]
+			var b: Vector2 = line[i + 1]
+			var n := int(a.distance_to(b) / 0.36)
+			for s in n:
+				if quality < 2 and a.lerp(b, (s + 0.5) / n).length() > WALL_NEAR:
+					continue
+				for stone in 3:
+					for k in 5:
+						rng.randf()
+					rng.randi()
+
+## The drawn stand-in for Gary's walls: rough stones in three courses.
+func rock_walls() -> void:
 	var meshes := [rock_mesh(1), rock_mesh(2), rock_mesh(3)]
 	var xfs := [[], [], []]
-	for line in lines:
+	for line in FIELD_WALLS:
 		for i in line.size() - 1:
 			var a: Vector2 = line[i]
 			var b: Vector2 = line[i + 1]
@@ -1235,7 +1456,7 @@ func build_walls_and_fences() -> void:
 			var dir := (b - a).normalized()
 			for s in n:
 				var p := a.lerp(b, (s + 0.5) / n)
-				if quality < 2 and p.length() > 85.0:
+				if quality < 2 and p.length() > WALL_NEAR:
 					continue
 				for layer in 3:
 					var jitter := Vector2(-dir.y, dir.x) * rng.randf_range(-0.12, 0.12)
@@ -1246,14 +1467,288 @@ func build_walls_and_fences() -> void:
 					xfs[rng.randi() % 3].append(Transform3D(basis, Vector3(q.x, y, q.y)))
 	for k in 3:
 		multimesh(self, meshes[k], mats.rock, xfs[k], [], quality == 2)
-	# a fence along the inn's garden
-	for i in 10:
-		var p := Vector3(-31.0 + i * 1.6, 0, 13.5)
-		p.y = height(p.x, p.z)
-		box(self, Vector3(0.12, 1.1, 0.12), p + Vector3(0, 0.5, 0), mats.beam_v)
-		if i < 9:
-			box(self, Vector3(1.6, 0.08, 0.06), p + Vector3(0.8, 0.75, 0), mats.wood_h)
-			box(self, Vector3(1.6, 0.08, 0.06), p + Vector3(0.8, 0.35, 0), mats.wood_h)
+
+## Gary's fence along each run [from, to]: a post at both ends and at every
+## join, the bays between following the ground (the rails slope with it, the
+## posts stay upright), each bay and each post turned about at random and the
+## posts leaning a touch, so no two lengths look alike. One MultiMesh for the
+## bays and one for the posts, and a solid body along each run.
+func lay_fences(runs: Array) -> void:
+	var root := Node3D.new()
+	root.name = "Fences"
+	add_child(root)
+	var parts := fence_parts()
+	var whole := parts.is_empty()
+	if whole:
+		parts = [model_parts(FENCE_MODEL)[0][0], null]
+	var r := RandomNumberGenerator.new()
+	r.seed = 1175
+	var bays: Array = []
+	var posts: Array = []
+	for run in runs:
+		var a: Vector2 = run[0]
+		var b: Vector2 = run[1]
+		var L := a.distance_to(b)
+		var n := maxi(1, roundi(L / FENCE_SPAN))
+		var dir := (b - a) / L
+		var line := Vector3(dir.x, 0.0, dir.y)
+		var joins: Array = []
+		for k in n + 1:
+			var p := a.lerp(b, float(k) / n)
+			joins.append(Vector3(p.x, ground_under(Vector3(p.x, 0.0, p.y), FENCE_POST) - FENCE_SINK, p.y))
+		for i in n:
+			var p: Vector3 = joins[i]
+			var q: Vector3 = joins[i + 1]
+			# its middle post goes into the ground too, where the ground dips
+			var m := (p + q) * 0.5
+			var dip := maxf(0.0, m.y - (ground_under(m, FENCE_POST) - FENCE_SINK))
+			p.y -= dip
+			q.y -= dip
+			if r.randf() < 0.5:
+				var t := p
+				p = q
+				q = t
+			var along := (q - p) / FENCE_SPAN
+			bays.append(Transform3D(Basis(along, Vector3.UP, Vector3(along.x, 0.0, along.z).normalized().cross(Vector3.UP)), (p + q) * 0.5))
+		if not whole:
+			for k in n + 1:
+				var yaw := atan2(-dir.y, dir.x) + (PI if r.randf() < 0.5 else 0.0) + r.randf_range(-0.08, 0.08)
+				var basis := Basis(line, r.randf_range(-0.035, 0.035)) * Basis(Vector3.UP, yaw).scaled(Vector3(1.0, r.randf_range(0.96, 1.05), 1.0))
+				posts.append(Transform3D(basis, joins[k]))
+		var mid := (a + b) * 0.5
+		solid_box(Vector3(mid.x, 1.5, mid.y), Vector3(L + FENCE_POST * 2.0, 3.0, 0.3), atan2(-dir.y, dir.x))
+	multimesh(root, parts[0], null, bays, [])
+	if not posts.is_empty():
+		multimesh(root, parts[1], null, posts, [])
+
+## Gary's fence in the two pieces a run is laid from: the bays (both spans
+## of rails and the middle post) and a post (its +X end post and the pegs in
+## it, moved to stand on the origin). The -X end post is left out, as the
+## next post along stands there. Empty when the model isn't three posts in a
+## row along X; then whole fences are laid end to end.
+var _fence_parts: Array = []
+func fence_parts() -> Array:
+	if not _fence_parts.is_empty():
+		return _fence_parts
+	var parts := model_parts(FENCE_MODEL)
+	if parts.size() != 1 or (parts[0][0] as Mesh).get_surface_count() != 1:
+		return []
+	var mesh: Mesh = parts[0][0]
+	var xf: Transform3D = parts[0][1]
+	var arr := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	for i in v.size():
+		v[i] = xf * v[i]
+	# the separate pieces of timber: vertices joined by their triangles, and
+	# across the texture's seams by being in the same place
+	var up: Array = range(v.size())
+	var find := func(i: int) -> int:
+		while up[i] != i:
+			up[i] = up[up[i]]
+			i = up[i]
+		return i
+	var at := {}
+	for i in v.size():
+		var k := v[i].snapped(Vector3.ONE * 0.0001)
+		if at.has(k):
+			up[find.call(i)] = find.call(at[k])
+		else:
+			at[k] = i
+	for t in range(0, idx.size(), 3):
+		var ra: int = find.call(idx[t])
+		up[find.call(idx[t + 1])] = ra
+		up[find.call(idx[t + 2])] = ra
+	var boxes := {}
+	for i in v.size():
+		var c: int = find.call(i)
+		if boxes.has(c):
+			boxes[c] = (boxes[c] as AABB).expand(v[i])
+		else:
+			boxes[c] = AABB(v[i], Vector3.ZERO)
+	# a piece centred further out than this belongs to an end post
+	var end := FENCE_SPAN * 0.5 - 0.3
+	var post := AABB()
+	var found := 0
+	for c in boxes:
+		var b: AABB = boxes[c]
+		if b.get_center().x > end and b.size.y > 0.6:
+			post = b
+			found += 1
+	if found != 1:
+		return []
+	var in_bays := PackedByteArray()
+	in_bays.resize(v.size())
+	var in_post := PackedByteArray()
+	in_post.resize(v.size())
+	for i in v.size():
+		var cx := (boxes[find.call(i)] as AABB).get_center().x
+		if cx > end:
+			in_post[i] = 1
+		elif cx > -end:
+			in_bays[i] = 1
+	var foot := Vector3(post.get_center().x, 0.0, post.get_center().z)
+	_fence_parts = [_sub_mesh(mesh, arr, v, xf.basis, in_bays, Vector3.ZERO), _sub_mesh(mesh, arr, v, xf.basis, in_post, -foot)]
+	return _fence_parts
+
+## The triangles of a one-surface mesh whose corners are all marked in
+## `keep`, as a mesh of their own (with the same material), moved by `offset`.
+func _sub_mesh(src: Mesh, arr: Array, v: PackedVector3Array, turn: Basis, keep: PackedByteArray, offset: Vector3) -> ArrayMesh:
+	var nrm = arr[Mesh.ARRAY_NORMAL]
+	var tan = arr[Mesh.ARRAY_TANGENT]
+	var uv = arr[Mesh.ARRAY_TEX_UV]
+	var uv2 = arr[Mesh.ARRAY_TEX_UV2]
+	var col = arr[Mesh.ARRAY_COLOR]
+	var to := PackedInt32Array()
+	to.resize(v.size())
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	var ov := PackedVector3Array()
+	var on := PackedVector3Array()
+	var ot := PackedFloat32Array()
+	var ou := PackedVector2Array()
+	var ou2 := PackedVector2Array()
+	var oc := PackedColorArray()
+	for i in v.size():
+		to[i] = -1
+		if keep[i] == 0:
+			continue
+		to[i] = ov.size()
+		ov.append(v[i] + offset)
+		if nrm != null:
+			on.append((turn * (nrm[i] as Vector3)).normalized())
+		if tan != null:
+			var tv := (turn * Vector3(tan[i * 4], tan[i * 4 + 1], tan[i * 4 + 2])).normalized()
+			ot.append_array([tv.x, tv.y, tv.z, tan[i * 4 + 3]])
+		if uv != null:
+			ou.append(uv[i])
+		if uv2 != null:
+			ou2.append(uv2[i])
+		if col != null:
+			oc.append(col[i])
+	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX]
+	var oi := PackedInt32Array()
+	for t in range(0, idx.size(), 3):
+		var a := to[idx[t]]
+		var b := to[idx[t + 1]]
+		var c := to[idx[t + 2]]
+		if a >= 0 and b >= 0 and c >= 0:
+			oi.append_array([a, b, c])
+	out[Mesh.ARRAY_VERTEX] = ov
+	out[Mesh.ARRAY_INDEX] = oi
+	if nrm != null:
+		out[Mesh.ARRAY_NORMAL] = on
+	if tan != null:
+		out[Mesh.ARRAY_TANGENT] = ot
+	if uv != null:
+		out[Mesh.ARRAY_TEX_UV] = ou
+	if uv2 != null:
+		out[Mesh.ARRAY_TEX_UV2] = ou2
+	if col != null:
+		out[Mesh.ARRAY_COLOR] = oc
+	var m := ArrayMesh.new()
+	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out)
+	m.surface_set_material(0, src.surface_get_material(0))
+	return m
+
+## The drawn stand-in for Gary's fence: posts and two rails along each run.
+func box_fences(runs: Array) -> void:
+	for run in runs:
+		var a: Vector2 = run[0]
+		var b: Vector2 = run[1]
+		var n := maxi(1, roundi(a.distance_to(b) / 1.6))
+		var turn := Vector3(0.0, atan2(-(b - a).y, (b - a).x), 0.0)
+		for i in n + 1:
+			var p2 := a.lerp(b, float(i) / n)
+			box(self, Vector3(0.12, 1.1, 0.12), Vector3(p2.x, height(p2.x, p2.y) + 0.5, p2.y), mats.beam_v, turn)
+			if i < n:
+				var m2 := a.lerp(b, (i + 0.5) / n)
+				for y in [0.75, 0.35]:
+					box(self, Vector3(a.distance_to(b) / n, 0.08, 0.06), Vector3(m2.x, height(m2.x, m2.y) + y, m2.y), mats.wood_h, turn)
+		solid_box(Vector3((a.x + b.x) * 0.5, 1.5, (a.y + b.y) * 0.5), Vector3(a.distance_to(b) + 0.2, 3.0, 0.3), turn.y)
+
+# ------------------------------------------------------------------ sacks and crates
+
+## Gary's three grain sacks (sacks.glb, 1.15 m across, front +Z).
+const SACKS_MODEL := "res://assets/models/ashford/sacks.glb"
+## Every pile of sacks and stack of crates set down: [centre (x, z), radius],
+## for the tests that check nobody in the story walks through one.
+var props_placed: Array = []
+
+## Grain sacks by the mill's door, behind Tam's hay cart and beside the blue
+## stall; crates stacked by the Crooked Lantern's door and by the blue stall.
+## All of it stands clear of where the story goes: Tam's barrel walk, the
+## crowd and the Lantern Duel round the Great Lantern, the run and the cart
+## at midnight, the dawn, the riders and the escape through the gardens
+## (ashford.gd), and out of the films' cameras. Built after the grass, so the
+## grass and everything after it come out as before (a few blades come up
+## round their feet).
+func build_props() -> void:
+	var root := Node3D.new()
+	root.name = "Props"
+	add_child(root)
+	var sacks: Array = []
+	var crates: Array = []
+	if mill_root != null and ResourceLoader.exists(MILL_TOWER_MODEL):
+		# either side of the door (the tower's +Z), under the sails' sweep
+		for k in [[Vector3(2.1, 0, 1.6), 0.5], [Vector3(-2.25, 0, 1.35), -0.4]]:
+			var p := to_local(mill_root.to_global(k[0]))
+			sacks.append([Vector2(p.x, p.z), mill_root.rotation.y + float(k[1]), 1])
+	if hay_cart != null:
+		# behind its tail, out of the way of Tam and the barrel
+		sacks.append([Vector2(5.9, -5.0), 0.9, 1])
+	if stalls.size() > 1:
+		# on the blue stall's west side, away from the crowd at the Lantern Duel
+		var blue: Node3D = stalls[1]
+		for k in [[Vector3(2.5, 0, -1.0), 0.3, 1, sacks], [Vector3(2.6, 0, 0.55), -0.15, 2, crates]]:
+			var p := to_local(blue.to_global(k[0]))
+			(k[3] as Array).append([Vector2(p.x, p.z), blue.rotation.y + float(k[1]), k[2]])
+	var inn := inn_index()
+	if inn >= 0:
+		var r: Node3D = houses[inn].root
+		# against the wall just south of the door (its middle is at x -0.6),
+		# end on, between it and the model's barrels (x -3.6 and -4.6), clear
+		# of the way out and of where the player comes out (SPAWNS.inn)
+		for k in [[Vector3(-2.35, 0, 3.3), PI * 0.5 + 0.04, 2]]:
+			var p := to_local(r.to_global(k[0]))
+			crates.append([Vector2(p.x, p.z), r.rotation.y + float(k[1]), k[2]])
+	place_props(root, SACKS_MODEL, sacks)
+	place_props(root, CRATE_MODEL, crates)
+
+## Copies of one of Gary's props, drawn together by one MultiMesh (one for
+## each mesh in the model). Each spot is [where (x, z), yaw, how many high]:
+## a stack, each one a little turned on the one below. The bottom one stands
+## on the lowest ground under it and gets a footprint and a solid body, as
+## prop_model()'s do.
+func place_props(parent: Node3D, path: String, spots: Array) -> void:
+	if not ResourceLoader.exists(path) or spots.is_empty():
+		return
+	var parts := model_parts(path)
+	var box_ := AABB()
+	for i in parts.size():
+		var b: AABB = (parts[i][1] as Transform3D) * (parts[i][0] as Mesh).get_aabb()
+		box_ = b if i == 0 else box_.merge(b)
+	var r := RandomNumberGenerator.new()
+	r.seed = 1176 + spots.size()
+	var xfs: Array = []
+	for s in spots:
+		var at: Vector2 = s[0]
+		var yaw: float = s[1]
+		var c := Vector2(box_.get_center().x, box_.get_center().z).rotated(-yaw)
+		var centre := Vector3(at.x + c.x, 0.0, at.y + c.y)
+		var foot := maxf(box_.size.x, box_.size.z) * 0.55
+		var p := Vector3(at.x, ground_under(centre, foot * 0.8) - 0.02, at.y)
+		for k in int(s[2]):
+			var turn := yaw + (r.randf_range(-0.14, 0.14) if k > 0 else 0.0)
+			xfs.append(Transform3D(Basis(Vector3.UP, turn), p + Vector3(0, box_.size.y * k, 0)))
+		footprints.append([Vector2(centre.x, centre.z), foot])
+		props_placed.append([Vector2(centre.x, centre.z), foot])
+		solid_box(Vector3(centre.x, 1.5, centre.z), Vector3(box_.size.x + 0.2, 3.0, box_.size.z + 0.2), yaw)
+	for part in parts:
+		var pxfs: Array = []
+		for xf: Transform3D in xfs:
+			pxfs.append(xf * (part[1] as Transform3D))
+		multimesh(parent, part[0], null, pxfs, [])
 
 # ------------------------------------------------------------------ trees
 
