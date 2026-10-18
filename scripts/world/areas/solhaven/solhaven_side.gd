@@ -132,8 +132,16 @@ static var HUB: Dictionary = Places.HUB
 static func npcs(_w = null) -> Array:
 	var out := []
 	if mercy_open():
-		out.append({"id": "ysa", "look": "side_ysa", "name": "Ysa", "pos": SQ.ysa_in if ysa_inside() else SQ.ysa_gate,
-			"talk": [{"call": _fn("talk_ysa")}]})
+		if ysa_inside() or not Places._is_set(_w):
+			out.append({"id": "ysa", "look": "side_ysa", "name": "Ysa", "pos": SQ.ysa_in if ysa_inside() else SQ.ysa_gate,
+				"talk": [{"call": _fn("talk_ysa")}]})
+		else:
+			# Chapter 1's gate stayed shut, and its doors are solid: she's in the
+			# camp outside, and you go out to her from the gate
+			out.append({"id": "ysa", "look": "side_ysa", "name": "Ysa", "pos": Places.spot("camp", "ysa"),
+				"talk": [{"call": _fn("talk_ysa")}]})
+			out.append({"id": "ysa_gate", "look": "refugee", "name": "The camp outside the gate", "pos": SQ.ysa_gate,
+				"talk": [{"call": _fn("talk_ysa")}], "hidden": true})
 	if fen_open():
 		out.append({"id": "fen", "look": "side_fen", "name": "Fen", "pos": SQ.fen, "talk": [{"call": _fn("talk_fen")}],
 			"duel_flag": "side_fen_settled", "duel_needs": "side_fen_pending"})
@@ -709,6 +717,7 @@ static func _mercy_sworn(w: World, how: String) -> void:
 static func _mercy_close(w: World) -> void:
 	await _end(w)
 	_remove_npc(w, "ysa")
+	_remove_npc(w, "ysa_gate")
 	var lying = w.get_meta("side_tobin_lying", null) if w.has_meta("side_tobin_lying") else null
 	if lying != null and is_instance_valid(lying):
 		(lying as Node).queue_free()

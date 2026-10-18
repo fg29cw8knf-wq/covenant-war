@@ -79,6 +79,8 @@ func _fresh(extra: Dictionary = {}) -> void:
 
 ## Walks up to someone in the square and talks to them.
 func _talk(id: String) -> void:
+	if id == "ysa" and world._npc_by_id("ysa_gate") != null:
+		id = "ysa_gate"   # Chapter 1's square, the gate shut: she's out in the camp
 	var nn = world._npc_by_id(id)
 	_check(nn != null, "%s is in the square" % id)
 	if nn == null:
@@ -131,8 +133,10 @@ func _hub() -> void:
 	await _frames(8)
 	await _shot("ysa_at_the_gate")
 	world.cine = false
-	var ysa = world._npc_by_id("ysa")
-	_check(ysa != null and (ysa.body as Node3D).global_position.distance_to(gate) < 0.5, "hub: the gate shut, Ysa waits at it")
+	var ysa = world._npc_by_id("ysa_gate")
+	if ysa == null:
+		ysa = world._npc_by_id("ysa")
+	_check(ysa != null and (ysa.body as Node3D).global_position.distance_to(gate) < 0.5, "hub: the gate shut, Ysa's story starts at it")
 
 
 func _mercy_won() -> void:

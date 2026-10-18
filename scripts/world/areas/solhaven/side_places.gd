@@ -69,7 +69,7 @@ const HUB_SET := {
 const SQUARE_SET := {
 	"ysa_in": Vector3(-9.4, 0, 7.4), "tobin_in": Vector3(-10.5, 0, 7.9), "healer_in": Vector3(-8.3, 0, 6.6),
 	"player_ysa": Vector3(-7.6, 0, 8.1), "ysa_cam": Vector3(-8.9, 1.7, 12.95),
-	"ysa_gate": Vector3(-1.2, 0, 26.2),   # outside the shut gate: you talk to her through it
+	"ysa_gate": Vector3(-1.2, 0, 23.4),   # the shut gate, from inside: the way out to her camp
 }
 
 
