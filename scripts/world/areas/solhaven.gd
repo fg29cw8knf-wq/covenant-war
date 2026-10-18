@@ -132,6 +132,10 @@ static func build(root: Node3D) -> void:
 	K.wall(root, Vector3(b.position.x, 0, b.position.y), Vector3(b.position.x, 0, b.end.y))
 	K.wall(root, Vector3(b.end.x, 0, b.position.y), Vector3(b.end.x, 0, b.end.y))
 	K.wall(root, Vector3(b.position.x, 0, b.end.y), Vector3(b.end.x, 0, b.end.y))
+	# Chapter 1's side stories, from their own file (solhaven/solhaven_side.gd); nothing happens without it
+	var side = load("res://scripts/world/areas/solhaven/solhaven_side.gd") if ResourceLoader.exists("res://scripts/world/areas/solhaven/solhaven_side.gd") else null
+	if side != null:
+		side.setup(root)
 
 
 ## A battered wagon with a lantern on a hook, and a grey mule with one ear

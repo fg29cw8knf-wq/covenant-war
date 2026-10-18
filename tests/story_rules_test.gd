@@ -60,8 +60,105 @@ func _initialize() -> void:
 			won[d.winner] += 1
 	_check(errs == 0, "%d duels didn't finish" % errs)
 	print("STORY RULES: 120 duels under Run to Ground: you %d, Dask %d" % [won[0], won[1]])
+	_solhaven_wagers()
 	print("STORY RULES: %s" % ("PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(0 if fails == 0 else 1)
+
+
+## Solhaven's four sworn wagers (scripts/world/areas/solhaven/solhaven_side.gd):
+## Licensed, Patter, Scrapper and Discipline, each binding only its side, and
+## a hundred-odd whole duels under each with the opponent's own deck.
+func _solhaven_wagers() -> void:
+	var side = load("res://scripts/world/areas/solhaven/solhaven_side.gd")
+	for id in side.DECKS:
+		var probs := DuelCards.deck_problems(side.deck_cards(id))
+		_check(probs.is_empty(), "%s is a legal deck (%s)" % [id, probs])
+	# Licensed: his Rites cost nothing while you have more Totems than he does
+	var g := DuelGame.new()
+	g.setup(["tidegrove", side.deck_cards("dawn_watch")], ["You", "The Sergeant"], [DuelAI.new(), DuelAI.new()])
+	g.story_rules = {"licensed": 1}
+	var edge := DuelCard.new(500, "forge_edge", 1)
+	var flare := DuelCard.new(501, "blinding_flare", 1)
+	var bastion := DuelCard.new(502, "iron_bastion", 1)
+	_check(g.card_cost(1, edge) == 1, "Licensed: level on Totems, his Rite costs what it says (%d)" % g.card_cost(1, edge))
+	g.players[0].slots[0] = DuelTotem.new(DuelCard.new(510, "brookfin", 0), 0, 0, 1, {})
+	_check(g.card_cost(1, edge) == 0 and g.card_cost(1, flare) == 0, "Licensed: you have more Totems, his Rites are free")
+	_check(g.card_cost(1, bastion) == 1, "Licensed: his Wards still cost what they say")
+	_check(g.card_cost(0, DuelCard.new(503, "forge_edge", 0)) == 1, "Licensed doesn't bind you")
+	g.players[1].slots[0] = DuelTotem.new(DuelCard.new(511, "shieldhound", 1), 1, 0, 1, {})
+	_check(g.card_cost(1, edge) == 1, "Licensed: level again, his Rite costs what it says")
+	# Patter: his Wards lie face up, and once a turn he swaps one from his hand
+	g = DuelGame.new()
+	g.setup(["tidegrove", side.deck_cards("painted_hand")], ["You", "Fen"], [DuelAI.new(), DuelAI.new()])
+	g.story_rules = {"patter": 1}
+	g.turn = 2
+	g.current = 1
+	var fen: DuelPlayer = g.players[1]
+	fen.hand.clear()
+	fen.essence = 6
+	var veil := DuelCard.new(600, "mirror_veil", 1)
+	var rune := DuelCard.new(601, "counter_rune", 1)
+	fen.hand.append(veil)
+	g._act_ward(1, veil)
+	_check(g.face_up.has(600), "Patter: Fen's Ward lies face up")
+	fen.hand.append(rune)
+	g._rule_patter(fen)
+	_check(fen.wards.size() == 1 and fen.wards[0] == rune and fen.hand.has(veil), "Patter: he swaps the Ward for the one in his hand")
+	_check(g.face_up.has(601) and not g.face_up.has(600), "Patter: the new one's face up, the old one's back in his hand")
+	fen.hand.erase(veil)
+	g._rule_patter(fen)
+	_check(fen.wards[0] == rune, "Patter: no other Ward in his hand, no swap")
+	g.current = 0
+	var mine := DuelCard.new(602, "mirror_veil", 0)
+	g.players[0].hand.append(mine)
+	g.players[0].essence = 6
+	g._act_ward(0, mine)
+	_check(not g.face_up.has(602), "Patter doesn't turn your Wards face up")
+	# Scrapper: his Totems hit 10 harder while his Life is below yours
+	g = DuelGame.new()
+	g.setup(["tidegrove", side.deck_cards("street_sparks")], ["You", "Pip"], [DuelAI.new(), DuelAI.new()])
+	g.story_rules = {"scrapper": 1}
+	g.players[0].life = 100
+	var pup := DuelTotem.new(DuelCard.new(700, "cinderpup", 1), 1, 0, 1, {})
+	var fin := DuelTotem.new(DuelCard.new(701, "brookfin", 0), 0, 0, 1, {})
+	g.players[1].life = g.players[0].life
+	_check(g.attack_amount(pup, 0, 10, null) == 10, "Scrapper: level on Life, his Nip does 10")
+	g.players[1].life = g.players[0].life - 30
+	_check(g.attack_amount(pup, 0, 10, null) == 20, "Scrapper: behind, his Nip does 20 (%d)" % g.attack_amount(pup, 0, 10, null))
+	g.players[0].life = g.players[1].life - 40
+	_check(g.attack_amount(fin, 0, 10, null) == 10, "Scrapper doesn't help you when you're behind")
+	# Discipline: her Totems can't be Burned, Poisoned or Frozen
+	g = DuelGame.new()
+	g.setup(["emberstorm", side.deck_cards("sun_guard")], ["You", "The Captain"], [DuelAI.new(), DuelAI.new()])
+	g.story_rules = {"discipline": 1}
+	var hers := DuelTotem.new(DuelCard.new(800, "shieldhound", 1), 1, 0, 1, {})
+	var yours := DuelTotem.new(DuelCard.new(801, "cinderpup", 0), 0, 0, 1, {})
+	g.players[1].slots[0] = hers
+	g.players[0].slots[0] = yours
+	for st in ["burn", "poison", "frozen"]:
+		g._apply_status(hers, st)
+		_check(not hers.has_status(st), "Discipline: hers can't be %s" % st)
+	g._apply_status(hers, "stun")
+	_check(hers.has_status("stun"), "Discipline: other conditions still land on hers")
+	g._apply_status(yours, "burn")
+	_check(yours.has_status("burn"), "Discipline doesn't protect yours")
+	# whole duels under each rule, with the opponent's deck
+	var rules := {"licensed": "dawn_watch", "patter": "painted_hand", "scrapper": "street_sparks", "discipline": "sun_guard"}
+	for rule in rules:
+		var errs := 0
+		var won := [0, 0]
+		for k in 30:
+			var d := DuelGame.new()
+			d.setup([["tidegrove", "emberstorm", "ironstone", "veilwild"][k % 4], side.deck_cards(rules[rule])], ["You", "Them"],
+				[DuelAI.new(), DuelAI.new()], [], 1000 + k)
+			d.story_rules = {rule: 1}
+			d.run()
+			if not d.over:
+				errs += 1
+			elif d.winner in [0, 1]:
+				won[d.winner] += 1
+		_check(errs == 0, "%s: %d duels didn't finish" % [rule, errs])
+		print("STORY RULES: 30 duels under %s (%s): starter decks %d, them %d" % [rule, rules[rule], won[0], won[1]])
 
 
 func _names(ts: Array) -> String:

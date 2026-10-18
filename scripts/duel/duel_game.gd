@@ -60,7 +60,10 @@ var face_up := {}
 ## A story duel's own rules (Master Script v3: every story duel has one rule
 ## that says who the opponent is), as {rule id: the side it binds}. Each rule
 ## is its own _rule_<id>() function under "story rules" below:
-## "run_to_ground" (Hunter Dask, the Thornwood road).
+## "run_to_ground" (Hunter Dask, the Thornwood road); and Solhaven's sworn
+## wagers: "licensed" (the Sergeant), "patter" (Fen), "scrapper" (Pip) and
+## "discipline" (the Captain of the Sun Guard). When one of them changes
+## something on the board the presenter hears fx_rule(side, rule id).
 var story_rules := {}
 
 
@@ -199,6 +202,7 @@ func _take_turn() -> void:
 	await _possessed_strikes(p)
 	if over:
 		return
+	await _rule_patter(p)
 
 	var actions := 0
 	while not over:
@@ -457,9 +461,11 @@ func summon_cost(pi: int, card: DuelCard) -> int:
 
 
 ## A card's Essence cost under this duel's Law (never below 1 for a card
-## that costs anything).
-func card_cost(_pi: int, card: DuelCard) -> int:
+## that costs anything), or nothing under the Sergeant's licence.
+func card_cost(pi: int, card: DuelCard) -> int:
 	var c := card.cost()
+	if c > 0 and card.is_rite() and rule_licensed(pi):
+		return 0
 	if c <= 0 or law == "":
 		return c
 	var el := card.element()
@@ -727,6 +733,56 @@ func _rule_run_to_ground(pi: int, out: Array) -> Array:
 	return foes.filter(func(f): return (f as DuelTotem).hp_left() == low)
 
 
+## Licensed (the Sergeant of the Dawn Watch, under the dyers' bridge): his
+## Rites cost nothing while you have more Totems than he does. The Temple's
+## rules favour the Temple.
+func rule_licensed(pi: int) -> bool:
+	return int(story_rules.get("licensed", -1)) == pi \
+		and opponent(pi).totems().size() > players[pi].totems().size()
+
+
+## Patter (Fen, at the fountain): his Wards lie face up (_act_ward), and once
+## a turn, as his turn starts, he swaps the Ward that has been showing longest
+## for a different Ward from his hand. He talks too much to keep a secret.
+func _rule_patter(p: DuelPlayer) -> void:
+	if int(story_rules.get("patter", -1)) != p.index or p.wards.is_empty():
+		return
+	var shown: DuelCard = p.wards[0]
+	var fresh := p.hand.filter(func(c): return c.is_ward() and c.id != shown.id)
+	if fresh.is_empty():
+		return
+	var w: DuelCard = fresh[rng.randi_range(0, fresh.size() - 1)]
+	p.hand.erase(w)
+	p.wards.erase(shown)
+	p.wards.append(w)   # the newest now; the next one along has been showing longest
+	p.hand.append(shown)
+	face_up.erase(shown.uid)
+	face_up[w.uid] = true
+	p.note_played(w.id)
+	_log("%s takes back %s and sets %s face up instead." % [p.player_name, shown.card_name(), w.card_name()], p.index)
+	await _fx("fx_rule", [p.index, "patter"])
+	await _fx("fx_ward_set", [p.index, w])
+
+
+## Scrapper (Pip, on the fountain steps): his Totems hit 10 harder while he's
+## behind (his Life below yours).
+const SCRAPPER_BONUS := 10
+
+
+func rule_scrapper(pi: int) -> bool:
+	return int(story_rules.get("scrapper", -1)) == pi and players[pi].life < opponent(pi).life
+
+
+## Discipline (the Captain of the Sun Guard, in the barracks yard): her
+## Totems can't be Burned, Poisoned or Frozen. She plays by the book because
+## the book is all she has.
+const DISCIPLINE_IMMUNE := ["burn", "poison", "frozen"]
+
+
+func rule_discipline(t: DuelTotem, status: String) -> bool:
+	return t != null and int(story_rules.get("discipline", -1)) == t.owner and status in DISCIPLINE_IMMUNE
+
+
 func move_problem(pi: int, t, i: int, target = null, check_target: bool = false) -> String:
 	var r := ready_problem(pi, t)
 	if r != "":
@@ -929,6 +985,9 @@ func _act_ward(pi: int, card: DuelCard) -> void:
 	if law == "ysolde" and not blessed(pi):
 		face_up[card.uid] = true
 		_log("%s sets %s face up, as the Unveiling demands." % [p.player_name, card.card_name()], pi)
+	elif int(story_rules.get("patter", -1)) == pi:
+		face_up[card.uid] = true   # Patter: he can't keep a secret
+		_log("%s sets %s face up." % [p.player_name, card.card_name()], pi)
 	else:
 		_log("%s sets a Ward face down." % p.player_name, pi)
 	await _fx("fx_ward_set", [pi, card])
@@ -961,6 +1020,7 @@ func _act_shift(pi: int, t: DuelTotem, slot: int) -> void:
 
 func _act_rite(pi: int, card: DuelCard, target) -> void:
 	var p: DuelPlayer = players[pi]
+	var licensed := card.cost() > 0 and rule_licensed(pi)
 	_spend(p, card_cost(pi, card))
 	p.hand.erase(card)
 	p.stats.rites += 1
@@ -969,6 +1029,9 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 	if target is DuelTotem:
 		tname = " on %s" % target.card_name()
 	_log("%s casts %s%s." % [p.player_name, card.card_name(), tname], pi)
+	if licensed:
+		_log("Licensed: it costs %s nothing." % p.player_name, pi)
+		await _fx("fx_rule", [pi, "licensed"])
 	await _fx("fx_rite", [pi, card, target])
 	var res := await _spring_wards(1 - pi, "foe_rite", {"card": card})
 	if res.cancel_rite:
@@ -1003,6 +1066,8 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 	var amt := base + att.damage_bonus(i)
 	if players[att.owner].wrath:
 		amt += DuelRules.wrath_bonus
+	if rule_scrapper(att.owner):
+		amt += SCRAPPER_BONUS
 	if att.has_status("terrified"):
 		amt = _half(amt)
 	if att.has_status("staggered"):
@@ -1108,6 +1173,9 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 			_log("%s misses!" % t.card_name(), pi)
 	var pierce := effects.any(func(e): return e.op == "pierce")
 	var dealt := 0
+	if base > 0 and hostile and rule_scrapper(pi):
+		_log("%s is behind, and scrapping: +%d." % [p.player_name, SCRAPPER_BONUS], pi)
+		await _fx("fx_rule", [pi, "scrapper"])
 
 	if target is String and target == LIFE:
 		var amt := attack_amount(t, i, base, null) - int(res.reduce_life)
@@ -1485,6 +1553,10 @@ func _apply_status(t: DuelTotem, status: String, source = null, src_owner: int =
 		return
 	if t.is_boss and status in DuelConditions.BOSS_IMMUNE:
 		_log("%s can't be %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
+		return
+	if rule_discipline(t, status):
+		_log("%s holds its discipline: it can't be %s." % [t.card_name(), DuelConditions.display_name(status)], t.owner)
+		await _fx("fx_rule", [t.owner, "discipline"])
 		return
 	if status == "burn" and t.has_status("soaked"):
 		_log("%s is too wet to burn." % t.card_name(), t.owner)
