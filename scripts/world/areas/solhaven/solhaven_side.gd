@@ -1291,8 +1291,8 @@ static func _pip_note(w: World) -> void:
 		at = (an.body as Node3D).global_position
 	elif an == null:
 		_extra(w, "aldric", at, null)
-	var you := at + Vector3(0.9, 0, 1.8)
-	await _cut(w, {"player": [you, "aldric"], "aldric": [at, "player"]}, you + Vector3(2.8, 1.6, 2.8), (at + you) * 0.5 + Vector3(0, 1.0, 0), 36.0)
+	var you := at + Vector3(1.4, 0, 0.6)   # beside him, the camera side on
+	await _cut(w, {"player": [you, "aldric"], "aldric": [at, "player"]}, at + Vector3(-0.7, 1.5, 3.6), (at + you) * 0.5 + Vector3(0, 1.0, 0), 36.0)
 	await _see(w, "He reads it twice.")
 	await _say(w, "aldric", "The Bread of Dawn feeds three thousand people a morning. His Grace would never put the Temple in that man's debt.")
 	await _see(w, "He folds it and keeps it.")
@@ -1402,8 +1402,8 @@ static func talk_sundial(w: World, _npc = null) -> void:
 		at = (mn.body as Node3D).global_position
 	elif mn == null:
 		_extra(w, "maren", at, null)
-	var you := at + Vector3(1.0, 0, 1.6)
-	await _cut(w, {"player": [you, "maren"], "maren": [at, "player"]}, you + Vector3(2.4, 1.5, 2.6), (at + you) * 0.5 + Vector3(0, 0.9, 0), 36.0)
+	var you := at + Vector3(1.4, 0, 0.6)   # beside her, the camera side on
+	await _cut(w, {"player": [you, "maren"], "maren": [at, "player"]}, at + Vector3(-0.7, 1.5, 3.6), (at + you) * 0.5 + Vector3(0, 0.9, 0), 36.0)
 	await _see(w, "Back on the temple steps.")
 	if c == 0:
 		await _say(w, "maren", "He came, didn't he. Smiling. | Well. You've got sense. More than I had.")
