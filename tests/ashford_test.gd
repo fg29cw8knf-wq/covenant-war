@@ -200,7 +200,19 @@ func _green() -> void:
 	await _shot("after_nell")
 	# Tilly runs up when the player comes near her stall
 	var tb := Cine.body(world, "tilly")
-	_teleport(tb.global_position + Vector3(-3.0, 0, -3.0))
+	# near her, and away from anyone else they could stop to talk to
+	var best := tb.global_position + Vector3(-3.0, 0, -3.0)
+	var room := -1.0
+	for i in 8:
+		var at: Vector3 = tb.global_position + Vector3(cos(i * TAU / 8.0), 0, sin(i * TAU / 8.0)) * 3.4
+		var nearest := INF
+		for n in world.npcs:
+			if String(n.def.id) != "tilly":
+				nearest = minf(nearest, (n.body as Node3D).global_position.distance_to(at))
+		if nearest > room:
+			room = nearest
+			best = at
+	_teleport(best)
 	await _until(func() -> bool: return world.busy, 10.0, "Tilly running up")
 	await _until(func() -> bool: return Game.flag("tilly_talked") and not world.busy, 300.0, "Tilly's scene")
 	await _shot("after_tilly")
@@ -238,10 +250,10 @@ func _duel(spec: Dictionary) -> bool:
 	if spec.has("decks") or spec.get("v1", false):
 		pass
 	var full: Dictionary = world.area.duel_spec(spec) if spec.get("v1", false) else spec
-	print("  [duel] %s: rule %s, barks %s, once %s, tutorial %s" % [spec.get("id", "?"), full.get("rule", []), full.get("bark_on", {}).keys(),
+	print("  [duel] %s: rule %s, barks %s, once %s, tutorial %s" % ["rematch" if full.get("rematch", false) else "Lantern Duel", full.get("rule", []), full.get("bark_on", {}).keys(),
 		full.get("once", false), "quiet" if full.get("tutorial", {}).get("quiet", false) else ("lesson" if not full.get("tutorial", {}).is_empty() else "none")])
 	await _secs(0.5)
-	if spec.get("rematch", false):
+	if full.get("rematch", false):
 		_expect(full.get("once", false) and not full.has("life_floor") and not full.get("stacked", [false, false])[0], "the rematch is locked or tuned")
 		return rematch_won
 	_expect(full.get("story_rules", {}).get("showboat", -1) == 1, "the Lantern Duel has no Showboat")

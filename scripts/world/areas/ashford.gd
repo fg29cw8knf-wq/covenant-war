@@ -518,6 +518,7 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 		# first, no floor under anyone, and the result stands
 		out["difficulty"] = REMATCH_AI
 		out["once"] = true
+		out["rematch"] = true
 		out["lesson_group"] = "The Lantern Duel"
 		return out
 	# dealt in order, the player first, and it can't be lost: a first duel

@@ -903,6 +903,8 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		w.cam.global_position = w.cam.global_position.lerp(cam_at, minf(1.0, dt * 3.0))
 		w.cam.look_at(look, Vector3.UP)
 		await w.get_tree().process_frame
+	if not is_instance_valid(w):
+		return
 	if w.hud.tapped.is_connected(on_tap):
 		w.hud.tapped.disconnect(on_tap)
 	pf.walking = false
@@ -971,6 +973,8 @@ static func follow(w: World, who: String, keep: float, on: Array) -> void:
 			sp = 3.8   # fallen behind: he hurries
 		_follow_step(w, who, keep, dt, sp)
 		await w.get_tree().process_frame
+	if not is_instance_valid(w):
+		return
 	var f = Cine.fig(w, who)
 	if f != null:
 		f.walking = false
@@ -1362,6 +1366,8 @@ static func _street(w: World) -> void:
 	var told := false
 	while is_instance_valid(w) and w.is_inside_tree():
 		await w.get_tree().process_frame
+		if not is_instance_valid(w):
+			return   # (quit to the title on the way)
 		var d := Vector2(w.player.global_position.x, w.player.global_position.z).length()
 		if d < GREEN_R:
 			break
@@ -1375,6 +1381,8 @@ static func _street(w: World) -> void:
 			told = true
 			w.hud.dialogue.bark(w._speaker("bram"), w._portrait("bram"), DAWDLE)
 	following[0] = false
+	if not is_instance_valid(w):
+		return
 	w.busy = true
 	w._move_target = null
 	w.hud.set_controls_visible(false)
@@ -2422,4 +2430,5 @@ static func watch(w: World) -> void:
 			var tb := Cine.body(w, "tilly")
 			if tb != null and Vector2(p.x - tb.global_position.x, p.z - tb.global_position.z).length() < 5.5:
 				w._talk(w._npc_by_id("tilly"))
-	w.remove_meta("p1_watch")
+	if is_instance_valid(w):
+		w.remove_meta("p1_watch")
