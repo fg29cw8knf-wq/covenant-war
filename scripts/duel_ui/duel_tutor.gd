@@ -30,7 +30,6 @@ extends RefCounted
 ## duel with no lessons at all: the Lantern Duel when the player told Bram
 ## they'd watched enough duels ("Then I'll keep quiet. Mostly.").
 
-signal _tapped
 signal _did_step
 
 var screen   # DuelScreen
@@ -251,12 +250,27 @@ func did(kind: String, what = null) -> void:
 
 
 ## Shows the explanations at the front of the queue, then the next instruction.
+## One run at a time: asked again while it's running (the duel coming back
+## to the main phase while a line is still up), it waits for that run to
+## finish instead of starting a second over the same lines, which would
+## take two lines away with one tap.
 func _continue() -> void:
+	if _continuing:
+		await _continued
+		return
+	_continuing = true
 	while not queue.is_empty() and not (queue[0] as Dictionary).has("do"):
-		await _explain(queue[0])
-		if not queue.is_empty():
+		var step: Dictionary = queue[0]
+		await _explain(step)
+		if not queue.is_empty() and is_same(queue[0], step):
 			queue.pop_front()
+	_continuing = false
 	_show_head()
+	_continued.emit()
+
+
+signal _continued
+var _continuing := false
 
 
 ## Something else was tapped: shake the instruction so the eye finds it.
@@ -276,6 +290,9 @@ func nudge() -> void:
 func finish() -> void:
 	queue.clear()
 	event_step = {}
+	_line_up = false
+	_waiting.clear()
+	_continuing = false
 	blocking = false
 	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hide()
@@ -288,18 +305,48 @@ func tap() -> void:
 
 # ------------------------------------------------------------------ drawing ---
 
+## An explanation, up until the player taps. Lines take turns: one that
+## comes while another is up (Bram's "See that?" as the hit lands, while the
+## line queued behind the attack is showing) waits until that one has been
+## tapped, so a single tap never carries two lines away.
 func _explain(step: Dictionary) -> void:
+	if _line_up:
+		var turn := Turn.new()
+		_waiting.append(turn)
+		await turn.go   # (handed the box by the line before, still marked up)
+	_line_up = true
+	_put_up(step)
+	await _tapped
+	if screen.sfx != null:
+		screen.sfx.play("ui_tap")
+	blocking = false
+	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _waiting.is_empty():
+		_line_up = false
+	else:
+		# (next frame: not from inside this tap, which it mustn't also take)
+		var nxt: Turn = _waiting.pop_front()
+		nxt.go.emit.call_deferred()
+
+
+signal _tapped
+var _line_up := false
+## Lines waiting for the box, first come first shown.
+var _waiting: Array = []
+
+
+class Turn:
+	extends RefCounted
+	signal go
+
+
+func _put_up(step: Dictionary) -> void:
 	blocking = true
 	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
 	_show_box(step, "TAP TO CONTINUE  ▸")
 	focus = String(step.get("focus", ""))
 	spot.dim = 0.42 if focus == "" else 0.55
 	_shown_at = Time.get_ticks_msec()
-	await _tapped
-	if screen.sfx != null:
-		screen.sfx.play("ui_tap")
-	blocking = false
-	catcher.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 ## An instruction inside an event: up until the player does it.
@@ -312,6 +359,8 @@ func _instruct(step: Dictionary) -> void:
 
 
 func _show_head() -> void:
+	if _line_up:
+		return   # a line is still up (or waiting): the head shows when it's done
 	if queue.is_empty() or not (queue[0] as Dictionary).has("do"):
 		_hide()
 		return
