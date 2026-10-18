@@ -147,7 +147,8 @@ lanterns, and Corin, whose mam (extra `corin_mam`) watches from the bakery door.
 Corin calls out when the player comes near; Bram gets up off his stool with the
 card box and hands over the first deck when Corin says there isn't one. (People
 sit with `Figure3D.sit()` where the model has it; until then `AshfordP1.sit_down`
-holds the sit clip at the moment it reaches a seat's height.) Every staged camera
+holds the sit clip at the moment it reaches a seat's height for the player on
+Nell's bench, and Bram stands by his stool.) Every staged camera
 on the green is checked for anything solid or anyone standing in the way
 (`AshfordP1.clear_cam`). The
 Lantern Duel has Corin's own rule, Showboat: his Cinderpup attacks the moment it

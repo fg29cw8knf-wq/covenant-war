@@ -75,8 +75,9 @@ func _ready() -> void:
 			Game.set_flag(f)
 		Game.set_flag("p1_stage", "done")
 	if part in ["duel", "midnight"]:
-		Game.set_flag("ash_tam")
-		Game.set_flag("ash_nell")
+		# (the green part plays Tam, Nell and Tilly's run-up)
+		for f in ["ash_tam", "ash_nell", "tilly_talked"]:
+			Game.set_flag(f)
 	world = World.new().setup("ashford", "green")
 	world.duel_handler = _duel
 	add_child(world)

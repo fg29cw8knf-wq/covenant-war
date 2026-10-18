@@ -571,7 +571,7 @@ static func bram_sit(w: World) -> void:
 		return
 	var at := STOOL
 	at.y = village(w).height(at.x, at.z)
-	sit_down(w, "bram", at, BRAM_FACES, STOOL_H, 0.0)
+	sit_down(w, "bram", at, BRAM_FACES, STOOL_H, 0.0, true)
 	w.set_meta("bram_seated", true)
 
 
@@ -628,16 +628,20 @@ const SIT_BACK := 0.28
 ## Sits someone on a seat `height` m up, their hips over `at` (the ground
 ## under the middle of the seat), facing `fwd`. While the player sits they
 ## don't collide (the bench is solid, and Nell is beside them).
-static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45) -> void:
+## With `or_stand`, someone who can't sit properly yet stands beside the
+## seat instead (Bram by his stool: he's in a good many shots).
+static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45, or_stand := false) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
 	if b == null:
 		return
+	if not (f is Figure3D) or (or_stand and not f.has_method("sit")):
+		var by := at + fwd * 0.45 + fwd.cross(Vector3.UP) * 0.35
+		by.y = Cine.ground(w, by)
+		Cine.place(w, who, by, by + fwd)
+		return
 	if who == "player":
 		_solid(w, false)
-	if not (f is Figure3D):
-		Cine.place(w, who, at, at + fwd)
-		return
 	var fig := f as Figure3D
 	var to := at
 	if not fig.has_method("sit"):
@@ -1566,7 +1570,7 @@ static func bram_to_stool(w: World) -> void:
 		return
 	w.set_meta("bram_to_stool", true)
 	await Cine.path(w, "bram", round_lantern(w, b.global_position, at), 1.5)
-	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
+	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5, true)
 	w.remove_meta("bram_to_stool")
 	w.set_meta("bram_seated", true)
 
@@ -1767,12 +1771,12 @@ static func tam_lift(w: World) -> void:
 	w.cine = true
 	# from the side, the barrel and the stall both in the shot (the stall is
 	# what the player taps), with nothing solid in the way
-	var half := start.lerp(spot, 0.5)
-	var back := maxf(4.5, start.distance_to(spot) * 0.95)
+	var half := start.lerp(spot, 0.42)
+	var back := maxf(5.5, start.distance_to(spot) * 1.1)
 	var cam_at := clear_cam(w, [half + side * back + Vector3(0, 2.0, 0), half - side * back + Vector3(0, 2.0, 0),
 		half + side * back * 0.8 - dir * 1.5 + Vector3(0, 3.2, 0), half - side * back * 0.8 - dir * 1.5 + Vector3(0, 3.2, 0)],
 		half + Vector3(0, 0.9, 0), ["player", "tam"])
-	Cine.move(w, cam_at, half + Vector3(0, 0.9, 0), 1.0, 46.0)
+	Cine.move(w, cam_at, half + Vector3(0, 0.9, 0), 1.0, 50.0)
 	var mine := start + side * held
 	var his := start - side * held
 	Cine.path(w, "player", [mine], maxf(0.6, w.player.global_position.distance_to(mine) / 0.8))
@@ -1848,7 +1852,7 @@ static func tam_carry(w: World) -> void:
 		b.global_position = c + Vector3(0, 0.95 + bob, 0)
 		pb.global_position = c + side * held
 		tb.global_position = c - side * held, 0.0, 1.0, secs)
-	var half := start.lerp(spot, 0.5)
+	var half := start.lerp(spot, 0.42)
 	Cine.drift(w, cam_at, cam_at + dir * 0.6, half + Vector3(0, 0.9, 0), end + Vector3(0, 0.85, 0), secs)
 	await carry.finished
 	w.player_doll.walking = false
@@ -2232,7 +2236,7 @@ static func tilly_card_away(w: World) -> void:
 # ----------------------------------------------------------------- Corin ---
 
 ## Corin calls out, and the player goes up to him (the children round him
-## make room): the two of them face to face, from the side.
+## gather behind him to watch): the two of them face to face, from the side.
 static func corin_calls(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null:
@@ -2241,22 +2245,31 @@ static func corin_calls(w: World) -> void:
 	var c := cb.global_position
 	var d := w.player.global_position - c
 	d.y = 0.0
-	var to := c + d.normalized() * 1.6
+	var dn := d.normalized() if d.length() > 0.01 else Vector3.BACK
+	var to := c + dn * 1.6
 	to.y = village(w).height(to.x, to.z)
-	var aside := d.normalized().cross(Vector3.UP)
-	for k in KIDS:
-		var kb := Cine.body(w, String(k[0]))
-		if kb != null and Vector2(kb.global_position.x - to.x, kb.global_position.z - to.z).length() < 0.9:
-			var off := kb.global_position - to
-			off.y = 0.0
-			var way := aside if off.dot(aside) >= 0.0 else -aside
-			Cine.path(w, String(k[0]), [kb.global_position + way * 1.0], 1.2)
+	# the children gather behind him to watch, out of everyone's way
+	var aside := dn.cross(Vector3.UP)
+	for i in KIDS.size():
+		var id := String(KIDS[i][0])
+		var kb := Cine.body(w, id)
+		if kb == null:
+			continue
+		var at := c - dn * 1.9 + aside * (float(i) - 1.0) * 1.15 - dn * absf(float(i) - 1.0) * 0.3
+		at.y = village(w).height(at.x, at.z)
+		_walk_then_look(w, id, at, to)
 	if d.length() > 1.9:
 		Cine.look(w, "corin", w.player.global_position)
 		await Cine.path(w, "player", [to], 1.5)
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.look(w, "player", c)
 	two_shot(w, "player", "corin", 3.6, 1.5, 36.0)
+
+
+## Someone walks to `at` and then turns to look at `look` (not waited for).
+static func _walk_then_look(w: World, who: String, at: Vector3, look: Vector3) -> void:
+	await Cine.path(w, who, [at], 1.6)
+	Cine.look(w, who, look)
 
 
 ## He glances at the bakery door, where his mam is watching, and lowers his voice.
