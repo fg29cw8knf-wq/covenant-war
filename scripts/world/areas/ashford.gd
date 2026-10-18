@@ -538,8 +538,7 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 static func scene(name: String, w: World) -> void:
 	match name:
 		"midnight":
-			AshfordP1.undress(w)
-			await _midnight(w)
+			await _midnight(w)   # (it clears the green behind its fade: AshfordP1.undress)
 			await _prologue_film(w, "dawn")
 		"bram_sets_off":
 			await _bram_sets_off(w)
@@ -1201,6 +1200,9 @@ static func _midnight(w: World) -> void:
 	var v := village(w)
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.6)
+	# the evening's extras go and everyone's hands are emptied, behind the
+	# black (in view, the dancers would vanish and poses snap)
+	AshfordP1.undress(w)
 	_stage(w, MID)
 	_crowd(w)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
@@ -1360,14 +1362,7 @@ static func _dance_spot() -> Array:
 
 ## Cine.drift, but handing back its tween so a cut can stop it.
 static func _drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector3, look_b: Vector3, secs: float, fov := -1.0) -> Tween:
-	w.cine = true
-	if fov > 0.0:
-		w.cam.fov = fov
-	var tw := w.create_tween()
-	tw.tween_method(func(u: float) -> void:
-		w.cam.global_position = pos_a.lerp(pos_b, u)
-		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
-	return tw
+	return Cine.drift_tween(w, pos_a, pos_b, look_a, look_b, secs, fov)
 
 
 ## The bell at midnight: six tolls as it counts twelve.
@@ -2164,8 +2159,7 @@ static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3
 	qm.size = Vector2(1.5, 1.9)
 	q.mesh = qm
 	var m := ShaderMaterial.new()
-	m.shader = Shader.new()
-	m.shader.code = VISION_SHADER
+	m.shader = vision_shader()
 	if i >= 0:
 		var tex := _champion_tex(i)
 		m.set_shader_parameter("tex", tex)
@@ -2198,6 +2192,18 @@ static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3
 		tw.tween_property(lb2, "modulate:a", 0.95, secs)
 		tw.tween_property(lb2, "outline_modulate:a", 0.8, secs)
 	return root
+
+
+## One shader for all the visions (each its own copy would be compiled again,
+## a stall on a phone as each face comes up).
+static var _vision_sh: Shader = null
+
+
+static func vision_shader() -> Shader:
+	if _vision_sh == null:
+		_vision_sh = Shader.new()
+		_vision_sh.code = VISION_SHADER
+	return _vision_sh
 
 
 static func _vision_out(w: World, root: Node3D, secs := 0.5) -> void:
