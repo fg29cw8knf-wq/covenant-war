@@ -6,7 +6,7 @@ extends Node3D
 ##   xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 \
 ##       --resolution 512x512 res://tools/render_portraits.tscn -- [ids...]
 
-const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "tam": "tam", "tilly": "tilly", "nell": "nell"}
+const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "tam": "tam", "tilly": "tilly", "nell": "nell", "ned": "seamus"}
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's (and stands back for Tam's, big and capped).
 const CLOSER := {"tilly": 0.88, "tam": 1.08}

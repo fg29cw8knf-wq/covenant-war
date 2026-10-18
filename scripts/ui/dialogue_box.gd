@@ -118,6 +118,9 @@ func _layout() -> void:
 
 ## Show a line and wait for the player to tap through it.
 func say(speaker: String, portrait: Texture2D, text: String) -> void:
+	_bark_n += 1   # a line said over a passing remark replaces it
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	modulate.a = 1.0
 	visible = true
 	_choices.visible = false
 	_name.text = speaker
@@ -142,6 +145,47 @@ func say(speaker: String, portrait: Texture2D, text: String) -> void:
 	_waiting = false
 
 
+var _bark_n := 0
+
+
+## A line said in passing, while the player keeps walking (Bram following
+## you to the green): it types out, stays up long enough to read and goes by
+## itself. Taps and keys go straight through it to the world. Returns once
+## it's gone (or a real line has replaced it).
+func bark(speaker: String, portrait: Texture2D, text: String) -> void:
+	_bark_n += 1
+	var n := _bark_n
+	visible = true
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_choices.visible = false
+	_waiting = false
+	_typing = false
+	_hint.visible = false
+	_name.text = speaker
+	_name.visible = speaker != ""
+	_portrait.texture = portrait
+	_portrait_frame.visible = portrait != null
+	_text.text = text
+	_text.visible_ratio = 0.0
+	modulate.a = 1.0
+	var speed: float = CHARS_PER_SEC * float(Game.settings.get("text_speed", 1.0))
+	var total := maxi(1, _text.get_total_character_count())
+	var tw := create_tween()
+	tw.tween_property(_text, "visible_ratio", 1.0, total / speed)
+	tw.tween_interval(1.6 + total * 0.045 / maxf(0.4, float(Game.settings.get("text_speed", 1.0))))
+	tw.tween_property(self, "modulate:a", 0.0, 0.4)
+	await tw.finished
+	if n == _bark_n:
+		visible = false
+		modulate.a = 1.0
+		mouse_filter = Control.MOUSE_FILTER_STOP
+
+
+## True while a passing remark (bark) is up.
+func barking() -> bool:
+	return visible and mouse_filter == Control.MOUSE_FILTER_IGNORE
+
+
 ## How long a line takes to type out as far as `phrase` (0 when the phrase
 ## is "" or not in the line), so something can happen on those words.
 static func reach_secs(text: String, phrase: String) -> float:
@@ -156,6 +200,9 @@ static func reach_secs(text: String, phrase: String) -> float:
 
 ## Offer choices under the current line; returns the chosen index.
 func choose(options: Array) -> int:
+	_bark_n += 1
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	modulate.a = 1.0
 	visible = true
 	_hint.visible = false
 	_text.visible_ratio = 1.0
@@ -183,6 +230,8 @@ func choose(options: Array) -> int:
 
 
 func close() -> void:
+	if barking():
+		return   # a passing remark goes by itself
 	visible = false
 	_choices.visible = false
 
@@ -196,7 +245,7 @@ func _gui_input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible:
+	if not visible or barking():
 		return
 	if _choices.visible:
 		_refocus_choices(event)

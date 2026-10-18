@@ -1447,6 +1447,14 @@ func fx_start() -> void:
 	await pause(0.1)
 
 
+## A story duel's own rule, named as the duel starts (spec.rule = [name,
+## what it does]: Corin's Showboat in the Lantern Duel).
+func _story_rule_banner() -> void:
+	var r: Array = spec.get("rule", [])
+	if r.size() >= 2:
+		await _banner(String(r[0]).to_upper(), UITheme.GOLD, 2.4, 72, "", "Duel rule: " + String(r[1]))
+
+
 ## Both duellists roll for the first turn, big in the middle of the Circle.
 ## In the Lantern Duel Bram's intro ends with "tap the die", and the roll
 ## waits for that tap.
@@ -1466,6 +1474,7 @@ func fx_rolloff(r0: int, r1: int) -> void:
 		if game.law != "":
 			var god: String = game.law if Lore.GODS.has(game.law) else ""
 			await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+		await _story_rule_banner()
 		if tutor != null:
 			rv.waiting = true
 			await tutor.event("intro")   # ends with the player tapping their die
@@ -2588,7 +2597,8 @@ func _show_result(r: String) -> String:
 	var story: bool = spec.get("story", false)
 	var again := UITheme.button("Try again" if story else "Duel again", not story or r != "won", 340)
 	var back := UITheme.button("Continue" if story else "Back to the Lab", story and r == "won", 340)
-	again.visible = not (story and r == "won")
+	# spec.once: the result stands, win or lose (the Lantern Duel's rematch)
+	again.visible = not (story and r == "won") and not spec.get("once", false)
 	hb.add_child(again)
 	hb.add_child(back)
 	var picked := [""]

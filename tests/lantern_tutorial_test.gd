@@ -35,7 +35,7 @@ func _drive() -> void:
 	var t0 := Time.get_ticks_msec()
 	while is_inside_tree():
 		await get_tree().create_timer(0.25).timeout
-		if Time.get_ticks_msec() - t0 > 240000:
+		if Time.get_ticks_msec() - t0 > 600000:   # (a slow software renderer takes a while)
 			print("TIMEOUT")
 			get_tree().quit(1)
 			return

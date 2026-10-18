@@ -168,25 +168,62 @@ The story's duels still use the older rules below until the v1 duel is signed of
 
 ## Story mode
 
-Every line follows the "Spoken Script" Claude doc (the Prologue and Chapter 1,
-measured against the genre); the Master Script holds the world and the later
-chapters. New Game starts the Prologue in Ashford, the player's village, on the
-last night of the Age (`scripts/world/areas/ashford.gd`): Bram teaches the
-controls in his own words, three optional chores the game remembers (Tam's
-barrel, Tilly's moth, Nell's story), then Corin's Lantern Duel. Corin points out
-the player has no deck; Bram walks over with his twelve Sparks, explains that
-anyone can work a Sigil's magic but only the Attuned can call a Totem out of
-one, and walks the player round their pack (Deck and Codex open only then).
-Bram sets off from his stool the moment the player starts talking to Corin
-and waits a few steps off, so he's there to step in. The duel follows, with
-Bram's coaching you can decline, and Tilly runs over with her moth, which
-passes into the player's hands on her words "You keep it". A dialogue line can
-play a scene while it's up: `{"say": ..., "during": "<scene>", "at": "<words>"}`
-starts the scene as the line types out as far as those words.
+The Prologue's first part (P1: Ashford, before midnight) follows Gary's "Master
+Script v3" Claude doc word for word (`docs/script/v3_prologue_p1.md` is a copy;
+the doc is the master); the parts after it still follow the older "Spoken
+Script" until they're rebuilt to v3. The words and talk trees are in
+`scripts/world/areas/ashford.gd` (above the films), the staging in
+`scripts/world/areas/ashford_p1.gd`.
+
+New Game opens on black and the caption "Ashford / The last night of the Age."
+in the inn's attic: the player wakes on the straw bed, goes to the cracked mirror
+and chooses their look (`scripts/ui/mirror_picker.gd`: only look A exists, so B,
+C and D show as coming soon). In the taproom Bram is stacking paper lanterns into
+a crate, the shelves behind the bar bare; he hands the crate over, the player
+carries it out of the inn and across to the green with Bram following, and hangs
+the last lantern on the Great Lantern's top hook with its hoist. Bram teaches
+walking, stopping, using and talking in his own words while the Objective line
+names the button for the device in hand (`scripts/ui/world_coach.gd`: phone,
+tablet, computer or controller, and it changes if a pad or a keyboard is picked
+up), and every step is gated: the pause square only appears when he mentions
+stopping, a thing to use lights up and only it answers (`AshfordP1.use`), and
+until the player has talked to Tam nobody but Tam and Bram answers. The attic and
+the taproom are built below the village (`attic()` and `eve()` in
+`scripts/world/inn_rooms.gd`), with the real village seen through the attic window
+and the taproom door. The opening's progress is saved in the flag `p1_stage`, so
+a game closed during it picks up at the start of the part it was in; older saves
+past the arrival skip it. (The flight over Ashford that New Game used to open
+with is gone: v3 cuts from the movie's title to black and the attic, and the
+village is seen as the player steps out of the inn.)
+
+On the green: Tam's barrel and the letter from Ironvault he can't read (read on
+screen, `scripts/ui/letter_view.gd`; whether the player tells him it says tonight
+is kept as `tam_told`), Nell on her bench by the well (the player sits with her),
+Tilly running up with her Lantern Moth (it circles the player and settles on the
+back of their hand), Ned the fiddler, Hob, dancers and children with paper
+lanterns, and Corin, whose mam (extra `corin_mam`) watches from the bakery door.
+Corin calls out when the player comes near; Bram gets up off his stool with the
+card box and hands over the first deck when Corin says there isn't one. (Bram on
+his stool, Nell on her bench and the player beside her sit with
+`Figure3D.sit()`, through `AshfordP1.sit_down`.) Every staged camera
+on the green is checked for anything solid or anyone standing in the way
+(`AshfordP1.clear_cam`). The
+Lantern Duel has Corin's own rule, Showboat: his Cinderpup attacks the moment it
+can, whatever's in its way (`story_rules` in `DuelGame`, `_rule_showboat`; named
+as the duel starts from `spec.rule`), and his barks are tied to its moments
+(`spec.bark_on`). It can't be lost: coached by Bram it's gated step by step; if
+the player says they've watched enough duels, Corin still plays his script and
+Bram keeps quiet (`tutorial = {"quiet": true}`). Then, uncoached, Corin offers a
+rematch that can be lost (shuffled, a roll for who goes first, no floor, and the
+result stands: `spec.once`; flag `lantern_rematch` = "won" or "lost"), and the
+loser carries the drum. Tilly runs over with her moth, which passes into the
+player's hands on her words "You keep it", and midnight begins. A dialogue line
+can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
+"<words>"}` starts the scene as the line types out as far as those words.
 
 Bram, Corin, Tam, Tilly, Old Nell and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
-Nell since 18 October); the other villagers (Hob, Seamus, the crowd) stay
+Nell since 18 October); the other villagers (Hob, Ned, the crowd) stay
 cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. The models share
 one skeleton's bone names, so a clip one lacks is borrowed from another and
@@ -265,8 +302,7 @@ subtitles and each face is its Seat's sign. Solhaven
 and its refugees, Bram's wagon and Turnip, Wren, the Sun Court on the temple
 steps (Solmaris stops time), the Trial of Light as a duel against Liora, Ser
 Aldric at the Circle and Morne's vault to close the chapter. Still to build
-from the script: the attic and lantern hanging, Wren's chase, the mirror
-puzzle and the Sunspire.
+from the script: Wren's chase, the mirror puzzle and the Sunspire.
 
 Dialogue portraits for the 3D characters are rendered from their models into
 `assets/art/characters/<id>_portrait.png` (the dialogue box uses someone's own
@@ -288,19 +324,26 @@ godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film river   
 godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film corin 0 only read=25 trace   # lines left up as a player reads them, with where Bram is
 ```
 
-New Game opens with a flight over Ashford (`intro()` in `ashford.gd`) before the
-player takes over; Tam's barrel is carried to the stall and Tilly's Lantern Moth
-flies (its wings beat through `scripts/world/wing_flap.gd`, which also flaps the
-moth in duels); the Great Lantern (Gary's model) is lit at midnight.
+Tam's barrel is carried to the stall and Tilly's Lantern Moth flies (its wings
+beat through `scripts/world/wing_flap.gd`, which also flaps the moth in duels);
+the Great Lantern (Gary's model) is lit at midnight. The lantern crate the player
+carries is Gary's model (`make_crate()` in `ashford_village.gd`) at half size,
+its lid left off so the lanterns show.
 
 The village itself (`scripts/world/ashford_village.gd`) is built from the look
 test in `lookdev/ashford`, with lighter settings on the phone and web renderers.
 Its shaders live in `assets/shaders/village/`.
 
 ```sh
-xvfb-run -a godot --resolution 1280x720 --fixed-fps 8 res://tests/ashford_test.tscn -- /tmp/ash 24            # play it all, with screenshots
-xvfb-run -a godot --resolution 1280x720 --fixed-fps 8 res://tests/ashford_test.tscn -- /tmp/ash 10 midnight   # just the duel and midnight
-godot --headless --script res://tests/lantern_sim.gd -- 80 1.0 0.25                                          # Lantern Duel balance
+# P1 played as a player would (taps, keys, wrong taps to check the gating), a still at every line and step:
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 8 \
+    res://tests/ashford_test.tscn -- /tmp/ash                 # the attic to midnight
+#   ... -- /tmp/ash opening          the attic to "Find Tam"
+#   ... -- /tmp/ash green alt        Tam, Nell, Tilly, Ned and Hob, giving the other answers
+#   ... -- /tmp/ash duel lose        Corin to Tilly's gift, losing the rematch (coach: let Bram coach, no rematch)
+#   ... -- /tmp/ash midnight         straight to Corin, then on into the film
+godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200            # Lantern Duel balance, as the story plays it
+godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the rematch you can lose
 ```
 
 ## Menus, standing, items and adverts
@@ -308,7 +351,7 @@ godot --headless --script res://tests/lantern_sim.gd -- 80 1.0 0.25             
 - **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line.
 - **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
 - **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
-- **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs Bram's gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Bram's 30-card deck, chosen at the campfire on the Thornwood road (flag `bram_deck`), is the first one the player can edit; old saves past Ashford have everything open.
+- **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel doesn't play the tour or open the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck, chosen at the campfire on the Thornwood road (flag `bram_deck`), is the first one the player can edit; old saves past Ashford have everything open.
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
 - **Standing** (`scripts/game/standing.gd`): how each god and person sees the player, -10 to +10. Story choices already recorded as flags count through `FLAG_EFFECTS`; a dialogue step `{"standing": {"tilly": 1}, "why": "..."}` nudges it directly, and `{"if": "standing:solmaris>=2"}` branches on it. A toast says "Tilly will remember that."
 - **Items** (`scripts/game/items.gd`): story items shown from flags, and equipment in three slots (charm, ring, deck case) that adds to attributes in every duel. A dialogue step `{"item": "<id>"}` gives one.

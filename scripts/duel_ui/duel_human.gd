@@ -122,6 +122,13 @@ class Scripted:
 			if screen != null:
 				await screen.preview_ai_action(pi, a)
 			return a
+		# a story rule may still owe an attack (Showboat): make it before ending
+		var owed := game.showboat_attack(pi)
+		if not owed.is_empty():
+			await _pause(0.6)
+			if screen != null:
+				await screen.preview_ai_action(pi, owed)
+			return owed
 		await _pause(0.4)
 		return {"type": "end"}
 
