@@ -406,10 +406,19 @@ static func let_go_hands(w: World, a: String, b: String, secs := 0.25) -> void:
 			(meet as Node).queue_free()
 
 
-## A cut-out's way of showing a feeling: a quick hop on the spot.
+## A cut-out's way of showing a feeling: a quick hop on the spot. (A 3D
+## figure jumps with its own jump clip, if it has one: lifted bodily, a
+## model just floated up and down, stiff.)
 static func hop(w: World, who: String, height := 0.18) -> void:
 	var b := body(w, who)
 	if b == null:
+		return
+	var f = fig(w, who)
+	if f is Figure3D:
+		var f3 := f as Figure3D
+		if f3.anim != null and f3._ensure("jump") and f3.seat < 0.0:
+			f3.act("jump", 1.4, 0.12)
+		await wait(w, 0.3)
 		return
 	var y := b.global_position.y
 	var tw := w.create_tween()
