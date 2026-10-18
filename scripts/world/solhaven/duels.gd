@@ -120,6 +120,9 @@ static func aldric_spec() -> Dictionary:
 		},
 		"crowd_on": {"rival_summons": "DAWNMANE!"},
 		"blank_eye": true,
+		# the Pale Herald at the Circle's edge (its hood turns at the blank card)
+		"herald_at": Vector3(7.4, 0, -1.8),
+		"herald_scale": 0.85,
 		"win_line": "Well fought. Solhaven keeps its knight.",
 		"rewards": {"opponent": "champion"},
 		"title": "The Trial · Ser Aldric Vane",
@@ -214,6 +217,8 @@ static func trial_spec(deck_id: String = "") -> Dictionary:
 		"story_rules": {"mirror_trial": 1},
 		"rule": TRIAL_OF_LIGHT,
 		"bark_who": "Liora",
+		# when you Summon, every mirror shows the Demigod at once
+		"mirrors_show": true,
 		"bark_on": {
 			"my_summons": "Oh.",
 		},

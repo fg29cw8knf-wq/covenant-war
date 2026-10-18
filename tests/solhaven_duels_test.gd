@@ -185,12 +185,24 @@ func _rule_moment(which: String, ds: DuelScreen) -> void:
 			g._hit_life(0, p.life - p.max_life / 3 + 10, {"no_guard": true})
 			await _wait(1.0)
 			await _shot("aldric_blank_eye")
-			await _wait(3.0)
+			await _wait(2.6)
+			await _shot("aldric_herald_hood")
+			await _wait(1.0)
 			_check(ds._barked.has("_blank_eye"), "aldric: the seal shows on the blank card")
+			if ds.field != null:
+				_check(ds._herald != null and absf(ds._herald._hood_want) > 0.05, "aldric: the Pale Herald at the Circle's edge, its hood turned (%s)" % (ds._herald._hood_want if ds._herald != null else "none"))
 		"trial":
 			var p0: DuelPlayer = g.players[0]
 			_check(p0.hand.size() >= 2 and p0.hand.any(func(c): return c.is_summon()), "trial: the Summon is in your hand")
 			_check(g.players[1].max_life == int(Duels.TRIALS.tidegrove.life), "trial: the mirrors' Life is set")
+			var sm: DuelCard = null
+			for c in p0.hand:
+				if (c as DuelCard).is_summon():
+					sm = c
+			if sm != null:
+				ds._mirrors_show(sm)
+				await _wait(0.6)
+				await _shot("trial_mirrors_show")
 			ds.story_bark("my_summons")
 			await _wait(0.8)
 			await _shot("trial_oh")

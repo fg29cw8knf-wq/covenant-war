@@ -149,7 +149,15 @@ static func _narrate(w: World, text: String) -> void:
 	await Cine.say(w, "", text)
 
 
-## A three-quarter shot of someone's face as they look toward a point.
+## Is someone still a cut-out (no 3D model of them in yet)?
+static func _doll(w: World, who: String) -> bool:
+	var f = Cine.fig(w, who)
+	return f != null and not (f is Figure3D)
+
+
+## A three-quarter shot of someone's face as they look toward a point. (A
+## cut-out's big painted head is framed a little wider and lower, so its face
+## isn't the whole screen and the subtitle falls on its coat.)
 static func _front(w: World, who: String, toward: Vector3, fov := 32.0, height := 1.5, side := 1.0) -> void:
 	var b := Cine.body(w, who)
 	if b == null:
@@ -161,7 +169,20 @@ static func _front(w: World, who: String, toward: Vector3, fov := 32.0, height :
 		f = Vector3(0, 0, 1)
 	f = f.normalized()
 	var s := f.cross(Vector3.UP) * side
+	if _doll(w, who):
+		Cine.shot(w, p + f * 3.4 - s * 1.7 + Vector3(0, height - 0.1, 0), p + Vector3(0, 1.22, 0), fov)
+		return
 	Cine.shot(w, p + f * 2.6 - s * 1.4 + Vector3(0, height, 0), Cine.head(w, who) - Vector3(0, 0.05, 0), fov)
+
+
+## Over `from`'s shoulder onto `to`'s face; when `from` is a cut-out (a
+## painted card always turned to the camera, which would fill the frame from
+## that close), a clean shot of `to` looking at them instead.
+static func _ots(w: World, from: String, to: String, side := 1.0, fov := 30.0) -> void:
+	if _doll(w, from):
+		_front(w, to, Cine.body(w, from).global_position, fov, 1.5, side)
+		return
+	Cine.over_shoulder(w, from, to, side, fov)
 
 
 ## The player raises the marked hand; the white mark glows.
@@ -381,7 +402,7 @@ static func _gate_meeting(w: World) -> void:
 	Cine.look(w, "hale_gate", w.player.global_position)
 	_front(w, "hale_gate", w.player.global_position, 30.0)
 	await Cine.say(w, "hale_gate", "Gate's closed. During the Turning, by the Hierarch's order, Solhaven admits sun-marked pilgrims and nobody else.")
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+	_ots(w, "player", "bram", -1.0, 30.0)
 	Cine.look(w, "bram", w.player.global_position)
 	await Cine.say(w, "bram", "We're not pilgrims. Show him, Sprout.")
 	Cine.look(w, "player", HALE_AT)
@@ -397,7 +418,7 @@ static func _gate_meeting(w: World) -> void:
 	_lower_mark(w)
 	if is_instance_valid(mark):
 		mark.queue_free()
-	Cine.over_shoulder(w, "hale_gate", "bram", 1.0, 30.0)
+	_ots(w, "hale_gate", "bram", 1.0, 30.0)
 	await Cine.say(w, "bram", "A Pale Herald called this one by name. In front of a whole village.")
 	_front(w, "hale_gate", w.player.global_position, 28.0)
 	await Cine.say(w, "hale_gate", "Then it won't mind being tested.")
@@ -476,7 +497,7 @@ static func _gate_after(w: World) -> void:
 			_front(w, "ysa", w.player.global_position, 30.0)
 			await Cine.say(w, "ysa", "What's your name?")
 			# you tell her
-			Cine.over_shoulder(w, "ysa", "player", 1.0, 30.0)
+			_ots(w, "ysa", "player", 1.0, 30.0)
 			var pf = Cine.fig(w, "player")
 			if pf is Figure3D:
 				(pf as Figure3D).talking = true
@@ -569,7 +590,7 @@ static func _wagon(w: World) -> void:
 		(bf as Figure3D).release(0.4)
 	_front(w, "horse_trader", Cine.body(w, "bram").global_position, 32.0)
 	await Cine.say(w, "horse_trader", "Wagon, lamp hook, one mule. Mule's called Turnip. He bites.")
-	Cine.over_shoulder(w, "horse_trader", "bram", 1.0, 30.0)
+	_ots(w, "horse_trader", "bram", 1.0, 30.0)
 	await Cine.say(w, "bram", "Hard?")
 	_front(w, "horse_trader", Cine.body(w, "bram").global_position, 32.0)
 	await Cine.say(w, "horse_trader", "Not hard.")
@@ -589,7 +610,7 @@ static func _wagon(w: World) -> void:
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.shot(w, wg + Vector3(-1.2, 1.7, 4.8), Cine.head(w, "bram"), 32.0)
 	await Cine.say(w, "bram", "The Crooked Lantern.")
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "That's the last of my money. We sleep here, we eat here, and you sort your cards on the tailboard.")
 	# Turnip bites your sleeve
 	await Cine.walk(w, "player", wg + Vector3(0.9, 0, -3.6), 1.4)
@@ -642,7 +663,7 @@ static func _thief(w: World) -> void:
 	Cine.shot(w, p + Vector3(-1.6, 1.7, 2.2), Cine.head(w, "player"), 32.0)
 	await _narrate(w, "She's gone. A beat. Your pocket is empty.")
 	Cine.look(w, "bram", Vector3(8.0, 0, -3.0))
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "Your pocket! Go! I'll come round!")
 	for id in crowd:
 		_drop(w, id)
@@ -767,7 +788,7 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 	tw.parallel().tween_property(seal, "rotation", Vector3(TAU * 3.0, 0, 0), 0.55)
 	await _narrate(w, "She flicks you a wax seal: a coin crossed with a key. The same seal as the notes on Ashford's chapel door.")
 	seal.queue_free()
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "Ironvault.")
 	_front(w, "wren", me_at, 30.0)
 	await Cine.say(w, "wren", "Ironvault. And now everyone who can count to ten thousand is a hunter.")
@@ -805,7 +826,7 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 		(wf as Figure3D).release(0.3)
 	await Cine.say(w, "wren", "I'm Wren.")
 	Cine.look(w, "bram", w.player.global_position)
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+	_ots(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "I don't like it.")
 	await Cine.wait(w, 0.6)
 	await Cine.say(w, "bram", "Your call, Sprout.")

@@ -146,6 +146,7 @@ static func arrival() -> Array:
 static func resume(w: World) -> void:
 	var f := String(Game.flag("sol_film", ""))
 	if f != "":
+		people(w)   # (nobody in the square who isn't there yet)
 		await Films.run(w, f)
 	if not w.is_inside_tree():
 		return
@@ -225,6 +226,7 @@ static func _mark(w: World) -> void:
 static func scene(name: String, w: World) -> void:
 	match name:
 		"arrive":
+			people(w)   # (nobody in the square who isn't there yet)
 			await Films.run(w, "gate")
 		"deck":
 			await _deck(w)

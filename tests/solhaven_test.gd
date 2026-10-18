@@ -28,6 +28,7 @@ var _from := ""
 var _log: Array = []
 var _last_line := ""
 var _chase_taps := 0
+var _crier_watched := false
 
 
 func _ready() -> void:
@@ -118,6 +119,8 @@ func _play() -> void:
 	var items := Items.story_items()
 	_check("revival_candle" in items and "ironvault_seal" in items, "the Revival Candle and the seal are in Items (%s)" % [items])
 	_check(String(Game.flag("sol_film", "")) == "", "no film left part-way")
+	if _crier_watched:
+		_check(String(Game.flag("crier_day", "")) != "", "Tamsin's crier heard out: a cache")
 	print("SOLHAVEN TEST: gate=%s favour=%s wren=%s lion=%d frames=%d lines=%d" % [Game.flag("gate_choice", ""), Game.flag("solmaris_favour", ""),
 		Game.flag("wren_joined", false), int(Game.v2.collection.get("sunmane_lion", 0)), _frame, _log.size()])
 	print("SOLHAVEN TEST: %s" % ("PASS" if _fails == 0 else "%d FAILED" % _fails))
@@ -214,6 +217,14 @@ func _process(_d: float) -> void:
 		for c in world.hud.find_children("*", "", true, false):
 			if c.has_signal("closed") and c.get("card_id") != null and (c as CanvasItem).is_visible_in_tree() and c.get("_ready_to_close"):
 				c.emit_signal("closed")
+	# Tamsin's crier: the advert (its placeholder) watched to the end
+	if _frame % 10 == 0:
+		for b in get_node("/root/Ads").find_children("*", "Button", true, false):
+			if (b as Button).text == "Claim reward" and not (b as Button).disabled:
+				if _keys:
+					_shot("advert_%05d" % _frame)
+				_crier_watched = true
+				(b as Button).pressed.emit()
 	# the deck screen ("Change my deck"): close it
 	if world.hud != null and world.hud.menu_open() and _frame % 20 == 0:
 		world.hud.close_menu()

@@ -83,6 +83,7 @@ var _started := false
 var _arena_name := "solhaven"
 var _pinch := false
 var field: DuelField3D = null    # the 3D field, when the 3D setting is on
+var _herald: PaleHerald = null   # a Pale Herald watching at the Circle's edge (spec.herald_at)
 ## On screens wider than 16:9 the side columns move out to the screen's edges.
 var _edge := 0.0
 var _left_nodes := []          # [Control, design position]
@@ -133,6 +134,13 @@ func _ready() -> void:
 		field = DuelField3D.new()
 		add_child(field)
 		field.setup(arena_name)
+		if spec.has("herald_at"):
+			# the story's Pale Herald, at the Circle's edge, watching
+			_herald = PaleHerald.new()
+			field.world.add_child(_herald)
+			_herald.position = spec.herald_at
+			_herald.scale = Vector3.ONE * float(spec.get("herald_scale", 1.0))
+			_herald.snap_dir(Vector3(-_herald.position.x, 0, 0.35 - _herald.position.z))
 	var bg := Arena.new()
 	_arena = bg
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -2086,6 +2094,12 @@ func _blank_eye_check() -> void:
 		field.cam_home(0.3)
 	await pause(0.5)
 	await slot.show_eye(2.4 / speed)
+	if _herald != null and field != null:
+		# Aldric doesn't see it. The Pale Herald's hood turns, very slightly.
+		_herald.turn_hood(field.life_world(me))
+		field.cam_focus(_herald.hood_pos(), 0.12, 0.8 / speed)
+		await pause(1.6)
+		field.cam_home(0.6)
 	await pause(0.4)
 
 
@@ -2247,6 +2261,10 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		story_bark("rival_summons")
 		await pause(2.4)
 	elif pi == me:
+		if spec.get("mirrors_show", false) and not _barked.has("my_summons"):
+			# the Trial of Light: every mirror in the hall shows the Demigod at once
+			_mirrors_show(card)
+			await pause(0.5)
 		story_bark("my_summons")
 	if not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
@@ -2337,6 +2355,45 @@ func fx_mirror(pi: int) -> void:
 	var sub := String(spec.get("mirror_text", "The great mirror swings to %s side of the Circle. Radiant cards cost one less there, for the rest of the duel." % _whose(String(game.players[pi].player_name)).to_lower()))
 	await _banner("THE SUNSPIRE'S MIRROR", UITheme.GOLD, 2.0, 72, "", sub)
 	_refresh()
+
+
+## The Hall of Mirrors (spec.mirrors_show): a ring of tall mirrors round the
+## Circle, every one of them showing the Demigod at once; they hold, then
+## fade back to glass.
+func _mirrors_show(card: DuelCard) -> void:
+	var tex: Texture2D = DuelArt.summon(card.id)
+	if tex == null:
+		tex = DuelArt.summon_scene(card.id)
+	var col := DuelFX.light(card.element())
+	sfx.play("ascend")
+	var panes: Array = []
+	var half := 4
+	for i in half * 2:
+		# round an ellipse about the field, leaving its top and bottom clear
+		var side := -1.0 if i < half else 1.0
+		var k := float(i % half) / float(half - 1)
+		var ang := lerpf(-0.95, 0.75, k)
+		var c := Vector2(FIELD_CX + side * 760.0 * cos(ang * 0.55), 470.0 + 330.0 * sin(ang))
+		var m := MirrorPane.new()
+		m.tex = tex
+		m.col = col
+		m.size = Vector2(150, 290) * lerpf(0.82, 1.0, 1.0 - absf(ang) / 0.95)
+		m.position = c - m.size * 0.5
+		m.pivot_offset = m.size * 0.5
+		m.rotation = side * 0.06 * (1.0 - k)
+		m.modulate.a = 0.0
+		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx_layer.add_child(m)
+		panes.append(m)
+	for m in panes:
+		var tw := (m as Control).create_tween()
+		tw.tween_property(m, "modulate:a", 1.0, 0.22 / speed)
+		tw.parallel().tween_property(m, "lit", 1.0, 0.22 / speed)
+		tw.tween_interval(2.0 / speed)
+		tw.tween_property(m, "lit", 0.0, 0.7 / speed)
+		tw.parallel().tween_property(m, "modulate:a", 0.0, 0.9 / speed)
+		tw.tween_callback((m as Control).queue_free)
+	_screen_flash(Color(col.r, col.g, col.b, 0.28))
 
 
 ## A shout from the crowd round the Circle, big across the top of the field.
@@ -3257,6 +3314,47 @@ class Beam:
 		for i in 5:
 			var inset := w * 0.1 * i
 			CardFace.vgrad_rect(self, Rect2(Vector2(inset, 0), Vector2(w - inset * 2, size.y)), Color(col, 0.0), Color(col, 0.12 + i * 0.05))
+
+
+## One tall mirror of the Hall of Mirrors: arched, gilt-framed glass that
+## shows the Demigod (its art, or a burning shape of its light with none) as
+## `show` goes to 1, and is only glass again at 0.
+class MirrorPane:
+	extends Control
+	var tex: Texture2D = null
+	var col := Color.WHITE
+	var lit := 0.0:
+		set(v):
+			lit = v
+			queue_redraw()
+
+	func _draw() -> void:
+		var r := Rect2(Vector2.ZERO, size)
+		var arch := size.x * 0.5
+		var glass := PackedVector2Array()
+		# the glass: a rectangle under a round arch
+		for i in 17:
+			var a := PI + PI * float(i) / 16.0
+			glass.append(Vector2(arch + cos(a) * (arch - 8.0), arch + sin(a) * (arch - 8.0)))
+		glass.append(Vector2(size.x - 8.0, size.y - 8.0))
+		glass.append(Vector2(8.0, size.y - 8.0))
+		draw_colored_polygon(glass, Color(0.62, 0.66, 0.74, 0.55))
+		if lit > 0.01:
+			var inner := Rect2(Vector2(10, 10), size - Vector2(20, 20))
+			if tex != null:
+				DuelArt.cover(self, inner, tex, Vector2(0.5, 0.3), Color(1, 1, 1, lit))
+			else:
+				for i in 6:
+					var rr := (size.x * 0.42) * (1.0 - i * 0.14)
+					draw_circle(Vector2(arch, size.y * 0.48), rr, Color(col.r, col.g, col.b, 0.12 * lit))
+			# the glass's own sheen over it
+			draw_colored_polygon(glass, Color(1, 1, 1, 0.08 * lit))
+		# the gilt frame
+		var rim := glass.duplicate()
+		rim.append(glass[0])
+		draw_polyline(rim, Color(0.86, 0.7, 0.36, 0.95), 5.0, true)
+		draw_polyline(rim, Color(col.r, col.g, col.b, 0.6 * lit), 2.0, true)
+		draw_rect(Rect2(r.position + Vector2(-4, size.y - 10), Vector2(size.x + 8, 10)), Color(0.66, 0.52, 0.26, 0.95))
 
 
 ## The Summon cinematic: the heavens open and the Demigod descends.
