@@ -422,7 +422,10 @@ static func _log_spot(v: ThornwoodSet) -> Dictionary:
 	return {"mid": mid, "along": along.normalized(), "top": mid.y + 0.23}
 
 
-## Bram takes the four boxes out of the sack and sets them in a row on the log.
+## Bram takes the four boxes out of the sack and sets them in a row on the
+## log: he turns to the sack and opens it, and after a moment's dip to black
+## they're in their row (not flying across the camp by themselves: the log is
+## three steps from where he sits).
 static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 	var v := village(w)
 	var lg := _log_spot(v)
@@ -432,8 +435,12 @@ static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 	var side := along.cross(Vector3.UP)
 	Cine.shot(w, mid - side * 1.9 + Vector3(0, 1.25, 0) + along * 0.4, mid + Vector3(0, 0.25, 0), 38.0)
 	var bf = Cine.fig(w, "bram")
+	Cine.look(w, "bram", sack.global_position)
 	if bf is Figure3D:
 		(bf as Figure3D).act("lift", 1.0)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 1.5)
+	await Cine.fade(w, 1.0, 0.35)
 	var boxes: Array = []
 	for i in ids.size():
 		var m := StandardMaterial3D.new()
@@ -444,17 +451,13 @@ static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 		v.box(b, Vector3(0.2, 0.09, 0.28), Vector3(0, 0.045, 0), m)
 		var to := mid + along * (-0.48 + i * 0.32)
 		to.y = float(lg.top)
-		var from := sack.global_position + Vector3(0, 0.45, 0)
-		b.global_position = from
+		b.global_position = to
 		b.rotation.y = atan2(along.x, along.z) + randf_range(-0.08, 0.08)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(b):
-				b.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
-		_sfx(w, "card_lift", 0.9)
 		boxes.append(b)
-		await Cine.wait(w, 0.4)
-	await Cine.wait(w, 0.5)
+	await Cine.wait(w, 0.2)
+	Cine.fade(w, 0.0, 0.45)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 0.9)
 	return boxes
 
 
@@ -491,6 +494,7 @@ static func _choose_deck(w: World, boxes: Array, ids: Array, lg: Dictionary) -> 
 		# back to the row, the card still up: tap it again to choose, or another
 		Cine.move(w, row_cam, mid + Vector3(0, 0.22, 0), 0.5, 40.0)
 	picker.hide_deck()
+	picker.chosen = true
 	# the deck screen opens on its paintings in a moment: start loading them
 	# now, while he nods, so it comes up without a stall
 	CardFace.warm_art(DuelCards.card_list(chosen))
@@ -618,25 +622,28 @@ static func _boxes_to_sack(w: World, boxes: Array, sack: Node3D, spare: String, 
 	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
 	Cine.shot(w, (lg.mid as Vector3) - side * 1.9 + Vector3(0, 1.25, 0), (lg.mid as Vector3) + Vector3(0, 0.25, 0), 38.0)
 	var bf = Cine.fig(w, "bram")
+	await Cine.wait(w, 0.8)
+	Cine.look(w, "bram", sack.global_position)
 	if bf is Figure3D:
 		(bf as Figure3D).act("lift", 1.0)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 1.2)
+	# a moment later (a dip to black: no boxes flying back across the camp,
+	# or jumping off the log into his hand) they're in the sack, and he's
+	# kept one out
+	await Cine.fade(w, 1.0, 0.35)
 	var kept: Node3D = null
 	for b in boxes:
 		var bn: Node3D = b
 		if String(bn.get_meta("deck")) == spare:
 			kept = bn
-			continue
-		var from := bn.global_position
-		var to := sack.global_position + Vector3(0, 0.4, 0)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(bn):
-				bn.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
-		tw.tween_callback(bn.queue_free)
-		await Cine.wait(w, 0.45)
+		else:
+			bn.queue_free()
 	if kept != null:
 		_hold_box(w, kept)
-	await Cine.wait(w, 0.6)
+	await Cine.wait(w, 0.2)
+	Cine.fade(w, 0.0, 0.45)
+	await Cine.wait(w, 0.8)
 
 
 ## Bram keeps one deck out: its box in his hand.

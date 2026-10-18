@@ -186,12 +186,28 @@ func show_deck(i: int) -> void:
 	_info.position = Vector2(vs.x - m.z - sz.x - 48, maxf(vs.y * CineOverlay.BAR + 12.0, (vs.y - sz.y) * 0.42))
 	_info.modulate.a = 0.0
 	create_tween().tween_property(_info, "modulate:a", 1.0, 0.3)
+	# Bram's words on the deck keep to the left of the card, not over it
+	_words_clear_of(vs.x - _info.position.x + 16.0)
 
 
 func hide_deck() -> void:
 	if _info != null and is_instance_valid(_info):
 		_info.queue_free()
 	_info = null
+	_words_clear_of(0.0)
+
+
+## The film's words (CineOverlay) keep this much of the right side clear.
+func _words_clear_of(px: float) -> void:
+	var w := get_parent()
+	if w != null and w.has_meta("cine_overlay"):
+		var ov = w.get_meta("cine_overlay")
+		if is_instance_valid(ov):
+			ov.keep_right = px
+
+
+## A deck has been chosen: the instruction fades (the chosen box keeps its glow).
+var chosen := false
 
 
 ## Done: the objective and the card go, and the boxes stop listening.
@@ -208,7 +224,9 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _glow != null and is_instance_valid(_glow) and _glow.get_parent() != null:
 		_glow.light_energy = 1.2 + 0.3 * sin(_t * 3.0)
-	_objective.modulate.a = 1.0 if listening or _info != null else 0.7
+	# (once a deck's chosen, the instruction fades: it's done)
+	var want := 0.0 if chosen else (1.0 if listening or _info != null else 0.7)
+	_objective.modulate.a = move_toward(_objective.modulate.a, want, delta * 3.0)
 	# just under the film's top bar, whatever the screen, clear of a phone's
 	# notch and rounded corners
 	var vs := _root.get_viewport_rect().size
