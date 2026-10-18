@@ -8,6 +8,7 @@ var fails := 0
 
 
 func _initialize() -> void:
+	_solhaven_wagers()   # (the side stories' rules: at the end of the file)
 	var g := DuelGame.new()
 	g.setup(["tidegrove", "dask_hounds"], ["You", "Dask"], [DuelAI.new(), DuelAI.new()])
 	g.story_rules = {"run_to_ground": 1}
@@ -60,9 +61,21 @@ func _initialize() -> void:
 			won[d.winner] += 1
 	_check(errs == 0, "%d duels didn't finish" % errs)
 	print("STORY RULES: 120 duels under Run to Ground: you %d, Dask %d" % [won[0], won[1]])
-	_solhaven_wagers()
 	print("STORY RULES: %s" % ("PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(0 if fails == 0 else 1)
+
+
+func _names(ts: Array) -> String:
+	var out := []
+	for t in ts:
+		out.append(String(t) if t is String else "%s(%d)" % [(t as DuelTotem).card_name(), (t as DuelTotem).hp_left()])
+	return ", ".join(out)
+
+
+func _check(ok: bool, what: String) -> void:
+	if not ok:
+		fails += 1
+		print("STORY RULES FAIL: ", what)
 
 
 ## Solhaven's four sworn wagers (scripts/world/areas/solhaven/solhaven_side.gd):
@@ -80,13 +93,17 @@ func _solhaven_wagers() -> void:
 	var edge := DuelCard.new(500, "forge_edge", 1)
 	var flare := DuelCard.new(501, "blinding_flare", 1)
 	var bastion := DuelCard.new(502, "iron_bastion", 1)
-	_check(g.card_cost(1, edge) == 1, "Licensed: level on Totems, his Rite costs what it says (%d)" % g.card_cost(1, edge))
+	_check(g.rite_cost(1, edge) == 1, "Licensed: level on Totems, his Rite costs what it says (%d)" % g.rite_cost(1, edge))
 	g.players[0].slots[0] = DuelTotem.new(DuelCard.new(510, "brookfin", 0), 0, 0, 1, {})
-	_check(g.card_cost(1, edge) == 0 and g.card_cost(1, flare) == 0, "Licensed: you have more Totems, his Rites are free")
+	_check(g.rite_cost(1, edge) == 0 and g.rite_cost(1, flare) == 0, "Licensed: you have more Totems, his Rites are free")
+	g.players[1].essence = 0
+	g.players[1].hand.append(flare)
+	_check(not g.rite_problem(1, flare).begins_with("Needs"), "Licensed: he can cast one with no Essence (%s)" % g.rite_problem(1, flare))
+	g.players[1].hand.erase(flare)
 	_check(g.card_cost(1, bastion) == 1, "Licensed: his Wards still cost what they say")
-	_check(g.card_cost(0, DuelCard.new(503, "forge_edge", 0)) == 1, "Licensed doesn't bind you")
+	_check(g.rite_cost(0, DuelCard.new(503, "forge_edge", 0)) == 1, "Licensed doesn't bind you")
 	g.players[1].slots[0] = DuelTotem.new(DuelCard.new(511, "shieldhound", 1), 1, 0, 1, {})
-	_check(g.card_cost(1, edge) == 1, "Licensed: level again, his Rite costs what it says")
+	_check(g.rite_cost(1, edge) == 1, "Licensed: level again, his Rite costs what it says")
 	# Patter: his Wards lie face up, and once a turn he swaps one from his hand
 	g = DuelGame.new()
 	g.setup(["tidegrove", side.deck_cards("painted_hand")], ["You", "Fen"], [DuelAI.new(), DuelAI.new()])
@@ -159,16 +176,3 @@ func _solhaven_wagers() -> void:
 				won[d.winner] += 1
 		_check(errs == 0, "%s: %d duels didn't finish" % [rule, errs])
 		print("STORY RULES: 30 duels under %s (%s): starter decks %d, them %d" % [rule, rules[rule], won[0], won[1]])
-
-
-func _names(ts: Array) -> String:
-	var out := []
-	for t in ts:
-		out.append(String(t) if t is String else "%s(%d)" % [(t as DuelTotem).card_name(), (t as DuelTotem).hp_left()])
-	return ", ".join(out)
-
-
-func _check(ok: bool, what: String) -> void:
-	if not ok:
-		fails += 1
-		print("STORY RULES FAIL: ", what)

@@ -28,11 +28,6 @@ const ITEMS := {
 		"text": "Thirty cards of hounds, traps and poison, won from Hunter Dask by sworn wager on the road to Solhaven."},
 	"ironvault_seal": {"kind": "story", "name": "Ironvault wax seal", "flag": "beat_wren",
 		"text": "A coin crossed with a key. Wren's proof of the ten-thousand-crown price on a blank Sigil and the hand that holds it."},
-	# Solhaven's side stories (scripts/world/areas/solhaven/solhaven_side.gd)
-	"maren_pages": {"kind": "story", "name": "Maren's forty pages", "flag": "maren_pages",
-		"text": "The Great Sundial's old readings, copied in a neat Temple hand the week before the Temple threw Old Maren out. Thirty years in her bread tin. She asked you to send for her when it's time."},
-	"pell_note": {"kind": "story", "name": "Mr Pell's note", "flag": "pell_note",
-		"text": "To His Grace the Hierarch: Ironvault acknowledges a further three thousand crowns drawn against the Temple roofs, for the Bread of Dawn. Interest as before. Pip never got his two crowns for it."},
 	# ---- equipment (not yet given anywhere in the story) ---------------------------
 	"hearth_charm": {"kind": "gear", "slot": "charm", "name": "Hearthstone Charm", "bonus": {"resolve": 1},
 		"text": "A smooth stone from a village hearth, still faintly warm."},
@@ -40,6 +35,11 @@ const ITEMS := {
 		"text": "A ring cut from a storm-hawk's tooth. Your hand moves before you've decided to."},
 	"vault_case": {"kind": "gear", "slot": "case", "name": "Ironvault Deck Case", "bonus": {"cunning": 1},
 		"text": "Brass-bound, with a false bottom nobody has ever found."},
+	# ---- story items from Solhaven's side stories (scripts/world/areas/solhaven/solhaven_side.gd)
+	"maren_pages": {"kind": "story", "name": "Maren's forty pages", "flag": "maren_pages",
+		"text": "The Great Sundial's old readings, copied in a neat Temple hand the week before the Temple threw Old Maren out. Thirty years in her bread tin. She asked you to send for her when it's time."},
+	"pell_note": {"kind": "story", "name": "Mr Pell's note", "flag": "pell_note",
+		"text": "To His Grace the Hierarch: Ironvault acknowledges a further three thousand crowns drawn against the Temple roofs, for the Bread of Dawn. Interest as before. Pip never got his two crowns for it."},
 }
 
 

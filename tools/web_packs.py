@@ -8,7 +8,6 @@ for each of these, fetched the first time the game needs it (scripts/game/packs.
     movie     the opening movie: its paintings, clips, voice and theme
     duel      the duel Totems and Summons: their 3D models and Summon art
     solhaven  Solhaven: its area script and anything in a solhaven/ folder
-              (its side stories' scripts too: scripts/world/areas/solhaven/)
 
 The native apps (iPhone, Mac) keep everything in one pack.
 
