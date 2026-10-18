@@ -545,40 +545,29 @@ static func _morning(w: World) -> void:
 		b.set_meta("deck", ids[i])
 		boxes.append(b)
 	Music.play(["thornwood", "menu_theme"], 2.0, true)
-	await Cine.caption(w, "The second day")
-	Cine.shot(w, c + Vector3(5.0, 1.8, 3.6), c + Vector3(-0.4, 0.7, 0.4), 40.0)
-	Cine.fade(w, 0.0, 1.6)
-	await Cine.wait(w, 1.6)
-	# the boxes back in the sack, all but one
 	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
-	Cine.shot(w, (lg.mid as Vector3) - side * 1.9 + Vector3(0, 1.25, 0), (lg.mid as Vector3) + Vector3(0, 0.25, 0), 38.0)
 	var bf = Cine.fig(w, "bram")
-	if bf is Figure3D:
-		(bf as Figure3D).act("lift", 1.0)
-	var kept: Node3D = null
-	for b in boxes:
-		var bn: Node3D = b
-		if String(bn.get_meta("deck")) == spare:
-			kept = bn
-			continue
-		var from := bn.global_position
-		var to := sack.global_position + Vector3(0, 0.4, 0)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(bn):
-				bn.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
-		tw.tween_callback(bn.queue_free)
-		await Cine.wait(w, 0.45)
-	if kept != null:
-		_hold_box(w, kept)
-	await Cine.wait(w, 0.6)
-	Cine.look(w, "bram", w.player.global_position)
-	Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
-	await Cine.say(w, "bram", "Practice round before we walk? I'll go easy.")
-	var p := await Cine.choose(w, ["Let's duel.", "Let's walk."])
+	# the game was closed during the practice round: straight back into it
+	var p := 0 if Game.flag("practice_on") else -1
+	if p < 0:
+		await Cine.caption(w, "The second day")
+		Cine.shot(w, c + Vector3(5.0, 1.8, 3.6), c + Vector3(-0.4, 0.7, 0.4), 40.0)
+		Cine.fade(w, 0.0, 1.6)
+		await Cine.wait(w, 1.6)
+		await _boxes_to_sack(w, boxes, sack, spare, lg)
+		Cine.look(w, "bram", w.player.global_position)
+		Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
+		await Cine.say(w, "bram", "Practice round before we walk? I'll go easy.")
+		p = await Cine.choose(w, ["Let's duel.", "Let's walk."])
+	else:
+		for b in boxes:
+			(b as Node3D).queue_free()
 	if p == 0:
+		Game.set_flag("practice_on")
+		Game.save_game()
 		await Cine.fade(w, 1.0, 0.5)
 		var won: bool = await w._duel(Prologue.practice_duel_spec(Game.starter))
+		Game.set_flag("practice_on", false)
 		Cine.overlay(w).black(true)
 		if won:
 			# he studies the cards on the log a while
@@ -607,6 +596,32 @@ static func _morning(w: World) -> void:
 	for n in v.get_children():
 		if n.has_meta("log_card"):
 			n.queue_free()
+
+
+## Bram sets the boxes back in the sack and keeps one deck out (`spare`).
+static func _boxes_to_sack(w: World, boxes: Array, sack: Node3D, spare: String, lg: Dictionary) -> void:
+	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
+	Cine.shot(w, (lg.mid as Vector3) - side * 1.9 + Vector3(0, 1.25, 0), (lg.mid as Vector3) + Vector3(0, 0.25, 0), 38.0)
+	var bf = Cine.fig(w, "bram")
+	if bf is Figure3D:
+		(bf as Figure3D).act("lift", 1.0)
+	var kept: Node3D = null
+	for b in boxes:
+		var bn: Node3D = b
+		if String(bn.get_meta("deck")) == spare:
+			kept = bn
+			continue
+		var from := bn.global_position
+		var to := sack.global_position + Vector3(0, 0.4, 0)
+		var tw := w.create_tween()
+		tw.tween_method(func(u: float) -> void:
+			if is_instance_valid(bn):
+				bn.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
+		tw.tween_callback(bn.queue_free)
+		await Cine.wait(w, 0.45)
+	if kept != null:
+		_hold_box(w, kept)
+	await Cine.wait(w, 0.6)
 
 
 ## Bram keeps one deck out: its box in his hand.
@@ -664,59 +679,25 @@ static func _road(w: World) -> void:
 	r.y = v.height(r.x, r.z)
 	Cine.place(w, "bram", r + Vector3(0.3, 0, -9.0), r + Vector3(0, 0, 10))
 	Cine.place(w, "player", r + Vector3(-0.5, 0, -10.4), r + Vector3(0, 0, 10))
-	v.fireflies.amount_ratio = 1.0
-	await Cine.caption(w, "The second night")
-	Cine.shot(w, r + Vector3(1.8, 1.4, 4.0), r + Vector3(0, 1.4, -8.0), 40.0)
-	Cine.fade(w, 0.0, 1.6)
-	Cine.walk(w, "bram", r + Vector3(0.3, 0, -1.0), 1.2)
-	await Cine.walk(w, "player", r + Vector3(-0.5, 0, -2.4), 1.2)
-	# the fireflies go out, all at once
-	Music.stop(1.0)
-	Cine.shot(w, r + Vector3(-1.0, 1.7, -5.0), r + Vector3(0.6, 1.6, 4.0), 38.0)
-	await Cine.wait(w, 1.2)
-	v.fireflies.amount_ratio = 0.0
-	v.fireflies.restart()
-	await Cine.wait(w, 1.8)
-	Cine.look(w, "bram", w.player.global_position)
-	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
-	await Cine.say(w, "bram", "Stay close.", 1.6)
-	# a wiry figure steps out of the trees, a Shieldhound clanking at his heel
 	var dask_at := r + Vector3(0.0, 0, 3.4)
-	Cine.spawn(w, "dask", "hunter", r + Vector3(3.6, 0, 4.2), "Dask")
-	Cine.beast(w, "dhound", "shieldhound", r + Vector3(4.6, 0, 5.4), Color(1.0, 0.8, 0.35, 1.0))
-	Cine.shot(w, r + Vector3(-1.4, 1.4, -2.6), dask_at + Vector3(0, 1.3, 0), 36.0)
-	Cine.path(w, "dhound", [dask_at + Vector3(1.0, 0, 0.6)], 1.4)
-	await Cine.walk(w, "dask", dask_at, 1.3)
-	Cine.look(w, "dask", w.player.global_position)
-	Cine.look(w, "bram", dask_at)
-	Cine.look(w, "player", dask_at)
-	Music.play(["dask"], 1.0, true)
 	var dask_cam := dask_at + Vector3(-3.0, 1.6, -4.0)
-	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
-	_tremble(w, "dask", 2.4, 0.01)   # his hands aren't steady
-	await Cine.say(w, "dask", "That's far enough. The card. The blank one.")
-	# Bram, from beside Dask (a cut-out can't be looked past)
-	var to_b: Vector3 = Cine.body(w, "bram").global_position - dask_at
-	to_b.y = 0.0
-	to_b = to_b.normalized()
-	var bram_cam := dask_at + to_b * 1.2 + to_b.cross(Vector3.UP) * 1.1 + Vector3(0, 1.6, 0)
-	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
-	await Cine.say(w, "bram", "Covenant law, lad. Stake it in a sworn duel, or walk away.")
-	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
-	await Cine.say(w, "dask", "I know the law.")
-	await Cine.wait(w, 0.9)
-	await Cine.say(w, "dask", "Fine. Sworn duel, Unsworn. Your card against my deck.")
-	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
-	await Cine.say(w, "bram", "That's every card you own.")
-	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
-	await Cine.say(w, "dask", "And that card's worth more than everything I own. Do the sums, old man.")
-	# the oath: the air closes round the words like a lock, a ring of light
-	var mid := (w.player.global_position + dask_at) * 0.5
-	await _oath(w, mid)
-	await Cine.fade(w, 1.0, 0.5)
+	var mid := (r + Vector3(-0.5, 0, -2.4) + dask_at) * 0.5
+	# the game was closed during the duel: straight back into it
+	if Game.flag("road_duel_on"):
+		v.fireflies.amount_ratio = 0.0
+		Cine.place(w, "bram", r + Vector3(0.3, 0, -1.0), dask_at)
+		Cine.place(w, "player", r + Vector3(-0.5, 0, -2.4), dask_at)
+		Cine.spawn(w, "dask", "hunter", dask_at, "Dask")
+		Cine.beast(w, "dhound", "shieldhound", dask_at + Vector3(1.0, 0, 0.6), Color(1.0, 0.8, 0.35, 1.0))
+		Cine.look(w, "dask", w.player.global_position)
+	else:
+		await _road_meeting(w, r, dask_at, dask_cam, mid)
+	Game.set_flag("road_duel_on")
+	Game.save_game()
 	var won := false
 	while not won:
 		won = await w._duel(Prologue.road_duel_spec())
+	Game.set_flag("road_duel_on", false)
 	Game.set_flag("beat_hunter")
 	# beaten: he stares at the ring of light as it fades
 	Cine.overlay(w).black(true)
@@ -817,6 +798,59 @@ static func _road(w: World) -> void:
 	watch.queue_free()
 	if pf2 is Figure3D:
 		(pf2 as Figure3D).get_up(0.01)
+
+
+## The second night up to the oath: the fireflies go out, Dask steps out of
+## the trees, the wager is sworn.
+static func _road_meeting(w: World, r: Vector3, dask_at: Vector3, dask_cam: Vector3, mid: Vector3) -> void:
+	var v := village(w)
+	v.fireflies.amount_ratio = 1.0
+	await Cine.caption(w, "The second night")
+	Cine.shot(w, r + Vector3(1.8, 1.4, 4.0), r + Vector3(0, 1.4, -8.0), 40.0)
+	Cine.fade(w, 0.0, 1.6)
+	Cine.walk(w, "bram", r + Vector3(0.3, 0, -1.0), 1.2)
+	await Cine.walk(w, "player", r + Vector3(-0.5, 0, -2.4), 1.2)
+	# the fireflies go out, all at once
+	Music.stop(1.0)
+	Cine.shot(w, r + Vector3(-1.0, 1.7, -5.0), r + Vector3(0.6, 1.6, 4.0), 38.0)
+	await Cine.wait(w, 1.2)
+	v.fireflies.amount_ratio = 0.0
+	v.fireflies.restart()
+	await Cine.wait(w, 1.8)
+	Cine.look(w, "bram", w.player.global_position)
+	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
+	await Cine.say(w, "bram", "Stay close.", 1.6)
+	# a wiry figure steps out of the trees, a Shieldhound clanking at his heel
+	Cine.spawn(w, "dask", "hunter", r + Vector3(3.6, 0, 4.2), "Dask")
+	Cine.beast(w, "dhound", "shieldhound", r + Vector3(4.6, 0, 5.4), Color(1.0, 0.8, 0.35, 1.0))
+	Cine.shot(w, r + Vector3(-1.4, 1.4, -2.6), dask_at + Vector3(0, 1.3, 0), 36.0)
+	Cine.path(w, "dhound", [dask_at + Vector3(1.0, 0, 0.6)], 1.4)
+	await Cine.walk(w, "dask", dask_at, 1.3)
+	Cine.look(w, "dask", w.player.global_position)
+	Cine.look(w, "bram", dask_at)
+	Cine.look(w, "player", dask_at)
+	Music.play(["dask"], 1.0, true)
+	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
+	_tremble(w, "dask", 2.4, 0.01)   # his hands aren't steady
+	await Cine.say(w, "dask", "That's far enough. The card. The blank one.")
+	# Bram, from beside Dask (a cut-out can't be looked past)
+	var to_b: Vector3 = Cine.body(w, "bram").global_position - dask_at
+	to_b.y = 0.0
+	to_b = to_b.normalized()
+	var bram_cam := dask_at + to_b * 1.2 + to_b.cross(Vector3.UP) * 1.1 + Vector3(0, 1.6, 0)
+	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
+	await Cine.say(w, "bram", "Covenant law, lad. Stake it in a sworn duel, or walk away.")
+	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
+	await Cine.say(w, "dask", "I know the law.")
+	await Cine.wait(w, 0.9)
+	await Cine.say(w, "dask", "Fine. Sworn duel, Unsworn. Your card against my deck.")
+	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
+	await Cine.say(w, "bram", "That's every card you own.")
+	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
+	await Cine.say(w, "dask", "And that card's worth more than everything I own. Do the sums, old man.")
+	# the oath: the air closes round the words like a lock, a ring of light
+	await _oath(w, mid)
+	await Cine.fade(w, 1.0, 0.5)
 
 
 ## The sworn oath: a ring of gold light round the two duellists, closing.

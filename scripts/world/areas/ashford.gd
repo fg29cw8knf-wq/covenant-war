@@ -1848,7 +1848,8 @@ const HERALD_ROAD := [Vector3(44.0, 0, 11.6), Vector3(30.0, 0, 13.4), Vector3(18
 ## reads out only Aldric and Crane; the other five are faces with a name
 ## under each, too quick to hold). [id, the Seat's god, the name written].
 ## Gary's portrait in assets/art/champions/<id>.png (or .jpg / .webp) is used
-## when it exists; until then the Seat's god's painting stands in, pale.
+## when it exists; until then the Seat's sign stands in for the face, with the
+## name under it.
 const CHAMPIONS := [
 	["aldric", "solmaris", "Ser Aldric Vane"],
 	["vorn", "pyrrhane", "Warlord Vorn"],
@@ -2191,8 +2192,8 @@ void vertex() {
 	MODELVIEW_MATRIX = VIEW_MATRIX * mat4(INV_VIEW_MATRIX[0], INV_VIEW_MATRIX[1], INV_VIEW_MATRIX[2], MODEL_MATRIX[3]);
 }
 void fragment() {
-	vec3 c = texture(tex, UV).rgb;
-	float l = mix(dot(c, vec3(0.3, 0.55, 0.15)), 0.0, empty);
+	vec4 c4 = texture(tex, UV);
+	float l = mix(dot(c4.rgb, vec3(0.3, 0.55, 0.15)) * c4.a, 0.0, empty);
 	vec2 d = (UV - 0.5) * 2.0;
 	float edge = clamp(1.0 - pow(length(d * vec2(0.95, 0.8)), 2.6), 0.0, 1.0);
 	float frame = empty * smoothstep(0.86, 0.9, max(abs(d.x), abs(d.y))) * (1.0 - smoothstep(0.94, 0.98, max(abs(d.x), abs(d.y))));
@@ -2215,7 +2216,10 @@ static func _vision(w: World, herald: PaleHerald, i: int, secs := 0.35) -> Node3
 	m.shader = Shader.new()
 	m.shader.code = VISION_SHADER
 	if i >= 0:
-		m.set_shader_parameter("tex", _champion_tex(i))
+		var tex := _champion_tex(i)
+		m.set_shader_parameter("tex", tex)
+		if tex != null:
+			qm.size = Vector2(1.5, 1.5 * float(tex.get_height()) / maxf(1.0, float(tex.get_width())))
 	else:
 		m.set_shader_parameter("empty", 1.0)
 	q.material_override = m
@@ -2261,15 +2265,14 @@ static func _vision_out(w: World, root: Node3D, secs := 0.5) -> void:
 
 
 ## A Champion's picture for the Herald's lantern: Gary's portrait when there is
-## one, else the Seat's god's painting.
+## one, else the sign of the Seat's god.
 static func _champion_tex(i: int) -> Texture2D:
 	var id: String = CHAMPIONS[i][0]
 	for ext in ["png", "jpg", "webp"]:
 		var p := "res://assets/art/champions/%s.%s" % [id, ext]
 		if ResourceLoader.exists(p):
 			return load(p)
-	var g := "res://assets/art/gods/%s.jpg" % String(CHAMPIONS[i][1])
-	return load(g) if ResourceLoader.exists(g) else null
+	return Glyphs.tex(String(Lore.GODS[String(CHAMPIONS[i][1])].element), 256)
 
 
 ## The mill after the night: a black shell (its timbers charred).
