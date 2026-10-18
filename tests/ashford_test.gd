@@ -22,7 +22,8 @@ extends Node
 ## options: alt (the second answer at every choice), coach (ask Bram to talk
 ## you through the duel: no rematch), lose (Corin wins the rematch; it's won
 ## otherwise), every=<n> (a still every n frames as well), read=<n> (frames
-## each line stays up, 6 by default).
+## each line stays up, 6 by default), qa (watch for glitches as it plays:
+## tests/qa_monitor.gd), keys (draw only the frames kept: much faster).
 
 var out_dir := "user://"
 var part := "all"
@@ -42,6 +43,8 @@ var _uses := {}
 var _mask := 0
 var _done := false
 var _props_hit := {}
+var _qa = null   # QA monitor (tests/qa_monitor.gd)
+var _keys := false   # "keys": draw only the frames that are kept (fast)
 
 const BODY := 0.3    # someone's half-width, about
 
@@ -66,6 +69,10 @@ func _ready() -> void:
 			read = int(s.substr(5))
 		elif s.is_valid_int():
 			every = int(s)
+		elif s == "keys":
+			_keys = true
+	if _keys:
+		RenderingServer.render_loop_enabled = false   # only the frames kept are drawn (fast)
 	Game.new_game("Sprout", "")
 	# a new player's (the opening must keep the world's standing hints off);
 	# a save past the opening has had Bram's lesson
@@ -81,6 +88,8 @@ func _ready() -> void:
 	world = World.new().setup("ashford", "green")
 	world.duel_handler = _duel
 	add_child(world)
+	if "qa" in args:
+		_qa = preload("res://tests/qa_monitor.gd").watch(world)
 	hud = world.hud
 	world.story_next.connect(func(what: String) -> void:
 		print("story_next: ", what)
@@ -474,11 +483,29 @@ func _press(code: Key) -> void:
 		await _frames(2)
 
 
+## (keys: two stills at once, from the line reader and the play-through, must
+## not switch drawing off under each other, or one waits for a frame forever)
+var _drawing := 0
+
+
 func _shot(label: String) -> void:
-	await RenderingServer.frame_post_draw
-	var img := get_viewport().get_texture().get_image()
 	_shots += 1
-	img.save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
+	var n := _shots
+	if DisplayServer.get_name() == "headless":
+		return   # (nothing is drawn: run for the checks only)
+	if _keys:
+		_drawing += 1
+		RenderingServer.render_loop_enabled = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	if _keys:
+		_drawing -= 1
+		if _drawing == 0:
+			RenderingServer.render_loop_enabled = false
+	var img := get_viewport().get_texture().get_image()
+	if img != null:   # (none when run headless)
+		img.save_png(out_dir.path_join("%03d_%s.png" % [n, label]))
 
 
 func _finish() -> void:
@@ -487,5 +514,7 @@ func _finish() -> void:
 	_done = true
 	await _frames(4)
 	await _shot("end")
+	if _qa != null:
+		print(_qa.summary())
 	print("ASHFORD TEST: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)

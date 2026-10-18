@@ -524,6 +524,7 @@ func _start() -> void:
 	for side in 2:
 		panels[side].player = game.players[side]
 		panels[side].mine = side == me
+		panels[side].sub = _plate_line(side)
 		ward_zones[side].player = game.players[side]
 		ward_zones[side].mine = side == me
 		ward_zones[side].face_up = game.face_up   # Wards that lie face up (Fen's Patter, the Unveiling)
@@ -591,6 +592,24 @@ func _refresh() -> void:
 func _watching() -> bool:
 	var ai_flags: Array = spec.get("ai", [false, true])
 	return ai_flags[me]
+
+
+## The line under a duellist's name on their plate: spec.plates (or the
+## profile's "plate") when the story gives one (Corin is "Ashford"), else
+## "Sworn to <god>", else "Unsworn" for the player only. "The Unsworn" is
+## the player's name in the story, so a rival with no god (Bram, Dask) shows
+## nothing there.
+func _plate_line(side: int) -> String:
+	var plates: Array = spec.get("plates", [])
+	if side < plates.size():
+		return String(plates[side])
+	var p: DuelPlayer = game.players[side]
+	if p.profile.has("plate"):
+		return String(p.profile.plate)
+	if p.patron() != "":
+		return "Sworn to %s" % Lore.GODS[p.patron()].name
+	var ai_flags: Array = spec.get("ai", [false, true])
+	return "Unsworn" if side < ai_flags.size() and not ai_flags[side] else ""
 
 
 func _layout_hand() -> void:
@@ -1927,6 +1946,8 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	var rattle := Sfx.has_file("dice_roll")
 	if rattle:
 		sfx.play("dice_roll")
+	if _pi == rival:
+		story_bark("rival_first_fate")   # (a plea as it rolls: "Six. Give me a six.")
 	for k in steps:
 		dv.face = randi_range(1, 20)
 		dv.spin += 0.5
@@ -1950,8 +1971,6 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	var col := UITheme.GOLD if int(info.roll) == 20 else (Color("ff6a5a") if int(info.roll) == 1 else Color(0.7, 0.6, 1.0))
 	DuelFX.flash(fx_layer, c, col, 220.0, 0.5 / speed)
 	DuelFX.burst(fx_layer, c, col, 26 if int(info.roll) == 20 else 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
-	if _pi == rival:
-		story_bark("rival_first_fate")
 	await pause(1.2)
 	if tutor != null:
 		# the die stays up while Bram explains it (the Lantern Duel's scripted
@@ -2336,11 +2355,13 @@ func _bram_rival() -> bool:
 func fx_gift(pi: int, g: String) -> void:
 	sfx.play("gift")
 	var p: DuelPlayer = game.players[pi]
-	var god: String = "the Unsworn" if p.patron() == "" else Lore.GODS[p.patron()].name
+	# (a rival with no god isn't "the Unsworn": that's the player's name)
+	var from: String = "A Divine Gift from %s" % Lore.GODS[p.patron()].name if p.patron() != "" \
+		else ("A Divine Gift from the Unsworn" if pi == me else "Bound to no god")
 	var at: Vector2 = panels[pi].position + panels[pi].portrait_center()
 	DuelFX.flash(fx_layer, at, UITheme.GOLD, 260.0, 0.6 / speed)
 	DuelFX.rise(fx_layer, at + Vector2(0, 40), UITheme.GOLD, 160.0, 40, 1.2, speed)
-	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), "A Divine Gift from %s" % god)
+	await _banner(Lore.GIFTS[g].name.to_upper(), UITheme.GOLD, 1.2, 84, p.patron(), from)
 	if pi == rival:
 		story_bark("rival_gift")
 	_refresh()
@@ -2609,12 +2630,13 @@ func _show_bark(line: String) -> void:
 	_bark_label.text = line
 	_bark_box.modulate.a = 0.0
 	_bark_box.visible = true
+	_bark_at = Time.get_ticks_msec()
 	await get_tree().process_frame
 	# just right of the rival's plate, below their hand, at the field's scale,
 	# and kept inside the screen's safe area
 	var sr := _safe_rect()
 	var plate: Control = panels[rival]
-	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15
+	_bark_box.scale = Vector2(_base_k, _base_k) * 1.15 * SafeArea.ui_scale()   # (the player's text size)
 	var at := plate.global_position + Vector2(plate.size.x + 12.0, 70.0) * _base_k
 	var bs := _bark_box.size * _bark_box.scale
 	at.x = clampf(at.x, sr.position.x + 8.0, maxf(sr.position.x + 8.0, sr.end.x - bs.x - 8.0))
@@ -2629,6 +2651,29 @@ func _show_bark(line: String) -> void:
 
 
 var _bark_tw: Tween
+
+
+var _bark_at := 0
+
+
+## Bram waits for a line of the rival's to be read before he speaks (they
+## sat in the same corner, his box over theirs): it stays up two seconds,
+## then fades out at once.
+func _bark_gone() -> void:
+	if _bark_box == null or not _bark_box.visible or not is_inside_tree():
+		return
+	var left := 2.0 - float(Time.get_ticks_msec() - _bark_at) / 1000.0
+	if left > 0.0:
+		await get_tree().create_timer(left).timeout
+	if _bark_box == null or not _bark_box.visible:
+		return
+	if _bark_tw != null and _bark_tw.is_valid():
+		_bark_tw.kill()
+	var tw := _bark_box.create_tween()
+	_bark_tw = tw
+	tw.tween_property(_bark_box, "modulate:a", 0.0, 0.25)
+	tw.tween_callback(func() -> void: _bark_box.visible = false)
+	await tw.finished
 
 
 ## Flips a card up in the middle of the Circle, flying in from `from`.
@@ -2816,10 +2861,21 @@ func _show_result(r: String) -> String:
 	box.modulate.a = 0.0
 	await get_tree().process_frame
 	await get_tree().process_frame
-	# centred a little below the middle, and never off the bottom of the screen
+	# centred a little below the middle, and never off the bottom of the
+	# screen; drawn at the player's text size, as big as fits
 	var sr := _safe_rect()
-	var y := clampf(sr.position.y + sr.size.y * 0.56 - box.size.y * 0.5, sr.position.y + 40.0, sr.end.y - box.size.y - 40.0)
-	box.position = Vector2(sr.position.x + (sr.size.x - box.size.x) * 0.5, y)
+	var k := minf(SafeArea.ui_scale(), minf((sr.size.x - 40.0) / maxf(1.0, box.size.x), (sr.size.y - 80.0) / maxf(1.0, box.size.y)))
+	k = maxf(k, 0.5)
+	box.scale = Vector2(k, k)
+	var bsz := box.size * k
+	var y := clampf(sr.position.y + sr.size.y * 0.56 - bsz.y * 0.5, sr.position.y + 40.0, sr.end.y - bsz.y - 40.0)
+	# below the big title (ResultBurst) where there's room: a win's box, with
+	# its rewards, is taller, and its top lay over the title's words
+	var tk := minf(overlay.size.x / 1920.0, overlay.size.y / 1080.0)
+	var under_title := overlay.size.y * 0.4 + 150.0 * tk * 0.55 + 16.0
+	if y < under_title:
+		y = maxf(y, minf(under_title, sr.end.y - bsz.y - 24.0))
+	box.position = Vector2(sr.position.x + (sr.size.x - bsz.x) * 0.5, y)
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.3).set_delay(0.5)
 	while picked[0] == "":

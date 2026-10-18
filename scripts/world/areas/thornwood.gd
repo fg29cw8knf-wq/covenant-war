@@ -151,6 +151,7 @@ static func _river(w: World) -> void:
 	Cine.place(w, "nell", fb + Vector3(4.6, 0, -0.6), near)
 	Cine.place(w, "corin_mam", fb + Vector3(3.95, 0, -0.35), near)
 	_corin_holds_tilly(w, near)
+	CardFace.warm_art(Prologue.HOB_SPARKS)   # (Hob's nine fan out on screen later)
 	Music.play(["river_farewell", "menu_theme"], 2.0, true)
 	# from behind the villagers, across the water, up to the burning crest
 	Cine.shot(w, fb + Vector3(-2.6, 3.4, 11.0), crest + Vector3(0, 1.0, 0), 42.0)
@@ -189,7 +190,9 @@ static func _river(w: World) -> void:
 	Cine.shot(w, from_near, Vector3(hp.x, 0.6, 5.5), 36.0)
 	await Cine.walk(w, "hob", wade, 1.3)
 	Cine.look(w, "hob", w.player.global_position)
-	Cine.shot(w, from_near, Cine.head(w, "hob") + Vector3(0, -0.45, 0), 30.0)
+	# (a little wider and higher than his head: tighter, the folk on the far
+	# bank behind him had their heads cut off by the top of the picture)
+	Cine.shot(w, from_near, Cine.head(w, "hob") + Vector3(0, -0.1, 0), 34.0)
 	await Cine.say(w, "hob", "These came up in my cabbages. Tam said this morning you'd need them more than me.")
 	await _skim(w, hob.global_position + Vector3(0, 1.2, 0), w.player.global_position + Vector3(0.5, 0.1, 0.6))
 	Prologue.hob_sparks()
@@ -421,7 +424,10 @@ static func _log_spot(v: ThornwoodSet) -> Dictionary:
 	return {"mid": mid, "along": along.normalized(), "top": mid.y + 0.23}
 
 
-## Bram takes the four boxes out of the sack and sets them in a row on the log.
+## Bram takes the four boxes out of the sack and sets them in a row on the
+## log: he turns to the sack and opens it, and after a moment's dip to black
+## they're in their row (not flying across the camp by themselves: the log is
+## three steps from where he sits).
 static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 	var v := village(w)
 	var lg := _log_spot(v)
@@ -431,8 +437,12 @@ static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 	var side := along.cross(Vector3.UP)
 	Cine.shot(w, mid - side * 1.9 + Vector3(0, 1.25, 0) + along * 0.4, mid + Vector3(0, 0.25, 0), 38.0)
 	var bf = Cine.fig(w, "bram")
+	Cine.look(w, "bram", sack.global_position)
 	if bf is Figure3D:
 		(bf as Figure3D).act("lift", 1.0)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 1.5)
+	await Cine.fade(w, 1.0, 0.35)
 	var boxes: Array = []
 	for i in ids.size():
 		var m := StandardMaterial3D.new()
@@ -443,17 +453,13 @@ static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 		v.box(b, Vector3(0.2, 0.09, 0.28), Vector3(0, 0.045, 0), m)
 		var to := mid + along * (-0.48 + i * 0.32)
 		to.y = float(lg.top)
-		var from := sack.global_position + Vector3(0, 0.45, 0)
-		b.global_position = from
+		b.global_position = to
 		b.rotation.y = atan2(along.x, along.z) + randf_range(-0.08, 0.08)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(b):
-				b.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
-		_sfx(w, "card_lift", 0.9)
 		boxes.append(b)
-		await Cine.wait(w, 0.4)
-	await Cine.wait(w, 0.5)
+	await Cine.wait(w, 0.2)
+	Cine.fade(w, 0.0, 0.45)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 0.9)
 	return boxes
 
 
@@ -490,6 +496,10 @@ static func _choose_deck(w: World, boxes: Array, ids: Array, lg: Dictionary) -> 
 		# back to the row, the card still up: tap it again to choose, or another
 		Cine.move(w, row_cam, mid + Vector3(0, 0.22, 0), 0.5, 40.0)
 	picker.hide_deck()
+	picker.chosen = true
+	# the deck screen opens on its paintings in a moment: start loading them
+	# now, while he nods, so it comes up without a stall
+	CardFace.warm_art(DuelCards.card_list(chosen))
 	# that one: he nods slowly
 	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
 	await Cine.say(w, "bram", "That one.")
@@ -581,7 +591,9 @@ static func _morning(w: World) -> void:
 		if won:
 			# he studies the cards on the log a while
 			_cards_on_log(w, lg)
-			Cine.place(w, "bram", (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1), lg.mid)
+			# (on the ground beside the log: the log's middle is 0.2 m up)
+			var by_log: Vector3 = (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1)
+			Cine.place(w, "bram", Vector3(by_log.x, 0.0, by_log.z), lg.mid)
 			Cine.shot(w, (lg.mid as Vector3) + side * 1.9 + Vector3(0, 1.5, 0), (lg.mid as Vector3) + Vector3(0, 0.6, 0) - side * 0.4, 40.0)
 			if bf is Figure3D:
 				(bf as Figure3D).pose("sit", 0.22, 0.5)   # bent over them
@@ -612,25 +624,28 @@ static func _boxes_to_sack(w: World, boxes: Array, sack: Node3D, spare: String, 
 	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
 	Cine.shot(w, (lg.mid as Vector3) - side * 1.9 + Vector3(0, 1.25, 0), (lg.mid as Vector3) + Vector3(0, 0.25, 0), 38.0)
 	var bf = Cine.fig(w, "bram")
+	await Cine.wait(w, 0.8)
+	Cine.look(w, "bram", sack.global_position)
 	if bf is Figure3D:
 		(bf as Figure3D).act("lift", 1.0)
+	_sfx(w, "card_lift", 0.9)
+	await Cine.wait(w, 1.2)
+	# a moment later (a dip to black: no boxes flying back across the camp,
+	# or jumping off the log into his hand) they're in the sack, and he's
+	# kept one out
+	await Cine.fade(w, 1.0, 0.35)
 	var kept: Node3D = null
 	for b in boxes:
 		var bn: Node3D = b
 		if String(bn.get_meta("deck")) == spare:
 			kept = bn
-			continue
-		var from := bn.global_position
-		var to := sack.global_position + Vector3(0, 0.4, 0)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(bn):
-				bn.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.3, 0), 0.0, 1.0, 0.45)
-		tw.tween_callback(bn.queue_free)
-		await Cine.wait(w, 0.45)
+		else:
+			bn.queue_free()
 	if kept != null:
 		_hold_box(w, kept)
-	await Cine.wait(w, 0.6)
+	await Cine.wait(w, 0.2)
+	Cine.fade(w, 0.0, 0.45)
+	await Cine.wait(w, 0.8)
 
 
 ## Bram keeps one deck out: its box in his hand.
@@ -684,6 +699,8 @@ static func _road(w: World) -> void:
 	_only(w, ["bram"])
 	await Cine.begin(w)
 	Cine.overlay(w).black(true)
+	# Dask's Shieldhound steps out of the trees mid-shot: loaded now, behind the black
+	Cine.keep(w, "res://assets/models/creatures/shieldhound.glb")
 	var r: Vector3 = ThornwoodSet.SPOTS.road
 	r.y = v.height(r.x, r.z)
 	Cine.place(w, "bram", r + Vector3(0.3, 0, -9.0), r + Vector3(0, 0, 10))
@@ -708,6 +725,7 @@ static func _road(w: World) -> void:
 		won = await w._duel(Prologue.road_duel_spec())
 	Game.set_flag("road_duel_on", false)
 	Game.set_flag("beat_hunter")
+	CardFace.warm_art(DuelCards.card_list("dask_hounds"))   # (his deck fans out on screen soon)
 	# beaten: he stares at the ring of light as it fades
 	Cine.overlay(w).black(true)
 	var ring := _ring(w, mid, 1.0)
@@ -768,11 +786,26 @@ static func _road(w: World) -> void:
 		await Cine.wait(w, 1.8)
 		await Cine.say(w, "dask", "...Why?")
 		await Cine.wait(w, 0.6)
+		# he takes it (between the shots: it's in his hand as the wide one
+		# opens), and backs into the trees without another word
+		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
 		if pf is Figure3D:
 			(pf as Figure3D).hand_light(null)
 			(pf as Figure3D).release(0.4)
-		# he takes it, and backs into the trees without another word
-		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
+		if is_instance_valid(card):
+			var df = Cine.fig(w, "dask")
+			if df is Figure3D:
+				(df as Figure3D).hand_light(card)
+				card.position = Vector3(0.0, 0.06, 0.04)
+			else:
+				var db := Cine.body(w, "dask")
+				if card.get_parent() != null:
+					card.get_parent().remove_child(card)
+				db.add_child(card)
+				var to_p := w.player.global_position - db.global_position
+				to_p.y = 0.0
+				card.position = to_p.normalized() * 0.3 + Vector3(0, 0.95, 0)
+				card.rotation = Vector3(-0.4, atan2(to_p.x, to_p.z), 0)
 		Cine.path(w, "dhound", [dpos + Vector3(1.2, 0, 0.4), r + Vector3(6.0, 0, 7.0)], 1.4)
 		await Cine.path(w, "dask", [dpos + Vector3(0.0, 0, 0.8), r + Vector3(5.0, 0, 6.0)], 0.9)
 	else:
@@ -785,13 +818,15 @@ static func _road(w: World) -> void:
 		Cine.shot(w, r + Vector3(-1.2, 1.6, -4.0), dask_at + Vector3(2.0, 1.2, 2.0), 38.0)
 		Cine.path(w, "dhound", [r + Vector3(6.0, 0, 7.0), r + Vector3(14.0, 0, 9.0)], 3.0)
 		await Cine.path(w, "dask", [r + Vector3(5.0, 0, 6.0), r + Vector3(12.0, 0, 8.0)], 1.6)
+	# Bram, to himself, looking after him: seen from the way Dask went, so
+	# Dask and his hound are gone behind the camera as it cuts, not vanishing
+	# in front of us (from over your shoulder, they were still in the shot)
+	Cine.look(w, "bram", r + Vector3(12, 0, 8))
+	_front_shot(w, "bram", r + Vector3(12, 0, 8), 30.0)
 	Cine.despawn(w, "dask")
 	Cine.despawn(w, "dhound")
 	if is_instance_valid(box):
 		box.queue_free()
-	# Bram, to himself
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
-	Cine.look(w, "bram", r + Vector3(12, 0, 8))
 	await Cine.say(w, "bram", "Morne.", 2.0)
 	await Cine.wait(w, 1.0)
 	# he keeps watch till dawn, and doesn't wake you for your turn
@@ -802,7 +837,8 @@ static func _road(w: World) -> void:
 		(pf2 as Figure3D).lie_down(0.01, true)
 	Cine.place(w, "bram", r + Vector3(-0.6, 0, -1.2), r + Vector3(2.0, 0, 6.0))
 	var watch := Cine.light(w, r + Vector3(-1.4, 0.4, -1.8), Color(1.0, 0.55, 0.25), 1.2, 6.0)
-	Cine.shot(w, r + Vector3(-4.6, 1.3, -4.8), r + Vector3(-1.2, 0.8, -1.4), 38.0)
+	# (looking down a little more: level, only your boots showed at the bottom)
+	Cine.shot(w, r + Vector3(-4.8, 1.8, -5.0), r + Vector3(-1.6, 0.4, -1.8), 38.0)
 	await Cine.fade(w, 0.0, 1.2)
 	await Cine.wait(w, 3.0)
 	await Cine.fade(w, 1.0, 1.6)
@@ -952,8 +988,9 @@ static func _kneel_cutout(w: World, who: String, down: bool) -> void:
 		else:
 			(f as Figure3D).release(0.4)
 	elif f != null:
+		# (squashed down onto its feet, not sunk into the road)
 		var n: Node3D = f
-		w.create_tween().tween_property(n, "position:y", -0.35 if down else 0.0, 0.35)
+		w.create_tween().tween_property(n, "scale:y", 0.8 if down else 1.0, 0.35)
 
 
 ## Someone shaking: the whole figure trembles, very slightly, for `secs`.

@@ -7,7 +7,7 @@ extends Node
 ## Enter in turn. Then a short tour driven only by Tab and Esc. Saves a
 ## screenshot of every step. Ends with "PACK TOUR TEST: ok".
 ##   xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 \
-##       res://tests/pack_tour_test.tscn -- <out_dir> [WxH]
+##       res://tests/pack_tour_test.tscn -- <out_dir> [WxH] [ui=1.3]
 
 const SPARK := ["brookfin", "bulwark", "essence_flask", "healing_draught", "essence_flask", "healing_draught",
 	"bulwark", "essence_flask", "healing_draught", "essence_flask", "bulwark", "travellers_pack"]
@@ -26,13 +26,16 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		out_dir = args[0]
-	if args.size() > 1:
+	if args.size() > 1 and "x" in args[1]:
 		var p: PackedStringArray = args[1].split("x")
 		size = Vector2i(int(p[0]), int(p[1]))
 	get_window().size = size
 	get_viewport().scaling_3d_scale = 0.5   # the village behind at half resolution (software GL is slow); the UI stays sharp
 	Game.settings["first_steps"] = 2      # no "tap the ground" hints over the tour
 	Game.new_game("Sprout", "")
+	for a in args:
+		if a.begins_with("ui="):
+			Game.settings["ui_scale"] = float(a.trim_prefix("ui="))   # Options > Text and buttons size
 	Game.set_flag("arrived_ashford")      # skip the opening flight and Bram's welcome (World._arrive)
 	world = World.new().setup("ashford", "green")
 	add_child(world)

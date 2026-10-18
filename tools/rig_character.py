@@ -685,6 +685,134 @@ def write_tex_import(png_path, normal=False):
 
 # ---------------------------------------------------------------- main ---
 
+ARM_PARTS = ("Arm", "ForeArm", "Hand")
+
+
+def free_of_arms(spec, j, b, pr, skin_joints, jn, wts, scale_h):
+    """A bag and its strap that move with the body, not with an arm.
+
+    AssetFurnace binds whatever is near an arm in the rest pose to it: Tilly's
+    satchel hangs beside her left hand, so its top was bound to her forearm and
+    stretched up after her arm when she held her card out, and the strap over
+    her right shoulder followed that arm. spec is "R,G,B:TOL" (0-1): the
+    vertices of about that colour (the leather) bound to an arm or hand lose
+    those bones, and take the body's bones from their own weights, or from the
+    leather round them where they had none."""
+    rgb, _, tol = spec.partition(":")
+    target = np.array([float(x) for x in rgb.split(",")])
+    tol = float(tol or 0.12)
+    # the colour under each vertex, from the base colour texture
+    mat = j["materials"][pr["material"]] if "material" in pr else {}
+    info = mat.get("pbrMetallicRoughness", {}).get("baseColorTexture")
+    assert info, "--free-of-arms needs the model's colour texture"
+    im = j["images"][j["textures"][info["index"]]["source"]]
+    bv = j["bufferViews"][im["bufferView"]]
+    img = np.asarray(Image.open(io.BytesIO(b[bv.get("byteOffset", 0):bv.get("byteOffset", 0) + bv["byteLength"]])).convert("RGB")).astype(np.float64) / 255.0
+    uv = acc(j, b, pr["attributes"]["TEXCOORD_0"])
+    h, w = img.shape[:2]
+    col = img[np.clip((uv[:, 1] % 1.0) * h, 0, h - 1).astype(int), np.clip((uv[:, 0] % 1.0) * w, 0, w - 1).astype(int)]
+    n, nb = len(jn), len(skin_joints)
+    dense = np.zeros((n, nb))
+    for k in range(jn.shape[1]):
+        np.add.at(dense, (np.arange(n), jn[:, k].astype(np.int64)), wts[:, k])
+    arm = np.array([any(nm == side + part or nm.startswith(side + "Hand") for side in ("Left", "Right") for part in ARM_PARTS)
+                    for nm in skin_joints])
+    on_arm = dense[:, arm].sum(1) > 0.01
+    near = np.linalg.norm(col - target, axis=1)
+    like = near < tol
+    # the bag and its strap are big patches of that colour, all of a piece;
+    # a few shaded spots of skin on a forearm that happen to be about the
+    # same colour are small ones of their own, and stay with the arm
+    idx = acc(j, b, pr["indices"]).astype(np.int64).reshape(-1, 3)
+    e0 = np.concatenate([idx[:, 0], idx[:, 1], idx[:, 2], idx[:, 1], idx[:, 2], idx[:, 0]])
+    e1 = np.concatenate([idx[:, 1], idx[:, 2], idx[:, 0], idx[:, 0], idx[:, 1], idx[:, 2]])
+    p0 = acc(j, b, pr["attributes"]["POSITION"])
+    _, weld = np.unique(np.round(p0 * 20000).astype(np.int64), axis=0, return_inverse=True)
+    weld = weld.reshape(-1)
+    parent = np.arange(n)
+
+    def root(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+    first = {}   # the first copy of that colour at each point (where texture islands meet)
+    pairs = [(first.setdefault(int(weld[i]), i), i) for i in range(n) if like[i]]
+    pairs += list(zip(e0.tolist(), e1.tolist()))
+    for a_, c_ in pairs:
+        if like[a_] and like[c_]:
+            ra, rc_ = root(a_), root(c_)
+            if ra != rc_:
+                parent[rc_] = ra
+    roots = np.array([root(i) for i in range(n)])
+    ids, counts = np.unique(roots[like], return_counts=True)
+    big = set(ids[counts >= 100].tolist())
+    sel = on_arm & like & np.array([r in big for r in roots])
+    # bits of the same leather touching it (a corner of the bag where it meets
+    # the forearm, painted on a scrap of texture of its own): within 3 cm of
+    # what's freed (7 cm); a texture seam already splits them from the arm's skin
+    if sel.any():
+        cand = np.where(on_arm & like & ~sel)[0]
+        ref = p0[sel]
+        reach = 0.07 * float(np.ptp(p0[:, 1])) / scale_h   # 7 cm on the finished model
+        for i in cand:
+            if np.min(np.linalg.norm(ref - p0[i], axis=1)) < reach:
+                sel[i] = True
+    # and the edge of it: arm-bound neighbours of about the same colour
+    edge = np.zeros(n, bool)
+    np.logical_or.at(edge, e0, sel[e1])
+    sel |= edge & on_arm & (near < tol * 1.6)
+    # the body's share: its own weights without the arms, or (where that's
+    # nothing much) the leather round it, spread in from where it's bound to
+    # the body
+    body = dense.copy()
+    body[:, arm] = 0.0
+    own = body.sum(1)
+    x = body / np.maximum(own[:, None], 1e-9)
+    keep = sel & (own >= 0.5)
+    fill = sel & ~keep
+    cnt = np.zeros(n)
+    np.add.at(cnt, e0, 1.0)
+    for _ in range(60):
+        acc_ = np.zeros((n, nb))
+        np.add.at(acc_, e0, x[e1])
+        avg = acc_ / np.maximum(cnt[:, None], 1.0)
+        s = avg.sum(1, keepdims=True)
+        x[fill] = np.where(s[fill] > 1e-6, avg[fill] / np.maximum(s[fill], 1e-9), x[fill])
+    # any left with nothing (bound to an arm all round): the body's weights at
+    # the nearest point that has them
+    empty = np.where(fill & (x.sum(1) < 0.5))[0]
+    if len(empty):
+        donors = np.where(~sel & (own >= 0.9))[0]
+        for i in empty:
+            d = np.linalg.norm(p0[donors] - p0[i], axis=1)
+            x[i] = body[donors[np.argmin(d)]] / own[donors[np.argmin(d)]]
+    new = dense.copy()
+    new[keep] = x[keep]
+    new[fill] = x[fill]
+    # back to four bones a vertex
+    top = np.argsort(-new, axis=1)[:, :4]
+    tw = np.take_along_axis(new, top, axis=1)
+    tw = tw / np.maximum(tw.sum(1, keepdims=True), 1e-9)
+    left = int((sel & (dense[:, [skin_joints.index(nm) for nm in skin_joints if nm.startswith("Left")]].sum(1) > 0)).sum())
+    jn_out = jn.copy()
+    w_out = wts.copy()
+    jn_out[sel] = top[sel].astype(jn.dtype)
+    w_out[sel] = tw[sel].astype(wts.dtype)
+    # where the hand rested on the bag the mesh is fused, hand to leather: a
+    # triangle with a corner all on the arm and a corner not on it at all
+    # would stretch into a long sheet as the arm moves off, so those are left
+    # out (in the rest pose they're slivers where the two touch; weights that
+    # blend, as at a shoulder, never jump like that across one triangle)
+    arm_after = np.zeros(n)
+    for k in range(jn_out.shape[1]):
+        arm_after += np.where(arm[jn_out[:, k].astype(np.int64)], w_out[:, k], 0.0)
+    drop = (arm_after >= 0.9)[idx].any(1) & (arm_after <= 0.02)[idx].any(1)
+    print("  freed from the arms: %d vertices of the colour %s (%d bound to the left arm, %d filled in from the leather round them); "
+          "%d triangles joining an arm to what isn't on it left out" %(int(sel.sum()), rgb, left, int(fill.sum()), int(drop.sum())))
+    return jn_out, w_out, drop
+
+
 def build(args):
     j, b = load(args.input)
     src = Rig(j, b)
@@ -758,6 +886,9 @@ def build(args):
     remap = np.array([skin_joints.index(names[ji]) for ji in src.joints])
     jn2 = remap[jn].astype(np.uint8 if len(skin_joints) < 256 else np.uint16)
     wts = wts / np.maximum(wts.sum(1, keepdims=True), 1e-9)
+    drop = None
+    if args.free_of_arms:
+        jn2, wts, drop = free_of_arms(args.free_of_arms, j, b, pr, skin_joints, jn2, wts, (hi[1] - lo[1]) * s)
     attrs = {
         "POSITION": out.f32(tp(pos), "VEC3", target=34962, minmax=True),
         "NORMAL": out.f32(acc(j, b, pr["attributes"]["NORMAL"]), "VEC3", target=34962),
@@ -766,6 +897,8 @@ def build(args):
         "WEIGHTS_0": out.f32(wts, "VEC4", target=34962),
     }
     idx = acc(j, b, pr["indices"]).astype(np.uint32).reshape(-1)
+    if drop is not None and drop.any():
+        idx = idx.reshape(-1, 3)[~drop].reshape(-1)
     ind = out.acc(idx.astype(np.uint16) if idx.max() < 65536 else idx, 5123 if idx.max() < 65536 else 5125, "SCALAR", target=34963)
     ibms = np.stack([np.eye(4) for _ in skin_joints])
     for k, nm in enumerate(skin_joints):
@@ -939,6 +1072,7 @@ def main():
                     help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM (a walking stick's hand)")
     ap.add_argument("--normal-map", action="store_true", help="use the model's normal map (off by default: see above)")
     ap.add_argument("--double-sided", action="store_true")
+    ap.add_argument("--free-of-arms", default="", help="R,G,B:TOL (0-1) a bag or strap of about this colour moves with the body, not an arm")
     args = ap.parse_args()
     (library if args.library else build)(args)
 

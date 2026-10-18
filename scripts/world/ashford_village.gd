@@ -1676,7 +1676,8 @@ const SACKS_MODEL := "res://assets/models/ashford/sacks.glb"
 var props_placed: Array = []
 
 ## Grain sacks by the mill's door, behind Tam's hay cart and beside the blue
-## stall; crates stacked by the Crooked Lantern's door and by the blue stall.
+## stall; a crate by the Crooked Lantern's door, and two stacked by the blue
+## stall.
 ## All of it stands clear of where the story goes: Tam's barrel walk, the
 ## crowd and the Lantern Duel round the Great Lantern, the run and the cart
 ## at midnight, the dawn, the riders and the escape through the gardens
@@ -1708,8 +1709,9 @@ func build_props() -> void:
 		var r: Node3D = houses[inn].root
 		# against the wall just south of the door (its middle is at x -0.6),
 		# end on, between it and the model's barrels (x -3.6 and -4.6), clear
-		# of the way out and of where the player comes out (SPAWNS.inn)
-		for k in [[Vector3(-2.35, 0, 3.3), PI * 0.5 + 0.04, 2]]:
+		# of the way out and of where the player comes out (SPAWNS.inn). One
+		# high: a second crate on top covered the corner of the window above
+		for k in [[Vector3(-2.35, 0, 3.3), PI * 0.5 + 0.04, 1]]:
 			var p := to_local(r.to_global(k[0]))
 			crates.append([Vector2(p.x, p.z), r.rotation.y + float(k[1]), k[2]])
 	place_props(root, SACKS_MODEL, sacks)

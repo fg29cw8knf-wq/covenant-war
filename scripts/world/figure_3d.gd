@@ -59,6 +59,7 @@ const OWN_GAIT := {
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
+const MAX_TURN := 10.0     # rad/s at most (a half turn in a third of a second)
 ## Clips that can't be done sitting down: asking for one stands them up.
 const STANDING_ONLY := ["walk", "run", "sneak", "strafe_left", "jump", "sit", "fall", "death", "roll", "flying_kick", "lift"]
 ## The bones sitting takes over from a clip (the rest go on as the clip has them).
@@ -266,6 +267,25 @@ func pose(clip: String, at: float, blend := 0.2) -> void:
 		anim.seek(t, true)
 
 
+## Carries on with a clip held by pose() from `from` (a fraction of its
+## length) to its end, then back to standing; returns when it's done (a fall
+## held down while someone's pinned, then its own getting up).
+func resume(from := -1.0, speed := 1.0) -> void:
+	if anim == null or _action == "" or not anim.has_animation(_action):
+		return
+	var clip := _action
+	_pose_n += 1   # (a pose() still easing in mustn't pause it again)
+	var a := anim.get_animation(clip)
+	anim.speed_scale = speed
+	anim.play(clip)
+	if from >= 0.0:
+		anim.seek(a.length * clampf(from, 0.0, 1.0), true)
+	var left := (a.length - anim.current_animation_position) / maxf(speed, 0.01)
+	await get_tree().create_timer(maxf(0.05, left - 0.25)).timeout
+	if _action == clip:
+		release(0.3)
+
+
 ## Back to standing, walking or talking.
 func release(blend := 0.3) -> void:
 	_action = ""
@@ -425,9 +445,10 @@ func bone_pos(bone: String) -> Vector3:
 
 func _process(delta: float) -> void:
 	_t += delta
-	# turn towards where we're facing
+	# turn towards where we're facing (easing in, but never faster than a
+	# person turns: a half turn takes a third of a second, not a frame or two)
 	var d := wrapf(_want_yaw - _yaw, -PI, PI)
-	_yaw += d * minf(1.0, delta * TURN_RATE)
+	_yaw += clampf(d * minf(1.0, delta * TURN_RATE), -delta * MAX_TURN, delta * MAX_TURN)
 	_pivot.rotation = Vector3.ZERO
 	_pivot.position = Vector3.ZERO
 	if _lying > 0.001:
@@ -458,6 +479,32 @@ func _process(delta: float) -> void:
 
 ## The ground (m/s) a walking clip covers at its own speed on this body; 0
 ## for a clip that isn't a gait.
+## A hand's target is found by its path from the hand: when the thing held is
+## handed on (re-parented: the drum from Corin to you, the crate put down),
+## the old path finds nothing and the arm would drop to the clip in one frame.
+## The path follows the node instead, wherever it now is: checked by
+## KeepTargets just before the hands are solved each frame.
+class KeepTargets:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		if is_instance_valid(fig):
+			fig._keep_targets()
+
+
+func _keep_targets() -> void:
+	for side in _ik:
+		var ik = _ik[side]
+		if ik == null or not is_instance_valid(ik) or not (ik as TwoBoneIK3D).active or not ik.has_meta("target"):
+			continue
+		var t = ik.get_meta("target")
+		if is_instance_valid(t) and t is Node3D and (t as Node3D).is_inside_tree():
+			var p: NodePath = (ik as TwoBoneIK3D).get_path_to(t)
+			if p != (ik as TwoBoneIK3D).get_target_node(0):
+				(ik as TwoBoneIK3D).set_target_node(0, p)
+
+
 func _gait_pace(clip: String) -> float:
 	var own: Dictionary = OWN_GAIT.get(_model_name, {})
 	if own.has(clip):
@@ -607,6 +654,12 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 		return
 	var pre := "Left" if side == "left" else "Right"
 	if ik == null:
+		if not _skel.has_node("KeepTargets"):
+			var kt := KeepTargets.new()
+			kt.name = "KeepTargets"
+			kt.fig = self
+			_skel.add_child(kt)
+			_skel.move_child(kt, 0)   # (before the hands: modifiers run in order)
 		ik = TwoBoneIK3D.new()
 		ik.name = pre + "Reach"
 		ik.setting_count = 1
@@ -628,6 +681,7 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 		ik.set_pole_node(0, ik.get_path_to(pole))
 		_ik[side] = ik
 	ik.set_target_node(0, ik.get_path_to(target))
+	ik.set_meta("target", target)   # (followed if it's moved elsewhere: _keep_targets)
 	ik.active = true
 	var on := create_tween()
 	on.tween_property(ik, "influence", 1.0, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)

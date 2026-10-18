@@ -133,12 +133,20 @@ func event(name: String) -> void:
 	if lines.is_empty():
 		return
 	_shown[name] = true
+	await _rival_done()
 	for step in lines:
 		if (step as Dictionary).has("do"):
 			await _instruct(step)
 		else:
 			await _explain(step)
 	_show_head()
+
+
+## Bram lets the rival's line be read before he speaks (both at once, his box
+## lay over theirs).
+func _rival_done() -> void:
+	if screen != null and screen.has_method("_bark_gone"):
+		await screen._bark_gone()
 
 
 ## A one-off lesson for something seen for the first time (a condition, a
@@ -149,6 +157,7 @@ func lesson(id: String, text: String, p_group: String, p_focus: String = "", who
 		return
 	text = first_time_line(id, text)
 	Game.learn(id, p_group, who, text)
+	await _rival_done()
 	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
 	_show_head()
 
@@ -236,7 +245,12 @@ func allows(kind: String, what = null) -> bool:
 
 
 ## The player did what was asked (call after allows() said yes). Any
-## explanations queued behind it show now, before the next instruction.
+## explanations queued behind it show now, before the next instruction;
+## except after a step the duel then plays out (an attack or a Rite on its
+## target, a Totem called into its slot): those wait until the duel comes
+## back to the player (at_main()), so a line the play itself brings (Bram's
+## "See that?" as the hit lands on a weakness, "Out it goes" at a knockout)
+## comes first, in the script's order, not behind the next one.
 func did(kind: String, what = null) -> void:
 	if _current_do().is_empty() or not allows(kind, what):
 		return
@@ -246,6 +260,10 @@ func did(kind: String, what = null) -> void:
 		_did_step.emit()
 		return
 	queue.pop_front()
+	if kind in ["target", "slot"]:
+		if not _line_up:
+			_hide()
+		return
 	_continue()
 
 
@@ -409,8 +427,11 @@ func _hide() -> void:
 
 ## Top centre, unless that would cover what's being pointed at.
 func _place_box() -> void:
-	var sz := box.get_combined_minimum_size()
-	box.size = sz
+	# drawn at the player's text size (Options: Text and buttons size)
+	var k := SafeArea.ui_scale()
+	box.scale = Vector2(k, k)
+	box.size = box.get_combined_minimum_size()
+	var sz := box.size * k
 	var x := (1920.0 - sz.x) * 0.5
 	var f: Rect2 = screen.tutor_rect(focus) if focus != "" else Rect2()
 	var spots := [Vector2(x, 92), Vector2(x, 470 - sz.y * 0.5), Vector2(x, 600)]

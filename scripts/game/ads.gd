@@ -11,7 +11,8 @@ extends Node
 ##   * Retrying a lost duel counts as a duel, so a retry can bring one round,
 ##     but retrying itself is always free.
 ##   * After a story win, an advert the player chooses to watch doubles that
-##     win's Resonance, up to REWARDED_PER_DAY times a day.
+##     win's Resonance, up to REWARDED_PER_DAY times a day (never offered in
+##     the Prologue either).
 ## No banners, and nothing in the middle of a duel, a conversation or a menu.
 ##
 ## Until the AdMob plugin goes into the phone builds (see "Adverts" in the
@@ -41,10 +42,16 @@ func before_duel(spec: Dictionary, is_retry := false) -> void:
 	await _show("interstitial")
 
 
+## The Prologue (to Dask's road duel, its last duel, won) teaches the game:
+## Gary's rule is no adverts in it at all, full-screen or chosen.
+func in_prologue() -> bool:
+	return not Game.flag("beat_hunter")
+
+
 func _duel_ad_due(spec: Dictionary, _is_retry: bool) -> bool:
 	if not spec.get("story", false) or spec.get("no_ads", false):
 		return false
-	if not Game.flag("beat_hunter"):
+	if in_prologue():
 		return false      # the Prologue teaches the game: no adverts in it
 	if not _first_duel_done:
 		_first_duel_done = true
@@ -55,8 +62,11 @@ func _duel_ad_due(spec: Dictionary, _is_retry: bool) -> bool:
 	return _now() - _last_ad_time >= MIN_GAP
 
 
-## True when the "watch an advert to double this win" offer can be made.
+## True when the "watch an advert to double this win" offer can be made
+## (never in the Prologue).
 func can_offer_rewarded() -> bool:
+	if in_prologue():
+		return false
 	if _real_network() == null and not bool(Game.settings.get("ad_previews", true)):
 		return false
 	var st := _state()

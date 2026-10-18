@@ -46,13 +46,23 @@ var cam: Camera3D
 var player: CharacterBody3D
 var player_doll: PaperDoll
 var npcs: Array = []       # {def, body, doll}
-var busy := false          # talking, in a menu or a cutscene
+var busy := false:         # talking, in a menu or a cutscene
+	set(v):
+		var was := busy
+		busy = v
+		if was and not v and is_inside_tree():
+			_refresh_markers.call_deferred()   # (hidden while busy: back now)
 var _move_target = null    # Vector3 or null
 var _talk_target = null    # npc dict to talk to on arrival
 var _near = null           # npc dict in range
 var _focus := Vector3.ZERO
 var _stuck_time := 0.0
-var cine := false          # a cutscene is driving the camera
+var cine := false:         # a cutscene is driving the camera
+	set(v):
+		var was := cine
+		cine = v
+		if was and not v and is_inside_tree():
+			_refresh_markers.call_deferred()
 var _shake := 0.0
 var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
 var _zoom := 1.0           # the zoom the camera is at now (it eases to the setting)
@@ -113,6 +123,11 @@ func _arrive() -> void:
 	var key := "arrived_" + area_id
 	if not Game.flag(key) and area.get_script_constant_map().has("INTRO"):
 		area.intro_frame(self)   # start the camera on the intro's first shot before the fade
+	if not Game.flag(key):
+		# the arrival film has the player from the first frame: no walking
+		# off (or buttons) while it fades in
+		busy = true
+		hud.set_controls_visible(false)
 	await hud.fade(0.0, 0.6)
 	# no place-name card over a story film picking up part-way
 	if not (area.get_script_constant_map().has("RESUMES") and area.starts_black()):
@@ -571,10 +586,17 @@ func _wants_duel(def: Dictionary) -> bool:
 	return need == "" or bool(Game.flag(need))
 
 
+## The badges over people's heads (a duel, someone to talk to). None while
+## the world is busy (a conversation, a scene, a film): a nested part of a
+## talk ending, or the player moved by a scene, used to put them back up in
+## the middle of it (Corin's duel badge over him as he talked).
 func _refresh_markers() -> void:
+	var hide := busy or cine
 	for n in npcs:
 		var kind := ""
-		if _wants_duel(n.def):
+		if hide:
+			pass
+		elif _wants_duel(n.def):
 			kind = "duel"
 		elif n == _near:
 			kind = "talk"
@@ -803,10 +825,13 @@ func _on_menu(action: String) -> void:
 ## Glides the camera to `pos`, looking at `look`, over `secs` seconds.
 func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 	cine = true
+	var token := Cine.take_camera(self)   # (a film's glide still running stops)
 	var from_pos := cam.global_position
 	var from_look := from_pos + (-cam.global_transform.basis.z) * 10.0
 	var tw := create_tween()
 	tw.tween_method(func(u: float) -> void:
+		if not Cine.has_camera(self, token):
+			return
 		var e := u * u * (3.0 - 2.0 * u)
 		cam.global_position = from_pos.lerp(pos, e)
 		cam.look_at(from_look.lerp(look, e), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
@@ -815,6 +840,7 @@ func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 
 ## Hands the camera back to the player.
 func end_cine() -> void:
+	Cine.take_camera(self)   # (no glide left over from the film fights the player's camera)
 	cine = false
 
 
