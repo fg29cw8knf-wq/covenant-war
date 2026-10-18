@@ -176,7 +176,8 @@ func show_deck(i: int) -> void:
 	_root.add_child(_info)
 	_info.reset_size()
 	var vs := _root.get_viewport_rect().size
-	_info.position = Vector2(vs.x - _info.size.x - 48, (vs.y - _info.size.y) * 0.42)
+	var m := SafeArea.insets()
+	_info.position = Vector2(vs.x - m.z - _info.size.x - 48, (vs.y - _info.size.y) * 0.42)
 	_info.modulate.a = 0.0
 	create_tween().tween_property(_info, "modulate:a", 1.0, 0.3)
 
@@ -202,7 +203,9 @@ func _process(delta: float) -> void:
 	if _glow != null and is_instance_valid(_glow) and _glow.get_parent() != null:
 		_glow.light_energy = 1.2 + 0.3 * sin(_t * 3.0)
 	_objective.modulate.a = 1.0 if listening or _info != null else 0.7
-	# just under the film's top bar, whatever the screen
+	# just under the film's top bar, whatever the screen, clear of a phone's
+	# notch and rounded corners
 	var vs := _root.get_viewport_rect().size
-	_objective.position = Vector2(40, vs.y * CineOverlay.BAR + 14.0)
-	_objective.size.x = minf(1100.0, vs.x - 80.0)
+	var m := SafeArea.insets()
+	_objective.position = Vector2(40.0 + m.x, maxf(vs.y * CineOverlay.BAR, m.y) + 14.0)
+	_objective.size.x = minf(1100.0, vs.x - 80.0 - m.x - m.z)

@@ -2653,8 +2653,11 @@ static func _burning(w: World) -> void:
 	var throw_from := [inn_at + Vector3(7.5, 0, -3.5), inn_at + Vector3(8.5, 0, -1.0), inn_at + Vector3(8.0, 0, 1.5)]
 	for k in 3:
 		Cine.path(w, hunters[k], [Vector3(-2.0, 0, 1.0 + k), throw_from[k]], 5.0, "run")
+	# the rest go to search the barns on the east side (clear of the
+	# villagers, Tam, and Gary's sacks behind the hay cart)
+	var barns := [Vector3(14.0, 0, 14.0), Vector3(14.5, 0, 9.0), Vector3(15.0, 0, 3.0)]
 	for k in range(3, hunters.size()):
-		Cine.path(w, hunters[k], [Vector3(randf_range(-8, 8), 0, randf_range(-6, 10))], 3.0, "run")
+		Cine.path(w, hunters[k], [barns[(k - 3) % barns.size()]], 3.0, "run")
 	_woodpile(v, WOODPILE + Vector3(1.4, 0, -1.4))
 	Cine.path(w, "bram", [WOODPILE + Vector3(-0.6, 0, 0.5)], 4.4, "run")
 	var wy := v.height(WOODPILE.x, WOODPILE.z)
