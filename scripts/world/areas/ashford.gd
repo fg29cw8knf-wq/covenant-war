@@ -3064,9 +3064,8 @@ static func _cellar(w: World) -> void:
 	tt.tween_property(td, "rotation:x", -1.75, 0.9).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await tt.finished
 	_tunnel_timbers(v, trap)
-	var hole_glow := Cine.light(w, trap + Vector3(0, -0.9, 0), Color(1.0, 0.62, 0.32), 0.7, 3.0)
 	w.shake(0.06)
-	Cine.shot(w, trap + Vector3(1.4, 1.8, 1.8), trap + Vector3(0.2, -0.4, 0), 42.0)
+	Cine.shot(w, trap + Vector3(2.0, 1.6, 1.9), trap + Vector3(0.3, 0.45, 0.0), 46.0)
 	await Cine.wait(w, 1.2)
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
@@ -3074,8 +3073,6 @@ static func _cellar(w: World) -> void:
 	await Cine.fade(w, 1.0, 1.0)
 	if is_instance_valid(sack):
 		sack.queue_free()
-	if is_instance_valid(hole_glow):
-		hole_glow.queue_free()
 	InnRooms.outside(v)
 	for n in w.npcs:
 		n.doll.visible = true
