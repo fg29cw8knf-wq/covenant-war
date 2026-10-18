@@ -10,6 +10,7 @@ extends Node
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
 ##       res://tests/side_quests_test.tscn -- <out_dir> [scenario ...]
 ##   godot --headless res://tests/side_quests_test.tscn -- <out_dir>     # just the checks
+## A phone's safe area: add --safe-area=93,0,93,32 (with --resolution 1434x660).
 ## Scenarios: hub mercy_won mercy_lost mercy_swore fen_won fen_lost resume pip_aldric
 ## pip_lost pip_wren scar_told scar_nothing hale_won hale_lost hale_stood ledger (default: all).
 
@@ -33,7 +34,9 @@ var n := 0
 func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
-	var which: Array = Array(args.slice(1)) if args.size() > 1 else ALL
+	var which: Array = Array(args.slice(1)).filter(func(a): return not String(a).begins_with("--"))   # (--safe-area=... is SafeArea's)
+	if which.is_empty():
+		which = ALL
 	Game.settings["first_steps"] = 2
 	Game.settings["duel_3d"] = false
 	for s in which:
