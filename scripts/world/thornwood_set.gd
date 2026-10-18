@@ -33,6 +33,8 @@ var crest_fires: Array = []
 var inn_root: Node3D
 var fireflies: GPUParticles3D
 var campfire_light: OmniLight3D
+var campfire_flames: GPUParticles3D
+var campfire_embers: GPUParticles3D
 
 
 func _ready() -> void:
@@ -297,6 +299,7 @@ func build_camp() -> void:
 	f.material_override = mats.flame
 	f.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(f)
+	campfire_flames = f
 	var e := GPUParticles3D.new()
 	e.amount = 30
 	e.lifetime = 2.6
@@ -319,6 +322,7 @@ func build_camp() -> void:
 	e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	e.visibility_aabb = AABB(Vector3(-4, -1, -4), Vector3(8, 10, 8))
 	root.add_child(e)
+	campfire_embers = e
 	campfire_light = OmniLight3D.new()
 	campfire_light.light_color = Color(1.0, 0.52, 0.2)
 	campfire_light.light_energy = 3.2
@@ -520,6 +524,8 @@ func build_grass_here() -> void:
 ## The sky and light for each part:
 ##   "river"  night, the tear's scar in the sky, Ashford burning on the crest
 ##   "camp"   night in the wood
+##   "morning" the second day at the camp: grey-gold light through the trees,
+##            the fire burned down to embers
 ##   "road"   a dark blue night, the last of the dusk in the west
 ##   "ridge"  dawn over the plains, Solhaven catching the sun
 func set_scene(kind: String) -> void:
@@ -527,7 +533,23 @@ func set_scene(kind: String) -> void:
 	if sol != null:
 		sol.visible = kind == "ridge"
 	sky_mat.set_shader_parameter("tear_open", 0.25 if kind != "ridge" else 0.12)
+	if campfire_flames != null:
+		campfire_flames.emitting = kind != "morning"
+		campfire_level(0.35 if kind == "morning" else 3.2)
 	match kind:
+		"morning":
+			sky_mat.set_shader_parameter("dawn", 0.75)
+			sky_mat.set_shader_parameter("tear_open", 0.14)
+			sky_mat.set_shader_parameter("sun_dir", Vector3(0.7, 0.2, 0.68))
+			moon_light.light_color = Color(1.0, 0.86, 0.68)
+			moon_light.light_energy = [1.6, 1.5, 1.4][quality]
+			moon_light.look_at_from_position(Vector3.ZERO, -Vector3(0.7, 0.32, 0.64).normalized(), Vector3.UP)
+			tear_light.visible = false
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+			env.ambient_light_color = Color(0.62, 0.66, 0.7)
+			env.ambient_light_energy = 0.85
+			env.fog_light_color = Color(0.6, 0.62, 0.58)
+			env.fog_density = 0.006
 		"ridge":
 			sky_mat.set_shader_parameter("dawn", 1.0)
 			sky_mat.set_shader_parameter("sun_dir", Vector3(0.55, 0.12, 0.83))
@@ -559,6 +581,14 @@ func set_scene(kind: String) -> void:
 			_night_ambient(0.6)
 			env.fog_light_color = Color(0.04, 0.05, 0.10)
 			env.fog_density = 0.0025 if kind == "camp" else 0.0012
+
+
+## How bright the campfire burns (it flickers about this).
+func campfire_level(e: float) -> void:
+	for fl in flicker_lights:
+		if fl[0] == campfire_light:
+			fl[1] = e
+	campfire_light.light_energy = e
 
 
 func _night_ambient(e: float) -> void:
