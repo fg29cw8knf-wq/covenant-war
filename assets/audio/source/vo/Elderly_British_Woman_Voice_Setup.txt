@@ -1,0 +1,69 @@
+ELDERLY BRITISH WOMAN — OLDER DELIVERY
+Updated: 18 October 2026
+Working label: Old Ledger Woman
+
+USER'S VOICE BRIEF
+A very old woman's voice, low, dry and exact, unhurried. Quietly ironic, as if reading figures from a ledger she has kept for a very long time. Calm, never theatrical, never warm, every word clear. British English. No breathiness, no music, no effects.
+
+LATEST REVISION
+The user requested that she sound even older, then supplied a revised script with 15 spoken clips.
+The same British base voice is retained, with stronger age, low-register and dry rasp directions.
+Current audio reference: WAV/vo_01.wav in Elderly_British_Woman_Narration.zip.
+
+PERFORMANCE DIRECTION
+A woman in her late eighties or nineties: low register, dry, slightly rough-edged and precise.
+Keep the delivery calm and unhurried, without theatrical frailty or a caricatured witch voice.
+Irony is understated. Do not add smiles, chuckles, warmth or dramatic emphasis.
+Stay fully voiced and clearly articulated at quiet moments. Do not whisper or add breathiness.
+Use a single clean voice without music, ambience, reverb, doubled voices or other added effects.
+
+REUSABLE BASE SETTINGS
+Service: Runway
+Model: eleven_v3
+Base preset: Marlene
+Resolved base voice ID: SS2U4vq6kgD4fTNVtd4k
+Language code: en
+Common delivery tags:
+[very old woman] [low-pitched] [raspy] [measured] [deadpan]
+
+Start each line with those common tags, then apply its individual delivery tags and script from generation_settings.json.
+Generation speed: generally 0.80; vo_06 and vo_13 use 0.76, vo_11 and vo_12 use 0.82, vo_15 uses 0.78.
+Some exports receive a small pitch-preserving tempo adjustment to meet the unhurried pacing brief. Exact factors are saved per line in generation_settings.json.
+No pitch shift, background audio or other added sound effects were used.
+
+FILES
+15 spoken clips:
+vo_01.wav
+vo_02.wav
+vo_03.wav
+vo_04.wav
+vo_05.wav
+vo_06.wav
+vo_07a.wav
+vo_08.wav
+vo_09a.wav
+vo_09b.wav
+vo_11.wav
+vo_12.wav
+vo_12b.wav
+vo_13.wav
+vo_15.wav
+
+vo_07a now uses the updated line about the other six.
+vo_09a and vo_09b were recorded as one flowing sentence, then split at a shortened comma pause.
+vo_10 is music only; no spoken clip is included.
+The existing vo_06 and vo_13 takes are retained because their wording and directions match.
+WAV: mono, 44,100 Hz, 16-bit PCM.
+MP3 editing/reference copies are also included.
+Narration_Lines_and_Durations.csv contains the exact words, delivery notes and measured WAV durations.
+
+VOICE STATUS
+This is a directed performance from an existing British voice, not a newly trained or cloned custom voice. The source preset is labelled middle aged by the provider; delivery tags request the much older interpretation. The age quality remains approximate.
+The selected base identity stays consistent across the set, while phrasing and inflection may vary between generated takes.
+WAV files are decoded from the generated MP3 recordings and tempo-adjusted where recorded; they do not contain more source detail than the original MP3.
+
+PREVIOUS REFERENCE
+Original ledger sample task: d757f683-0eab-4dfb-b949-00b6131e1669
+Original settings: Marlene / eleven_v3 / speed 0.86 / [elderly] [low-pitched] [measured] [dryly]
+The new set uses the stronger older delivery above.
+
