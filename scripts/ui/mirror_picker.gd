@@ -146,7 +146,7 @@ class Face:
 	func _draw() -> void:
 		var off := Vector2(sin(_t * 60.0) * 10.0 * _shake, 0)
 		var w := size.x
-		var oval := Rect2(Vector2(10, 4) + off, Vector2(w - 20, size.y - 70))
+		var oval := Rect2(Vector2(10, 14) + off, Vector2(w - 20, size.y - 110))
 		var c := oval.get_center()
 		var rx := oval.size.x * 0.5
 		var ry := oval.size.y * 0.5
@@ -180,6 +180,6 @@ class Face:
 			draw_arc(c, maxf(rx, ry) + 10.0, 0, TAU, 48, Color(UITheme.GOLD, 0.15 * pulse), 6.0, true)
 		var f2 := CardFace.font("display_bold")
 		var label := "Look %s" % look.to_upper()
-		CardFace.text(self, f2, Vector2(off.x, size.y - 60), label, 30, UITheme.GOLD if made else UITheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, w)
+		CardFace.text(self, f2, Vector2(off.x, size.y - 50), label, 30, UITheme.GOLD if made else UITheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, w)
 		if not made:
-			CardFace.text(self, CardFace.font("body"), Vector2(off.x, size.y - 26), "Coming soon", 22, UITheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, w)
+			CardFace.text(self, CardFace.font("body"), Vector2(off.x, size.y - 16), "Coming soon", 22, UITheme.TEXT_DIM, HORIZONTAL_ALIGNMENT_CENTER, w)

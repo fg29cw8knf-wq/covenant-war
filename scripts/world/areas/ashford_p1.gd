@@ -19,10 +19,9 @@ extends RefCounted
 
 const STAGES := ["attic", "taproom", "street", "green"]
 
-## The lantern crate: Gary's model (assets/models/ashford/crate.glb, 1.1 m
+## The lantern crate: Gary's model (AshfordVillage.make_crate(), 1.11 m
 ## across as made) at a size one person carries in both arms, its lid left
-## off so the lanterns show; a drawn crate until the model is in.
-const CRATE_MODEL := "res://assets/models/ashford/crate.glb"
+## off so the lanterns show; a drawn crate if the model isn't there.
 const CRATE_SCALE := 0.55
 const CRATE_CUT := 0.76            # the model's height (m, as made) above which the lid is left off
 ## Where the crate rides in the player's arms (their own frame), and where
@@ -55,6 +54,11 @@ const DANCERS := [["p1_dance_a", "farmer"], ["p1_dance_b", "refugee"], ["p1_danc
 
 static func village(w: World) -> AshfordVillage:
 	return w.get_meta("village") as AshfordVillage
+
+
+## A meta value, or null if it isn't set (get_meta(key, null) complains).
+static func meta(o: Object, key: String) -> Variant:
+	return o.get_meta(key) if o != null and o.has_meta(key) else null
 
 
 static func coach(w: World) -> WorldCoach:
@@ -93,31 +97,17 @@ static func crate(v: AshfordVillage) -> Node3D:
 	var w := 0.61
 	var d := 0.51
 	var h := 0.47
-	if ResourceLoader.exists(CRATE_MODEL):
-		var inst: Node3D = load(CRATE_MODEL).instantiate()
-		inst.scale = Vector3.ONE * CRATE_SCALE
-		n.add_child(inst)
-		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
-			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	if ResourceLoader.exists(AshfordVillage.CRATE_MODEL):
+		var made := v.make_crate()
+		made.scale = Vector3.ONE * CRATE_SCALE
+		n.add_child(made)
+		for mi: MeshInstance3D in made.find_children("*", "MeshInstance3D", true, false):
 			for s in mi.mesh.get_surface_count():
 				var m := mi.get_active_material(s)
 				if m is StandardMaterial3D:
 					mi.set_surface_override_material(s, _lidless(m as StandardMaterial3D))
-		var box := AABB()
-		var first := true
-		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
-			var xf := Transform3D.IDENTITY
-			var p: Node = mi
-			while p != null and p != n:
-				if p is Node3D:
-					xf = (p as Node3D).transform * xf
-				p = p.get_parent()
-			var b := xf * mi.get_aabb()
-			box = b if first else box.merge(b)
-			first = false
-		if not first:
-			w = box.size.x
-			d = box.size.z
+		w = AshfordVillage.CRATE_SIZE.x * CRATE_SCALE
+		d = AshfordVillage.CRATE_SIZE.z * CRATE_SCALE
 		h = CRATE_CUT * CRATE_SCALE
 	else:
 		# planks round an open box, a darker inside
@@ -417,7 +407,7 @@ static func _rope(r: Node3D, a: Vector3, b: Vector3) -> void:
 ## Puts the hoist's hook at `at` (from the Lantern's foot), on its line from
 ## the pulley.
 static func _set_hook(v: AshfordVillage, at: Vector3) -> void:
-	var hoist: Node3D = v.get_meta("p1_hoist", null)
+	var hoist: Node3D = meta(v, "p1_hoist")
 	if hoist == null:
 		return
 	(hoist.get_node("Hook") as Node3D).position = at
@@ -518,7 +508,7 @@ static func undress(w: World) -> void:
 			for ba in (f as Figure3D).find_children("P1_*", "BoneAttachment3D", true, false):
 				ba.queue_free()
 			for c in (f as Figure3D).get_node("Pivot").get_children():
-				if c == village(w).get_meta("p1_drum", null):
+				if c == meta(village(w), "p1_drum"):
 					# the drum goes down where they stand (it's carried home later)
 					var at: Vector3 = (c as Node3D).global_position
 					c.reparent(village(w).get_meta("p1_root"))
@@ -526,8 +516,14 @@ static func undress(w: World) -> void:
 				elif c.has_meta("p1_prop"):
 					c.queue_free()
 			(f as Figure3D).let_go(0.0)
+			if f.has_method("stand"):
+				f.call("stand", 0.0)
 			(f as Figure3D).release(0.0)
 			(f as Figure3D).hand_light(null)
+		var b := Cine.body(w, who)
+		if b != null and Cine._on_terrain(w, b):
+			b.global_position.y = Cine.ground(w, b.global_position)
+	_solid(w, true)
 	w.set_meta("bram_seated", false)
 
 
@@ -567,17 +563,15 @@ const POCKET_ROT := Vector3(-0.2, 0.0, 1.45)
 
 
 ## Bram on his stool by the Lantern, facing the green's south side.
+const BRAM_FACES := Vector3(-0.33, 0.0, 0.944)
+
+
 static func bram_sit(w: World) -> void:
-	var b := Cine.body(w, "bram")
-	var f = Cine.fig(w, "bram")
-	if b == null:
+	if Cine.body(w, "bram") == null:
 		return
-	var v := village(w)
-	var at := STOOL + Vector3(0, 0, 0.16)
-	at.y = v.height(at.x, at.z)
-	Cine.place(w, "bram", at, at + Vector3(-0.35, 0, 1.0))
-	if f is Figure3D:
-		(f as Figure3D).pose("sit", 1.0, 0.0)
+	var at := STOOL
+	at.y = village(w).height(at.x, at.z)
+	sit_down(w, "bram", at, BRAM_FACES, STOOL_H, 0.0)
 	w.set_meta("bram_seated", true)
 
 
@@ -586,23 +580,20 @@ static func bram_stand(w: World) -> void:
 	if not w.get_meta("bram_seated", false):
 		return
 	w.set_meta("bram_seated", false)
-	var f = Cine.fig(w, "bram")
-	if f is Figure3D:
-		(f as Figure3D).release(0.35)
-	await Cine.wait(w, 0.35)
+	await stand_up(w, "bram", 0.35)
 
 
 ## Where Nell sits on her bench (its west half), or the player beside her
-## (the east half), and the way the bench faces.
+## (the east half): the ground under the middle of that half of the seat.
 static func bench_seat(w: World, east := false) -> Vector3:
-	var bn: Node3D = village(w).get_meta("p1_bench", null)
+	var bn: Node3D = meta(village(w), "p1_bench")
 	if bn == null:
 		return BENCH
-	return bn.to_global(Vector3(0.4 if east else -0.4, 0.0, 0.12))
+	return bn.to_global(Vector3(0.4 if east else -0.4, 0.0, 0.0))
 
 
 static func bench_facing(w: World) -> Vector3:
-	var bn: Node3D = village(w).get_meta("p1_bench", null)
+	var bn: Node3D = meta(village(w), "p1_bench")
 	if bn == null:
 		return Vector3.FORWARD
 	var f := bn.global_transform.basis.z
@@ -613,14 +604,92 @@ static func bench_facing(w: World) -> Vector3:
 static func nell_sit(w: World) -> void:
 	var f = Cine.fig(w, "nell")
 	if f is Figure3D:
-		var seat := bench_seat(w)
-		Cine.place(w, "nell", seat, seat + bench_facing(w))
-		(f as Figure3D).pose("sit", 1.0, 0.0)
+		sit_down(w, "nell", bench_seat(w), bench_facing(w), BENCH_H, 0.0)
 	else:
 		# a cut-out can't sit: she stands at the bench's end
-		var bn: Node3D = village(w).get_meta("p1_bench", null)
+		var bn: Node3D = meta(village(w), "p1_bench")
 		if bn != null:
 			Cine.place(w, "nell", bn.to_global(Vector3(-1.3, 0, 0.15)), bn.to_global(Vector3(-0.6, 0, 2.5)))
+
+
+## The tops of Bram's stool and Nell's bench (m).
+const STOOL_H := 0.46
+const BENCH_H := 0.475
+## Until a 3D figure can sit on a seat (Figure3D.sit(), coming with the
+## character models), the sit clip is held this far through, where it's
+## lowering itself onto a chair: hips `SIT_HIPS` up and `SIT_BACK` behind
+## the feet, knees at the seat's edge, feet on the ground (as measured on
+## the player's and Bram's models; the clip ends sat on the floor).
+const SIT_AT := 0.3
+const SIT_HIPS := 0.57
+const SIT_BACK := 0.28
+
+
+## Sits someone on a seat `height` m up, their hips over `at` (the ground
+## under the middle of the seat), facing `fwd`. While the player sits they
+## don't collide (the bench is solid, and Nell is beside them).
+static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45) -> void:
+	var b := Cine.body(w, who)
+	var f = Cine.fig(w, who)
+	if b == null:
+		return
+	if who == "player":
+		_solid(w, false)
+	if not (f is Figure3D):
+		Cine.place(w, who, at, at + fwd)
+		return
+	var fig := f as Figure3D
+	var to := at
+	if not fig.has_method("sit"):
+		to = at + fwd * SIT_BACK + Vector3(0, maxf(0.0, height + 0.1 - SIT_HIPS), 0)
+	var can_sit := fig.has_method("sit")
+	if blend > 0.0:
+		# (from just in front of the seat: a step back and down onto it;
+		# Figure3D.sit() takes the spot they're on as the seat, so it waits)
+		Cine.look(w, who, b.global_position + fwd)
+		var tw := w.create_tween()
+		tw.tween_property(b, "global_position", to, blend).set_trans(Tween.TRANS_SINE)
+		if not can_sit:
+			fig.pose("sit", SIT_AT, blend)
+		await tw.finished
+		if can_sit:
+			fig.call("sit", height, blend)
+		return
+	Cine.place(w, who, to, to + fwd)
+	b.global_position = to
+	fig.snap_face(fwd)
+	if can_sit:
+		fig.call("sit", height, 0.0)
+	else:
+		fig.pose("sit", SIT_AT, 0.0)
+
+
+## Up off a seat, standing on the ground in front of it.
+static func stand_up(w: World, who: String, blend := 0.4) -> void:
+	var b := Cine.body(w, who)
+	var f = Cine.fig(w, who)
+	if b == null:
+		return
+	if f is Figure3D:
+		if f.has_method("stand"):
+			f.call("stand", blend)
+		else:
+			(f as Figure3D).release(blend)
+	var g := b.global_position
+	if Cine._on_terrain(w, b):
+		g.y = Cine.ground(w, g)
+	var tw := w.create_tween()
+	tw.tween_property(b, "global_position", g, blend).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	if who == "player":
+		_solid(w, true)
+
+
+## The player's body solid (bumping into things) or not.
+static func _solid(w: World, on: bool) -> void:
+	for c in w.player.get_children():
+		if c is CollisionShape3D:
+			(c as CollisionShape3D).set_deferred("disabled", not on)
 
 
 ## Holds the NPCs back while a lesson step waits ("Find Tam"): none of them
@@ -856,6 +925,7 @@ static func _follow_step(w: World, who: String, keep: float, dt: float, speed: f
 		var step := minf(speed * dt, dist - keep)
 		var np := b.global_position + d.normalized() * step
 		if Cine._on_terrain(w, b):
+			np = _round_props(w, np)
 			np.y = Cine.ground(w, np)
 		b.global_position = np
 		f.walking = true
@@ -868,6 +938,23 @@ static func _follow_step(w: World, who: String, keep: float, dt: float, speed: f
 		if f is Figure3D:
 			(f as Figure3D).pace = 0.0
 		f.look_toward(p, w.cam)
+
+
+## A step that would take someone into a pile of Gary's sacks or a stack of
+## his crates slides round it instead.
+static func _round_props(w: World, at: Vector3) -> Vector3:
+	var v := village(w)
+	if v == null:
+		return at
+	for pr in v.props_placed:
+		var c: Vector2 = pr[0]
+		var r := float(pr[1]) + 0.35
+		var off := Vector2(at.x, at.z) - c
+		if off.length() < r:
+			off = off.normalized() * r if off.length() > 0.001 else Vector2(r, 0)
+			at.x = c.x + off.x
+			at.z = c.y + off.y
+	return at
 
 
 ## Someone (Bram, out of the inn) walks after the player until `on[0]` is false.
@@ -926,6 +1013,9 @@ const HUNG := [
 
 ## How near the Great Lantern counts as "at the green" (m).
 const GREEN_R := 6.5
+## Where the player puts the crate down: the Lantern's south side, clear of
+## the well, the bench and the stalls, a couple of steps from the hoist.
+const GREEN_SPOT := Vector3(0.9, 0.0, 2.5)
 ## Seconds without getting nearer the green before Bram says where it is.
 const DAWDLE_SECS := 14.0
 
@@ -940,6 +1030,11 @@ static func opening(w: World) -> void:
 	w.busy = true
 	w.hud.set_controls_visible(false)
 	mute_all_but(w, [], true)
+	# Bram teaches walking and talking himself, with the Objective line
+	# naming the buttons: the world's old standing hints never show
+	Game.settings["first_steps"] = 2
+	Game.save_settings()
+	w.hud.show_hint("")
 	var stage := String(Game.flag("p1_stage", "attic"))
 	var i := maxi(0, STAGES.find(stage))
 	if i <= 1:
@@ -966,9 +1061,6 @@ static func opening(w: World) -> void:
 			return
 	Game.set_flag("p1_stage", "done")
 	Game.set_flag("ash_started")
-	# Bram has taught walking and talking: the old standing hints never show
-	Game.settings["first_steps"] = 2
-	Game.save_settings()
 	Game.save_game()
 	mute_all_but(w, ["tam", "bram"])
 	w.end_cine()
@@ -1016,9 +1108,10 @@ static func _attic(w: World) -> void:
 	await Cine.wait(w, 0.4)
 	await w.run_steps(ATTIC, null)
 	w.hud.dialogue.close()
-	# the camera in the glass, looking back at them
-	var face := Cine.head(w, "player") - Vector3(0, 0.05, 0)
-	Cine.move(w, a.mirror + Vector3(-0.08, 0.06, 0.0), face, 0.8, 30.0)
+	# the camera in the glass, looking back at them: head and shoulders
+	# (they stand half a metre from it, so the lens is a wide one)
+	var face := Cine.head(w, "player") - Vector3(0, 0.12, 0)
+	Cine.move(w, a.mirror + Vector3(-0.06, 0.04, 0.0), face, 0.8, 56.0)
 	await Cine.wait(w, 0.9)
 	w.hud.set_controls_visible(true)
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
@@ -1198,7 +1291,7 @@ static func _crate_to_player(w: World, cr: Node3D) -> void:
 ## The crate in the player's arms (made again if the game was closed with it
 ## on the way).
 static func _crate_in_arms(w: World) -> Node3D:
-	var cr = w.get_meta("p1_crate", null)
+	var cr = meta(w, "p1_crate")
 	if cr != null and is_instance_valid(cr):
 		return cr
 	var c := crate(village(w))
@@ -1241,6 +1334,17 @@ static func _street(w: World) -> void:
 	await Cine.wait(w, 0.4)
 	await Cine.move(w, door + out * 1.2 - side * 0.8 + Vector3(0, 4.2, 0), Vector3(0.0, 3.0, 0.0), 3.2, 46.0)
 	await Cine.wait(w, 0.6)
+	# a few steps on down the street, Bram behind, to where the game's camera
+	# can follow them (it keeps to the village, and the inn's at its edge)
+	var from := door + out * 2.4
+	var lim := float(w.area.CAMERA_X_LIMIT) - 0.5
+	if absf(from.x) > lim:
+		var on := from.lerp(Vector3(0.0, from.y, 0.0), 1.0 - lim / absf(from.x))
+		on.y = v.height(on.x, on.z)
+		var behind := [true]
+		follow(w, "bram", 1.8, behind)
+		await Cine.path(w, "player", [on], 1.5)
+		behind[0] = false
 	await home(w, 1.2)
 	# their own feet now, Bram behind
 	mute_all_but(w, [], true)
@@ -1294,36 +1398,53 @@ static func _green(w: World) -> void:
 		put(w, "player", p, base)
 		put(w, "bram", p + Vector3(-1.6, 0, 0.6), base)
 		p = w.player.global_position
-	# Bram comes up beside them, and looks up at the top hook
-	var to_c := (base - p)
+	# on round to the Lantern's south side, clear of the well and the stalls,
+	# Bram coming up beside them
+	var spot := GREEN_SPOT
+	spot.y = v.height(spot.x, spot.z)
+	var to_c := (base - spot)
 	to_c.y = 0.0
 	to_c = to_c.normalized()
 	var side := to_c.cross(Vector3.UP).normalized()
-	var bram_to := p + side * 1.3 - to_c * 0.3
-	Cine.look(w, "player", base + Vector3(0, 3, 0))
-	Cine.shot(w, p - to_c * 3.2 - side * 2.0 + Vector3(0, 1.7, 0), p + to_c * 2.5 + Vector3(0, 2.4, 0), 44.0)
-	await Cine.path(w, "bram", [bram_to], 2.0)
-	var top := base + TOP_HOOK
-	Cine.look(w, "bram", top)
+	var bram_to := spot + side * 1.3 - to_c * 0.3
+	bram_to.y = v.height(bram_to.x, bram_to.z)
+	var wide := spot - to_c * 6.5 + side * 1.5 + Vector3(0, 3.2, 0)
+	Cine.shot(w, clear_cam(w, [wide, spot - to_c * 6.5 - side * 1.5 + Vector3(0, 3.6, 0), spot - to_c * 4.0 + Vector3(0, 5.0, 0)],
+		spot + Vector3(0, 1.2, 0)), spot + to_c * 1.5 + Vector3(0, 1.6, 0), 44.0)
+	Cine.path(w, "player", round_lantern(w, p, spot), 1.4)
+	await Cine.path(w, "bram", round_lantern(w, Cine.body(w, "bram").global_position, bram_to), 1.6)
+	var t := 0.0
+	while t < 8.0 and Vector2(w.player.global_position.x - spot.x, w.player.global_position.z - spot.z).length() > 0.15:
+		await w.get_tree().process_frame
+		t += w.get_process_delta_time()
+	p = w.player.global_position
+	# face to face beside the Lantern, and Bram looks up at the top hook
+	Cine.look(w, "player", bram_to)
+	Cine.look(w, "bram", p)
 	if bf is Figure3D:
 		(bf as Figure3D).hold("look_up", 1.0, 0.3)
-	Cine.move(w, p - to_c * 2.6 + side * 3.4 + Vector3(0, 1.4, 0), (p + bram_to) * 0.5 + Vector3(0, 1.6, 0), 0.8, 40.0)
+	# the two of them side on, the Lantern behind them
+	var mid := (p + bram_to) * 0.5 + Vector3(0, 1.6, 0)
+	var flat := (p + bram_to) * 0.5
+	Cine.move(w, clear_cam(w, [flat - to_c * 3.4 + side * 0.4 + Vector3(0, 1.1, 0), flat - to_c * 3.4 - side * 1.0 + Vector3(0, 1.2, 0),
+		p - to_c * 2.6 + side * 3.4 + Vector3(0, 1.4, 0), p - to_c * 3.8 + side * 1.0 + Vector3(0, 2.2, 0)], mid), mid + Vector3(0, 0.3, 0), 0.8, 42.0)
 	await w.run_steps(AT_GREEN, null)
 	w.hud.dialogue.close()
 	if bf is Figure3D:
 		(bf as Figure3D).release(0.3)
 	Cine.look(w, "bram", w.player.global_position)
-	# the crate down at the Lantern's foot, and the last lantern out of it
-	# (set down where they stand, just in front of them)
-	var spot := p + to_c * 0.62
-	spot.y = v.height(spot.x, spot.z)
-	Cine.move(w, spot - to_c * 2.8 - side * 2.2 + Vector3(0, 1.6, 0), spot + Vector3(0, 0.6, 0), 0.9, 42.0)
-	Cine.look(w, "player", spot)
+	# the crate down at the Lantern's foot, just in front of them, and the
+	# last lantern out of it
+	var crate_at := p + to_c * 0.62
+	crate_at.y = v.height(crate_at.x, crate_at.z)
+	Cine.move(w, clear_cam(w, [crate_at - to_c * 2.8 - side * 2.2 + Vector3(0, 1.6, 0), crate_at - to_c * 2.8 + side * 2.2 + Vector3(0, 1.6, 0)],
+		crate_at + Vector3(0, 0.6, 0)), crate_at + Vector3(0, 0.6, 0), 0.9, 42.0)
+	Cine.look(w, "player", crate_at)
 	if pf is Figure3D:
 		(pf as Figure3D).pose("lift", 0.42, 0.35)
 	await Cine.wait(w, 0.3)
 	var down := w.create_tween()
-	down.tween_property(cr, "global_position", spot, 0.45).set_trans(Tween.TRANS_SINE)
+	down.tween_property(cr, "global_position", crate_at, 0.45).set_trans(Tween.TRANS_SINE)
 	await down.finished
 	cr.reparent(village(w).get_meta("p1_root"))
 	cr.global_rotation = Vector3(0, 0.3, 0)
@@ -1348,22 +1469,21 @@ static func _green(w: World) -> void:
 	await home(w, 0.8)
 	await use(w, hook, "hook", REACH, base + HOOK_STAND, 0.38)
 	await _hang(w, last)
-	# Bram sends them off
-	var bp: Vector3 = Cine.body(w, "bram").global_position
-	var me: Vector3 = w.player.global_position
-	if bp.distance_to(me) > 2.4:
-		var dir := (bp - me)
-		dir.y = 0.0
-		await Cine.path(w, "bram", [me + dir.normalized() * 1.5], 2.0)
-		bp = Cine.body(w, "bram").global_position
-	Cine.look(w, "bram", me)
-	Cine.look(w, "player", bp)
-	Cine.two_shot(w, "player", "bram", 3.6, 1.55, 1.0, 36.0)
+	# back from the hoist to Bram, the Lantern lit up behind them, and he
+	# sends them off
+	if Cine.body(w, "bram").global_position.distance_to(bram_to) > 0.4:
+		Cine.path(w, "bram", [bram_to], 1.5)
+	await Cine.path(w, "player", [spot], 1.3)
+	Cine.look(w, "bram", spot)
+	Cine.look(w, "player", bram_to)
+	var both := (spot + bram_to) * 0.5
+	Cine.shot(w, clear_cam(w, [both - to_c * 3.8 + Vector3(0, 1.5, 0), both - to_c * 3.6 - side * 1.2 + Vector3(0, 1.6, 0),
+		both - to_c * 3.6 + side * 1.2 + Vector3(0, 1.6, 0)], both + Vector3(0, 1.3, 0)), both + Vector3(0, 1.45, 0), 38.0)
 	await w.run_steps(HUNG, null)
 	w.hud.dialogue.close()
 	coach(w).objective("tam")
 	# back to his stool
-	_bram_to_stool(w)
+	bram_to_stool(w)
 	await home(w, 0.9)
 
 
@@ -1435,17 +1555,20 @@ static func _hang(w: World, l: Node3D) -> void:
 
 
 ## Bram goes back to his stool by the Lantern and sits.
-static func _bram_to_stool(w: World) -> void:
+static func bram_to_stool(w: World) -> void:
 	var v := village(w)
-	var at := STOOL + Vector3(0, 0, 0.16)
+	var seat := STOOL
+	seat.y = v.height(seat.x, seat.z)
+	var at := seat + BRAM_FACES * 0.55   # just in front of it
 	at.y = v.height(at.x, at.z)
 	var b := Cine.body(w, "bram")
 	if b == null:
 		return
 	w.set_meta("bram_to_stool", true)
 	await Cine.path(w, "bram", round_lantern(w, b.global_position, at), 1.5)
+	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
 	w.remove_meta("bram_to_stool")
-	bram_sit(w)
+	w.set_meta("bram_seated", true)
 
 
 ## Into the inn's rooms: the moon and sky shut out (once: going from the
@@ -1459,6 +1582,59 @@ static func go_inside(v: AshfordVillage) -> void:
 ## The way across the green round the Great Lantern (ashford.gd's).
 static func round_lantern(w: World, from: Vector3, to: Vector3) -> Array:
 	return w.area.call("_round_lantern", w, from, to)
+
+
+## The first of `cands` (camera spots) with nothing solid between it and
+## `look`, and not inside anything (the people in the shot don't count), or
+## the first if none is clear.
+static func clear_cam(w: World, cands: Array, look: Vector3, people := ["player", "bram"]) -> Vector3:
+	var space := w.get_world_3d().direct_space_state
+	var skip: Array[RID] = []
+	for who in people:
+		var b := Cine.body(w, who)
+		if b is CollisionObject3D:
+			skip.append((b as CollisionObject3D).get_rid())
+	# the extras (the children, the dancers) have no bodies to hit: anyone
+	# standing within a shoulder's width of the line of sight is in the way
+	var extras: Array = []
+	var ex: Dictionary = w.get_meta("extras", {})
+	for id in ex:
+		var eb = ex[id].get("body", null)
+		if eb != null and is_instance_valid(eb) and (eb as Node3D).is_visible_in_tree():
+			extras.append((eb as Node3D).global_position)
+	for c: Vector3 in cands:
+		if c.y < Cine.ground(w, c) + 0.6:
+			continue
+		var q := PhysicsRayQueryParameters3D.create(c, look)
+		q.exclude = skip
+		q.hit_from_inside = true
+		if not space.intersect_ray(q).is_empty():
+			continue
+		var a2 := Vector2(c.x, c.z)
+		var b2 := Vector2(look.x, look.z)
+		var blocked := false
+		for e: Vector3 in extras:
+			var e2 := Vector2(e.x, e.z)
+			if e2.distance_to(Geometry2D.get_closest_point_to_segment(e2, a2, b2)) < 0.45 and e2.distance_to(b2) > 0.8:
+				blocked = true
+				break
+		if not blocked:
+			return c
+	return cands[0]
+
+
+## Cine.two_shot from whichever side of the pair has nothing solid in the way.
+static func two_shot(w: World, a_who: String, b_who: String, dist: float, height: float, fov: float) -> void:
+	var a := Cine.body(w, a_who).global_position
+	var b := Cine.body(w, b_who).global_position
+	var mid := (a + b) * 0.5
+	var d := b - a
+	d.y = 0.0
+	var perp := d.normalized().cross(Vector3.UP).normalized()
+	var at := clear_cam(w, [mid + perp * dist + Vector3(0, height, 0), mid - perp * dist + Vector3(0, height, 0),
+		mid + perp * dist * 0.8 + Vector3(0, height + 0.8, 0), mid - perp * dist * 0.8 + Vector3(0, height + 0.8, 0)],
+		mid + Vector3(0, 1.3, 0), [a_who, b_who])
+	Cine.shot(w, at, mid + Vector3(0, 1.3, 0), fov)
 
 
 ## Puts someone on a spot, on the ground there (out of a room below the
@@ -1538,6 +1714,8 @@ static func scene(name: String, w: World) -> bool:
 			await moth_wake(w)
 		"tilly_leans":
 			await tilly_leans(w)
+		"corin_calls":
+			await corin_calls(w)
 		"corin_glances":
 			await corin_glances(w)
 		"beat":
@@ -1556,7 +1734,7 @@ static func scene(name: String, w: World) -> bool:
 ## A marker over the stall where the barrel goes (what lights up to tap).
 static func _stall_mark(w: World) -> Node3D:
 	var v := village(w)
-	var m: Node3D = v.get_meta("p1_stall_mark", null)
+	var m: Node3D = meta(v, "p1_stall_mark")
 	if m == null:
 		m = Node3D.new()
 		m.name = "StallMark"
@@ -1587,8 +1765,14 @@ static func tam_lift(w: World) -> void:
 	var end := spot - dir * 0.75
 	var held := 0.7
 	w.cine = true
-	var cam_at := end + dir * 2.4 + side * 3.6 + Vector3(0, 1.9, 0)
-	Cine.move(w, cam_at, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), 1.0, 40.0)
+	# from the side, the barrel and the stall both in the shot (the stall is
+	# what the player taps), with nothing solid in the way
+	var half := start.lerp(spot, 0.5)
+	var back := maxf(4.5, start.distance_to(spot) * 0.95)
+	var cam_at := clear_cam(w, [half + side * back + Vector3(0, 2.0, 0), half - side * back + Vector3(0, 2.0, 0),
+		half + side * back * 0.8 - dir * 1.5 + Vector3(0, 3.2, 0), half - side * back * 0.8 - dir * 1.5 + Vector3(0, 3.2, 0)],
+		half + Vector3(0, 0.9, 0), ["player", "tam"])
+	Cine.move(w, cam_at, half + Vector3(0, 0.9, 0), 1.0, 46.0)
 	var mine := start + side * held
 	var his := start - side * held
 	Cine.path(w, "player", [mine], maxf(0.6, w.player.global_position.distance_to(mine) / 0.8))
@@ -1664,7 +1848,8 @@ static func tam_carry(w: World) -> void:
 		b.global_position = c + Vector3(0, 0.95 + bob, 0)
 		pb.global_position = c + side * held
 		tb.global_position = c - side * held, 0.0, 1.0, secs)
-	Cine.drift(w, cam_at, cam_at + dir * 0.4 - side * 0.3, start.lerp(end, 0.3) + Vector3(0, 0.9, 0), end + Vector3(0, 0.85, 0), secs)
+	var half := start.lerp(spot, 0.5)
+	Cine.drift(w, cam_at, cam_at + dir * 0.6, half + Vector3(0, 0.9, 0), end + Vector3(0, 0.85, 0), secs)
 	await carry.finished
 	w.player_doll.walking = false
 	tam.doll.walking = false
@@ -1686,7 +1871,10 @@ static func tam_carry(w: World) -> void:
 	w.shake(0.12)
 	w.player_doll.look_toward(tb.global_position, w.cam)
 	# Tam's hands stay on the barrel a moment, the camera on him
-	Cine.move(w, spot + side * 2.6 + dir * 1.8 + Vector3(0, 1.6, 0), tb.global_position + Vector3(0, 1.1, 0), 0.9, 36.0)
+	var tam_at := tb.global_position + Vector3(0, 1.1, 0)
+	Cine.move(w, clear_cam(w, [spot + side * 2.6 + dir * 1.8 + Vector3(0, 1.6, 0), spot + side * 2.6 - dir * 1.8 + Vector3(0, 1.6, 0),
+		spot - side * 2.6 - dir * 1.8 + Vector3(0, 1.6, 0), spot - side * 2.6 + dir * 1.8 + Vector3(0, 1.6, 0)], tam_at, ["player", "tam"]),
+		tam_at, 0.9, 36.0)
 	await Cine.wait(w, 1.6)
 	if tam.doll is Figure3D:
 		(tam.doll as Figure3D).let_go(0.4)
@@ -1695,7 +1883,7 @@ static func tam_carry(w: World) -> void:
 	w.remove_meta("p1_barrel")
 	tam.doll.look_toward(pb.global_position, w.cam)
 	await Cine.wait(w, 0.4)
-	Cine.two_shot(w, "player", "tam", 3.4, 1.5, 1.0, 36.0)
+	two_shot(w, "player", "tam", 3.4, 1.5, 36.0)
 
 
 # -------------------------------------------------------------- Tam's letter ---
@@ -1704,7 +1892,7 @@ static func tam_carry(w: World) -> void:
 static func tam_letter_out(w: World) -> void:
 	var v := village(w)
 	var tf = Cine.fig(w, "tam")
-	var l = w.get_meta("tam_letter", null)
+	var l = meta(w, "tam_letter")
 	if l == null or not is_instance_valid(l):
 		l = letter(v)
 		w.set_meta("tam_letter", l)
@@ -1732,11 +1920,12 @@ static func tam_letter_out(w: World) -> void:
 ## "Read Tam's letter. (Tap it.)": the player takes it and it's held up to
 ## the screen; a tap puts it down (still in their hands).
 static func tam_letter_read(w: World) -> void:
-	var l: Node3D = w.get_meta("tam_letter", null)
+	var l: Node3D = meta(w, "tam_letter")
 	if l == null:
 		return
 	var tp := Cine.body(w, "tam").global_position
-	Cine.over_shoulder(w, "player", "tam", 1.0, 34.0)
+	# from the side, so the letter he holds out is in plain sight
+	two_shot(w, "player", "tam", 2.6, 1.35, 34.0)
 	await use(w, l, "letter", 0.0, Vector3.INF, 0.28)
 	var pf = w.player_doll
 	var tf = Cine.fig(w, "tam")
@@ -1762,7 +1951,7 @@ static func tam_letter_read(w: World) -> void:
 
 ## The player hands the letter back to Tam.
 static func letter_back(w: World) -> void:
-	var l: Node3D = w.get_meta("tam_letter", null)
+	var l: Node3D = meta(w, "tam_letter")
 	var tf = Cine.fig(w, "tam")
 	var pf = w.player_doll
 	if l == null or not (tf is Figure3D):
@@ -1780,7 +1969,7 @@ static func letter_back(w: World) -> void:
 ## He puts it back in his shirt pocket: folded very small first, if the
 ## player told him what it says.
 static func tam_pockets(w: World, folded: bool) -> void:
-	var l: Node3D = w.get_meta("tam_letter", null)
+	var l: Node3D = meta(w, "tam_letter")
 	var tf = Cine.fig(w, "tam")
 	if l == null or not (tf is Figure3D):
 		return
@@ -1835,17 +2024,9 @@ static func sit_with_nell(w: World) -> void:
 	Cine.shot(w, seat + fwd * 3.4 + side * 1.3 + Vector3(0, 1.3, 0), seat + Vector3(0, 0.7, 0) - side * 0.4, 38.0)
 	await use(w, mark, "bench", 0.0, Vector3.INF, 0.6)
 	mark.queue_free()
-	await Cine.path(w, "player", [seat + fwd * 0.55], 1.3)
-	var pf = w.player_doll
-	if pf is Figure3D:
-		(pf as Figure3D).snap_face(fwd)
-		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", seat, 0.4).set_trans(Tween.TRANS_SINE)
-		(pf as Figure3D).pose("sit", 1.0, 0.45)
-		await tw.finished
-	else:
-		Cine.place(w, "player", seat, seat + fwd)
-	await Cine.wait(w, 0.4)
+	await Cine.path(w, "player", [seat + fwd * 0.6], 1.3)
+	await sit_down(w, "player", seat, fwd, BENCH_H, 0.5)
+	await Cine.wait(w, 0.5)
 	# side by side, from in front of the bench
 	Cine.shot(w, (seat + bench_seat(w)) * 0.5 + fwd * 2.9 + Vector3(0, 1.05, 0), (seat + bench_seat(w)) * 0.5 + Vector3(0, 0.85, 0), 36.0)
 
@@ -1865,13 +2046,11 @@ static func nell_watches(w: World) -> void:
 
 ## The player gets up off the bench.
 static func nell_stand(w: World) -> void:
-	var pf = w.player_doll
 	var fwd := bench_facing(w)
-	if pf is Figure3D:
-		(pf as Figure3D).release(0.4)
-		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", w.player.global_position + fwd * 0.7, 0.5).set_trans(Tween.TRANS_SINE)
-		await tw.finished
+	await stand_up(w, "player", 0.4)
+	var tw := w.create_tween()
+	tw.tween_property(w.player, "global_position", bench_seat(w, true) + fwd * 0.75, 0.5).set_trans(Tween.TRANS_SINE)
+	await tw.finished
 	await home(w, 0.8)
 
 
@@ -1884,7 +2063,7 @@ static func tilly_up(w: World) -> void:
 	var tf = Cine.fig(w, "tilly")
 	if tb == null:
 		return
-	var card: Node3D = w.get_meta("tilly_card_node", null)
+	var card: Node3D = meta(w, "tilly_card_node")
 	if card == null or not is_instance_valid(card):
 		card = w.area.call("_moth_card", v)
 		card.set_meta("p1_prop", true)
@@ -1901,11 +2080,16 @@ static func tilly_up(w: World) -> void:
 	d.y = 0.0
 	if d.length() > 1.7:
 		w.cine = true
-		Cine.move(w, p - d.normalized() * 2.6 + d.normalized().cross(Vector3.UP) * 2.4 + Vector3(0, 1.7, 0), (p + tb.global_position) * 0.5 + Vector3(0, 1.0, 0), 0.8, 38.0)
+		var dn := d.normalized()
+		var sd := dn.cross(Vector3.UP)
+		var look := (p + tb.global_position) * 0.5 + Vector3(0, 1.0, 0)
+		Cine.move(w, clear_cam(w, [p - dn * 2.6 + sd * 2.4 + Vector3(0, 1.7, 0), p - dn * 2.6 - sd * 2.4 + Vector3(0, 1.7, 0),
+			p - dn * 3.2 + Vector3(0, 2.8, 0), p + sd * 3.6 + Vector3(0, 2.0, 0), p - sd * 3.6 + Vector3(0, 2.0, 0)], look, ["player", "tilly"]),
+			look, 0.8, 38.0)
 		await Cine.path(w, "tilly", [p + d.normalized() * 1.1], 3.2, "run")
 	Cine.look(w, "tilly", p)
 	Cine.look(w, "player", tb.global_position)
-	Cine.two_shot(w, "player", "tilly", 3.0, 1.2, 1.0, 38.0)
+	two_shot(w, "player", "tilly", 3.0, 1.2, 38.0)
 ## Where a 3D Tilly holds her card, in her own frame (y up, z ahead).
 const TILLY_HOLD := Vector3(0.0, 0.74, 0.25)
 
@@ -1916,7 +2100,7 @@ const TILLY_HOLD := Vector3(0.0, 0.74, 0.25)
 ## when they hand it back to her.
 static func moth_wake(w: World) -> void:
 	var v := village(w)
-	var card: Node3D = w.get_meta("tilly_card_node", null)
+	var card: Node3D = meta(w, "tilly_card_node")
 	if card == null:
 		await tilly_up(w)
 		card = w.get_meta("tilly_card_node")
@@ -1932,7 +2116,10 @@ static func moth_wake(w: World) -> void:
 	var perp := to_t.cross(Vector3.UP).normalized()
 	if perp.dot(w.cam.global_position - p) < 0.0:
 		perp = -perp
-	Cine.move(w, p + to_t * 0.6 + perp * 4.0 + Vector3(0, 1.6, 0), p + to_t * 0.5 + Vector3(0, 1.25, 0), 0.8, 40.0)
+	var moth_look := p + to_t * 0.5 + Vector3(0, 1.25, 0)
+	Cine.move(w, clear_cam(w, [p + to_t * 0.6 + perp * 4.0 + Vector3(0, 1.6, 0), p + to_t * 0.6 - perp * 4.0 + Vector3(0, 1.6, 0),
+		p + to_t * 0.6 + perp * 3.2 + Vector3(0, 2.6, 0), p + to_t * 0.6 - perp * 3.2 + Vector3(0, 2.6, 0)], moth_look, ["player", "tilly"]),
+		moth_look, 0.8, 40.0)
 	# the card glows; the moth unfolds out of it
 	var cg := card.get_node_or_null("CardGlow") as Node3D
 	if cg != null:
@@ -1988,7 +2175,9 @@ static func moth_wake(w: World) -> void:
 	Cine.move(w, perch.global_position + perp * 1.3 + to_t * -0.4 + Vector3(0, 0.25, 0), perch.global_position, 0.8, 34.0)
 	await Cine.wait(w, 1.8)
 	# handed back: their hand over her card, and it goes back in
-	Cine.move(w, p + to_t * 0.55 + perp * 3.2 + Vector3(0, 1.3, 0), (p + tb.global_position) * 0.5 + Vector3(0, 1.0, 0), 0.8, 38.0)
+	var pair := (p + tb.global_position) * 0.5 + Vector3(0, 1.0, 0)
+	Cine.move(w, clear_cam(w, [p + to_t * 0.55 + perp * 3.2 + Vector3(0, 1.3, 0), p + to_t * 0.55 - perp * 3.2 + Vector3(0, 1.3, 0),
+		p + to_t * 0.55 + perp * 2.6 + Vector3(0, 2.3, 0)], pair, ["player", "tilly"]), pair, 0.8, 38.0)
 	var hand_to := card.global_position + Vector3(0, 0.12, 0) - to_t * 0.05
 	var over := w.create_tween()
 	over.tween_property(perch, "global_position", hand_to, 0.8).set_trans(Tween.TRANS_SINE)
@@ -2005,13 +2194,13 @@ static func moth_wake(w: World) -> void:
 	if cg != null:
 		var gt2 := w.create_tween()
 		gt2.tween_property(cg, "scale", cg.scale * 0.7, 0.6)
-	Cine.two_shot(w, "player", "tilly", 3.0, 1.2, 1.0, 38.0)
+	two_shot(w, "player", "tilly", 3.0, 1.2, 38.0)
 	await Cine.wait(w, 0.5)
 
 
 ## The card brightens as the player leans in.
 static func tilly_leans(w: World) -> void:
-	var card: Node3D = w.get_meta("tilly_card_node", null)
+	var card: Node3D = meta(w, "tilly_card_node")
 	var tb := Cine.body(w, "tilly")
 	if card == null or tb == null:
 		return
@@ -2031,7 +2220,7 @@ static func tilly_leans(w: World) -> void:
 ## Her card goes back in her pocket (before she comes running with it after
 ## the Lantern Duel: ashford.gd's _tilly_gift makes its own).
 static func tilly_card_away(w: World) -> void:
-	var card = w.get_meta("tilly_card_node", null)
+	var card = meta(w, "tilly_card_node")
 	if card != null and is_instance_valid(card):
 		(card as Node).queue_free()
 	w.remove_meta("tilly_card_node")
@@ -2041,6 +2230,34 @@ static func tilly_card_away(w: World) -> void:
 
 
 # ----------------------------------------------------------------- Corin ---
+
+## Corin calls out, and the player goes up to him (the children round him
+## make room): the two of them face to face, from the side.
+static func corin_calls(w: World) -> void:
+	var cb := Cine.body(w, "corin")
+	if cb == null:
+		return
+	w.cine = true
+	var c := cb.global_position
+	var d := w.player.global_position - c
+	d.y = 0.0
+	var to := c + d.normalized() * 1.6
+	to.y = village(w).height(to.x, to.z)
+	var aside := d.normalized().cross(Vector3.UP)
+	for k in KIDS:
+		var kb := Cine.body(w, String(k[0]))
+		if kb != null and Vector2(kb.global_position.x - to.x, kb.global_position.z - to.z).length() < 0.9:
+			var off := kb.global_position - to
+			off.y = 0.0
+			var way := aside if off.dot(aside) >= 0.0 else -aside
+			Cine.path(w, String(k[0]), [kb.global_position + way * 1.0], 1.2)
+	if d.length() > 1.9:
+		Cine.look(w, "corin", w.player.global_position)
+		await Cine.path(w, "player", [to], 1.5)
+	Cine.look(w, "corin", w.player.global_position)
+	Cine.look(w, "player", c)
+	two_shot(w, "player", "corin", 3.6, 1.5, 36.0)
+
 
 ## He glances at the bakery door, where his mam is watching, and lowers his voice.
 static func corin_glances(w: World) -> void:
@@ -2080,7 +2297,7 @@ static func corin_grin(w: World) -> void:
 ## player ("Evens!"), or picks it up himself ("Two.").
 static func drum_to(w: World, player: bool) -> void:
 	var v := village(w)
-	var dr: Node3D = v.get_meta("p1_drum", null)
+	var dr: Node3D = meta(v, "p1_drum")
 	var cf = Cine.fig(w, "corin")
 	var cb := Cine.body(w, "corin")
 	if dr == null or cb == null:
@@ -2108,7 +2325,7 @@ static func drum_to(w: World, player: bool) -> void:
 	if not player:
 		await Cine.path(w, "corin", [back], 1.5)
 		Cine.look(w, "corin", p)
-		Cine.two_shot(w, "player", "corin", 3.8, 1.5, 1.0, 36.0)
+		two_shot(w, "player", "corin", 3.8, 1.5, 36.0)
 		return
 	# grinning, he brings it over and hands it to them
 	var d := p - cb.global_position
@@ -2116,7 +2333,7 @@ static func drum_to(w: World, player: bool) -> void:
 	await Cine.path(w, "corin", [p - d.normalized() * 1.0], 1.5)
 	Cine.look(w, "corin", p)
 	Cine.look(w, "player", cb.global_position)
-	Cine.two_shot(w, "player", "corin", 3.4, 1.4, 1.0, 36.0)
+	two_shot(w, "player", "corin", 3.4, 1.4, 36.0)
 	var pf = w.player_doll
 	if pf is Figure3D and cf is Figure3D:
 		(pf as Figure3D).reach(dr.get_node("R"), dr.get_node("L"), 0.4)
@@ -2135,7 +2352,7 @@ static func drum_down(w: World) -> void:
 		return
 	w.set_meta("p1_drum_held", false)
 	var v := village(w)
-	var dr: Node3D = v.get_meta("p1_drum", null)
+	var dr: Node3D = meta(v, "p1_drum")
 	var pf = w.player_doll
 	if dr == null:
 		return
@@ -2177,14 +2394,19 @@ static func watch(w: World) -> void:
 			continue
 		if w.busy or w.cine or w.hud.menu_open():
 			continue
+		# not while they're going to talk to someone, or standing by someone
+		# else they could talk to (Nell on her bench, say)
+		if w._talk_target != null or (w._near != null and not (String(w._near.def.id) in ["tilly", "corin"])):
+			continue
 		var p := w.player.global_position
-		if not Game.flag("tilly_talked"):
-			var tb := Cine.body(w, "tilly")
-			if tb != null and Vector2(p.x - tb.global_position.x, p.z - tb.global_position.z).length() < 5.5:
-				w._talk(w._npc_by_id("tilly"))
-				continue
+		# (Corin first: a player that close to him has come to see him)
 		if not Game.flag("corin_met"):
 			var cb := Cine.body(w, "corin")
 			if cb != null and Vector2(p.x - cb.global_position.x, p.z - cb.global_position.z).length() < 4.2:
 				w._talk(w._npc_by_id("corin"))
+				continue
+		if not Game.flag("tilly_talked"):
+			var tb := Cine.body(w, "tilly")
+			if tb != null and Vector2(p.x - tb.global_position.x, p.z - tb.global_position.z).length() < 5.5:
+				w._talk(w._npc_by_id("tilly"))
 	w.remove_meta("p1_watch")

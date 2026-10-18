@@ -356,6 +356,8 @@ static func _corin() -> Array:
 			{"if": "!coach_asked", "then": _coach_question()},
 		] + _lantern_duel(), "else": [
 			{"set": "corin_met"},
+			# he calls them over, and they go up to him
+			{"scene": "corin_calls"},
 			{"who": "corin", "say": "There they are. Ashford's other Attuned. Come to lose in front of everyone?",
 				"during": "bram_sets_off"},
 			{"who": "corin", "say": "Half the green's waiting. I told the other half to hurry up."},
@@ -845,8 +847,6 @@ static func _bram_sets_off(w: World) -> void:
 	var bram := Cine.body(w, "bram")
 	if bram == null or Cine.body(w, "corin") == null:
 		return
-	if not w.has_meta("bram_post"):
-		w.set_meta("bram_post", bram.global_position)
 	var stop := _bram_stop(w)
 	w.set_meta("bram_stop", stop)
 	await AshfordP1.bram_stand(w)
@@ -864,14 +864,12 @@ static func _bram_sets_off(w: World) -> void:
 		Cine.look(w, "bram", w.player.global_position)
 
 
-## "Not yet": Bram goes back to where he was.
+## "Not yet": Bram goes back to his stool.
 static func _bram_goes_back(w: World) -> void:
-	var bram := Cine.body(w, "bram")
-	if bram == null or not w.has_meta("bram_post"):
+	if Cine.body(w, "bram") == null or not w.has_meta("bram_stop"):
 		return
-	var post: Vector3 = w.get_meta("bram_post")
 	w.remove_meta("bram_stop")
-	await Cine.path(w, "bram", _round_lantern(w, bram.global_position, post), 1.5)
+	await AshfordP1.bram_to_stool(w)
 
 
 ## Bram steps in beside the player with a card box in his hand (he set off
@@ -894,7 +892,9 @@ static func _bram_comes(w: World) -> void:
 	w.cine = true
 	var mid := (p + c + stop) / 3.0
 	var side := -perp
-	Cine.move(w, mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid + Vector3(0, 1.2, 0), 0.8)
+	var look := mid + Vector3(0, 1.2, 0)
+	Cine.move(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
+		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look, 0.8)
 	_hold(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
@@ -915,7 +915,9 @@ static func _first_deck(w: World) -> void:
 	var d := stop - p
 	d.y = 0.0
 	var perp := d.normalized().cross(Vector3.UP)
-	Cine.shot(w, mid + perp * 2.6 + Vector3(0, 1.55, 0), mid + Vector3(0, 1.15, 0), 34.0)
+	var look := mid + Vector3(0, 1.15, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + perp * 2.6 + Vector3(0, 1.55, 0), mid - perp * 2.6 + Vector3(0, 1.55, 0),
+		mid + perp * 2.2 + Vector3(0, 2.3, 0), mid - perp * 2.2 + Vector3(0, 2.3, 0)], look, ["player", "bram"]), look, 34.0)
 	var f = Cine.fig(w, "bram")
 	if f is Figure3D:
 		(f as Figure3D).pose("play_card", 0.45)
@@ -973,7 +975,9 @@ static func _tilly_gift(w: World) -> void:
 	var stop := p + d * 1.05
 	w.cine = true
 	var side := d.cross(Vector3.UP).normalized()
-	Cine.shot(w, p - d * 2.4 + side * 1.6 + Vector3(0, 1.9, 0), stop + Vector3(0, 0.9, 0), 38.0)
+	var look := stop + Vector3(0, 0.9, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [p - d * 2.4 + side * 1.6 + Vector3(0, 1.9, 0), p - d * 2.4 - side * 1.6 + Vector3(0, 1.9, 0),
+		p - d * 2.8 + Vector3(0, 2.8, 0)], look, ["player", "tilly"]), look, 38.0)
 	Cine.look(w, "player", from)
 	# her card glowing in her hands as she runs (a 3D Tilly holds it in both)
 	var v := village(w)
@@ -992,10 +996,11 @@ static func _tilly_gift(w: World) -> void:
 	# side on, to see the card cross from her hands to yours (her painted
 	# cut-out is drawn full height, so that needs a wider shot than her model)
 	var mid := (p + stop) * 0.5
-	if tf is Figure3D:
-		Cine.shot(w, mid + side * 3.3 + Vector3(0, 1.3, 0), mid + Vector3(0, 1.0, 0), 38.0)
-	else:
-		Cine.shot(w, mid + side * 4.6 + Vector3(0, 1.45, 0), mid + Vector3(0, 1.15, 0), 38.0)
+	var back := 3.3 if tf is Figure3D else 4.6
+	var up := 1.3 if tf is Figure3D else 1.45
+	var at := mid + Vector3(0, 1.0 if tf is Figure3D else 1.15, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * back + Vector3(0, up, 0), mid - side * back + Vector3(0, up, 0),
+		mid + side * back * 0.85 + Vector3(0, up + 0.9, 0), mid - side * back * 0.85 + Vector3(0, up + 0.9, 0)], at, ["player", "tilly"]), at, 38.0)
 	# she holds it out to you, arms up and forward
 	var out := w.create_tween()
 	if tf is Figure3D:
@@ -1012,7 +1017,7 @@ static func _tilly_gift(w: World) -> void:
 ## On Tilly's words "You keep it" (played while her line is up), the light
 ## passes from her hands into the player's, and they take it.
 static func _tilly_hands_over(w: World) -> void:
-	var glow = w.get_meta("tilly_glow", null)
+	var glow = AshfordP1.meta(w, "tilly_glow")
 	if glow == null or not is_instance_valid(glow) or w.get_meta("tilly_handed", true):
 		return
 	var tilly := Cine.body(w, "tilly")
@@ -1055,7 +1060,7 @@ static func _tilly_hands_over(w: World) -> void:
 ## Lantern Moth. (If her line was tapped past before the card got there,
 ## it lands first.)
 static func _tilly_card(w: World) -> void:
-	var glow = w.get_meta("tilly_glow", null)
+	var glow = AshfordP1.meta(w, "tilly_glow")
 	var waited := 0.0
 	while glow != null and is_instance_valid(glow) and not w.get_meta("tilly_handed", true) and waited < 3.0:
 		await w.get_tree().process_frame

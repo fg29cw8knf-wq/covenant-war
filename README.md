@@ -145,7 +145,11 @@ Tilly running up with her Lantern Moth (it circles the player and settles on the
 back of their hand), Ned the fiddler, Hob, dancers and children with paper
 lanterns, and Corin, whose mam (extra `corin_mam`) watches from the bakery door.
 Corin calls out when the player comes near; Bram gets up off his stool with the
-card box and hands over the first deck when Corin says there isn't one. The
+card box and hands over the first deck when Corin says there isn't one. (People
+sit with `Figure3D.sit()` where the model has it; until then `AshfordP1.sit_down`
+holds the sit clip at the moment it reaches a seat's height.) Every staged camera
+on the green is checked for anything solid or anyone standing in the way
+(`AshfordP1.clear_cam`). The
 Lantern Duel has Corin's own rule, Showboat: his Cinderpup attacks the moment it
 can, whatever's in its way (`story_rules` in `DuelGame`, `_rule_showboat`; named
 as the duel starts from `spec.rule`), and his barks are tied to its moments
@@ -231,9 +235,9 @@ godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film corin 0 
 
 Tam's barrel is carried to the stall and Tilly's Lantern Moth flies (its wings
 beat through `scripts/world/wing_flap.gd`, which also flaps the moth in duels);
-the Great Lantern (Gary's model) is lit at midnight. The lantern crate is Gary's
-model (`assets/models/ashford/crate.glb`, its lid left off so the lanterns show)
-once it's there, and a drawn crate until then.
+the Great Lantern (Gary's model) is lit at midnight. The lantern crate the player
+carries is Gary's model (`make_crate()` in `ashford_village.gd`) at half size,
+its lid left off so the lanterns show.
 
 The village itself (`scripts/world/ashford_village.gd`) is built from the look
 test in `lookdev/ashford`, with lighter settings on the phone and web renderers.

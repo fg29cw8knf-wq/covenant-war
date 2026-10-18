@@ -8,7 +8,10 @@ extends Node
 ## gift, stopping as midnight begins. At every gated step it first tries
 ## what a player shouldn't be able to do yet (a tap beside the thing, the
 ## pause square before Bram mentions it, talking to Nell before Tam) and
-## checks it didn't work. Ends with "ASHFORD TEST: ok" or the problems.
+## checks it didn't work. Anyone moved by the story (everyone but the
+## player when they're walking themselves) who comes within a body's width
+## of Gary's sacks and crates or the inn's fence is a problem too. Ends with
+## "ASHFORD TEST: ok" or the problems.
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 8 \
 ##       res://tests/ashford_test.tscn -- <out_dir> [part] [options]
@@ -38,6 +41,9 @@ var _last_line := ""
 var _uses := {}
 var _mask := 0
 var _done := false
+var _props_hit := {}
+
+const BODY := 0.3    # someone's half-width, about
 
 
 func _ready() -> void:
@@ -61,7 +67,9 @@ func _ready() -> void:
 		elif s.is_valid_int():
 			every = int(s)
 	Game.new_game("Sprout", "")
-	Game.settings["first_steps"] = 0
+	# a new player's (the opening must keep the world's standing hints off);
+	# a save past the opening has had Bram's lesson
+	Game.settings["first_steps"] = 0 if part in ["all", "opening"] else 2
 	if part != "all" and part != "opening":
 		for f in ["arrived_ashford", "ash_started"]:
 			Game.set_flag(f)
@@ -278,8 +286,55 @@ func _process(_d: float) -> void:
 		if c is LetterView and not c.has_meta("seen"):
 			c.set_meta("seen", true)
 			_letter(c)
+	# cards shown big (Bram's deck, Tilly's moth): look, then tap on
+	for l in world.get_children():
+		if l is CanvasLayer:
+			for c in l.get_children():
+				if c is DeckReveal and not c.has_meta("seen"):
+					c.set_meta("seen", true)
+					_reveal(c)
+	if _frame % 2 == 0:
+		_check_props()
+	# Bram and the Objective line teach the controls: no standing hints over the opening
+	if part in ["all", "opening"] and String(Game.flag("p1_stage", "")) not in ["", "done"] and hud._hint_text != "" and not _props_hit.has("hint"):
+		_props_hit["hint"] = true
+		_expect(false, "a standing hint showed in the opening: " + hud._hint_text)
 	if every > 0 and _frame % every == 0:
 		_shot("f")
+
+
+## Nobody the story moves walks through a pile of sacks, a stack of crates
+## or the inn's fence (the player walking themselves can't: they're solid).
+func _check_props() -> void:
+	if not world.has_meta("village"):
+		return
+	var v: AshfordVillage = world.get_meta("village")
+	var bodies: Array = []
+	if world.busy:
+		bodies.append(["player", world.player])
+	for n in world.npcs:
+		bodies.append([String(n.def.id), n.body])
+	var ex: Dictionary = world.get_meta("extras", {})
+	for id in ex:
+		bodies.append([String(id), ex[id].get("body", null)])
+	for b in bodies:
+		var node = b[1]
+		if node == null or not is_instance_valid(node) or not (node as Node3D).is_visible_in_tree():
+			continue
+		var at: Vector3 = (node as Node3D).global_position
+		if at.y < -20.0:
+			continue   # in the inn's rooms
+		var p := Vector2(at.x, at.z)
+		var near: Array = []
+		for pr in v.props_placed:
+			near.append(["the props at %s" % (pr[0] as Vector2).round(), p.distance_to(pr[0]) - float(pr[1])])
+		for run in AshfordVillage.INN_FENCE:
+			near.append(["the inn's fence", p.distance_to(Geometry2D.get_closest_point_to_segment(p, run[0], run[1])) - AshfordVillage.FENCE_POST])
+		for e in near:
+			var key := "%s / %s" % [b[0], e[0]]
+			if float(e[1]) < BODY and not _props_hit.has(key):
+				_props_hit[key] = true
+				_expect(false, "%s walked into %s (%.2f m off it)" % [b[0], e[0], float(e[1])])
 
 
 func _use(u) -> void:
@@ -294,6 +349,15 @@ func _use(u) -> void:
 		_expect(is_instance_valid(u) and not u._done, "a tap beside it did %s" % key)
 	if is_instance_valid(u) and not u._done:
 		hud.tapped.emit(world.cam.unproject_position(u.target.global_position))
+
+
+func _reveal(r: DeckReveal) -> void:
+	await _secs(0.2)
+	await _click(Vector2(200, 200))
+	_expect(is_instance_valid(r) and r.is_inside_tree(), "the cards went before they could be seen")
+	await _secs(1.6)
+	await _shot("reveal_" + r.title.to_lower().replace(" ", "_"))
+	await _click(Vector2(200, 200))
 
 
 func _letter(lv: LetterView) -> void:
