@@ -12,11 +12,11 @@ extends Node
 ##   godot --headless res://tests/side_quests_test.tscn -- <out_dir>     # just the checks
 ## A phone's safe area: add --safe-area=93,0,93,32 (with --resolution 1434x660).
 ## Scenarios: hub mercy_won mercy_lost mercy_swore fen_won fen_lost resume pip_aldric
-## pip_lost pip_wren scar_told scar_nothing hale_won hale_lost hale_stood ledger (default: all).
+## pip_lost pip_wren scar_told scar_nothing hale_won hale_lost hale_stood noon ledger (default: all).
 
 const SIDE := "res://scripts/world/areas/solhaven/solhaven_side.gd"
 const ALL := ["hub", "mercy_won", "mercy_lost", "mercy_swore", "fen_won", "fen_lost", "resume", "pip_aldric",
-	"pip_lost", "pip_wren", "scar_told", "scar_nothing", "hale_won", "hale_lost", "hale_stood", "ledger"]
+	"pip_lost", "pip_wren", "scar_told", "scar_nothing", "hale_won", "hale_lost", "hale_stood", "noon", "ledger"]
 
 var out := "user://"
 var world: World
@@ -296,6 +296,32 @@ func _hale_stood() -> void:
 	await _talk("barracks")
 	Game.settings["violence"] = "full"
 	_want("side_hale", "stood")
+
+
+## Noon at the post, at full and at reduced violence, a few strokes of each,
+## shot as it goes (Hale's face then yours; or the guards' faces).
+func _noon() -> void:
+	await _fresh({"let_refugees_in": true, "gate_choice": "all", "beat_aldric": true, "c6_done": true, "side_started_hales_orders": true})
+	var side = load(SIDE)
+	for v in ["full", "reduced"]:
+		Game.settings["violence"] = v
+		world.busy = true
+		await side._yard(world)
+		var on := [true]
+		_shoot_while(on, "noon_" + v)
+		await side._noon(world, 4)
+		on[0] = false
+		await side._end(world)
+		world.busy = false
+	Game.settings["violence"] = "full"
+	_check(String(Game.flag("side_hale", "")) == "", "noon: shown, nothing settled")
+
+
+func _shoot_while(on: Array, label: String) -> void:
+	while on[0]:
+		await _wait(0.9)
+		if on[0]:
+			await _shot(label)
 
 
 ## Morrowen's Ledger, with the stories settled various ways.
