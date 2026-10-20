@@ -737,10 +737,13 @@ func run_steps(steps: Array, npc) -> void:
 			var ok := _check(st["if"])
 			await run_steps(st.get("then", []) if ok else st.get("else", []), npc)
 		elif st.has("choice"):
+			# one answer to what someone's just said or asked (two ways, usually)
 			var i := await hud.dialogue.choose(st.choice)
 			var branches: Array = st.get("then", [])
 			if i < branches.size():
 				await run_steps(branches[i], npc)
+		elif st.has("ask"):
+			await _ask(st, npc)
 		elif st.has("set"):
 			Game.set_flag(st.set)
 		elif st.has("standing"):
@@ -775,6 +778,33 @@ func run_steps(steps: Array, npc) -> void:
 			# (world, npc) and awaited (Solhaven's side stories)
 			await (st.call as Callable).call(self, npc)
 	_refresh_markers()
+
+
+## Things the player can ask (Gary, 20 October: one question needn't cost the
+## others): {"ask": ["Why now?", "Mine? To keep?"], "then": [[...], [...]],
+## "leave": "That's all."}. After each answer the questions not yet asked
+## come back, with the leave line last when there is one, until the leave
+## line is picked or nothing's left to ask; a single question left is offered
+## on its own. A plain answer to what someone's just said or asked stays a
+## "choice": picked once, and the talk moves on.
+func _ask(st: Dictionary, npc) -> void:
+	var qs: Array = st.ask
+	var branches: Array = st.get("then", [])
+	var leave := String(st.get("leave", ""))
+	var left: Array = range(qs.size())   # which questions are still to ask
+	while not left.is_empty() and is_inside_tree():
+		var options: Array = []
+		for i in left:
+			options.append(qs[i])
+		if leave != "":
+			options.append(leave)
+		var k := await hud.dialogue.choose(options)
+		if k >= left.size():
+			return   # the leave line
+		var q: int = left[k]
+		left.remove_at(k)
+		if q < branches.size():
+			await run_steps(branches[q], npc)
 
 
 ## A scene that plays while a line is up, not waited for: {"say": ...,
@@ -836,7 +866,10 @@ func _portrait(who: String) -> Texture2D:
 
 
 func _fmt(s: String) -> String:
-	return s.replace("{name}", Game.player_name)
+	s = s.replace("{name}", Game.player_name)
+	if "{menu}" in s and hud != null:   # how to open the pause menu, for this device
+		s = s.replace("{menu}", WorldCoach.of(hud).menu_hint())
+	return s
 
 
 # ================================================================= duels ===

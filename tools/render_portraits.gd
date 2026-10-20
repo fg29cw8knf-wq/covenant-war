@@ -6,14 +6,16 @@ extends Node3D
 ##   xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 \
 ##       --resolution 512x512 res://tools/render_portraits.tscn -- [ids...]
 
-const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "tam": "tam", "tilly": "tilly", "nell": "nell", "ned": "seamus"}
+const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "player_a": "player_a", "player_b": "player_b",
+	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "tilly", "nell": "nell", "ned": "seamus", "hob": "hob"}
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's (and stands back for Tam's, big and capped).
 const CLOSER := {"tilly": 0.88, "tam": 1.08}
 ## Whose head bone sits low in the skull (AssetFurnace's rigs: the player's,
 ## Corin's, Tam's, Tilly's, Nell's): the camera aims this much higher (m) so
 ## the face sits like the others'.
-const RAISE := {"player": 0.05, "corin": 0.05, "tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05}
+const RAISE := {"player": 0.05, "player_a": 0.05, "player_b": 0.05, "player_c": 0.05, "player_d": 0.05, "corin": 0.05,
+	"tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05}
 const OUT := "res://assets/art/characters/"
 const SIZE := 512
 

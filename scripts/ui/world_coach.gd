@@ -37,6 +37,17 @@ const OBJECTIVES := {
 		"computer": "(Click the card, or press E.)", "controller": "(Press A.)"}],
 }
 
+## How to open the pause menu, in brackets, for Bram's line at the door
+## ("{menu}" in a dialogue line, World._fmt): the three lines at the top
+## right on a phone or tablet, the key or button elsewhere (Gary, 20
+## October: tell the player without breaking the fourth wall).
+const MENU_HOW := {
+	"phone": "(Tap the three lines at the top right of the screen to open the menu.)",
+	"tablet": "(Tap the three lines at the top right of the screen to open the menu.)",
+	"computer": "(Press Esc to open the menu.)",
+	"controller": "(Press Start to open the menu.)",
+}
+
 var hud: WorldHUD
 var _key := ""             # the objective showing ("" for none of ours)
 var _last_input := ""      # "pad", "keys" or "" (taps and the mouse)
@@ -79,6 +90,11 @@ static func text_for(key: String, dev: String) -> String:
 	var how: Dictionary = o[1]
 	var b := String(how.get(dev, how.get("phone", "")))
 	return String(o[0]) + ((" " + b) if b != "" else "")
+
+
+## The bracketed way to open the menu on the device in hand.
+func menu_hint() -> String:
+	return String(MENU_HOW.get(device(), MENU_HOW.phone))
 
 
 ## Shows a step's Objective (kept in the save like any other, so a game

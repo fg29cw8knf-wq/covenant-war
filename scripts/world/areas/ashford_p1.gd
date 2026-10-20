@@ -1025,7 +1025,8 @@ const ATTIC := [
 const TAPROOM := [
 	{"who": "bram", "say": "There you are. Last night of the Age, and you'd have slept through it."},
 	{"who": "bram", "say": "Once every two thousand years. We're not going to be late for it."},
-	{"choice": ["What happens when it ends?", "I dreamt about the sky again."], "then": [
+	# both can be asked, in either order (Gary, 20 October)
+	{"ask": ["What happens when it ends?", "I dreamt about the sky again."], "then": [
 		[{"who": "bram", "say": "The gods settle who sits the Throne next. We hang lanterns and drink to whoever it is. Nobody's ever asked us to do more than that."}],
 		# he stops stacking, just for a moment; the player says nothing, and he
 		# picks up the next lantern
@@ -1042,8 +1043,10 @@ const TAPROOM := [
 ## As the player reaches the door; the pause square glows once while it's up.
 ## (Gary, 20 October: his first line and this one reworded; the master doc
 ## still has "Thought you'd sleep through the end of the world." and "And if
-## you need to stop, stop. The world'll wait.")
-const AT_DOOR := [{"who": "bram", "say": "And if you want a breather, take one. Even the end of an Age can wait a minute."}]
+## you need to stop, stop. The world'll wait.") {menu} is the bracketed way
+## to open the menu on the device in hand (WorldCoach.MENU_HOW), so the line
+## says how without Bram saying it.
+const AT_DOOR := [{"who": "bram", "say": "And if you want a breather, take one. Even the end of an Age can wait a minute. {menu}"}]
 ## If the player dawdles on the way (said in passing; they keep walking).
 const DAWDLE := "The green. Big pole, middle of it. You've walked there every day of your life."
 ## If they head back up the stairs with the crate (Gary, 19 October).

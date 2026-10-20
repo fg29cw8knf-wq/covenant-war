@@ -34,7 +34,7 @@ _The taproom. Bram is stacking paper lanterns into a crate. The shelves behind t
 
 **Bram:** Once every two thousand years. We're not going to be late for it.
 
-**The player's choice:** What happens when it ends? / I dreamt about the sky again.
+**The player's choice (both can be asked, in either order; 20 October):** What happens when it ends? / I dreamt about the sky again.
 
 **Bram (what happens):** The gods settle who sits the Throne next. We hang lanterns and drink to whoever it is. Nobody's ever asked us to do more than that.
 
@@ -58,7 +58,7 @@ _The player says nothing. Bram picks up the next lantern._
 
 **Bram (if the player heads back up the stairs; added 19 October at Gary's request, not yet in the master doc):** Wrong way, Sprout. The green's out the door, not up the stairs.
 
-**Bram (as you reach the door):** And if you want a breather, take one. Even the end of an Age can wait a minute. _(Reworded 20 October at Gary's request, not yet in the master doc; the doc has "And if you need to stop, stop. The world'll wait.")_
+**Bram (as you reach the door):** And if you want a breather, take one. Even the end of an Age can wait a minute. (Tap the three lines at the top right of the screen to open the menu.) _(Reworded 20 October at Gary's request, not yet in the master doc; the doc has "And if you need to stop, stop. The world'll wait." The bracket is the game's, not Bram's: on a computer it reads "Press Esc to open the menu", on a controller "Press Start".)_
 
 _On screen, the square in the corner glows once: it pauses and saves._
 
@@ -204,7 +204,7 @@ _Corin holds court at the edge of the green, two worn card boxes under his arm a
 
 **Corin:** Half the green's waiting. I told the other half to hurry up.
 
-**The player's choice:** Let's duel. / What's that letter?
+**The player's choice (the letter can be asked about first; "Let's duel." moves on; 20 October):** What's that letter? / Let's duel.
 
 **Corin (what's that letter):** This? _(He glances at the bakery door and lowers his voice.)_ Ironvault's taking two Attuned from every village it lends to. Notaries.
 
@@ -232,7 +232,7 @@ _Bram steps in beside you, the card box in his hand._
 
 **Bram:** I've kept these from you since you were small. That was for my sake, not yours. Tonight seems a fair night to stop.
 
-**The player's choice:** Why now? / Mine? To keep?
+**The player's choice (both can be asked; 20 October):** Why now? / Mine? To keep?
 
 **Bram (why now):** Because tomorrow's a new Age, and I'd rather you met it with something in your hands.
 

@@ -128,10 +128,17 @@ func _opening() -> void:
 	_expect(not hud._menu_btn.visible, "the pause square shows before Bram has mentioned it")
 	var picker := _picker()
 	var faces: Array = picker._faces
-	await _click(_centre(faces[1]))
-	await _secs(0.8)
-	_expect(_picker() != null and not picker._done, "look B (not made yet) was taken")
-	await _shot("mirror_b_coming")
+	# a look still to come (if any) shakes and isn't taken; then look A
+	var coming := -1
+	for i in faces.size():
+		if not faces[i].made:
+			coming = i
+			break
+	if coming >= 0:
+		await _click(_centre(faces[coming]))
+		await _secs(0.8)
+		_expect(_picker() != null and not picker._done, "look %s (not made yet) was taken" % faces[coming].look.to_upper())
+		await _shot("mirror_%s_coming" % faces[coming].look)
 	await _click(_centre(faces[0]))
 	await _until(func() -> bool: return _picker() == null, 10.0, "the mirror closing")
 	_expect(Game.flag("look") == "a", "look A wasn't chosen")
@@ -406,13 +413,16 @@ func _letter(lv: LetterView) -> void:
 
 ## The answer for a choice: the first (or the second, with alt), except that
 ## Bram is asked to coach only with "coach", and the rematch is always played.
+## A list of questions ("ask") comes back after each answer with the one
+## asked gone, so the same rule runs down it: the first run asks each in
+## turn, alt asks the second then takes the leave line (or the one left).
 func _answer(dlg: DialogueBox) -> int:
 	var first := String((dlg._choices.get_child(0) as Button).text)
 	if first == "Talk me through it.":
 		return 0 if coach else 1
 	if first == "Go on, then.":
 		return 0
-	return 1 if alt else 0
+	return mini(1 if alt else 0, dlg._choices.get_child_count() - 1)
 
 
 # ================================================================ helpers ===

@@ -356,7 +356,9 @@ static func _bram() -> Array:
 static func _bram_menu() -> Array:
 	return [
 		{"say": "What do you need?", "who": "bram"},
-		{"choice": ["Any advice?", "Rest and save", "Change my deck", "Tell me about the gods", "About Morne..."], "then": [
+		# a menu: each thing asked comes off the list and the rest come back,
+		# until "That's all." (Gary, 20 October)
+		{"ask": ["Any advice?", "Rest and save", "Change my deck", "Tell me about the gods", "About Morne..."], "leave": "That's all.", "then": [
 			[
 				{"say": "Read the sign on a Totem's card before anything else. That's its element, and what it fears.", "who": "bram"},
 				{"say": "Then read yourself. Some cards want a strong arm, some a cool head. Give a card what it wants and it'll wake for you properly.", "who": "bram"},
@@ -434,7 +436,7 @@ static func _maren() -> Array:
 			{"say": "Every single noon.", "who": "maren"},
 			{"say": "Then I found the old books. The readings from the last Turning.", "who": "maren"},
 			{"say": "The shadows are nine days wrong.", "who": "maren"},
-			{"choice": ["Wrong how?", "Why tell me?"], "then": [
+			{"ask": ["Wrong how?", "Why tell me?"], "then": [   # both can be asked
 				[
 					{"say": "Somebody slowed the sun, child. Nine days of it. Long enough for the right Champion to catch up.", "who": "maren"},
 					{"say": "They threw me out for asking which one.", "who": "maren"},

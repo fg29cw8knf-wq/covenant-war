@@ -367,8 +367,8 @@ static func _corin() -> Array:
 			{"who": "corin", "say": "There they are. Ashford's other Attuned. Come to lose in front of everyone?",
 				"during": "bram_sets_off"},
 			{"who": "corin", "say": "Half the green's waiting. I told the other half to hurry up."},
-			{"choice": ["Let's duel.", "What's that letter?"], "then": [
-				[],
+			# the letter can be asked about first; "Let's duel." moves on
+			{"ask": ["What's that letter?"], "leave": "Let's duel.", "then": [
 				[
 					{"set": "corin_letter"},
 					{"who": "corin", "say": "This?"},
@@ -400,7 +400,7 @@ static func _corin() -> Array:
 			{"scene": "bram_comes"},
 			{"who": "bram", "say": "Nobody wins anything by default while I'm stood here."},
 			{"who": "bram", "say": "I've kept these from you since you were small. That was for my sake, not yours. Tonight seems a fair night to stop."},
-			{"choice": ["Why now?", "Mine? To keep?"], "then": [
+			{"ask": ["Why now?", "Mine? To keep?"], "then": [   # both can be asked
 				[{"who": "bram", "say": "Because tomorrow's a new Age, and I'd rather you met it with something in your hands."}],
 				[{"who": "bram", "say": "To keep. Twelve Sparks out of the old box. I picked every one."}],
 			]},

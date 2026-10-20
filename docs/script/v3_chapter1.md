@@ -133,7 +133,7 @@ _Bram hangs a lamp on the hook and lights it._
 
 **Bram:** What do you need?
 
-**The player's choice:** Any advice? / Rest and save / Change my deck / Tell me about the gods / About Morne...
+**The player's choice (a menu: each thing asked comes off the list and the rest come back, with "That's all." to leave; 20 October):** Any advice? / Rest and save / Change my deck / Tell me about the gods / About Morne... / That's all.
 
 **Bram (any advice):** Read the sign on a Totem's card before anything else. That's its element, and what it fears.
 
@@ -206,7 +206,7 @@ _(This starts Pip's Errands.)_
 
 **Maren:** Then I found the old books. The readings from the last Turning. The shadows are nine days wrong.
 
-**The player's choice:** Wrong how? / Why tell me?
+**The player's choice (both can be asked; 20 October):** Wrong how? / Why tell me?
 
 **Maren (wrong how):** Somebody slowed the sun, child. Nine days of it. Long enough for the right Champion to catch up. _(She smiles without any humour.)_ They threw me out for asking which one.
 

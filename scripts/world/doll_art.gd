@@ -78,8 +78,26 @@ static func has_portrait(id: String) -> bool:
 	return ResourceLoader.exists(DIR + id + "_portrait.png")
 
 
-## A head-and-shoulders crop for dialogue boxes.
+## The look chosen in the attic mirror ("a", "b", "c" or "d"; the "look"
+## flag), or "a" when no game is running (the headless tests, which have no
+## Game autoload: it's reached through the tree, not by name, so this script
+## compiles without it).
+static func player_look() -> String:
+	var tree := Engine.get_main_loop() as SceneTree
+	var g = tree.root.get_node_or_null("Game") if tree != null else null
+	if g != null and g.has_method("flag"):
+		return String(g.flag("look", "a"))
+	return "a"
+
+
+## A head-and-shoulders crop for dialogue boxes. The player's is the face
+## of the look chosen in the mirror (player_<look>_portrait.png) when that
+## look's portrait has been rendered, else player_portrait.png (look A's).
 static func portrait(id: String) -> Texture2D:
+	if id == "player":
+		var l := "player_" + player_look()
+		if has_portrait(l):
+			return portrait(l)
 	var key := id + ":portrait"
 	if _cache.has(key):
 		return _cache[key]

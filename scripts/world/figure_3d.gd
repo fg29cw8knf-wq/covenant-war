@@ -34,8 +34,9 @@ extends PaperDoll
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play (Ned the fiddler's is
 ## Gary's seamus.glb, from before he was renamed; Solhaven's gate warden wears
-## the Sun Guard's). Everyone else's model is characters/<their id or
-## look>.glb (hob, krell, dask, hunter), picked up the moment it exists.
+## the Sun Guard's). The player's is player_<look>.glb for the look chosen
+## in the mirror (model_file()). Everyone else's model is characters/<their
+## id or look>.glb (hob, krell, dask, hunter), picked up the moment it exists.
 const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
@@ -123,9 +124,22 @@ static func make(look: String, id := "") -> PaperDoll:
 	return PaperDoll.new().setup(look)
 
 
+## The model file (without .glb) that plays a look or id. The player's is
+## the look chosen in the attic mirror (the "look" flag: a, b, c or d ->
+## player_a.glb, player_b.glb...; look A when that look's model isn't made
+## yet, so an old save never loses its player).
+static func model_file(look: String) -> String:
+	if look == "player":
+		var l := "player_" + DollArt.player_look()
+		if ResourceLoader.exists(DIR + l + ".glb"):
+			return l
+		return "player_a"
+	return String(MODELS.get(look, look))
+
+
 ## True when this look has a 3D model to play it.
 static func has_model(look: String) -> bool:
-	return ResourceLoader.exists(DIR + String(MODELS.get(look, look)) + ".glb")
+	return ResourceLoader.exists(DIR + model_file(look) + ".glb")
 
 
 ## Which model plays someone: their own (by id: "tam", "krell", "dask"), else
@@ -141,7 +155,7 @@ func _ready() -> void:
 	_pivot = Node3D.new()
 	_pivot.name = "Pivot"
 	add_child(_pivot)
-	_model_name = String(MODELS.get(char_id, char_id))
+	_model_name = model_file(char_id)
 	var path := DIR + _model_name + ".glb"
 	model = (load(path) as PackedScene).instantiate()
 	_pivot.add_child(model)

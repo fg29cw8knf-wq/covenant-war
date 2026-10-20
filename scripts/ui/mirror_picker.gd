@@ -2,22 +2,25 @@ class_name MirrorPicker
 extends Control
 ## The attic's cracked mirror (Prologue P1, "Choose your look. (Tap a
 ## face.)"): the player's face in the glass, cracked across, and the four
-## looks along the bottom. Only look A has been made so far, so B, C and D
-## show as "Coming soon" and don't answer; a tap on one of them just shakes
-## it. The step is gated: nothing else moves on until A is chosen (a tap on
-## it, or Enter / E / Space / a pad's A, since it's the only one there is).
-## A look still to come shows Gary's painted reference for it, misted, when
-## there is one (assets/art/characters/look_<letter>_preview.jpg: B is his
-## "Player C", the young woman; C his "Player D", the bearded man; his
-## "Player B" is look A's own model).
+## looks along the bottom. A look is there to choose the moment its model
+## exists (assets/models/characters/player_<letter>.glb, with its face
+## rendered to assets/art/characters/player_<letter>_portrait.png); one
+## still to come shows "Coming soon" over Gary's painted reference for it,
+## misted, when there is one (assets/art/characters/look_<letter>_preview.jpg),
+## and a tap on it just shakes it. The step is gated: nothing else moves on
+## until a look is chosen (a tap, or Enter / E / Space / a pad's A for the
+## first one made).
 ##
 ##   var look: String = await MirrorPicker.choose(hud._root)   # "a"
 
 signal picked(look: String)
 
 const LOOKS := ["a", "b", "c", "d"]
-## Which looks exist (a model and a portrait to show).
-const MADE := ["a"]
+
+
+## Whether a look has been made (its model is in the game).
+static func made(look: String) -> bool:
+	return ResourceLoader.exists("res://assets/models/characters/player_%s.glb" % look)
 
 var _faces: Array = []
 var _t := 0.0
@@ -57,7 +60,7 @@ func _ready() -> void:
 	for look in LOOKS:
 		var f := Face.new()
 		f.look = look
-		f.made = MADE.has(look)
+		f.made = made(look)
 		f.custom_minimum_size = Vector2(220, 290)
 		f.tapped.connect(_on_face)
 		row.add_child(f)
@@ -87,7 +90,10 @@ func _unhandled_input(e: InputEvent) -> void:
 		return
 	if e.is_action_pressed("interact") or e.is_action_pressed("ui_accept"):
 		get_viewport().set_input_as_handled()
-		_on_face(_faces[0])
+		for f in _faces:
+			if f.made:
+				_on_face(f)
+				return
 
 
 func _process(delta: float) -> void:
@@ -117,8 +123,8 @@ func _draw() -> void:
 	draw_circle(c, 5.0, Color(1, 1, 1, 0.35))
 
 
-## One face in the row: look A's portrait in an oval frame, or a misted one
-## saying it's still to come.
+## One face in the row: the look's portrait in an oval frame, or a misted
+## one saying it's still to come.
 class Face:
 	extends Control
 	signal tapped(f)
@@ -132,7 +138,7 @@ class Face:
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		if made:
-			_tex = DollArt.portrait("player")
+			_tex = DollArt.portrait("player_" + look) if DollArt.has_portrait("player_" + look) else DollArt.portrait("player")
 		else:
 			var p := "res://assets/art/characters/look_%s_preview.jpg" % look
 			if ResourceLoader.exists(p):

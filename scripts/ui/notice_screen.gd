@@ -1,12 +1,14 @@
 class_name NoticeScreen
 extends CanvasLayer
 ## The first thing the game shows: who made it and owns it, and a word from
-## Gary about why there are adverts. The first time it waits for a tap; after
-## that it moves on by itself after AUTO_SECONDS (or sooner, with a tap).
+## Gary about why there are adverts. It stays up until Continue is pressed
+## (or the interact key / pad button, which is the same thing): no timer, and
+## a tap on the page itself doesn't count, so nobody loses it to a stray
+## thumb. (Until 20 October it moved on by itself after seven seconds on every
+## launch but the first, and any tap dismissed it; Gary asked for it to wait.)
 
 signal finished
 
-const AUTO_SECONDS := 7.0
 const MIN_SECONDS := 1.2
 
 const OWNERSHIP := "The Covenant War: Throne of Ages, and everything in it (the story, the characters, the artwork, the music and the creatures), was created by and belongs to Gary Mannion."
@@ -17,20 +19,15 @@ const COPYRIGHT := "© 2026 Gary Mannion. All rights reserved."
 var _root: Control
 var _t := 0.0
 var _done := false
-var _first_time := true
 var _continue: Button
 
 
 func _ready() -> void:
 	layer = 40
-	_first_time = not bool(Game.settings.get("seen_notice", false))
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.theme = UITheme.make()
-	_root.mouse_filter = Control.MOUSE_FILTER_STOP
-	_root.gui_input.connect(func(e: InputEvent) -> void:
-		if e is InputEventMouseButton and e.pressed:
-			_finish())
+	_root.mouse_filter = Control.MOUSE_FILTER_STOP   # (swallows taps; only Continue moves on)
 	add_child(_root)
 
 	var bg := Backdrop.new()
@@ -123,12 +120,10 @@ func _process(delta: float) -> void:
 	if _t > MIN_SECONDS and _continue.modulate.a == 0.0:
 		create_tween().tween_property(_continue, "modulate:a", 1.0, 0.4)
 		_continue.grab_focus()
-	if not _first_time and _t > AUTO_SECONDS:
-		_finish()
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e.is_action_pressed("interact") or e.is_action_pressed("menu"):
+	if e.is_action_pressed("interact"):   # a keyboard's or a pad's Continue
 		_finish()
 		get_viewport().set_input_as_handled()
 
