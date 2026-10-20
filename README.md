@@ -91,8 +91,8 @@ duel (`spec.retry`) plays the opponent's line for winning (`spec.win_line`), the
 Morrowen takes the story back with one line, never the same one twice running,
 then a page turning back and **Again** / **Change deck first**; after a second
 loss only the page (`scripts/duel_ui/story_loss.gd`; her voice is
-`assets/audio/vo/morrowen_loss_01.ogg` ... `_04`, the page `assets/sfx/page_turn.ogg`,
-each picked up when it exists). From the night of the Sigilfall on, the blank card
+`assets/audio/vo/morrowen_loss_01.ogg` ... `_04` and the page `assets/sfx/page_turn.wav`,
+Gary's recordings since 20 October). From the night of the Sigilfall on, the blank card
 sits in its own slot beside the deck in every story duel and flickers when Life
 runs low (`scripts/duel_ui/blank_card_slot.gd`).
 
@@ -163,8 +163,12 @@ keeps the export presets in step with it): a main pack (title, menus, Ashford,
 Thornwood), then `packs/movie.pck` (the opening movie), `packs/duel.pck` (the duel
 Totems and Summons; the moth and the hounds the films need stay in the main pack)
 and `packs/solhaven.pck` (Solhaven's script and anything in a `solhaven/` folder),
-each downloaded the first time it's needed, with a loading bar. Code that needs
-one awaits it first: `await Packs.need("duel")` (`scripts/game/packs.gd`; it
+each downloaded the first time it's needed, with a loading bar (the movie's has a
+Skip button too, since nobody should sit through its download to skip it:
+`Packs.need("movie", true)` returns false if it's pressed, and New Game goes
+straight on to Ashford; if the movie's over before Ashford is ready a
+"Lighting the lanterns in Ashford" bar holds the screen, `Packs.hold()`). Code
+that needs one awaits it first: `await Packs.need("duel")` (`scripts/game/packs.gd`; it
 returns at once in the apps, the editor and the tests, where everything is in one
 pack). `docs/`, `tools/`, `tests/`, `lookdev/` and `assets/audio/source/` are
 never exported. `python3 tools/pck_list.py build/web/index.pck` shows what's in a pack.
@@ -200,22 +204,34 @@ Script" until they're rebuilt to v3. The words and talk trees are in
 `scripts/world/areas/ashford_p1.gd`.
 
 New Game opens on black and the caption "Ashford / The last night of the Age."
-in the inn's attic, then two seconds of the dream the player is about to tell
-Bram about (the white sky, `CineOverlay.dream_sky()`, cut to black on the drum):
-the player wakes in the bed (an oak cot with a straw mattress, a bolster and a
-wool blanket, `InnRooms._bed()`; Gary's own model takes its place from
-`assets/models/ashford/attic_bed.glb` when it exists), sits up, throws the
-blanket back, swings his legs over the side, sits a breath and stands
-(`Figure3D.lie_on()`, `sit_long()`, `sit()` with `shift_seat()`, `stand()`:
-poses built on the model's own idle, blended one into the next), goes to the
-cracked mirror and chooses their look (`scripts/ui/mirror_picker.gd`: only
-look A exists, so B, C and D show as coming soon). In the taproom Bram is
+in the inn's attic, then the dream the player is about to tell Bram about
+(`CineOverlay.dream_sky()`, `AshfordP1.DREAM_SECS`, 0 turns it off): the night
+sky as it's seen from the bed, full of stars, until a white light climbs from
+the bottom of it and puts them out one by one, and there's nothing left but
+white (the Sigilfall, before it happens), cut to black on the drum. The player
+wakes in the bed (an oak cot with a straw mattress, a pillow and a wool
+blanket, `InnRooms._bed()`; Gary's own model takes its place from
+`assets/models/ashford/attic_bed.glb` when it exists), lying on top of the
+mattress with his head up on the pillow (`Figure3D.lie_on()`: the body tipped
+up a little at the head end, `LIE_HEAD_UP`, the feet lolling, `LIE_FOOT_DROP`),
+puts a hand down on the mattress and pushes himself up on it, slowly, the
+blanket sliding back, swings his legs over the side and turns to sit on the
+edge, sits a moment and stands (`sit_long()`, `sit()` with `shift_seat()`,
+`stand()`, and `reach()` for the hand: poses built on the model's own idle,
+blended one into the next; `tests/bed_check.tscn` takes stills of it from the
+side and the foot of the bed), goes to the cracked mirror and chooses their
+look (`scripts/ui/mirror_picker.gd`: only look A exists, so B, C and D show as
+coming soon, B and C with Gary's painted references misted behind the words,
+`assets/art/characters/look_<letter>_preview.jpg`). In the taproom Bram is
 stacking paper lanterns into a crate, the shelves behind the bar bare; he hands
 the crate over, the player carries it out of the inn and across to the green
 with Bram following (indoors he walks round the table and the stools, as the
 player must; the stairs are solid, and anyone carrying the crate back towards
-them gets "Wrong way, Sprout. The green's out the door, not up the stairs."),
-and hangs the last lantern on the Great Lantern's top hook with its hoist.
+them is stopped, turned back a step and told "Wrong way, Sprout. The green's
+out the door, not up the stairs.": `stairs_zone` in `InnRooms.eve()`,
+`AshfordP1.walk_room()`), and hangs the last lantern on the Great Lantern's top
+hook with its hoist. (The inn's rooms had drifting dust motes until 20 October;
+on a phone they read as little lights floating about, so they're gone.)
 
 New Game's Ashford is built before it's needed: the moment the title screen is
 up, `Main._prepare_new_game()` builds it underneath, a piece a frame
@@ -267,7 +283,8 @@ can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
 
 Bram, Corin, Tam, Tilly, Old Nell, Hob and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
-Nell since 18 October, Hob since 19 October); the other villagers (Ned, the
+Nell since 18 October, Hob since 19 October, and Bram Gary's own AssetFurnace
+model, in place of the 11 October stand-in, since 20 October); the other villagers (Ned, the
 crowd) stay cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
 shows the camera its painted front, turned left or right (its back picture
@@ -312,10 +329,13 @@ whoever plays one moves the figure to where it ends). The `sit` clips
 (everyone's) sit down on the ground; a bench is `Figure3D.sit()`.
 
 Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
-and Hob his 19 October one, built the same way by
+Hob his 19 October one and Bram his 20 October one, built the same way by
 `tools/rig_villager.sh <who> <master.glb>` (then the import, their portrait
 and the checks above, with their id): Corin stands 1.72 m, Tam 1.88 m, Tilly
-1.25 m, Nell 1.50 m and Hob 1.80 m (his own idle, walk, run, jump, sit, wave,
+1.25 m, Nell 1.50 m, Bram 1.84 m (his own idle, walk, run, strafe, jump, roll,
+sit, wave, dance and fighting clips; his lift, which everyone borrows, and his
+cheer came over from the stand-in, `git show 3c521d9:assets/models/characters/bram.glb`)
+and Hob 1.80 m (his own idle, walk, run, jump, sit, wave,
 cheer and death). `rig_villager.sh corin <folder>` also takes a folder of
 single-clip AssetFurnace files (one clip each, the same rig) for the day
 Corin's own walk, run, sit and wave arrive. Each keeps its own clips
@@ -352,10 +372,11 @@ screen, `PackTour.CAMP_DECK`), the practice round on the second morning, Dask's
 road duel and dawn over Solhaven. Films are staged with `scripts/world/cine.gd`
 (shots, walks, spawns, reveals) and `scripts/world/cine_overlay.gd` (letterbox,
 subtitles, choices, the name prompt). The Herald's voice plays from
-`assets/audio/vo/herald_NN.ogg` (01, 02, 03, 09, 10, 12, 13; .wav or .mp3 work
-too) and the Champions' faces from `assets/art/champions/<id>.png` (aldric, vorn,
-eiran, rook, silk, maelis, crane) once they exist; until then the lines are
-subtitles and each face is its Seat's sign.
+`assets/audio/vo/herald_NN.ogg` (01, 02, 03, 09, 10, 12, 13, Gary's recordings
+since 20 October; .wav or .mp3 work too) and the Champions' faces from
+`assets/art/champions/<id>.png` or `.jpg` (aldric, vorn, eiran, rook, silk,
+maelis, crane; Vorn, Eiran and Rook are Gary's paintings since 20 October) once
+they exist; until then the lines are subtitles and each face is its Seat's sign.
 
 Chapter 1, The Sun's Court, is Solhaven, line for line from Master Script v3 (a
 copy is in `docs/script/v3_chapter1.md`). `scripts/world/areas/solhaven.gd` is
@@ -442,7 +463,7 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 
 Ashford's cottages, the Crooked Lantern, the windmill (its sails turn until the thatch catches at midnight) and the oaks round the village are Gary's models (`assets/models/ashford/`; an `oak_b.glb`, `oak_c.glb`... is used alongside `oak_a` as soon as it's there); each has a `<id>_glow.png` window mask made from its colour atlas, so the windows light up at night. Missing models fall back to the drawn stand-ins.
 
-So are the dry-stone walls round the fields, the fence along the inn's yard, the grain sacks and the crates (since 18 October; each model's texture is beside it, `tools/split_glb.py`, 1024 pixels). The walls are Gary's 4.2 m length laid end to end along the field lines (`FIELD_WALLS` in `ashford_village.gd`), each fitted to its stretch, set into the ground and leaning with the slope, some turned round; they're drawn in batches of about 32 m so far ones use simpler versions, and the phones leave out those past 85 m. Gateways are left where the riders and hounds come down the east road (`WALL_GAPS`). The fence is laid from Gary's model split into its bays and one post, so every join has a single post; its gap is where Bram and the player go through to the gardens (`INN_FENCE`). Sacks stand by the mill door, behind Tam's cart and by the blue stall; crates by the inn's door and the blue stall (`build_props()`). `make_crate()` gives the lantern crate on its own for carrying (origin at the middle of its base).
+So are the dry-stone walls round the fields, the fence along the inn's yard, the grain sacks and the crates (since 18 October; each model's texture is beside it, `tools/split_glb.py`, 1024 pixels). The walls are Gary's 4.2 m length laid end to end along the field lines (`FIELD_WALLS` in `ashford_village.gd`), each fitted to its stretch, set into the ground and leaning with the slope, some turned round; they're drawn in batches of about 32 m so far ones use simpler versions, and the phones leave out those past 85 m. Gateways are left where the riders and hounds come down the east road (`WALL_GAPS`). The fence is laid from Gary's model split into its bays and one post, so every join has a single post; its gap is where Bram and the player go through to the gardens (`INN_FENCE`). Sacks stand by the mill door, behind Tam's cart and by the blue stall; crates by the inn's door and the blue stall (`build_props()`). `make_crate()` gives the lantern crate on its own for carrying (origin at the middle of its base). The cider barrels (Tam's, the taproom's, the cellar's) are Gary's barrel since 20 October (`barrel.glb`, 0.96 m as made, scaled to the game's 0.8 m in `make_barrel()`, origin at its middle), and his second oak (`oak_b.glb`, the leaning one) is planted in turn with the first.
 
 ```sh
 xvfb-run -a -s "-screen 0 2560x1600x24" godot --rendering-driver opengl3 res://tests/menu_test.tscn -- /tmp/menu 1600x900   # every menu tab, card detail, notice, advert

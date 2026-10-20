@@ -52,6 +52,7 @@ const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
 const OWN_GAIT := {
 	"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87},
 	"corin": {"walk": 1.27, "run": 3.23},
+	"bram": {"walk": 1.69, "run": 4.30},
 	"hob": {"walk": 1.65, "run": 4.17},
 	"tam": {"walk": 1.63, "run": 4.12},
 	"tilly": {"walk": 1.00, "run": 2.54},
@@ -67,6 +68,10 @@ const STANDING_ONLY := ["walk", "run", "sneak", "strafe_left", "jump", "sit", "f
 const SIT_BONES := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
 ## How far a grown-up's hip joints sit above the seat (m).
 const SEAT_PAD := 0.1
+## Lying on a bed (lie_on): how far the body tips up from flat at the head
+## end, onto the pillow, and how far the feet drop from standing square.
+const LIE_HEAD_UP := deg_to_rad(13.0)
+const LIE_FOOT_DROP := deg_to_rad(55.0)
 
 var model: Node3D
 var anim: AnimationPlayer
@@ -425,13 +430,19 @@ func _seated_pose() -> Dictionary:
 	var pos := {"Hips": Vector3(rest.x, hips_y - (_skel.get_bone_global_rest(hb).origin.y - rest.y), rest.z)}
 	rot["Hips"] = Quaternion.IDENTITY
 	if _seat_pose == "lying":
-		# on their back: the whole body tipped back flat about the hips, the
-		# legs as they stand (straight), so the feet point the way they face
-		rot["Hips"] = Quaternion(Vector3.RIGHT, -PI * 0.5)
+		# on their back: the body tipped back about the hips, not quite flat
+		# (the head and shoulders up on the pillow, LIE_HEAD_UP), the legs
+		# straight and flat along the bed, the feet lolling the way they do
+		# when someone's asleep rather than standing up off the mattress
+		rot["Hips"] = Quaternion(Vector3.RIGHT, -PI * 0.5 + LIE_HEAD_UP)
 		for side in ["Left", "Right"]:
 			for b in ["UpLeg", "Leg", "Foot", "ToeBase"]:
 				if _skel.find_bone(side + b) >= 0:
 					rot[side + b] = Quaternion.IDENTITY
+			if _skel.find_bone(side + "UpLeg") >= 0:
+				rot[side + "UpLeg"] = Quaternion(Vector3.RIGHT, -LIE_HEAD_UP)
+			if _skel.find_bone(side + "Foot") >= 0:
+				rot[side + "Foot"] = Quaternion(Vector3.RIGHT, LIE_FOOT_DROP)
 		return {"pos": pos, "rot": rot}
 	for side in ["Left", "Right"]:
 		var up := _skel.find_bone(side + "UpLeg")

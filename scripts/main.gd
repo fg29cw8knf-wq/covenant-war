@@ -28,9 +28,11 @@ func _ready() -> void:
 	show_title()
 
 
-## The opening movie; returns when it ends or is skipped.
+## The opening movie; returns when it ends or is skipped (on the web, its
+## download can be skipped too).
 func play_opening() -> void:
-	await Packs.need("movie")
+	if not await Packs.need("movie", true):
+		return
 	var movie := OpeningMovie.new()
 	add_child(movie)
 	await movie.finished
@@ -126,15 +128,25 @@ func _on_new_game() -> void:
 		go_world("ashford", "green")
 		return
 	# Ashford was built under the title screen (or is still being built,
-	# under the movie now): the attic starts the moment the movie's done
-	await Packs.need("movie")
-	var movie := OpeningMovie.new()
-	add_child(movie)
+	# under the movie now): the attic starts the moment the movie's done.
+	# On the web the movie's download can be skipped like the movie itself.
 	var done := [false]
-	movie.finished.connect(func() -> void: done[0] = true)
+	if await Packs.need("movie", true):
+		var movie := OpeningMovie.new()
+		add_child(movie)
+		movie.finished.connect(func() -> void: done[0] = true)
+	else:
+		done[0] = true
 	_swap(null)   # the title screen's gone (under the movie anyway)
+	# if the movie's over before Ashford is ready (New Game pressed the
+	# moment the title came up, then Skip), say so rather than sit on black
+	var holding: CanvasLayer = null
 	while not done[0] or _prepared == null or not _prepared.prepared:
+		if done[0] and holding == null:
+			holding = Packs.hold("Lighting the lanterns in Ashford")
 		await get_tree().process_frame
+	if holding != null:
+		holding.queue_free()
 	Game.settings["seen_opening"] = true
 	Game.save_settings()
 	var w := _prepared

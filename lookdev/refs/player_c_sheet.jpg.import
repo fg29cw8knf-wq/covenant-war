@@ -2,19 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ck1vqun2tsd7j"
-path="res://.godot/imported/bram_Bram 2048 colour atlas.png-f0a25ec9ee0713353bd26e945265f012.ctex"
+uid="uid://mwjp2l1nre77"
+path="res://.godot/imported/player_c_sheet.jpg-7875f199be6ea0fa042c9f722d371f62.ctex"
 metadata={
 "vram_texture": false
-}
-generator_parameters={
-"md5": "5d856b0223dc5f6d7587ca8d7f2188a0"
 }
 
 [deps]
 
-source_file="res://assets/models/characters/bram_Bram 2048 colour atlas.png"
-dest_files=["res://.godot/imported/bram_Bram 2048 colour atlas.png-f0a25ec9ee0713353bd26e945265f012.ctex"]
+source_file="res://lookdev/refs/player_c_sheet.jpg"
+dest_files=["res://.godot/imported/player_c_sheet.jpg-7875f199be6ea0fa042c9f722d371f62.ctex"]
 
 [params]
 

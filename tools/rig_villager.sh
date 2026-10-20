@@ -6,6 +6,7 @@
 #   tools/rig_villager.sh tilly ".../Tilly model/Unknown_Tilly_Master_11_Animations.glb"
 #   tools/rig_villager.sh nell  .../Old_Nell_model/Old_Nell_Master_10_Animations.glb
 #   tools/rig_villager.sh hob   ".../Hob model/Hob_Master_8_Animations.glb"
+#   tools/rig_villager.sh bram  ".../Bram model/Bram_Master_18_Animations.glb"   (20 Oct)
 #   tools/rig_villager.sh corin ".../corin model"      (19 Oct: the folder of his single-clip files)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
@@ -59,6 +60,19 @@ corin)
 			--head-up=-12:walk,run
 	fi
 	;;
+bram)
+	# the innkeeper (grey-haired, in his sixties, in a leather apron): Gary's
+	# 20 October master with his own idle, walk, run, sit, wave, dance and
+	# fighting clips. His lift (he lifts the lantern crate, and everyone
+	# borrows it) and his cheer come over from the stand-in model he had
+	# (committed on 11 October; git show 3c521d9:... is the last of it)
+	git show 3c521d9:assets/models/characters/bram.glb > /tmp/bram_standin.glb
+	python3 tools/rig_character.py "$src" "$out" --name Bram --height 1.84 \
+		--cycle walk --cycle run --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow /tmp/bram_standin.glb:lift,cheer \
+		--head-up=-12:walk,run
+	;;
 hob)
 	# a farmer (bald, in his fifties): his own walk and run
 	python3 tools/rig_character.py "$src" "$out" --name Hob --height 1.80 \
@@ -98,7 +112,7 @@ nell)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 corin|tam|tilly|nell|hob <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

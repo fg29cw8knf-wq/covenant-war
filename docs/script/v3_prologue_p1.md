@@ -22,7 +22,7 @@ _Black. The festival drum from the movie keeps beating._
 
 _The inn's attic: low beams, a straw bed, a cracked mirror. Through the little window, the green is filling up with lanterns. The player wakes to the drum and looks in the mirror._
 
-_(Added 19 October at Gary's request, not yet in the master doc: before the player wakes, two seconds of the dream: a white sky, nothing in it, blooming to white; cut to black on the drum.)_
+_(Added 19 October at Gary's request, not yet in the master doc: before the player wakes, a few seconds of the dream. Since 20 October it is the night sky seen from the bed, the stars going out as a white light climbs from the horizon and takes the whole sky: the Sigilfall the player has been dreaming of before it happens. Cut to black on the drum.)_
 
 **Narration:** Nobody alive has seen an Age end. So Ashford has decided it ends with cider.
 
@@ -30,7 +30,7 @@ _(Added 19 October at Gary's request, not yet in the master doc: before the play
 
 _The taproom. Bram is stacking paper lanterns into a crate. The shelves behind the bar are bare: the good tankards are already out on the green._
 
-**Bram:** There you are. Thought you'd sleep through the end of the world.
+**Bram:** There you are. Last night of the Age, and you'd have slept through it. _(Reworded 20 October at Gary's request, not yet in the master doc; the doc has "Thought you'd sleep through the end of the world.")_
 
 **Bram:** Once every two thousand years. We're not going to be late for it.
 
@@ -58,7 +58,7 @@ _The player says nothing. Bram picks up the next lantern._
 
 **Bram (if the player heads back up the stairs; added 19 October at Gary's request, not yet in the master doc):** Wrong way, Sprout. The green's out the door, not up the stairs.
 
-**Bram (as you reach the door):** And if you need to stop, stop. The world'll wait.
+**Bram (as you reach the door):** And if you want a breather, take one. Even the end of an Age can wait a minute. _(Reworded 20 October at Gary's request, not yet in the master doc; the doc has "And if you need to stop, stop. The world'll wait.")_
 
 _On screen, the square in the corner glows once: it pauses and saves._
 

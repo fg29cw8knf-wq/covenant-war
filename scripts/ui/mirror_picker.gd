@@ -6,6 +6,10 @@ extends Control
 ## show as "Coming soon" and don't answer; a tap on one of them just shakes
 ## it. The step is gated: nothing else moves on until A is chosen (a tap on
 ## it, or Enter / E / Space / a pad's A, since it's the only one there is).
+## A look still to come shows Gary's painted reference for it, misted, when
+## there is one (assets/art/characters/look_<letter>_preview.jpg: B is his
+## "Player C", the young woman; C his "Player D", the bearded man; his
+## "Player B" is look A's own model).
 ##
 ##   var look: String = await MirrorPicker.choose(hud._root)   # "a"
 
@@ -129,6 +133,10 @@ class Face:
 		mouse_filter = Control.MOUSE_FILTER_STOP
 		if made:
 			_tex = DollArt.portrait("player")
+		else:
+			var p := "res://assets/art/characters/look_%s_preview.jpg" % look
+			if ResourceLoader.exists(p):
+				_tex = load(p)
 
 	func shake() -> void:
 		_shake = 1.0
@@ -155,14 +163,15 @@ class Face:
 			var a := TAU * i / 48.0
 			pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
 		draw_colored_polygon(pts, Color(0.06, 0.07, 0.1, 0.92))
-		if made and _tex != null:
-			# the portrait cropped to the oval
+		if _tex != null:
+			# the portrait cropped to the oval (a look to come: its painted
+			# reference, dim behind the mist)
 			var uvs := PackedVector2Array()
 			for p in pts:
 				var u := (p - oval.position) / oval.size
-				uvs.append(Vector2(0.12 + u.x * 0.76, 0.02 + u.y * 0.8))
-			draw_colored_polygon(pts, Color.WHITE, uvs, _tex)
-		else:
+				uvs.append(Vector2(0.12 + u.x * 0.76, 0.02 + u.y * 0.8) if made else Vector2(0.1 + u.x * 0.8, u.y * 0.9))
+			draw_colored_polygon(pts, Color.WHITE if made else Color(0.42, 0.44, 0.5), uvs, _tex)
+		if not made:
 			# misted glass, and a question waiting to be answered
 			for i in 5:
 				draw_circle(c + Vector2(sin(i * 1.9) * rx * 0.3, cos(i * 2.7) * ry * 0.3), rx * (0.5 - i * 0.06), Color(0.5, 0.55, 0.65, 0.06))

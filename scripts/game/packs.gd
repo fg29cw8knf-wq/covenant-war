@@ -44,25 +44,44 @@ func has(pack: String) -> bool:
 
 
 ## Makes sure a pack is loaded, downloading it on the web the first time.
-func need(pack: String) -> void:
+## Returns true once it's there. With `skippable`, the loading screen has a
+## Skip button (the opening movie: nobody should sit through its download to
+## skip it): pressed, the download is dropped and need() returns false.
+func need(pack: String, skippable := false) -> bool:
 	if has(pack):
-		return
+		return true
 	if _busy.has(pack):
-		while not _have.has(pack):
+		while not _have.has(pack) and _busy.has(pack):
 			await _loaded
-		return
+		return _have.has(pack)
 	_busy[pack] = true
 	var screen := _Screen.new()
 	screen.what = TITLES.get(pack, pack)
+	screen.skippable = skippable
 	add_child(screen)
+	var got := false
 	while true:
-		if await _fetch(pack, screen):
+		got = await _fetch(pack, screen)
+		if got or screen.skipped:
 			break
 		await screen.retry()
 	screen.queue_free()
-	_have[pack] = true
+	if got:
+		_have[pack] = true
 	_busy.erase(pack)
 	_loaded.emit(pack)
+	return got
+
+
+## A holding screen for a wait that isn't a download (New Game's Ashford still
+## being built after the movie's skipped): `what` is finished by the caller
+## with `free_hold()`. The bar creeps along meanwhile so it's seen to be alive.
+func hold(what: String) -> CanvasLayer:
+	var screen := _Screen.new()
+	screen.what = what
+	add_child(screen)
+	screen.creep(7.0)
+	return screen
 
 
 func _sizes() -> Dictionary:
@@ -77,8 +96,9 @@ func _sizes() -> Dictionary:
 ## memory never shrinks once grown, so the pack mustn't pass through it.)
 const FETCH_JS := """(function () {
 	var all = window.__packs = window.__packs || {};
-	var s = all[NAME] = {done: 0, state: 'loading'};
-	fetch(URL).then(function (r) {
+	var ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+	var s = all[NAME] = {done: 0, state: 'loading', ctrl: ctrl};
+	fetch(URL, ctrl ? {signal: ctrl.signal} : {}).then(function (r) {
 		if (!r.ok) throw new Error('HTTP ' + r.status);
 		var buf = new Uint8Array(SIZE), reader = r.body.getReader();
 		var pump = function () {
@@ -108,6 +128,11 @@ func _fetch(pack: String, screen: _Screen) -> bool:
 	var state := "loading"
 	while state == "loading":
 		await get_tree().process_frame
+		if screen.skipped:
+			# dropped: the browser's fetch is told to stop, and the pack is
+			# fetched afresh if it's ever wanted
+			JavaScriptBridge.eval("(window.__packs[%s] || {}).ctrl && window.__packs[%s].ctrl.abort()" % [JSON.stringify(pack), JSON.stringify(pack)], true)
+			return false
 		var s = JSON.parse_string(str(JavaScriptBridge.eval("JSON.stringify(window.__packs[%s])" % JSON.stringify(pack), true)))
 		state = s.state if s is Dictionary else "lost track of the download"
 		screen.progress(int(s.done) if s is Dictionary else 0, total)
@@ -123,10 +148,14 @@ class _Screen:
 	extends CanvasLayer
 	signal _again
 	var what := ""
+	## Shows a Skip button; `skipped` goes true when it's pressed.
+	var skippable := false
+	var skipped := false
 	var _label: Label
 	var _bar: Panel
 	var _fill: Panel
 	var _retry: Button
+	var _skip: Button
 
 	func _ready() -> void:
 		layer = 120
@@ -159,6 +188,23 @@ class _Screen:
 		_retry.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		_retry.pressed.connect(func() -> void: _again.emit())
 		box.add_child(_retry)
+		if skippable:
+			_skip = UITheme.button("Skip", false, 300)
+			_skip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+			_skip.pressed.connect(func() -> void:
+				skipped = true
+				_skip.disabled = true
+				_label.text = "Skipping %s…" % what)
+			box.add_child(_skip)
+
+	## The bar creeping most of the way along over `secs`, for a wait with no
+	## count to show.
+	func creep(secs: float) -> void:
+		_label.text = "%s…" % what
+		var tw := create_tween()
+		tw.tween_method(func(k: float) -> void:
+			if is_instance_valid(_fill):
+				_fill.size.x = 760.0 * (1.0 - pow(1.0 - k, 2.0)) * 0.92, 0.0, 1.0, secs)
 
 	func progress(done: int, total: int) -> void:
 		_fill.size.x = 760.0 * clampf(float(done) / maxf(total, 1), 0.0, 1.0)

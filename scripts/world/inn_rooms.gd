@@ -129,7 +129,6 @@ static func taproom(v: AshfordVillage) -> Dictionary:
 	card.position = t + Vector3(-0.15, 0.816, 0.1)
 	card.rotation = Vector3(-PI * 0.5, 0.3, 0)
 	root.add_child(card)
-	_motes(v, root, Vector3(0, 1.6, 1.0), Vector3(3.5, 1.2, 2.0))
 	var out := {"root": root, "table": root.to_global(t), "card": card,
 		"bram": root.to_global(t + Vector3(0.0, 0.0, -1.05)), "player": root.to_global(t + Vector3(0.0, 0.0, 1.05)),
 		"bar": root.to_global(Vector3(-1.6, 0.0, -1.6))}
@@ -249,7 +248,6 @@ static func cellar(v: AshfordVillage) -> Dictionary:
 	ll.position = Vector3(-0.2, 1.75, -0.4)
 	root.add_child(ll)
 	v.flicker_lights.append([ll, 2.4])
-	_motes(v, root, Vector3(0, 1.4, 0), Vector3(2.5, 0.9, 2.0))
 	var out := {"root": root, "lid": hinge, "boxes": boxes, "box_light": cl, "rug": rug, "trapdoor": trap, "hole": hole,
 		"chest": root.to_global(cpos), "bram": root.to_global(cpos + Vector3(0.2, 0, 0.85)),
 		"player": root.to_global(cpos + Vector3(-0.9, 0, 1.3)), "stairs": root.to_global(Vector3(W * 0.5 - 0.6, 0, 1.4)),
@@ -372,12 +370,11 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	v.box(root, Vector3(0.85, 0.015, 0.85), hatch + Vector3(0, 0.008, 0), v.mats.dark)
 	for s in [-1.0, 1.0]:
 		v.box(root, Vector3(0.06, 0.95, 0.06), hatch + Vector3(s * 0.32, 0.47, 0.38), v.mats.beam_v)
-	_motes(v, root, Vector3(-0.8, 1.3, -0.4), Vector3(2.2, 0.8, 1.6))
 	var out := {"root": root, "bed": root.to_global(bed + Vector3(0, BED_TOP, 0)), "bed_head": root.to_global(bed + Vector3(-0.8, BED_TOP, 0)),
 		"bed_side": root.to_global(bed + Vector3(0.1, 0, 0.95)), "mirror": root.to_global(Vector3(mx - 0.09, my, mz)),
 		# where they lie (hips over it, head to the west), sit on the edge (hips
 		# over it, feet down the south side), and the mattress's height
-		"lie_at": root.to_global(bed + Vector3(-0.02, 0, 0)), "edge_at": root.to_global(bed + Vector3(0.12, 0, 0.33)),
+		"lie_at": root.to_global(bed + Vector3(-0.16, 0, 0)), "edge_at": root.to_global(bed + Vector3(0.12, 0, 0.36)),
 		"bed_top": BED_TOP, "blanket": bed_parts.blanket, "blanket_off": bed_parts.blanket_off,
 		"mirror_stand": root.to_global(Vector3(mx - 0.72, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
 		"floor_y": ATTIC_AT.y, "view_quad": null}
@@ -393,6 +390,8 @@ static func attic(v: AshfordVillage) -> Dictionary:
 ## The height of the attic bed's mattress (the straw and the sacking over it)
 ## off the attic floor.
 const BED_TOP := 0.52
+## How flat the pillow is pressed (1 = a round bolster).
+const PILLOW_FLAT := 0.55
 
 
 ## The attic bed at `at` (the middle of its base), its head to the west: a
@@ -442,11 +441,12 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 		# the straw, poking out under the sacking, and the mattress in its cover
 		v.box(root, Vector3(L - 0.12, 0.07, W - 0.1), at + Vector3(0, rail_y + 0.12, 0), v.mats.hay)
 		v.box(root, Vector3(L - 0.2, 0.12, W - 0.16), at + Vector3(0, BED_TOP - 0.06, 0), sack)
-		# the bolster at the head
+		# the pillow at the head: a linen bolster, flattened where a head lies
 		var bolster := CapsuleMesh.new()
-		bolster.radius = 0.11
+		bolster.radius = 0.12
 		bolster.height = W - 0.3
-		v.add_mesh(root, bolster, linen, Transform3D(Basis.from_euler(Vector3(PI * 0.5, 0, 0)), at + Vector3(-L * 0.5 + 0.28, BED_TOP + 0.08, 0)))
+		v.add_mesh(root, bolster, linen, Transform3D(Basis.from_euler(Vector3(PI * 0.5, 0, 0)) * Basis.from_scale(Vector3(1.0, 1.0, PILLOW_FLAT)),
+			at + Vector3(-L * 0.5 + 0.3, BED_TOP + 0.12 * PILLOW_FLAT - 0.01, 0)))
 	# the blanket: draped over the sleeper from the chest down, high over
 	# the chest, lower over the legs, falling to the mattress at the sides
 	var blanket := v.add_mesh(root, _blanket_mesh(1.3, W - 0.04), wool, Transform3D(Basis.IDENTITY, at + Vector3(0.3, BED_TOP, 0)))
@@ -468,8 +468,9 @@ static func _blanket_mesh(L: float, W: float) -> ArrayMesh:
 	var pts: Array = []
 	for i in nx + 1:
 		var u := float(i) / nx
-		# the body under it: chest, hips, knees, feet
-		var h := 0.25 - 0.14 * u + 0.03 * sin(u * PI)
+		# the body under it: chest, hips, knees, feet (the boots lift it a
+		# little again at the end)
+		var h := 0.25 - 0.14 * u + 0.03 * sin(u * PI) + 0.09 * smoothstep(0.65, 1.0, u)
 		var row: Array = []
 		for j in nz + 1:
 			var vv := float(j) / nz * 2.0 - 1.0
@@ -583,7 +584,6 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	fill.omni_range = 10.0
 	fill.position = Vector3(-1.5, 2.6, -1.0)
 	root.add_child(fill)
-	_motes(v, root, Vector3(0, 1.6, 0.0), Vector3(3.5, 1.2, 2.5))
 	var out := {"root": root, "door": hinge, "table": root.to_global(t), "table_top": root.to_global(t + Vector3(0, 0.815, 0)),
 		"bram": root.to_global(t + Vector3(0.0, 0, -1.05)), "player": root.to_global(t + Vector3(-0.15, 0, 1.15)),
 		"stairs_foot": root.to_global(Vector3(0.35, 0, D * 0.5 - 0.6)), "stairs_top": root.to_global(Vector3(-3.4, 2.9, D * 0.5 - 0.5)),
@@ -734,39 +734,6 @@ static func _hearth(v: AshfordVillage, root: Node3D, at: Vector3) -> void:
 	l.position = at + Vector3(-0.4, 0.5, 0)
 	root.add_child(l)
 	v.flicker_lights.append([l, 2.0])
-
-
-## Dust hanging in the air, catching the light.
-static func _motes(v: AshfordVillage, root: Node3D, at: Vector3, ext: Vector3) -> void:
-	var p := GPUParticles3D.new()
-	p.amount = [40, 70, 110][v.quality]
-	p.lifetime = 8.0
-	p.preprocess = 8.0
-	p.position = at
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = ext
-	pm.direction = Vector3(0.2, 1, 0)
-	pm.spread = 180.0
-	pm.initial_velocity_min = 0.01
-	pm.initial_velocity_max = 0.05
-	pm.gravity = Vector3(0, -0.005, 0)
-	pm.turbulence_enabled = true
-	pm.turbulence_noise_strength = 0.2
-	pm.scale_min = 0.5
-	pm.scale_max = 1.0
-	p.process_material = pm
-	var q := QuadMesh.new(); q.size = Vector2(0.012, 0.012)
-	p.draw_pass_1 = q
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	m.albedo_color = Color(1.0, 0.85, 0.6, 0.6)
-	p.material_override = m
-	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	p.visibility_aabb = AABB(-ext - Vector3.ONE, ext * 2.0 + Vector3.ONE * 2.0)
-	root.add_child(p)
 
 
 ## Smoke curling in under a door.

@@ -226,36 +226,67 @@ func chart() -> void:
 var _chart: Control = null
 
 
-## The player's dream before they wake (P1): a white sky, hazy and
-## shadowless, slowly blooming to nothing but white, then cut to black.
-## Returns on the cut.
-func dream_sky(secs := 2.2) -> void:
+## The player's dream before they wake (P1), the one they tell Bram about:
+## the night sky as it's seen from the bed, slow and full of stars, until a
+## white light climbs from the bottom of it and the stars go out one by one
+## in it, and there's nothing left but white: the Sigilfall, before it
+## happens. Cut to black on the drum. Returns on the cut.
+func dream_sky(secs := 3.4) -> void:
 	var sky := ColorRect.new()
 	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()
 	sh.code = """shader_type canvas_item;
-uniform float t = 0.0;
+uniform float t = 0.0;      // 0..1 over the dream
+uniform float aspect = 1.78;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y);
 }
+// stars on a grid of cells, one in a few cells lit, each its own size and twinkle
+float stars(vec2 uv, float cells, float keep, float size, float tm) {
+	vec2 g = uv * cells;
+	vec2 i = floor(g);
+	float h = hash(i);
+	if (h > keep) return 0.0;
+	vec2 c = vec2(hash(i + 7.1), hash(i + 3.7)) * 0.7 + 0.15;
+	float d = length((fract(g) - c) * vec2(1.0, 1.0));
+	float tw = 0.7 + 0.3 * sin(tm * (2.0 + h * 6.0) + h * 40.0);
+	return smoothstep(size, 0.0, d) * tw * (0.5 + h / keep * 0.5);
+}
 void fragment() {
 	vec2 uv = UV;
-	float n = noise(uv * vec2(3.0, 2.0) + vec2(t * 0.25, -t * 0.1)) * 0.6 + noise(uv * vec2(7.0, 5.0) - vec2(t * 0.15, 0.0)) * 0.4;
-	// a sky with no sun in it: pale, high haze, lighter towards the top
-	vec3 sky = mix(vec3(0.80, 0.85, 0.93), vec3(0.95, 0.96, 1.0), clamp(1.0 - uv.y * 0.8 + n * 0.35, 0.0, 1.0));
-	float bloom = smoothstep(0.35, 1.0, t);
-	vec3 col = mix(sky, vec3(1.0), bloom);
-	float vig = 1.0 - smoothstep(0.5, 1.1, length(uv - 0.5) * 1.3) * 0.25 * (1.0 - bloom);
+	vec2 su = vec2(uv.x * aspect, uv.y);
+	float tm = t * 9.0;
+	// a very slow drift, the way a sky turns
+	vec2 duv = su + vec2(t * 0.012, t * 0.004);
+	// the night: near black at the top, a little blue towards the horizon
+	vec3 night = mix(vec3(0.02, 0.025, 0.06), vec3(0.08, 0.11, 0.2), uv.y * uv.y);
+	float haze = noise(duv * vec2(2.5, 1.5)) * 0.04 * uv.y;
+	vec3 col = night + haze;
+	float st = stars(duv, 80.0, 0.24, 0.12, tm) * 0.9 + stars(duv + 3.3, 28.0, 0.16, 0.17, tm * 0.7) * 1.2;
+	col += vec3(0.85, 0.9, 1.0) * st;
+	// the white: climbs from the bottom of the sky from a third of the way
+	// in, its edge soft and uneven, and it takes the stars as it goes
+	float rise = smoothstep(0.3, 0.9, t);
+	float edge = (1.0 - uv.y) + noise(duv * vec2(3.0, 2.0) + vec2(0.0, t * 2.0)) * 0.3;
+	float front = rise * 1.6 - 0.25;
+	float white = smoothstep(edge - 0.2, edge + 0.2, front);
+	white = max(white, smoothstep(0.84, 0.95, t));
+	col = mix(col, vec3(1.0), white);
+	// eyes half shut: dark at the edges until the white takes that too
+	float vig = 1.0 - smoothstep(0.35, 1.0, length(uv - 0.5) * 1.5) * 0.55 * (1.0 - white);
 	COLOR = vec4(col * vig, 1.0);
 }"""
 	var sm := ShaderMaterial.new()
 	sm.shader = sh
+	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)) if sky.size.y > 1.0 else 1.78)
 	sky.material = sm
 	_root.add_child(sky)
 	_root.move_child(sky, _black.get_index() + 1)
+	await get_tree().process_frame
+	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)))
 	var tw := create_tween()
 	tw.tween_method(func(k: float) -> void: sm.set_shader_parameter("t", k), 0.0, 1.0, secs)
 	await tw.finished

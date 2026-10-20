@@ -806,11 +806,13 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 	var root: Node3D = room.root
 	var floor_y := float(room.floor_y)
 	var target = [null]
-	# "stray_zone": a patch of floor (the foot of the stairs) where `stray` is
-	# called when the player walks into it, once, and again if they come back
-	var zone: Rect2 = room.get("stray_zone", Rect2())
+	# "stairs_zone": a patch of floor (the foot of the stairs) where `stray` is
+	# called when the player walks into it, once, and again if they come back;
+	# they're stopped and turned back a step while whoever it is says so
+	var zone: Rect2 = room.get("stairs_zone", Rect2())
 	var in_zone := false
 	var strayed_at := -100.0
+	var held_until := 0.0   # (no walking while they're being turned back)
 	var on_tap := func(pos: Vector2) -> void:
 		if w.hud.menu_open():
 			return
@@ -833,7 +835,10 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		if done.call(p):
 			break
 		var move := Vector3.ZERO
-		if not w.hud.menu_open() and not (w.hud.dialogue.visible and not w.hud.dialogue.barking()):
+		var now_s := Time.get_ticks_msec() * 0.001
+		if now_s < held_until:
+			target[0] = null
+		elif not w.hud.menu_open() and not (w.hud.dialogue.visible and not w.hud.dialogue.barking()):
 			var iv: Vector2 = w.hud.pad.vector
 			var k := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 			if k.length() > iv.length():
@@ -872,10 +877,18 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 			var lp := root.to_local(np)
 			var here := zone.has_point(Vector2(lp.x, lp.z))
 			var now := Time.get_ticks_msec() * 0.001
-			if here and not in_zone and now - strayed_at > 8.0:
+			if here and not in_zone and now - strayed_at > 6.0:
 				strayed_at = now
 				target[0] = null   # (they stop: the way's wrong)
+				held_until = now + 1.6
 				stray.call()
+				# a step back out of it, facing the room again
+				var back := Vector3(zone.get_center().x, 0.0, zone.position.y - 0.45)
+				var out_at := root.to_global(back)
+				out_at.y = floor_y
+				var tb := w.create_tween()
+				tb.tween_property(w.player, "global_position", out_at, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+				pf.face(out_at - np, w.cam)
 			in_zone = here
 		# the camera stays up in its corner and turns to keep them in view
 		look = look.lerp(np + Vector3(0, 1.0, 0), minf(1.0, dt * 4.0))
@@ -1010,7 +1023,7 @@ const ATTIC := [
 	{"say": "[center][i]Nobody alive has seen an Age end. So Ashford has decided it ends with cider.[/i][/center]"},
 ]
 const TAPROOM := [
-	{"who": "bram", "say": "There you are. Thought you'd sleep through the end of the world."},
+	{"who": "bram", "say": "There you are. Last night of the Age, and you'd have slept through it."},
 	{"who": "bram", "say": "Once every two thousand years. We're not going to be late for it."},
 	{"choice": ["What happens when it ends?", "I dreamt about the sky again."], "then": [
 		[{"who": "bram", "say": "The gods settle who sits the Throne next. We hang lanterns and drink to whoever it is. Nobody's ever asked us to do more than that."}],
@@ -1027,7 +1040,10 @@ const TAPROOM := [
 	{"who": "bram", "say": "Lanterns to the green, then. You know the way."},
 ]
 ## As the player reaches the door; the pause square glows once while it's up.
-const AT_DOOR := [{"who": "bram", "say": "And if you need to stop, stop. The world'll wait."}]
+## (Gary, 20 October: his first line and this one reworded; the master doc
+## still has "Thought you'd sleep through the end of the world." and "And if
+## you need to stop, stop. The world'll wait.")
+const AT_DOOR := [{"who": "bram", "say": "And if you want a breather, take one. Even the end of an Age can wait a minute."}]
 ## If the player dawdles on the way (said in passing; they keep walking).
 const DAWDLE := "The green. Big pole, middle of it. You've walked there every day of your life."
 ## If they head back up the stairs with the crate (Gary, 19 October).
@@ -1041,6 +1057,9 @@ const HUNG := [
 	{"who": "bram", "say": "Go on."},
 ]
 
+## How long the dream of the white sky plays before the player wakes (s);
+## 0 goes straight from the caption to the attic.
+const DREAM_SECS := 3.4
 ## How near the Great Lantern counts as "at the green" (m).
 const GREEN_R := 6.5
 ## Where the player puts the crate down: the Lantern's south side, clear of
@@ -1113,9 +1132,10 @@ static func _attic(w: World) -> void:
 	var root: Node3D = a.root
 	Cine.shot(w, root.to_global(Vector3(2.45, 1.6, 1.3)), a.bed + Vector3(0.2, 0.15, 0.0), 46.0)
 	await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
-	# the dream they're about to tell Bram about: the white sky, two seconds
-	# of it, cut to black on the drum
-	await ov.dream_sky(2.2)
+	# the dream they're about to tell Bram about: the night sky from the
+	# bed, and the white light that takes it; cut to black on the drum
+	if DREAM_SECS > 0.0:
+		await ov.dream_sky(DREAM_SECS)
 	await Cine.wait(w, 0.5)
 	Cine.fade(w, 0.0, 1.4)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
@@ -1126,19 +1146,34 @@ static func _attic(w: World) -> void:
 	var side: Vector3 = a.bed_side
 	if pf is Figure3D:
 		var fig := pf as Figure3D
-		fig.sit_long(a.bed_top, 1.0)
+		# a hand goes down on the mattress beside him and he pushes himself
+		# up on it, slowly (he's only just awake), the blanket sliding back
+		var hand := Node3D.new()
+		hand.name = "BedHand"
+		w.add_child(hand)
+		hand.global_position = (a.lie_at as Vector3) + Vector3(-0.28, a.bed_top + 0.02, 0.34)
+		fig.reach(null, hand, 0.5)
+		await Cine.wait(w, 0.35)
+		fig.sit_long(a.bed_top, 1.5)
 		var bl: Node3D = a.blanket
 		if bl != null and is_instance_valid(bl):
 			var tb := w.create_tween()
-			tb.tween_property(bl, "transform", a.blanket_off as Transform3D, 0.9).set_trans(Tween.TRANS_SINE).set_delay(0.35)
-		await Cine.wait(w, 1.1)
-		fig.sit(a.bed_top, 1.0)
-		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.0)
+			tb.tween_property(bl, "transform", a.blanket_off as Transform3D, 1.1).set_trans(Tween.TRANS_SINE).set_delay(0.5)
+		await Cine.wait(w, 1.7)
+		# sat up: a breath, then his legs swing over the side and he turns to
+		# sit on the edge, the hand coming off the mattress as he does
 		await Cine.wait(w, 0.5)
-		fig.stand(0.7)
+		fig.sit(a.bed_top, 1.1)
+		fig.let_go(0.8)
+		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.2)
+		# a moment on the edge, then up, a little unsteady, and away from it
+		await Cine.wait(w, 0.7)
+		fig.stand(0.9)
 		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await tw.finished
+		if is_instance_valid(hand):
+			hand.queue_free()
 	else:
 		var tw := w.create_tween()
 		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.9).set_trans(Tween.TRANS_SINE)

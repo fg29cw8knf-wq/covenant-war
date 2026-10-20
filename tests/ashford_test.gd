@@ -144,8 +144,21 @@ func _opening() -> void:
 	_expect(not hud.menu_open(), "Esc opened the pack before Bram mentioned stopping")
 	var e: Dictionary = world.get_meta("village").get_meta("eve")
 	await _secs(0.5)
+	# the wrong way first: back towards the stairs. Bram says so, and the
+	# player is kept off them (the stairs are solid: keep_out)
+	var eroot: Node3D = e.root
+	hud.tapped.emit(world.cam.unproject_position(e.stairs_foot))
+	await _until(func() -> bool: return hud.dialogue.visible and "Wrong way" in hud.dialogue._text.text, 30.0, "Bram at the stairs")
+	await _secs(0.9)
+	await _shot("stairs_wrong_way")
+	var lp := eroot.to_local(world.player.global_position)
+	var on_stairs := false
+	for k: Rect2 in e.get("keep_out", []):
+		on_stairs = on_stairs or k.has_point(Vector2(lp.x, lp.z))
+	_expect(not on_stairs, "the player got onto the stairs (%.2f, %.2f)" % [lp.x, lp.z])
+	await _secs(2.5)
 	hud.tapped.emit(world.cam.unproject_position(e.door_in))
-	await _until(func() -> bool: return hud.dialogue.visible and "need to stop" in hud.dialogue._text.text, 60.0, "the door")
+	await _until(func() -> bool: return hud.dialogue.visible and "breather" in hud.dialogue._text.text, 60.0, "the door")
 	await _secs(1.2)
 	await _shot("door_stop")
 	_expect(hud._menu_btn.visible, "the pause square isn't there when Bram mentions stopping")

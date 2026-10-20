@@ -5,29 +5,39 @@ extends Node
 ## the world being let go and its first frames drawn. Ends with the times.
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
-##       res://tests/start_time_probe.tscn [-- skip_at=<seconds into the movie>]
+##       res://tests/start_time_probe.tscn [-- skip_at=<seconds into the movie>] [early]
+##
+## `early` presses New Game the moment the title is up, before Ashford is
+## ready under it (the worst case: Skip then waits on the "Lighting the
+## lanterns" bar), and reports how long that wait was.
 
 var skip_at := 0.0
+var early := false
 
 
 func _ready() -> void:
 	for a in OS.get_cmdline_user_args():
 		if String(a).begins_with("skip_at="):
 			skip_at = float(String(a).substr(8))
+		elif String(a) == "early":
+			early = true
 	var t0 := Time.get_ticks_msec()
 	var main: Node = load("res://scenes/main.tscn").instantiate()
 	add_child(main)
 	await get_tree().process_frame
 	print("title up after %d ms" % (Time.get_ticks_msec() - t0))
 	var tp := Time.get_ticks_msec()
-	while main._prepared == null or not main._prepared.prepared:
+	while main._prepared == null or (not early and not main._prepared.prepared):
 		await get_tree().process_frame
 		if Time.get_ticks_msec() - tp > 120000:
 			print("PROBE: the world was never prepared")
 			get_tree().quit(1)
 			return
-	print("Ashford prepared under the title in %d ms" % (Time.get_ticks_msec() - tp))
-	await get_tree().create_timer(0.5).timeout
+	if early:
+		print("New Game pressed %d ms after the title, Ashford still being built" % (Time.get_ticks_msec() - tp))
+	else:
+		print("Ashford prepared under the title in %d ms" % (Time.get_ticks_msec() - tp))
+		await get_tree().create_timer(0.5).timeout
 	main._on_new_game()
 	var movie: OpeningMovie = null
 	while movie == null:
@@ -41,6 +51,15 @@ func _ready() -> void:
 	var ts := Time.get_ticks_msec()
 	var w: World = main._prepared
 	movie._finish()
+	if early:
+		# the holding bar should be up while Ashford finishes
+		var seen := false
+		while not w.prepared:
+			await get_tree().process_frame
+			for c in Packs.get_children():
+				if c is CanvasLayer:
+					seen = true
+		print("holding bar %s while Ashford finished (%d ms after Skip)" % ["shown" if seen else "NOT SHOWN", Time.get_ticks_msec() - ts])
 	await w.released
 	print("released %d ms after Skip" % (Time.get_ticks_msec() - ts))
 	for i in 3:

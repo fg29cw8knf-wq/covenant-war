@@ -1075,9 +1075,13 @@ func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> Node3D:
 	solid_box(Vector3(pos.x, 1.5, pos.z), Vector3(2.7, 3.0, 1.5), yaw)
 	return s
 
-## A cider barrel: bulged oak staves and two iron hoops. Its origin is its
+## A cider barrel: Gary's barrel (barrel.glb, 0.96 m tall as made, its origin
+## at the middle of its base) scaled to the game's 0.8 m, or until it's
+## there, bulged oak staves and iron hoops drawn here. Its origin is its
 ## middle (0.4 m up when it stands), so it turns about its centre when carried.
 const BARREL_HALF := 0.4
+const BARREL_MODEL := "res://assets/models/ashford/barrel.glb"
+const BARREL_MODEL_HEIGHT := 0.96
 func make_barrel() -> Node3D:
 	var b := Node3D.new()
 	b.name = "CiderBarrel"
@@ -1085,6 +1089,13 @@ func make_barrel() -> Node3D:
 	body.name = "Body"
 	body.position = Vector3(0, -BARREL_HALF, 0)
 	b.add_child(body)
+	if ResourceLoader.exists(BARREL_MODEL):
+		var inst: Node3D = load(BARREL_MODEL).instantiate()
+		inst.scale = Vector3.ONE * (BARREL_HALF * 2.0 / BARREL_MODEL_HEIGHT)
+		body.add_child(inst)
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		return b
 	# fresh oak, a shade lighter than the old barrels so it reads at night
 	var oak := StandardMaterial3D.new()
 	oak.albedo_color = Color(0.62, 0.42, 0.24)

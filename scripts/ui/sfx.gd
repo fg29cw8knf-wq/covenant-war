@@ -16,7 +16,7 @@ const FALLBACK := {
 	"attack_charge": "select", "melee_whoosh": "", "slash": "",
 	"cast_fire": "", "cast_storm": "", "cast_tide": "", "cast_verdant": "", "cast_earth": "",
 	"cast_metal": "", "cast_psychic": "", "cast_venom": "", "cast_mystic": "",
-	"cast_frost": "cast_tide", "cast_wind": "cast_storm",   # borrowed until their own exist
+	"cast_frost": "", "cast_wind": "",
 	"hit_light": "hit", "hit_heavy": "hit", "hit_weak": "hit", "shield_block": "select", "life_hit": "hit",
 	"miss": "", "status_burn": "select", "status_poison": "select", "status_stun": "select",
 	"status_sleep": "select", "dice_roll": "", "dice_land": "coin", "dice_crit": "gift", "dice_fumble": "lose",

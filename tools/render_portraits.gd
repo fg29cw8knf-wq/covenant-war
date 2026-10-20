@@ -13,7 +13,7 @@ const CLOSER := {"tilly": 0.88, "tam": 1.08}
 ## Whose head bone sits low in the skull (AssetFurnace's rigs: the player's,
 ## Corin's, Tam's, Tilly's, Nell's): the camera aims this much higher (m) so
 ## the face sits like the others'.
-const RAISE := {"player": 0.05, "corin": 0.05, "tam": 0.08, "tilly": 0.06, "nell": 0.05}
+const RAISE := {"player": 0.05, "corin": 0.05, "tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05}
 const OUT := "res://assets/art/characters/"
 const SIZE := 512
 
