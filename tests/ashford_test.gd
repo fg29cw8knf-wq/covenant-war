@@ -23,11 +23,13 @@ extends Node
 ## you through the duel: no rematch), lose (Corin wins the rematch; it's won
 ## otherwise), every=<n> (a still every n frames as well), read=<n> (frames
 ## each line stays up, 6 by default), qa (watch for glitches as it plays:
-## tests/qa_monitor.gd), keys (draw only the frames kept: much faster).
+## tests/qa_monitor.gd), keys (draw only the frames kept: much faster),
+## look=<a|b|c|d> (the look to choose in the mirror; A by default).
 
 var out_dir := "user://"
 var part := "all"
 var alt := false
+var look := "a"
 var coach := false
 var rematch_won := true
 var every := 0
@@ -59,6 +61,8 @@ func _ready() -> void:
 			part = s
 		elif s == "alt":
 			alt = true
+		elif s.begins_with("look="):
+			look = s.substr(5)
 		elif s == "coach":
 			coach = true
 		elif s == "lose":
@@ -139,11 +143,14 @@ func _opening() -> void:
 		await _secs(0.8)
 		_expect(_picker() != null and not picker._done, "look %s (not made yet) was taken" % faces[coming].look.to_upper())
 		await _shot("mirror_%s_coming" % faces[coming].look)
-	await _click(_centre(faces[0]))
+	var want := MirrorPicker.LOOKS.find(look)
+	await _click(_centre(faces[maxi(want, 0)]))
 	await _until(func() -> bool: return _picker() == null, 10.0, "the mirror closing")
-	_expect(Game.flag("look") == "a", "look A wasn't chosen")
+	_expect(Game.flag("look") == look, "look %s wasn't chosen" % look.to_upper())
 	# the taproom: Bram's lines, then the crate
 	await _until(func() -> bool: return _objective() == "crate" and world.player.global_position.y < -20.0, 400.0, "the crate")
+	if world.player_doll is Figure3D:
+		_expect((world.player_doll as Figure3D)._model_name == "player_" + look, "the player is %s, not look %s" % [(world.player_doll as Figure3D)._model_name, look.to_upper()])
 	await _secs(0.6)
 	await _shot("crate_walk")
 	_expect(not hud._menu_btn.visible, "the pause square shows before the door")

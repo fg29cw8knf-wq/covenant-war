@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cou2wfx4nysr5"
-path="res://.godot/imported/look_b_preview.jpg-68b6c059d26d2c2af45e42c395278742.ctex"
+uid="uid://bdfewudodyoc"
+path="res://.godot/imported/ned_sheet.jpg-61094c73595c8ecb7382cdfe936db173.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/characters/look_b_preview.jpg"
-dest_files=["res://.godot/imported/look_b_preview.jpg-68b6c059d26d2c2af45e42c395278742.ctex"]
+source_file="res://lookdev/refs/ned_sheet.jpg"
+dest_files=["res://.godot/imported/ned_sheet.jpg-61094c73595c8ecb7382cdfe936db173.ctex"]
 
 [params]
 

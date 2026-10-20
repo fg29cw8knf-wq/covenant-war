@@ -21,7 +21,7 @@ GODOT=${GODOT:-godot}
 python3 tools/web_packs.py presets
 rm -rf build/web && mkdir -p build/web/packs
 SIZES=""
-for pack in movie duel solhaven; do
+for pack in movie duel solhaven looks; do
 	"$GODOT" --headless --export-pack "Web pack: $pack" "build/web/packs/$pack.pck"
 	size=$(wc -c < "build/web/packs/$pack.pck")
 	# GitHub Pages refuses files over 100 MB: split the pack in tools/web_packs.py if it grows that big

@@ -6,6 +6,7 @@ extends Node
 ##     await Packs.need("movie")      # before the opening movie
 ##     await Packs.need("duel")       # before a duel (Totem and Summon models)
 ##     await Packs.need("solhaven")   # before stepping into Solhaven
+##     await Packs.need("looks")      # before the player is any look but A (B, C and D's models)
 ##
 ## Everywhere else (the iPhone and Mac apps, the editor, the tests) everything is
 ## in one pack and need() returns at once. On the web a loading screen shows the
@@ -18,7 +19,7 @@ extends Node
 const BUILD_INFO := "res://build_info.cfg"
 ## Where downloaded packs are kept on the web (memory only, gone when the page closes).
 const WEB_DIR := "/tmp/packs/"
-const TITLES := {"movie": "the opening movie", "duel": "the Totems and Summons", "solhaven": "Solhaven"}
+const TITLES := {"movie": "the opening movie", "duel": "the Totems and Summons", "solhaven": "Solhaven", "looks": "your look"}
 
 signal _loaded(pack: String)
 
@@ -41,6 +42,12 @@ func build_label() -> String:
 ## Whether a pack is ready (always true outside the split web build).
 func has(pack: String) -> bool:
 	return not _sizes().has(pack) or _have.has(pack)
+
+
+## Whether this build has a pack of that name to fetch (the split web build),
+## loaded or not: what's in it exists, even before ResourceLoader can see it.
+func in_build(pack: String) -> bool:
+	return _sizes().has(pack)
 
 
 ## Makes sure a pack is loaded, downloading it on the web the first time.

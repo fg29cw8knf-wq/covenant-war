@@ -9,6 +9,9 @@ for each of these, fetched the first time the game needs it (scripts/game/packs.
     duel      the duel Totems and Summons: their 3D models and Summon art
     solhaven  Solhaven: its area script and anything in a solhaven/ folder
               (scripts/world/solhaven/: the set, the films, the chase, the duels)
+    looks     the player's looks B, C and D (their models and textures; their
+              portraits stay in the main pack for the mirror), fetched when
+              one of them is chosen in the mirror, or a game with one is continued
 
 The native apps (iPhone, Mac) keep everything in one pack.
 
@@ -44,6 +47,10 @@ PACKS = {
 	"solhaven": {
 		"title": "Solhaven",
 		"files": ["scripts/world/areas/solhaven.gd", "scripts/*/solhaven/*", "assets/*/solhaven/*", "assets/*/*/solhaven/*"],
+	},
+	"looks": {
+		"title": "your look",
+		"files": ["assets/models/characters/player_b*", "assets/models/characters/player_c*", "assets/models/characters/player_d*"],
 	},
 }
 

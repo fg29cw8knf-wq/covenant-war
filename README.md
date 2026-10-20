@@ -220,9 +220,13 @@ edge, sits a moment and stands (`sit_long()`, `sit()` with `shift_seat()`,
 `stand()`, and `reach()` for the hand: poses built on the model's own idle,
 blended one into the next; `tests/bed_check.tscn` takes stills of it from the
 side and the foot of the bed), goes to the cracked mirror and chooses their
-look (`scripts/ui/mirror_picker.gd`: only look A exists, so B, C and D show as
-coming soon, B and C with Gary's painted references misted behind the words,
-`assets/art/characters/look_<letter>_preview.jpg`). In the taproom Bram is
+look (`scripts/ui/mirror_picker.gd`: four since 20 October, A Gary's first
+young man, B his second, C the young woman in green, D the bearded man;
+`assets/models/characters/player_<letter>.glb`, `tools/rig_player.sh`, and
+the look chosen is the `look` flag, which `Figure3D.model_file("player")`
+and `DollArt.portrait("player")` read, so the player and their dialogue
+face are that look from then on; a look whose model isn't there yet would
+show as coming soon). In the taproom Bram is
 stacking paper lanterns into a crate, the shelves behind the bar bare; he hands
 the crate over, the player carries it out of the inn and across to the green
 with Bram following (indoors he walks round the table and the stools, as the
@@ -328,6 +332,13 @@ flying kick, the punch combo, the strafe and the death travel as made, so
 whoever plays one moves the figure to where it ends). The `sit` clips
 (everyone's) sit down on the ground; a bench is `Figure3D.sit()`.
 
+Looks B, C and D are Gary's 20 October masters (`Player_B_New_21_Animations.glb`,
+`Player_C_Master_21_Animations.glb`, `Player_D_Master_21_Animations.glb`, the
+same 21 clips as look A's, retargeted from a library), built by
+`tools/rig_player.sh b|c|d <master.glb>` the way look A is: B stands 1.76 m
+(52 joints), C 1.68 m (40 joints, three fingers a hand), D 1.82 m (52 joints).
+`Figure3D.OWN_GAIT` has their paces.
+
 Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
 Hob his 19 October one and Bram his 20 October one, built the same way by
 `tools/rig_villager.sh <who> <master.glb>` (then the import, their portrait
@@ -336,12 +347,14 @@ and the checks above, with their id): Corin stands 1.72 m, Tam 1.88 m, Tilly
 sit, wave, dance and fighting clips; his lift, which everyone borrows, and his
 cheer came over from the stand-in, `git show 3c521d9:assets/models/characters/bram.glb`)
 and Hob 1.80 m (his own idle, walk, run, jump, sit, wave,
-cheer and death). `rig_villager.sh corin <folder>` also takes a folder of
-single-clip AssetFurnace files (one clip each, the same rig) for the day
-Corin's own walk, run, sit and wave arrive. Each keeps its own clips
-besides the game's: Corin cheer, dance, death, fight_stance, flying_kick,
-hit_react, jump, kata, kick, punch and punch_combo (he came without a walk,
-so he walks, runs, sits and waves as the player does); Tam and Tilly jump,
+cheer and death). Corin's own walk, run, sit and wave came on 20 October as
+single-clip AssetFurnace files (one clip each, the same rig, no idle among
+them): `rig_villager.sh corin <folder>` takes the walk file as his body and
+his idle, jump, cheer, dance, punch, death and fighting clips from the 18
+October model (`git show 0afe166:assets/models/characters/corin.glb`). Each
+keeps its own clips besides the game's: Corin cheer, dance, death,
+fight_stance, flying_kick, hit_react, jump, kata, kick, punch and punch_combo;
+Tam and Tilly jump,
 sit, wave, cheer, dance, kick, punch and death; Nell jump, sit, wave, cheer,
 dance, punch and death. Their rigs are smaller than the player's: Tam's and
 Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
@@ -407,8 +420,12 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolu
 ```
 
 Dialogue portraits for the 3D characters are rendered from their models into
-`assets/art/characters/<id>_portrait.png` (the dialogue box uses someone's own
-portrait when there is one, else the face for their costume):
+`assets/art/characters/<id>_portrait.png` (the dialogue box, and the Ledger's
+People page, use someone's own portrait when there is one, else the face for
+their costume). Ned the fiddler's, Krell's and Corin's mam's are head-and-
+shoulders crops of Gary's 20 October pictures of them (`lookdev/refs/ned_sheet.jpg`,
+`krell_sheet.jpg`, `corin_mam_sheet.jpg`, the sources for their models) on the
+frame's dark blue, until their models exist and can be rendered:
 
 ```sh
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn

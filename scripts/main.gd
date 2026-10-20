@@ -171,6 +171,8 @@ func show_lab() -> void:
 func go_world(area: String, spawn: String) -> void:
 	if area == "solhaven":
 		await Packs.need("solhaven")
+	if String(Game.flag("look", "a")) != "a":
+		await Packs.need("looks")   # (the phone link: looks B, C and D's models)
 	var w := World.new().setup(area, spawn)
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)

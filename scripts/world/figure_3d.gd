@@ -49,10 +49,15 @@ const DONORS := ["clips/shared", "bram", "corin", "player_a"]
 const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
 ## Models whose own walking clips go at their own pace (m/s, as
 ## tools/rig_character.py measured them), not GAIT_SPEED's. (Corin's own
-## walk and run since 19 October; Hob's since the same day.)
+## walk and run since 20 October, from his single-clip files; Hob's since 19
+## October; looks B, C and D, Gary's Player B, C and D models, since 20
+## October, built by tools/rig_player.sh.)
 const OWN_GAIT := {
 	"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87},
-	"corin": {"walk": 1.27, "run": 3.23},
+	"player_b": {"walk": 1.66, "run": 4.22, "sneak": 0.85},
+	"player_c": {"walk": 1.62, "run": 4.10, "sneak": 0.83},
+	"player_d": {"walk": 1.75, "run": 4.44, "sneak": 0.90},
+	"corin": {"walk": 1.70, "run": 4.32},
 	"bram": {"walk": 1.69, "run": 4.30},
 	"hob": {"walk": 1.65, "run": 4.17},
 	"tam": {"walk": 1.63, "run": 4.12},

@@ -4,12 +4,14 @@ extends Control
 ## face.)"): the player's face in the glass, cracked across, and the four
 ## looks along the bottom. A look is there to choose the moment its model
 ## exists (assets/models/characters/player_<letter>.glb, with its face
-## rendered to assets/art/characters/player_<letter>_portrait.png); one
-## still to come shows "Coming soon" over Gary's painted reference for it,
-## misted, when there is one (assets/art/characters/look_<letter>_preview.jpg),
-## and a tap on it just shakes it. The step is gated: nothing else moves on
-## until a look is chosen (a tap, or Enter / E / Space / a pad's A for the
-## first one made).
+## rendered to assets/art/characters/player_<letter>_portrait.png): all four
+## since 20 October (A Gary's first young man, B his second, with stubble
+## and a strap, C the dark-haired young woman in green, D the bearded man
+## in blue). A look still to come would show "Coming soon" over Gary's
+## painted reference for it, misted, if one were there
+## (assets/art/characters/look_<letter>_preview.jpg), and a tap on it would
+## just shake it. The step is gated: nothing else moves on until a look is
+## chosen (a tap, or Enter / E / Space / a pad's A for the first one made).
 ##
 ##   var look: String = await MirrorPicker.choose(hud._root)   # "a"
 
@@ -18,9 +20,14 @@ signal picked(look: String)
 const LOOKS := ["a", "b", "c", "d"]
 
 
-## Whether a look has been made (its model is in the game).
+## Whether a look has been made (its model is in the game). On the phone
+## link looks B, C and D are in the "looks" pack, fetched the first time one
+## of them is chosen (Packs.need("looks") in _on_face), so until then their
+## files aren't there to see: a pack the build has counts as made.
 static func made(look: String) -> bool:
-	return ResourceLoader.exists("res://assets/models/characters/player_%s.glb" % look)
+	if ResourceLoader.exists("res://assets/models/characters/player_%s.glb" % look):
+		return true
+	return look != "a" and Packs.in_build("looks")
 
 var _faces: Array = []
 var _t := 0.0
@@ -82,6 +89,8 @@ func _on_face(f: Face) -> void:
 	f.chosen = true
 	Game.set_flag("look", f.look)
 	await get_tree().create_timer(0.6).timeout
+	if f.look != "a":
+		await Packs.need("looks")   # (the phone link: the look's model, the first time)
 	picked.emit(f.look)
 
 

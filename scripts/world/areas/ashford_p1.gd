@@ -1203,6 +1203,9 @@ static func _attic(w: World) -> void:
 	w.hud.set_controls_visible(false)
 	await Cine.wait(w, 0.5)
 	await Cine.fade(w, 1.0, 0.7)
+	# the figure in the glass was look A's (built under the title screen):
+	# the chosen look takes over behind the black
+	w.swap_player_look()
 
 
 ## Under the title screen (World.prepare): the attic and the taproom built,

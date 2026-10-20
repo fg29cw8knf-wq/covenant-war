@@ -807,6 +807,24 @@ func _ask(st: Dictionary, npc) -> void:
 			await run_steps(branches[q], npc)
 
 
+## The player's figure made again for the look chosen in the attic mirror:
+## the world (and the figure in the bed) was built under the title screen,
+## before there was a choice. Called behind the fade after the mirror; from
+## then on every World.new() builds the chosen look by itself.
+func swap_player_look() -> void:
+	var want := Figure3D.model_file("player")
+	if player_doll is Figure3D and (player_doll as Figure3D)._model_name == want:
+		return
+	var old := player_doll
+	var nd := Figure3D.make("player")
+	player.add_child(nd)
+	nd.facing_back = old.facing_back
+	if old is Figure3D and nd is Figure3D:
+		(nd as Figure3D).snap_face((old as Figure3D).facing())
+	old.queue_free()
+	player_doll = nd
+
+
 ## A scene that plays while a line is up, not waited for: {"say": ...,
 ## "during": "<scene>", "at": "<words>"} starts it as the line types out as
 ## far as those words (Bram setting off while Corin talks, Tilly's card
