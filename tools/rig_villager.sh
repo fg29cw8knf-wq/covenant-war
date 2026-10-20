@@ -32,19 +32,32 @@ corin)
 		# (copied to a folder with no spaces in its name first)
 		tmp=$(mktemp -d)
 		cp "$src"/*.glb "$tmp"/
-		idle=$(ls "$tmp"/*_idle.glb | head -1)
+		# the body: the idle file, or (Gary's 20 October folder, "Corins extra
+		# movements", which has only walk, run, sit and wave) the walk file,
+		# with his idle and everything else from the 18 October model
+		idle=$(ls "$tmp"/*_idle.glb 2>/dev/null | head -1)
+		body="$idle"
+		bodyclip=idle
+		if [ -z "$body" ]; then
+			body=$(ls "$tmp"/*_walk.glb | head -1)
+			bodyclip=walk
+		fi
 		borrow=""
-		for c in walk run jump sit wave cheer dance punch death; do
+		for c in idle walk run jump sit wave cheer dance punch death; do
+			test "$c" = "$bodyclip" && continue
 			f=$(ls "$tmp"/*_$c.glb 2>/dev/null | head -1)
 			test -n "$f" && borrow="$borrow --borrow $f:*=$c"
 		done
-		# (his 18 October model, as committed: the one with the fighting clips)
+		# (his 18 October model, as committed: the one with the fighting clips,
+		# and his idle, jump, cheer, dance, punch and death when the folder
+		# lacks them)
 		git show 0afe166:assets/models/characters/corin.glb > /tmp/corin_18oct.glb
 		set -f   # (the "*=" in $borrow is for rig_character.py, not the shell)
-		python3 tools/rig_character.py "$idle" "$out" --name Corin --height 1.72 \
-			--rename ArmatureAction=idle \
+		python3 tools/rig_character.py "$body" "$out" --name Corin --height 1.72 \
+			--rename ArmatureAction=$bodyclip \
 			--cycle walk --cycle run --seam idle --seam dance \
 			$borrow \
+			--borrow /tmp/corin_18oct.glb:idle,jump,cheer,dance,punch,death \
 			--borrow "assets/models/characters/clips/shared.glb:$GAME" \
 			--borrow assets/models/characters/bram.glb:lift \
 			--borrow /tmp/corin_18oct.glb:fight_stance,flying_kick,hit_react,kata,kick,punch_combo \
