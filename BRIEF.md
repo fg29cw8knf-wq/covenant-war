@@ -18,9 +18,12 @@ phone link and the iPhone zip pick it up, and write `docs/handover/2026-10-22.md
 Gary has cut the whole opening as one film: his animated clips, Morrowen's
 narration, the music and the **subtitles already burnt in**, 3:12 long (longer
 than the engine's 2:24 shot table — his clips run longer). It was converted
-from his 4K 60 fps HEVC master to Ogg Theora 1600x900, 30 fps, q5, with Vorbis
-stereo. His 4K master stays on his Mac (`The_Covenant_War_4K_60fps_Smaller_HEVC.mp4`)
-if a different size is ever needed.
+from his 4K 60 fps HEVC master (175 MB) to Ogg Theora 1280x720, 30 fps, at
+3.1 Mbit/s, with Vorbis stereo: about 80 MB. (1600x900 at q5, the per-shot
+clips' setting, came out at 163 MB — over GitHub's 100 MB file limit and too
+heavy for the phone link's movie pack. Theora is the only video Godot plays.)
+His 4K master stays on his Mac (`The_Covenant_War_4K_60fps_Smaller_HEVC.mp4`)
+if a different size is ever needed — it can't go in git.
 
 `OpeningMovie` (`scripts/story/opening_movie.gd`) already prefers a finished
 cut at `res://assets/movies/opening.ogv` (`_play_full_cut`), but it was written
@@ -36,10 +39,11 @@ for a cut *without* words on screen, so before moving the file into place:
   and the attic as now. The web pack `movie` (`tools/web_packs.py`) must carry
   the .ogv and nothing it no longer needs (the 21 still paintings can stay
   as the fallback if the file is missing, as the comment in the script says).
-- Check it plays on the phone link (Safari) and in the iOS build: Theora
-  decode at 1600x900 is the known-good path from `tools/movie_clips.py`.
-  If it stutters on iPhone, re-encode smaller from the .ogv is lossy — ask Gary
-  for the master instead.
+- Check it plays on the phone link (Safari) and in the iOS build, full
+  screen with `OpeningMovie.frame_rect()`'s crop as the paintings get. If it
+  stutters, re-encoding from the .ogv is lossy — ask Gary for the master
+  instead (he can also have it re-converted from the chat that has his Mac
+  linked).
 - `tests/movie_shot.tscn` must still pass (it checks the shot-by-shot path).
 
 ## 2. First launch sticks (iPhone, and the last build too)
