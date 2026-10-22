@@ -375,11 +375,30 @@ func _build_temple() -> void:
 		LevelKit.banner(self, Vector3(x, 7.6, -18.9), 0)
 
 
+## The Golden Gate's measurements: Gary's model (22 October, assets/models/
+## solhaven/golden_gate.glb) at its real size, 24.0 m wide (its towers and
+## short wing walls), 4.9 m deep and 16.2 m high, its arch 5.7 m clear and
+## 7.1 m to the crown, pivot at ground level in the middle of the gateway,
+## facing +z (the road). The square's 8 m way in runs under the arch, the
+## city wall either side starts where the gate's wings end, and the doors
+## hang in the arch, a leaf each side.
+const GATE_WIDTH := 24.0
+const GATE_DEPTH := 4.9
+const ARCH_WIDTH := 5.7
+const ARCH_CROWN := 7.1
+const DOOR_HEIGHT := 5.6   # (a leaf's top corners sit inside the stone above the arch's spring, 4.25 m)
+
+
 ## The Golden Gate in the south wall, its doors able to swing (open_gate()),
 ## and the walls either side.
 func _build_gate() -> void:
 	var g := SPOTS.gate as Vector3
-	if model("golden_gate", self, g, 0, Vector3(16.0, 0, 0), false) == null:
+	var real := model("golden_gate", self, g, 0, Vector3.ZERO, false)   # (as made: 24 m wide)
+	var half_arch := ARCH_WIDTH * 0.5 if real != null else 4.45
+	var leaf_w := half_arch - 0.03
+	var leaf_h := DOOR_HEIGHT if real != null else 6.0
+	var wing := GATE_WIDTH * 0.5 if real != null else 8.0   # where the city wall takes over
+	if real == null:
 		for x in [-6.2, 6.2]:
 			LevelKit.box(self, g + Vector3(x, 0, 0), Vector3(3.4, 9.0, 3.6), "sandstone")
 			LevelKit.box(self, g + Vector3(x, 9.0, 0), Vector3(3.8, 0.4, 4.0), "sandstone", false)
@@ -391,29 +410,31 @@ func _build_gate() -> void:
 		var sunb := LevelKit.sphere(self, g + Vector3(0, 8.0, 1.6), 0.55, "sun_glow")
 		sunb.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	else:
-		# the gate's own collision is its towers: keep the way through open
-		for x in [-6.2, 6.2]:
+		# the gate's own collision: everything of it either side of the arch,
+		# its whole depth, so the way through stays open at the arch's 5.7 m
+		var solid := GATE_WIDTH * 0.5 - half_arch
+		for side in [-1.0, 1.0]:
 			var body := StaticBody3D.new()
 			var cs := CollisionShape3D.new()
 			var sh := BoxShape3D.new()
-			sh.size = Vector3(3.4, 4.0, 3.6)
+			sh.size = Vector3(solid, 4.0, GATE_DEPTH)
 			cs.shape = sh
-			body.position = g + Vector3(x, 2.0, 0)
+			body.position = g + Vector3(side * (half_arch + solid * 0.5), 2.0, 0)
 			body.add_child(cs)
 			add_child(body)
-	# the doors: two leaves, hinged at the towers, closed across the way
+	# the doors: two leaves, hinged at the arch's sides, closed across the way
 	for side in [-1, 1]:
 		var hinge := Node3D.new()
-		hinge.position = g + Vector3(side * 4.45, 0, 0.2)
+		hinge.position = g + Vector3(side * half_arch, 0, 0.2)
 		add_child(hinge)
-		var leaf := model("gate_door", hinge, Vector3(-side * 2.22, 0, 0), 0.0, Vector3(0, 6.0, 0), false)
+		var leaf := model("gate_door", hinge, Vector3(-side * leaf_w * 0.5, 0, 0), 0.0, Vector3(0, leaf_h, 0), false)
 		if leaf == null:
 			var l := Node3D.new()
 			hinge.add_child(l)
-			LevelKit.box(l, Vector3(-side * 2.22, 0, 0), Vector3(4.4, 6.0, 0.35), "gold", false)
+			LevelKit.box(l, Vector3(-side * leaf_w * 0.5, 0, 0), Vector3(leaf_w - 0.04, leaf_h, 0.35), "gold", false)
 			for y in [1.2, 3.0, 4.8]:
-				LevelKit.box(l, Vector3(-side * 2.22, y, 0.2), Vector3(4.2, 0.18, 0.08), "bronze", false)
-			var boss := LevelKit.sphere(l, Vector3(-side * 1.2, 3.0, 0.25), 0.28, "sun_glow")
+				LevelKit.box(l, Vector3(-side * leaf_w * 0.5, y, 0.2), Vector3(leaf_w - 0.24, 0.18, 0.08), "bronze", false)
+			var boss := LevelKit.sphere(l, Vector3(-side * leaf_w * 0.5, 3.0, 0.25), 0.22, "sun_glow")
 			boss.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		elif side > 0:
 			leaf.scale.x = -1.0   # Gary's one leaf, mirrored for the other
@@ -421,18 +442,19 @@ func _build_gate() -> void:
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
 		var sh := BoxShape3D.new()
-		sh.size = Vector3(4.4, 6.0, 0.5)
+		sh.size = Vector3(leaf_w, leaf_h, 0.5)
 		cs.shape = sh
-		cs.position = Vector3(-side * 2.22, 3.0, 0)
+		cs.position = Vector3(-side * leaf_w * 0.5, leaf_h * 0.5, 0)
 		body.add_child(cs)
 		hinge.add_child(body)
 		gate_doors.append(hinge)
-	# the city wall either side of the gate
+	# the city wall either side of the gate, from where its wings end
 	for side in [-1, 1]:
-		LevelKit.box(self, g + Vector3(side * 30.0, 0, 0), Vector3(44.0, 7.0, 2.0), "sandstone")
+		LevelKit.box(self, g + Vector3(side * (wing + 22.0), 0, 0), Vector3(44.0, 7.0, 2.0), "sandstone")
 		for i in 4:
-			LevelKit.cylinder(self, g + Vector3(side * (14.0 + i * 11.0), 0, 0), 1.7, 9.5, "sandstone", false, 1.7, 14)
-			LevelKit.cylinder(self, g + Vector3(side * (14.0 + i * 11.0), 9.5, 0), 1.9, 2.0, "roof_teal", false, 0.0, 14)
+			var tx: float = side * (wing + 4.0 + i * 11.0)
+			LevelKit.cylinder(self, g + Vector3(tx, 0, 0), 1.7, 9.5, "sandstone", false, 1.7, 14)
+			LevelKit.cylinder(self, g + Vector3(tx, 9.5, 0), 1.9, 2.0, "roof_teal", false, 0.0, 14)
 
 
 ## Swings the Golden Gate's doors open (or shut) over `secs`.
