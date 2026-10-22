@@ -105,7 +105,8 @@ def main():
         check(geo["bg"] == "rgb(7, 8, 15)", "the page behind the game is its dark blue (%s)" % geo["bg"])
         check(geo["safe"] == ["%dpx" % INSETS[k] for k in ("left", "top", "right", "bottom")], "the page reports the safe area %s" % geo["safe"])
         page.screenshot(path=os.path.join(OUT, "web_notice.png"))
-        page.mouse.click(VIEW["width"] / 2, VIEW["height"] / 2)
+        # Continue sits low in the middle of the notice (since 22 October only it moves the notice on)
+        page.mouse.click(VIEW["width"] / 2, VIEW["height"] * 0.78)
         time.sleep(5.0)
         page.screenshot(path=os.path.join(OUT, "web_title.png"))
         errors = [l for l in logs if l.startswith("error") or l.startswith("pageerror")]
