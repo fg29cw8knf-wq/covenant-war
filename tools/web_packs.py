@@ -5,7 +5,11 @@ A phone browser runs out of memory if the whole game is loaded at once, so the
 web build is a small main pack (title, menus, Ashford, Thornwood) plus one pack
 for each of these, fetched the first time the game needs it (scripts/game/packs.gd):
 
-    movie     the opening movie: its paintings, clips, voice and theme
+    movie     the opening movie: Gary's finished cut (assets/movies/opening.ogv)
+              on its own once it exists (the paintings, voice lines and theme
+              the engine falls back to without it stay out of the web build:
+              with them the pack would pass GitHub's 100 MB limit); until
+              then the paintings, clips, voice and theme
     duel      the duel Totems and Summons: their 3D models and Summon art
     solhaven  Solhaven: its area script and anything in a solhaven/ folder
               (scripts/world/solhaven/: the set, the films, the chase, the duels)
@@ -32,11 +36,16 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 NEVER = ["docs/*", "tools/*", "tests/*", "lookdev/*", "assets/audio/source/*", "*/PUT_*_HERE.txt"]
 # The web plays the music through the page (tools/web_music.py), not the pack.
 WEB_ONLY_OUT = ["assets/audio/music/*"]
+# The finished opening movie, and what the engine plays shot by shot when it's
+# missing (OpeningMovie): the fallback stays out of the web build once the cut
+# exists. The apps keep both.
+MOVIE_CUT = "assets/movies/opening.ogv"
+MOVIE_FALLBACK = ["assets/art/movie/*", "assets/movies/shots/*", "assets/audio/opening_theme.ogg", "assets/audio/vo/vo_*"]
 
 PACKS = {
 	"movie": {
 		"title": "the opening movie",
-		"files": ["assets/art/movie/*", "assets/movies/*", "assets/audio/opening_theme.ogg", "assets/audio/vo/vo_*"],
+		"files": ["assets/movies/*"] + MOVIE_FALLBACK,
 	},
 	"duel": {
 		"title": "the Totems and Summons",
@@ -73,11 +82,20 @@ def matches(path, patterns):
 	return any(fnmatch.fnmatchcase(path, p) for p in patterns)
 
 
+def web_only_out():
+	"""What the web build leaves out altogether."""
+	out = list(WEB_ONLY_OUT)
+	if os.path.exists(os.path.join(ROOT, MOVIE_CUT)):
+		out += MOVIE_FALLBACK
+	return out
+
+
 def pack_files(name):
 	"""The files in a pack, each named exactly (Godot's filters have no "except")."""
 	spec = PACKS[name]
 	return [p for p in project_files()
-		if matches(p, spec["files"]) and not matches(p, spec.get("keep", [])) and not matches(p, NEVER)]
+		if matches(p, spec["files"]) and not matches(p, spec.get("keep", [])) and not matches(p, NEVER)
+		and not matches(p, web_only_out())]
 
 
 def cfg_list(items):
@@ -98,7 +116,7 @@ def presets():
 		assert n == 1, "preset %s has no %s" % (section_name, key)
 		text = text.replace(block, new_block)
 
-	set_key("Web", "exclude_filter", cfg_list(NEVER + WEB_ONLY_OUT + in_packs))
+	set_key("Web", "exclude_filter", cfg_list(NEVER + web_only_out() + in_packs))
 	for name in PACKS:
 		set_key("Web pack: " + name, "include_filter", cfg_list(pack_files(name)))
 		set_key("Web pack: " + name, "exclude_filter", cfg_list(NEVER))

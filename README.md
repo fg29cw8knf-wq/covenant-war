@@ -164,7 +164,7 @@ Thornwood), then `packs/movie.pck` (the opening movie), `packs/duel.pck` (the du
 Totems and Summons; the moth and the hounds the films need stay in the main pack)
 and `packs/solhaven.pck` (Solhaven's script and anything in a `solhaven/` folder),
 each downloaded the first time it's needed, with a loading bar (the movie's has a
-Skip button too, since nobody should sit through its download to skip it:
+Skip button too (about 78 MB for Gary's finished cut), since nobody should sit through its download to skip it:
 `Packs.need("movie", true)` returns false if it's pressed, and New Game goes
 straight on to Ashford; if the movie's over before Ashford is ready a
 "Lighting the lanterns in Ashford" bar holds the screen, `Packs.hold()`). Code
@@ -584,7 +584,24 @@ tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the
 
 ## Opening movie
 
-The opening movie (`scripts/story/opening_movie.gd`) follows the "Opening movie"
+Since 22 October the opening is Gary's one finished film,
+`assets/movies/opening.ogv` (3:12; his animated clips, Morrowen's narration,
+the music, the title and the words on screen all in the picture: Ogg Theora
+1280x720 at 30 fps, about 78 MB, converted from his 4K HEVC master, which
+stays on his Mac). `OpeningMovie` plays it whole when it's there, with nothing
+of the engine's over it (no subtitles, voice, music or title), fills the
+screen with it as it does the paintings (`frame_rect()`), and a tap shows Skip
+as before. On the phone link it's the whole `movie` pack (the paintings, voice
+lines and theme below stay out of the web build while the cut exists, or the
+pack would pass GitHub's 100 MB limit); the apps keep both. Check it with
+`tests/movie_shot.tscn -- <dir> cut 0:20 1:30 3:04` (stills at those times;
+it checks nothing of the engine's goes over it and that it runs to its end).
+If it ever stutters on a phone, re-encoding the .ogv again is lossy: convert
+from Gary's master instead.
+
+Without the file, the engine plays the movie shot by shot
+(`tests/movie_shot.tscn` without `cut` checks that path, whether or not the
+cut exists): `scripts/story/opening_movie.gd` follows the "Opening movie"
 table of the Master Script v3: 21 shots in 2:24, cut in time with
 `opening_theme` (the title rises at 2:14.5 to meet its last chord). Morrowen
 narrates fifteen lines (`assets/audio/vo/`); shot 10 is music only. Each line

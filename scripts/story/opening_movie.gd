@@ -3,10 +3,14 @@ extends CanvasLayer
 ## The opening movie, "The Throne of Ages".
 ##
 ## Plays, in order of preference:
-##   1. the finished cut: res://assets/movies/opening.ogv
+##   1. the finished cut: res://assets/movies/opening.ogv (Gary's one film since
+##      22 October: his clips, Morrowen's narration, the music, the title and the
+##      words already in the picture, 3:12 long). Nothing of the engine's plays
+##      over it: no subtitles, music, voice or title. Tap to show Skip.
 ##   2. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
 ##      or the still res://assets/art/movie/<shot>.png (or .jpg) animated in the engine,
 ##      or, when neither exists yet, an animatic card describing the shot.
+##      This is the fallback if the cut's missing, and what the apps keep.
 ## Shots, lines and pictures follow the "Opening movie" table of Master Script v3
 ## (2:24 in all, in time with opening_theme; the title rises at 2:14.5 to meet its
 ## final chord). Morrowen's voice lines (res://assets/audio/vo/vo_<n>.ogg, made from
@@ -88,6 +92,9 @@ var _focus_before: Control   # the button underneath that had the keyboard focus
 var _duck_tween: Tween
 var _ducked := false
 var _clock := 0.0
+## Play shot by shot even when the finished cut exists (the tests of that path).
+var shots_only := false
+var _cut := false            # the finished cut is what's playing
 var _lines: Array = []       # schedule(): when each line starts and ends
 var _next_line := 0          # the next line to start
 var _line_end := -1.0        # when the line speaking now ends (-1: none)
@@ -190,26 +197,42 @@ func _fit_video() -> void:
 
 func _play() -> void:
 	_lines = schedule()
-	if ResourceLoader.exists(MUSIC):
-		_music.stream = load(MUSIC)
-		_music.play()
-	if ResourceLoader.exists(MOVIE):
+	if ResourceLoader.exists(MOVIE) and not shots_only:
 		await _play_full_cut()
-	else:
+	if not _cut and not _done:
+		# the engine's own movie: the theme, and Morrowen's lines over the shots
+		if ResourceLoader.exists(MUSIC):
+			_music.stream = load(MUSIC)
+			_music.play()
 		await _play_shots()
 	_finish()
 
 
-## The finished cut has the narration in it: only the subtitles follow its clock.
-func _play_full_cut() -> void:
+## The finished cut has everything in it (the narration, the music, the words
+## on screen and the title), so nothing of the engine's goes over it: only the
+## clock follows it, for the log. Returns false if the file can't play, and the
+## shots take over.
+func _play_full_cut() -> bool:
+	var stream := load(MOVIE) as VideoStream
+	if stream == null:
+		push_warning("OpeningMovie: %s won't load; playing the shots instead" % MOVIE)
+		return false
 	_stage.visible = false
-	_video.stream = load(MOVIE)
+	_video.stream = stream
 	_video.visible = true
 	_video.play()
+	await get_tree().process_frame
+	if not _video.is_playing():
+		push_warning("OpeningMovie: %s won't play; playing the shots instead" % MOVIE)
+		_video.stop()
+		_video.visible = false
+		_stage.visible = true
+		return false
+	_cut = true
 	while _video.is_playing() and not _done:
 		await get_tree().process_frame
-		_clock = _video.stream_position
-		_tick_lines(false)
+		_clock = maxf(_clock, _video.stream_position)   # (0 again once it's over)
+	return true
 
 
 func _play_shots() -> void:
@@ -369,13 +392,19 @@ func _finish() -> void:
 	if _done:
 		return
 	_done = true
-	_video.stop()
 	if _duck_tween:
 		_duck_tween.kill()
 	var tw := create_tween()
 	tw.tween_property(_root, "modulate:a", 0.0, 0.6)
 	tw.parallel().tween_property(_music, "volume_db", -40.0, 0.6)
+	if _cut:
+		# the cut's own sound goes down with the picture (a Skip in the middle
+		# of a line, or of the music)
+		tw.parallel().tween_property(_video, "volume_db", -40.0, 0.6)
+	else:
+		_video.stop()
 	await tw.finished
+	_video.stop()
 	if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
 		_focus_before.grab_focus()   # back on the title, the keys work again
 	finished.emit()
