@@ -357,6 +357,9 @@ tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>
 godot --headless --import
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
 godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses, and sit
+python3 tools/arm_weights.py assets/models/characters/player_d.glb [--fix]   # cloth skinned to a hand or finger (it rises with the hand); --fix walks it back onto the body
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 \
+    res://tests/carry_check.tscn -- /tmp/carry [a,b,c,d]        # every look carrying the lantern crate, side and front
 xvfb-run -a -s "-screen 0 800x800x24" godot --rendering-driver opengl3 --resolution 640x640 \
     --script res://tests/model_sheet.gd -- /tmp/sheet player_a  # the model by the cast, in every clip, the cast on a bench
 ```
