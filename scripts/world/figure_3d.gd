@@ -63,6 +63,11 @@ const OWN_GAIT := {
 	"tam": {"walk": 1.63, "run": 4.12},
 	"tilly": {"walk": 1.00, "run": 2.54},
 	"nell": {"walk": 1.11, "run": 2.81},
+	# the crowd's looks (22 October: the farmer and the trader on Player B's
+	# clips, the merchant on Tam's 34-joint library)
+	"farmer": {"walk": 1.70, "run": 4.30, "sneak": 0.87},
+	"merchant": {"walk": 1.43, "run": 3.63, "sneak": 0.92},
+	"trader": {"walk": 1.77, "run": 4.48, "sneak": 0.90},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
