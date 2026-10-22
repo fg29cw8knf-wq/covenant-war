@@ -231,9 +231,83 @@ the 4096 atlas may want the import's VRAM compression. Play the Golden Gate
 film (`tests/solhaven_test.tscn -- <dir> keys`) and look at the stills from
 the road (`SPOTS.road`) and from inside the square.
 
+## 15. The movie in 4K: a native player on iPhone and Mac
+
+Gary wants the opening to play "in its 4K form". Godot's own player is Theora
+only, so: on iOS and macOS play the HEVC master through the platform's own
+video player (AVPlayer / AVFoundation, hardware decoded) via a GDExtension or
+a Godot iOS/macOS plugin — an existing open-source one if a maintained one
+fits Godot 4.7, else a small one of our own, built in the existing
+`tools/build_ios.sh` / `build_mac.sh` pipeline (the iOS zip and Mac app are
+built by the repo's workflow from `main`, so the plugin must build there
+too). `OpeningMovie` prefers it when it's available (full screen, same
+`frame_rect()` crop, Skip and the end-of-movie handling as now); the Theora
+copy stays the fallback for the web link and anywhere the native player
+isn't. Sound through the native player; the engine's music off while it runs.
+
+The master is in `incoming/assets-22oct/opening_movie/master/` in two parts
+(GitHub's 100 MB file limit): rebuild it with
+`cat The_Covenant_War_4K_60fps_HEVC.mp4.part0 The_Covenant_War_4K_60fps_HEVC.mp4.part1 > opening_4k.mp4`
+and check it against the `.sha256` beside them (3840x2160, 60 fps, HEVC,
+AAC, 3:12, 175 MB). Where it lives for the builds: keep it in the repo as
+the two parts and have the build scripts join them (simplest; git can't
+hold the whole file), unless a GitHub release asset that the workflow
+downloads is cleaner — but note Claude sessions can't create releases, so
+that route needs Gary to upload it on the website. An iPhone can't show
+4K (its screen is 2868x1320); a 1080p60 HEVC encode of the same master
+(about a quarter of the size) looks identical there and keeps the app
+smaller — offer Gary that for the iPhone build with the 4K for Mac/iPad,
+and do what he says.
+
+## 16. Play through as every look, and fix what the assets do wrong
+
+Gary: "I want you to test the game as each character, looking for anywhere
+the assets aren't working properly — for example Player D, when he's holding
+the lanterns, his image becomes distorted. Do a run-through of each and fix
+any issue found." So, for looks A, B, C and D (`tests/ashford_test.gd` takes
+`look=<letter>`; stills with `keys`): the attic (the bed poses, the mirror),
+the taproom, the crate carry through the street and onto the green (the
+`lift`/carry pose with `CRATE_HOLD`, `attach()` to the hand bone — D is
+1.82 m on his own rig, so a clip or an attach scale fitted to look A is the
+first suspect for the distortion), the lantern in hand, the hoist, the
+Lantern Duel (`duel_idle`, `play_card`), Tilly's moth, midnight and the
+films, and Chapter 1's wagon, chase and duels. Look at every still for
+stretched limbs, a prop in the wrong place or size, a figure sunk into or
+floating above the ground, a clip that doesn't fit the model, a portrait
+that doesn't match. Fix each, and leave the run as a test that can be
+repeated (`tests/looks_run.sh` or the like: all four looks, stills to a
+folder) so it's cheap to do again after every change.
+
+## 17. Standing rule from tonight: every update is built to the best look and flow
+
+Gary: "Every time you update the game I want you building it with the best
+look and flow." So this session, after the fixes above, and every session
+after, the game is left looking and playing as well as Godot can make it,
+not just working:
+
+- **Look.** Forward+ on iPhone/Mac (the web link's compatibility renderer is
+  the floor, not the target). Do the lighting-and-look pass on Ashford first,
+  as the showcase, then wherever the player goes next: baked lighting
+  (`LightmapGI`) for the villages so there's bounced light and soft shadow;
+  `ReflectionProbe`s on the gold and metal (Solhaven's gilding, the Golden
+  Gate's domes, armour); normal and roughness maps derived from Gary's colour
+  textures on his models (script it); soft filtered sun shadows; one colour
+  grade per place (Ashford's night, Solhaven's noon) via the Environment's
+  adjustments; depth of field for dialogue close-ups where it helps; animation
+  blending and small idle motion on the figures. Keep the phone's frame rate
+  (the FSR scaling is there for that) and the first-launch time.
+- **Flow.** Nobody floats, sinks, pops or waits on nothing; every cutscene
+  cut and camera move is deliberate; the gated steps always say what to do.
+- After each update, the four-look run-through (item 16) and stills, and
+  the web build published so the phone link matches `main`.
+
+Write this rule into `docs/handover/2026-10-22.md` and the top of
+`README.md`'s working notes so every later session inherits it.
+
 ## Then
 
-- `docs/handover/2026-10-22.md`: what landed, what's open, in the usual form.
+- `docs/handover/2026-10-22.md`: what landed, what's open, in the usual form,
+  with the standing rule from item 17.
 - The to-do doc: tick the opening movie as one film, Aldric's face, the three
   villager models and the Golden Gate; add the refugee model (Gary) and the
   bed model (Gary) if they're not there.
