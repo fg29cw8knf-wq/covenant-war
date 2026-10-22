@@ -19,11 +19,14 @@ func _ready() -> void:
 	if "--lab" in args or "--lab-watch" in args:
 		show_lab()
 		return
+	LaunchLog.start()
 	if get_tree().current_scene == self and not "--no-notice" in args:
 		# who made the game, and a word about the adverts (tests that load
-		# main.tscn inside their own scene skip it)
+		# main.tscn inside their own scene skip it). Nothing is built under
+		# it: it's up and taking taps at once.
 		var notice := NoticeScreen.new()
 		add_child(notice)
+		LaunchLog.mark("notice")
 		await notice.finished
 	show_title()
 
@@ -71,6 +74,7 @@ func show_title() -> void:
 	_swap(holder)
 	_world = null
 	_starting = false
+	LaunchLog.mark("title")
 	_prepare_new_game()
 
 
@@ -92,8 +96,35 @@ func _prepare_new_game() -> void:
 	w.exit_to_title.connect(show_title)
 	w.story_next.connect(_on_story_next)
 	_prepared = w
+	# The first launch of a build compiles every shader the opening draws
+	# the first time it's drawn, and on an iPhone (Metal) that can hold the
+	# screen for a long moment with nothing to say why: on the first launch
+	# it's done behind a loading bar, so the title never looks hung, and
+	# every launch after finds the shaders in the cache. (Ashford itself is
+	# built a piece a frame, and never holds the notice or the title.)
+	var first := first_launch()
+	var holding: CanvasLayer = Packs.hold("Getting the game ready: the first time takes a moment") if first else null
+	LaunchLog.mark("ashford building" + (", first launch" if first else ""))
+	var watch := LaunchLog.FrameWatch.new()
+	add_child(watch)
 	add_child(w)
 	await w.prepare()
+	LaunchLog.mark("ready, slowest frame %d ms" % watch.report())
+	if holding != null:
+		holding.queue_free()
+		Game.settings["warmed"] = Packs.build_id()
+		Game.save_settings()
+
+
+## True until this build's shaders have been warmed once on this device (the
+## apps; the phone link and the editor compile theirs every time anyway).
+## `-- --first-launch` makes any run behave as one.
+static func first_launch() -> bool:
+	if "--first-launch" in OS.get_cmdline_user_args():
+		return true
+	if OS.has_feature("web") or OS.has_feature("editor"):
+		return false
+	return String(Game.settings.get("warmed", "")) != Packs.build_id()
 
 
 ## The world built for a New Game isn't wanted (Continue, the Duel Lab): it

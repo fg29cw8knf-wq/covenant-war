@@ -39,6 +39,12 @@ func build_label() -> String:
 	return str(_info.get_value("build", "published", ProjectSettings.get_setting("application/config/version", "")))
 
 
+## What tells one build from the next (the build's id from tools/build_info.sh;
+## the version number for a run from the editor).
+func build_id() -> String:
+	return str(_info.get_value("build", "id", ProjectSettings.get_setting("application/config/version", "")))
+
+
 ## Whether a pack is ready (always true outside the split web build).
 func has(pack: String) -> bool:
 	return not _sizes().has(pack) or _have.has(pack)
@@ -163,9 +169,14 @@ class _Screen:
 	var _fill: Panel
 	var _retry: Button
 	var _skip: Button
+	var _focus_before: Control   # the button underneath that had the keyboard focus
 
 	func _ready() -> void:
 		layer = 120
+		# nothing under it answers a key or a pad meanwhile (the title's New
+		# Game would take Enter through the bar); it gets the focus back after
+		_focus_before = get_viewport().gui_get_focus_owner()
+		get_viewport().gui_release_focus()
 		var bg := ColorRect.new()
 		bg.color = Color(0.027, 0.031, 0.059, 0.92)
 		bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -224,3 +235,7 @@ class _Screen:
 		await _again
 		_retry.visible = false
 		_fill.size.x = 0.0
+
+	func _exit_tree() -> void:
+		if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
+			_focus_before.grab_focus()

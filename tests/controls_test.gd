@@ -550,6 +550,39 @@ func _notice() -> void:
 		await _press(way)
 		check("notice: %s carries on" % way.name, n._done)
 		await _gone(n)
+	# nothing but Continue moves it on (Gary, 22 October: "the opening message
+	# cuts without me clicking Continue"): not a tap on the page, not a tap
+	# where Continue will be before it's there, not a finger down on that spot
+	# from before it shows and lifted after, not a key held since before the
+	# page (its repeats), not a pad button held down since before
+	var n := NoticeScreen.new()
+	add_child(n)
+	await frames(2)
+	var spot := center_of(n._continue)
+	await click(Vector2(960, 300))
+	await click(spot)
+	check("notice: a tap before Continue shows doesn't carry on", not n._done)
+	key(KEY_ENTER, true)
+	pad(JOY_BUTTON_A, true)
+	await frames(2)
+	mouse_to(spot)
+	mouse_button(spot, true)
+	await secs(NoticeScreen.MIN_SECONDS + 0.4)
+	check("notice: Continue is up after %.1f s" % NoticeScreen.MIN_SECONDS, not n._continue.disabled and n._continue.modulate.a > 0.0)
+	mouse_button(spot, false)
+	await frames(2)
+	check("notice: a finger down from before Continue showed doesn't press it", not n._done)
+	_echo(ENTER)
+	await frames(2)
+	key(KEY_ENTER, false)
+	pad(JOY_BUTTON_A, false)
+	await frames(2)
+	check("notice: a key or pad button held since before the page doesn't carry on", not n._done)
+	await click(Vector2(960, 300))
+	check("notice: a tap on the page doesn't carry on", not n._done)
+	await click(spot)
+	check("notice: Continue carries on", n._done)
+	await _gone(n)
 
 
 # ================================================================ title ===
