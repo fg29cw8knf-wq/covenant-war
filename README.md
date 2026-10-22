@@ -18,6 +18,26 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `assets/sfx/` | Sound effects. |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
+## Gary's standing rule (22 October): every update is built to the best look and flow
+
+Every session leaves the game looking and playing as well as Godot can make
+it, not just working. **Look**: Forward+ on iPhone and Mac is the target (the
+phone link's compatibility renderer is the floor): baked lighting
+(`LightmapGI`) for the villages, reflection probes on gold and metal, normal
+and roughness maps derived from Gary's colour textures, soft filtered sun
+shadows, one colour grade per place, depth of field for the dialogue
+close-ups where it helps, animation blending and small idle motion on the
+figures, with the phone's frame rate and the first-launch time kept. Ashford
+first, as the showcase, then wherever the player goes next. **Flow**: nobody
+floats, sinks, pops or waits on nothing; every cut and camera move is
+deliberate; the gated steps always say what to do. After each update: the
+play-through as every look (`tests/ashford_test.tscn -- <dir> opening
+look=<a|b|c|d> keys`, and the rest of the game as each) with its stills looked
+at, and the web build published so the phone link matches `main`. The look
+pass itself hasn't started (22 October): it's the next big job, and Gary should
+be asked before it's begun, as `docs/handover/2026-10-18.md` says of anything
+big.
+
 ## The Duel Lab (duel rules v2)
 
 The card battle is being rebuilt to the v1 rules (three Totem slots a side,
@@ -618,7 +638,9 @@ the music, the title and the words on screen all in the picture: Ogg Theora
 1280x720 at 30 fps, about 78 MB, converted from his 4K HEVC master, which
 stays on his Mac). `OpeningMovie` plays it whole when it's there, with nothing
 of the engine's over it (no subtitles, voice, music or title), fills the
-screen with it as it does the paintings (`frame_rect()`), and a tap shows Skip
+screen with it as it does the paintings (`frame_rect()`; on a wide phone the
+crop comes off the top, so his words along the foot of the picture stay
+whole: `CUT_FOOT`), and a tap shows Skip
 as before. On the phone link it's the whole `movie` pack (the paintings, voice
 lines and theme below stay out of the web build while the cut exists, or the
 pack would pass GitHub's 100 MB limit); the apps keep both. Check it with

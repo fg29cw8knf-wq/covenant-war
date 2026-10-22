@@ -76,8 +76,13 @@ func _play_cut(times: Array) -> void:
 	_check(_m._cut, "the finished cut is what's playing")
 	_check(_m._video.visible and _m._video.is_playing(), "the video is playing")
 	var fr := OpeningMovie.frame_rect(_m._root.size)
-	_check(_m._video.position.is_equal_approx(fr.position) and _m._video.size.is_equal_approx(fr.size),
-		"the cut fills the screen as the paintings do (%s, frame %s)" % [Rect2(_m._video.position, _m._video.size), fr])
+	var vr := Rect2(_m._video.position, _m._video.size)
+	_check(vr.size.is_equal_approx(fr.size) and is_equal_approx(vr.position.x, fr.position.x),
+		"the cut fills the screen as the paintings do (%s, frame %s)" % [vr, fr])
+	# on a screen wider than the picture the crop comes off the top: the foot of
+	# the picture (Gary's words) stays on screen, bar CUT_FOOT of it
+	_check(vr.end.y <= _m._root.size.y + fr.size.y * (OpeningMovie.CUT_FOOT + 0.001) and vr.end.y >= _m._root.size.y - 0.5,
+		"the cut's foot stays on screen (bottom at %.0f of %.0f)" % [vr.end.y, _m._root.size.y])
 	var last := 0.0
 	while is_instance_valid(_m) and not _m._done:
 		await get_tree().process_frame

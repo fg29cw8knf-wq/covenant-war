@@ -189,8 +189,16 @@ static func frame_rect(s: Vector2, aspect: float = 16.0 / 9.0) -> Rect2:
 	return Rect2((s - sz) * 0.5, sz)
 
 
+## How much of the finished cut's height may go off the bottom of a wide
+## screen: Gary's words along its foot end 3.5% up, so the crop comes off the
+## top (sky; the title sits mid-frame) and the words stay whole.
+const CUT_FOOT := 0.01
+
+
 func _fit_video() -> void:
 	var fr := frame_rect(_root.size)
+	if ResourceLoader.exists(MOVIE) and not shots_only and fr.size.y > _root.size.y:
+		fr.position.y = _root.size.y - fr.size.y * (1.0 - CUT_FOOT)
 	_video.position = fr.position
 	_video.size = fr.size
 

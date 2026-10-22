@@ -33,7 +33,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Never in any build: source files, checks (docs/audio-checks), tests, look
 # tests, and the "put the files here" notes left in asset folders.
-NEVER = ["docs/*", "tools/*", "tests/*", "lookdev/*", "assets/audio/source/*", "*/PUT_*_HERE.txt"]
+NEVER = ["docs/*", "tools/*", "tests/*", "lookdev/*", "assets/audio/source/*", "*/PUT_*_HERE.txt", "incoming/*"]
 # The web plays the music through the page (tools/web_music.py), not the pack.
 WEB_ONLY_OUT = ["assets/audio/music/*"]
 # The finished opening movie, and what the engine plays shot by shot when it's
