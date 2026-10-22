@@ -226,18 +226,25 @@ func chart() -> void:
 var _chart: Control = null
 
 
-## The player's dream before they wake (P1), the one they tell Bram about:
-## the night sky as it's seen from the bed, slow and full of stars, until a
-## white light climbs from the bottom of it and the stars go out one by one
-## in it, and there's nothing left but white: the Sigilfall, before it
-## happens. Cut to black on the drum. Returns on the cut.
-func dream_sky(secs := 3.4) -> void:
+## The dream the player tells Bram about (P1, before the attic wakes): the
+## night sky as it's seen from the bed through the attic window, full of
+## stars and a thin moon, held so it's plainly the sky for about two seconds,
+## then an even fade to white over the whole of it (the Sigilfall before it
+## happens: no front rising from the bottom, which read on a phone as black
+## going white), a beat of pure white, then the cut to black on the drum.
+## `secs` is the whole: 2 s of sky, the fade, and 0.7 s of white.
+func dream_sky(secs := 5.2) -> void:
+	var see := 2.0
+	var hold := 0.7
+	var fade := maxf(secs - see - hold, 0.5)
 	var sky := ColorRect.new()
 	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()
 	sh.code = """shader_type canvas_item;
-uniform float t = 0.0;      // 0..1 over the dream
+uniform float t = 0.0;      // seconds into the dream
+uniform float see = 2.0;    // the sky on its own this long
+uniform float fade = 2.5;   // then white comes over it in this long
 uniform float aspect = 1.78;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float noise(vec2 p) {
@@ -251,36 +258,49 @@ float stars(vec2 uv, float cells, float keep, float size, float tm) {
 	float h = hash(i);
 	if (h > keep) return 0.0;
 	vec2 c = vec2(hash(i + 7.1), hash(i + 3.7)) * 0.7 + 0.15;
-	float d = length((fract(g) - c) * vec2(1.0, 1.0));
-	float tw = 0.7 + 0.3 * sin(tm * (2.0 + h * 6.0) + h * 40.0);
-	return smoothstep(size, 0.0, d) * tw * (0.5 + h / keep * 0.5);
+	float d = length(fract(g) - c);
+	float tw = 0.75 + 0.25 * sin(tm * (2.0 + h * 6.0) + h * 40.0);
+	float core = smoothstep(size, 0.0, d);
+	float glow = smoothstep(size * 3.0, 0.0, d) * 0.25;
+	return (core + glow) * tw * (0.6 + h / keep * 0.4);
 }
 void fragment() {
 	vec2 uv = UV;
 	vec2 su = vec2(uv.x * aspect, uv.y);
-	float tm = t * 9.0;
 	// a very slow drift, the way a sky turns
-	vec2 duv = su + vec2(t * 0.012, t * 0.004);
-	// the night: near black at the top, a little blue towards the horizon
-	vec3 night = mix(vec3(0.02, 0.025, 0.06), vec3(0.08, 0.11, 0.2), uv.y * uv.y);
-	float haze = noise(duv * vec2(2.5, 1.5)) * 0.04 * uv.y;
-	vec3 col = night + haze;
-	float st = stars(duv, 80.0, 0.24, 0.12, tm) * 0.9 + stars(duv + 3.3, 28.0, 0.16, 0.17, tm * 0.7) * 1.2;
-	col += vec3(0.85, 0.9, 1.0) * st;
-	// the white: climbs from the bottom of the sky from a third of the way
-	// in, its edge soft and uneven, and it takes the stars as it goes
-	float rise = smoothstep(0.3, 0.9, t);
-	float edge = (1.0 - uv.y) + noise(duv * vec2(3.0, 2.0) + vec2(0.0, t * 2.0)) * 0.3;
-	float front = rise * 1.6 - 0.25;
-	float white = smoothstep(edge - 0.2, edge + 0.2, front);
-	white = max(white, smoothstep(0.84, 0.95, t));
+	vec2 duv = su + vec2(t * 0.004, t * 0.0015);
+	// the night: deep blue, lighter towards the horizon at the foot of the
+	// window, with a faint band of the Milky Way across it
+	vec3 night = mix(vec3(0.05, 0.08, 0.2), vec3(0.14, 0.2, 0.38), uv.y * uv.y);
+	float band = smoothstep(0.35, 0.0, abs((uv.y - 0.3) - (uv.x - 0.5) * 0.5)) * (0.35 + 0.65 * noise(duv * vec2(4.0, 2.5)));
+	vec3 col = night + vec3(0.25, 0.28, 0.4) * band * 0.35;
+	float st = stars(duv, 56.0, 0.22, 0.09, t * 3.0) * 1.1 + stars(duv + 3.3, 20.0, 0.14, 0.11, t * 2.0) * 1.5
+		+ stars(duv + 9.1, 9.0, 0.12, 0.13, t * 1.3) * 1.8;
+	col += vec3(0.9, 0.93, 1.0) * st;
+	// a thin moon, high and to the right: a bright disc with a dark disc over it
+	vec2 mc = vec2(0.74 * aspect, 0.2);
+	float md = length(su - mc);
+	float moon = smoothstep(0.07, 0.062, md);
+	float bite = smoothstep(0.07, 0.062, length(su - mc - vec2(0.028, -0.01)));
+	float crescent = clamp(moon - bite, 0.0, 1.0);
+	col = mix(col, vec3(0.98, 0.97, 0.9), crescent);
+	col += vec3(0.6, 0.65, 0.8) * smoothstep(0.2, 0.06, md) * 0.12;
+	// the attic window round it: its dark frame at the edges and the bars
+	// across the middle, so it's plainly the sky seen from the bed
+	vec2 e = abs(uv - 0.5) * 2.0;
+	float frame = smoothstep(0.86, 0.99, max(e.x, e.y));
+	float bars = max(smoothstep(0.045, 0.02, abs(uv.x - 0.5)), smoothstep(0.045, 0.02, abs(uv.y - 0.5)));
+	vec3 wood = vec3(0.09, 0.06, 0.04);
+	col = mix(col, wood, max(frame, bars * 0.95));
+	// the white: once the sky's been seen, it comes evenly over all of it
+	float white = smoothstep(0.0, 1.0, clamp((t - see) / fade, 0.0, 1.0));
 	col = mix(col, vec3(1.0), white);
-	// eyes half shut: dark at the edges until the white takes that too
-	float vig = 1.0 - smoothstep(0.35, 1.0, length(uv - 0.5) * 1.5) * 0.55 * (1.0 - white);
-	COLOR = vec4(col * vig, 1.0);
+	COLOR = vec4(col, 1.0);
 }"""
 	var sm := ShaderMaterial.new()
 	sm.shader = sh
+	sm.set_shader_parameter("see", see)
+	sm.set_shader_parameter("fade", fade)
 	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)) if sky.size.y > 1.0 else 1.78)
 	sky.material = sm
 	_root.add_child(sky)
@@ -288,7 +308,7 @@ void fragment() {
 	await get_tree().process_frame
 	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)))
 	var tw := create_tween()
-	tw.tween_method(func(k: float) -> void: sm.set_shader_parameter("t", k), 0.0, 1.0, secs)
+	tw.tween_method(func(k: float) -> void: sm.set_shader_parameter("t", k), 0.0, see + fade + hold, see + fade + hold)
 	await tw.finished
 	sky.queue_free()
 	_black.modulate.a = 1.0
