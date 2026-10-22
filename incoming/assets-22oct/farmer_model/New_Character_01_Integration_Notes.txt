@@ -1,0 +1,32 @@
+NEW CHARACTER 01 — GAME-READY HUMANOID (AssetFurnace)
+=======================================================
+
+MAIN FILE: New_Character_01_Master_21_Animations.glb
+Triangles: 19997
+Rig: 52 joints (matching 52-joint AssetFurnace hierarchy)
+Animations: 21 clips
+Original model source: ChatGPT-Image-Oct-21-2026-at-11_21_05-PM-1_20k_idle.glb
+Motion source: Player_B_New_21_Animations.glb
+
+Animation names:
+idle, walk, run, sneak, strafe_left, jump, sit, fight_stance, punch, punch_combo, kick, roundhouse, flying_kick, sword_swing, kata, hit_react, death, cheer, dance, wave, roll
+
+Details:
+- Original 3D mesh, textures, materials, scene, skin, bone hierarchy and rest pose
+  remain IDENTICAL to the uploaded new character GLB.
+- The uploaded character's ORIGINAL idle animation is retained unchanged.
+- Other 20 clips transferred from the earlier Player B animation library.
+- Animations are remapped by matching joint names and hierarchy.
+- Bone-local rotations are retargeted relative to their individual rest poses.
+- Animated translations are repositioned to each target bone's rest location,
+  with bounded length scaling; animated scales are rest-pose adjusted.
+- The file was verified to parse as glTF 2.0, retains the original model binary,
+  and loaded in a 3D scene importer.
+
+LIMITATIONS:
+- Retargeting is not motion-capture quality and has NOT been visually reviewed
+  inside your game. Test all animations and refine any wrist/foot/hip alignment.
+- The built-in actions represent animation clips, not engine-managed blending;
+  your game's animation controller must play them by name.
+- Loop walk, run and idle; other actions are normally triggered once.
+

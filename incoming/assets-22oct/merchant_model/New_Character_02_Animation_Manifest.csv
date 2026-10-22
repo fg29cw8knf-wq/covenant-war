@@ -1,0 +1,22 @@
+animation,source,duration_seconds,channels,animated_joints,retargeted,notes
+idle,uploaded character (original),4.0,102,34,no,original idle preserved
+walk,Tam (34-bone compatible),4.0,102,34,yes,same hierarchy
+run,Tam (34-bone compatible),3.0,102,34,yes,same hierarchy
+sneak,Player B (52 to 34-bone retarget),4.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+strafe_left,Player B (52 to 34-bone retarget),3.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+jump,Tam (34-bone compatible),2.5,102,34,yes,same hierarchy
+sit,Tam (34-bone compatible),3.0,102,34,yes,same hierarchy
+fight_stance,Player B (52 to 34-bone retarget),4.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+punch,Tam (34-bone compatible),2.0,102,34,yes,same hierarchy
+punch_combo,Player B (52 to 34-bone retarget),3.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+kick,Tam (34-bone compatible),2.0,102,34,yes,same hierarchy
+roundhouse,Player B (52 to 34-bone retarget),2.5,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+flying_kick,Player B (52 to 34-bone retarget),2.5,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+sword_swing,Player B (52 to 34-bone retarget),2.5,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+kata,Player B (52 to 34-bone retarget),5.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+hit_react,Player B (52 to 34-bone retarget),2.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
+death,Tam (34-bone compatible),3.0,102,34,yes,same hierarchy
+cheer,Tam (34-bone compatible),3.0,102,34,yes,same hierarchy
+dance,Tam (34-bone compatible),5.0,102,34,yes,same hierarchy
+wave,Tam (34-bone compatible),3.0,102,34,yes,same hierarchy
+roll,Player B (52 to 34-bone retarget),3.0,102,34,yes,extra finger tracks omitted; mapped corresponding body joints
