@@ -379,10 +379,11 @@ static func _bram_menu() -> Array:
 			[
 				{"say": "Caldus Morne. Owns Ironvault, and the note on half of everything that isn't Ironvault.", "who": "bram"},
 				{"say": "Men like that don't want a thing. They want it owed to them.", "who": "bram"},
-				{"choice": ["How do you know him?", "Leave it."], "then": [
+				# (a thing to ask, or leave: an ask list, as Gary wants every
+				# "what shall I ask" to be; the question's answer ends it)
+				{"ask": ["How do you know him?"], "then": [
 					[{"say": "I don't. I knew his father. Get some sleep.", "who": "bram"}],
-					[{"say": "I will.", "who": "bram"}],
-				]},
+				], "leave": "Leave it."},
 			],
 		]},
 	]

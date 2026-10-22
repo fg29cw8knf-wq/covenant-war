@@ -116,6 +116,19 @@ func _layout() -> void:
 	_choices.offset_bottom = _choices.offset_top + ch
 
 
+## An instruction to the player inside a line, in brackets (Gary's rule: the
+## fourth wall stays up, so "(Tap the three lines at the top right of the
+## screen to open the menu.)" is in brackets after Bram's words), drawn in
+## the Objective line's gold italics so it reads as the game's note, not as
+## something the speaker says. A bracket that starts with one of these verbs
+## is one; a character's own aside in brackets isn't touched.
+static var _instruction := RegEx.create_from_string("\\((?:Tap|Press|Click|Hold|Drag|Pinch|Swipe|Walk|Use|Left|Right|Open) [^()]*\\)")
+
+
+static func mark_instructions(text: String) -> String:
+	return _instruction.sub(text, "[color=#%s][i]$0[/i][/color]" % UITheme.GOLD.to_html(false), true)
+
+
 ## Show a line and wait for the player to tap through it.
 func say(speaker: String, portrait: Texture2D, text: String) -> void:
 	_bark_n += 1   # a line said over a passing remark replaces it
@@ -127,7 +140,7 @@ func say(speaker: String, portrait: Texture2D, text: String) -> void:
 	_name.visible = speaker != ""
 	_portrait.texture = portrait
 	_portrait_frame.visible = portrait != null
-	_text.text = text
+	_text.text = mark_instructions(text)
 	_text.visible_ratio = 0.0
 	_typing = true
 	_waiting = true
