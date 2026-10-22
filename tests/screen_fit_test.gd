@@ -102,6 +102,7 @@ func _title() -> void:
 
 func _movie() -> void:
 	var m := OpeningMovie.new()
+	m.shots_only = true   # the paintings and the title (the finished cut fills the same frame)
 	add_child(m)
 	await secs(2.5)
 	m._show_skip()

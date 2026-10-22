@@ -6,6 +6,10 @@ extends CanvasLayer
 ## a tap on the page itself doesn't count, so nobody loses it to a stray
 ## thumb. (Until 20 October it moved on by itself after seven seconds on every
 ## launch but the first, and any tap dismissed it; Gary asked for it to wait.)
+## Continue isn't there at all for the first moment (MIN_SECONDS), so a thumb
+## still down from the splash, or a tap that lands before the page can be
+## read, can't press it; nothing else (the Ashford build under the title, a
+## held key, a key's repeat) moves it on. tests/controls_test.gd checks it.
 
 signal finished
 
@@ -64,6 +68,9 @@ func _ready() -> void:
 	_continue.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	_continue.pressed.connect(_finish)
 	_continue.modulate.a = 0.0
+	# not there to be pressed until it shows (a press has to begin on it)
+	_continue.disabled = true
+	_continue.focus_mode = Control.FOCUS_NONE
 	col.add_child(_continue)
 	# drawn at the player's text size (Options), as big as fits in the safe
 	# area (clear of a phone's Dynamic Island and home bar), centred in it
@@ -117,14 +124,19 @@ func _para(text: String, fs: int, c: Color) -> Label:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if _t > MIN_SECONDS and _continue.modulate.a == 0.0:
+	if _t > MIN_SECONDS and _continue.disabled:
+		_continue.disabled = false
+		_continue.focus_mode = Control.FOCUS_ALL
 		create_tween().tween_property(_continue, "modulate:a", 1.0, 0.4)
 		_continue.grab_focus()
 
 
 func _unhandled_input(e: InputEvent) -> void:
-	if e.is_action_pressed("interact"):   # a keyboard's or a pad's Continue
-		_finish()
+	# a keyboard's or a pad's Continue: a fresh press (not a key held down
+	# since before the page, or its repeats), once Continue is up
+	if (e.is_action_pressed("interact") or e.is_action_pressed("menu")) and not e.is_echo():
+		if not _continue.disabled:
+			_finish()
 		get_viewport().set_input_as_handled()
 
 

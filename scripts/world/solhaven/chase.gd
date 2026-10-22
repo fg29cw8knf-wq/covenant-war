@@ -12,7 +12,22 @@ extends Node
 ##   var ch := Chase.new(); await ch.play(world)
 
 const SolSet := preload("res://scripts/world/solhaven/solhaven_set.gd")
+## The Objective, with the button for the device in hand in brackets (as
+## WorldCoach's are).
 const OBJECTIVE := "Catch the thief. (Tap the glowing ledges to vault and slide.)"
+const OBJECTIVE_HOW := {
+	"phone": "(Tap the glowing ledges to vault and slide.)",
+	"tablet": "(Tap the glowing ledges to vault and slide.)",
+	"computer": "(Click the glowing ledges, or press E, to vault and slide.)",
+	"controller": "(Press A at the glowing ledges to vault and slide.)",
+}
+
+
+static func objective_for(hud) -> String:
+	var dev := "phone"
+	if hud != null:
+		dev = WorldCoach.of(hud).device()
+	return "Catch the thief. " + String(OBJECTIVE_HOW.get(dev, OBJECTIVE_HOW.phone))
 const RUN := 4.3          # the player, m/s
 const WREN_RUN := 4.7
 ## How far before an obstacle its ledge lights up (m).
@@ -46,8 +61,8 @@ func play(world: World) -> void:
 	var start := w.player.global_position
 	var lane := SolSet.SPOTS.lane_start as Vector3
 	var dead := SolSet.SPOTS.dead_end as Vector3
-	w.hud.set_objective(OBJECTIVE)
-	Game.set_flag("objective", OBJECTIVE)
+	w.hud.set_objective(objective_for(w.hud))
+	Game.set_flag("objective", objective_for(w.hud))
 	# Wren, off ahead with the card
 	var wren := _wren(Vector3(8.0, 0, -3.0))
 	# her way: out of the market, down the lane over everything in it, round
@@ -285,7 +300,7 @@ func _build_ui() -> void:
 	root.theme = UITheme.make()
 	_layer.add_child(root)
 	var m := SafeArea.insets()
-	_prompt = UITheme.label(OBJECTIVE, 32, UITheme.GOLD, "display_bold", 8)
+	_prompt = UITheme.label(objective_for(w.hud if w != null else null), 32, UITheme.GOLD, "display_bold", 8)
 	_prompt.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_prompt.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
 	_prompt.offset_top = m.y + 120.0

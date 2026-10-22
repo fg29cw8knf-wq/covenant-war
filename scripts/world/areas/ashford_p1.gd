@@ -23,6 +23,9 @@ const STAGES := ["attic", "taproom", "street", "green"]
 ## across as made) at a size one person carries in both arms, its lid left
 ## off so the lanterns show; a drawn crate if the model isn't there.
 const CRATE_SCALE := 0.55
+## How far in front of the player's feet the crate goes down at the Lantern
+## (m): a stride, so it stands on the grass with their feet clear of it.
+const CRATE_DOWN := 0.85
 const CRATE_CUT := 0.76            # the model's height (m, as made) above which the lid is left off
 ## Where the crate rides in the player's arms (their own frame), and where
 ## their hands go on it.
@@ -634,13 +637,21 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 		_solid(w, false)
 	var fig := f as Figure3D
 	if blend > 0.0:
-		# from just in front of the seat: a step back onto it (sit() takes
-		# the spot they're on as the seat, so it waits till they're there)
+		# from just in front of the seat: they sit as they settle back onto
+		# it, the two together (sit() takes the spot they're on as the
+		# seat, and lets a settle of under 0.3 m pass; until 22 October they
+		# glided the whole way standing, then sat: "Bram glides 0.5 m onto
+		# his stool")
 		Cine.look(w, who, b.global_position + fwd)
+		var shift := b.global_position.distance_to(at)
 		var tw := w.create_tween()
 		tw.tween_property(b, "global_position", at, blend).set_trans(Tween.TRANS_SINE)
-		await tw.finished
-		fig.sit(height, blend)
+		if shift < 0.28:
+			fig.sit(height, blend)
+			await tw.finished
+		else:
+			await tw.finished
+			fig.sit(height, blend)
 		return
 	Cine.place(w, who, at, at + fwd)
 	b.global_position = at
@@ -813,6 +824,9 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 	var in_zone := false
 	var strayed_at := -100.0
 	var held_until := 0.0   # (no walking while they're being turned back)
+	# (the follower is theirs to move only until a staged walk takes them)
+	var fb0 := Cine.body(w, follower) if follower != "" else null
+	var follow_token := int(fb0.get_meta("cine_path", 0)) if fb0 != null else 0
 	var on_tap := func(pos: Vector2) -> void:
 		if w.hud.menu_open():
 			return
@@ -872,7 +886,7 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		if move.length() > 0.1:
 			pf.face(move, w.cam)
 		if follower != "":
-			_follow_step(w, follower, 1.6, dt, 2.0, room)
+			_follow_step(w, follower, 1.6, dt, 2.0, room, follow_token)
 		if zone.size != Vector2.ZERO and stray.is_valid():
 			var lp := root.to_local(np)
 			var here := zone.has_point(Vector2(lp.x, lp.z))
@@ -904,7 +918,8 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		(pf as Figure3D).pace = 0.0
 	if follower != "":
 		var ff = Cine.fig(w, follower)
-		if ff != null:
+		var fb := Cine.body(w, follower)
+		if ff != null and fb != null and int(fb.get_meta("cine_path", 0)) == follow_token:
 			ff.walking = false
 
 
@@ -949,11 +964,13 @@ static func room_clamp(room: Dictionary, np: Vector3) -> Vector3:
 ## One frame of someone walking after the player, staying `keep` metres
 ## behind (at up to `speed` m/s), looking at them when they stop. In a
 ## room (walk_room's), they keep out of its furniture too.
-static func _follow_step(w: World, who: String, keep: float, dt: float, speed: float, room := {}) -> void:
+static func _follow_step(w: World, who: String, keep: float, dt: float, speed: float, room := {}, token := -1) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
 	if b == null or f == null:
 		return
+	if token >= 0 and int(b.get_meta("cine_path", 0)) != token:
+		return   # a staged walk (Cine.path) has taken them over: theirs now
 	var p := w.player.global_position
 	var d := p - b.global_position
 	d.y = 0.0
@@ -996,17 +1013,29 @@ static func _round_props(w: World, at: Vector3) -> Vector3:
 	return at
 
 
-## Someone (Bram, out of the inn) walks after the player until `on[0]` is false.
+## Someone (Bram, out of the inn) walks after the player until `on[0]` is
+## false, or until a staged walk (Cine.path) takes them over. It runs a frame
+## behind whoever turns it off, so its clean-up never touches a walk that
+## isn't its own: until 22 October it switched Bram's walking off a frame
+## after the green scene had started him towards the Lantern, and he glided
+## there in his idle ("Bram floats").
 static func follow(w: World, who: String, keep: float, on: Array) -> void:
+	var body := Cine.body(w, who)
+	var token := int(body.get_meta("cine_path", 0)) if body != null else 0
 	while on[0] and is_instance_valid(w) and w.is_inside_tree():
 		var dt := w.get_process_delta_time()
 		var sp := 2.0
 		var b := Cine.body(w, who)
-		if b != null and b.global_position.distance_to(w.player.global_position) > keep + 3.0:
+		if b == null or int(b.get_meta("cine_path", 0)) != token:
+			return   # staged off somewhere: not ours to stop
+		if b.global_position.distance_to(w.player.global_position) > keep + 3.0:
 			sp = 3.8   # fallen behind: he hurries
-		_follow_step(w, who, keep, dt, sp)
+		_follow_step(w, who, keep, dt, sp, {}, token)
 		await w.get_tree().process_frame
 	if not is_instance_valid(w):
+		return
+	var b2 := Cine.body(w, who)
+	if b2 == null or int(b2.get_meta("cine_path", 0)) != token:
 		return
 	var f = Cine.fig(w, who)
 	if f != null:
@@ -1060,9 +1089,11 @@ const HUNG := [
 	{"who": "bram", "say": "Go on."},
 ]
 
-## How long the dream of the white sky plays before the player wakes (s);
+## How long the dream of the white sky plays before the player wakes (s):
+## about 2 s of the night sky through the attic window, an even fade to
+## white over about 2.5 s, and a beat of white (CineOverlay.dream_sky);
 ## 0 goes straight from the caption to the attic.
-const DREAM_SECS := 3.4
+const DREAM_SECS := 5.2
 ## How near the Great Lantern counts as "at the green" (m).
 const GREEN_R := 6.5
 ## Where the player puts the crate down: the Lantern's south side, clear of
@@ -1157,7 +1188,7 @@ static func _attic(w: World) -> void:
 		hand.global_position = (a.lie_at as Vector3) + Vector3(-0.28, a.bed_top + 0.02, 0.34)
 		fig.reach(null, hand, 0.5)
 		await Cine.wait(w, 0.35)
-		fig.sit_long(a.bed_top, 1.5)
+		fig.sit_long(a.lie_top, 1.5)
 		var bl: Node3D = a.blanket
 		if bl != null and is_instance_valid(bl):
 			var tb := w.create_tween()
@@ -1166,7 +1197,7 @@ static func _attic(w: World) -> void:
 		# sat up: a breath, then his legs swing over the side and he turns to
 		# sit on the edge, the hand coming off the mattress as he does
 		await Cine.wait(w, 0.5)
-		fig.sit(a.bed_top, 1.1)
+		fig.sit(a.edge_top, 1.1)
 		fig.let_go(0.8)
 		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.2)
 		# a moment on the edge, then up, a little unsteady, and away from it
@@ -1192,19 +1223,34 @@ static func _attic(w: World) -> void:
 	w.hud.dialogue.close()
 	# the camera in the glass, looking back at them: head and shoulders
 	# (they stand half a metre from it, so the lens is a wide one)
-	var face := Cine.head(w, "player") - Vector3(0, 0.12, 0)
-	Cine.move(w, a.mirror + Vector3(-0.06, 0.04, 0.0), face, 0.8, 56.0)
+	var glass := func(secs: float) -> void:
+		var face := Cine.head(w, "player") - Vector3(0, 0.12, 0)
+		Cine.move(w, a.mirror + Vector3(-0.06, 0.04, 0.0), face, secs, 56.0)
+	glass.call(0.8)
 	await Cine.wait(w, 0.9)
 	controls_on(w)
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
 	coach(w).objective("look")
-	await MirrorPicker.choose(w.hud._root)
+	# a face tapped puts that look in the glass: the figure in front of the
+	# mirror becomes that model (on the phone link, its pack first), standing
+	# as they stood, and the glass looks it in the face (each look's height)
+	var was: String = Game.flag("look", "a")
+	await MirrorPicker.choose(w.hud._root, func(look: String) -> void:
+		Game.set_flag("look", look)
+		if look != "a":
+			await Packs.need("looks")
+		if not w.is_inside_tree():
+			return
+		w.swap_player_look()
+		Cine.look(w, "player", a.mirror)
+		glass.call(0.5),
+		was if Figure3D.has_model("player") else "a")
 	coach(w).objective("")
 	w.hud.set_controls_visible(false)
 	await Cine.wait(w, 0.5)
 	await Cine.fade(w, 1.0, 0.7)
-	# the figure in the glass was look A's (built under the title screen):
-	# the chosen look takes over behind the black
+	# (the look kept is the one in the glass already; a model that couldn't
+	# be shown takes over behind the black)
 	w.swap_player_look()
 
 
@@ -1238,7 +1284,7 @@ static func asleep(w: World) -> void:
 	if pf is Figure3D:
 		var fig := pf as Figure3D
 		fig.snap_face(Vector3.RIGHT)
-		fig.lie_on(a.bed_top, 0.0)
+		fig.lie_on(a.lie_top, 0.0)
 	var bl: Node3D = a.blanket
 	if bl != null and is_instance_valid(bl) and not bl.has_meta("on"):
 		bl.set_meta("on", bl.transform)
@@ -1564,12 +1610,17 @@ static func _green(w: World) -> void:
 	if bf is Figure3D:
 		(bf as Figure3D).release(0.3)
 	Cine.look(w, "bram", w.player.global_position)
-	# the crate down at the Lantern's foot, just in front of them, and the
-	# last lantern out of it
-	var crate_at := p + to_c * 0.62
+	# the crate down on the grass a stride in front of them, its base on the
+	# ground and the lanterns standing in it, and the last lantern out of it.
+	# The camera comes round low to the side, so the crate on the grass and
+	# their feet clear of it are both seen (from behind them, their legs hid
+	# the crate and only the lanterns' tops showed, at their feet: Gary, 22
+	# October, "he is standing on top of them")
+	var crate_at := p + to_c * CRATE_DOWN
 	crate_at.y = v.height(crate_at.x, crate_at.z)
-	Cine.move(w, clear_cam(w, [crate_at - to_c * 2.8 - side * 2.2 + Vector3(0, 1.6, 0), crate_at - to_c * 2.8 + side * 2.2 + Vector3(0, 1.6, 0)],
-		crate_at + Vector3(0, 0.6, 0)), crate_at + Vector3(0, 0.6, 0), 0.9, 42.0)
+	var between := (p + crate_at) * 0.5 + Vector3(0, 0.42, 0)
+	Cine.move(w, clear_cam(w, [between + side * 2.7 - to_c * 0.2 + Vector3(0, 1.1, 0), between - side * 2.7 - to_c * 0.2 + Vector3(0, 1.1, 0),
+		crate_at - to_c * 3.2 + side * 1.9 + Vector3(0, 1.4, 0), crate_at - to_c * 3.2 - side * 1.9 + Vector3(0, 1.4, 0)], between), between, 0.9, 40.0)
 	Cine.look(w, "player", crate_at)
 	if pf is Figure3D:
 		(pf as Figure3D).pose("lift", 0.42, 0.35)
@@ -1690,7 +1741,7 @@ static func bram_to_stool(w: World) -> void:
 	var v := village(w)
 	var seat := STOOL
 	seat.y = v.height(seat.x, seat.z)
-	var at := seat + BRAM_FACES * 0.55   # just in front of it
+	var at := seat + BRAM_FACES * 0.22   # just in front of it (he settles back the rest as he sits)
 	at.y = v.height(at.x, at.z)
 	var b := Cine.body(w, "bram")
 	if b == null:

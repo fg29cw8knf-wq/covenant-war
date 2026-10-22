@@ -5,9 +5,15 @@ extends Node
 ## before the title at 2:14, each plays its own recording with its own subtitle when
 ## its time comes, and the movie ends at 2:24. With a screen it saves stills half a
 ## second into every line, plus any clock times given (seconds or m:ss).
+## It plays the shot-by-shot path whether or not the finished cut exists.
 ##   godot --headless --fixed-fps 20 res://tests/movie_shot.tscn                       # timeline and checks only
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 20 \
 ##       res://tests/movie_shot.tscn -- /tmp/movie 84.5 2:03.5 2:05.6 2:07.7     # plus stills
+## With `cut` it plays the finished cut (assets/movies/opening.ogv) instead and
+## checks that nothing of the engine's goes over it (no subtitle, music, voice
+## or title) and that it runs to its own end, with a still at each time given:
+##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
+##       res://tests/movie_shot.tscn -- /tmp/movie cut 0:20 1:30 3:04
 
 const TITLE_LANDS := 134.0
 
@@ -20,9 +26,17 @@ var _lines: Array = []
 var _cuts := {}               # shot id -> [cut, end]
 
 
+var _cut_mode := false
+var _cut_problems := {}
+
+
 func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
 	_out = a[0] if a.size() > 0 else ""
+	if a.size() > 1 and a[1] == "cut":
+		_cut_mode = true
+		_play_cut(a.slice(2))
+		return
 	var cut := 0.0
 	for s in OpeningMovie.SHOTS:
 		_cuts[s.id] = [cut, cut + float(s.len)]
@@ -38,12 +52,60 @@ func _ready() -> void:
 			_times.append([_secs(t), "at"])
 		_times.sort_custom(func(x, y): return x[0] < y[0])
 	_m = OpeningMovie.new()
+	_m.shots_only = true
 	add_child(_m)
 	_wait_end()
 
 
+## The finished cut, start to end, with nothing of the engine's over it.
+func _play_cut(times: Array) -> void:
+	_check(ResourceLoader.exists(OpeningMovie.MOVIE), "the finished cut exists (%s)" % OpeningMovie.MOVIE)
+	var length := 0.0
+	if ResourceLoader.exists(OpeningMovie.MOVIE):
+		var p := ProjectSettings.globalize_path(OpeningMovie.MOVIE)
+		print("the cut: %s, %.1f MB" % [OpeningMovie.MOVIE, FileAccess.get_file_as_bytes(p).size() / 1048576.0])
+	if _out != "" and DisplayServer.get_name() != "headless":
+		DirAccess.make_dir_recursive_absolute(_out)
+		for t in times:
+			_times.append([_secs(t), "cut"])
+		_times.sort_custom(func(x, y): return x[0] < y[0])
+	_m = OpeningMovie.new()
+	add_child(_m)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_check(_m._cut, "the finished cut is what's playing")
+	_check(_m._video.visible and _m._video.is_playing(), "the video is playing")
+	var fr := OpeningMovie.frame_rect(_m._root.size)
+	_check(_m._video.position.is_equal_approx(fr.position) and _m._video.size.is_equal_approx(fr.size),
+		"the cut fills the screen as the paintings do (%s, frame %s)" % [Rect2(_m._video.position, _m._video.size), fr])
+	var last := 0.0
+	while is_instance_valid(_m) and not _m._done:
+		await get_tree().process_frame
+		if not is_instance_valid(_m):
+			break
+		last = maxf(last, _m._clock)
+		_over("a subtitle", _m._sub.text != "")
+		_over("the engine's music", _m._music.playing)
+		_over("Morrowen's voice", _m._voice.playing)
+		_over("the stage (title, lights, streak)", _m._stage.visible)
+		if not _times.is_empty() and _m._clock >= _times[0][0]:
+			var t: Array = _times.pop_front()
+			_still(t[0], t[1])
+	for what in _cut_problems:
+		_check(false, "%s went over the cut at %s" % [what, _ts(_cut_problems[what])])
+	print("the cut ran to %s" % _ts(last))
+	_check(last > 185.0, "the cut played to its end, about 3:12 (%s)" % _ts(last))
+	print("MOVIE SHOT (the cut): %s (%d problems)" % ["PASS" if _problems == 0 else "FAIL", _problems])
+	get_tree().quit()
+
+
+func _over(what: String, bad: bool) -> void:
+	if bad and not _cut_problems.has(what):
+		_cut_problems[what] = _m._clock
+
+
 func _process(_delta: float) -> void:
-	if not is_instance_valid(_m) or _m._done:
+	if _cut_mode or not is_instance_valid(_m) or _m._done:
 		return
 	# each line as it starts: on time, its own recording, its own words up
 	if _m._next_line > _seen_line:
