@@ -164,7 +164,7 @@ Thornwood), then `packs/movie.pck` (the opening movie), `packs/duel.pck` (the du
 Totems and Summons; the moth and the hounds the films need stay in the main pack)
 and `packs/solhaven.pck` (Solhaven's script and anything in a `solhaven/` folder),
 each downloaded the first time it's needed, with a loading bar (the movie's has a
-Skip button too, since nobody should sit through its download to skip it:
+Skip button too (about 78 MB for Gary's finished cut), since nobody should sit through its download to skip it:
 `Packs.need("movie", true)` returns false if it's pressed, and New Game goes
 straight on to Ashford; if the movie's over before Ashford is ready a
 "Lighting the lanterns in Ashford" bar holds the screen, `Packs.hold()`). Code
@@ -206,12 +206,18 @@ Script" until they're rebuilt to v3. The words and talk trees are in
 New Game opens on black and the caption "Ashford / The last night of the Age."
 in the inn's attic, then the dream the player is about to tell Bram about
 (`CineOverlay.dream_sky()`, `AshfordP1.DREAM_SECS`, 0 turns it off): the night
-sky as it's seen from the bed, full of stars, until a white light climbs from
-the bottom of it and puts them out one by one, and there's nothing left but
-white (the Sigilfall, before it happens), cut to black on the drum. The player
-wakes in the bed (an oak cot with a straw mattress, a pillow and a wool
-blanket, `InnRooms._bed()`; Gary's own model takes its place from
-`assets/models/ashford/attic_bed.glb` when it exists), lying on top of the
+sky as it's seen from the bed through the attic window, full of stars with a
+thin moon, held about two seconds, then an even fade to white over about 2.5 s
+and a beat of pure white (the Sigilfall, before it happens; since 22 October:
+the front of white that rose from the bottom read as black going white on a
+phone), cut to black on the drum. The player
+wakes in the bed (since 22 October an oak frame with
+turned posts, a slatted headboard and a footboard, a straw mattress in striped
+ticking that sags where a body lies, a plump pillow with a head's dent in it
+and a rumpled wool blanket with its hem turned back, `InnRooms._bed()`; the
+sleeper lies and sits up in the mattress's dip, `lie_top`, and sits on its edge
+at the edge's height, `edge_top`; Gary's own model takes its place from
+`assets/models/ashford/bed.glb` or `attic_bed.glb` when it exists), lying on top of the
 mattress with his head up on the pillow (`Figure3D.lie_on()`: the body tipped
 up a little at the head end, `LIE_HEAD_UP`, the feet lolling, `LIE_FOOT_DROP`),
 puts a hand down on the mattress and pushes himself up on it, slowly, the
@@ -220,7 +226,11 @@ edge, sits a moment and stands (`sit_long()`, `sit()` with `shift_seat()`,
 `stand()`, and `reach()` for the hand: poses built on the model's own idle,
 blended one into the next; `tests/bed_check.tscn` takes stills of it from the
 side and the foot of the bed), goes to the cracked mirror and chooses their
-look (`scripts/ui/mirror_picker.gd`: four since 20 October, A Gary's first
+look (`scripts/ui/mirror_picker.gd`: since 22 October a tap on a face puts
+that look in the glass, the real model in front of the mirror with the camera
+looking back at it from the glass, and "That's me." keeps it; left and right
+show each look with the keys or a pad and Enter / E / Space / A keeps the one
+in the glass; four looks since 20 October, A Gary's first
 young man, B his second, C the young woman in green, D the bearded man;
 `assets/models/characters/player_<letter>.glb`, `tools/rig_player.sh`, and
 the look chosen is the `look` flag, which `Figure3D.model_file("player")`
@@ -249,7 +259,10 @@ attic. The movie's own loading (its pack, on the web) is as it was. Bram teaches
 walking, stopping, using and talking in his own words while the Objective line
 names the button for the device in hand (`scripts/ui/world_coach.gd`: phone,
 tablet, computer or controller, and it changes if a pad or a keyboard is picked
-up), and every step is gated: the pause square only appears when he mentions
+up; an instruction in brackets inside a spoken line, Bram's "(Tap the three
+lines at the top right of the screen to open the menu.)" from `{menu}`, is
+drawn in the Objective's gold italics so it reads as the game's note, not the
+speaker's words: `DialogueBox.mark_instructions`), and every step is gated: the pause square only appears when he mentions
 stopping, a thing to use lights up and only it answers (`AshfordP1.use`), and
 until the player has talked to Tam nobody but Tam and Bram answers. The attic and
 the taproom are built below the village (`attic()` and `eve()` in
@@ -288,8 +301,11 @@ can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
 Bram, Corin, Tam, Tilly, Old Nell, Hob and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
 Nell since 18 October, Hob since 19 October, and Bram Gary's own AssetFurnace
-model, in place of the 11 October stand-in, since 20 October); the other villagers (Ned, the
-crowd) stay cut-outs until their models exist, and a model dropped into
+model, in place of the 11 October stand-in, since 20 October); the crowd's farmer,
+merchant and trader are Gary's 22 October models (`farmer.glb`, `merchant.glb`,
+`trader.glb`: the Lantern Night crowd and the P1 dancers with those looks are
+3D figures); the other villagers (Ned, the refugee, the courtier, the elder and
+the children) stay cut-outs until their models exist, and a model dropped into
 `assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
 shows the camera its painted front, turned left or right (its back picture
 read as a blank white card in a film), and kneels by crouching onto its feet
@@ -340,7 +356,11 @@ same 21 clips as look A's, retargeted from a library), built by
 `Figure3D.OWN_GAIT` has their paces.
 
 Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
-Hob his 19 October one and Bram his 20 October one, built the same way by
+Hob his 19 October one, Bram his 20 October one and the crowd's farmer,
+merchant and trader his 22 October ones (21 clips each, the farmer and the
+trader 52-joint rigs with Player B's clips retargeted, the merchant a 34-joint
+rig on Tam's library; farmer 1.78 m, merchant 1.72 m, trader 1.80 m; their
+paces in `OWN_GAIT`), built the same way by
 `tools/rig_villager.sh <who> <master.glb>` (then the import, their portrait
 and the checks above, with their id): Corin stands 1.72 m, Tam 1.88 m, Tilly
 1.25 m, Nell 1.50 m, Bram 1.84 m (his own idle, walk, run, strafe, jump, roll,
@@ -382,14 +402,17 @@ Thornwood (`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd
 the riverbank, the campfire (Bram's four decks on a log, tap a box to see it and
 again to choose, `scripts/world/deck_boxes.gd`, then his walk round the deck
 screen, `PackTour.CAMP_DECK`), the practice round on the second morning, Dask's
-road duel and dawn over Solhaven. Films are staged with `scripts/world/cine.gd`
-(shots, walks, spawns, reveals) and `scripts/world/cine_overlay.gd` (letterbox,
+road duel and dawn over Solhaven. Films are staged with `scripts/world/cine.gd` (shots, walks, spawns, reveals,
+and `Cine.ask` for a film's questions that can all be asked, as a
+conversation's `{"ask": ...}` step can) and `scripts/world/cine_overlay.gd` (letterbox,
 subtitles, choices, the name prompt). The Herald's voice plays from
 `assets/audio/vo/herald_NN.ogg` (01, 02, 03, 09, 10, 12, 13, Gary's recordings
 since 20 October; .wav or .mp3 work too) and the Champions' faces from
 `assets/art/champions/<id>.png` or `.jpg` (aldric, vorn, eiran, rook, silk,
-maelis, crane; Vorn, Eiran and Rook are Gary's paintings since 20 October) once
-they exist; until then the lines are subtitles and each face is its Seat's sign.
+maelis, crane; all seven are Gary's paintings: Vorn, Eiran and Rook since
+20 October, Silk, Maelis and Crane since that night, Aldric since 22 October)
+once they exist; until then the lines are subtitles and each face is its
+Seat's sign.
 
 Chapter 1, The Sun's Court, is Solhaven, line for line from Master Script v3 (a
 copy is in `docs/script/v3_chapter1.md`). `scripts/world/areas/solhaven.gd` is
@@ -406,7 +429,11 @@ and Morne's vault), saved by part in the `sol_film` flag, a duel resumed by its
 own flag; Wren's chase is `chase.gd` (tap each glowing ledge to vault or slide);
 the place is `solhaven_set.gd`, stand-ins that give way to Gary's Solhaven models
 (`assets/models/solhaven/<name>.glb`, the names in "Solhaven: Your
-Step-by-Step") and his people (`assets/models/characters/<id>.glb`: hale,
+Step-by-Step") (the Golden Gate is his since 22 October: `golden_gate.glb` with its 4096
+atlas beside it, VRAM-compressed, at its real 24 m, the way in under its 5.7 m
+arch, the doors hung in the arch, still stand-ins, `gate_door.glb`, and the
+city wall starting where its wings end; `tests/gate_shot.tscn -- <dir>` takes
+stills of it from the road, under the arch and from the square, shut and open) and his people (`assets/models/characters/<id>.glb`: hale,
 sun_guard, ysa, tobin, refugee_b, refugee_c, horse_trader, turnip, tamsin, pip,
 maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Voices
 play from `assets/audio/vo/` (`herald_14`..`16`, `solmaris_01`..`09`,
@@ -467,7 +494,8 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 
 ## Menus, standing, items and adverts
 
-- **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line.
+- **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line. It stays up until Continue is pressed (or Enter, Space, E, Esc or a pad's A), and Continue isn't there to press for its first 1.2 s, so a thumb still down from the splash, a tap before it can be read or a key held since before can't move it on (22 October; `tests/controls_test.gd` checks it).
+- **First launch** (`Main.first_launch()`, `scripts/game/launch_log.gd`): the first run of a build on a phone or a Mac compiles every shader the opening draws the first time it's drawn, and on an iPhone that held the screen for a long moment with nothing to say why (Gary, 22 October: "the first time launching the game it sticks"). On that first launch Ashford is built and warmed under the title behind a "Getting the game ready" loading bar (`Packs.hold`), and every launch after finds the shaders in the cache. Each launch marks where it got to (the notice, the title, Ashford building, ready, and the slowest frame on the way) in the settings as it goes, and the pause menu's Options page shows the last launch's marks under the build line, so a phone that stuck can say where. `-- --first-launch` makes any run behave as a first one.
 - **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
 - **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
 - **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel doesn't play the tour or open the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck, chosen at the campfire on the Thornwood road (flag `bram_deck`), is the first one the player can edit; old saves past Ashford have everything open.
@@ -584,7 +612,24 @@ tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the
 
 ## Opening movie
 
-The opening movie (`scripts/story/opening_movie.gd`) follows the "Opening movie"
+Since 22 October the opening is Gary's one finished film,
+`assets/movies/opening.ogv` (3:12; his animated clips, Morrowen's narration,
+the music, the title and the words on screen all in the picture: Ogg Theora
+1280x720 at 30 fps, about 78 MB, converted from his 4K HEVC master, which
+stays on his Mac). `OpeningMovie` plays it whole when it's there, with nothing
+of the engine's over it (no subtitles, voice, music or title), fills the
+screen with it as it does the paintings (`frame_rect()`), and a tap shows Skip
+as before. On the phone link it's the whole `movie` pack (the paintings, voice
+lines and theme below stay out of the web build while the cut exists, or the
+pack would pass GitHub's 100 MB limit); the apps keep both. Check it with
+`tests/movie_shot.tscn -- <dir> cut 0:20 1:30 3:04` (stills at those times;
+it checks nothing of the engine's goes over it and that it runs to its end).
+If it ever stutters on a phone, re-encoding the .ogv again is lossy: convert
+from Gary's master instead.
+
+Without the file, the engine plays the movie shot by shot
+(`tests/movie_shot.tscn` without `cut` checks that path, whether or not the
+cut exists): `scripts/story/opening_movie.gd` follows the "Opening movie"
 table of the Master Script v3: 21 shots in 2:24, cut in time with
 `opening_theme` (the title rises at 2:14.5 to meet its last chord). Morrowen
 narrates fifteen lines (`assets/audio/vo/`); shot 10 is music only. Each line

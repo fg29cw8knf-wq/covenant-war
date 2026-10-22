@@ -8,6 +8,9 @@
 #   tools/rig_villager.sh hob   ".../Hob model/Hob_Master_8_Animations.glb"
 #   tools/rig_villager.sh bram  ".../Bram model/Bram_Master_18_Animations.glb"   (20 Oct)
 #   tools/rig_villager.sh corin ".../corin model"      (19 Oct: the folder of his single-clip files)
+#   tools/rig_villager.sh farmer   .../farmer_model/New_Character_01_Master_21_Animations.glb    (22 Oct)
+#   tools/rig_villager.sh merchant .../merchant_model/New_Character_02_Master_21_Animations.glb  (22 Oct)
+#   tools/rig_villager.sh trader   .../trader_model/New_Character_03_Master_21_Animations.glb    (22 Oct)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -124,8 +127,25 @@ nell)
 		--hold-arm Right:idle:walk,run,talk,cheer,look_up,duel_idle,play_card,victory,defeat \
 		--head-up=-12:walk,run
 	;;
+farmer|merchant|trader)
+	# the crowd's looks (22 October): AssetFurnace masters with the player's
+	# 21 clips each. The farmer (New Character 01) and the trader (03) are
+	# 52-joint rigs with Player B's clips retargeted; the merchant (02, the red
+	# waistcoat and the beard) is a 34-joint rig like Tam's, with ten clips
+	# from Tam's library and ten cross-rig from Player B (fingers dropped).
+	case "$who" in
+	farmer) name="Farmer"; height=1.78 ;;
+	merchant) name="Merchant"; height=1.72 ;;
+	trader) name="Trader"; height=1.80 ;;
+	esac
+	python3 tools/rig_character.py "$src" "$out" --name "$name" --height "$height" \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|farmer|merchant|trader <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

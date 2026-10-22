@@ -143,8 +143,25 @@ func _opening() -> void:
 		await _secs(0.8)
 		_expect(_picker() != null and not picker._done, "look %s (not made yet) was taken" % faces[coming].look.to_upper())
 		await _shot("mirror_%s_coming" % faces[coming].look)
+	# a tap on a face shows that look in the glass (the figure in front of
+	# the mirror becomes its model) and nothing moves on until "That's me."
 	var want := MirrorPicker.LOOKS.find(look)
 	await _click(_centre(faces[maxi(want, 0)]))
+	await _until(func() -> bool: return not picker._busy, 20.0, "the look in the glass")
+	await _secs(0.8)
+	_expect(_picker() != null and not picker._done, "a tap on a face chose it without That's me")
+	_expect(picker._up == faces[maxi(want, 0)], "look %s isn't the one up in the glass" % look.to_upper())
+	if world.player_doll is Figure3D:
+		_expect((world.player_doll as Figure3D)._model_name == "player_" + look, "the glass shows %s, not look %s" % [(world.player_doll as Figure3D)._model_name, look.to_upper()])
+	await _shot("mirror_%s_in_glass" % look)
+	# another look seen, then back to the one wanted, with the keys
+	await _press(KEY_RIGHT)
+	await _until(func() -> bool: return not picker._busy, 20.0, "the next look in the glass")
+	_expect(picker._up != faces[maxi(want, 0)], "Right didn't show the next look")
+	await _press(KEY_LEFT)
+	await _until(func() -> bool: return not picker._busy, 20.0, "the look back in the glass")
+	_expect(picker._up == faces[maxi(want, 0)], "Left didn't show look %s again" % look.to_upper())
+	await _click(_centre(picker._confirm))
 	await _until(func() -> bool: return _picker() == null, 10.0, "the mirror closing")
 	_expect(Game.flag("look") == look, "look %s wasn't chosen" % look.to_upper())
 	# the taproom: Bram's lines, then the crate

@@ -80,6 +80,27 @@ static func choose(w: World, options: Array) -> int:
 	return await overlay(w).choose(options)
 
 
+## Things to ask in a film, as World._ask does in a conversation (Gary: one
+## question needn't cost the others): the questions are offered, the leave
+## line last when there is one; `answer(i)` is awaited for the one picked;
+## the questions not yet asked come back until the leave line is picked or
+## nothing's left to ask.
+static func ask(w: World, questions: Array, answer: Callable, leave := "") -> void:
+	var left: Array = range(questions.size())
+	while not left.is_empty() and is_instance_valid(w) and w.is_inside_tree():
+		var options: Array = []
+		for i in left:
+			options.append(questions[i])
+		if leave != "":
+			options.append(leave)
+		var k := await overlay(w).choose(options)
+		if k >= left.size():
+			return
+		var q: int = left[k]
+		left.remove_at(k)
+		await answer.call(q)
+
+
 ## Where the camera is now.
 static func cam_pos(w: World) -> Vector3:
 	return w.cam.global_position

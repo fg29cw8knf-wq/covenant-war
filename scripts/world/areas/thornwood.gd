@@ -346,14 +346,16 @@ static func _camp(w: World) -> void:
 	Cine.look(w, "bram", c)
 	Cine.two_shot(w, "bram", "player", 3.4, 1.2, 1.0, 36.0)
 	await Cine.say(w, "bram", "Lords used to hire me to settle their quarrels, you know. Duel for a field, duel for a dowry, duel for a bridge. Good money.")
-	var a := await Cine.choose(w, ["Why did you stop?", "Were you any good?"])
-	Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
-	if a == 0:
-		await Cine.say(w, "bram", "Someone paid me for a job I shouldn't have taken.")
-		await Cine.wait(w, 1.2)
-		await Cine.say(w, "bram", "Then I stopped.")
-	else:
-		await Cine.say(w, "bram", "Good enough that the people I beat still know my name. Not good enough to be proud of it.")
+	# both things can be asked, in either order (an ask list, as in a
+	# conversation: one question needn't cost the other)
+	await Cine.ask(w, ["Why did you stop?", "Were you any good?"], func(a: int) -> void:
+		Cine.over_shoulder(w, "player", "bram", -1.0, 30.0)
+		if a == 0:
+			await Cine.say(w, "bram", "Someone paid me for a job I shouldn't have taken.")
+			await Cine.wait(w, 1.2)
+			await Cine.say(w, "bram", "Then I stopped.")
+		else:
+			await Cine.say(w, "bram", "Good enough that the people I beat still know my name. Not good enough to be proud of it."))
 	# he banks the fire, and doesn't say anything else that night
 	Cine.look(w, "bram", c)
 	var bf = Cine.fig(w, "bram")

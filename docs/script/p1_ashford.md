@@ -14,7 +14,7 @@ _The inn's attic: low beams, a straw bed, a cracked mirror. The player wakes to 
 
 **Narration:** Nobody alive has seen an Age end. So Ashford has decided it ends with cider.
 
-**Objective:** Choose your look. (Tap a face.)
+**Objective:** Choose your look. (Tap a face to see it in the glass. Tap That's me to keep it.)
 
 _Cut to the taproom. Bram is stacking paper lanterns into a crate._
 

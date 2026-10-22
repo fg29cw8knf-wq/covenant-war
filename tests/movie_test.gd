@@ -4,6 +4,7 @@ extends Node
 func _ready() -> void:
 	var out: String = OS.get_cmdline_user_args()[0] if OS.get_cmdline_user_args().size() > 0 else "user://"
 	var m := OpeningMovie.new()
+	m.shots_only = true   # (the shot-by-shot path; tests/movie_shot.tscn -- <dir> cut plays the finished cut)
 	add_child(m)
 	await get_tree().create_timer(3.0).timeout
 	await _shot(out + "/movie_a.png")

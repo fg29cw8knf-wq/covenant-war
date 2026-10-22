@@ -26,7 +26,7 @@ _(Added 19 October at Gary's request, not yet in the master doc: before the play
 
 **Narration:** Nobody alive has seen an Age end. So Ashford has decided it ends with cider.
 
-**Objective:** Choose your look. (Tap a face.)
+**Objective:** Choose your look. (Tap a face to see it in the glass. Tap That's me to keep it.)
 
 _The taproom. Bram is stacking paper lanterns into a crate. The shelves behind the bar are bare: the good tankards are already out on the green._
 
