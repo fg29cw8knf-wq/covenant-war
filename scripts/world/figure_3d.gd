@@ -37,7 +37,11 @@ const DIR := "res://assets/models/characters/"
 ## the Sun Guard's). The player's is player_<look>.glb for the look chosen
 ## in the mirror (model_file()). Everyone else's model is characters/<their
 ## id or look>.glb (hob, krell, dask, hunter), picked up the moment it exists.
-const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard"}
+## (The third child look, "child", the blonde cut-out that was Tilly's and
+## Pip's and the third child's on the green, plays Gary's boy, child_b, so no
+## cartoon child stands among the 3D ones: Tilly has her own model, and Pip
+## will when his comes, pip.glb.)
+const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard", "child": "child_b"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
 ## Where to borrow a clip from when a model doesn't have it: the shared
