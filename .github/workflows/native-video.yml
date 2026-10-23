@@ -46,11 +46,11 @@ jobs:
 
       - name: Build for Mac (Apple silicon and Intel)
         working-directory: addons/native_video/src
-        run: scons platform=macos arch=universal target=template_release macos_deployment_target=11.0 build_profile=build_profile.json -j"$(sysctl -n hw.ncpu)"
+        run: scons platform=macos arch=universal target=template_release macos_deployment_target=11.0 -j"$(sysctl -n hw.ncpu)"
 
       - name: Build for iPhone and iPad
         working-directory: addons/native_video/src
-        run: scons platform=ios arch=arm64 target=template_release ios_min_version=16.0 build_profile=build_profile.json -j"$(sysctl -n hw.ncpu)"
+        run: scons platform=ios arch=arm64 target=template_release ios_min_version=16.0 -j"$(sysctl -n hw.ncpu)"
 
       - name: Package the libraries
         working-directory: addons/native_video/src

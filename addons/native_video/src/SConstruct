@@ -9,8 +9,9 @@
 # version given as api_version, 4.7 here) is expected next to this file,
 # cloned by the workflow: see .github/workflows/native-video.yml, which also
 # wraps the iOS static library into the .xcframework the .gdextension names.
-# build_profile=build_profile.json on the command line keeps the generated
-# bindings to the few engine classes the player uses. Run on a Mac with Xcode.
+# The whole of godot-cpp is built (a build profile naming only the classes the
+# player uses left out ones godot-cpp's own core needs, OS among them, and the
+# build failed). Run on a Mac with Xcode.
 import os
 
 env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
