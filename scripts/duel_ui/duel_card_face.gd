@@ -18,6 +18,17 @@ const ESSENCE := Color("7fe3ff")
 const ESSENCE_DARK := Color("1b4f7a")
 const RITE_COL := Color("5c8fd6")
 const WARD_COL := Color("b25bd6")
+const RELIC_COL := Color("c98a2e")   # (Phase C)
+
+
+## The band colour and word for a non-Totem card's kind.
+static func spell_look(kind: String) -> Array:
+	match kind:
+		"ward":
+			return [WARD_COL, "WARD"]
+		"relic":
+			return [RELIC_COL, "RELIC"]
+	return [RITE_COL, "RITE"]
 
 
 static func f(kind: String) -> Font:
@@ -99,13 +110,13 @@ static func _shell(ci: CanvasItem, o: Vector2, s: float, tier: int) -> void:
 
 static func _art_placeholder(ci: CanvasItem, r: Rect2, id: String, d: Dictionary) -> void:
 	var el: String = d.get("element", "any")
-	if d.kind == "rite" or d.kind == "ward":
+	if d.kind == "rite" or d.kind == "ward" or d.kind == "relic":
 		var tex := CardFace.art(id)
 		if tex != null:
 			CardFace.draw_cover(ci, r, tex)
 			return
 		if el == "any":
-			var accent := RITE_COL if d.kind == "rite" else WARD_COL
+			var accent: Color = spell_look(d.kind)[0]
 			CardFace.vgrad_rect(ci, r, accent.lightened(0.15), accent.darkened(0.65))
 			var rng := RandomNumberGenerator.new()
 			rng.seed = hash(id)
@@ -299,8 +310,8 @@ static func attuned_text(d: Dictionary) -> String:
 
 static func _draw_spell(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dictionary, opts: Dictionary) -> void:
 	var tier := int(d.get("tier", 1))
-	var is_ward: bool = d.kind == "ward"
-	var accent := WARD_COL if is_ward else RITE_COL
+	var look := spell_look(d.kind)
+	var accent: Color = look[0]
 	_shell(ci, o, s, tier)
 	var art_r := _R(o, s, 9, 9, 232, 180)
 	_art_placeholder(ci, art_r, id, d)
@@ -315,7 +326,7 @@ static func _draw_spell(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dic
 	var tag := _R(o, s, 184 if el == "any" else 150, 170, 52 if el == "any" else 52, 16)
 	tag = _R(o, s, 180, 168, 54, 16)
 	CardFace.box(ci, tag, 8 * s, accent)
-	CardFace.text_in(ci, f("bold"), tag, "WARD" if is_ward else "RITE", _fs(s, 8.5), Color.WHITE)
+	CardFace.text_in(ci, f("bold"), tag, String(look[1]), _fs(s, 8.5), Color.WHITE)
 	CardFace.tier_gems(ci, _P(o, s, 19, 176), s, tier)
 	var panel := _R(o, s, 9, 193, 232, 148)
 	CardFace.box(ci, panel, 6 * s, PANEL)
@@ -325,7 +336,14 @@ static func _draw_spell(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dic
 	while tsz > 8.0 and f("body").get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, 212 * s, _fs(s, tsz)).y > 100 * s:
 		tsz -= 0.5
 	ci.draw_multiline_string(f("body"), _P(o, s, 19, 218), text, HORIZONTAL_ALIGNMENT_LEFT, 212 * s, _fs(s, tsz), -1, TEXT)
-	var rule := "Set face down. Springs on your opponent's turn." if is_ward else "Cast on your turn, then discard."
+	var rule := "Cast on your turn, then discard."
+	match String(d.kind):
+		"ward":
+			rule = "Set face down. Springs on your opponent's turn."
+		"relic":
+			rule = "Give it to a Totem of yours. Lost when it falls."
+	if d.get("answer", false):
+		rule = "An answer: played on your opponent's turn."
 	ci.draw_multiline_string(f("body"), _P(o, s, 15, 334), rule, HORIZONTAL_ALIGNMENT_CENTER, 220 * s, _fs(s, 8.5), -1, TEXT_DIM)
 
 
@@ -361,10 +379,10 @@ static func _draw_compact(ci: CanvasItem, rect: Rect2, id: String, d: Dictionary
 	_shell(ci, o, s, tier)
 	var inner := _R(o, s, 9, 9, 232, 332)
 	_art_placeholder(ci, inner, id, d)
-	if d.kind == "rite" or d.kind == "ward":
-		var accent := WARD_COL if d.kind == "ward" else RITE_COL
-		CardFace.box(ci, _R(o, s, 9, 250, 232, 38), 0, Color(accent, 0.92))
-		CardFace.text_in(ci, f("bold"), _R(o, s, 9, 250, 232, 38), "WARD" if d.kind == "ward" else "RITE", _fs(s, 26), Color.WHITE)
+	if d.kind == "rite" or d.kind == "ward" or d.kind == "relic":
+		var look := spell_look(d.kind)
+		CardFace.box(ci, _R(o, s, 9, 250, 232, 38), 0, Color(look[0], 0.92))
+		CardFace.text_in(ci, f("bold"), _R(o, s, 9, 250, 232, 38), String(look[1]), _fs(s, 26), Color.WHITE)
 	elif d.kind == "summon":
 		CardFace.box(ci, _R(o, s, 9, 250, 232, 38), 0, Color(CardFace.metal(tier, 1), 0.95))
 		CardFace.text_in(ci, f("bold"), _R(o, s, 9, 250, 232, 38), "SUMMON", _fs(s, 26), INK)

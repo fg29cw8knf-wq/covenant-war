@@ -29,6 +29,14 @@ extends RefCounted
 ##            heal_weakest, shield_one, essence_next)
 ## needs_ashes: a Rite that only works with this many Totem cards of one
 ##            element in its caster's discard
+## bond:      see BONDS: two Totems (by their Basic) that stand together
+##            gain a bond move or a stat (Phase C)
+## relic:     a card kind (Phase C): given to a Totem of yours (one each),
+##            it stays until the Totem falls: "relic": {hp | damage |
+##            keyword | dawn_heal | dawn_shield | move | fall_draw}
+## reveal:    {op: status_across | damage_across | draw | heal_allies}: what a
+##            Totem does when it's turned face up after a veiled call
+## stand_in:  a Totem with no model or painting yet is shown as this one
 ## A Basic Totem of tier 3 and up costs one of its caller's Totems on the
 ## field as well as its Essence (tier 5 and up, two): a Tribute (Phase B).
 
@@ -60,7 +68,8 @@ const CARDS := {
 	},
 	"emberwisp": {
 		"kind": "totem", "name": "Emberwisp", "element": "fire", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 40, "affinity": "swiftness", "keywords": ["swift"], "attuned": {"min": 5, "damage": 10},
+		"reveal": {"op": "damage_across", "amount": 20},
+		"hp": 40, "affinity": "swiftness", "keywords": ["reveal", "swift"], "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Spark", "cost": 0, "damage": 10},
 			{"name": "Kindle", "cost": 1, "damage": 10, "target": "foe_totem",
@@ -209,7 +218,8 @@ const CARDS := {
 	},
 	"bloomsprite": {
 		"kind": "totem", "name": "Bloomsprite", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 50, "affinity": "insight", "keywords": ["channel"], "attuned": {"min": 5, "draw": 1},
+		"reveal": {"op": "heal_allies", "amount": 20},
+		"hp": 50, "affinity": "insight", "keywords": ["reveal", "channel"], "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Petal Mend", "cost": 0, "damage": 0, "target": "ally",
 				"effects": [{"op": "heal", "who": "target", "amount": 30}]},
@@ -250,7 +260,8 @@ const CARDS := {
 	},
 	"burrowmole": {
 		"kind": "totem", "name": "Burrowmole", "element": "earth", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 60, "affinity": "cunning", "keywords": ["burrow"],
+		"reveal": {"op": "damage_across", "amount": 20},
+		"hp": 60, "affinity": "cunning", "keywords": ["reveal", "burrow"],
 		"moves": [
 			{"name": "Dig Strike", "cost": 0, "damage": 20},
 			{"name": "Tunnel Ambush", "cost": 1, "damage": 0, "fate": [
@@ -312,6 +323,7 @@ const CARDS := {
 	# ================================================================ PSYCHIC
 	"dreamfox": {
 		"kind": "totem", "name": "Dreamfox", "element": "psychic", "tier": 1, "stage": 0, "cost": 1,
+		"keywords": ["reveal"], "reveal": {"op": "status_across", "status": "sleep"},
 		"hp": 70, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Psy Nip", "cost": 0, "damage": 10},
@@ -334,7 +346,8 @@ const CARDS := {
 	},
 	"somnowl": {
 		"kind": "totem", "name": "Somnowl", "element": "psychic", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 80, "affinity": "insight", "keywords": ["channel"],
+		"reveal": {"op": "draw", "count": 1},
+		"hp": 80, "affinity": "insight", "keywords": ["reveal", "channel"],
 		"moves": [
 			{"name": "Hoot", "cost": 0, "damage": 20},
 			{"name": "Night Screech", "cost": 2, "damage": 20, "target": "all_foes"},
@@ -373,7 +386,8 @@ const CARDS := {
 	},
 	"mirewidow": {
 		"kind": "totem", "name": "Mirewidow", "element": "venom", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 70, "affinity": "cunning", "keywords": ["thorns"],
+		"reveal": {"op": "status_across", "status": "poison"},
+		"hp": 70, "affinity": "cunning", "keywords": ["reveal", "thorns"],
 		"moves": [
 			{"name": "Venom Bite", "cost": 0, "damage": 10, "target": "foe_totem",
 				"effects": [{"op": "status", "status": "poison"}]},
@@ -439,6 +453,72 @@ const CARDS := {
 		"move": {"name": "Endless Dream", "damage": 30, "target": "all_foes",
 			"effects": [{"op": "status", "status": "sleep"}]},
 		"art": "an ethereal moth-winged demigoddess veiled in drifting starlit silk, her closed eyes glowing, the world below falling into a dream",
+	},
+	# ====================================== SECOND-STAGE ASCENSIONS (Phase C)
+	"infernal_warg": {
+		"kind": "totem", "name": "Infernal Warg", "element": "fire", "tier": 3, "stage": 2,
+		"ascends_from": "blazehound", "cost": 3, "hp": 150, "affinity": "might", "stand_in": "blazehound",
+		"attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
+		"moves": [
+			{"name": "Searing Maw", "cost": 0, "damage": 40},
+			{"name": "Hellfire Charge", "cost": 3, "damage": 80, "effects": [{"op": "status", "status": "burn"}]},
+		],
+		"art": "a towering warg of black stone and living fire, a mane of white-hot flame, eyes like forge mouths, molten drool hissing on the ground",
+	},
+	"tempest_lynx": {
+		"kind": "totem", "name": "Tempest Lynx", "element": "storm", "tier": 3, "stage": 2,
+		"ascends_from": "voltlynx", "cost": 3, "hp": 130, "affinity": "swiftness", "stand_in": "voltlynx", "keywords": ["swift"],
+		"moves": [
+			{"name": "Arc Claw", "cost": 0, "damage": 40},
+			{"name": "Storm Front", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "shocked"}]},
+		],
+		"art": "a great lynx made of storm cloud and lightning, ear tufts crackling, each pawstep a thunderclap of light",
+	},
+	"briar_colossus": {
+		"kind": "totem", "name": "Briar Colossus", "element": "verdant", "tier": 3, "stage": 2,
+		"ascends_from": "thornwarden", "cost": 3, "hp": 170, "affinity": "resolve", "stand_in": "thornwarden", "keywords": ["thorns"],
+		"moves": [
+			{"name": "Bramble Slam", "cost": 0, "damage": 30, "effects": [{"op": "status", "status": "poison"}]},
+			{"name": "Overgrowth", "cost": 3, "damage": 60, "effects": [{"op": "heal", "who": "self", "amount": 30}]},
+		],
+		"art": "a walking giant of knotted briar and old oak, thorns as long as swords, flowers blooming in the hollows of its chest",
+	},
+	"cragmaul": {
+		"kind": "totem", "name": "Cragmaul", "element": "earth", "tier": 3, "stage": 2,
+		"ascends_from": "boulderox", "cost": 3, "hp": 180, "affinity": "might", "stand_in": "boulderox",
+		"attuned": {"min": 6, "damage": 20},
+		"moves": [
+			{"name": "Rockfall", "cost": 0, "damage": 40},
+			{"name": "Earthbreaker", "cost": 4, "damage": 100},
+		],
+		"art": "a mountain of an ox, a whole cliff for a back, horns of raw granite, the ground cracking around its hooves",
+	},
+	"ironclad_behemoth": {
+		"kind": "totem", "name": "Ironclad Behemoth", "element": "metal", "tier": 3, "stage": 2,
+		"ascends_from": "ironhide", "cost": 3, "hp": 190, "affinity": "resolve", "stand_in": "ironhide", "keywords": ["guardian"],
+		"moves": [
+			{"name": "Shell Ram", "cost": 0, "damage": 30},
+			{"name": "Forged Bulwark", "cost": 2, "damage": 40, "effects": [{"op": "shield", "who": "self", "amount": 60}]},
+		],
+		"art": "a colossal beetle in riveted iron plate, steam venting from its joints, a shell like a fortress gate",
+	},
+	"ninefold_fox": {
+		"kind": "totem", "name": "Ninefold Fox", "element": "psychic", "tier": 3, "stage": 2,
+		"ascends_from": "veilfox", "cost": 3, "hp": 130, "affinity": "insight", "stand_in": "veilfox", "keywords": ["riposte"],
+		"moves": [
+			{"name": "Mirage Bite", "cost": 0, "damage": 40},
+			{"name": "Ninefold Illusion", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "confused"}]},
+		],
+		"art": "a silver fox with nine translucent tails, each one a shimmering copy of the fox itself, eyes like twin moons",
+	},
+	"blight_wyrm": {
+		"kind": "totem", "name": "Blight Wyrm", "element": "venom", "tier": 3, "stage": 2,
+		"ascends_from": "plague_asp", "cost": 3, "hp": 150, "affinity": "cunning", "stand_in": "plague_asp",
+		"moves": [
+			{"name": "Venom Coil", "cost": 0, "damage": 30, "effects": [{"op": "status", "status": "poison"}]},
+			{"name": "Plague Breath", "cost": 3, "damage": 40, "target": "all_foes", "effects": [{"op": "status", "status": "poison"}]},
+		],
+		"art": "a long-bodied wyrm with sickly green scales, a hood of bone spines, breathing a cloud of glowing violet spores",
 	},
 	# ================================================================== RITES
 	"essence_flask": {
@@ -678,6 +758,33 @@ const CARDS := {
 		"effects": [{"op": "discard_to_top"}],
 		"art": "a violet thread of light pulling a single card up out of a pile of discarded ones and laying it on top of a deck",
 	},
+	# ================================================================= RELICS (Phase C)
+	"ember_collar": {"kind": "relic", "name": "Ember Collar", "element": "fire", "tier": 1, "cost": 1, "relic": {"damage": 10},
+		"art": "a collar of blackened iron links with a coal glowing in each, resting on charred velvet"},
+	"tide_pearl": {"kind": "relic", "name": "Tide Pearl", "element": "tide", "tier": 1, "cost": 1, "relic": {"hp": 30},
+		"art": "a sea-green pearl the size of a fist in an open shell, the sound of the sea drawn as rings of light"},
+	"iron_brace": {"kind": "relic", "name": "Iron Brace", "element": "metal", "tier": 2, "cost": 2, "relic": {"dawn_shield": 20},
+		"art": "a riveted iron bracer etched with a sunrise, a faint dome of light rising from it"},
+	"thorn_crown": {"kind": "relic", "name": "Thorn Crown", "element": "verdant", "tier": 1, "cost": 1, "relic": {"keyword": "thorns"},
+		"art": "a circlet of living briar with small white flowers between the thorns, on a mossy stone"},
+	"storm_feather": {"kind": "relic", "name": "Storm Feather", "element": "storm", "tier": 2, "cost": 1, "relic": {"keyword": "galvanise"},
+		"art": "a single long feather crackling with blue lightning, hanging in the air above a storm-grey cushion"},
+	"veil_charm": {"kind": "relic", "name": "Veil Charm", "element": "psychic", "tier": 2, "cost": 1, "relic": {"keyword": "riposte"},
+		"art": "a violet glass charm on a silver thread, a second faint copy of it floating just beside it"},
+	"sun_medallion": {"kind": "relic", "name": "Sun Medallion", "element": "radiant", "tier": 2, "cost": 2, "relic": {"dawn_heal": 20},
+		"art": "a gold medallion stamped with the sun, warm light pooling from it like honey"},
+	"hunters_fang": {"kind": "relic", "name": "Hunter's Fang", "element": "venom", "tier": 2, "cost": 2,
+		"relic": {"move": {"name": "Rend", "cost": 1, "damage": 30, "effects": [{"op": "status", "status": "bleed"}]}},
+		"art": "a long curved fang bound with leather on a cord, a drop of green venom at its point"},
+	"stone_heart": {"kind": "relic", "name": "Stone Heart", "element": "earth", "tier": 3, "cost": 2, "relic": {"keyword": "guardian"},
+		"art": "a heart carved from grey granite, a slow amber light beating inside it"},
+	"spirit_lantern": {"kind": "relic", "name": "Spirit Lantern", "element": "spirit", "tier": 1, "cost": 1, "relic": {"fall_draw": 2},
+		"art": "a small paper lantern with a pale teal flame, a ribbon of light trailing from it into the dark"},
+	"relic_hunt": {
+		"kind": "rite", "name": "Relic Hunt", "element": "any", "tier": 1, "cost": 1, "target": "none",
+		"effects": [{"op": "relic_hunt"}],
+		"art": "a hand brushing dust from a half-buried relic in a ruin, lantern light on old gold",
+	},
 	# ========================================================== COUNTER RITES
 	# (answers, played on the rival's turn: Phase A)
 	"null_sigil": {
@@ -791,8 +898,8 @@ const DECKS := {
 		"attributes": {"might": 2, "swiftness": 2},
 		"cards": {"cinderpup": 3, "blazehound": 2, "emberwisp": 3, "hearth_salamander": 2, "ashen_drake": 1,
 			"sparkkit": 3, "voltlynx": 2, "thunder_ram": 2, "stormcaller": 1,
-			"essence_flask": 1, "firebrand": 2, "thunderclap": 1, "rite_of_ashes": 1, "quicksilver_step": 1,
-			"ambush_snare": 2, "vengeful_spirit": 1, "pyraxis": 1, "travellers_pack": 1},
+			"ember_collar": 1, "firebrand": 2, "thunderclap": 1, "rite_of_ashes": 1, "quicksilver_step": 1,
+			"ambush_snare": 2, "infernal_warg": 1, "pyraxis": 1, "travellers_pack": 1},
 	},
 	"tidegrove": {
 		"name": "Tidegrove", "elements": ["tide", "verdant"], "mascot": "brookfin",
@@ -801,7 +908,7 @@ const DECKS := {
 		"cards": {"brookfin": 3, "riptide_serpent": 2, "deepmaw": 1, "shellguard": 2,
 			"mossling": 3, "thornwarden": 2, "bloomsprite": 3, "elderbark": 1,
 			"healing_draught": 2, "tidal_surge": 1, "rejuvenate": 2, "seekers_compass": 1, "second_dawn": 1,
-			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 2, "undertow_glyph": 1},
+			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 1, "tide_pearl": 1, "undertow_glyph": 1},
 	},
 	"ironstone": {
 		"name": "Ironstone", "elements": ["earth", "metal"], "mascot": "pebblit",
@@ -810,7 +917,7 @@ const DECKS := {
 		"cards": {"pebblit": 3, "boulderox": 2, "burrowmole": 3, "quarry_golem": 1,
 			"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1,
 			"bulwark": 2, "forge_edge": 1, "rekindle": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1,
-			"iron_bastion": 2, "vengeful_spirit": 1, "grondmaw": 1, "essence_flask": 1},
+			"iron_bastion": 2, "ironclad_behemoth": 1, "grondmaw": 1, "iron_brace": 1},
 	},
 	"veilwild": {
 		"name": "Veilwild", "elements": ["psychic", "venom"], "mascot": "dreamfox",
@@ -819,8 +926,8 @@ const DECKS := {
 		"cards": {"dreamfox": 3, "veilfox": 2, "somnowl": 2, "thought_eater": 1,
 			"blightrat": 3, "plague_asp": 2, "mirewidow": 3,
 			"mind_fog": 2, "toxic_mist": 1, "kindred_seek": 1, "siphon_rune": 1, "puppet_rune": 1,
-			"mirror_veil": 2, "counter_rune": 1, "poison_trap": 2, "somnara": 1,
-			"whisper_of_pages": 1, "healing_draught": 1},
+			"mirror_veil": 2, "ninefold_fox": 1, "poison_trap": 2, "somnara": 1,
+			"whisper_of_pages": 1, "veil_charm": 1},
 	},
 }
 
@@ -868,6 +975,77 @@ const NPC_DECKS := {
 	},
 }
 
+## Bonds (Phase C): two Totems, by their Basic, that stand together on the
+## same side gain a bond move (both of them) or a stat (both of them).
+const BONDS := [
+	{"a": "cinderpup", "b": "sparkkit", "name": "Wildfire Dash",
+		"move": {"name": "Wildfire Dash", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "burn"}]}},
+	{"a": "emberwisp", "b": "hearth_salamander", "name": "Hearthlight", "hp": 20},
+	{"a": "thunder_ram", "b": "ashen_drake", "name": "Storm of Cinders",
+		"move": {"name": "Storm of Cinders", "cost": 3, "damage": 30, "target": "all_foes"}},
+	{"a": "brookfin", "b": "shellguard", "name": "Riverwall", "hp": 20},
+	{"a": "mossling", "b": "bloomsprite", "name": "Spring Rain",
+		"move": {"name": "Spring Rain", "cost": 1, "damage": 20, "effects": [{"op": "heal", "who": "allies", "amount": 20}]}},
+	{"a": "elderbark", "b": "stormcaller", "name": "Lightning Tree",
+		"move": {"name": "Lightning Tree", "cost": 3, "damage": 70, "effects": [{"op": "status", "status": "shocked"}]}},
+	{"a": "pebblit", "b": "brassback", "name": "Scrap and Stone",
+		"move": {"name": "Scrap and Stone", "cost": 1, "damage": 30, "effects": [{"op": "shield", "who": "self", "amount": 20}]}},
+	{"a": "burrowmole", "b": "shieldhound", "name": "Tunnel Ambush",
+		"move": {"name": "Tunnel Ambush", "cost": 2, "damage": 40, "effects": [{"op": "pierce"}]}},
+	{"a": "quarry_golem", "b": "gilded_sentinel", "name": "Twin Bastions", "damage": 10},
+	{"a": "dreamfox", "b": "blightrat", "name": "Fever Dream",
+		"move": {"name": "Fever Dream", "cost": 2, "damage": 20, "effects": [{"op": "status", "status": "sleep"}]}},
+	{"a": "somnowl", "b": "mirewidow", "name": "Night Weavers", "damage": 10},
+	{"a": "sunlance_seraph", "b": "sunmane_lion", "name": "Dawn Pride", "damage": 10},
+]
+
+
+## The bond a Basic Totem is in, as it applies to that Totem: {partner, name,
+## move | hp | damage}; {} for none.
+static func bond_of(root_id: String) -> Dictionary:
+	for b in BONDS:
+		if b.a == root_id or b.b == root_id:
+			var out: Dictionary = b.duplicate(true)
+			out["partner"] = b.b if b.a == root_id else b.a
+			out.erase("a")
+			out.erase("b")
+			return out
+	return {}
+
+
+## "+20 HP for both" / "a bond move: Wildfire Dash (2 Essence, 40 damage, Burned)".
+static func bond_text(root_id: String) -> String:
+	var b := bond_of(root_id)
+	if b.is_empty():
+		return ""
+	var with_name: String = CARDS[b.partner].name if CARDS.has(b.partner) else String(b.partner)
+	if b.has("move"):
+		var m: Dictionary = b.move
+		var t := "%s and %s together: a bond move for both, %s (%s, %s)" % [CARDS[root_id].name, with_name, m.name,
+			"free" if int(m.get("cost", 0)) == 0 else "%d Essence" % int(m.cost),
+			outcome_text(int(m.get("damage", 0)), m.get("effects", []), m.get("target", "foe"))]
+		return t + "."
+	if b.has("hp"):
+		return "%s and %s together: +%d HP for both (%s)." % [CARDS[root_id].name, with_name, int(b.hp), b.name]
+	return "%s and %s together: +%d damage on every move for both (%s)." % [CARDS[root_id].name, with_name, int(b.damage), b.name]
+
+
+## The words for a Relic.
+static func relic_text(d: Dictionary) -> String:
+	var r: Dictionary = d.get("relic", {})
+	var what := ""
+	if r.has("damage"): what = "its moves deal %d more damage" % int(r.damage)
+	elif r.has("hp"): what = "+%d HP" % int(r.hp)
+	elif r.has("keyword"): what = "it has %s (%s)" % [KEYWORDS[r.keyword].name, String(KEYWORDS[r.keyword].text).trim_suffix(".").to_lower()]
+	elif r.has("dawn_heal"): what = "at your Dawn it heals %d" % int(r.dawn_heal)
+	elif r.has("dawn_shield"): what = "at your Dawn it's shielded for %d" % int(r.dawn_shield)
+	elif r.has("fall_draw"): what = "when it falls, you draw %d" % int(r.fall_draw)
+	elif r.has("move"):
+		var m: Dictionary = r.move
+		what = "a new move, %s (%d Essence: %s)" % [m.name, int(m.get("cost", 0)), outcome_text(int(m.get("damage", 0)), m.get("effects", []), m.get("target", "foe"))]
+	return "Give it to one of your Totems (one Relic each): %s. It stays until the Totem falls, then goes to your discard." % what
+
+
 const TIER_MAX_COPIES := [0, 3, 3, 2, 1, 1, 1, 1]
 
 const KEYWORDS := {
@@ -882,6 +1060,7 @@ const KEYWORDS := {
 	"rekindle": {"name": "Rekindling", "text": "Once a duel, at your Dawn, it comes back from your discard to an empty slot with half its HP."},
 	"riposte": {"name": "Riposte", "text": "When it's hit and still standing, the attacker is Confused."},
 	"galvanise": {"name": "Galvanise", "text": "When it's hit and still standing, it becomes Empowered."},
+	"reveal": {"name": "Reveal", "text": "Called veiled, it does something when it's turned face up."},
 }
 
 
@@ -889,6 +1068,15 @@ const KEYWORDS := {
 static func keyword_text(k: String, d: Dictionary) -> String:
 	if k == "echo" and d.has("echo"):
 		return "Once a duel, when another of your Totems falls, from your discard: %s" % echo_text(d)
+	if k == "reveal" and d.has("reveal"):
+		var rv: Dictionary = d.reveal
+		var what := ""
+		match String(rv.get("op", "")):
+			"status_across": what = "the Totem across from it is %s" % STATUS_NAMES.get(rv.status, rv.status)
+			"damage_across": what = "it deals %d damage to the Totem across from it" % int(rv.amount)
+			"draw": what = "you draw %d" % int(rv.get("count", 1))
+			"heal_allies": what = "your Totems heal %d" % int(rv.amount)
+		return "Called veiled (face down, +1 Essence), when it's turned face up: %s." % what
 	return String(KEYWORDS.get(k, {}).get("text", ""))
 
 
@@ -1080,6 +1268,8 @@ static func card_text(id: String) -> String:
 		"summon":
 			var m: Dictionary = d.move
 			return "Descends, then returns to the heavens. %s: %s." % [m.name, _cap(outcome_text(int(m.damage), m.get("effects", []), m.get("target", "foe_totem")))]
+		"relic":
+			return relic_text(d)
 	return ""
 
 
@@ -1133,6 +1323,7 @@ static func _rite_text(d: Dictionary) -> String:
 			"call_legend_free": parts.append("While your Life is lower than your opponent's, call a Legend Totem from your hand into an empty slot, free and without a Tribute")
 			"seek_kindred": parts.append("Search your deck for a Totem that shares an element with one of yours on the field")
 			"discard_to_top": parts.append("Put a card from your discard on top of your deck")
+			"relic_hunt": parts.append("Return a Relic from your discard to your hand")
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
 
 

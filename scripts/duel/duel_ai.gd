@@ -178,7 +178,11 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 								out.append({"score": _call_score(game, pi, c, slot) + c.tier() * 6.0 - lost, "action": {"type": "call", "card": c, "slot": slot, "tributes": tributes}})
 					elif game.call_problem(pi, c) == "":
 						var slot := _best_slot(game, pi, c)
-						out.append({"score": _call_score(game, pi, c, slot), "action": {"type": "call", "card": c, "slot": slot}})
+						var cs := _call_score(game, pi, c, slot)
+						out.append({"score": cs, "action": {"type": "call", "card": c, "slot": slot}})
+						# veiled (Phase C): worth the extra Essence when it has a Reveal to spring
+						if c.def.has("reveal") and game.call_cost(pi, c) + 1 <= p.essence:
+							out.append({"score": cs + _reveal_value(game, pi, c, slot) - ESSENCE_VALUE, "action": {"type": "call", "card": c, "slot": slot, "veiled": true}})
 				else:
 					for tg in game.ascend_targets(pi, c):
 						if game.ascend_problem(pi, c, tg) == "":
@@ -195,6 +199,10 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 			"ward":
 				if game.ward_problem(pi, c) == "":
 					out.append({"score": _ward_score(game, pi, c), "action": {"type": "ward", "card": c}})
+			"relic":
+				if game.relic_problem(pi, c) == "":
+					for tg in game.relic_targets(pi):
+						out.append({"score": _relic_score(game, pi, c, tg), "action": {"type": "relic", "card": c, "target": tg}})
 			"summon":
 				if game.summon_problem(pi, c) != "":
 					continue
@@ -466,6 +474,13 @@ func _hit_value(game: DuelGame, pi: int, t: DuelTotem, i: int, f: DuelTotem, out
 
 func _hit_value_plain(game: DuelGame, pi: int, t: DuelTotem, i: int, f: DuelTotem, outcomes: Array) -> float:
 	var foe: DuelPlayer = game.players[1 - pi]
+	if f.face_down:
+		# a veiled Totem (Phase C): the computer can't see under the card either,
+		# so it weighs the blow alone, and a little for finding out what's there
+		var avg := 0.0
+		for o in outcomes:
+			avg += o.p * float(o.damage + t.damage_bonus(i))
+		return avg * 0.7 + 6.0
 	var hp := f.hp_left() + f.shield
 	var s := 0.0
 	var worth := _totem_value(game, 1 - pi, f)
@@ -696,7 +711,61 @@ func _call_score(game: DuelGame, pi: int, c: DuelCard, _slot: int) -> float:
 		v += 5.0
 	if p.totems().is_empty():
 		v += 40.0
+	# a bond waiting for it (Phase C)
+	var b := DuelCards.bond_of(c.id)
+	if not b.is_empty():
+		for t in p.totems():
+			if String(t.stack[0].id) == String(b.partner):
+				v += 14.0
+				break
 	return v - game.call_cost(pi, c) * ESSENCE_VALUE * 0.5
+
+
+## What a veiled Totem's Reveal will do when it turns up (Phase C).
+func _reveal_value(game: DuelGame, pi: int, c: DuelCard, slot: int) -> float:
+	var rv: Dictionary = c.def.get("reveal", {})
+	var across = game.players[1 - pi].slots[slot]
+	match String(rv.get("op", "")):
+		"status_across":
+			return _status_value(game, across, String(rv.status)) if across != null else 4.0
+		"damage_across":
+			return minf(float(rv.amount), float(across.hp_left())) + 4.0 if across != null else 4.0
+		"draw":
+			return 12.0
+		"heal_allies":
+			var v := 0.0
+			for t in game.players[pi].totems():
+				v += minf(float(rv.amount), float(t.damage)) * 0.8
+			return v
+	return 0.0
+
+
+## A Relic on this Totem: what it adds, on one that will last (Phase C).
+func _relic_score(game: DuelGame, pi: int, c: DuelCard, t: DuelTotem) -> float:
+	var r: Dictionary = c.def.get("relic", {})
+	var last := clampf(float(t.hp_left()) / 100.0, 0.4, 1.6)   # a hardy Totem keeps it longer
+	var v := 0.0
+	if r.has("damage"):
+		v += float(r.damage) * 1.8 * (1.0 if game.ready_problem(pi, t) == "" or t.stance == "strike" else 0.6)
+	if r.has("hp"):
+		v += float(r.hp) * 0.45
+	if r.has("dawn_heal"):
+		v += float(r.dawn_heal) * 0.9
+	if r.has("dawn_shield"):
+		v += float(r.dawn_shield) * 1.0
+	if r.has("fall_draw"):
+		v += 10.0 * int(r.fall_draw) / last
+	if r.has("move"):
+		v += 16.0
+	if r.has("keyword"):
+		match String(r.keyword):
+			"guardian":
+				v += 22.0 if not game.players[pi].has_guardian() else 2.0
+			"thorns", "riposte", "galvanise":
+				v += 12.0
+			_:
+				v += 8.0
+	return v * last - c.cost() * ESSENCE_VALUE
 
 
 func _ascend_score(game: DuelGame, pi: int, c: DuelCard, t: DuelTotem) -> float:

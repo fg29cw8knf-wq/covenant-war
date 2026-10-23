@@ -31,7 +31,8 @@ extends RefCounted
 ##   fx_ko(totem), fx_summon(pi, card), fx_gift(pi, gift), fx_message(text),
 ##   fx_game_over(winner, reason), fx_phase(pi, phase), fx_stance(totem),
 ##   fx_answer(pi, card, event, depth), fx_chain_done(chain),
-##   fx_tribute(totem, card), fx_echo(pi, card), fx_search(pi, cards), fx_revive(pi, card)
+##   fx_tribute(totem, card), fx_echo(pi, card), fx_search(pi, cards), fx_revive(pi, card),
+##   fx_relic(totem, card), fx_reveal(totem), fx_bond(totem, partner)
 
 signal logged(text: String, who: int)
 signal state_changed
@@ -234,7 +235,7 @@ func _setup_puzzle() -> void:
 			if e == null or (e is String and e == ""):
 				continue
 			var ids: Array = e if e is Array else [e]
-			var t := DuelTotem.new(_new_card(String(ids[0]), i), i, s, 0, p.attributes())
+			var t := _new_totem(_new_card(String(ids[0]), i), i, s, 0)
 			for k in range(1, ids.size()):
 				t.stack.append(_new_card(String(ids[k]), i))
 			p.slots[s] = t
@@ -247,6 +248,14 @@ func _setup_puzzle() -> void:
 func _essence_fixed(pi: int) -> bool:
 	var f: Array = puzzle.get("essence_fixed", [])
 	return pi < f.size() and bool(f[pi])
+
+
+## A Totem for `pi`'s slot, carrying its owner's Tempering marks (Phase C).
+func _new_totem(card: DuelCard, pi: int, slot: int, at_turn: int) -> DuelTotem:
+	var p: DuelPlayer = players[pi]
+	var t := DuelTotem.new(card, pi, slot, at_turn, p.attributes())
+	t.temper = p.profile.get("temper", {})
+	return t
 
 
 func _new_card(id: String, owner: int) -> DuelCard:
@@ -285,6 +294,9 @@ func _take_turn() -> void:
 	if over:
 		return
 	await _dawn_rekindle(p)
+	if over:
+		return
+	await _dawn_relics_and_veils(p)
 	if over:
 		return
 	phase = "draw"
@@ -415,6 +427,9 @@ func phase_problem(kind: String) -> String:
 		"stance":
 			if phase != "main":
 				return "Stances are set in the Main phase, before the Clash."
+		"relic":
+			if phase != "main":
+				return "Relics are given in the Main phase, before the Clash."
 		"attack":
 			if phase == "main":
 				return "Attacks come in the Clash: move on to it when you're ready."
@@ -611,7 +626,7 @@ func perform(pi: int, action: Dictionary) -> bool:
 		return false
 	match action.type:
 		"call":
-			await _act_call(pi, action.card, int(action.slot), action.get("tributes", []))
+			await _act_call(pi, action.card, int(action.slot), action.get("tributes", []), false, bool(action.get("veiled", false)))
 		"ascend":
 			await _act_ascend(pi, action.card, action.target)
 		"rite":
@@ -628,6 +643,8 @@ func perform(pi: int, action: Dictionary) -> bool:
 			await _act_gift(pi, action.get("target"))
 		"stance":
 			await _act_stance(pi, action.totem, String(action.stance))
+		"relic":
+			await _act_relic(pi, action.card, action.target)
 	_changed()
 	return true
 
@@ -648,7 +665,10 @@ func action_problem(pi: int, action: Dictionary) -> String:
 		return showboat
 	match kind:
 		"call":
-			return call_problem(pi, action.get("card"), int(action.get("slot", -1)), action.get("tributes", []) if tributes_needed(action.get("card")) > 0 else null)
+			var cp := call_problem(pi, action.get("card"), int(action.get("slot", -1)), action.get("tributes", []) if tributes_needed(action.get("card")) > 0 else null)
+			if cp == "" and bool(action.get("veiled", false)) and call_cost(pi, action.get("card")) + 1 > players[pi].essence:
+				return "Calling it veiled costs %d Essence." % (call_cost(pi, action.get("card")) + 1)
+			return cp
 		"ascend":
 			return ascend_problem(pi, action.get("card"), action.get("target"))
 		"rite":
@@ -665,6 +685,8 @@ func action_problem(pi: int, action: Dictionary) -> String:
 			return gift_problem(pi, action.get("target"))
 		"stance":
 			return stance_problem(pi, action.get("totem"), String(action.get("stance", "")))
+		"relic":
+			return relic_problem(pi, action.get("card"), action.get("target"))
 	return "Unknown action."
 
 
@@ -879,6 +901,9 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 			"discard_to_top":
 				if p.discard.is_empty():
 					return "Your discard is empty."
+			"relic_hunt":
+				if not p.discard.any(func(c): return (c as DuelCard).kind() == "relic"):
+					return "There's no Relic in your discard."
 			"heal":
 				if e.get("who", "") == "target" and target != null and target is DuelTotem \
 						and target.damage == 0 and not target.has_condition():
@@ -928,6 +953,55 @@ func shift_problem(pi: int, totem, slot: int) -> String:
 	if shift_cost(pi) > p.essence:
 		return "Needs %d Essence." % shift_cost(pi)
 	return ""
+
+
+# ------------------------------------------------------------ relics (Phase C) ---
+
+## Why this Relic can't go on that Totem ("" if it can). One each; it stays
+## until the Totem falls.
+func relic_problem(pi: int, card: DuelCard, target = null) -> String:
+	var p: DuelPlayer = players[pi]
+	if card == null or not p.hand.has(card):
+		return "That card isn't in your hand."
+	if card.kind() != "relic":
+		return "That isn't a Relic."
+	if relic_targets(pi).is_empty():
+		return "None of your Totems is free to carry it." if not p.totems().is_empty() else "You have no Totem to give it to."
+	if target != null and not relic_targets(pi).has(target):
+		return "That Totem already carries a Relic." if target is DuelTotem and target.owner == pi else "Choose one of your Totems."
+	if card_cost(pi, card) > p.essence:
+		return "Needs %d Essence." % card_cost(pi, card)
+	return ""
+
+
+func relic_targets(pi: int) -> Array:
+	return players[pi].totems().filter(func(t): return t.relic == null)
+
+
+func _act_relic(pi: int, card: DuelCard, target: DuelTotem) -> void:
+	var p: DuelPlayer = players[pi]
+	if target == null:
+		target = relic_targets(pi)[0]
+	_spend(p, card_cost(pi, card))
+	p.hand.erase(card)
+	target.relic = card
+	p.stats.relics += 1
+	p.note_played(card.id)
+	_log("%s gives %s the %s." % [p.player_name, target.card_name(), card.card_name()], pi)
+	await _fx("fx_relic", [target, card])
+
+
+## A Totem's Relic, when it leaves the field: to the discard (it fell or was
+## given up), or back to the hand with it (swept back).
+func _drop_relic(t: DuelTotem, to_hand: bool) -> void:
+	if t.relic == null:
+		return
+	var p: DuelPlayer = players[t.owner]
+	if to_hand:
+		p.hand.append(t.relic)
+	else:
+		p.discard.append(t.relic)
+	t.relic = null
 
 
 ## Why this Totem can't take that stance ("" if it can). Free, once a turn,
@@ -1244,6 +1318,8 @@ func move_problem(pi: int, t, i: int, target = null, check_target: bool = false)
 		return r
 	if i < 0 or i >= t.moves().size():
 		return "Unknown move."
+	if t.move(i).has("bond") and t.bond.is_empty():
+		return "The bond move needs its partner beside it."
 	if t.has_status("silenced") and int(t.move(i).get("cost", 0)) > 0:
 		return "%s is silenced and can only Strike." % t.card_name()
 	var c: int = t.move_cost(i)
@@ -1378,6 +1454,9 @@ func can_do_anything_but_end(pi: int) -> bool:
 			"summon":
 				if phase_problem("summon") == "" and summon_problem(pi, c) == "":
 					return true
+			"relic":
+				if phase_problem("relic") == "" and relic_problem(pi, c) == "":
+					return true
 	if phase_problem("attack") == "":
 		for t in p.totems():
 			for i in t.moves().size():
@@ -1450,9 +1529,9 @@ func _rule_showboat_owed(pi: int):
 
 # ------------------------------------------------------------- calling ---
 
-func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free := false) -> void:
+func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free := false, veiled := false) -> void:
 	var p: DuelPlayer = players[pi]
-	var c := 0 if free else call_cost(pi, card)
+	var c := 0 if free else call_cost(pi, card) + (1 if veiled else 0)
 	_spend(p, c)
 	p.hand.erase(card)
 	p.discard.erase(card)
@@ -1463,6 +1542,7 @@ func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free :=
 		p.slots[tr.slot] = null
 		for sc in tr.stack:
 			p.discard.append(sc)
+		_drop_relic(tr, false)
 		p.stats.tributes += 1
 		_log("%s gives itself up for %s." % [tr.card_name(), card.card_name()], pi)
 		await _fx("fx_tribute", [tr, card])
@@ -1470,7 +1550,8 @@ func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free :=
 			slot = tr.slot
 	if slot < 0 or p.slots[slot] != null:
 		slot = p.empty_slots()[0]
-	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
+	var t := _new_totem(card, pi, slot, turn)
+	t.face_down = veiled
 	if p.free_shift:
 		t.hasted = true   # Ixara's Tempest
 	if law == "verdanthe" and blessed(pi):
@@ -1479,7 +1560,11 @@ func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free :=
 	p.totems_called += 1
 	p.stats.totems_called += 1
 	p.note_played(card.id)
-	_log("%s calls %s%s." % [p.player_name, card.card_name(), " without paying for it" if free else ""], pi)
+	if veiled:
+		p.stats.veiled += 1
+		_log("%s calls a Totem face down." % p.player_name, pi)
+	else:
+		_log("%s calls %s%s." % [p.player_name, card.card_name(), " without paying for it" if free else ""], pi)
 	await _fx("fx_call", [t])
 	if t.has_keyword("channel"):
 		p.essence += 1
@@ -1658,10 +1743,19 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	var p: DuelPlayer = players[pi]
 	var foe := opponent(pi)
 	var mv := t.move(i)
+	if mv.has("bond"):
+		p.stats.bond_moves += 1
 	_spend(p, t.move_cost(i))
 	t.attacked = true
 	if t.boons.has("veiled"):
 		t.remove_boon("veiled")
+	if t.face_down:
+		await _reveal(t, "attacks")
+	if target is DuelTotem and target.face_down:
+		await _reveal(target, "attacked")
+	if over or t.is_knocked_out():
+		await _after_attack(t)
+		return
 	if target == null:
 		target = NONE
 	# Confused: it may lash out at its own side instead
@@ -2008,6 +2102,7 @@ func _undertow(t: DuelTotem) -> void:
 	owner.hand.append(t.stack[0])
 	for c in t.stack.slice(1):
 		owner.discard.append(c)
+	_drop_relic(t, false)
 	_log("%s is dragged back to %s hand." % [t.stack[0].card_name(), whose(owner.player_name, true)], t.owner)
 	await _fx("fx_ko", [t])
 
@@ -2135,6 +2230,15 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 					p.discard.erase(c)
 					p.deck.append(c)   # (the top of the deck is the end of the list)
 					_log("%s puts %s on top of the deck." % [p.player_name, c.card_name()], pi)
+			"relic_hunt":
+				var opts: Array = p.discard.filter(func(c): return (c as DuelCard).kind() == "relic")
+				if not opts.is_empty():
+					var pick: Array = await p.controller.choose_cards(self, pi, "Take a Relic back from your discard.", opts, 1, 1, {"reason": "revive"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					p.discard.erase(c)
+					p.hand.append(c)
+					_log("%s takes the %s back." % [p.player_name, c.card_name()], pi)
+					await _fx("fx_draw", [pi, [c]])
 			"essence_max":
 				p.essence_max = mini(DuelRules.essence_cap + 2, p.essence_max + int(e.amount))
 				p.essence += int(e.amount)
@@ -2226,6 +2330,7 @@ func _bounce(t: DuelTotem) -> void:
 	owner.slots[t.slot] = null
 	for c in t.stack:
 		owner.hand.append(c)
+	_drop_relic(t, true)
 	_log("%s is swept back to %s hand." % [t.card_name(), whose(owner.player_name, true)], t.owner)
 	await _fx("fx_ko", [t])
 
@@ -2343,6 +2448,8 @@ func _resolve_knockouts() -> void:
 				p.fallen.append(t.stage())
 				for c in t.stack:
 					p.discard.append(c)
+				var fall_draw: int = int(t.relic_def().get("fall_draw", 0))
+				_drop_relic(t, false)
 				_log("%s is knocked out!" % t.card_name(), pi)
 				var killer = t.last_hit_by
 				if killer != null and killer.owner != pi:
@@ -2360,6 +2467,11 @@ func _resolve_knockouts() -> void:
 				await _after_fall(pi, t, alive_killer)
 				if over:
 					return
+				if fall_draw > 0:
+					var drawn := await _draw(p, fall_draw)
+					_log("%s's lantern lights the way: %s draws %d." % [t.card_name(), p.player_name, drawn.size()], pi)
+					if not drawn.is_empty():
+						await _fx("fx_draw", [pi, drawn])
 		if not found:
 			return
 
@@ -2420,6 +2532,52 @@ func _after_fall(pi: int, fallen: DuelTotem, killer) -> void:
 				p.pending_essence += int(e.amount)
 
 
+## At its owner's Dawn: Relics that mend or shield do it, and every Totem
+## called veiled is revealed (Phase C).
+func _dawn_relics_and_veils(p: DuelPlayer) -> void:
+	for t in p.totems():
+		var rd: Dictionary = t.relic_def()
+		if int(rd.get("dawn_heal", 0)) > 0 and t.damage > 0:
+			await _heal(t, int(rd.dawn_heal))
+		if int(rd.get("dawn_shield", 0)) > 0:
+			t.shield = maxi(t.shield, int(rd.dawn_shield))
+			_log("%s's %s shields it (%d)." % [t.card_name(), t.relic.card_name(), t.shield], p.index)
+	for t in p.totems():
+		if t.face_down:
+			await _reveal(t, "dawn")
+
+
+## A veiled Totem turns face up (it attacks, it's attacked, or its owner's
+## Dawn comes); a Reveal on its card happens now.
+func _reveal(t: DuelTotem, why: String) -> void:
+	if not t.face_down:
+		return
+	t.face_down = false
+	var p: DuelPlayer = players[t.owner]
+	_log("%s's veiled Totem is revealed: %s!" % [p.player_name, t.card_name()], t.owner)
+	await _fx("fx_reveal", [t])
+	var rv: Dictionary = t.def().get("reveal", {})
+	if rv.is_empty():
+		return
+	var foe := opponent(t.owner)
+	var across = foe.slots[t.slot]
+	match String(rv.get("op", "")):
+		"status_across":
+			if across != null:
+				await _apply_status(across, String(rv.status), t, t.owner)
+		"damage_across":
+			if across != null:
+				await _damage_totem(across, int(rv.amount), {"source": "reveal", "attacker": t, "element": t.element()})
+		"draw":
+			var drawn := await _draw(p, int(rv.get("count", 1)))
+			if not drawn.is_empty():
+				await _fx("fx_draw", [t.owner, drawn])
+		"heal_allies":
+			for a in p.totems():
+				await _heal(a, int(rv.amount))
+	await _resolve_knockouts()
+
+
 ## At its owner's Dawn, a Rekindling Totem in the discard comes back to an
 ## empty slot with half its HP, once a duel.
 func _dawn_rekindle(p: DuelPlayer) -> void:
@@ -2442,7 +2600,7 @@ func _dawn_rekindle(p: DuelPlayer) -> void:
 func _revive_to_field(pi: int, card: DuelCard, slot: int, line: String) -> void:
 	var p: DuelPlayer = players[pi]
 	p.discard.erase(card)
-	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
+	var t := _new_totem(card, pi, slot, turn)
 	t.damage = t.max_hp() - maxi(10, int(round(t.max_hp() * DuelRules.revive_hp / 10.0)) * 10)
 	p.slots[slot] = t
 	p.stats.revivals += 1
@@ -2982,7 +3140,29 @@ func _log(text: String, who: int = -1) -> void:
 
 
 func _changed() -> void:
+	refresh_bonds()
 	state_changed.emit()
+
+
+## Each Totem's bond (DuelCards.BONDS, by the Basic at the bottom of its
+## stack): live while its partner stands on the same side. A bond that has
+## just formed is announced.
+func refresh_bonds() -> void:
+	for p in players:
+		var roots := {}
+		for t in p.totems():
+			roots[String(t.stack[0].id)] = t
+		for t in p.totems():
+			var b := DuelCards.bond_of(String(t.stack[0].id))
+			var partner = roots.get(String(b.get("partner", "")), null) if not b.is_empty() else null
+			if partner != null and partner != t and not t.face_down and not partner.face_down:
+				if t.bond.is_empty():
+					t.bond = b
+					_log("%s and %s are bonded: %s." % [t.card_name(), partner.card_name(), String(b.name)], p.index)
+					if presenter != null and presenter.has_method("fx_bond"):
+						presenter.fx_bond(t, partner)   # (not awaited: a flourish)
+			else:
+				t.bond = {}
 
 
 ## The total number of cards each duellist owns (for the tests).

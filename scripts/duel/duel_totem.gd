@@ -37,6 +37,11 @@ var attacked := false          # this turn
 ## its owner's Main phase, back to Strike at their next turn.
 var stance := "strike"
 var stance_turn := -1          # the game turn its stance was set on (one stance a turn)
+## Phase C: what a Totem is beyond its card.
+var bond: Dictionary = {}      # the bond it's in while its partner stands beside it (DuelCards.BONDS), else {}
+var relic: DuelCard = null     # the Relic it carries (one each); lost when it falls
+var face_down := false         # called veiled: its rival sees only a card back until it's revealed
+var temper := {}               # its owner's Tempering marks, card id -> 1 to 3 (Codex re-absorbs)
 var buff := 0                  # extra damage this turn (Forge Edge)
 var hasted := false            # Swift for the turn it was called (Swiftness 7+)
 var last_hit_by = null         # the DuelTotem that last damaged it (for Harvest and Wards)
@@ -101,6 +106,9 @@ func attuned_value(key: String) -> int:
 
 func keywords() -> Array:
 	var out: Array = def().get("keywords", []).duplicate()
+	var rk := String(relic_def().get("keyword", ""))
+	if rk != "" and not out.has(rk):
+		out.append(rk)
 	if hasted and not out.has("swift"):
 		out.append("swift")
 	if attuned():
@@ -114,8 +122,22 @@ func has_keyword(k: String) -> bool:
 	return keywords().has(k)
 
 
+## The Relic's effect ({} when it carries none).
+func relic_def() -> Dictionary:
+	return relic.def.get("relic", {}) if relic != null else {}
+
+
+## Its line's Tempering marks (by the Basic at the bottom, so they stay
+## through Ascension).
+func temper_level() -> int:
+	return int(temper.get(String(stack[0].id), 0))
+
+
 func max_hp() -> int:
-	return int(def().hp) + attuned_value("hp") + bonus_hp
+	var hp := int(def().hp) + attuned_value("hp") + bonus_hp + int(relic_def().get("hp", 0)) + int(bond.get("hp", 0))
+	if temper_level() >= 1:
+		hp += 20   # Tempered once: +20 Life
+	return hp
 
 
 func hp_left() -> int:
@@ -126,8 +148,42 @@ func is_knocked_out() -> bool:
 	return damage >= max_hp()
 
 
+## Its moves: the card's own, then a bond move while its partner stands
+## beside it, a Relic's move, and a Tempered move (three marks).
 func moves() -> Array:
-	return def().get("moves", [])
+	var base: Array = def().get("moves", [])
+	var lvl := temper_level()
+	if bond.is_empty() and relic_def().get("move", {}).is_empty() and lvl < 2:
+		return base
+	var out: Array = base.duplicate()
+	if lvl >= 2:
+		# Tempered twice: the best Fate band on its first Fate move starts two lower
+		for i in out.size():
+			if (out[i] as Dictionary).has("fate"):
+				var m: Dictionary = (out[i] as Dictionary).duplicate(true)
+				var bands: Array = m.fate
+				if bands.size() >= 2:
+					bands[-2]["to"] = maxi(int(bands[-3].get("to", 0)) + 1 if bands.size() >= 3 else 1, int(bands[-2].to) - 2)
+				out[i] = m
+				break
+	if lvl >= 3:
+		var strongest: Dictionary = {}
+		for m in base:
+			if strongest.is_empty() or int(m.get("damage", 0)) > int(strongest.get("damage", 0)):
+				strongest = m
+		var tm := {"name": "Tempered %s" % String(strongest.get("name", "Strike")), "cost": maxi(1, int(strongest.get("cost", 0)) + 1),
+			"damage": maxi(int(strongest.get("damage", 0)), 30) + 20, "tempered": true}
+		out.append(tm)
+	if not bond.is_empty() and bond.has("move"):
+		var bm: Dictionary = (bond.move as Dictionary).duplicate(true)
+		bm["bond"] = String(bond.get("partner", ""))
+		out.append(bm)
+	var rm: Dictionary = relic_def().get("move", {})
+	if not rm.is_empty():
+		var r2 := rm.duplicate(true)
+		r2["relic"] = relic.id
+		out.append(r2)
+	return out
 
 
 func move(i: int) -> Dictionary:
@@ -156,7 +212,7 @@ func move_target(i: int) -> String:
 
 ## Extra damage this Totem adds to its damaging moves.
 func damage_bonus(i: int) -> int:
-	var b := attuned_value("damage") + buff
+	var b := attuned_value("damage") + buff + int(relic_def().get("damage", 0)) + int(bond.get("damage", 0))
 	if is_strike(i) and DuelRules.has_perk(attrs, "might"):
 		b += DuelRules.might_strike_bonus
 	if has_status("enraged"):
@@ -251,7 +307,10 @@ func boon_list() -> Array:
 
 
 func all_cards() -> Array:
-	return stack.duplicate()
+	var out := stack.duplicate()
+	if relic != null:
+		out.append(relic)
+	return out
 
 
 func _to_string() -> String:

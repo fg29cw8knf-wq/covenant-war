@@ -336,8 +336,12 @@ class CardFaceDraw:
 	extends Control
 	var card_id := ""
 	var opts := {}
+	var veiled := false   # a veiled Totem's card, face down (Phase C)
 
 	func _draw() -> void:
+		if veiled:
+			DuelCardFace.draw_back(self, Rect2(Vector2.ZERO, size))
+			return
 		if card_id == "":
 			return
 		var o := opts.duplicate()
@@ -471,6 +475,24 @@ func sync(v) -> void:
 	var s: Slot = slots[v.side][v.slot]
 	var t = v.totem
 	var id: String = "" if t == null else t.id()
+	if t != null and t.face_down and not s.mine:
+		# a veiled Totem of the rival's (Phase C): its card lies face down, nothing stands on it
+		if s.card_id != "__veiled__":
+			s.card_id = "__veiled__"
+			if s.model != null:
+				s.model.queue_free()
+				s.model = null
+				s.anim = null
+			s.card.visible = true
+			s.card_face.card_id = ""
+			s.card_face.veiled = true
+			s.card_face.queue_redraw()
+			s.card_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
+			s.sprite.visible = false
+			s.shadow.visible = false
+			s.lamp.light_energy = 0.0
+		_ring_state(s, v.highlight, Color(0.7, 0.6, 1.0), 0.35 * v.fade)
+		return
 	if id != s.card_id:
 		s.card_id = id
 		if s.model != null:
@@ -483,11 +505,12 @@ func sync(v) -> void:
 			s.shadow.visible = false
 			s.lamp.light_energy = 0.0
 		else:
+			s.card_face.veiled = false
 			s.card_face.card_id = id
 			s.card_face.queue_redraw()
 			s.card_vp.render_target_update_mode = SubViewport.UPDATE_ONCE
 			s.card.visible = true
-			var tex := DuelArt.creature(id)
+			var tex := DuelArt.creature_or_stand_in(id)
 			s.sprite.texture = tex
 			s.sprite.visible = tex != null
 			s.shadow.visible = tex != null
@@ -582,6 +605,10 @@ static func model_path(id: String) -> String:
 		var p := "res://assets/models/%s/%s.glb" % [sub, id]
 		if ResourceLoader.exists(p):
 			return p
+	# a card with no model yet stands in as its stand-in (Phase C: the
+	# second-stage Ascensions, shown bigger as the line's first stage)
+	if DuelCards.CARDS.has(id) and DuelCards.CARDS[id].has("stand_in"):
+		return model_path(String(DuelCards.CARDS[id].stand_in))
 	return ""
 
 
@@ -639,6 +666,9 @@ func warm_models(ids: Array) -> void:
 			var inst := scene.instantiate()
 			if inst is Node3D:
 				_dress_model(inst)
+				# small, so a big one (Pyraxis) doesn't stand up through the
+				# mat while it's warmed: the shaders and skinning are the same
+				(inst as Node3D).scale = Vector3.ONE * 0.05
 				pit.add_child(inst)
 				var anim := _find_anim(inst)
 				if anim != null and anim.has_animation(_clip_in(anim, "idle")):

@@ -383,7 +383,22 @@ func reabsorb(id: String, copies: int) -> String:
 		return ""
 	v.collection[id] = int(v.collection[id]) - copies
 	v.attune[id] = int(v.attune.get(id, 0)) + copies * DuelRewards.copy_points(id)
+	# Tempering (Phase C, Gary's rule): each copy re-absorbed marks the card
+	# for good, three times at most: +20 Life, a kinder Fate, a new move
+	var tm: Dictionary = v.get("temper", {})
+	tm[id] = mini(3, int(tm.get(id, 0)) + copies)
+	v["temper"] = tm
 	return _try_manifest(id)
+
+
+## How many times a card has been Tempered (0 to 3).
+func temper_of(id: String) -> int:
+	return int(_v2().get("temper", {}).get(id, 0))
+
+
+## Every Tempered card's marks, for a duel (DuelTotem.temper).
+func temper_marks() -> Dictionary:
+	return (_v2().get("temper", {}) as Dictionary).duplicate()
 
 
 ## Pours Attunement pool points (at half value) into a Totem's store.

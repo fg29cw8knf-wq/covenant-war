@@ -10,8 +10,8 @@ extends RefCounted
 ## pause menu commits it to Game.v2.deck only when it is legal.
 
 const CELL := Vector2(186, 260)
-const KIND_ORDER := {"totem": 0, "rite": 1, "ward": 2, "summon": 3}
-const FILTERS := [["all", "All"], ["owned", "Owned"], ["totem", "Totems"], ["rite", "Rites"], ["ward", "Wards"], ["summon", "Summons"], ["conditions", "Conditions"]]
+const KIND_ORDER := {"totem": 0, "rite": 1, "ward": 2, "relic": 3, "summon": 4}
+const FILTERS := [["all", "All"], ["owned", "Owned"], ["totem", "Totems"], ["rite", "Rites"], ["ward", "Wards"], ["relic", "Relics"], ["summon", "Summons"], ["conditions", "Conditions"]]
 
 
 static func owned(id: String) -> int:
@@ -151,7 +151,7 @@ static func describe(id: String) -> String:
 	var gold := UITheme.GOLD.to_html(false)
 	var dim := UITheme.TEXT_DIM.to_html(false)
 	var lines := []
-	var kind_word: String = {"totem": "%s Totem" % DuelCards.stage_name(int(d.get("stage", 0))), "rite": "Rite", "ward": "Ward", "summon": "Summon"}.get(d.kind, d.kind)
+	var kind_word: String = {"totem": "%s Totem" % DuelCards.stage_name(int(d.get("stage", 0))), "rite": "Rite", "ward": "Ward", "summon": "Summon", "relic": "Relic"}.get(d.kind, d.kind)
 	var bits := [kind_word]
 	if el != "any":
 		bits.append(Lore.element_name(el))
@@ -181,6 +181,15 @@ static func describe(id: String) -> String:
 				var need := int(d.attuned.get("min", 99))
 				var state := "[color=#%s]active for you[/color]" % gold if mine >= need else "you have %d" % mine
 				lines.append("[color=#%s][b]Attuned[/b][/color] at %s (%s)." % [gold, at, state])
+			var bt := DuelCards.bond_text(id)
+			if bt != "":
+				lines.append("[color=#%s][b]Bond[/b][/color]: %s" % [gold, bt])
+			var tl := Game.temper_of(id)
+			if tl > 0:
+				var marks := ["+20 Life", "the best Fate band on its first Fate move starts two lower", "a Tempered move (its strongest, +20, one more Essence)"]
+				lines.append("[color=#%s][b]Tempered %s[/b][/color]: %s." % [gold, "I".repeat(tl), ", ".join(marks.slice(0, tl))])
+			elif DuelCards.is_basic_totem(id):
+				lines.append("[color=#%s]Re-absorb a spare copy to Temper it: +20 Life, then a kinder Fate, then a new move (three at most).[/color]" % dim)
 			if DuelCards.is_ascension(id):
 				lines.append("Played on top of [b]%s[/b] to Ascend it." % DuelCards.CARDS[d.ascends_from].name)
 			elif tier >= DuelRules.tribute_tier:
@@ -202,6 +211,8 @@ static func describe(id: String) -> String:
 				var det := DuelCardFace.move_detail(m)
 				if det != "":
 					lines.append("    [color=#%s]%s[/color]" % [dim, det])
+		"relic":
+			lines.append(DuelCards.card_text(id))
 		"rite":
 			lines.append(DuelCards.card_text(id))
 			if d.get("answer", false):
@@ -642,7 +653,7 @@ class Detail:
 			if Game.spare_copies(root) > 0:
 				_add("Re-absorb a spare %s" % root_name, func() -> void:
 					var made := Game.reabsorb(root, 1)
-					_status.text = "%s manifests!" % DuelCards.CARDS[made].name if made != "" else "+%d Attunement." % DuelRewards.copy_points(root)
+					_status.text = "%s manifests!" % DuelCards.CARDS[made].name if made != "" else "+%d Attunement, and %s is Tempered (%d of 3)." % [DuelRewards.copy_points(root), root_name, Game.temper_of(root)]
 					_after())
 			if int(v.get("pool", 0)) > 0:
 				_add("Pour in the pool", func() -> void:

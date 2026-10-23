@@ -59,5 +59,9 @@ func is_summon() -> bool:
 	return def.kind == "summon"
 
 
+func is_relic() -> bool:
+	return def.kind == "relic"
+
+
 func _to_string() -> String:
 	return "%s#%d" % [id, uid]

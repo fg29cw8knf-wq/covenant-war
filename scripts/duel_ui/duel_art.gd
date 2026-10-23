@@ -39,6 +39,15 @@ static func creature(id: String) -> Texture2D:
 	return _load("res://assets/art/creatures/" + id)
 
 
+## The creature's cut-out, or its stand-in's while it has none (a
+## second-stage Ascension waiting for Gary's painting, Phase C).
+static func creature_or_stand_in(id: String) -> Texture2D:
+	var tex := creature(id)
+	if tex == null and DuelCards.CARDS.has(id) and DuelCards.CARDS[id].has("stand_in"):
+		tex = creature(String(DuelCards.CARDS[id].stand_in))
+	return tex
+
+
 static func summon(id: String) -> Texture2D:
 	return _load("res://assets/art/summons/" + id)
 

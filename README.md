@@ -68,6 +68,7 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200        # the Lante
 xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.tscn -- <dir>   # plays Bram's lesson tap by tap
 godot --headless --script res://tests/phase_test.gd                  # the turn's phases, Stances, answers and chains (Phase A)
 godot --headless --script res://tests/phase_b_test.gd                # Tributes, Echoes, Loyal, Rekindling, the discard Rites (Phase B)
+godot --headless --script res://tests/phase_c_test.gd                # bonds, Relics, veiled calls, the second Ascension stage, Tempering (Phase C)
 ```
 
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
@@ -185,6 +186,56 @@ shape of a turn and answering on the rival's turn.
   tributes from tier, Revived with HP share. A knockout resolved inside
   another (a Loyal call, an Echo's blow) is never counted twice
   (`_resolve_knockouts` skips a Totem already off the field).
+
+### What Totems are, and building round them (Phase C, 23 October)
+
+- **Bonds** (`DuelCards.BONDS`, twelve pairs by their Basic, so an Ascended
+  form keeps its bond): while both stand on the same side, both gain a bond
+  move (a move with "Bond with ..." under it) or a stat (+20 HP or +10
+  damage). `DuelGame.refresh_bonds` keeps them current (every
+  `state_changed`); a bond move is checked again as it's used. A BOND pill
+  on the nameplate, a thread of light when one forms (`fx_bond`), the
+  partner and what the bond does in the Codex (`DuelCards.bond_text`).
+- **Relics** (a new card kind, `"relic"`): given to a Totem of yours in the
+  Main (`{type: "relic", card, target}`, one each), they stay until it falls
+  (then to the discard; swept back with it to the hand). Ten: Ember Collar
+  (+10 damage), Tide Pearl (+30 HP), Iron Brace (shielded 20 at Dawn), Thorn
+  Crown (Thorns), Storm Feather (Galvanise), Veil Charm (Riposte), Sun
+  Medallion (heals 20 at Dawn), Hunter's Fang (a Rend move), Stone Heart
+  (Guardian), Spirit Lantern (draw two when it falls); Relic Hunt fetches one
+  from the discard. The Relic's band under the nameplate; an amber RELIC
+  band on the card (`DuelCardFace.spell_look`); a Relics filter in the Codex.
+- **Veiled calls** (`{type: "call", ..., veiled: true}`, +1 Essence): face
+  down until it attacks, is attacked, or its owner's Dawn
+  (`DuelGame._reveal`). The rival sees a card back in the circle (2D and on
+  the 3D field, `DuelField3D.sync`, `CardFaceDraw.veiled`) and a VEILED
+  plaque; the call flies in as a card back with no clip, the log says only
+  that a Totem was called face down, and tapping it gives nothing away. Six
+  Totems have a **Reveal**: Dreamfox (the Totem across falls asleep),
+  Mirewidow (poisons it), Emberwisp and Burrowmole (20 damage to it),
+  Somnowl (draw one), Bloomsprite (your Totems heal 20). The computer veils
+  when a Reveal is worth the Essence (`DuelAI._reveal_value`), and weighs a
+  blow on a veiled Totem of yours by the blow alone, not knowing what's
+  under the card (`DuelAI._hit_value_plain`).
+- **The second Ascension stage**: Deepmaw was the only one; seven more
+  (Infernal Warg, Tempest Lynx, Briar Colossus, Cragmaul, Ironclad Behemoth,
+  Ninefold Fox, Blight Wyrm), each a turn after the first stage. Until
+  Gary's paintings and models come they're shown as their line's first
+  stage, bigger (`"stand_in"`, `DuelField3D.model_path`,
+  `DuelArt.creature_or_stand_in`); the card shows the drawn placeholder.
+- **Tempering** (Gary's rule): each spare copy re-absorbed in the Codex
+  (`Game.reabsorb`) marks its card for good, three times at most
+  (`Game.temper_of`): +20 Life, then the best Fate band on its first Fate
+  move starts two lower, then a Tempered move (its strongest, +20 damage, one
+  more Essence). The marks ride into the player's duels on a copy of their
+  profile (`DuelScreen._start`, `DuelTotem.temper`, by the line's Basic) and
+  show as ✦ on the nameplate and in the Codex. Bram's campfire deck tour
+  has one more line about it (`PackTour.CAMP_DECK`).
+- Each starter deck has a Relic (Ember Collar, Tide Pearl, Iron Brace, Veil
+  Charm) and Emberstorm, Ironstone and Veilwild a second stage (Tidegrove has
+  Deepmaw). Prompts: `docs/card-prompts.md`, round 6 (the seven second
+  stages need a painting, a cut-out and a model each). Bram's lessons:
+  `bond`, `relic`, `veiled`, `revealed`.
 
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and

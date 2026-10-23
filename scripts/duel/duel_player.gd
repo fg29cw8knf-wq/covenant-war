@@ -46,7 +46,7 @@ var once_used: Array = []      # once-a-duel things already spent: "echo:<uid>",
 var played := {}              # card id -> times played this duel
 var stats := {"life_damage_dealt": 0, "kos": 0, "totems_called": 0, "rites": 0, "wards_sprung": 0,
 	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0,
-	"tributes": 0, "echoes": 0, "revivals": 0}
+	"tributes": 0, "echoes": 0, "revivals": 0, "relics": 0, "veiled": 0, "bond_moves": 0}
 
 
 func _init(p_index: int, p_name: String) -> void:
@@ -108,7 +108,7 @@ func has_guardian() -> bool:
 func total_card_count() -> int:
 	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size() + answering.size()
 	for t in totems():
-		n += t.stack.size()
+		n += t.stack.size() + (1 if t.relic != null else 0)
 	return n
 
 

@@ -103,6 +103,7 @@ var sel_card: DuelCard = null
 var sel_totem: DuelTotem = null
 var sel_move := -1
 var sel_tributes: Array = []   # the Totems given up for the call being placed (Phase B)
+var sel_veiled := false        # the call being placed goes face down (Phase C)
 var pending := ""              # call, ascend, rite, summon, move, shift, gift
 var targets: Array = []        # DuelTotem | "life" | int (slot index, on pick_side)
 var pick_side := 0
@@ -529,6 +530,11 @@ func _start() -> void:
 	game.stacked = spec.get("stacked", [false, false])
 	game.setup(spec.get("decks", ["emberstorm", "tidegrove"]), spec.get("names", ["You", "Rival"]),
 		controllers, spec.get("profiles", []), int(spec.get("seed", -1)))
+	if not ai_flags[me]:
+		# the player's Tempering marks (Phase C), on a copy of their duel profile
+		var prof: Dictionary = game.players[me].profile.duplicate()
+		prof["temper"] = Game.temper_marks()
+		game.players[me].profile = prof
 	game.start_life = int(spec.get("life", 0))
 	game.start_lives = spec.get("lives", [])
 	game.first_forced = int(spec.get("first", -1))
@@ -835,6 +841,8 @@ func _hand_state(c: DuelCard) -> String:
 			ok = game.ward_problem(me, c) == ""
 		"summon":
 			ok = game.summon_problem(me, c) == ""
+		"relic":
+			ok = game.relic_problem(me, c) == ""
 	return "playable" if ok else "normal"
 
 
@@ -895,6 +903,7 @@ func _clear_selection() -> void:
 	sel_totem = null
 	sel_move = -1
 	sel_tributes = []
+	sel_veiled = false
 	pending = ""
 	targets = []
 
@@ -1164,6 +1173,15 @@ func _on_hand_tapped(hv) -> void:
 					targets = p.empty_slots()
 					_set_hint("Tap an empty slot to call %s." % c.card_name())
 					_show_cancel()
+					# veiled (Phase C): face down, for one more Essence
+					if game.call_cost(me, c) + 1 <= p.essence:
+						var reveal := c.def.has("reveal")
+						_add_action("Call it veiled", ("Face down, +1 Essence. Its Reveal springs when it's turned up." if reveal else "Face down, +1 Essence: your rival won't know what it is until it fights."),
+							game.call_cost(me, c) + 1, true, func() -> void:
+								sel_veiled = not sel_veiled
+								_set_hint(("Veiled: tap an empty slot to call %s face down." if sel_veiled else "Tap an empty slot to call %s.") % c.card_name())
+								if tutor != null:
+									tutor.lesson("veiled", "Face down. Your rival sees a card back and nothing else, until it fights, it's struck, or your next Dawn comes. Some have a trick for the moment they're turned up.", "Veiled calls", ""), "veil")
 			else:
 				var prob := game.ascend_problem(me, c)
 				if prob != "":
@@ -1192,6 +1210,17 @@ func _on_hand_tapped(hv) -> void:
 			else:
 				_add_action("Set face down", DuelCards.TRIGGER_TEXT.get(c.def.trigger, "") + ".", c.cost(), true,
 					func() -> void: _respond({"type": "ward", "card": c}))
+		"relic":
+			var prob := game.relic_problem(me, c)
+			if prob != "":
+				_add_note(prob)
+			else:
+				pending = "relic"
+				targets = game.relic_targets(me)
+				_set_hint("Tap the Totem to carry the %s." % c.card_name())
+				_show_cancel()
+				if tutor != null:
+					tutor.lesson("relic", "A Relic. Hang it on one of yours and it stays, as long as the Totem does. Give it to one that'll last: when it falls, the Relic goes down with it.", "Relics", "card:" + c.id)
 		"summon":
 			var prob := game.summon_problem(me, c)
 			if prob != "":
@@ -1226,8 +1255,11 @@ func _on_slot_tapped(v) -> void:
 			tutor.nudge()
 			return
 	if v.totem != null and not (pending != "" and targets.has(v.totem)):
-		var opts := {"hp_left": v.totem.hp_left(), "attrs": v.totem.attrs}
-		_show_detail(v.totem.id(), opts)
+		if v.totem.face_down and v.side != me:
+			_toast("A veiled Totem: you'll know it when it fights")
+		else:
+			var opts := {"hp_left": v.totem.hp_left(), "attrs": v.totem.attrs}
+			_show_detail(v.totem.id(), opts)
 	if mode == "pick_slot":
 		if v.side == pick_side and v.totem == null and targets.has(v.slot):
 			var s: int = v.slot
@@ -1246,6 +1278,8 @@ func _on_slot_tapped(v) -> void:
 					var act := {"type": "call", "card": sel_card, "slot": v.slot}
 					if not sel_tributes.is_empty():
 						act["tributes"] = sel_tributes.duplicate()
+					if sel_veiled:
+						act["veiled"] = true
 					_respond(act)
 					return
 			"shift":
@@ -1319,6 +1353,8 @@ func _resolve(target) -> void:
 			_respond({"type": "attack", "attacker": sel_totem, "move": sel_move, "target": target})
 		"gift":
 			_respond({"type": "gift", "target": target})
+		"relic":
+			_respond({"type": "relic", "card": sel_card, "target": target})
 
 
 func _cancel_pending() -> void:
@@ -1367,6 +1403,13 @@ func _select_totem(t: DuelTotem) -> void:
 			title += "  —  %d" % (dmg + t.damage_bonus(i) + (DuelRules.wrath_bonus if game.players[me].wrath else 0))
 		elif mv.has("fate"):
 			title += "  —  d20"
+		if mv.has("bond"):
+			var pn: String = DuelCards.CARDS[mv.bond].name if DuelCards.CARDS.has(mv.bond) else String(mv.bond)
+			sub = "Bond with %s. %s" % [pn, sub]
+		elif mv.has("relic"):
+			sub = "From the %s. %s" % [DuelCards.CARDS[mv.relic].name, sub]
+		elif mv.get("tempered", false):
+			sub = "Tempered. %s" % sub
 		if ready == "" and prob != "":
 			sub = prob
 		var idx := i
@@ -1688,7 +1731,10 @@ func preview_ai_action(pi: int, a: Dictionary) -> void:
 				panels[1 - pi].targetable = true
 			await pause(0.35)
 			panels[1 - pi].targetable = false
-		"call", "rite", "summon", "ascend", "answer":
+		"call", "rite", "summon", "ascend", "answer", "relic":
+			if bool(a.get("veiled", false)):
+				await pause(0.35)   # (a veiled call shows nothing)
+				return
 			var c: DuelCard = a.card
 			_show_detail(c.id, {"cost": c.cost()})
 			await pause(0.35)
@@ -1925,6 +1971,39 @@ func fx_answer(pi: int, card: DuelCard, event: Dictionary, _depth: int) -> void:
 	await pause(0.7)
 
 
+## A Relic hung on a Totem (Phase C).
+func fx_relic(t: DuelTotem, card: DuelCard) -> void:
+	var v := _view(t)
+	sfx.play("ascend")
+	DuelFX.flash(fx_layer, _center(v), DuelCardFace.RELIC_COL, 120.0, 0.4)
+	DuelFX.rise(fx_layer, _foot(v), DuelCardFace.RELIC_COL, 120.0, 22)
+	_toast("%s carries the %s" % [t.card_name(), card.card_name()])
+	_refresh()
+	await pause(0.5)
+
+
+## A veiled Totem turns face up (Phase C).
+func fx_reveal(t: DuelTotem) -> void:
+	_refresh()
+	var v := _view(t)
+	sfx.play("call_totem")
+	DuelFX.shockwave(fx_layer, _foot(v), DuelFX.light(t.element()), 150.0, 0.45)
+	_toast("Revealed: %s" % t.card_name())
+	if tutor != null and t.owner != me:
+		await tutor.lesson("revealed", "There. That's what was under the card. Something called face down shows itself when it fights, when it's struck, or at its owner's Dawn, and a few have a trick for that moment.", "Veiled calls", "")
+	await pause(0.5)
+
+
+## Two bonded Totems (Phase C): a thread of light between them.
+func fx_bond(t: DuelTotem, partner: DuelTotem) -> void:
+	var a := _center(_view(t))
+	var b := _center(_view(partner))
+	DuelFX.lightning(fx_layer, a, b, UITheme.GOLD, 0.5, 6.0)
+	_toast("Bonded: %s" % String(t.bond.get("name", "")))
+	if tutor != null and t.owner == me:
+		tutor.lesson("bond", "Those two know each other. Some Totems fight better side by side: while both stand, they share a move, or something more. Keep the pair together.", "Bonds", "")
+
+
 ## A Totem given up for a Tribute call: its light rises and goes.
 func fx_tribute(t: DuelTotem, card: DuelCard) -> void:
 	var v := _view(t)
@@ -2026,7 +2105,8 @@ func fx_call(t: DuelTotem) -> void:
 		tutor.lesson("loyal", "Loyal. When one of its own falls, it comes out of the hand by itself, free, and takes the empty place. Hounds are like that.", "Echoes", "")
 	if t.owner == me:
 		_coach("essence")
-	if SummonVideo.pick(t.id()) != "":
+	var hidden: bool = t.face_down and t.owner != me   # a veiled call keeps its secret (Phase C)
+	if not hidden and SummonVideo.pick(t.id()) != "":
 		await SummonVideo.play(overlay, t.id())
 	var v := _view(t)
 	v.set_totem(t)
@@ -2039,7 +2119,7 @@ func fx_call(t: DuelTotem) -> void:
 	var from := Vector2(FIELD_CX, HAND_Y + 80) if t.owner == me else Vector2(FIELD_CX, 30)
 	if field != null:
 		field.cam_focus(_foot3(t), 0.3, 0.4 / speed)
-	await _fly_card(t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
+	await _fly_card("" if hidden else t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
 	sfx.play("call_totem")
 	if field != null:
 		field.pillar(_foot3(t), col, 5.5, 1.8, 0.9 / speed)
@@ -2057,13 +2137,13 @@ func fx_call(t: DuelTotem) -> void:
 	tw.tween_property(v, "pop", 1.0, 0.45 / speed).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(v, "fade", 1.0, 0.18 / speed)
 	tw.tween_property(v, "flash", 0.0, 0.7 / speed)
-	if t.tier() >= 3:
+	if t.tier() >= 3 and not hidden:
 		shake(9.0)
 	var clip_len := _clip(t, "summon", speed)
 	await pause(maxf(0.5, clip_len * 0.8))
 	if field != null:
 		field.cam_home(0.5 / speed)
-	if tutor != null and t.owner == rival:
+	if tutor != null and t.owner == rival and not hidden:
 		await tutor.event("rival_call")
 		if t.has_keyword("guardian"):
 			await tutor.lesson("guardian", "That's a Guardian. Everything goes through it first. Break it, or go nowhere.", "Guardians", "foe:" + t.id())

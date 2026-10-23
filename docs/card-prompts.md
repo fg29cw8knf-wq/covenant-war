@@ -1948,3 +1948,404 @@ Mood: what has fallen is not quite gone.
 Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
+
+# Round 6: Relics and the second Ascensions (Phase C of the deeper duel, 23 October)
+
+Seven second-stage Ascensions (each needs a card painting, a battlefield cut-out and, later, a 3D model; until then the game shows the line's first stage, bigger), ten Relics and Relic Hunt (card paintings only).
+
+## Infernal Warg (round 6, totem, fire, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/infernal_warg.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a towering warg of black stone and living fire, a mane of white-hot flame, eyes like forge mouths, molten drool hissing on the ground.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/infernal_warg.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a towering warg of black stone and living fire, a mane of white-hot flame, eyes like forge mouths, molten drool hissing on the ground.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Tempest Lynx (round 6, totem, storm, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/tempest_lynx.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a great lynx made of storm cloud and lightning, ear tufts crackling, each pawstep a thunderclap of light.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/tempest_lynx.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a great lynx made of storm cloud and lightning, ear tufts crackling, each pawstep a thunderclap of light.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Briar Colossus (round 6, totem, verdant, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/briar_colossus.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a walking giant of knotted briar and old oak, thorns as long as swords, flowers blooming in the hollows of its chest.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/briar_colossus.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a walking giant of knotted briar and old oak, thorns as long as swords, flowers blooming in the hollows of its chest.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Cragmaul (round 6, totem, earth, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/cragmaul.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a mountain of an ox, a whole cliff for a back, horns of raw granite, the ground cracking around its hooves.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/cragmaul.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a mountain of an ox, a whole cliff for a back, horns of raw granite, the ground cracking around its hooves.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Ironclad Behemoth (round 6, totem, metal, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/ironclad_behemoth.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a colossal beetle in riveted iron plate, steam venting from its joints, a shell like a fortress gate.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/ironclad_behemoth.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a colossal beetle in riveted iron plate, steam venting from its joints, a shell like a fortress gate.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Ninefold Fox (round 6, totem, psychic, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/ninefold_fox.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a silver fox with nine translucent tails, each one a shimmering copy of the fox itself, eyes like twin moons.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/ninefold_fox.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a silver fox with nine translucent tails, each one a shimmering copy of the fox itself, eyes like twin moons.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Blight Wyrm (round 6, totem, venom, second stage)
+
+**Card painting · square 1536 × 1536 · save as cards/blight_wyrm.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a long-bodied wyrm with sickly green scales, a hood of bone spines, breathing a cloud of glowing violet spores.
+
+Pose: powerful and imposing, the grown form of its line, mid-stride towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: awe: something that has grown into its full power.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/blight_wyrm.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a long-bodied wyrm with sickly green scales, a hood of bone spines, breathing a cloud of glowing violet spores.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+## Ember Collar (round 6, relic, fire)
+
+**Card painting · square 1536 × 1536 · save as cards/ember_collar.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a collar of blackened iron links with a coal glowing in each, resting on charred velvet.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Tide Pearl (round 6, relic, tide)
+
+**Card painting · square 1536 × 1536 · save as cards/tide_pearl.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a sea-green pearl the size of a fist in an open shell, the sound of the sea drawn as rings of light.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Iron Brace (round 6, relic, metal)
+
+**Card painting · square 1536 × 1536 · save as cards/iron_brace.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a riveted iron bracer etched with a sunrise, a faint dome of light rising from it.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Thorn Crown (round 6, relic, verdant)
+
+**Card painting · square 1536 × 1536 · save as cards/thorn_crown.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a circlet of living briar with small white flowers between the thorns, on a mossy stone.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Storm Feather (round 6, relic, storm)
+
+**Card painting · square 1536 × 1536 · save as cards/storm_feather.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a single long feather crackling with blue lightning, hanging in the air above a storm-grey cushion.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Veil Charm (round 6, relic, psychic)
+
+**Card painting · square 1536 × 1536 · save as cards/veil_charm.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a violet glass charm on a silver thread, a second faint copy of it floating just beside it.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Sun Medallion (round 6, relic, radiant)
+
+**Card painting · square 1536 × 1536 · save as cards/sun_medallion.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a gold medallion stamped with the sun, warm light pooling from it like honey.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Hunter's Fang (round 6, relic, venom)
+
+**Card painting · square 1536 × 1536 · save as cards/hunters_fang.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a long curved fang bound with leather on a cord, a drop of green venom at its point.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Stone Heart (round 6, relic, earth)
+
+**Card painting · square 1536 × 1536 · save as cards/stone_heart.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a heart carved from grey granite, a slow amber light beating inside it.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Spirit Lantern (round 6, relic, spirit)
+
+**Card painting · square 1536 × 1536 · save as cards/spirit_lantern.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a small paper lantern with a pale teal flame, a ribbon of light trailing from it into the dark.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Relic Hunt (round 6, rite, any)
+
+**Card painting · square 1536 × 1536 · save as cards/relic_hunt.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a hand brushing dust from a half-buried relic in a ruin, lantern light on old gold.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit warmly from one side.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```

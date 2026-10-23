@@ -152,6 +152,19 @@ class TotemView:
 		var mod := Color(1, 1, 1, fade)
 		if highlight == "dim":
 			mod = Color(0.55, 0.55, 0.6, fade)
+		if totem.face_down and not mine:
+			# a veiled Totem (Phase C): its rival sees a card back, nothing more
+			var br := Rect2(plat.get_center() - Vector2(70, 196), Vector2(140, 196))
+			if not field3d:
+				DuelCardFace.draw_back(self, br)
+			var pr := Rect2(Vector2(plat.get_center().x - 92, plat.end.y + 10), Vector2(184, 44))
+			CardFace.vgrad(self, pr, 13, Color(0.1, 0.11, 0.18, 0.93 * fade), Color(0.02, 0.02, 0.05, 0.93 * fade))
+			CardFace.box(self, pr, 13, Color(0, 0, 0, 0), Color(UITheme.GOLD_DIM, 0.9 * fade), 2.0)
+			CardFace.text_in(self, CardFace.font("display_bold"), pr, "VEILED", 22, Color(UITheme.TEXT, fade), HORIZONTAL_ALIGNMENT_CENTER)
+			draw_set_transform(Vector2.ZERO)
+			return
+		if totem.face_down:
+			mod = Color(1, 1, 1, 0.55 * fade)   # your own veiled Totem: seen, but faint
 		var ar: Rect2
 		if field3d:
 			# the creature stands in the 3D field; only the plaque and badges are drawn here.
@@ -161,7 +174,7 @@ class TotemView:
 			else:
 				ar = Rect2(plat.get_center() - Vector2(90, 220), Vector2(180, 200))
 		else:
-			var cut := DuelArt.creature(totem.id())
+			var cut := DuelArt.creature_or_stand_in(totem.id())
 			if cut != null:
 				ar = _draw_cutout(cut, plat, o, mod)
 			else:
@@ -179,7 +192,8 @@ class TotemView:
 		var kx := plat.get_center().x + plat.size.x * 0.5 + 6
 		var ky := ar.position.y + 40
 		for k in totem.keywords():
-			var glyph: String = {"guardian": "resolve", "swift": "swiftness", "channel": "presence", "thorns": "venom", "harvest": "heart", "burrow": "earth"}.get(k, "any")
+			var glyph: String = {"guardian": "resolve", "swift": "swiftness", "channel": "presence", "thorns": "venom", "harvest": "heart", "burrow": "earth",
+				"loyal": "heart", "rekindle": "fire", "riposte": "psychic", "galvanise": "storm", "echo": "spirit", "reveal": "insight"}.get(k, "any")
 			draw_circle(Vector2(kx, ky), 17, Color(0.05, 0.04, 0.02, 0.85 * fade))
 			draw_arc(Vector2(kx, ky), 17, 0, TAU, 32, Color(UITheme.GOLD, 0.85 * fade), 2.0, true)
 			Glyphs.draw(self, glyph, Vector2(kx, ky), 10, Color(UITheme.GOLD, fade))
@@ -295,6 +309,17 @@ class TotemView:
 			var guard := totem.stance == "guard"
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "GUARD" if guard else "REST",
 				Color("c7d2ff" if guard else "9fe8c0", 0.95 * f), Color("141a30" if guard else "0f2a1a"), 14, 22) + 5
+		if totem.face_down:
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "VEILED", Color("2a2140", 0.95 * f), Color("d9c8ff"), 14, 22) + 5
+		if not totem.bond.is_empty():
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "BOND", Color("3a2a08", 0.95 * f), UITheme.GOLD, 14, 22) + 5
+		if totem.temper_level() > 0:
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "✦".repeat(totem.temper_level()), Color("3a2a08", 0.95 * f), Color("ffd98a"), 14, 22) + 5
+		if totem.relic != null:
+			# the Relic's band, under the plaque
+			var rb := Rect2(Vector2(pr.position.x + 20, pr.end.y + 2), Vector2(pr.size.x - 40, 20))
+			CardFace.box(self, rb, 8, Color(DuelCardFace.RELIC_COL, 0.92 * f))
+			CardFace.text_in(self, CardFace.font("bold"), rb, totem.relic.card_name().to_upper(), 13, Color(1, 1, 1, f), HORIZONTAL_ALIGNMENT_CENTER)
 		for cnd in totem.conditions():
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), DuelConditions.short_name(cnd), Color(DuelConditions.color(cnd), 0.95 * f), Color("140f18"), 14, 22) + 5
 		for bn in totem.boons:
