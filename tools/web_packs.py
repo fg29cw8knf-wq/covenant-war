@@ -35,7 +35,12 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Never in any build: source files, checks (docs/audio-checks), tests, look
 # tests, and the "put the files here" notes left in asset folders.
-NEVER = ["docs/*", "tools/*", "tests/*", "lookdev/*", "assets/audio/source/*", "*/PUT_*_HERE.txt", "incoming/*"]
+# (the native video player's source and the 4K films it plays, fetched by
+# tools/fetch_native.sh, stay out too: the export plugin ships the films loose
+# in the app bundles, and the libraries in addons/native_video/bin/ go in
+# through their .gdextension)
+NEVER = ["docs/*", "tools/*", "tests/*", "lookdev/*", "assets/audio/source/*", "*/PUT_*_HERE.txt", "incoming/*",
+	"addons/native_video/src/*", "addons/native_video/films/*"]
 # The web plays the music through the page (tools/web_music.py), not the pack.
 WEB_ONLY_OUT = ["assets/audio/music/*"]
 # The finished opening movie, and what the engine plays shot by shot when it's
