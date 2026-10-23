@@ -51,7 +51,7 @@ static func tutor_step_kind(game: DuelGame, pi: int, step: Dictionary) -> String
 func choose_response(_game: DuelGame, _pi: int, event: Dictionary, cards: Array) -> DuelCard:
 	screen.begin_respond(event, cards)
 	var r = await responded
-	return r
+	return r if r is DuelCard else null   # (anything else, a turn ended from outside, lets it be)
 
 
 func choose_cards(_game: DuelGame, _pi: int, prompt: String, cards: Array, min_n: int, max_n: int, context: Dictionary) -> Array:

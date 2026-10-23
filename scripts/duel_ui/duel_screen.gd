@@ -3086,7 +3086,8 @@ func _show_result(r: String) -> String:
 		return await _trial_reset()
 	var title: String = {"won": "VICTORY", "lost": "DEFEAT", "draw": "DRAW"}[r]
 	if _watching():
-		title = "%s WINS" % String(game.players[game.winner].player_name).to_upper() if game.winner in [0, 1] else "DRAW"
+		var wn := String(game.players[game.winner].player_name) if game.winner in [0, 1] else ""
+		title = "DRAW" if wn == "" else ("YOU WIN" if wn == "You" else "%s WINS" % wn.to_upper())
 	var col := UITheme.GOLD if r == "won" or _watching() else (Color("c7cbe0") if r == "draw" else Color("e06070"))
 	var burst := ResultBurst.new()
 	burst.col = col

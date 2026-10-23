@@ -229,7 +229,12 @@ func _duel(spec: Dictionary) -> DuelScreen:
 			ds.tap_banner()
 		if ds.tutor != null and ds.tutor.blocking:
 			ds.tutor._tapped.emit()
-	_check(ds.mode == "main", "the duel reached the player's turn")
+		for c in ds.overlay.get_children():
+			if c is DuelScreen.RespondStrip:   # the rival's move, answered or not: let it be (Phase A)
+				c._finish(null)
+	_check(ds.mode == "main", "the duel reached the player's turn (mode %s, turn %d, current %d, phase %s, last: %s)" % [
+		ds.mode, ds.game.turn if ds.game else -1, ds.game.current if ds.game else -1, ds.game.phase if ds.game else "",
+		ds.game.log_lines[-1] if ds.game and not ds.game.log_lines.is_empty() else ""])
 	return ds
 
 
