@@ -963,6 +963,7 @@ func cine_to(pos: Vector3, look: Vector3, secs: float) -> void:
 ## Hands the camera back to the player.
 func end_cine() -> void:
 	Cine.take_camera(self)   # (no glide left over from the film fights the player's camera)
+	Cine.end_light(self)
 	cine = false
 
 
@@ -976,6 +977,7 @@ func cine_home(secs: float = 1.0) -> void:
 	_cam_clear = _clear_way(look, want)
 	await cine_to(look.lerp(want, _cam_clear), look, secs)
 	_focus = f
+	Cine.end_light(self)
 	cine = false
 
 

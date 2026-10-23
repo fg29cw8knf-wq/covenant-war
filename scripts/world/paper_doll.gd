@@ -29,7 +29,9 @@ func setup(id: String) -> PaperDoll:
 func _ready() -> void:
 	_sprite = Sprite3D.new()
 	_sprite.billboard = BaseMaterial3D.BILLBOARD_FIXED_Y
-	_sprite.shaded = false
+	# lit by the scene (the moon, the lanterns, a film's key light) like the
+	# 3D figures beside it, instead of glowing flat in the dark (23 October)
+	_sprite.shaded = true
 	_sprite.double_sided = true
 	_sprite.alpha_cut = SpriteBase3D.ALPHA_CUT_OPAQUE_PREPASS
 	_sprite.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC

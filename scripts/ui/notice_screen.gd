@@ -28,6 +28,9 @@ const COPYRIGHT := "© 2026 Gary Mannion. All rights reserved."
 ## errors or something that doesn't work right or look right so I can fix it").
 const ONE_MAN_HEAD := "A one-man job"
 const ONE_MAN := "Everything you're about to play was made by one person: me. That means there will be things that don't work right, or don't look right, and I won't have seen them all.\n\nIf you find one, please tell me, so I can fix it. Every report makes the game better for the next person who plays it."
+## How to reach Gary with what's found (on this page, and on the Options page).
+const CONTACT := "garymannion@123mail.org"
+const CONTACT_LINE := "Tell me at " + CONTACT
 
 ## The pages, in order: a heading, its paragraphs, and whether the maker's
 ## name and the ownership line head the page.
@@ -106,6 +109,11 @@ func _build_page() -> void:
 		col.add_child(_rule())
 	for p in spec.paras:
 		col.add_child(_para(String(p), 30 if spec.made_by else 32, Color(UITheme.TEXT, 0.92)))
+	if not spec.made_by:
+		# the address, big enough to copy from a phone
+		var who := UITheme.label(CONTACT_LINE, 34, UITheme.GOLD, "display_bold")
+		who.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(who)
 	var sig := UITheme.label("~ " + SIGN_OFF, 34, UITheme.GOLD, "display")
 	sig.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(sig)

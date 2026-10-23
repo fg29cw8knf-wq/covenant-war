@@ -33,10 +33,18 @@ vec3 tear_light(vec3 d, out float core) {
 	float k1 = floor(seg2);
 	jag = jag * 0.035 + (mix(hash12(vec2(k1, 5.3)), hash12(vec2(k1 + 1.0, 5.3)), fract(seg2)) - 0.5) * 0.012;
 	float dist = abs(dot(d, n) - jag);
-	float width = 0.0010 + 0.0024 * ends;
+	// the crack opens wider as it tears (tear_open 0..1): a rift, not a bolt
+	// (23 October: it read as lightning; the script has the sky splitting
+	// from one horizon to the other with light pouring down in every colour)
+	float open = clamp(tear_open, 0.0, 1.0);
+	float width = (0.0010 + 0.0024 * ends) * (1.0 + 2.2 * open);
 	core = exp(-dist / width) * ends * step(-0.05, s) * step(s, 1.05);
 	float glow1 = exp(-dist / (width * 4.0)) * ends;
-	float glow2 = exp(-dist / 0.035) * ends;
+	float glow2 = exp(-dist / (0.035 + 0.06 * open)) * ends;
+	// light pouring out below the crack: a wide soft spill, more on the
+	// side that faces the ground, rippling along the tear
+	float spill = exp(-dist / (0.16 + 0.1 * open)) * ends * open;
+	spill *= 0.55 + 0.45 * sin(s * 23.0 + TIME * 1.7) * sin(s * 7.0 - TIME * 0.9);
 	// colours bleeding out of the tear: violet, teal and gold along its length
 	vec3 c = mix(vec3(0.55, 0.25, 1.0), vec3(0.15, 0.85, 0.95), smoothstep(0.15, 0.55, s));
 	c = mix(c, vec3(1.0, 0.75, 0.3), smoothstep(0.6, 0.95, s));
@@ -51,7 +59,7 @@ vec3 tear_light(vec3 d, out float core) {
 		fork += exp(-fd / 0.0008) * m;
 	}
 	core = max(core, fork * 0.6);
-	vec3 col = vec3(1.0, 0.97, 0.9) * core * 10.0 + c * glow1 * 1.1 + c * glow2 * 0.12;
+	vec3 col = vec3(1.0, 0.97, 0.9) * core * 10.0 + c * glow1 * 1.1 + c * glow2 * 0.22 + c * spill * 0.28;
 	if (CUBEPASS) col *= 0.3;
 	return col * tear_open;
 }
