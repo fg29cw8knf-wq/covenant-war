@@ -817,15 +817,17 @@ func summon_cost(pi: int, card: DuelCard) -> int:
 ## A card's Essence cost under this duel's Law (never below 1 for a card
 ## that costs anything).
 func card_cost(pi: int, card: DuelCard) -> int:
+	# Iron Tithe on the other side (Phase D): Wards and Rites cost more, free ones too
+	var tax := 0
+	if card.is_ward() or card.is_rite():
+		tax = int(standing(1 - pi, "foe_tax").get("foe_tax", 0))
 	var c := card.cost()
 	if c <= 0:
-		return c
+		return c + tax
 	var el := card.element()
-	var d := _rule_sunspire_mirror_discount(pi, card)
-	if law == "" and d == 0 and not (card.is_ward() and not standing(1 - pi, "foe_ward_tax").is_empty()):
+	var d := _rule_sunspire_mirror_discount(pi, card) + tax
+	if law == "" and d == 0:
 		return c
-	if card.is_ward() and not standing(1 - pi, "foe_ward_tax").is_empty():
-		d += 1   # (Iron Tithe, on the other side)
 	match law:
 		"pyrrhane":
 			if el == "fire": d -= 1

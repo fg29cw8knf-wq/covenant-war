@@ -266,7 +266,7 @@ shape of a turn and answering on the rival's turn.
   (`DuelRules.continuous_slots`); a third sends the oldest to the discard,
   and **Unbind** sends one of the rival's there. Six: Kindled Banner (Fire
   Totems +10 damage), Tidewell (heals 10 from each Totem at Dawn), Iron
-  Tithe (the rival's Wards cost 1 more), Thorn Hedge (an attacker takes 10),
+  Tithe (the rival's Wards and Rites cost 1 more), Thorn Hedge (an attacker takes 10),
   Storm Spire (Storm Totems attack the turn they're called), Shadow Veil
   (the first call each turn veiled at no extra cost). A green STANDING RITE
   band on the card, TERRAIN RITE on the five.
@@ -294,10 +294,11 @@ shape of a turn and answering on the rival's turn.
   `game.ai_oaths`). A story rival's line for it can be added to a duel's
   `bark_on` as "my_oath", "my_oath_broken" or "rival_oath_broken" (none is
   written yet: that's the story's).
-- Each starter deck has a Terrain Rite and a Continuous Rite (Emberstorm:
-  Forge Ground, Kindled Banner; Tidegrove: Flooded Circle, Thorn Hedge;
-  Ironstone: Iron Ground, Iron Tithe; Veilwild: Veilwild Mist, Shadow
-  Veil). The Duel Lab picks the Circle (its rule under the buttons) and has
+- The starter decks have Phase D cards (Emberstorm: Forge Ground, Kindled
+  Banner; Tidegrove: Flooded Circle, Thorn Hedge; Ironstone: Iron Tithe;
+  Veilwild: Veilwild Mist, Shadow Veil). Iron Ground was tried in Ironstone
+  and left out: the computer had little use for it, and the deck did 6
+  points better with a Healing Draught in its place. The Duel Lab picks the Circle (its rule under the buttons) and has
   rows for the new numbers. Prompts: `docs/card-prompts.md`, round 7.
   Bram's lessons: `arena_rule`, `terrain`, `continuous`, `favour`,
   `favour_rival`, `oath`.

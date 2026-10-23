@@ -1133,7 +1133,7 @@ func _on_gift() -> void:
 		var dg := game.demigod_of(me)
 		if dg != "":
 			var dp := game.demigod_problem(me)
-			_add_action("%s, free" % DuelCards.CARDS[dg].name, DuelCards.card_text(dg) if dp == "" else dp, 0, dp == "", _begin_demigod, "demigod")
+			_add_action("%s, free" % DuelCards.CARDS[dg].name, DuelCards.card_text(dg).trim_prefix("Descends, then returns to the heavens. ") if dp == "" else dp, 0, dp == "", _begin_demigod, "demigod")
 		_show_cancel()
 		_set_hint("Full Favour: choose what it brings.")
 		_refresh()
@@ -1625,7 +1625,7 @@ func _show_actions_default() -> void:
 				_set_hint("Nothing left to do: end your turn.")
 			# the Oath at the start of the duel (Phase D): offered on the first turn
 			if game.own_turns(me) <= 1 and _oath_available():
-				_add_action("Swear an Oath", "Now, at the start, and once more mid-duel from the Menu.", 0, true, _offer_oaths, "oath")
+				_add_action("Swear an Oath", "Now, and once more mid-duel.", 0, true, _offer_oaths, "oath")
 
 
 func _show_cancel() -> void:
@@ -1686,7 +1686,9 @@ func _place_actions() -> void:
 	var sz := actions.get_combined_minimum_size()
 	actions.size = sz
 	if _menu_anchor.x < 0.0:
-		actions.position = DOCK_POS + Vector2(_edge, 0)
+		# (kept inside the screen's right edge, however wide the buttons are)
+		# (and a tall stack rises so it ends above the Gift and the turn button)
+		actions.position = Vector2(minf(DOCK_POS.x, DESIGN.x - sz.x - 12.0) + _edge, clampf(820.0 - sz.y, 92.0, DOCK_POS.y))
 		actions.pivot_offset = Vector2(sz.x * 0.5, 0)
 	elif _menu_beside != 0:
 		var x := _menu_anchor.x + 150.0 if _menu_beside > 0 else _menu_anchor.x - 150.0 - sz.x

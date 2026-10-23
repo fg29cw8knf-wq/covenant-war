@@ -3,7 +3,8 @@ extends Node
 ## (the emberforge over Solhaven, with its rule under the turn count),
 ## Continuous Rites standing beside the Wards on both sides, the Favour ring
 ## round each god's seal (one filling, one full) and the Oath ribbons; on the
-## flat field and the 3D field.
+## flat field and the 3D field; then the Oaths to choose from and full
+## Favour's choice (the Gift again, or Pyraxis free).
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
 ##       res://tests/phase_d_shot.tscn -- <out_dir>
 
@@ -55,6 +56,25 @@ func _ready() -> void:
 		var img := get_viewport().get_texture().get_image()
 		img.save_png("%s/phase_d_%s.png" % [out, "flat" if flat else "3d"])
 		print("PHASE D SHOT: saved %s" % ("flat" if flat else "3d"))
+		if not flat:
+			# the Oaths to choose from, then full Favour's choice
+			g.players[0].oath = ""
+			g.players[0].oath_state = ""
+			ds._offer_oaths()
+			await get_tree().create_timer(0.8).timeout
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/phase_d_oaths.png" % out)
+			print("PHASE D SHOT: saved oaths")
+			ds._back_out()
+			g.players[0].gift_used = true
+			g.players[0].favour_ready = true
+			g.players[0].favour2 = DuelRules.favour_max * 2
+			ds._refresh()
+			ds._on_gift()
+			await get_tree().create_timer(0.8).timeout
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/phase_d_favour.png" % out)
+			print("PHASE D SHOT: saved favour")
 		ds.queue_free()
 		await get_tree().create_timer(0.3).timeout
 	get_tree().quit()

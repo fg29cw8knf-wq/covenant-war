@@ -989,8 +989,8 @@ func _standing_value(game: DuelGame, pi: int, c: DuelCard) -> float:
 	elif st.has("dawn_heal"):
 		for t in p.totems():
 			v += minf(float(st.dawn_heal), float(t.damage)) * 1.2 + 4.0
-	elif st.has("foe_ward_tax"):
-		v += 6.0 + foe.wards.size() * 3.0
+	elif st.has("foe_tax"):
+		v += 4.0 + foe.hand.size() * 2.0
 	elif st.has("thorn_all"):
 		v += float(st.amount) * 0.8 * foe.totems().size()
 	elif st.has("storm_swift"):

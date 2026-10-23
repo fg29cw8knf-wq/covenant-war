@@ -826,7 +826,7 @@ const CARDS := {
 	},
 	"iron_tithe": {
 		"kind": "rite", "name": "Iron Tithe", "element": "metal", "tier": 2, "cost": 2, "target": "none", "continuous": true,
-		"standing": {"foe_ward_tax": 1},
+		"standing": {"foe_tax": 1},
 		"art": "an iron collection box chained to a post, a rune-marked coin hovering over its slot",
 	},
 	"thorn_hedge": {
@@ -981,7 +981,7 @@ const DECKS := {
 		"attributes": {"might": 2, "resolve": 2},
 		"cards": {"pebblit": 3, "boulderox": 2, "burrowmole": 3, "quarry_golem": 1,
 			"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1,
-			"bulwark": 1, "forge_edge": 1, "rekindle": 1, "iron_ground": 1, "crystal_vein": 1, "shieldwall_call": 1, "iron_tithe": 1,
+			"bulwark": 1, "forge_edge": 1, "rekindle": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1, "iron_tithe": 1,
 			"iron_bastion": 2, "ironclad_behemoth": 1, "grondmaw": 1, "iron_brace": 1},
 	},
 	"veilwild": {
@@ -1344,8 +1344,8 @@ static func standing_text(st: Dictionary) -> String:
 		return "Your %s Totems deal %d more damage" % [String(st.element).capitalize(), int(st.amount)]
 	if st.has("dawn_heal"):
 		return "At your Dawn, heal %d damage from each of your Totems" % int(st.dawn_heal)
-	if st.has("foe_ward_tax"):
-		return "Your rival's Wards cost %d more Essence" % int(st.foe_ward_tax)
+	if st.has("foe_tax"):
+		return "Your rival's Wards and Rites cost %d more Essence" % int(st.foe_tax)
 	if st.has("thorn_all"):
 		return "A Totem that attacks one of yours takes %d damage" % int(st.amount)
 	if st.has("storm_swift"):

@@ -180,10 +180,14 @@ func _continuous() -> void:
 	await g.perform(0, {"type": "rite", "card": it})
 	_check(g.players[0].continuous.size() == DuelRules.continuous_slots and not g.players[0].continuous.has(kb) and g.players[0].discard.has(kb),
 		"a third standing Rite sends the oldest to the discard (%s)" % [g.players[0].continuous])
-	# Iron Tithe: the rival's Wards cost 1 more
+	# Iron Tithe: the rival's Wards and Rites cost 1 more
 	var snare := _card("ambush_snare", 1)
 	_check(g.card_cost(1, snare) == snare.cost() + 1, "Iron Tithe: the rival's Ward costs %d (was %d)" % [g.card_cost(1, snare), snare.cost()])
 	_check(g.card_cost(0, _card("ambush_snare", 0)) == snare.cost(), "...but not their own")
+	var fb := _card("firebrand", 1)
+	_check(g.card_cost(1, fb) == fb.cost() + 1, "Iron Tithe: and their Rites (%d, was %d)" % [g.card_cost(1, fb), fb.cost()])
+	var mt := _card("memory_thread", 1)
+	_check(g.card_cost(1, mt) == 1, "...a free one too (%d)" % g.card_cost(1, mt))
 	# Unbind
 	g.current = 1
 	var ub := _hand(g, 1, "unbind")
