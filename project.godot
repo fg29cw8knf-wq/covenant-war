@@ -22,6 +22,10 @@ Music="*res://scripts/ui/music.gd"
 Ads="*res://scripts/game/ads.gd"
 Packs="*res://scripts/game/packs.gd"
 
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/native_video/plugin.cfg")
+
 [display]
 
 window/size/viewport_width=1920

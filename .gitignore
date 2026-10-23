@@ -12,3 +12,12 @@ __pycache__/
 # Claude worktrees
 .claude/
 build_info.cfg
+
+# The native video player: built libraries, the 4K films and godot-cpp are
+# fetched or built by the workflows, never committed
+addons/native_video/bin/
+addons/native_video/films/
+addons/native_video/src/godot-cpp/
+addons/native_video/src/.sconsign.dblite
+addons/native_video/src/*.o
+addons/native_video/src/*.os
