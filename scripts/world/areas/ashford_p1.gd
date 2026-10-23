@@ -824,6 +824,12 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 	var in_zone := false
 	var strayed_at := -100.0
 	var held_until := 0.0   # (no walking while they're being turned back)
+	# the walk's own clock, in game time (frames' deltas), not the wall clock:
+	# the same to a player, but a test run at --fixed-fps in keys mode gets
+	# through 3 s of game in well under 1.6 s of real time, and its tap on
+	# the door after Bram's "Wrong way" fell inside the hold and was dropped
+	# (23 October: "timed out waiting for the door" on a quiet machine)
+	var clock := 0.0
 	# (the follower is theirs to move only until a staged walk takes them)
 	var fb0 := Cine.body(w, follower) if follower != "" else null
 	var follow_token := int(fb0.get_meta("cine_path", 0)) if fb0 != null else 0
@@ -845,12 +851,12 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 	var look := w.player.global_position + Vector3(0, 1.0, 0)
 	while is_instance_valid(w) and w.is_inside_tree():
 		var dt := w.get_process_delta_time()
+		clock += dt
 		var p := w.player.global_position
 		if done.call(p):
 			break
 		var move := Vector3.ZERO
-		var now_s := Time.get_ticks_msec() * 0.001
-		if now_s < held_until:
+		if clock < held_until:
 			target[0] = null
 		elif not w.hud.menu_open() and not (w.hud.dialogue.visible and not w.hud.dialogue.barking()):
 			var iv: Vector2 = w.hud.pad.vector
@@ -890,11 +896,10 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		if zone.size != Vector2.ZERO and stray.is_valid():
 			var lp := root.to_local(np)
 			var here := zone.has_point(Vector2(lp.x, lp.z))
-			var now := Time.get_ticks_msec() * 0.001
-			if here and not in_zone and now - strayed_at > 6.0:
-				strayed_at = now
+			if here and not in_zone and clock - strayed_at > 6.0:
+				strayed_at = clock
 				target[0] = null   # (they stop: the way's wrong)
-				held_until = now + 1.6
+				held_until = clock + 1.6
 				stray.call()
 				# a step back out of it, facing the room again
 				var back := Vector3(zone.get_center().x, 0.0, zone.position.y - 0.45)
