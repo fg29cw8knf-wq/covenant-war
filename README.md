@@ -342,9 +342,11 @@ merchant and trader are Gary's 22 October models (`farmer.glb`, `merchant.glb`,
 `trader.glb`: the Lantern Night crowd and the P1 dancers with those looks are
 3D figures); the elder and the two children are his 23 October models
 (`elder.glb`, `child_b.glb`, `child_c.glb`: Old Nell's and Old Maren's look,
-the children of the green, the Lantern Night and Solhaven's gate); the other
-villagers (Ned, the refugee, the courtier) stay cut-outs until their models
-exist, and a model dropped into `assets/models/characters/<id>.glb` is picked
+the children of the green, the Lantern Night and Solhaven's gate; the third
+child look, `child`, the blonde cut-out that was Pip's and the third child's on
+the green, plays the boy's model too, `Figure3D.MODELS`, until Pip's own comes);
+the other villagers (Ned, the refugee, the courtier) stay cut-outs until their
+models exist, and a model dropped into `assets/models/characters/<id>.glb` is picked
 up by itself. A cut-out always
 shows the camera its painted front, turned left or right (its back picture
 read as a blank white card in a film), and kneels by crouching onto its feet
