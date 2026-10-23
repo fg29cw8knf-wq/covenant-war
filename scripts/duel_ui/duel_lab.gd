@@ -144,14 +144,15 @@ func _fill_side(side: int) -> void:
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 8)
 	box.add_child(grid)
-	for d in DuelCards.DECKS:
-		var b := _toggle(DuelCards.DECKS[d].name, cfg.deck[side] == d, 264)
+	for d in DuelCards.DECKS.keys() + DuelArchetypes.DECKS.keys():   # (the four starters, then the seven ways' decks, Phase E)
+		var b := _toggle(_deck(d).name, cfg.deck[side] == d, 264)
 		b.custom_minimum_size.y = 58
 		b.pressed.connect(func() -> void:
 			cfg.deck[side] = d
 			_changed(side))
 		grid.add_child(b)
-	var desc := UITheme.label(DuelCards.DECKS[cfg.deck[side]].desc, 21, UITheme.TEXT_DIM)
+	var way := DuelArchetypes.of_cards(DuelCards.card_list(cfg.deck[side]))
+	var desc := UITheme.label("%s  Its way: %s." % [_deck(cfg.deck[side]).desc, DuelArchetypes.arch_name(way)] if way != "" else _deck(cfg.deck[side]).desc, 21, UITheme.TEXT_DIM)
 	desc.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	desc.custom_minimum_size = Vector2(538, 0)
 	box.add_child(desc)
@@ -229,6 +230,11 @@ func _fill_side(side: int) -> void:
 	_update_info(side)
 
 
+## A deck the Lab offers: a starter, or one of the ways' sample decks.
+static func _deck(id: String) -> Dictionary:
+	return DuelCards.DECKS.get(id, DuelArchetypes.DECKS.get(id, DuelCards.DECKS.emberstorm))
+
+
 func _toggle(text: String, on: bool, w: int) -> Button:
 	var b := UITheme.button(text, on, w)
 	b.custom_minimum_size = Vector2(w, 62)
@@ -276,7 +282,7 @@ func _changed(side: int) -> void:
 
 func profile(side: int) -> Dictionary:
 	var p := Lore.new_profile("You" if side == 0 else "Rival", "", int(cfg.level[side]))
-	var bumps: Dictionary = DuelCards.DECKS[cfg.deck[side]].get("attributes", {})
+	var bumps: Dictionary = _deck(cfg.deck[side]).get("attributes", {})
 	for a in bumps:
 		p.base[a] = mini(10, int(p.base[a]) + int(bumps[a]))
 	Lore.set_patron(p, cfg.patron[side])
@@ -449,7 +455,7 @@ func _play(watch: bool) -> void:
 	add_child(layer)
 	_screen = DuelScreen.new().configure({
 		"decks": cfg.deck.duplicate(),
-		"names": [Game.player_name if not watch else DuelCards.DECKS[cfg.deck[0]].name, "Rival" if not watch else DuelCards.DECKS[cfg.deck[1]].name],
+		"names": [Game.player_name if not watch else _deck(cfg.deck[0]).name, "Rival" if not watch else _deck(cfg.deck[1]).name],
 		"profiles": [profile(0), profile(1)],
 		"ai": [watch, true],
 		"difficulty": LEVELS.get(cfg.difficulty, 0.8),
@@ -489,6 +495,6 @@ func _run_tests() -> void:
 			_result.text = "Testing… %d / %d" % [g + 1, n]
 			await get_tree().process_frame
 	_result.text = "%d test duels: %s wins %d%%, %s wins %d%%  ·  average %.1f turns  ·  first player wins %d%%" % [n,
-		DuelCards.DECKS[cfg.deck[0]].name, 100 * wins[0] / n, DuelCards.DECKS[cfg.deck[1]].name, 100 * wins[1] / n,
+		_deck(cfg.deck[0]).name, 100 * wins[0] / n, _deck(cfg.deck[1]).name, 100 * wins[1] / n,
 		float(turns) / n, 100 * first / maxi(1, wins[0] + wins[1])]
 	_busy = false

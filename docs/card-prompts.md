@@ -2581,3 +2581,514 @@ Mood: what was bound comes loose.
 Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
+
+# Round 8: decks that play differently (Phase E of the deeper duel, 23 October)
+
+Six new Totems for the three ways that had no deck (each needs a card painting, a battlefield cut-out and a 3D model; until they come they show as another creature in their own colour), and the 21 cards that belong to the seven ways (card paintings only).
+
+## Dawnling (round 8, totem, radiant, Dawn and Blessing)
+
+**Card painting · square 1536 × 1536 · save as cards/dawnling.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a small round sprite of warm sunlight with stubby wings and a halo of soft gold rays, cheerful and bright.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/dawnling.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a small round sprite of warm sunlight with stubby wings and a halo of soft gold rays, cheerful and bright.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/dawnling.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Hallowed Hound (round 8, totem, spirit, Dawn and Blessing)
+
+**Card painting · square 1536 × 1536 · save as cards/hallowed_hound.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a pale spectral hound with a glowing teal mane like candle smoke, a small lantern hanging from its collar.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/hallowed_hound.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a pale spectral hound with a glowing teal mane like candle smoke, a small lantern hanging from its collar.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/hallowed_hound.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Rimecub (round 8, totem, frost, Frost and Stillness)
+
+**Card painting · square 1536 × 1536 · save as cards/rimecub.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a round white bear cub with frost-blue paws and icicle tufts on its ears, breathing a little cloud of snow.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/rimecub.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a round white bear cub with frost-blue paws and icicle tufts on its ears, breathing a little cloud of snow.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/rimecub.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Runeowl (round 8, totem, mystic, Frost and Stillness)
+
+**Card painting · square 1536 × 1536 · save as cards/runeowl.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of an indigo owl with glowing rune marks on its wings, a ring of floating sigils turning round its head.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/runeowl.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: an indigo owl with glowing rune marks on its wings, a ring of floating sigils turning round its head.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/runeowl.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Starling (round 8, totem, astral, Stars and Shadow)
+
+**Card painting · square 1536 × 1536 · save as cards/starling.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a small dark-blue fox kit whose fur is full of tiny glittering stars, its tail trailing light like a comet.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/starling.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a small dark-blue fox kit whose fur is full of tiny glittering stars, its tail trailing light like a comet.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/starling.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Duskstalker (round 8, totem, umbral, Stars and Shadow)
+
+**Card painting · square 1536 × 1536 · save as cards/duskstalker.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a lean shadow panther with violet eyes, its edges dissolving into wisps of dusk.
+
+Pose: alert and friendly, a young creature ready to fight for its duellist, three-quarters towards the viewer.
+Background: a duelling circle at night, softly blurred and tinted with its element's colours.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: small, brave and full of its element.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/duskstalker.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design, colours and markings: a lean shadow panther with violet eyes, its edges dissolving into wisps of dusk.
+
+Show its whole body, including its feet and tail, in a three-quarter view facing to the right.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · save as models/creatures/duskstalker.glb** (from the cut-out, rigged like the others with idle, attack, hit and faint clips)
+
+## Stoke the Coals (round 8, rite, fire)
+
+**Card painting · square 1536 × 1536 · save as cards/stoke_the_coals.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a pair of bellows blowing a bed of coals white-hot, flames leaping up off three burning shapes.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Loaded Dice (round 8, rite, storm)
+
+**Card painting · square 1536 × 1536 · save as cards/loaded_dice.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a gold twenty-sided die crackling with lightning as it lands, its top face glowing.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Wildfire Pact (round 8, rite, fire, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/wildfire_pact.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of two hands clasped over a burning contract, the fire spreading along its edges in a ring.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Deep Roots (round 8, rite, verdant)
+
+**Card painting · square 1536 × 1536 · save as cards/deep_roots.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of great roots rising out of the ground and wrapping gently round three creatures, green light pulsing along them.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Tidal Reserve (round 8, rite, tide, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/tidal_reserve.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a still blue rock pool fed by a thin waterfall, its water glowing brighter as it fills.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Still Waters (round 8, rite, tide)
+
+**Card painting · square 1536 × 1536 · save as cards/still_waters.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a perfectly calm lake at dawn reflecting two cards floating above it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Counterweight (round 8, rite, metal, answer)
+
+**Card painting · square 1536 × 1536 · save as cards/counterweight.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a heavy iron weight on a chain swinging into a charging beast, sparks flying where they meet.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Stone Patience (round 8, rite, earth)
+
+**Card painting · square 1536 × 1536 · save as cards/stone_patience.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a stone guardian that has stood still for an age finally swinging one great fist.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Bastion Banner (round 8, rite, earth, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/bastion_banner.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a heavy grey banner on an iron pole driven into rock, a shield sigil glowing on it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Unmasking (round 8, rite, psychic)
+
+**Card painting · square 1536 × 1536 · save as cards/unmasking.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a porcelain mask lifting away from a face of violet light, a second mask beneath it already cracking.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Whispering Shroud (round 8, rite, psychic, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/whispering_shroud.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a hooded cloak of violet mist standing empty, faint whispers drawn as curls of light around it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Venom Mask (round 8, rite, venom)
+
+**Card painting · square 1536 × 1536 · save as cards/venom_mask.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a green lacquered mask dripping with venom, a creature's shape forming behind it in shadow.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Sunward Vow (round 8, rite, radiant)
+
+**Card painting · square 1536 × 1536 · save as cards/sunward_vow.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of three creatures kneeling in a beam of morning light, a golden sigil of the sun above them.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Lantern Vigil (round 8, rite, spirit, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/lantern_vigil.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a row of paper lanterns glowing teal along a dark path, one floating up into the night.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Kindled Soul (round 8, rite, spirit)
+
+**Card painting · square 1536 × 1536 · save as cards/kindled_soul.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a ghostly creature rising from a lantern's flame back into solid form, teal light streaming off it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Deep Winter (round 8, rite, frost, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/deep_winter.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a snowstorm swirling over a frozen duelling circle, a creature trapped in ice at its centre.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Shatter (round 8, rite, frost)
+
+**Card painting · square 1536 × 1536 · save as cards/shatter.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a block of ice with a creature inside cracking apart in a burst of blue shards.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Glacial Ward (round 8, ward, frost)
+
+**Card painting · square 1536 × 1536 · save as cards/glacial_ward.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a wall of blue ice rising in front of a small creature, a lunging beast freezing solid against it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Constellation (round 8, rite, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/constellation.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of three cards hanging in a night sky, joined by lines of starlight into a constellation.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Eclipse (round 8, rite, umbral, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/eclipse.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a black moon sliding across the sun over a duelling circle, a ring of violet fire around it.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Shadow Step (round 8, rite, umbral)
+
+**Card painting · square 1536 × 1536 · save as cards/shadow_step.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a figure stepping out of one shadow and into another behind a startled creature, violet smoke trailing.
+
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```

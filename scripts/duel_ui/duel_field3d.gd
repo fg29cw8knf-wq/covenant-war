@@ -579,6 +579,7 @@ func sync(v) -> void:
 			s.card.visible = true
 			var tex := DuelArt.creature_or_stand_in(id)
 			s.sprite.texture = tex
+			s.sprite.modulate = DuelArt.stand_in_tint(id)
 			s.sprite.visible = tex != null
 			s.shadow.visible = tex != null
 			var tier := int(DuelCards.CARDS[id].tier)
@@ -822,6 +823,11 @@ func _load_model(s: Slot, id: String) -> void:
 	else:
 		WingFlap.attach(inst)   # a model without clips still beats its wings (the Lantern Moth)
 	_dress_model(inst)
+	# a new Totem with no model of its own yet (Phase E) wears its stand-in's
+	# shape in its own colour, plain, so it reads as a placeholder
+	var d: Dictionary = DuelCards.CARDS.get(id, {})
+	if d.has("stand_in_tint") and not path.ends_with("/%s.glb" % id):
+		inst.set_meta("stand_in_tint", Color(String(d.stand_in_tint)))
 	s.sprite.visible = false
 	s.shadow.visible = true
 
@@ -879,6 +885,8 @@ func _tint_model(s: Slot, m: Color) -> void:
 	# materials are left alone.
 	var flash := maxf(0.0, maxf(m.r, maxf(m.g, m.b)) - 1.0)
 	var dim := minf(1.0, minf(m.r, minf(m.g, m.b)))
+	var tinted: bool = s.model.has_meta("stand_in_tint")
+	var tint: Color = s.model.get_meta("stand_in_tint", Color.WHITE)
 	for mi in s.model.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mi as MeshInstance3D
 		for i in mesh.mesh.get_surface_count() if mesh.mesh != null else 0:
@@ -889,15 +897,25 @@ func _tint_model(s: Slot, m: Color) -> void:
 			if not mesh.has_meta(key):
 				mesh.set_meta(key, src)
 			var base: BaseMaterial3D = mesh.get_meta(key)
-			if flash <= 0.001 and dim >= 0.999:
+			if flash <= 0.001 and dim >= 0.999 and not tinted:
 				if mesh.get_surface_override_material(i) != null:
 					mesh.set_surface_override_material(i, null)
 				continue
 			var ov: BaseMaterial3D = mesh.get_surface_override_material(i)
+			# (a tinted stand-in's solid surfaces go plain in its colour; its light
+			# surfaces, fire and mist, keep their texture and take the colour)
+			var solid := tinted and base.blend_mode == BaseMaterial3D.BLEND_MODE_MIX and base.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
 			if ov == null or ov == base:
 				ov = base.duplicate()
+				if solid:
+					ov.albedo_texture = null
 				mesh.set_surface_override_material(i, ov)
-			ov.albedo_color = base.albedo_color * Color(dim, dim, dim, 1.0)
+			var col := base.albedo_color
+			if solid:
+				col = Color(tint, base.albedo_color.a)
+			elif tinted:
+				col = base.albedo_color * tint
+			ov.albedo_color = col * Color(dim, dim, dim, 1.0)
 			ov.emission_enabled = true
 			ov.emission = Color(m.r, m.g, m.b).lerp(base.emission if base.emission_enabled else Color.BLACK, 0.0) * 0.5 if flash > 0.001 else (base.emission if base.emission_enabled else Color.BLACK)
 			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0

@@ -2016,6 +2016,13 @@ func lessons_at_main() -> void:
 			break
 	for c in game.players[me].hand:
 		var card: DuelCard = c
+		if card.def.has("archetype") and not Game.learned("way"):
+			# (Phase E: a way's card)
+			await tutor.lesson("way", "That %s belongs to a way of playing: %s. It only works while %s of yours stands on the field. Every deck leans to a way; play to it and its cards play for you." % [
+				card.card_name(), DuelArchetypes.arch_name(card.def.archetype), DuelArchetypes.need_text(card.def.archetype)], "Ways of playing", "card:" + card.id)
+			break
+	for c in game.players[me].hand:
+		var card: DuelCard = c
 		if card.is_summon():
 			await tutor.lesson("summon", "That %s is a Summon. Not a Totem: a piece of something far bigger. It costs %d Essence, does one great thing, and goes back where it came from. Save it for when it counts." % [
 				card.card_name(), game.summon_cost(me, card)], "Summons", "card:" + card.id)
@@ -3703,6 +3710,9 @@ func _reward_lines() -> Array:
 		lines.append("Building towards %s: %d / %d Resonance" % [DuelCards.CARDS[target].name, out.banked_after, DuelRewards.card_cost(target)])
 	if int(out.overflow) > 0:
 		lines.append("+%d to your Attunement pool" % out.overflow)
+	var gl := String(out.get("glimpsed", ""))
+	if gl != "":
+		lines.append("New in your Codex: %s" % DuelCards.CARDS[gl].name)
 	if int(out.ranks_gained) > 0:
 		lines.append("Sigil Rank %d!  +%d attribute points to place" % [out.rank_after, int(out.ranks_gained) * DuelRewards.POINTS_PER_RANK])
 	elif out.capped:

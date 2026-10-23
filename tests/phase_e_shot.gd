@@ -1,0 +1,43 @@
+extends Node
+## Stills of Phase E on the duel screen: the new ways' Totems as their tinted
+## stand-ins (Rimecub, Runeowl and Dawnling on your side, Starling and
+## Duskstalker on the rival's), a way's card read in the detail panel
+## (Shatter, with what it needs on the field); on the flat field and the 3D
+## field.
+##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
+##       res://tests/phase_e_shot.tscn -- <out_dir>
+
+var out := "user://"
+
+
+func _ready() -> void:
+	var args := OS.get_cmdline_user_args()
+	out = args[0] if args.size() > 0 else "user://"
+	get_tree().root.theme = UITheme.make()
+	for flat in [true, false]:
+		var ds := DuelScreen.new().configure({"decks": ["way_frost_stillness", "way_stars_shadow"], "names": ["You", "Rival"],
+			"ai": [false, false], "seed": 47, "speed": 50.0, "field3d": not flat})   # (both waiting for a tap: the board holds still)
+		add_child(ds)
+		var t := 0.0
+		while (ds.game == null or ds.game.turn < 1) and t < 30.0:
+			await get_tree().create_timer(0.2).timeout
+			t += 0.2
+			if ds.banner_waiting:
+				ds.tap_banner()
+		var g := ds.game
+		for pl in g.players:
+			pl.slots = [null, null, null]
+		g.players[0].slots[0] = g._new_totem(DuelCard.new(9300, "rimecub", 0), 0, 0, 1)
+		g.players[0].slots[1] = g._new_totem(DuelCard.new(9301, "runeowl", 0), 0, 1, 1)
+		g.players[0].slots[2] = g._new_totem(DuelCard.new(9302, "dawnling", 0), 0, 2, 1)
+		g.players[1].slots[0] = g._new_totem(DuelCard.new(9303, "starling", 1), 1, 0, 1)
+		g.players[1].slots[2] = g._new_totem(DuelCard.new(9304, "duskstalker", 1), 1, 2, 1)
+		ds._refresh()
+		ds._show_detail("shatter")
+		await get_tree().create_timer(2.0).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/phase_e_%s.png" % [out, "flat" if flat else "3d"])
+		print("PHASE E SHOT: saved %s" % ("flat" if flat else "3d"))
+		ds.queue_free()
+		await get_tree().create_timer(0.3).timeout
+	get_tree().quit()

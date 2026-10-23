@@ -405,7 +405,8 @@ func _deck() -> Control:
 	top.add_theme_constant_override("separation", 20)
 	v.add_child(top)
 	top.add_child(UITheme.label("YOUR DECK  %d / %d" % [_deck_work.size(), DuelRules.deck_size], 38, UITheme.GOLD, "display_bold"))
-	var comp := UITheme.label(_deck_makeup(_deck_work), 26, UITheme.TEXT_DIM)
+	var way := DuelArchetypes.of_cards(_deck_work)   # (the way it leans to, Phase E)
+	var comp := UITheme.label(_deck_makeup(_deck_work) + ("  ·  Way: %s" % DuelArchetypes.arch_name(way) if way != "" else ""), 26, UITheme.TEXT_DIM)
 	comp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	comp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	top.add_child(comp)

@@ -65,6 +65,10 @@ func choose_cards(game: DuelGame, pi: int, _prompt: String, cards: Array, min_n:
 			for s in scored:
 				s.v = _standing_value(game, 1 - pi, s.c)
 			scored.sort_custom(func(a, b): return a.v > b.v)
+		"veil_call":
+			for s in scored:
+				s.v = _call_score(game, pi, s.c, -1) + (_reveal_value(game, pi, s.c, 0) if (s.c as DuelCard).def.has("reveal") else 0.0)
+			scored.sort_custom(func(a, b): return a.v > b.v)
 		"search":
 			var p: DuelPlayer = game.players[pi]
 			for s in scored:
@@ -272,8 +276,88 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 		var sh := _shift_option(game, pi, lethal)
 		if not sh.is_empty():
 			out.append(sh)
+	_apply_plan(game, pi, out)
 	# only what this phase of the turn allows (Phase A): the rest waits for its phase
 	return out.filter(func(c): return game.phase_problem(String(c.action.get("type", ""))) == "")
+
+
+# ============================================================ the plan (Phase E) ===
+
+var _plans := {}
+var _plans_game := 0
+
+
+## What this duellist's deck is trying to do (DuelArchetypes: its way), worked
+## out once a duel from all its cards.
+func _plan_for(game: DuelGame, pi: int) -> Dictionary:
+	if _plans_game != game.get_instance_id():
+		_plans.clear()   # (one duel at a time)
+		_plans_game = game.get_instance_id()
+	if not _plans.has(pi):
+		_plans[pi] = DuelArchetypes.plan(DuelArchetypes.of_player(game.players[pi]))
+	return _plans[pi]
+
+
+## The plan leans on the scores: a burning deck attacks harder, a healing one
+## heals more gladly, a guarding one Guards, a veiling one veils, and a deck
+## that answers keeps Essence back for its answer while it holds one.
+func _apply_plan(game: DuelGame, pi: int, cands: Array) -> void:
+	var pl := _plan_for(game, pi)
+	if pl.is_empty():
+		return
+	var p: DuelPlayer = game.players[pi]
+	var reserve := 0
+	if bool(pl.get("hold", false)):
+		for c in p.hand:
+			var dc: DuelCard = c
+			if dc.is_rite() and bool(dc.def.get("answer", false)) and game.archetype_problem(pi, dc) == "":
+				var rc := game.rite_cost(pi, dc)
+				reserve = rc if reserve == 0 else mini(reserve, rc)
+	for cand in cands:
+		var a: Dictionary = cand.action
+		var sc: float = cand.score
+		match String(a.get("type", "")):
+			"attack":
+				if sc > 0.0:
+					sc *= float(pl.get("aggro", 1.0))
+					var at: DuelTotem = a.get("attacker")
+					if at != null and at.move(int(a.get("move", 0))).has("fate"):
+						sc *= float(pl.get("fate", 1.0))
+			"stance":
+				if String(a.get("stance", "")) == "guard" and sc > 0.0:
+					sc *= float(pl.get("guard", 1.0))
+			"call":
+				if bool(a.get("veiled", false)) and sc > 0.0:
+					sc *= float(pl.get("veil", 1.0))
+			"rite":
+				var rd: Dictionary = (a.get("card") as DuelCard).def
+				var effs: Array = rd.get("effects", [])
+				if sc > 0.0 and effs.any(func(e): return String(e.op) in ["heal", "life", "shield", "shield_unhurt"]):
+					sc *= float(pl.get("heal", 1.0))
+				if sc > 0.0 and effs.any(func(e): return String(e.op) in ["revive_field", "revive_hand"]):
+					sc *= float(pl.get("revive", 1.0))
+		if reserve > 0:
+			var cost := _action_cost(game, pi, a)
+			if cost > 0 and p.essence - cost < reserve:
+				sc -= 10.0   # (keeping the answer's Essence back)
+		cand.score = sc
+
+
+## Roughly what an action costs in Essence.
+func _action_cost(game: DuelGame, pi: int, a: Dictionary) -> int:
+	match String(a.get("type", "")):
+		"call":
+			return game.call_cost(pi, a.card)
+		"rite":
+			return game.rite_cost(pi, a.card)
+		"ward", "relic":
+			return game.card_cost(pi, a.card)
+		"summon":
+			return game.summon_cost(pi, a.card)
+		"attack":
+			var at: DuelTotem = a.get("attacker")
+			return at.move_cost(int(a.get("move", 0))) if at != null else 0
+	return 0
 
 
 ## How often the computer swears an Oath at the start of a duel.
@@ -458,6 +542,11 @@ func _answer_value(game: DuelGame, pi: int, c: DuelCard, event: Dictionary) -> f
 						best_other = maxf(best_other, there)
 					v += harm + ko_value + best_other
 			"bounce_rite": v += harm
+			"blunt":
+				var cut := minf(float(e.amount), harm)
+				v += cut + float(e.amount) * 0.6
+				if target is DuelTotem and harm >= target.hp_left() + target.shield and harm - float(e.amount) < target.hp_left() + target.shield:
+					v += ko_value
 			"essence": v += float(e.amount) * 4.0
 			"essence_next": v += float(e.amount) * 5.0
 			"draw": v += 12.0 * int(e.get("count", 1))
@@ -585,6 +674,11 @@ func _outcomes(_game: DuelGame, pi: int, t: DuelTotem, i: int) -> Array:
 func _status_value(game: DuelGame, f: DuelTotem, status: String) -> float:
 	if f == null or f.boons.has("blessed") or f.has_status(status):
 		return 0.0
+	var w := float((_plan_for(game, 1 - f.owner).get("status", {}) as Dictionary).get(status, 1.0))
+	return _status_value_base(game, f, status) * w
+
+
+func _status_value_base(game: DuelGame, f: DuelTotem, status: String) -> float:
 	if f.is_boss and status in DuelConditions.BOSS_IMMUNE:
 		return 0.0
 	if status == "burn" and f.has_status("soaked"):
@@ -655,6 +749,10 @@ func _attack_odds(t: DuelTotem) -> float:
 func _boon_value(game: DuelGame, pi: int, t: DuelTotem, boon: String) -> float:
 	if t == null or t.has_boon(boon):
 		return 0.0
+	return _boon_value_base(game, pi, t, boon) * float(_plan_for(game, pi).get("boon", 1.0))
+
+
+func _boon_value_base(game: DuelGame, pi: int, t: DuelTotem, boon: String) -> float:
 	match boon:
 		"shielded":
 			return DuelRules.shielded_amount * (0.6 if _threatened(game, pi, t) else 0.25)
@@ -944,6 +1042,44 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 				for sc in foe.continuous:
 					best = maxf(best, _standing_value(game, 1 - pi, sc))
 				v += best
+			"burned_damage":
+				for f in foe.totems():
+					if (f as DuelTotem).has_status("burn"):
+						var amt := float(e.amount)
+						v += minf(amt, f.hp_left())
+						if amt >= f.hp_left() + f.shield:
+							v += _totem_value(game, 1 - pi, f)
+			"fate_bonus":
+				for t in p.totems():
+					if game.ready_problem(pi, t) == "" and (t as DuelTotem).moves().any(func(m): return (m as Dictionary).has("fate")):
+						v += 9.0 * float(e.amount) / 3.0
+			"shield_unhurt":
+				for t in p.totems():
+					if (t as DuelTotem).damage == 0:
+						v += float(e.amount) * (0.5 if _threatened(game, pi, t) else 0.25)
+			"draw_full":
+				var n := 0
+				for t in p.totems():
+					if (t as DuelTotem).damage == 0:
+						n += 1
+				v += 14.0 * mini(n, int(e.get("max", 2)))
+			"guard_strike":
+				if target is DuelTotem:
+					var amt := float(p.guard() * int(e.get("mult", 2)))
+					v += minf(amt, target.hp_left())
+					if amt >= target.hp_left() + target.shield:
+						v += _totem_value(game, 1 - pi, target)
+			"reveal_twice":
+				for t in p.totems():
+					if (t as DuelTotem).face_down:
+						v += 12.0 + (24.0 if (t as DuelTotem).def().has("reveal") else 0.0)
+			"veil_call_free":
+				var best := 0.0
+				for vc in game._veil_callable(pi, int(e.get("max_tier", 2))):
+					best = maxf(best, _call_score(game, pi, vc, -1) + game.call_cost(pi, vc) * ESSENCE_VALUE + 4.0)
+				v += best
+			"pick_top":
+				v += 18.0 + (8.0 if p.hand.size() <= 3 else 0.0)
 	if bool(d.get("continuous", false)):
 		v += _standing_value(game, pi, c)
 		if p.continuous.size() >= DuelRules.continuous_slots:
@@ -1001,6 +1137,38 @@ func _standing_value(game: DuelGame, pi: int, c: DuelCard) -> float:
 		for h in p.hand:
 			if (h as DuelCard).is_basic_totem():
 				v += 10.0 if (h as DuelCard).def.has("reveal") else 2.0
+	elif st.has("burn_bonus"):
+		for f in foe.totems():
+			if (f as DuelTotem).has_status("burn"):
+				v += float(st.burn_bonus) * 1.5
+		v += 4.0
+	elif st.has("heal_life"):
+		for t in p.totems():
+			if (t as DuelTotem).damage > 0:
+				v += 6.0
+		v += 6.0
+	elif st.has("guard_less"):
+		for t in p.totems():
+			v += 8.0 if (t as DuelTotem).stance == "guard" else 3.0
+	elif st.has("reveal_draw"):
+		for t in p.totems():
+			if (t as DuelTotem).face_down:
+				v += 10.0
+		for h in p.hand:
+			if (h as DuelCard).def.has("reveal"):
+				v += 5.0
+	elif st.has("fall_life"):
+		v += p.totems().size() * 7.0
+	elif st.has("frozen_extra"):
+		for f in foe.totems():
+			if (f as DuelTotem).has_status("frozen"):
+				v += 15.0
+		v += 4.0
+	elif st.has("foe_fate_minus"):
+		for f in foe.totems():
+			if (f as DuelTotem).moves().any(func(m): return (m as Dictionary).has("fate")):
+				v += 6.0
+		v += 4.0
 	return v
 
 

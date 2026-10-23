@@ -215,6 +215,14 @@ func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, 
 	var res := DuelRewards.resonance(game, me, opponent_kind, thick, ad)
 	var out := add_resonance(int(res.total))
 	out["resonance"] = res
+	# the story hands out the deeper duel's cards (Phase E): one the player
+	# hasn't met comes into the Codex, from the pools this chapter has opened
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%d:%d:%d" % [int(v.rank), int(v.xp), v.codex.size()])
+	var g := DuelArchetypes.glimpse(v.codex, (v.seals as Array).size() + 1, int(v.rank), rng)
+	if g != "":
+		v.codex[g] = "seen"
+	out["glimpsed"] = g
 	return out
 
 

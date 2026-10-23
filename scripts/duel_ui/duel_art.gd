@@ -48,6 +48,13 @@ static func creature_or_stand_in(id: String) -> Texture2D:
 	return tex
 
 
+## The colour a stand-in is drawn in (white for a Totem with its own art).
+static func stand_in_tint(id: String) -> Color:
+	if creature(id) != null or not DuelCards.CARDS.has(id) or not DuelCards.CARDS[id].has("stand_in_tint"):
+		return Color.WHITE
+	return Color(String(DuelCards.CARDS[id].stand_in_tint))
+
+
 static func summon(id: String) -> Texture2D:
 	return _load("res://assets/art/summons/" + id)
 
@@ -82,6 +89,11 @@ static func card_back() -> Texture2D:
 
 static func arena_for_deck(deck) -> String:
 	if deck is String:
+		if DuelArchetypes.DECKS.has(deck):
+			# (a way's sample deck, Phase E: its starter's Circle, or one that suits it)
+			var arch := String(DuelArchetypes.DECKS[deck].archetype)
+			var starter := String(DuelArchetypes.ARCHETYPES[arch].deck)
+			return DECK_ARENA.get(starter, {"dawn_blessing": "solhaven", "frost_stillness": "tidegrove", "stars_shadow": "veilwild"}.get(arch, "solhaven"))
 		return DECK_ARENA.get(deck, "solhaven")
 	return "solhaven"
 

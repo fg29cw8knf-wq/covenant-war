@@ -7,6 +7,7 @@ extends SceneTree
 ## Run:  godot --headless --script res://tests/duel_sim.gd -- [games] [deck ids...]
 ##       godot --headless --script res://tests/duel_sim.gd -- 2000
 ##       godot --headless --script res://tests/duel_sim.gd -- 400 emberstorm ironstone
+##       godot --headless --script res://tests/duel_sim.gd -- 700 --ways   # the seven ways' sample decks (Phase E)
 
 const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
 ## The Circle each duel is fought in (Phase D: each arena has its rule).
@@ -22,6 +23,8 @@ func _initialize() -> void:
 	var named: Array = Array(args.slice(1)).filter(func(x): return not x.begins_with("--"))
 	if named.size() > 1:
 		decks = named
+	elif "--ways" in args:
+		decks = DuelArchetypes.DECKS.keys()
 	else:
 		decks = DuelCards.DECKS.keys()
 	var problems := 0
@@ -145,7 +148,7 @@ func _initialize() -> void:
 
 static func _profile(pname: String, patron: String, deck_id: String) -> Dictionary:
 	var p := Lore.new_profile(pname, "", 4)
-	var bumps: Dictionary = DuelCards.DECKS.get(deck_id, {}).get("attributes", {})
+	var bumps: Dictionary = DuelCards.DECKS.get(deck_id, DuelArchetypes.DECKS.get(deck_id, {})).get("attributes", {})
 	for a in bumps:
 		p.base[a] = int(p.base[a]) + int(bumps[a])
 	Lore.set_patron(p, patron)

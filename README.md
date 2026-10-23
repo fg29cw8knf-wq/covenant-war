@@ -70,6 +70,9 @@ godot --headless --script res://tests/phase_test.gd                  # the turn'
 godot --headless --script res://tests/phase_b_test.gd                # Tributes, Echoes, Loyal, Rekindling, the discard Rites (Phase B)
 godot --headless --script res://tests/phase_c_test.gd                # bonds, Relics, veiled calls, the second Ascension stage, Tempering (Phase C)
 godot --headless --script res://tests/phase_d_test.gd                # arena rules, Terrain and Continuous Rites, Favour, Oaths (Phase D)
+godot --headless --script res://tests/phase_e_test.gd                # the seven ways, their cards, the cards the story hands out (Phase E)
+godot --headless --script res://tests/duel_sim.gd -- 980 --ways      # the seven ways' sample decks against each other
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/phase_e_shot.tscn -- <dir>   # Phase E stills: the tinted stand-ins
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/phase_d_shot.tscn -- <dir>   # Phase D stills, both fields
 ```
 
@@ -303,6 +306,61 @@ shape of a turn and answering on the rival's turn.
   Bram's lessons: `arena_rule`, `terrain`, `continuous`, `favour`,
   `favour_rival`, `oath`.
 
+### Decks that play differently (Phase E, 23 October)
+
+- **Seven ways of playing** (`scripts/duel/duel_archetypes.gd`,
+  `DuelArchetypes.ARCHETYPES`), one for each pair of elements: Burn and
+  Gamble (Fire, Storm: the Emberstorm starter's), Outlast and Heal (Tide,
+  Verdant: Tidegrove's), Guard and Counter (Earth, Metal: Ironstone's), Veil
+  and Reveal (Psychic, Venom: Veilwild's), and three for elements with no
+  deck: Dawn and Blessing (Radiant, Spirit), Frost and Stillness (Frost,
+  Mystic), Stars and Shadow (Astral, Umbral). A deck's way is the one its
+  Totems' elements lean to (`DuelArchetypes.of_cards`); the deck builder
+  shows it.
+- **Each way's three cards** (`"archetype"` on the card): they work only
+  while a Totem of the way's elements stands on your side (`DuelGame.archetype_problem`;
+  the card says so first). Burn and Gamble: Stoke the Coals (each Burned
+  enemy takes 20), Loaded Dice (Fate +3 this turn, draw), Wildfire Pact
+  (standing: Burn deals 10 more). Outlast and Heal: Deep Roots (heal 20 each,
+  shield the unhurt), Tidal Reserve (standing: 5 Life per heal), Still Waters
+  (a card per unhurt Totem). Guard and Counter: Counterweight (an answer: the
+  blow lands 20 lighter and the attacker takes 20), Stone Patience (damage
+  twice your Guard), Bastion Banner (standing: Guarding Totems take 10 less).
+  Veil and Reveal: Unmasking (your veiled Totems turn up, each Reveal twice),
+  Whispering Shroud (standing: a reveal draws a card), Venom Mask (call a
+  small Basic veiled and free). Dawn and Blessing: Sunward Vow (all Blessed,
+  heal 10), Lantern Vigil (standing: a fall gives 20 Life and a card), Kindled
+  Soul (a tier 3 or lower Totem back from the discard). Frost and Stillness:
+  Deep Winter (standing: Frozen enemies take 20 more), Shatter (50 to a Frozen
+  enemy), Glacial Ward (Freezes an attacker). Stars and Shadow: Constellation
+  (one of your top three to the hand), Eclipse (standing: the rival's Fate 2
+  lower), Shadow Step (Blind and draw).
+- **Six new Totems** for the three new ways: Dawnling, Hallowed Hound
+  (Loyal), Rimecub, Runeowl, Starling, Duskstalker. Until Gary's paintings
+  and models come they're drawn as another creature in their own element's
+  colour (`"stand_in"`, `"stand_in_tint"`: on the 3D field its solid
+  surfaces go plain in that colour, `DuelField3D._tint_model`; the flat
+  field's cut-out is tinted, `DuelArt.stand_in_tint`).
+- **No new starter decks.** The seven ways have sample decks
+  (`DuelArchetypes.DECKS`: the four starters with their way's three cards,
+  and a deck for each new way) in the Duel Lab's deck list and for the
+  balance tests (`duel_sim -- N --ways`). The new cards reach the player as
+  the story goes: after a won story duel one card they haven't met comes
+  into their Codex, from the pools the chapter has opened
+  (`DuelArchetypes.POOLS` by Seals won: every deeper-duel card no starter
+  carries first, the Radiant, Spirit, Frost and Mystic cards after the first
+  Seal, the Astral and Umbral after the second), and Resonance can then
+  build it (`Game.record_win`, "New in your Codex" on the result). Tamsin's
+  stall (Still to Make, crowns) can sell from the same pools when it's built.
+- **The computer's plan** (`DuelAI._plan_for`, `_apply_plan`): it reads its
+  deck's way and plays to it: Burn and Gamble attacks harder and likes Burns
+  and Fate moves, Outlast and Heal heals gladly and Guards, Guard and
+  Counter Guards and keeps Essence back for an answer it holds, Veil and
+  Reveal veils and prizes Poison and Sleep, Dawn and Blessing prizes boons
+  and calling the fallen back, Frost and Stillness prizes Freezing and
+  Silence and holds its answers, Stars and Shadow leans on Fate and Blinds.
+- Prompts: `docs/card-prompts.md`, round 8. Bram's lesson: `way`.
+
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and
 each instruction locks everything but the one thing to tap (including the tap on
@@ -374,7 +432,7 @@ xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/c
 
 The rules are written up in the "Duel Rules v2" Claude doc
 (https://claude.ai/artifact/P1gUzZ7eRcTEe175qadyCd: its page title still says
-v1; "The deeper duel" section has Phases A to D, and "A turn" the new turn),
+v1; "The deeper duel" section has Phases A to E, and "A turn" the new turn),
 and the story in the "Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
 god's Law.
 

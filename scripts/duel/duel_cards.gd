@@ -785,6 +785,175 @@ const CARDS := {
 		"effects": [{"op": "relic_hunt"}],
 		"art": "a hand brushing dust from a half-buried relic in a ruin, lantern light on old gold",
 	},
+	# ================================================ THE NEW WAYS' TOTEMS (Phase E)
+	# (shown as a tinted stand-in until their paintings and models come)
+	"dawnling": {
+		"kind": "totem", "name": "Dawnling", "element": "radiant", "tier": 1, "stage": 0, "cost": 1,
+		"hp": 70, "affinity": "presence", "attuned": {"min": 5, "hp": 20}, "stand_in": "emberwisp", "stand_in_tint": "f2cf5b",
+		"moves": [
+			{"name": "Glint", "cost": 0, "damage": 10},
+			{"name": "Morning Ray", "cost": 1, "damage": 20, "effects": [{"op": "heal", "who": "allies", "amount": 10}]},
+		],
+		"art": "a small round sprite of warm sunlight with stubby wings and a halo of soft gold rays, cheerful and bright",
+	},
+	"hallowed_hound": {
+		"kind": "totem", "name": "Hallowed Hound", "element": "spirit", "tier": 2, "stage": 0, "cost": 2,
+		"hp": 100, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "5fc4b2",
+		"keywords": ["loyal"],
+		"moves": [
+			{"name": "Spirit Bite", "cost": 0, "damage": 20},
+			{"name": "Grave Howl", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "terrified"}]},
+		],
+		"art": "a pale spectral hound with a glowing teal mane like candle smoke, a small lantern hanging from its collar",
+	},
+	"rimecub": {
+		"kind": "totem", "name": "Rimecub", "element": "frost", "tier": 1, "stage": 0, "cost": 1,
+		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "cinderpup", "stand_in_tint": "7cc8f0",
+		"moves": [
+			{"name": "Frost Nip", "cost": 0, "damage": 10},
+			{"name": "Chill Breath", "cost": 1, "damage": 0, "fate": [
+				{"to": 10, "damage": 20},
+				{"to": 99, "damage": 20, "effects": [{"op": "status", "status": "frozen"}]}]},
+		],
+		"art": "a round white bear cub with frost-blue paws and icicle tufts on its ears, breathing a little cloud of snow",
+	},
+	"runeowl": {
+		"kind": "totem", "name": "Runeowl", "element": "mystic", "tier": 2, "stage": 0, "cost": 2,
+		"hp": 90, "affinity": "intellect", "attuned": {"min": 5, "hp": 20}, "stand_in": "somnowl", "stand_in_tint": "5d63d9",
+		"moves": [
+			{"name": "Rune Talon", "cost": 0, "damage": 20},
+			{"name": "Seal Sigil", "cost": 2, "damage": 30, "effects": [{"op": "status", "status": "silenced"}]},
+		],
+		"art": "an indigo owl with glowing rune marks on its wings, a ring of floating sigils turning round its head",
+	},
+	"starling": {
+		"kind": "totem", "name": "Starling", "element": "astral", "tier": 1, "stage": 0, "cost": 1,
+		"hp": 70, "affinity": "insight", "attuned": {"min": 5, "hp": 20}, "stand_in": "sparkkit", "stand_in_tint": "3f5fd6",
+		"moves": [
+			{"name": "Twinkle", "cost": 0, "damage": 10},
+			{"name": "Falling Star", "cost": 1, "damage": 0, "fate": [
+				{"to": 6, "damage": 10},
+				{"to": 14, "damage": 30},
+				{"to": 99, "damage": 50}]},
+		],
+		"art": "a small dark-blue fox kit whose fur is full of tiny glittering stars, its tail trailing light like a comet",
+	},
+	"duskstalker": {
+		"kind": "totem", "name": "Duskstalker", "element": "umbral", "tier": 2, "stage": 0, "cost": 2,
+		"hp": 100, "affinity": "cunning", "attuned": {"min": 5, "hp": 20}, "stand_in": "veilfox", "stand_in_tint": "6a4c9c",
+		"moves": [
+			{"name": "Shade Claw", "cost": 0, "damage": 20},
+			{"name": "Night Pounce", "cost": 2, "damage": 50, "effects": [{"op": "pierce"}]},
+		],
+		"art": "a lean shadow panther with violet eyes, its edges dissolving into wisps of dusk",
+	},
+	# ==================================================== EACH WAY'S CARDS (Phase E)
+	# (they work only while a Totem of the way's elements stands on your side)
+	"stoke_the_coals": {
+		"kind": "rite", "name": "Stoke the Coals", "element": "fire", "tier": 2, "cost": 1, "target": "none", "archetype": "burn_gamble",
+		"effects": [{"op": "burned_damage", "amount": 20}],
+		"art": "a pair of bellows blowing a bed of coals white-hot, flames leaping up off three burning shapes",
+	},
+	"loaded_dice": {
+		"kind": "rite", "name": "Loaded Dice", "element": "storm", "tier": 1, "cost": 0, "target": "none", "archetype": "burn_gamble",
+		"effects": [{"op": "fate_bonus", "amount": 3}, {"op": "draw", "count": 1}],
+		"art": "a gold twenty-sided die crackling with lightning as it lands, its top face glowing",
+	},
+	"wildfire_pact": {
+		"kind": "rite", "name": "Wildfire Pact", "element": "fire", "tier": 2, "cost": 2, "target": "none", "continuous": true, "archetype": "burn_gamble",
+		"standing": {"burn_bonus": 10},
+		"art": "two hands clasped over a burning contract, the fire spreading along its edges in a ring",
+	},
+	"deep_roots": {
+		"kind": "rite", "name": "Deep Roots", "element": "verdant", "tier": 2, "cost": 3, "target": "none", "archetype": "outlast_heal",
+		"effects": [{"op": "heal", "who": "allies", "amount": 20}, {"op": "shield_unhurt", "amount": 10}],
+		"art": "great roots rising out of the ground and wrapping gently round three creatures, green light pulsing along them",
+	},
+	"tidal_reserve": {
+		"kind": "rite", "name": "Tidal Reserve", "element": "tide", "tier": 2, "cost": 2, "target": "none", "continuous": true, "archetype": "outlast_heal",
+		"standing": {"heal_life": 5},
+		"art": "a still blue rock pool fed by a thin waterfall, its water glowing brighter as it fills",
+	},
+	"still_waters": {
+		"kind": "rite", "name": "Still Waters", "element": "tide", "tier": 1, "cost": 2, "target": "none", "archetype": "outlast_heal",
+		"effects": [{"op": "draw_full", "max": 2}],
+		"art": "a perfectly calm lake at dawn reflecting two cards floating above it",
+	},
+	"counterweight": {
+		"kind": "rite", "name": "Counterweight", "element": "metal", "tier": 2, "cost": 1, "target": "none", "archetype": "guard_counter",
+		"answer": true, "answers": ["attack"], "effects": [{"op": "blunt", "amount": 20}],
+		"art": "a heavy iron weight on a chain swinging into a charging beast, sparks flying where they meet",
+	},
+	"stone_patience": {
+		"kind": "rite", "name": "Stone Patience", "element": "earth", "tier": 2, "cost": 1, "target": "foe_totem", "archetype": "guard_counter",
+		"effects": [{"op": "guard_strike", "mult": 2}],
+		"art": "a stone guardian that has stood still for an age finally swinging one great fist",
+	},
+	"bastion_banner": {
+		"kind": "rite", "name": "Bastion Banner", "element": "earth", "tier": 2, "cost": 2, "target": "none", "continuous": true, "archetype": "guard_counter",
+		"standing": {"guard_less": 10},
+		"art": "a heavy grey banner on an iron pole driven into rock, a shield sigil glowing on it",
+	},
+	"unmasking": {
+		"kind": "rite", "name": "Unmasking", "element": "psychic", "tier": 1, "cost": 1, "target": "none", "archetype": "veil_reveal",
+		"effects": [{"op": "reveal_twice"}],
+		"art": "a porcelain mask lifting away from a face of violet light, a second mask beneath it already cracking",
+	},
+	"whispering_shroud": {
+		"kind": "rite", "name": "Whispering Shroud", "element": "psychic", "tier": 2, "cost": 1, "target": "none", "continuous": true, "archetype": "veil_reveal",
+		"standing": {"reveal_draw": 1},
+		"art": "a hooded cloak of violet mist standing empty, faint whispers drawn as curls of light around it",
+	},
+	"venom_mask": {
+		"kind": "rite", "name": "Venom Mask", "element": "venom", "tier": 2, "cost": 1, "target": "none", "archetype": "veil_reveal",
+		"effects": [{"op": "veil_call_free", "max_tier": 2}],
+		"art": "a green lacquered mask dripping with venom, a creature's shape forming behind it in shadow",
+	},
+	"sunward_vow": {
+		"kind": "rite", "name": "Sunward Vow", "element": "radiant", "tier": 2, "cost": 2, "target": "none", "archetype": "dawn_blessing",
+		"effects": [{"op": "boon", "who": "allies", "boon": "blessed"}, {"op": "heal", "who": "allies", "amount": 10}],
+		"art": "three creatures kneeling in a beam of morning light, a golden sigil of the sun above them",
+	},
+	"lantern_vigil": {
+		"kind": "rite", "name": "Lantern Vigil", "element": "spirit", "tier": 2, "cost": 2, "target": "none", "continuous": true, "archetype": "dawn_blessing",
+		"standing": {"fall_life": 20},
+		"art": "a row of paper lanterns glowing teal along a dark path, one floating up into the night",
+	},
+	"kindled_soul": {
+		"kind": "rite", "name": "Kindled Soul", "element": "spirit", "tier": 2, "cost": 2, "target": "none", "archetype": "dawn_blessing",
+		"effects": [{"op": "revive_field", "max_tier": 3}],
+		"art": "a ghostly creature rising from a lantern's flame back into solid form, teal light streaming off it",
+	},
+	"deep_winter": {
+		"kind": "rite", "name": "Deep Winter", "element": "frost", "tier": 2, "cost": 2, "target": "none", "continuous": true, "archetype": "frost_stillness",
+		"standing": {"frozen_extra": 20},
+		"art": "a snowstorm swirling over a frozen duelling circle, a creature trapped in ice at its centre",
+	},
+	"shatter": {
+		"kind": "rite", "name": "Shatter", "element": "frost", "tier": 2, "cost": 2, "target": "foe_totem", "archetype": "frost_stillness",
+		"damage": 50, "needs_status": "frozen",
+		"art": "a block of ice with a creature inside cracking apart in a burst of blue shards",
+	},
+	"glacial_ward": {
+		"kind": "ward", "name": "Glacial Ward", "element": "frost", "tier": 2, "cost": 1, "trigger": "foe_attack", "archetype": "frost_stillness",
+		"effects": [{"op": "status_attacker", "status": "frozen"}],
+		"art": "a wall of blue ice rising in front of a small creature, a lunging beast freezing solid against it",
+	},
+	"constellation": {
+		"kind": "rite", "name": "Constellation", "element": "astral", "tier": 1, "cost": 1, "target": "none", "archetype": "stars_shadow",
+		"effects": [{"op": "pick_top", "count": 3}],
+		"art": "three cards hanging in a night sky, joined by lines of starlight into a constellation",
+	},
+	"eclipse": {
+		"kind": "rite", "name": "Eclipse", "element": "umbral", "tier": 2, "cost": 1, "target": "none", "continuous": true, "archetype": "stars_shadow",
+		"standing": {"foe_fate_minus": 2},
+		"art": "a black moon sliding across the sun over a duelling circle, a ring of violet fire around it",
+	},
+	"shadow_step": {
+		"kind": "rite", "name": "Shadow Step", "element": "umbral", "tier": 1, "cost": 1, "target": "foe_totem", "archetype": "stars_shadow",
+		"effects": [{"op": "status", "status": "blinded"}, {"op": "draw", "count": 1}],
+		"art": "a figure stepping out of one shadow and into another behind a startled creature, violet smoke trailing",
+	},
 	# ======================================================= TERRAIN RITES (Phase D)
 	# (each turns the Circle's ground to an element's arena for three turns)
 	"flooded_circle": {
@@ -1191,7 +1360,7 @@ const TRIGGER_TEXT := {
 
 static func card_list(deck_id: String) -> Array:
 	var out := []
-	var d: Dictionary = DECKS[deck_id] if DECKS.has(deck_id) else NPC_DECKS[deck_id]
+	var d: Dictionary = DECKS[deck_id] if DECKS.has(deck_id) else (NPC_DECKS[deck_id] if NPC_DECKS.has(deck_id) else DuelArchetypes.DECKS[deck_id])
 	for id in d.cards:
 		for i in int(d.cards[id]):
 			out.append(id)
@@ -1320,6 +1489,15 @@ static func effect_text(e: Dictionary) -> String:
 ## Rules text for a Rite, Ward or Summon.
 static func card_text(id: String) -> String:
 	var d: Dictionary = CARDS[id]
+	if d.has("archetype"):
+		# (Phase E: a way's card works only with its Totems on the field)
+		return "%s, with %s of yours on the field. %s" % [DuelArchetypes.arch_name(d.archetype),
+			DuelArchetypes.need_text(d.archetype), _plain_text(id)]
+	return _plain_text(id)
+
+
+static func _plain_text(id: String) -> String:
+	var d: Dictionary = CARDS[id]
 	match d.kind:
 		"rite":
 			if d.get("answer", false):
@@ -1352,10 +1530,26 @@ static func standing_text(st: Dictionary) -> String:
 		return "Your Storm Totems can attack the turn they're called"
 	if st.has("free_veil"):
 		return "Your first Totem each turn can be called veiled at no extra cost"
+	if st.has("burn_bonus"):
+		return "Burn deals %d more to your rival's Totems" % int(st.burn_bonus)
+	if st.has("heal_life"):
+		return "Whenever one of your Totems is healed, gain %d Life" % int(st.heal_life)
+	if st.has("guard_less"):
+		return "Your Totems in Guard take %d less from every blow" % int(st.guard_less)
+	if st.has("reveal_draw"):
+		return "When one of your Totems is revealed, draw a card"
+	if st.has("fall_life"):
+		return "When one of your Totems falls, gain %d Life and draw a card" % int(st.fall_life)
+	if st.has("frozen_extra"):
+		return "Frozen enemy Totems take %d more damage from your attacks" % int(st.frozen_extra)
+	if st.has("foe_fate_minus"):
+		return "Your rival's Fate rolls are %d lower" % int(st.foe_fate_minus)
 	return ""
 
 
 static func _rite_text(d: Dictionary) -> String:
+	if d.has("needs_status") and int(d.get("damage", 0)) > 0:
+		return "Deal %d damage to a %s enemy Totem." % [int(d.damage), String(STATUS_NAMES.get(d.needs_status, d.needs_status))]
 	if bool(d.get("continuous", false)):
 		return "Stands on your side of the Circle (two at most) until it's unbound or replaced: %s." % standing_text(d.get("standing", {}))
 	var dmg := int(d.get("damage", 0))
@@ -1371,7 +1565,7 @@ static func _rite_text(d: Dictionary) -> String:
 		match e.op:
 			"essence": parts.append(("Gain %d Essence now" if d.get("answer", false) else "Gain %d Essence this turn") % e.amount)
 			"essence_max": parts.append("Your Essence limit rises by %d for the rest of the duel" % e.amount)
-			"heal": parts.append("Heal %d damage from one of your Totems" % e.amount)
+			"heal": parts.append(("Heal %d damage from each of your Totems" if e.get("who", "target") == "allies" else "Heal %d damage from one of your Totems") % e.amount)
 			"cure":
 				var kw := _kind_word(e.get("kind", "all"))
 				parts.append("clear its conditions" if kw == "all" else "clear its %s conditions" % kw)
@@ -1380,7 +1574,7 @@ static func _rite_text(d: Dictionary) -> String:
 					parts.append("Your Totems become %s" % STATUS_NAMES[e.boon])
 				else:
 					parts.append("One of your Totems becomes %s (%s)" % [STATUS_NAMES[e.boon], DuelConditions.describe(e.boon).trim_suffix(".").to_lower()])
-			"draw": parts.append("Draw %d cards" % e.count)
+			"draw": parts.append("Draw a card" if int(e.count) == 1 else "Draw %d cards" % e.count)
 			"search_totem": parts.append("Search your deck for a Basic Totem and put it in your hand")
 			"move_foe": parts.append("Move an enemy Totem to an empty slot on their side")
 			"bounce": parts.append("Return an enemy Totem to its owner's hand")
@@ -1411,6 +1605,15 @@ static func _rite_text(d: Dictionary) -> String:
 			"terrain": parts.append("The Circle becomes %s for %d turns (%s)" % [String(e.arena).capitalize(), DuelRules.terrain_turns,
 				String(DuelGame.ARENA_RULES.get(e.arena, "")).trim_suffix(".").to_lower()])
 			"unbind": parts.append("Send one of your rival's standing Rites to their discard")
+			"burned_damage": parts.append("Each Burned enemy Totem takes %d damage" % int(e.amount))
+			"fate_bonus": parts.append("Your Fate rolls are %d higher this turn" % int(e.amount))
+			"shield_unhurt": parts.append("each of your Totems left unhurt is shielded from the next %d damage" % int(e.amount))
+			"draw_full": parts.append("Draw a card for each of your Totems that is unhurt (%d at most)" % int(e.get("max", 2)))
+			"blunt": parts.append("it deals %d less, and the attacker takes %d" % [int(e.amount), int(e.amount)])
+			"guard_strike": parts.append("Deal damage to an enemy Totem equal to %s your Guard" % ("twice" if int(e.get("mult", 1)) == 2 else "%d times" % int(e.get("mult", 1))))
+			"reveal_twice": parts.append("Turn your veiled Totems face up now, each Reveal happening twice")
+			"veil_call_free": parts.append("Call a Basic Totem of tier %d or lower from your hand into an empty slot, veiled and free" % int(e.get("max_tier", 2)))
+			"pick_top": parts.append("Look at your top %d cards and put one in your hand" % int(e.get("count", 3)))
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
 
 

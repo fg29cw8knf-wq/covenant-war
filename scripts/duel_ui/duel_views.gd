@@ -176,7 +176,7 @@ class TotemView:
 		else:
 			var cut := DuelArt.creature_or_stand_in(totem.id())
 			if cut != null:
-				ar = _draw_cutout(cut, plat, o, mod)
+				ar = _draw_cutout(cut, plat, o, mod * DuelArt.stand_in_tint(totem.id()))
 			else:
 				ar = _draw_window(plat, mod)
 		if totem.asleep:
