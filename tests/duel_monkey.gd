@@ -41,8 +41,25 @@ func _ready() -> void:
 
 
 func _poke() -> void:
+	# a banner read at the player's pace (the Law, a story rule): tap it on
+	if screen.banner_waiting:
+		screen.tap_banner()
+		taps += 1
+		return
 	# pop-ups first
 	for c in screen.overlay.get_children():
+		if c is DuelScreen.RespondStrip:
+			# the response window (Phase A): an answer, or let it be
+			var btns := []
+			for n in _nodes(c):
+				if n is DuelScreen.ActionButton and n.enabled:
+					btns.append(n)
+			taps += 1
+			if not btns.is_empty() and rng.randf() < 0.6:
+				btns[rng.randi() % btns.size()].pressed.emit()
+			else:
+				c._finish(null)
+			return
 		if c is DuelViews.CardPicker:
 			for cell in c._cells:
 				if c.picked.size() < c.max_n and rng.randf() < 0.7:
@@ -103,6 +120,14 @@ func _poke() -> void:
 		screen._on_gift()
 	else:
 		screen._on_end_turn()
+
+
+func _nodes(n: Node) -> Array:
+	var out := []
+	for c in n.get_children():
+		out.append(c)
+		out.append_array(_nodes(c))
+	return out
 
 
 func _buttons(n: Node) -> Array:

@@ -139,8 +139,9 @@ shape of a turn and answering on the rival's turn.
   drawn placeholders until Gary paints them. Bram's one-off lessons the first
   time each matters: `phases`, `stance`, `answer`, `answered` (on the How to
   Duel page). Lab rows: Rest mends, Rest gives Essence, Answers in a chain,
-  Seconds to answer. After Phase A `duel_sim 160` plays 28 turns a duel on
-  average (27.6 before), no draws, the decks between 48% and 56%.
+  Seconds to answer. After Phase A `duel_sim 2000` plays 28.1 turns a duel on
+  average (27.6 before), 2 draws in 2000, the decks between 47% and 54%, no
+  invariant errors.
 
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and
