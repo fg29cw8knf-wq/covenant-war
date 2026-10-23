@@ -197,22 +197,49 @@ static func _art_path(card_id: String) -> String:
 
 
 static var _warming := {}
+## Paintings still to load one a frame where there are no threads (the phone link).
+static var _queued := {}
+static var _spreading := false
+## Tests: take the no-threads path (one painting a frame) anywhere.
+static var force_spread := false
 
 
 ## Starts loading these cards' paintings in the background, so a screen that
 ## shows them in a moment (the deck screen opening at the campfire) comes up
-## without a stall while they load. Only where the game can load on another
-## thread (not the phone link without threads, where it would stall now).
+## without a stall while they load: on another thread where there is one,
+## else one painting a frame (tests/deck_open_probe.tscn has the numbers).
 static func warm_art(ids: Array) -> void:
-	if not OS.has_feature("threads") and OS.has_feature("web"):
-		return
+	# the phone link (web, no threads) can't load in the background: there
+	# the paintings are loaded one a frame instead, spread over the talk
+	# before the screen opens (a painting is a short hitch; seventeen at once
+	# on the first draw were the campfire's stall, 23 October)
+	var spread := force_spread or (not OS.has_feature("threads") and OS.has_feature("web"))
 	for id in ids:
 		var cid := String(id)
-		if _art.has(cid) or _warming.has(cid):
+		if _art.has(cid) or _warming.has(cid) or _queued.has(cid):
 			continue
 		var p := _art_path(cid)
-		if p != "" and ResourceLoader.load_threaded_request(p) == OK:
+		if p == "":
+			continue
+		if spread:
+			_queued[cid] = p
+		elif ResourceLoader.load_threaded_request(p) == OK:
 			_warming[cid] = p
+	if spread and not _queued.is_empty() and not _spreading:
+		_spread_loads()
+
+
+## The paintings queued by warm_art where there are no threads, one a frame.
+static func _spread_loads() -> void:
+	_spreading = true
+	while not _queued.is_empty():
+		var cid: String = _queued.keys()[0]
+		var p: String = _queued[cid]
+		_queued.erase(cid)
+		if not _art.has(cid):
+			_art[cid] = load(p)
+		await (Engine.get_main_loop() as SceneTree).process_frame
+	_spreading = false
 
 
 ## Draws `tex` so it fills `r` completely (cropping the edges if needed).
