@@ -591,18 +591,27 @@ func warm_models(ids: Array) -> void:
 			paths.append(p)
 	if paths.is_empty():
 		return
-	for p in paths:
-		_warming[p] = true
-		ResourceLoader.load_threaded_request(p)
 	var pit := Node3D.new()
 	pit.name = "Warm"
 	pit.position = Vector3(0, -3.0, 0)   # under the mat, in the camera's view, unseen
 	world.add_child(pit)
 	var left: Array = paths.duplicate()
+	var to_ask: Array = paths.duplicate()
 	while not left.is_empty() and is_inside_tree():
 		await get_tree().process_frame
+		if not to_ask.is_empty():
+			# one request a frame: on the phone link (no threads) a request
+			# loads there and then, so they're spread rather than one stall
+			var p0: String = to_ask.pop_front()
+			_warming[p0] = true
+			ResourceLoader.load_threaded_request(p0)
 		var batch := 0
 		for p in left.duplicate():
+			if _warmed.has(p):
+				left.erase(p)   # (a summon took it first: already drawn in its slot)
+				continue
+			if not _warming.has(p):
+				continue   # (not asked for yet)
 			if ResourceLoader.load_threaded_get_status(p) != ResourceLoader.THREAD_LOAD_LOADED:
 				if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_FAILED:
 					left.erase(p)
