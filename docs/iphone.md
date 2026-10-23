@@ -98,6 +98,12 @@ downloads while you play. If a long session makes the phone hot or jerky,
 say so: the phone can be switched to Godot's lighter Mobile renderer in one
 line.
 
+Since 23 October the app also carries the opening film at its full 4K and
+60 frames a second (about 420 MB of the download) and plays it through the
+phone's own video player, with a Skip of its own when you tap. If the film
+ever won't play, the app falls back to the smaller copy the phone link uses,
+so the game still opens. Tell Gary's session which you saw.
+
 ## How it's built
 
 `tools/build_ios.sh` (needs Godot 4.7.2 with export templates; runs on Linux

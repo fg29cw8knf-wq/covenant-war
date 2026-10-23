@@ -3,11 +3,19 @@ extends CanvasLayer
 ## The opening movie, "The Throne of Ages".
 ##
 ## Plays, in order of preference:
-##   1. the finished cut: res://assets/movies/opening.ogv (Gary's one film since
-##      22 October: his clips, Morrowen's narration, the music, the title and the
-##      words already in the picture, 3:12 long). Nothing of the engine's plays
-##      over it: no subtitles, music, voice or title. Tap to show Skip.
-##   2. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
+##   1. Gary's 4K master (opening_4k.mp4, 3840x2160 at 60 fps, 3:14) through
+##      the device's own video player, on an iPhone or a Mac whose app carries
+##      the film loose in its bundle and the native player (NativeVideoPlayer,
+##      addons/native_video: AVPlayer over the game's view, drawn by the system
+##      with the hardware decoder). Nothing of the engine's goes over it; a tap
+##      shows its own Skip, and the next tap on Skip skips.
+##   2. the finished cut as Ogg Theora: res://assets/movies/opening.ogv (the
+##      same film at 1280x720 and 30 fps, since 22 October: his clips,
+##      Morrowen's narration, the music, the title and the words already in
+##      the picture). Nothing of the engine's plays over it: no subtitles,
+##      music, voice or title. Tap to show Skip. What the phone link plays,
+##      and the apps' fallback.
+##   3. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
 ##      or the still res://assets/art/movie/<shot>.png (or .jpg) animated in the engine,
 ##      or, when neither exists yet, an animatic card describing the shot.
 ##      This is the fallback if the cut's missing, and what the apps keep.
@@ -77,6 +85,19 @@ const SHOTS := [
 
 const MOVIE := "res://assets/movies/opening.ogv"
 const MUSIC := "res://assets/audio/opening_theme.ogg"
+## Gary's 4K master as the iPhone and Mac apps carry it, loose in the app
+## bundle (addons/native_video/films_export.gd puts it there from the films
+## release; tools/fetch_native.sh), for the native player.
+const NATIVE_FILM := "opening_4k.mp4"
+## How long the native player gets to read the film before it's given up on
+## (then the Theora copy plays).
+const NATIVE_READY_SECS := 8.0
+## NativeVideoPlayer.poll()'s events, as native_video_player.h numbers them
+## (the class isn't there to name them on the platforms without it).
+const NV_TAPPED := 1
+const NV_SKIP_PRESSED := 2
+const NV_FINISHED := 4
+const NV_FAILED := 8
 
 var _root: Control
 var _stage: ShotView
@@ -94,7 +115,10 @@ var _ducked := false
 var _clock := 0.0
 ## Play shot by shot even when the finished cut exists (the tests of that path).
 var shots_only := false
-var _cut := false            # the finished cut is what's playing
+var _cut := false            # the finished cut is what's playing (native or Theora)
+var _native = null           # the NativeVideoPlayer playing the 4K film (null: not this time)
+## Tests: an object with NativeVideoPlayer's methods, played in its place.
+static var native_stub = null
 var _lines: Array = []       # schedule(): when each line starts and ends
 var _next_line := 0          # the next line to start
 var _line_end := -1.0        # when the line speaking now ends (-1: none)
@@ -212,8 +236,11 @@ func _fit_video() -> void:
 
 func _play() -> void:
 	_lines = schedule()
-	if ResourceLoader.exists(MOVIE) and not shots_only:
-		await _play_full_cut()
+	if not shots_only:
+		# the 4K film through the device's own player where the app has it,
+		# else the Theora copy
+		if not await _play_native() and ResourceLoader.exists(MOVIE):
+			await _play_full_cut()
 	if not _cut and not _done:
 		# the engine's own movie: the theme, and Morrowen's lines over the shots
 		if ResourceLoader.exists(MUSIC):
@@ -221,6 +248,80 @@ func _play() -> void:
 			_music.play()
 		await _play_shots()
 	_finish()
+
+
+## The device's own video player (NativeVideoPlayer, addons/native_video):
+## the iPhone and Mac apps, when the native-video libraries were fetched into
+## the build. Null everywhere else (the phone link, Linux, the editor), and
+## the Theora copy plays. A test puts a stand-in in `native_stub`.
+static func native_player():
+	if native_stub != null:
+		return native_stub
+	if not ClassDB.class_exists("NativeVideoPlayer"):
+		return null
+	return ClassDB.instantiate("NativeVideoPlayer")
+
+
+## Gary's 4K master through the device's own player, when the app has the
+## player and the film is in its bundle (NATIVE_FILM). The player draws over
+## the whole game view with its own Skip label, so nothing of the engine's is
+## seen; it reports taps, Skip, its end and any failure to poll(), once a
+## frame here. Returns false if there's no player or no film, or the film
+## can't be read (then the Theora copy plays); true once the film has played
+## or been skipped.
+func _play_native() -> bool:
+	var p = native_player()
+	if p == null:
+		return false
+	var path: String = p.find_file(NATIVE_FILM)
+	if path == "":
+		return false
+	if not p.open(path):
+		push_warning("OpeningMovie: %s won't open (%s); playing %s instead" % [path, p.get_error(), MOVIE])
+		return false
+	_native = p
+	_stage.visible = false
+	p.set_volume(1.0)
+	p.play()
+	# it reads the file for a moment first: a film that can't be read is
+	# found out here, and the Theora copy takes over before anything was seen
+	var waited := 0.0
+	while not p.is_ready() and not p.has_failed() and waited < NATIVE_READY_SECS and not _done:
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	if p.has_failed():
+		return _native_gave_up(path)
+	_cut = true
+	if OS.is_debug_build():
+		print("movie: the 4K film through the native player (%s, %s, %.1f s)" % [path, p.get_video_size(), p.get_length()])
+	while not _done:
+		var ev: int = p.poll()
+		if ev & NV_FINISHED:
+			break
+		if ev & NV_FAILED:
+			if p.get_position() < 1.0:
+				return _native_gave_up(path)   # nothing seen yet: the Theora copy instead
+			push_warning("OpeningMovie: the native player failed at %.1f s (%s); the movie ends there" % [p.get_position(), p.get_error()])
+			break
+		if ev & NV_SKIP_PRESSED:
+			_finish()
+			break
+		if ev & NV_TAPPED:
+			_show_skip()
+		_clock = maxf(_clock, p.get_position())
+		await get_tree().process_frame
+	return true
+
+
+## The native player couldn't read the film: it's taken down, and the Theora
+## copy takes over (false, for _play_native's caller).
+func _native_gave_up(path: String) -> bool:
+	push_warning("OpeningMovie: %s can't be played (%s); playing %s instead" % [path, _native.get_error(), MOVIE])
+	_native.stop()
+	_native = null
+	_cut = false
+	_stage.visible = true
+	return false
 
 
 ## The finished cut has everything in it (the narration, the music, the words
@@ -392,15 +493,23 @@ func _unhandled_input(e: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 
 
+## Skip comes up for 3.5 s: the engine's button, or, while the native player
+## covers the view, its own label (a tap on it is NV_SKIP_PRESSED).
 func _show_skip() -> void:
 	_skip_up = true
-	create_tween().tween_property(_skip, "modulate:a", 1.0, 0.2)
+	if _native != null:
+		_native.show_skip(true, "Skip")
+	else:
+		create_tween().tween_property(_skip, "modulate:a", 1.0, 0.2)
 	var my_timer := get_tree().create_timer(3.5)
 	_skip_timer = my_timer
 	await my_timer.timeout
 	if _skip_timer == my_timer and not _done:
 		_skip_up = false
-		create_tween().tween_property(_skip, "modulate:a", 0.0, 0.4)
+		if _native != null:
+			_native.show_skip(false, "Skip")
+		else:
+			create_tween().tween_property(_skip, "modulate:a", 0.0, 0.4)
 
 
 func _finish() -> void:
@@ -412,7 +521,11 @@ func _finish() -> void:
 	var tw := create_tween()
 	tw.tween_property(_root, "modulate:a", 0.0, 0.6)
 	tw.parallel().tween_property(_music, "volume_db", -40.0, 0.6)
-	if _cut:
+	if _native != null:
+		# the native player's picture and sound go down together with the
+		# engine's black under it, so the title or Ashford fades up as usual
+		tw.parallel().tween_method(_fade_native, 1.0, 0.0, 0.6)
+	elif _cut:
 		# the cut's own sound goes down with the picture (a Skip in the middle
 		# of a line, or of the music)
 		tw.parallel().tween_property(_video, "volume_db", -40.0, 0.6)
@@ -420,10 +533,36 @@ func _finish() -> void:
 		_video.stop()
 	await tw.finished
 	_video.stop()
+	_stop_native()
 	if is_instance_valid(_focus_before) and _focus_before.is_visible_in_tree():
 		_focus_before.grab_focus()   # back on the title, the keys work again
 	finished.emit()
 	queue_free()
+
+
+func _fade_native(k: float) -> void:
+	if _native != null:
+		_native.set_opacity(k)
+		_native.set_volume(k)
+
+
+## Takes the native player's view down (its own stop(), so the game view is
+## clear again); harmless when it isn't up.
+func _stop_native() -> void:
+	if _native != null:
+		_native.stop()
+		_native = null
+
+
+func _notification(what: int) -> void:
+	match what:
+		NOTIFICATION_APPLICATION_RESUMED:
+			# the phone's own player pauses when the app is put away (a call,
+			# the home screen); it goes on when the app is back
+			if _native != null and not _done:
+				_native.play()
+		NOTIFICATION_PREDELETE:
+			_stop_native()   # whatever takes the movie down, the view is cleared
 
 
 ## Draws one shot: an AI still with a slow camera move and particles, or,
