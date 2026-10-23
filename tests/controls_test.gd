@@ -50,6 +50,10 @@ var _settings_file = null   # the player's settings file as it was, put back at 
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October): a driver that
+	# goes through it must keep running under the pause (its _process
+	# stopped with the tree and the run sat paused for good)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	# the notice and the first-steps hints save settings ("seen the notice");
 	# other tests (menu_test) behave differently once those are set
 	if FileAccess.file_exists(Game.SETTINGS_PATH):

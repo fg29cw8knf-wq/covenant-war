@@ -32,6 +32,10 @@ var n := 0
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October): a driver that
+	# goes through it must keep running under the pause (its _process
+	# stopped with the tree and the run sat paused for good)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
 	var which: Array = Array(args.slice(1)).filter(func(a): return not String(a).begins_with("--"))   # (--safe-area=... is SafeArea's)

@@ -52,6 +52,10 @@ const BODY := 0.3    # someone's half-width, about
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October): a driver that
+	# goes through it must keep running under the pause (its _process
+	# stopped with the tree and the run sat paused for good)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		out_dir = args[0]

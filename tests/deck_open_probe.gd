@@ -13,6 +13,10 @@ var world: World
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October): a driver that
+	# goes through it must keep running under the pause (its _process
+	# stopped with the tree and the run sat paused for good)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	get_viewport().scaling_3d_scale = 0.5
 	Game.new_game("Ash", "emberstorm")
 	Game.flags["arrived_solhaven"] = true

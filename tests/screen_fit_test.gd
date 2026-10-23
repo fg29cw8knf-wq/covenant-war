@@ -23,6 +23,10 @@ var _settings_file = null   # the settings file as it was (zooming saves it), pu
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October): a driver that
+	# goes through it must keep running under the pause (its _process
+	# stopped with the tree and the run sat paused for good)
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	if FileAccess.file_exists(Game.SETTINGS_PATH):
 		_settings_file = FileAccess.get_file_as_string(Game.SETTINGS_PATH)
 	Game.settings["ui_scale"] = 1.0
