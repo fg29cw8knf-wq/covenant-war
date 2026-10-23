@@ -2637,7 +2637,7 @@ func small_impact(at: Vector3, col: Color) -> void:
 	lt.tween_property(l, "light_energy", 1.2, 0.8)
 	lt.tween_callback(func() -> void: flicker_lights.append([l, 1.2]))
 	var sp := GPUParticles3D.new()
-	sp.amount = [50, 80, 110][quality]
+	sp.amount = [30, 80, 110][quality]
 	sp.lifetime = 1.2
 	sp.one_shot = true
 	sp.explosiveness = 0.95

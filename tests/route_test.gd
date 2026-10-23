@@ -49,6 +49,34 @@ func _ready() -> void:
 	# Tilly's run from the duel circle to the player by the well
 	var run: Array = Cine.route(w, Vector3(-8.5, 0, -2.0), Vector3(-2.2, 0, 3.0))
 	_check(_closest(w, Vector3(-8.5, 0, -2.0), run) >= 0.0, "a run across the green never goes through anything (%s)" % [run])
+	# someone standing in the way (23 October: Bram walked straight through
+	# the player on the way to the Lantern): a walk named for its walker
+	# goes round them, and a walk to a mark beside them still ends there
+	var from := Vector3(-6.2, 0, 2.0)
+	var before: Array = Cine.route(w, from, spot)
+	var stand := from.lerp(spot, 0.5)
+	stand.y = 0.0
+	Cine.spawn(w, "stander", "farmer", stand)
+	for i in 2:
+		await get_tree().process_frame
+	var folk := Cine.people(w, "bram")
+	_check(folk.size() >= 2, "the people on the green are known (%d: the player and the stander at least)" % folk.size())
+	var past: Array = Cine.route(w, from, spot, 0.35, "bram")
+	var near := 99.0
+	var a := from
+	for pt in past:
+		var p3: Vector3 = pt
+		var ab := Vector2(p3.x - a.x, p3.z - a.z)
+		var t := clampf(Vector2(stand.x - a.x, stand.z - a.z).dot(ab) / maxf(ab.length_squared(), 0.0001), 0.0, 1.0)
+		near = minf(near, (Vector2(a.x, a.z) + ab * t).distance_to(Vector2(stand.x, stand.z)))
+		a = p3
+	_check(near >= Cine.PERSON_R + 0.3, "a walk goes round someone standing in its way (closest %.2f m to them: %s)" % [near, past])
+	_check(past.size() >= 1 and (past[-1] as Vector3).distance_to(spot) < 0.01, "and still ends at its mark")
+	var beside := stand + Vector3(0.5, 0, 0.3)
+	var to_them: Array = Cine.route(w, from, beside, 0.35, "bram")
+	_check(to_them.size() >= 1 and (to_them[-1] as Vector3).distance_to(beside) < 0.01, "a walk to a mark beside someone ends on it (%s)" % [to_them])
+	var unnamed: Array = Cine.route(w, from, spot)
+	_check(unnamed == before, "a walk with no walker named goes round things only, as before (%s)" % [unnamed])
 	print("ROUTE TEST: %s" % ("ok" if problems.is_empty() else "; ".join(problems)))
 	get_tree().quit(0 if problems.is_empty() else 1)
 

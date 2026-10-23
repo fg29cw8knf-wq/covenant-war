@@ -236,6 +236,23 @@ func stinger(track: String, duck: bool = true) -> bool:
 	return true
 
 
+## Dips the music for `secs` (a Summon's clip playing over it), then brings
+## it back.
+func duck(secs: float, by := 14.0) -> void:
+	if _web != null:
+		if _web_playing(_active):
+			_web.level(_active, level_db() - by)
+			get_tree().create_timer(secs).timeout.connect(func() -> void: _web.level(_active, level_db()))
+		return
+	var p := _players[_active]
+	if not p.playing:
+		return
+	var tw := create_tween()
+	tw.tween_property(p, "volume_db", level_db() - by, 0.2)
+	tw.tween_interval(maxf(0.5, secs - 0.6))
+	tw.tween_property(p, "volume_db", level_db(), 0.8)
+
+
 static func _set_loop(s: AudioStream, on: bool) -> void:
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop = on

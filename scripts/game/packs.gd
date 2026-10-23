@@ -70,7 +70,7 @@ func need(pack: String, skippable := false) -> bool:
 		return _have.has(pack)
 	_busy[pack] = true
 	var screen := _Screen.new()
-	screen.what = TITLES.get(pack, pack)
+	screen.what = TITLES.get(pack, "a Summon's clip" if pack.begins_with("summon_") else pack)
 	screen.skippable = skippable
 	add_child(screen)
 	var got := false

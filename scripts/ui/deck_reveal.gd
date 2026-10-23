@@ -55,15 +55,18 @@ func _draw() -> void:
 	var ch := minf(size.y * (0.62 if n == 1 else 0.42), 740.0)
 	var cw := ch * 0.72
 	var c := size * 0.5 + Vector2(0, 10 if n == 1 else 40)
-	# a soft gold glow and slow rays behind
-	for i in 10:
-		draw_circle(c, ch * (0.66 if n == 1 else 1.2) * (1.0 - i * 0.08), Color(UITheme.GOLD, 0.03 * ease))
-	for i in 16:
-		var a := TAU * i / 16.0 + _t * 0.12
-		var p1 := c + Vector2(cos(a), sin(a)) * ch * 0.2
-		var p2 := c + Vector2(cos(a + 0.07), sin(a + 0.07)) * ch * 1.1
-		var p3 := c + Vector2(cos(a - 0.07), sin(a - 0.07)) * ch * 1.1
-		draw_colored_polygon(PackedVector2Array([p1, p2, p3]), Color(UITheme.GOLD, 0.045 * ease))
+	# a soft gold glow behind, breathing slowly (the sixteen hard-edged rays
+	# that turned behind it read as stepped: Gary, 23 October)
+	var breathe := 1.0 + 0.04 * sin(_t * 1.6)
+	for i in 28:
+		var ring := 1.0 - i / 28.0
+		draw_circle(c, ch * (0.7 if n == 1 else 1.25) * ring * breathe, Color(UITheme.GOLD, 0.012 * ease * (0.6 + 0.4 * ring)))
+	for i in 12:
+		var a := TAU * i / 12.0 + _t * 0.05
+		var p1 := c + Vector2(cos(a), sin(a)) * ch * 0.3
+		var p2 := c + Vector2(cos(a + 0.16), sin(a + 0.16)) * ch * 1.15
+		var p3 := c + Vector2(cos(a - 0.16), sin(a - 0.16)) * ch * 1.15
+		draw_colored_polygon(PackedVector2Array([p1, p2, p3]), Color(UITheme.GOLD, 0.014 * ease))
 	var top_y := c.y - ch * 0.5
 	if n == 1:
 		var sc := 0.6 + 0.4 * ease

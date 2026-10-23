@@ -476,8 +476,13 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	# the blanket: draped over the sleeper from the chest down, high over
 	# the chest, lower over the legs, falling to the mattress at the sides,
 	# rumpled, and the hem turned back over the chest
-	var blanket := v.add_mesh(root, _blanket_mesh(1.3, W - 0.04), wool, Transform3D(Basis.IDENTITY, at + Vector3(0.3, BED_TOP, 0)))
+	var rows := _blanket_points(1.3, W - 0.04)
+	var blanket := v.add_mesh(root, _blanket_mesh_of(rows), wool, Transform3D(Basis.IDENTITY, at + Vector3(0.3, BED_TOP, 0)))
 	blanket.name = "Blanket"
+	# (its points and its mesh as laid, for BlanketThrow and for putting it
+	# back over the sleeper)
+	blanket.set_meta("rows", rows)
+	blanket.set_meta("mesh_on", blanket.mesh)
 	# thrown back against the wall, in a heap, when they get up
 	var off := Transform3D(Basis.from_euler(Vector3(0.0, 0.0, 0.0)) * Basis.from_scale(Vector3(0.85, 1.3, 0.42)), at + Vector3(0.4, BED_TOP, -0.27))
 	return {"blanket": blanket, "blanket_off": off}
@@ -584,9 +589,7 @@ static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 ## body's width and falling to the mattress either side of it (into the
 ## mattress's dip where the body lies), rumpled in loose folds, its hem
 ## turned back in a roll over the chest.
-static func _blanket_mesh(L: float, W: float) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+static func _blanket_points(L: float, W: float) -> Array:
 	var nx := 26
 	var nz := 16
 	var pts: Array = []
@@ -606,6 +609,16 @@ static func _blanket_mesh(L: float, W: float) -> ArrayMesh:
 			var hem := 0.035 * smoothstep(0.1, 0.0, u) * smoothstep(1.0, 0.7, absf(vv))
 			row.append(Vector3(-L * 0.5 + u * L, h * over + 0.015 - dip + fold * (0.4 + 0.6 * over) + hem, vv * W * 0.5))
 		pts.append(row)
+	return pts
+
+
+## The blanket's mesh from its grid of points (as laid, or wherever
+## BlanketThrow has them this frame).
+static func _blanket_mesh_of(pts: Array) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nx := pts.size() - 1
+	var nz := (pts[0] as Array).size() - 1
 	for i in nx:
 		for j in nz:
 			var a: Vector3 = pts[i][j]

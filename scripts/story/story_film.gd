@@ -317,7 +317,7 @@ func _say(ln: Dictionary) -> void:
 				if hold < 0.0:
 					hold = _voice.stream.get_length() + 0.5
 				break
-	Cine.say(_w, who, text, hold)   # (not awaited: the picture keeps its time)
+	Cine.say(_w, who, text, hold, true)   # (timed, not awaited: the picture keeps its time)
 
 
 ## A choice, the name, a caption or the music, between shots.
@@ -337,7 +337,7 @@ func _between(st: Dictionary, ov: CineOverlay) -> void:
 		_picks["name"] = nm
 		_video.paused = false
 	elif st.has("caption"):
-		await ov.caption(String(st.caption))
+		await ov.caption(String(st.caption), "", 2.6, true)
 	elif st.has("music"):
 		if st.music is String:
 			Music.stop(2.0)

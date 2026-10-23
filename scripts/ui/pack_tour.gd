@@ -43,6 +43,8 @@ const CAMP_DECK := [
 	{"say": "Thirty cards. You build it yourself from what you find, and you change it whenever you like.", "focus": "deck_grid"},
 	{"do": "card"},
 	{"say": "What it costs, what it is, what it does. Read before you play. Corin never did.", "focus": "detail"},
+	{"say": "Two bars under it. Resonance fills every time you duel with the card, towards a second copy. Attunement fills towards the card it grows into: its Ascension.", "focus": "detail"},
+	{"say": "A spare copy isn't dead weight. In the Codex you re-absorb it, and it feeds the Attunement of its own kind; or you pour in from the pool you win in duels, at half the worth.", "focus": "detail"},
 	{"do": "close"},
 	{"do": "tab:codex"},
 	{"say": "Every card you own goes in here, and every card anybody plays against you. It's short. It won't stay short.", "focus": "codex_grid"},

@@ -34,8 +34,13 @@ var _waiting := false
 var _shown_at := 0
 var _line_no := 0
 var _bars_on := false
-## false: every line waits for a tap (for tests, or a player who reads slowly)
-var auto := true
+## true: a line moves on by itself once it's been up long enough to read.
+## false (the game since 23 October: Gary, "all text you need to have to
+## click, otherwise it's going too fast"): every subtitle, narration line and
+## title card stays up until it's tapped (E, Space, Enter or a pad's A too),
+## the "TAP TO CONTINUE" hint after a moment. A line with a voice recording
+## playing (say with `timed`) moves on when the voice ends; a tap skips it.
+var auto := false
 
 
 func _ready() -> void:
@@ -355,9 +360,10 @@ func fade(to_alpha: float, secs := 0.8) -> void:
 	await tw.finished
 
 
-## A subtitle. `who` "" is narration (italic, no name). Returns when it's been
-## read (or tapped on). `hold` overrides how long it stays up.
-func say(who: String, text: String, hold := -1.0) -> void:
+## A subtitle. `who` "" is narration (italic, no name). Returns when it's
+## been tapped on (or, `timed`, when `hold` seconds are up: a voiced line
+## held for its recording, which a tap still skips).
+func say(who: String, text: String, hold := -1.0, timed := false) -> void:
 	_who.text = who.to_upper()
 	_who.visible = who != ""
 	_line.text = "[center]%s[/center]" % (text if who != "" else "[i]%s[/i]" % text)
@@ -375,7 +381,7 @@ func say(who: String, text: String, hold := -1.0) -> void:
 	var timer: SceneTreeTimer = null
 	_line_no += 1
 	var this_line := _line_no
-	if auto:
+	if auto or timed:
 		timer = get_tree().create_timer(secs, false)
 		# only this line's own timer may move it on (an earlier line tapped
 		# through early still has its timer running)
@@ -437,18 +443,37 @@ func choose(options: Array) -> int:
 	return idx
 
 
-## A title card in the middle of the screen, over whatever is showing.
-func caption(text: String, sub := "", secs := 2.6) -> void:
+## A title card in the middle of the screen, over whatever is showing. It
+## stays until it's tapped; `timed` (a card over a story film's picture,
+## which keeps its own time) it goes after `secs`.
+func caption(text: String, sub := "", secs := 2.6, timed := false) -> void:
 	_cap.text = text
 	_cap_sub.text = sub
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(_cap, "modulate:a", 1.0, 0.8)
 	tw.tween_property(_cap_sub, "modulate:a", 1.0 if sub != "" else 0.0, 1.0).set_delay(0.3)
-	tw.chain().tween_interval(secs)
-	tw.chain().set_parallel(true)
-	tw.tween_property(_cap, "modulate:a", 0.0, 0.8)
-	tw.tween_property(_cap_sub, "modulate:a", 0.0, 0.8)
 	await tw.finished
+	_waiting = true
+	_catch.mouse_filter = Control.MOUSE_FILTER_STOP
+	_line_no += 1
+	var this_line := _line_no
+	if auto or timed:
+		get_tree().create_timer(secs, false).timeout.connect(func() -> void:
+			if _waiting and _line_no == this_line:
+				_next.emit())
+	_hint.modulate.a = 0.0
+	var ht := create_tween()
+	ht.tween_interval(0.8)
+	ht.tween_property(_hint, "modulate:a", 0.75, 0.4)
+	await _next
+	ht.kill()
+	_waiting = false
+	_catch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_hint.modulate.a = 0.0
+	var out := create_tween().set_parallel(true)
+	out.tween_property(_cap, "modulate:a", 0.0, 0.8)
+	out.tween_property(_cap_sub, "modulate:a", 0.0, 0.8)
+	await out.finished
 
 
 ## Asks the player's name (the Herald reads it out); returns it.

@@ -1019,6 +1019,13 @@ def build(args):
     gltf["animations"] = emit_clips(out, list(clips.values()), node_of)
     size = write_glb(args.output, gltf, out)
     h = tgt_wp["Head"][1]
+    # any triangle wound inside out (see-through from outside: Corin's back) is
+    # turned round in the file just written
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from mend_winding import mend
+    mended = mend(args.output)
+    if mended:
+        print("  %d triangles wound inside out, turned round" % mended)
     print("%s: %d bones, %d clips, %.2f m tall (hips %.3f, head %.3f), %d KB"
           % (args.output, len(skin_joints), len(clips), (hi[1] - lo[1]) * s, rest_hips[1], h, size // 1024))
     for r in report:

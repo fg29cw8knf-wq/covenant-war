@@ -6,7 +6,7 @@ extends Node
 ##       res://tests/bed_check.tscn -- <out_dir> [t,t,t...]
 
 var out := "/tmp/bed"
-var times: Array = [8.6, 10.6, 12.4, 13.6]
+var times: Array = [5.6, 6.6, 7.6, 8.6, 10.0, 11.4, 12.4, 13.4]
 
 
 func _ready() -> void:
@@ -24,10 +24,14 @@ func _ready() -> void:
 	add_child(world)
 	var v: AshfordVillage = AshfordP1.village(world)
 	var t := 0.0
+	var ov := Cine.overlay(world)
 	for want in times:
 		while t < float(want) - 0.001:
 			await get_tree().create_timer(0.1).timeout
 			t += 0.1
+			# (every line and title card waits for a tap since 23 October)
+			if ov._waiting:
+				ov._next.emit()
 		var a := InnRooms.attic(v)
 		var root: Node3D = a.root
 		var bed: Vector3 = a.bed

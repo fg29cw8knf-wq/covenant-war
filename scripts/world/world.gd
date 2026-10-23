@@ -66,6 +66,7 @@ var cine := false:         # a cutscene is driving the camera
 		if was and not v and is_inside_tree():
 			_refresh_markers.call_deferred()
 var _shake := 0.0
+var _shake_goal := 0.0
 var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
 ## Built ahead of time, under the title screen or the opening movie, so New
 ## Game's attic comes up the moment the movie ends (or is skipped): add it to
@@ -571,8 +572,16 @@ func _process(delta: float) -> void:
 		cam.global_position = target + Vector3(sin(a) * 30.0, 9.0 + sin(_attract_t * 0.11) * 1.5, cos(a) * 30.0)
 		cam.look_at(target + Vector3(0, 2.5, 0), Vector3.UP)
 		return
-	if _shake > 0.0:
+	if _shake_goal > 0.0:
+		# a shake comes in over a few frames rather than all in the frame it's
+		# asked for (with a strike's burst and flash in the same frame it read
+		# as a hitch on a phone), then dies away
+		_shake = move_toward(_shake, _shake_goal, delta * 6.0)
+		if _shake >= _shake_goal - 0.001:
+			_shake_goal = 0.0
+	elif _shake > 0.0:
 		_shake = maxf(0.0, _shake - delta)
+	if _shake > 0.0 or cam.h_offset != 0.0 or cam.v_offset != 0.0:
 		cam.h_offset = randf_range(-1, 1) * _shake * 0.25
 		cam.v_offset = randf_range(-1, 1) * _shake * 0.25
 	_move(delta)   # (the title screen's drifting camera returned above)
@@ -990,7 +999,7 @@ func cine_home(secs: float = 1.0) -> void:
 
 
 func shake(amount: float) -> void:
-	_shake = maxf(_shake, amount)
+	_shake_goal = maxf(_shake_goal, amount)
 
 
 ## A full-screen flash of `col`: in over `t_in`, out over `t_out`.

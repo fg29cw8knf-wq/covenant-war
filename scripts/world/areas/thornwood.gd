@@ -1,7 +1,9 @@
 extends RefCounted
 ## The Thornwood: the end of the Prologue's film (Master Script v3, P4's
 ## river and P5). The riverbank below burning Ashford, the road east, Bram's
-## campfire and his four old decks, the practice round on the second morning,
+## campfire and his four old decks, his duel by the fire (the practice round,
+## moved from the second morning on 23 October: he picks the deck that shows
+## yours its weakness, and it isn't optional), the second morning,
 ## the narrow road where Dask is waiting, and at dawn the first sight of
 ## Solhaven. The place itself is ThornwoodSet.
 
@@ -286,6 +288,22 @@ const BOX_COLS := {"emberstorm": Color(0.55, 0.16, 0.08), "tidegrove": Color(0.1
 ## for duels. It ends on "Then I stopped."
 static func _camp(w: World) -> void:
 	var v := village(w)
+	if Game.flag("practice_on"):
+		# the game was closed during Bram's duel by the fire: straight back
+		# into it, then the rest of the night
+		v.set_scene("camp")
+		_only(w, ["bram"])
+		await Cine.begin(w)
+		Cine.overlay(w).black(true)
+		var c0: Vector3 = ThornwoodSet.SPOTS.camp
+		c0.y = v.height(c0.x, c0.z)
+		Cine.place(w, "bram", c0 + Vector3(-1.2, 0, -0.9), c0)
+		Cine.place(w, "player", c0 + Vector3(1.0, 0, 1.2), c0)
+		var sack0 := _camp_sack(w, c0 + Vector3(-1.75, 0, -0.35))
+		Music.play(["thornwood", "menu_theme"], 2.0, true)
+		await _camp_duel(w, c0, sack0)
+		await _camp_night(w, c0, sack0)
+		return
 	v.set_scene("road")
 	_only(w, ["bram"])
 	await Cine.begin(w)
@@ -340,9 +358,69 @@ static func _camp(w: World) -> void:
 	_take_deck(deck)
 	# choosing opens the deck screen for the first time, and Bram walks you round it
 	await _deck_tour(w)
-	# then the fire, and the lords
-	for b in boxes:
-		(b as Node3D).queue_free()
+	# then he puts the other boxes away, keeps one out, and you play him
+	await _camp_duel(w, c, sack, boxes, lg)
+	await _camp_night(w, c, sack)
+
+
+## Bram's duel by the fire (Gary, 23 October: "when Bram gives you the deck
+## of cards he should do a duel with you and teach you more of the game").
+## The three boxes go back in the sack and he keeps one out: the deck that
+## shows yours its weakness (Prologue.bram_pick), and he says why. It's the
+## second gated lesson duel (Prologue.practice_duel_spec), it can be lost,
+## and the night goes on either way. `boxes` empty: the game was closed
+## mid-duel and this is the way back in.
+static func _camp_duel(w: World, c: Vector3, sack: Node3D, boxes: Array = [], lg: Dictionary = {}) -> void:
+	var v := village(w)
+	if lg.is_empty():
+		lg = _log_spot(v)
+	var mine := String(Game.starter)
+	var pick := Prologue.bram_pick(mine)
+	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
+	var bf = Cine.fig(w, "bram")
+	if not boxes.is_empty():
+		await _boxes_to_sack(w, boxes, sack, pick, lg)
+		Cine.look(w, "bram", w.player.global_position)
+		Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
+		await Cine.say(w, "bram", String(Prologue.BRAM_PICK_LINES.get(mine, "This one, against yours.")))
+		await Cine.say(w, "bram", "Sit down. Thirty cards you've never played, and the first stranger who tries you won't go easy. I will. A little.")
+	Game.set_flag("practice_on")
+	Game.save_game()
+	await Cine.fade(w, 1.0, 0.5)
+	var won: bool = await w._duel(Prologue.practice_duel_spec(mine))
+	Game.set_flag("practice_on", false)
+	Game.save_game()
+	Cine.overlay(w).black(true)
+	if won:
+		# he studies the cards on the log a while
+		_cards_on_log(w, lg)
+		# (on the ground beside the log: the log's middle is 0.2 m up)
+		var by_log: Vector3 = (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1)
+		Cine.place(w, "bram", Vector3(by_log.x, 0.0, by_log.z), lg.mid)
+		Cine.shot(w, (lg.mid as Vector3) + side * 1.9 + Vector3(0, 1.5, 0), (lg.mid as Vector3) + Vector3(0, 0.6, 0) - side * 0.4, 40.0)
+		if bf is Figure3D:
+			(bf as Figure3D).pose("sit", 0.22, 0.5)   # bent over them
+		await Cine.fade(w, 0.0, 0.6)
+		await Cine.say(w, "bram", "Hm.", 1.4)
+		await Cine.wait(w, 1.6)
+		if bf is Figure3D:
+			(bf as Figure3D).release(0.5)
+		await Cine.say(w, "bram", "Not bad.")
+		for n in v.get_children():
+			if n.has_meta("log_card"):
+				n.queue_free()
+		Cine.place(w, "bram", c + Vector3(-1.2, 0, -0.9), c)
+	else:
+		Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
+		await Cine.fade(w, 0.0, 0.6)
+		await Cine.say(w, "bram", "I said easy. I never said soft.")
+	_drop_box(w)
+	await Cine.wait(w, 0.4)
+
+
+## The rest of the first night: the lords, and the fire banked.
+static func _camp_night(w: World, c: Vector3, sack: Node3D) -> void:
+	var v := village(w)
 	Cine.look(w, "bram", c)
 	Cine.two_shot(w, "bram", "player", 3.4, 1.2, 1.0, 36.0)
 	await Cine.say(w, "bram", "Lords used to hire me to settle their quarrels, you know. Duel for a field, duel for a dowry, duel for a bridge. Good money.")
@@ -531,10 +609,11 @@ static func _deck_tour(w: World) -> void:
 
 # --------------------------------------------------------- the second day ---
 
-## The second morning (v3, P5): Bram sets the four boxes back in the sack and
-## keeps one deck out. A practice round before they walk, if the player likes:
-## it can be lost, and the story goes on either way. The blank card has its own
-## slot beside the deck in the duel (BlankCardSlot).
+## The second morning (v3, P5). The practice round that was here is Bram's
+## duel by the fire now (23 October, _camp_duel); what's left is the day's
+## start, until the walk out of the Thornwood is staged (the build-up to
+## Dask's road: its words are in docs/script/v3_prologue_films.md for Gary
+## first).
 static func _morning(w: World) -> void:
 	var v := village(w)
 	v.set_scene("morning")
@@ -546,79 +625,18 @@ static func _morning(w: World) -> void:
 	Cine.place(w, "bram", c + Vector3(-1.2, 0, -0.9), c + Vector3(-0.2, 0, 1.7))
 	Cine.place(w, "player", c + Vector3(1.0, 0, 1.2), c + Vector3(-1.2, 0, -0.9))
 	var sack := _camp_sack(w, c + Vector3(-1.75, 0, -0.35))
-	var lg := _log_spot(v)
-	var ids: Array = DuelCards.DECKS.keys()
-	var mine := String(Game.starter)
-	var spare := "ironstone" if mine != "ironstone" else "tidegrove"
-	var boxes: Array = []
-	for i in ids.size():
-		if ids[i] == mine:
-			continue   # yours is in your pack
-		var m := StandardMaterial3D.new()
-		m.albedo_color = BOX_COLS.get(ids[i], Color(0.4, 0.3, 0.2))
-		var b := Node3D.new()
-		v.add_child(b)
-		v.box(b, Vector3(0.2, 0.09, 0.28), Vector3(0, 0.045, 0), m)
-		var at: Vector3 = (lg.mid as Vector3) + (lg.along as Vector3) * (-0.48 + i * 0.32)
-		at.y = float(lg.top)
-		b.global_position = at
-		b.rotation.y = atan2(lg.along.x, lg.along.z)
-		b.set_meta("deck", ids[i])
-		boxes.append(b)
 	Music.play(["thornwood", "menu_theme"], 2.0, true)
-	var side: Vector3 = (lg.along as Vector3).cross(Vector3.UP)
-	var bf = Cine.fig(w, "bram")
-	# the game was closed during the practice round: straight back into it
-	var p := 0 if Game.flag("practice_on") else -1
-	if p < 0:
-		await Cine.caption(w, "The second day")
-		Cine.shot(w, c + Vector3(5.0, 1.8, 3.6), c + Vector3(-0.4, 0.7, 0.4), 40.0)
-		Cine.fade(w, 0.0, 1.6)
-		await Cine.wait(w, 1.6)
-		await _boxes_to_sack(w, boxes, sack, spare, lg)
-		Cine.look(w, "bram", w.player.global_position)
-		Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
-		await Cine.say(w, "bram", "Practice round before we walk? I'll go easy.")
-		p = await Cine.choose(w, ["Let's duel.", "Let's walk."])
-	else:
-		for b in boxes:
-			(b as Node3D).queue_free()
-	if p == 0:
-		Game.set_flag("practice_on")
-		Game.save_game()
-		await Cine.fade(w, 1.0, 0.5)
-		var won: bool = await w._duel(Prologue.practice_duel_spec(Game.starter))
-		Game.set_flag("practice_on", false)
-		Cine.overlay(w).black(true)
-		if won:
-			# he studies the cards on the log a while
-			_cards_on_log(w, lg)
-			# (on the ground beside the log: the log's middle is 0.2 m up)
-			var by_log: Vector3 = (lg.mid as Vector3) - side * 0.75 + Vector3(0, 0, 0.1)
-			Cine.place(w, "bram", Vector3(by_log.x, 0.0, by_log.z), lg.mid)
-			Cine.shot(w, (lg.mid as Vector3) + side * 1.9 + Vector3(0, 1.5, 0), (lg.mid as Vector3) + Vector3(0, 0.6, 0) - side * 0.4, 40.0)
-			if bf is Figure3D:
-				(bf as Figure3D).pose("sit", 0.22, 0.5)   # bent over them
-			await Cine.fade(w, 0.0, 0.6)
-			await Cine.say(w, "bram", "Hm.", 1.4)
-			await Cine.wait(w, 1.6)
-			if bf is Figure3D:
-				(bf as Figure3D).release(0.5)
-			await Cine.say(w, "bram", "Not bad.")
-		else:
-			Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
-			await Cine.fade(w, 0.0, 0.6)
-			await Cine.say(w, "bram", "I said easy. I never said soft.")
-	else:
-		await Cine.say(w, "bram", "Suit yourself.")
+	await Cine.caption(w, "The second day")
+	Cine.shot(w, c + Vector3(5.0, 1.8, 3.6), c + Vector3(-0.4, 0.7, 0.4), 40.0)
+	Cine.fade(w, 0.0, 1.6)
+	await Cine.wait(w, 1.6)
+	Cine.look(w, "bram", w.player.global_position)
+	Cine.over_shoulder(w, "player", "bram", -1.0, 32.0)
+	await Cine.say(w, "bram", "Solhaven's two days east. Eat walking.")
 	await Cine.wait(w, 0.8)
 	await Cine.fade(w, 1.0, 1.4)
-	_drop_box(w)
 	if is_instance_valid(sack):
 		sack.queue_free()
-	for n in v.get_children():
-		if n.has_meta("log_card"):
-			n.queue_free()
 
 
 ## Bram sets the boxes back in the sack and keeps one deck out (`spare`).

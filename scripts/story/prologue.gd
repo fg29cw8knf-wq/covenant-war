@@ -46,8 +46,44 @@ static func _give(ids: Array) -> void:
 ## decks (whichever of his four the player didn't take). It can be lost; the
 ## story goes on either way. Bram explains each new thing the first time it
 ## appears (spec.lessons), as he would at any duel he's at.
+## The deck Bram picks against the player's by the fire (Gary, 23 October:
+## "after you pick your deck from Bram he should pick one to battle you
+## with"): the one that shows the player's deck its weakness, by the
+## element chart (Lore.ELEMENTS), so the lesson lands. Fire is put out by
+## Tide (Ironstone beats Emberstorm harder still, by the chart, but
+## tests/fire_sim.tscn had a learner losing three in four to it); Tide and
+## Verdant are poisoned (Venom); Earth is worn down by Tide and Verdant; and
+## Veilwild's tricks, which nothing of his beats outright, meet the deck
+## that gives them no time.
+const BRAM_PICKS := {"emberstorm": "tidegrove", "tidegrove": "veilwild", "ironstone": "tidegrove", "veilwild": "emberstorm"}
+## What he says of his pick, by the player's deck.
+const BRAM_PICK_LINES := {
+	"emberstorm": "Tidegrove, against yours. Fire hates water. Better you learn that from me by a fire than from a stranger on a road.",
+	"tidegrove": "Veilwild, against yours. Poison in the water, and your Totems asleep while it works. You'd best see it coming once.",
+	"ironstone": "Tidegrove, against yours. Water wears stone down. It only takes patience, and I've more of that than you.",
+	"veilwild": "Emberstorm, against yours. Tricks need time. Emberstorm doesn't give you any.",
+}
+
+
+## How hard he plays each pairing (the computer's strength, 0..1):
+## tests/fire_sim.tscn plays a learner (0.3) against him: about one win in
+## three for the others, and Emberstorm against Tidegrove two in three at
+## 0.3, so that one is firmer.
+const BRAM_STRENGTH := {"emberstorm": 0.4, "tidegrove": 0.3, "ironstone": 0.3, "veilwild": 0.25}
+
+
+static func bram_pick(mine: String) -> String:
+	return String(BRAM_PICKS.get(mine, "ironstone" if mine != "ironstone" else "tidegrove"))
+
+
+## Bram's duel by the fire (v3's practice round, moved to the campfire 23
+## October, straight after the deck choice and the pack tour; not optional,
+## and it can be lost): the second gated lesson duel. Bram plays the deck
+## that shows the player's its weakness (bram_pick), and teaches, once each
+## the first time it matters, the tiers, Rites, Shift, the Fate bands and
+## everything the Lantern Duel left (spec.lessons, DuelTutor.lesson).
 static func practice_duel_spec(mine: String) -> Dictionary:
-	var spare := "ironstone" if mine != "ironstone" else "tidegrove"
+	var spare := bram_pick(mine)
 	var deck: Array = Game.v2.get("deck", []) if not Game.v2.get("deck", []).is_empty() else DuelCards.card_list(mine)
 	var bram := Lore.new_profile("Bram", "", 3)
 	return {
@@ -55,12 +91,12 @@ static func practice_duel_spec(mine: String) -> Dictionary:
 		"names": [Game.player_name, "Bram"],
 		"profiles": [Game.profile, bram],
 		"ai": [false, true],
-		"difficulty": 0.35,
+		"difficulty": float(BRAM_STRENGTH.get(mine, 0.3)),
 		"arena": "tidegrove",
 		"story": true,
-		"lessons": true,   # Bram explains the first condition, Ward or Ascension, once
+		"lessons": true,   # Bram explains each new thing once: tiers, Rites, Shift, Fate bands, conditions, Wards, Ascension
 		"rewards": {"opponent": "village"},
-		"title": "A practice round · Bram",
+		"title": "By the fire · Bram",
 	}
 
 

@@ -434,6 +434,24 @@ func _build_lab() -> void:
 			Game.settings["duel_speed"] = v
 			Game.save_settings())
 		sp.add_child(b)
+	# Gary's Summon clips: the long one first, then the short; or short
+	# always, or none (SummonVideo)
+	box.add_child(UITheme.label("Summon videos", 24, UITheme.TEXT_DIM))
+	var svb := HBoxContainer.new()
+	svb.add_theme_constant_override("separation", 10)
+	box.add_child(svb)
+	var sv_btns := []
+	for m in SummonVideo.MODES:
+		var sb := _small_button(String(SummonVideo.MODE_NAMES[m]))
+		sb.toggle_mode = true
+		sb.button_pressed = SummonVideo.mode() == m
+		sb.custom_minimum_size = Vector2(160, 72)
+		sb.pressed.connect(func() -> void:
+			SummonVideo.set_mode(String(m))
+			for o in sv_btns:
+				o.button_pressed = o == sb)
+		sv_btns.append(sb)
+		svb.add_child(sb)
 	var d3 := CheckButton.new()
 	d3.text = "3D field (restart the duel to apply)"
 	d3.button_pressed = Game.settings.get("duel_3d", true)
@@ -1624,6 +1642,13 @@ func _on_die_tapped(on_die: bool) -> void:
 func lessons_at_main() -> void:
 	if tutor == null or game == null or game.over:
 		return
+	# the tiers, the first time a card above Spark is in the hand
+	for c in game.players[me].hand:
+		var card: DuelCard = c
+		if card.tier() >= 2 and card.tier() < Lore.TIER_NAMES.size() and not Game.learned("tier"):
+			await tutor.lesson("tier", "That %s is a %s: the %s of seven tiers, Spark to Divine. Each tier up costs more to call and hits harder, and a deck carries fewer of them: four Sparks of a kind, one Relic. The high ones aren't better. They're later." % [
+				card.card_name(), Lore.TIER_NAMES[card.tier()], ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh"][card.tier()]], "Tiers", "card:" + card.id)
+			break
 	for c in game.players[me].hand:
 		var card: DuelCard = c
 		if card.is_summon():
@@ -1670,6 +1695,8 @@ func fx_call(t: DuelTotem) -> void:
 	_hide_detail()
 	if t.owner == me:
 		_coach("essence")
+	if SummonVideo.pick(t.id()) != "":
+		await SummonVideo.play(overlay, t.id())
 	var v := _view(t)
 	v.set_totem(t)
 	v.fade = 0.0
@@ -1772,6 +1799,8 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
 		DuelFX.burst(fx_layer, c, col, 30, 520.0, 14.0, 0.7, Vector2(0, 200), 180.0, Vector2.UP, speed)
 	await pause(0.1)
+	if tutor != null:
+		await tutor.lesson("rite", ("That was a Rite of mine." if pi == rival and _bram_rival() else ("That was a Rite." if pi == rival else "A Rite.")) + " Cast once and gone, and it answers at once. The Essence it costs is Essence you're not calling a Totem with: spend it when the board asks for it, not because it's in your hand.", "Rites")
 	if tutor != null and pi == rival:
 		await tutor.event("rival_rite")
 
@@ -1812,6 +1841,8 @@ func fx_ward_spring(pi: int, card: DuelCard, _ctx: Dictionary) -> void:
 
 func fx_shift(_pi: int) -> void:
 	sfx.play("shift")
+	if tutor != null:
+		await tutor.lesson("shift", "A Shift: two of your Totems change places, for an Essence. It's the only way to move one once it's called, so a slot you've put the wrong Totem in isn't a slot you're stuck with.", "Shift")
 	for side in 2:
 		for v in views[side]:
 			v.set_totem(game.players[side].slots[v.slot])
@@ -2023,6 +2054,7 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 		# line, or the one-off lesson in a later duel)
 		await tutor.event("fate" if _pi == me else "rival_fate")
 		await tutor.lesson("fate", "That's a Fate roll. High, and it hits hard; low, nothing. The die doesn't care who you are.", "Fate", "die")
+		await tutor.lesson("fate_bands", "The bands under a move say what the die has to make: the low band does the small thing, the top band the big one. A move with a wide top band is a gamble. A narrow one is steady money.", "Fate", "detail")
 	_dice_view = null
 	var tw := dv.create_tween()
 	tw.tween_property(dv, "modulate:a", 0.0, 0.15 / speed)
@@ -2356,18 +2388,22 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		story_bark("my_summons")
 	if not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
-	var cine := SummonCine.new()
-	cine.card_id = card.id
-	cine.mine = pi == me
-	cine.scene = DuelArt.summon_scene(card.id)
-	cine.figure = DuelArt.summon(card.id)
-	cine.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(cine)
-	var tw := create_tween()
-	cine.tween = tw
-	tw.tween_property(cine, "t", 1.0, (3.2 if cine.has_art() else 1.9) / minf(speed, 2.0))
-	await tw.finished
-	cine.queue_free()
+	if SummonVideo.pick(card.id) != "":
+		# Gary's clip for it (the long one the first time, then the short)
+		await SummonVideo.play(overlay, card.id)
+	else:
+		var cine := SummonCine.new()
+		cine.card_id = card.id
+		cine.mine = pi == me
+		cine.scene = DuelArt.summon_scene(card.id)
+		cine.figure = DuelArt.summon(card.id)
+		cine.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.add_child(cine)
+		var tw := create_tween()
+		cine.tween = tw
+		tw.tween_property(cine, "t", 1.0, (3.2 if cine.has_art() else 1.9) / minf(speed, 2.0))
+		await tw.finished
+		cine.queue_free()
 	var col := DuelFX.light(card.element())
 	var landing := func() -> void:
 		DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)

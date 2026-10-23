@@ -27,6 +27,7 @@ tools/build_web.sh runs it before every export, so a new creature or movie shot
 lands in the right pack without anyone editing the presets.
 """
 import fnmatch
+import glob
 import os
 import re
 import sys
@@ -79,6 +80,12 @@ PACKS = {
 		"files": ["assets/movies/dawn.ogv", "assets/movies/dawn/*", "assets/art/movie/dawn/*"],
 	},
 }
+
+# Gary's Summon clips (SummonVideo): one pack a card, holding its full and
+# short clips, fetched the first time that card is summoned or called
+for _f in sorted(glob.glob(os.path.join(ROOT, "assets/movies/summons/*.ogv"))):
+	_id = os.path.basename(_f)[:-4].rsplit("_", 1)[0]
+	PACKS.setdefault("summon_" + _id, {"title": "the Summon's clip: " + _id, "files": ["assets/movies/summons/%s_*" % _id]})
 
 
 def project_files():

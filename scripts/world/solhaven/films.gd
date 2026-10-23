@@ -142,7 +142,7 @@ static func _voice(w: World, file: String, who: String, parts: Array) -> void:
 		var hold := -1.0
 		if length > 0.0:
 			hold = length * float(String(p).length()) / float(maxi(1, total)) + (0.45 if p == parts[-1] else 0.1)
-		await Cine.say(w, who, String(p), hold)
+		await Cine.say(w, who, String(p), hold, hold > 0.0)
 
 
 ## A line of dialogue (Cine.say) that holds more than two sentences, shown as

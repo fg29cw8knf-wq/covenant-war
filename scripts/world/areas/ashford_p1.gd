@@ -969,6 +969,11 @@ static func room_clamp(room: Dictionary, np: Vector3) -> Vector3:
 ## One frame of someone walking after the player, staying `keep` metres
 ## behind (at up to `speed` m/s), looking at them when they stop. In a
 ## room (walk_room's), they keep out of its furniture too.
+## How close the player can come to someone following them before that
+## someone steps back (their personal space, m).
+const FOLLOW_SPACE := 0.6
+
+
 static func _follow_step(w: World, who: String, keep: float, dt: float, speed: float, room := {}, token := -1) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
@@ -980,7 +985,22 @@ static func _follow_step(w: World, who: String, keep: float, dt: float, speed: f
 	var d := p - b.global_position
 	d.y = 0.0
 	var dist := d.length()
-	if dist > keep + 0.25:
+	if dist < FOLLOW_SPACE and dist > 0.001:
+		# the player has walked into them: a step back out of their way,
+		# rather than standing to be walked through
+		var np := b.global_position - d.normalized() * minf(speed * dt, FOLLOW_SPACE - dist)
+		if Cine._on_terrain(w, b):
+			np = _round_props(w, np)
+			np.y = Cine.ground(w, np)
+		elif not room.is_empty():
+			np = room_clamp(room, np)
+		b.global_position = np
+		f.walking = true
+		if f is Figure3D:
+			(f as Figure3D).gait = "walk"
+			(f as Figure3D).pace = 0.6
+		f.look_toward(p, w.cam)
+	elif dist > keep + 0.25:
 		var step := minf(speed * dt, dist - keep)
 		var np := b.global_position + d.normalized() * step
 		if Cine._on_terrain(w, b):
@@ -1186,28 +1206,47 @@ static func _attic(w: World) -> void:
 	var side: Vector3 = a.bed_side
 	if pf is Figure3D:
 		var fig := pf as Figure3D
-		# a hand goes down on the mattress beside him and he pushes himself
-		# up on it, slowly (he's only just awake), the blanket sliding back
+		# his right hand finds the blanket's hem beside him and throws it
+		# back across him to the wall, the cloth following the hand
+		# (BlanketThrow); then the hand goes down on the mattress and he
+		# pushes himself up on it, slowly (he's only just awake)
 		var hand := Node3D.new()
 		hand.name = "BedHand"
 		w.add_child(hand)
-		hand.global_position = (a.lie_at as Vector3) + Vector3(-0.28, a.bed_top + 0.02, 0.34)
-		fig.reach(null, hand, 0.5)
-		await Cine.wait(w, 0.35)
-		fig.sit_long(a.lie_top, 1.5)
 		var bl: Node3D = a.blanket
-		if bl != null and is_instance_valid(bl):
-			var tb := w.create_tween()
-			tb.tween_property(bl, "transform", a.blanket_off as Transform3D, 1.1).set_trans(Tween.TRANS_SINE).set_delay(0.5)
+		var on_mattress := (a.lie_at as Vector3) + Vector3(-0.28, a.bed_top + 0.02, 0.34)
+		if bl is MeshInstance3D and bl.has_meta("rows"):
+			var corner := BlanketThrow.corner_of(bl)
+			hand.global_position = corner
+			fig.reach(null, hand, 0.45)
+			await Cine.wait(w, 0.45)
+			var bt := BlanketThrow.start(bl, a.blanket_off, hand, 1.1)
+			var to := BlanketThrow.corner_in_heap(bl, a.blanket_off)
+			var sweep := w.create_tween()
+			sweep.tween_method(func(u: float) -> void:
+				hand.global_position = corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.22, 0), 0.0, 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await sweep.finished
+			bt.let_go()
+			var down := w.create_tween()
+			down.tween_property(hand, "global_position", on_mattress, 0.45).set_trans(Tween.TRANS_SINE)
+			await down.finished
+		else:
+			hand.global_position = on_mattress
+			fig.reach(null, hand, 0.5)
+			await Cine.wait(w, 0.35)
+		fig.sit_long(a.lie_top, 1.5)
 		await Cine.wait(w, 1.7)
-		# sat up: a breath, then his legs swing over the side and he turns to
-		# sit on the edge, the hand coming off the mattress as he does
+		# sat up: a breath, then he slides to the edge and turns to face it,
+		# his legs still out along the mattress (they swing down only once
+		# they're over the edge: nothing goes through the bed), the hand
+		# coming off the mattress as he does
 		await Cine.wait(w, 0.5)
-		fig.sit(a.edge_top, 1.1)
+		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.2, 0.05)
+		fig.sit(a.edge_top, 0.8)
 		fig.let_go(0.8)
-		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.2)
+		await Cine.wait(w, 0.8)
 		# a moment on the edge, then up, a little unsteady, and away from it
-		await Cine.wait(w, 0.7)
+		await Cine.wait(w, 0.4)
 		fig.stand(0.9)
 		var tw := w.create_tween()
 		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -1296,6 +1335,8 @@ static func asleep(w: World) -> void:
 		bl.set_meta("on", bl.transform)
 	elif bl != null and is_instance_valid(bl):
 		bl.transform = bl.get_meta("on")
+	if bl is MeshInstance3D and bl.has_meta("rows"):
+		BlanketThrow.reset(bl)
 
 
 ## P1 · the taproom: Bram stacking paper lanterns into the crate, the shelves
@@ -1454,7 +1495,7 @@ static func _crate_to_player(w: World, cr: Node3D) -> void:
 	hold.name = "CrateHold"
 	var held_at := bram.to_world(CRATE_HOLD + Vector3(0, 0.08, 0.1))
 	var lift := w.create_tween()
-	lift.tween_property(cr, "global_position", held_at, 0.5).set_trans(Tween.TRANS_SINE)
+	lift.tween_property(cr, "global_position", held_at, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await lift.finished
 	bram.carry(cr, CRATE_HOLD + Vector3(0, 0.08, 0.1))
 	cr.rotation = Vector3.ZERO
@@ -1464,7 +1505,7 @@ static func _crate_to_player(w: World, cr: Node3D) -> void:
 	me.look_toward(Cine.body(w, "bram").global_position, w.cam)
 	var mid := (bram.global_position + me.global_position) * 0.5
 	var give := w.create_tween()
-	give.tween_property(cr, "global_position", Vector3(mid.x, cr.global_position.y, mid.z), 0.45).set_trans(Tween.TRANS_SINE)
+	give.tween_property(cr, "global_position", Vector3(mid.x, cr.global_position.y, mid.z), 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# (facing him, their left hand takes the side on his right)
 	me.reach(cr.get_node("R"), cr.get_node("L"), 0.45)
 	await give.finished
@@ -1604,8 +1645,15 @@ static func _green(w: World) -> void:
 	var wide := spot - to_c * 6.5 + side * 1.5 + Vector3(0, 3.2, 0)
 	Cine.shot(w, clear_cam(w, [wide, spot - to_c * 6.5 - side * 1.5 + Vector3(0, 3.6, 0), spot - to_c * 4.0 + Vector3(0, 5.0, 0)],
 		spot + Vector3(0, 1.2, 0)), spot + to_c * 1.5 + Vector3(0, 1.6, 0), 44.0)
+	# Bram sets off a beat after them and swings wide on his own side on
+	# the way, so his line never crosses theirs (he used to come up from
+	# behind, faster, straight through them: Gary, 23 October)
 	Cine.path(w, "player", round_lantern(w, p, spot), 1.4)
-	await Cine.path(w, "bram", round_lantern(w, Cine.body(w, "bram").global_position, bram_to), 1.6)
+	await Cine.wait(w, 0.45)
+	var bp := Cine.body(w, "bram").global_position
+	var wide_way := (bp + bram_to) * 0.5 + side * 1.5
+	wide_way.y = v.height(wide_way.x, wide_way.z)
+	await Cine.path(w, "bram", round_lantern(w, bp, wide_way) + round_lantern(w, wide_way, bram_to), 1.6)
 	var t := 0.0
 	while t < 8.0 and Vector2(w.player.global_position.x - spot.x, w.player.global_position.z - spot.z).length() > 0.15:
 		await w.get_tree().process_frame

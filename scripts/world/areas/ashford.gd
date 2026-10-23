@@ -766,30 +766,107 @@ const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 
 	Color(0.65, 0.3, 1.0), Color(0.2, 1.0, 0.8), Color(0.45, 1.0, 0.3), Color(1.0, 0.35, 0.7)]
 
 
-## A small leather card box with brass corners: Bram's Spark deck.
+## A worn leather card box with brass corners: Bram's Spark deck, held in
+## both hands (the "L" and "R" nodes on its sides are the hands' targets).
+## Gary's model takes its place when it exists (assets/models/ashford/
+## card_box.glb, 12 cm tall, its origin at the middle of its base).
+const CARD_BOX_MODEL := "res://assets/models/ashford/card_box.glb"
+const CARD_BOX_SIZE := Vector3(0.11, 0.12, 0.06)
+## Where it's held: in front of the chest, in the figure's own frame.
+const BOX_HOLD := Vector3(0.0, 1.02, 0.27)
+
+
 static func _card_box() -> Node3D:
 	var n := Node3D.new()
-	var mi := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(0.075, 0.1, 0.04)
-	mi.mesh = bm
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.32, 0.18, 0.09)
-	m.roughness = 0.75
-	mi.material_override = m
-	n.add_child(mi)
-	var trim := MeshInstance3D.new()
-	var tb := BoxMesh.new()
-	tb.size = Vector3(0.078, 0.012, 0.042)
-	trim.mesh = tb
-	var tm := StandardMaterial3D.new()
-	tm.albedo_color = Color(0.75, 0.58, 0.25)
-	tm.metallic = 0.8
-	tm.roughness = 0.35
-	trim.material_override = tm
-	trim.position.y = 0.035
-	n.add_child(trim)
+	if ResourceLoader.exists(CARD_BOX_MODEL):
+		var inst: Node3D = (load(CARD_BOX_MODEL) as PackedScene).instantiate()
+		n.add_child(inst)
+		var box := AABB()
+		var first := true
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			var b := mi.transform * mi.get_aabb()
+			box = b if first else box.merge(b)
+			first = false
+		if not first and box.size.y > 0.001:
+			inst.scale = Vector3.ONE * (CARD_BOX_SIZE.y / box.size.y)
+			inst.position = -box.get_center() * inst.scale.x
+	else:
+		var mi := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = CARD_BOX_SIZE
+		mi.mesh = bm
+		var m := StandardMaterial3D.new()
+		m.albedo_color = Color(0.32, 0.18, 0.09)
+		m.roughness = 0.75
+		mi.material_override = m
+		n.add_child(mi)
+		var trim := MeshInstance3D.new()
+		var tb := BoxMesh.new()
+		tb.size = Vector3(CARD_BOX_SIZE.x + 0.004, 0.014, CARD_BOX_SIZE.z + 0.004)
+		trim.mesh = tb
+		var tm := StandardMaterial3D.new()
+		tm.albedo_color = Color(0.75, 0.58, 0.25)
+		tm.metallic = 0.8
+		tm.roughness = 0.35
+		trim.material_override = tm
+		trim.position.y = CARD_BOX_SIZE.y * 0.32
+		n.add_child(trim)
+		for corner in [Vector3(-1, 1, -1), Vector3(1, 1, -1), Vector3(-1, 1, 1), Vector3(1, 1, 1), Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
+			var cm := MeshInstance3D.new()
+			var cb := BoxMesh.new()
+			cb.size = Vector3(0.014, 0.014, 0.014)
+			cm.mesh = cb
+			cm.material_override = tm
+			cm.position = Vector3(corner.x * CARD_BOX_SIZE.x * 0.5, corner.y * (CARD_BOX_SIZE.y - 0.012), corner.z * CARD_BOX_SIZE.z * 0.5)
+			n.add_child(cm)
+	# the hands take it by its sides, fingers under
+	for side in [["L", 1.0], ["R", -1.0]]:
+		var h := Node3D.new()
+		h.name = side[0]
+		h.position = Vector3(float(side[1]) * (CARD_BOX_SIZE.x * 0.5 + 0.02), CARD_BOX_SIZE.y * 0.45, 0.0)
+		n.add_child(h)
+	n.set_meta("card_box", true)
 	return n
+
+
+## The card box in someone's two hands, in front of their chest (it used to
+## sit on the lantern-hand point with the fingers through it: Gary, 23
+## October, "his arm goes through it"). A cut-out gets it beside them.
+static func _hold_box(w: World, who: String, box: Node3D) -> Node3D:
+	var f = Cine.fig(w, who)
+	if f is Figure3D:
+		var fig := f as Figure3D
+		fig.carry(box, BOX_HOLD)
+		fig.reach(box.get_node("L"), box.get_node("R"), 0.35)
+		w.set_meta("box_" + who, box)
+		return box
+	var b := Cine.body(w, who)
+	if b != null:
+		b.add_child(box)
+		box.position = Vector3(0.32, 0.95, 0.15)
+		w.set_meta("box_" + who, box)
+	return box
+
+
+## Holds the box out towards someone (the hands go with it); `back` brings it in.
+static func _box_out(w: World, who: String, out := true, secs := 0.5) -> void:
+	var box = w.get_meta("box_" + who, null)
+	if box == null or not is_instance_valid(box):
+		return
+	var tw := w.create_tween()
+	tw.tween_property(box, "position", BOX_HOLD + (Vector3(0, 0.04, 0.2) if out else Vector3.ZERO), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+
+
+## Takes the box out of someone's hands (and away).
+static func _drop_box(w: World, who: String) -> void:
+	var f = Cine.fig(w, who)
+	if f is Figure3D:
+		(f as Figure3D).let_go(0.3)
+	var box = w.get_meta("box_" + who, null)
+	if box != null and is_instance_valid(box):
+		box.queue_free()
+	w.remove_meta("box_" + who)
 
 
 ## Puts a prop in someone's hand (a 3D figure's right hand; beside a cut-out).
@@ -868,7 +945,7 @@ static func _bram_sets_off(w: World) -> void:
 	# paintings start loading now, so it opens without a stall
 	CardFace.warm_art(PLAYER_DECK + ["lantern_moth"])
 	await AshfordP1.bram_stand(w)
-	_hold(w, "bram", _card_box())
+	_hold_box(w, "bram", _card_box())
 	var from := bram.global_position
 	var back := from - stop
 	back.y = 0.0
@@ -914,7 +991,7 @@ static func _bram_comes(w: World) -> void:
 	# a cut (a glide here swung half round them, through Corin and the drum)
 	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
 		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look)
-	_hold(w, "bram", _card_box())
+	_hold_box(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
 	await Cine.path(w, "bram", _round_lantern(w, bram.global_position, stop), BRAM_PACE)
@@ -937,15 +1014,35 @@ static func _first_deck(w: World) -> void:
 	var look := mid + Vector3(0, 1.15, 0)
 	Cine.shot(w, AshfordP1.clear_cam(w, [mid + perp * 2.6 + Vector3(0, 1.55, 0), mid - perp * 2.6 + Vector3(0, 1.55, 0),
 		mid + perp * 2.2 + Vector3(0, 2.3, 0), mid - perp * 2.2 + Vector3(0, 2.3, 0)], look, ["player", "bram"]), look, 34.0)
+	# he holds the box out in both hands, and the player's hands come up
+	# and take it (it passes between them rather than appearing)
 	var f = Cine.fig(w, "bram")
-	if f is Figure3D:
-		(f as Figure3D).pose("play_card", 0.45)
-	await Cine.wait(w, 0.7)
-	_drop(w, "bram")
-	var box := _hold(w, "player", _card_box())
+	await _box_out(w, "bram", true, 0.5)
+	await Cine.wait(w, 0.3)
 	var pf = Cine.fig(w, "player")
-	if pf is Figure3D:
-		(pf as Figure3D).pose("play_card", 0.35)
+	var box: Node3D = w.get_meta("box_bram", null)
+	if box != null and is_instance_valid(box) and pf is Figure3D:
+		var me := pf as Figure3D
+		# (facing him, their left hand takes the side on his right)
+		me.reach(box.get_node("R"), box.get_node("L"), 0.4)
+		await Cine.wait(w, 0.45)
+		if f is Figure3D:
+			(f as Figure3D).let_go(0.3)
+		w.remove_meta("box_bram")
+		var from := box.global_position
+		var to := me.to_world(BOX_HOLD)
+		var give := w.create_tween()
+		give.tween_method(func(u: float) -> void:
+			if is_instance_valid(box):
+				box.global_position = from.lerp(to, u), 0.0, 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await give.finished
+		me.carry(box, BOX_HOLD)
+		box.rotation = Vector3.ZERO
+		me.reach(box.get_node("L"), box.get_node("R"), 0.2)
+		w.set_meta("box_player", box)
+	else:
+		_drop_box(w, "bram")
+		box = _hold_box(w, "player", _card_box())
 	if f is Figure3D:
 		(f as Figure3D).release()
 	await Cine.wait(w, 0.6)
@@ -953,9 +1050,7 @@ static func _first_deck(w: World) -> void:
 	_give_first_deck()
 	if pf is Figure3D:
 		(pf as Figure3D).release()
-	_drop(w, "player")
-	if is_instance_valid(box):
-		box.queue_free()
+	_drop_box(w, "player")
 	await Cine.wait(w, 0.3)
 
 
@@ -1067,7 +1162,9 @@ static func _tilly_hands_over(w: World) -> void:
 		drop.tween_callback(func() -> void:
 			keep_l.queue_free()
 			keep_r.queue_free())
-	# a little arc, brightening as it crosses
+	# an eased arc across, brightening as it crosses, a slow half turn so
+	# its face ends up towards you (it slid over on a straight line, which
+	# read as blocky: Gary, 23 October)
 	var from: Vector3 = glow.global_position
 	var to := p + Vector3(0, 1.05, 0) + d * 0.3
 	var s0: Vector3 = glow.scale
@@ -1075,15 +1172,16 @@ static func _tilly_hands_over(w: World) -> void:
 	var gt := w.create_tween()
 	gt.tween_method(func(u: float) -> void:
 		if is_instance_valid(glow):
-			glow.global_position = from.lerp(to, u) + Vector3(0, sin(u * PI) * 0.12, 0)
+			var e := smoothstep(0.0, 1.0, u)
+			glow.global_position = from.lerp(to, e) + Vector3(0, sin(e * PI) * 0.16, 0)
 			if g3:
-				glow.global_basis = Basis(Vector3.UP, PI * u) * b0
-			glow.scale = s0 * (1.0 + sin(u * PI) * 0.35), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE)
-	# you reach out and take it
+				glow.global_basis = Basis(Vector3.UP, PI * e) * b0
+			glow.scale = s0 * (1.0 + sin(e * PI) * 0.35), 0.0, 1.0, 1.1).set_trans(Tween.TRANS_SINE)
+	# your hands come up to meet it as it comes
 	if pf is Figure3D:
 		if g3:
-			await Cine.wait(w, 0.35)
-			_hands_on(pf, glow, 0.4)
+			await Cine.wait(w, 0.3)
+			_hands_on(pf, glow, 0.6)
 		else:
 			(pf as Figure3D).pose("play_card", 0.3)
 	await gt.finished
@@ -1513,9 +1611,12 @@ static func _the_run(w: World) -> void:
 	await v.strike(Vector3(-9.6, 0, 5.4), SIGIL_COLS[4], 0.25)
 	w.shake(0.5)
 	_sfx(w, "sigil_strike")
+	# the run eases out into the fall over a longer blend, the body
+	# settling on the ground (it snapped from a stride into the clip's
+	# first frame: Gary, 23 October, "very blocky")
 	var pf = Cine.fig(w, "player")
 	if pf is Figure3D:
-		(pf as Figure3D).act("fall")
+		(pf as Figure3D).act("fall", 1.0, 0.4)
 	await Cine.wait(w, 0.9)
 
 
@@ -2209,7 +2310,7 @@ static func _herald_say(w: World, n: int, text: String, skip_text := false) -> v
 			ap.finished.connect(ap.queue_free)
 			hold = ap.stream.get_length() + 0.5
 			break
-	await Cine.say(w, "herald", text, hold)
+	await Cine.say(w, "herald", text, hold, hold > 0.0)
 
 
 ## A Champion's face shown by the Herald's lantern: pale, flickering, hanging
@@ -2736,7 +2837,7 @@ static func _burning(w: World) -> void:
 static func _tam_down(f: Figure3D, blend: float) -> void:
 	if f.anim != null and f.anim.has_animation("death"):
 		if blend > 0.0:
-			f.hold("death", 1.3, blend)
+			f.hold("death", 1.3, maxf(blend, 0.35))
 		else:
 			f.pose("death", 1.0, 0.01)
 	else:

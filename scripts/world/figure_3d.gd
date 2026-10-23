@@ -392,7 +392,9 @@ func _sit_as(height: float, blend: float) -> void:
 ## comes with them, so it's not taken for walking off. `face_dir` is the
 ## way to end up facing (a world direction), turned to over the move. What
 ## moves is their body (the node they stand in), as walking moves it.
-func shift_seat(to: Vector3, face_dir: Vector3, secs := 0.9) -> void:
+## `lift` raises the hips on the way (m, most at the middle), clear of
+## what they slide over.
+func shift_seat(to: Vector3, face_dir: Vector3, secs := 0.9, lift := 0.0) -> void:
 	var mover: Node3D = get_parent() as Node3D if get_parent() is Node3D else self
 	var from := mover.global_position
 	var y0 := _yaw
@@ -402,7 +404,7 @@ func shift_seat(to: Vector3, face_dir: Vector3, secs := 0.9) -> void:
 		y1 = y0 + wrapf(atan2(face_dir.x, face_dir.z) - y0, -PI, PI)
 	var tw := create_tween()
 	tw.tween_method(func(k: float) -> void:
-		mover.global_position = from.lerp(to, k)
+		mover.global_position = from.lerp(to, k) + Vector3(0, sin(k * PI) * lift, 0)
 		_seat_at = global_position
 		_yaw = lerpf(y0, y1, k)
 		_want_yaw = _yaw, 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)

@@ -855,6 +855,27 @@ func _options() -> Control:
 		size_btns.append(b)
 		sizes.add_child(b)
 	v.add_child(sizes)
+	# Gary's Summon clips in a duel: the long one the first time a card is
+	# summoned, then the short; or the short always; or none (SummonVideo)
+	var videos := HBoxContainer.new()
+	videos.add_theme_constant_override("separation", 24)
+	var vl := UITheme.label("Summon videos", 30, UITheme.TEXT, "bold")
+	vl.custom_minimum_size = Vector2(300, 0)
+	videos.add_child(vl)
+	var video_btns := []
+	for m in SummonVideo.MODES:
+		var vb := UITheme.button(String(SummonVideo.MODE_NAMES[m]), false, 200)
+		vb.toggle_mode = true
+		vb.button_pressed = SummonVideo.mode() == m
+		vb.custom_minimum_size = Vector2(200, 64)
+		vb.add_theme_font_size_override("font_size", 26)
+		vb.pressed.connect(func() -> void:
+			SummonVideo.set_mode(String(m))
+			for o in video_btns:
+				o.button_pressed = o == vb)
+		video_btns.append(vb)
+		videos.add_child(vb)
+	v.add_child(videos)
 	v.add_child(_check("Full violence (blood when Totems fall)", String(Game.settings.get("violence", "full")) == "full", func(on: bool) -> void:
 		Game.settings["violence"] = "full" if on else "reduced"))
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:

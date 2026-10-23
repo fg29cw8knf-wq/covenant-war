@@ -56,13 +56,14 @@ static func fade(w: World, to_alpha: float, secs := 0.8) -> void:
 	await overlay(w).fade(to_alpha, secs)
 
 
-static func caption(w: World, text: String, sub := "", secs := 2.6) -> void:
-	await overlay(w).caption(text, sub, secs)
+static func caption(w: World, text: String, sub := "", secs := 2.6, timed := false) -> void:
+	await overlay(w).caption(text, sub, secs, timed)
 
 
 ## A subtitle from `who` (or narration with who = ""). Their figure talks
-## while it's up. `hold` sets how long it stays.
-static func say(w: World, who: String, text: String, hold := -1.0) -> void:
+## while it's up. It stays until it's tapped; a voiced line (`timed`, with
+## `hold` the recording's length) moves on by itself, a tap skipping it.
+static func say(w: World, who: String, text: String, hold := -1.0, timed := false) -> void:
 	var f = fig(w, who) if who != "" else null
 	if f is Figure3D:
 		(f as Figure3D).talking = true
@@ -71,7 +72,7 @@ static func say(w: World, who: String, text: String, hold := -1.0) -> void:
 		nm = String(w.get_meta("extra_names", {}).get(who, "")) if w.has_meta("extra_names") else ""
 		if nm == "":
 			nm = w._speaker(who)
-	await overlay(w).say(nm, w._fmt(text), hold)
+	await overlay(w).say(nm, w._fmt(text), hold, timed)
 	if f is Figure3D:
 		(f as Figure3D).talking = false
 
@@ -514,12 +515,39 @@ static func blockers(w: World) -> Array:
 const ROUTE_REACH := 4.0   # m either side of the straight line the way may wander
 
 
-static func route(w: World, from: Vector3, to: Vector3, clear := 0.35) -> Array:
+## `walker` named, the people standing about (everyone but the walker:
+## the player, the villagers, the extras, a body's width each) are things to
+## go round too (Gary, 23 October: "Bram walks straight through the player"
+## on the way to the Lantern); a walk still ends on its mark whoever stands
+## beside it.
+const PERSON_R := 0.45
+
+
+static func people(w: World, walker := "") -> Array:
+	var out: Array = []
+	var me := body(w, walker) if walker != "" else null
+	if w.player != null and w.player != me and w.player.is_inside_tree():
+		out.append([Vector2(w.player.global_position.x, w.player.global_position.z), PERSON_R])
+	for n in w.find_children("*", "StaticBody3D", true, false):
+		var sb := n as StaticBody3D
+		if sb != me and sb.has_meta("npc") and sb.is_inside_tree() and sb.is_visible_in_tree():
+			out.append([Vector2(sb.global_position.x, sb.global_position.z), PERSON_R])
+	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
+	for id in ex:
+		var b = ex[id].body
+		if b is Node3D and b != me and (b as Node3D).is_inside_tree() and (b as Node3D).is_visible_in_tree():
+			out.append([Vector2((b as Node3D).global_position.x, (b as Node3D).global_position.z), PERSON_R])
+	return out
+
+
+static func route(w: World, from: Vector3, to: Vector3, clear := 0.35, walker := "") -> Array:
 	var a := Vector2(from.x, from.z)
 	var b := Vector2(to.x, to.z)
 	if a.distance_to(b) < 0.05:
 		return [to]
 	var all := blockers(w)
+	if walker != "":
+		all = all + people(w, walker)
 	if _crossings(all, a, b, clear) == 0:
 		return [to]
 	# the things near the way, and the points round each
@@ -641,29 +669,27 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 	b.set_meta("cine_path", token)
 	# over the village's slopes, feet stay on the grass
 	var follow := _on_terrain(w, b)
-	var legs: Array = []
-	var last := b.global_position
 	for p in points:
-		legs.append_array(route(w, last, p))
-		last = p
-	for p in legs:
-		var to: Vector3 = p
-		var from := b.global_position
-		to.y = from.y
-		var dist := Vector2(to.x - from.x, to.z - from.z).length()
-		if dist < 0.05:
-			continue
-		f.face(to - from, w.cam)
-		var tw := w.create_tween()
-		tw.tween_method(func(u: float) -> void:
-			if is_instance_valid(b) and b.get_meta("cine_path", 0) == token:
-				var at := from.lerp(to, u)
-				if follow:
-					at.y = ground(w, at)
-				b.global_position = at, 0.0, 1.0, dist / maxf(speed, 0.1))
-		await tw.finished
-		if not is_instance_valid(b) or b.get_meta("cine_path", 0) != token:
-			return
+		# the way to each point is found as its walk starts (the things in
+		# it, and the people, where they stand then)
+		for leg in route(w, b.global_position, p, 0.35, who):
+			var to: Vector3 = leg
+			var from := b.global_position
+			to.y = from.y
+			var dist := Vector2(to.x - from.x, to.z - from.z).length()
+			if dist < 0.05:
+				continue
+			f.face(to - from, w.cam)
+			var tw := w.create_tween()
+			tw.tween_method(func(u: float) -> void:
+				if is_instance_valid(b) and b.get_meta("cine_path", 0) == token:
+					var at := from.lerp(to, u)
+					if follow:
+						at.y = ground(w, at)
+					b.global_position = at, 0.0, 1.0, dist / maxf(speed, 0.1))
+			await tw.finished
+			if not is_instance_valid(b) or b.get_meta("cine_path", 0) != token:
+				return
 	if is_instance_valid(f):
 		f.walking = false
 		if f is Figure3D:

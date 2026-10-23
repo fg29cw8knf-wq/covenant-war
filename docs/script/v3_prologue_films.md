@@ -330,19 +330,83 @@ _Choosing a deck opens the deck screen for the first time, and Bram walks you ro
 
 _He banks the fire, and doesn't say anything else that night._
 
+_(23 October, Gary: "when Bram gives you the deck of cards he should do a duel with you and teach you more of the game". The practice round moved from the second morning to here, straight after the deck screen, and it isn't offered: he picks the deck that shows yours its weakness. These lines are Claude's, in the script's voice, for Gary to keep or change.)_
+
+_Bram sets the other three boxes back in the sack and keeps one out._
+
+**Bram (you chose Emberstorm):** Tidegrove, against yours. Fire hates water. Better you learn that from me by a fire than from a stranger on a road.
+
+**Bram (Tidegrove):** Veilwild, against yours. Poison in the water, and your Totems asleep while it works. You'd best see it coming once.
+
+**Bram (Ironstone):** Tidegrove, against yours. Water wears stone down. It only takes patience, and I've more of that than you.
+
+**Bram (Veilwild):** Emberstorm, against yours. Tricks need time. Emberstorm doesn't give you any.
+
+**Bram:** Sit down. Thirty cards you've never played, and the first stranger who tries you won't go easy. I will. A little.
+
+**DUEL · By the fire** · Bram · his pick. _It can be lost; the night goes on either way. Bram teaches each new thing once, the first time it's on the table (the list at the top of this script), and these as well:_
+
+**Bram (the first card above Spark in your hand; the game fills in the card and its tier):** That Blazehound is a Glimmer: the second of seven tiers, Spark to Divine. Each tier up costs more to call and hits harder, and a deck carries fewer of them: four Sparks of a kind, one Relic. The high ones aren't better. They're later.
+
+**Bram (the first Rite, either side):** A Rite. Cast once and gone, and it answers at once. The Essence it costs is Essence you're not calling a Totem with: spend it when the board asks for it, not because it's in your hand.
+
+**Bram (the first Shift):** A Shift: two of your Totems change places, for an Essence. It's the only way to move one once it's called, so a slot you've put the wrong Totem in isn't a slot you're stuck with.
+
+**Bram (after the first Fate roll):** The bands under a move say what the die has to make: the low band does the small thing, the top band the big one. A move with a wide top band is a gamble. A narrow one is steady money.
+
+**Bram (the deck screen, after "Read before you play"):** Two bars under it. Resonance fills every time you duel with the card, towards a second copy. Attunement fills towards the card it grows into: its Ascension.
+
+**Bram (the deck screen, next):** A spare copy isn't dead weight. In the Codex you re-absorb it, and it feeds the Attunement of its own kind; or you pour in from the pool you win in duels, at half the worth.
+
+**Bram (if you win):** Hm. _(He studies the cards on the log a while.)_ Not bad.
+
+**Bram (if you lose):** I said easy. I never said soft.
+
+_Then the lords, as above, and he banks the fire._
+
 **Caption:** The second day
 
-_Morning on the Thornwood road. Bram sets the four boxes back in the sack and keeps one deck out._
+_(23 October, Gary: "more of a build-up after battling Bram before the person runs into us and straight into another duel". The second morning becomes the walk out of the Thornwood, with the player on foot. These lines are Claude's, in the script's voice: **not staged until Gary has read them and said yes.** Until then the morning is one caption and one line.)_
 
-**Bram:** Practice round before we walk? I'll go easy.
+_Morning. The fire is out. Bram kicks the ashes over and shoulders the sack. The road runs east between the trees; you walk it, Bram a pace ahead._
 
-**The player's choice:** Let's duel. / Let's walk.
+**Objective:** Walk east with Bram. (W A S D or the arrow keys, or click the ground.)
 
-**Bram (if you win the practice duel):** Hm. _(He studies the cards on the log a while.)_ Not bad.
+_A cart passes the other way: a family on it, a goat tied on behind, nobody looking up._
 
-**Bram (if you lose it):** I said easy. I never said soft.
+**Bram:** They're going the way we came. Towards the fire.
 
-**Bram (let's walk):** Suit yourself.
+**Bram:** Ashford's not the first village that's burned this month. It's the first one I cared about.
+
+**The player's choice (both can be asked):** Who are they running from? / What's at Solhaven?
+
+**Bram (running from):** Whoever's nearest with a torch. Ironvault, mostly. The Covenant said the Unsworn could keep a card that found them. Nobody's said it since the Sigils fell.
+
+**Bram (Solhaven):** The Sun's Court. A Hierarch, a hundred steps, and a god who used to answer. If anyone still reads the old law, it's read there.
+
+_A waystone at a fork, its sun-sign blackened. A hound's collar hangs from it, Ironvault's badge on the buckle._
+
+**Bram:** Riders. Two days old. _(He turns the collar over.)_ One hound short.
+
+**Bram:** The card. Where is it?
+
+**The player's choice:** In my coat, with the deck. / In my hand. Let them see it.
+
+**Bram (in my coat):** Keep it there. A card nobody's seen is a card nobody's sworn against. _(Standing: Bram remembers the care.)_
+
+**Bram (in my hand):** _(a long look)_ Then walk in front, and don't walk fast. _(Standing: the road remembers the card; in Solhaven your name arrives before you do.)_
+
+_Far off behind them, a hound bays once. Bram doesn't turn._
+
+**Bram:** Don't look round. Looking's an answer.
+
+_The road climbs. At the top of the bend the trees stop, and the plain opens below, hazed. Bram stops for the first time all day._
+
+**Bram:** That haze is the plain. Solhaven's under it, two days on.
+
+**Bram:** We'll camp short of the trees' end. Nothing that bays wants to be seen on open ground.
+
+_(Music: thornwood under the walk; duel_pinch as the baying comes. The second night, Dask, and dawn over Solhaven follow as written.)_
 
 **Caption:** The second night
 
