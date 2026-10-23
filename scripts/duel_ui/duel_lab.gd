@@ -282,6 +282,8 @@ const TUNE_LABELS := {
 	"weakness_mult": ["Weakness multiplier", 0.25], "burn_damage": ["Burn damage", 5],
 	"poison_damage": ["Poison damage", 5], "shift_cost": ["Shift cost", 1],
 	"wrath_bonus": ["Wrath bonus", 5], "mercy_heal": ["Dawn's Mercy heal", 10],
+	"rest_heal": ["Rest mends", 5], "rest_essence": ["Rest gives Essence", 1],
+	"chain_max": ["Answers in a chain", 1], "respond_secs": ["Seconds to answer", 1],
 }
 
 

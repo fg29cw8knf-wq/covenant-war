@@ -855,6 +855,28 @@ func _options() -> Control:
 		size_btns.append(b)
 		sizes.add_child(b)
 	v.add_child(sizes)
+	# the response window in a duel (Phase A): ask whenever an answer is held,
+	# only when one can be paid for, or never (the action goes ahead)
+	var respond := HBoxContainer.new()
+	respond.add_theme_constant_override("separation", 24)
+	var rl := UITheme.label("Ask me to respond", 30, UITheme.TEXT, "bold")
+	rl.custom_minimum_size = Vector2(300, 0)
+	respond.add_child(rl)
+	var respond_btns := []
+	for m in [["always", "Always"], ["can", "Only when I can"], ["never", "Never"]]:
+		var rb := UITheme.button(String(m[1]), false, 200)
+		rb.toggle_mode = true
+		rb.button_pressed = String(Game.settings.get("respond", "can")) == String(m[0])
+		rb.custom_minimum_size = Vector2(200, 64)
+		rb.add_theme_font_size_override("font_size", 24)
+		rb.pressed.connect(func() -> void:
+			Game.settings["respond"] = String(m[0])
+			Game.save_settings()
+			for o in respond_btns:
+				(o as Button).button_pressed = o == rb)
+		respond_btns.append(rb)
+		respond.add_child(rb)
+	v.add_child(respond)
 	# Gary's Summon clips in a duel: the long one the first time a card is
 	# summoned, then the short; or the short always; or none (SummonVideo)
 	var videos := HBoxContainer.new()

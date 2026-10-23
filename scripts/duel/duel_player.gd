@@ -38,11 +38,13 @@ var fate_bonus := 0           # Star Chart, for the rest of this turn
 var rite_recalled := false    # Aldrith's Blessing, once a duel
 var fallen: Array = []        # the stage of each of this duellist's Totems knocked out (for Resonance)
 var survived := false
+var hand_wards_used: Array = []   # Wards played from the hand in answer this duel (once each, by card id)
+var answering: Array = []      # DuelCard: answers on the chain, between being played and resolving
 
 # statistics for the balance tests
 var played := {}              # card id -> times played this duel
 var stats := {"life_damage_dealt": 0, "kos": 0, "totems_called": 0, "rites": 0, "wards_sprung": 0,
-	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0}
+	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0}
 
 
 func _init(p_index: int, p_name: String) -> void:
@@ -102,7 +104,7 @@ func has_guardian() -> bool:
 
 
 func total_card_count() -> int:
-	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size()
+	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size() + answering.size()
 	for t in totems():
 		n += t.stack.size()
 	return n

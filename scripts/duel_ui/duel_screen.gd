@@ -69,6 +69,7 @@ var turn_label: Label
 var end_btn: DuelViews.EmblemButton
 var gift_btn: DuelViews.GiftButton
 var ward_zones := []           # [side] -> WardZone
+var phase_band: DuelViews.PhaseBand   # the turn's phases, under the rival's plate (Phase A)
 var rival_hand: DuelViews.HandBacks
 var _menu_anchor := Vector2(-1, -1)
 var _menu_beside := 0            # 0: above the anchor; -1 / 1: to that side of it (3D field)
@@ -97,7 +98,7 @@ var log_panel: PanelContainer
 var log_text: RichTextLabel
 var lab_panel: PanelContainer
 
-var mode := "idle"             # idle, main, pick_slot, busy, over
+var mode := "idle"             # idle, main, pick_slot, respond, busy, over
 var sel_card: DuelCard = null
 var sel_totem: DuelTotem = null
 var sel_move := -1
@@ -324,6 +325,9 @@ func _build() -> void:
 		p.tapped.connect(_on_panel_tapped)
 		stage.add_child(p)
 		panels.append(p)
+	phase_band = DuelViews.PhaseBand.new()
+	phase_band.size = Vector2(400, 42)
+	stage.add_child(phase_band)
 	# aiming arrows while a target is being picked
 	var arrows := TargetArrows.new()
 	arrows.screen = self
@@ -561,7 +565,8 @@ func _start() -> void:
 		field.set_rows(me)
 	_pin(panels[rival], Vector2(6, 6), false)
 	_pin(panels[me], Vector2(6, 822), false)
-	_pin(ward_zones[rival], Vector2(20, 262), false)
+	_pin(phase_band, Vector2(20, 258), false)
+	_pin(ward_zones[rival], Vector2(20, 306), false)
 	_pin(ward_zones[me], Vector2(20, 690), false)
 	for side in 2:
 		panels[side].player = game.players[side]
@@ -619,6 +624,7 @@ func _refresh() -> void:
 		end_btn.state = "off"
 	elif my_turn:
 		end_btn.state = "glow" if not game.can_do_anything_but_end(me) and pending == "" else "on"
+		end_btn.label = _end_label()
 	else:
 		end_btn.state = "wait"
 	end_btn.wait_label = "WATCHING" if _watching() else ("%s TURN" % _whose(cur.player_name)).to_upper()
@@ -634,6 +640,26 @@ func _refresh() -> void:
 func _watching() -> bool:
 	var ai_flags: Array = spec.get("ai", [false, true])
 	return ai_flags[me]
+
+
+## What the big button does now: on to the Clash, on to the second Main, or
+## end the turn (Phase A). A tutorial step that says "end" ends it.
+func _end_label() -> String:
+	if _tutor_wants_end():
+		return "END TURN"
+	match game.next_phase(me):
+		"clash":
+			return "TO CLASH"
+		"main2":
+			return "MAIN II"
+	return "END TURN"
+
+
+func _tutor_wants_end() -> bool:
+	if tutor == null or not tutor.gating():
+		return false
+	var step: Dictionary = tutor._current_do()
+	return not step.is_empty() and String(step.get("do", "")) == "end"
 
 
 ## The line under a duellist's name on their plate: spec.plates (or the
@@ -795,6 +821,8 @@ func _hand_state(c: DuelCard) -> String:
 		return "unaffordable"
 	if mode != "main":
 		return "normal"
+	if game.phase_problem(_play_kind(c)) != "":
+		return "normal"   # not in this phase of the turn
 	var ok := false
 	match c.kind():
 		"totem":
@@ -806,6 +834,13 @@ func _hand_state(c: DuelCard) -> String:
 		"summon":
 			ok = game.summon_problem(me, c) == ""
 	return "playable" if ok else "normal"
+
+
+## The kind of action playing this card is, for the phase rules.
+func _play_kind(c: DuelCard) -> String:
+	if c.kind() == "totem":
+		return "call" if c.is_basic_totem() else "ascend"
+	return c.kind()
 
 
 func _update_highlights() -> void:
@@ -821,7 +856,7 @@ func _update_highlights() -> void:
 					h = "target"
 			if v.totem != null and v.totem == sel_totem:
 				h = "selected"
-			if h == "" and mode == "main" and side == me and v.totem != null and _has_usable_move(v.totem):
+			if h == "" and mode == "main" and side == me and v.totem != null and _has_usable_move(v.totem) and game.phase_problem("attack") == "":
 				h = "ready"
 			v.highlight = h
 	panels[rival].targetable = targets.has(DuelGame.LIFE)
@@ -1017,12 +1052,20 @@ func _back_out() -> void:
 func _on_end_turn() -> void:
 	if mode == "main":
 		if tutor != null and not tutor.allows("end"):
-			tutor.nudge()
+			# the lesson wants something else; moving on to the Clash for an
+			# attack it asks for is fine (its steps were written before the phases)
+			var kind := DuelHuman.tutor_step_kind(game, me, tutor._current_do())
+			if not (kind != "" and game.phase_problem(kind) != "" and game.next_phase(me) != "end"):
+				tutor.nudge()
+				return
+			sfx.play("end_turn")
+			_respond({"type": "next"})
 			return
+		var ends := game.next_phase(me) == "end" or _tutor_wants_end()
 		if tutor != null:
 			tutor.did("end")
 		sfx.play("end_turn")
-		_respond({"type": "end"})
+		_respond({"type": "end"} if ends else {"type": "next"})
 
 
 func _on_gift() -> void:
@@ -1093,6 +1136,11 @@ func _on_hand_tapped(hv) -> void:
 	_clear_actions()
 	_menu_anchor = _hand_anchor(hv)
 	_menu_beside = 0
+	var ph := game.phase_problem(_play_kind(c))
+	if ph != "":
+		_add_note(ph)
+		_refresh()
+		return
 	match c.kind():
 		"totem":
 			if c.is_basic_totem():
@@ -1243,11 +1291,16 @@ func _select_totem(t: DuelTotem) -> void:
 	else:
 		_menu_anchor = _center(tv) - Vector2(0, 118)
 	var ready := game.ready_problem(me, t)
+	var ph := game.phase_problem("attack")
 	if ready != "":
 		_add_note(ready)
+	elif ph != "":
+		_add_note(ph)
 	for i in t.moves().size():
 		var mv := t.move(i)
 		var prob := game.move_problem(me, t, i)
+		if prob == "" and ph != "":
+			prob = ph
 		var sub := DuelCardFace.move_detail(mv)
 		var dmg := int(mv.get("damage", 0))
 		var title: String = mv.name
@@ -1259,7 +1312,29 @@ func _select_totem(t: DuelTotem) -> void:
 			sub = prob
 		var idx := i
 		_add_action(title, sub, t.move_cost(i), prob == "", func() -> void: _choose_move(t, idx), "move:%d" % i)
-	if game.shift_problem(me, t, (t.slot + 1) % DuelRules.SLOTS) == "":
+	# its stance (Phase A): what a ready Totem does with its turn instead of striking
+	if game.phase_problem("stance") == "":
+		var offered := false
+		for st in ["guard", "rest", "strike"]:
+			if st == t.stance or game.stance_problem(me, t, st) != "":
+				continue
+			var stance := String(st)
+			var title := ""
+			var sub := ""
+			match stance:
+				"guard":
+					title = "Guard"
+					sub = "Turns half of every blow aside until your next turn. It makes no attack."
+				"rest":
+					title = "Rest"
+					sub = "Mends %d now, and gives you %d Essence at your next turn. No attack or Shift this turn." % [DuelRules.rest_heal, DuelRules.rest_essence]
+				_:
+					continue   # (a stance holds for the turn: there's no going back to Strike)
+			_add_action(title, sub, 0, true, func() -> void: _respond({"type": "stance", "totem": t, "stance": stance}), "stance:" + stance)
+			offered = true
+		if offered and tutor != null:
+			tutor.lesson("stance", "Set it to Strike, Guard or Rest. Guard turns half of every blow aside and makes no attack; Rest mends it and pays you an Essence next turn. A choice is only a choice when it costs you something, and here it costs the attack.", "Stances", "")
+	if game.phase_problem("shift") == "" and game.shift_problem(me, t, (t.slot + 1) % DuelRules.SLOTS) == "":
 		var sc := game.shift_cost(me)
 		_add_action("Shift", "Move to another slot (swaps if taken).", sc, true, func() -> void:
 			_clear_selection()
@@ -1325,12 +1400,18 @@ func _show_actions_default() -> void:
 	for t in p.totems():
 		if _has_usable_move(t):
 			any = true
-	if any:
-		_set_hint("Tap a glowing Totem to attack, or a glowing card to play it.")
-	elif game.can_do_anything_but_end(me):
-		_set_hint("Tap a glowing card in your hand to play it.")
-	else:
-		_set_hint("Nothing left to do: end your turn.")
+	match game.phase:
+		"clash":
+			_set_hint("The Clash: tap a glowing Totem to attack." if any else "Nothing can attack: move on.")
+		"main2":
+			_set_hint("A last breath: a Rite or a Shift, or end your turn." if game.can_do_anything_but_end(me) else "Nothing left to do: end your turn.")
+		_:
+			if game.can_do_anything_but_end(me):
+				_set_hint("Tap a glowing card to play it, or a Totem to set its stance." if any else "Tap a glowing card in your hand to play it.")
+			elif any:
+				_set_hint("Set your stances, or on to the Clash.")
+			else:
+				_set_hint("Nothing left to do: end your turn.")
 
 
 func _show_cancel() -> void:
@@ -1430,6 +1511,61 @@ func _hide_detail() -> void:
 
 # =========================================================== human pickers ===
 
+## The response window (Phase A): the rival's action is declared and hasn't
+## landed; the answers in hand are offered, with a countdown and "Let it be".
+## Options says when to ask: always (any answer held), only when one can be
+## paid for, or never.
+func begin_respond(event: Dictionary, cards: Array) -> void:
+	var setting := String(Game.settings.get("respond", "can"))
+	var affordable := cards.filter(func(c): return game.answer_problem(me, c, event) == "")
+	if _watching() or setting == "never" or (setting == "can" and affordable.is_empty()):
+		human.responded.emit(null)
+		return
+	mode = "respond"
+	_clear_selection()
+	_clear_actions()
+	_hide_detail()
+	if tutor != null:
+		await tutor.lesson("answer", "They've made their move, and it hasn't landed yet. That's your moment: an answer from your hand, or let it be. Six breaths, then it lands.", "Answers", "")
+	var strip := RespondStrip.new()
+	strip.screen = self
+	strip.setup(event, cards, affordable)
+	overlay.add_child(strip)
+	sfx.play("ui_select")
+	var pick = await strip.done
+	strip.queue_free()
+	_respond(pick)
+
+
+## "Corin's Cinderpup attacks your Brookfin": what's being answered.
+func event_text(ev: Dictionary) -> String:
+	var kind := String(ev.get("type", ""))
+	var by := int(ev.get("by", rival))
+	if kind == "attack" and ev.get("attacker") is DuelTotem:
+		by = (ev.attacker as DuelTotem).owner
+	var who: String = "You" if by == me else game.players[by].player_name
+	var whose_: String = "your" if by == me else "%s's" % game.players[by].player_name
+	match kind:
+		"attack":
+			var tg = ev.get("target")
+			var at := "your Life" if by != me else "%s Life" % _whose(game.players[rival].player_name).to_lower()
+			if tg is DuelTotem:
+				at = ("your %s" if tg.owner == me else "%s %s" % [_whose(game.players[tg.owner].player_name).to_lower(), "%s"]) % tg.card_name() if tg.owner == me else "%s %s" % [_whose(game.players[tg.owner].player_name), tg.card_name()]
+			return "%s %s attacks %s" % [whose_.capitalize() if by != me else "Your", (ev.attacker as DuelTotem).card_name(), at]
+		"rite":
+			var c: DuelCard = ev.get("card")
+			if ev.get("answer", false):
+				return "%s answer%s with %s" % [who, "" if by == me else "s", c.card_name()]
+			return "%s call%s down %s" % [who, "" if by == me else "s", c.card_name()] if ev.get("summon", false) else "%s cast%s %s" % [who, "" if by == me else "s", c.card_name()]
+		"call":
+			return "%s call%s %s" % [who, "" if by == me else "s", (ev.called as DuelTotem).card_name()]
+		"ward":
+			return "%s set%s a Ward face down" % [who, "" if by == me else "s"]
+		"ward_spring":
+			return "%s Ward springs: %s" % [whose_.capitalize() if by != me else "Your", (ev.card as DuelCard).card_name()]
+	return ""
+
+
 func begin_pick_cards(prompt: String, items: Array, min_n: int, max_n: int, context: Dictionary) -> void:
 	mode = "busy"
 	var picker := DuelViews.CardPicker.new().setup(prompt, items, min_n, max_n, context.get("wards", []))
@@ -1483,7 +1619,7 @@ func preview_ai_action(pi: int, a: Dictionary) -> void:
 				panels[1 - pi].targetable = true
 			await pause(0.35)
 			panels[1 - pi].targetable = false
-		"call", "rite", "summon", "ascend":
+		"call", "rite", "summon", "ascend", "answer":
 			var c: DuelCard = a.card
 			_show_detail(c.id, {"cost": c.cost()})
 			await pause(0.35)
@@ -1677,6 +1813,68 @@ func fx_turn(pi: int) -> void:
 			tutor.begin_turn()
 		if _my_turns == 0:
 			_coach("start")
+
+
+## The turn moves into a phase (Phase A): the band, and a word for the player's own Clash.
+func fx_phase(pi: int, p_phase: String) -> void:
+	if phase_band != null:
+		phase_band.set_phase(p_phase, pi == me)
+	_refresh()
+	if pi == me and not _watching():
+		if p_phase == "clash" or p_phase == "main2":
+			sfx.play("ui_select")
+			_toast("THE CLASH" if p_phase == "clash" else "MAIN II")
+		if p_phase == "main" and tutor != null and game.turn > 1:
+			await tutor.lesson("phases", "A turn has its parts, and the band under my plate keeps count: Dawn, the draw, then the Main for calling, setting and casting; the Clash for the blows; a last breath for a Rite or a Shift; then Dusk. Nothing happens out of its turn.", "The turn", "")
+
+
+## A Totem takes a stance (Phase A): its badge, its pose on the field.
+func fx_stance(t: DuelTotem) -> void:
+	_refresh()
+	var v := _view(t)
+	v.flash = 0.5
+	v.flash_color = Color("c7d2ff") if t.stance == "guard" else (Color("9fe8c0") if t.stance == "rest" else Color(1, 1, 1))
+	if field != null:
+		field.set_stance(t.owner, t.slot, t.stance)
+	sfx.play("shift")
+	await pause(0.25)
+
+
+## An answer is played (Phase A): the card shown, a link of light from the
+## answerer's plate to what it answers.
+func fx_answer(pi: int, card: DuelCard, event: Dictionary, _depth: int) -> void:
+	sfx.play("ward_spring")
+	_refresh()
+	_show_detail(card.id, {"cost": card.cost()})
+	var who := "You answer" if pi == me else "%s answers" % game.players[pi].player_name
+	_toast("%s with %s" % [who, card.card_name()])
+	var from := _life_center(pi)
+	var to := _event_point(event)
+	DuelFX.lightning(fx_layer, from, to, DuelFX.light(card.element()), 0.55, 7.0)
+	if pi != me and tutor != null:
+		await tutor.lesson("answered", "Answered. A card played against yours in the moment between the saying and the doing. You can do the same, when you hold one.", "Answers", "")
+	await pause(0.7)
+
+
+func fx_chain_done(_chain: Array, _res: Dictionary) -> void:
+	_hide_detail()
+	_refresh()
+
+
+## Where on the screen an event is: the attacker, the caster's plate, a Ward zone.
+func _event_point(ev: Dictionary) -> Vector2:
+	match String(ev.get("type", "")):
+		"attack":
+			if ev.get("attacker") is DuelTotem:
+				return _center(_view(ev.attacker))
+		"call":
+			if ev.get("called") is DuelTotem:
+				return _center(_view(ev.called))
+		"ward_spring":
+			var by := int(ev.get("by", rival))
+			var wz: DuelViews.WardZone = ward_zones[by]
+			return wz.position + wz.size * 0.5
+	return _life_center(int(ev.get("by", rival)))
 
 
 func fx_draw(pi: int, cards: Array) -> void:
@@ -3341,6 +3539,117 @@ class Vignette:
 
 
 ## Curved, flowing arrows from the attacking Totem to everything it can hit.
+## The Respond strip (Phase A): what's coming, the answers in hand (greyed
+## when they can't be paid for), a countdown bar and "Let it be".
+class RespondStrip:
+	extends Control
+	signal done(card)
+	var screen = null   # DuelScreen
+	var event: Dictionary = {}
+	var cards: Array = []
+	var affordable: Array = []
+	var left := 0.0
+	var total := 6.0
+	var _panel: PanelContainer
+	var _finished := false
+
+	func _init() -> void:
+		set_anchors_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_STOP   # a tap elsewhere lets it be, below
+
+	func setup(p_event: Dictionary, p_cards: Array, p_affordable: Array) -> void:
+		event = p_event
+		cards = p_cards
+		affordable = p_affordable
+		total = maxf(1.0, DuelRules.respond_secs)
+		left = total
+		_panel = PanelContainer.new()
+		_panel.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.035, 0.07, 0.96), UITheme.GOLD, 18, 3, 22))
+		add_child(_panel)
+		var col := VBoxContainer.new()
+		col.add_theme_constant_override("separation", 10)
+		_panel.add_child(col)
+		var head := UITheme.label("RESPOND?", 30, UITheme.GOLD, "display_bold")
+		head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(head)
+		var what := UITheme.label(screen.event_text(event) + ". It hasn't landed yet.", 24, UITheme.TEXT)
+		what.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		what.custom_minimum_size = Vector2(1000, 0)
+		col.add_child(what)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 12)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(row)
+		for c in cards:
+			var card: DuelCard = c
+			var b := ActionButton.new()
+			b.title = card.card_name()
+			var prob: String = screen.game.answer_problem(screen.me, card, event)
+			b.sub = DuelCards.card_text(card.id) if prob == "" else prob
+			b.cost = card.cost()
+			b.enabled = prob == ""
+			b.custom_minimum_size = Vector2(384, 96)
+			b.pressed.connect(func() -> void:
+				if b.enabled:
+					screen.sfx.play("ui_tap")
+					_finish(card)
+				else:
+					screen.sfx.play("ui_error")
+					screen._show_detail(card.id, {"cost": card.cost()}))
+			row.add_child(b)
+		var foot := HBoxContainer.new()
+		foot.add_theme_constant_override("separation", 20)
+		foot.alignment = BoxContainer.ALIGNMENT_CENTER
+		col.add_child(foot)
+		var let := UITheme.button("Let it be", false, 300)
+		let.custom_minimum_size = Vector2(300, 70)
+		let.pressed.connect(func() -> void:
+			screen.sfx.play("ui_back")
+			_finish(null))
+		foot.add_child(let)
+		call_deferred("_place")
+
+	func _place() -> void:
+		var sz := _panel.get_combined_minimum_size()
+		_panel.size = sz
+		_panel.position = Vector2((size.x - sz.x) * 0.5, 540.0 - sz.y * 0.5)
+
+	func _process(delta: float) -> void:
+		left -= delta
+		queue_redraw()
+		if left <= 0.0:
+			_finish(null)
+
+	func _finish(card) -> void:
+		if _finished:
+			return
+		_finished = true
+		done.emit(card)
+
+	func _gui_input(e: InputEvent) -> void:
+		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
+			if not _panel.get_global_rect().has_point(e.global_position):
+				_finish(null)   # tapped away: let it be
+			accept_event()
+
+	func _unhandled_input(e: InputEvent) -> void:
+		if e.is_action_pressed("ui_cancel"):
+			_finish(null)
+			get_viewport().set_input_as_handled()
+
+	func _draw() -> void:
+		if _panel == null or _panel.size == Vector2.ZERO:
+			return
+		# the countdown: a bar along the panel's top edge, draining
+		var r := Rect2(_panel.position + Vector2(24, -10), Vector2(_panel.size.x - 48, 8))
+		CardFace.box(self, r, 4, Color(0, 0, 0, 0.6))
+		var k := clampf(left / total, 0.0, 1.0)
+		var col := UITheme.GOLD if k > 0.35 else Color("ff8a5a")
+		if k > 0.0:
+			CardFace.box(self, Rect2(r.position, Vector2(r.size.x * k, r.size.y)), 4, col)
+
+
 class TargetArrows:
 	extends Control
 	var screen: DuelScreen

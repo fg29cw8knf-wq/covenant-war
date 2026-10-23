@@ -8,11 +8,48 @@ signal responded(value)
 var screen = null   # DuelScreen
 
 
-func choose_action(_game: DuelGame, _pi: int) -> Dictionary:
+func choose_action(game: DuelGame, pi: int) -> Dictionary:
 	if screen.tutor != null:
 		await screen.tutor.at_main()   # the tutorial's next lesson, before the player can act
 		await screen.lessons_at_main()   # and anything new on the table (an Ascension)
+		# the tutorial asks for something the turn's phase doesn't allow yet (an
+		# attack in the Main, a Rite after the Clash): the turn moves on by
+		# itself (Bram's lessons were written before the phases)
+		var kind := tutor_step_kind(game, pi, screen.tutor._current_do())
+		if kind != "" and game.phase_problem(kind) != "" and game.next_phase(pi) != "end":
+			return {"type": "next"}
 	screen.begin_main()
+	var r = await responded
+	return r
+
+
+## The kind of action a tutorial step asks for ("" when it isn't one that
+## has a phase): an attack for a Totem, move or target step, a card's play
+## for a card step.
+static func tutor_step_kind(game: DuelGame, pi: int, step: Dictionary) -> String:
+	if step.is_empty():
+		return ""
+	var d := String(step.get("do", ""))
+	var want := d.get_slice(":", 0)
+	match want:
+		"totem", "move", "target":
+			return "attack"
+		"card":
+			var id := d.get_slice(":", 1) if d.contains(":") else ""
+			for c in game.players[pi].hand:
+				if (c as DuelCard).id == id:
+					if c.kind() == "totem":
+						return "call" if c.is_basic_totem() else "ascend"
+					return c.kind()
+		"slot":
+			return "call"
+	return ""
+
+
+## An answer on the rival's turn (Phase A): the Respond strip, with the
+## answers in hand; null lets the action be.
+func choose_response(_game: DuelGame, _pi: int, event: Dictionary, cards: Array) -> DuelCard:
+	screen.begin_respond(event, cards)
 	var r = await responded
 	return r
 
@@ -63,9 +100,17 @@ class Paced:
 	func choose_action(game: DuelGame, pi: int) -> Dictionary:
 		await _pause(0.5)
 		var a := ai.choose_action(game, pi)
-		if screen != null and a.get("type", "") != "end":
+		if screen != null and not (a.get("type", "") in ["end", "next"]):
 			await screen.preview_ai_action(pi, a)
 		return a
+
+	func choose_response(game: DuelGame, pi: int, event: Dictionary, cards: Array) -> DuelCard:
+		var c := ai.choose_response(game, pi, event, cards)
+		if c != null:
+			await _pause(0.6)
+			if screen != null:
+				await screen.preview_ai_action(pi, {"type": "answer", "card": c})
+		return c
 
 	func choose_cards(game: DuelGame, pi: int, prompt: String, cards: Array, min_n: int, max_n: int, context: Dictionary) -> Array:
 		await _pause(0.4)
@@ -112,7 +157,17 @@ class Scripted:
 		if _scripted > turns.size():
 			return await super.choose_action(game, pi)
 		while not _queue.is_empty():
-			var a := _resolve(game, pi, _queue.pop_front())
+			var a := _resolve(game, pi, _queue[0])
+			if not a.is_empty() and game.phase_problem(String(a.type)) != "":
+				# a step for a later phase (an attack while the turn is in its
+				# Main): the turn moves on to it, the step kept; with no later
+				# phase to come, the step can't be done this turn
+				if game.next_phase(pi) != "end":
+					await _pause(0.3)
+					return {"type": "next"}
+				_queue.pop_front()
+				continue
+			_queue.pop_front()
 			if a.is_empty() or game.action_problem(pi, a) != "":
 				continue
 			if a.has("_roll"):
@@ -125,6 +180,8 @@ class Scripted:
 		# a story rule may still owe an attack (Showboat): make it before ending
 		var owed := game.showboat_attack(pi)
 		if not owed.is_empty():
+			if game.phase != "clash":
+				return {"type": "next"}
 			await _pause(0.6)
 			if screen != null:
 				await screen.preview_ai_action(pi, owed)

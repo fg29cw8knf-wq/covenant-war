@@ -32,6 +32,11 @@ var burn_turns: int:
 var called_turn := 0
 var ascended_turn := -1
 var attacked := false          # this turn
+## Its stance (Phase A): strike, guard (takes half damage, can't attack) or
+## rest (mended when set, an Essence at its owner's next turn; can't attack or Shift). Set in
+## its owner's Main phase, back to Strike at their next turn.
+var stance := "strike"
+var stance_turn := -1          # the game turn its stance was set on (one stance a turn)
 var buff := 0                  # extra damage this turn (Forge Edge)
 var hasted := false            # Swift for the turn it was called (Swiftness 7+)
 var last_hit_by = null         # the DuelTotem that last damaged it (for Harvest and Wards)

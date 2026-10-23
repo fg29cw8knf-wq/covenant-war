@@ -289,8 +289,12 @@ class TotemView:
 		# stage seal
 		if totem.stage() > 0:
 			DuelViews.pill(self, pr.position + Vector2(28, -14), ["", "II", "III"][totem.stage()], Color("3a2a08", 0.95 * f), UITheme.GOLD, 15, 22)
-		# conditions and shield, in a row above the plaque
+		# the stance (Phase A), then conditions and shield, in a row above the plaque
 		var x := pr.position.x + (70.0 if totem.stage() > 0 else 28.0)
+		if totem.stance != "strike":
+			var guard := totem.stance == "guard"
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "GUARD" if guard else "REST",
+				Color("c7d2ff" if guard else "9fe8c0", 0.95 * f), Color("141a30" if guard else "0f2a1a"), 14, 22) + 5
 		for cnd in totem.conditions():
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), DuelConditions.short_name(cnd), Color(DuelConditions.color(cnd), 0.95 * f), Color("140f18"), 14, 22) + 5
 		for bn in totem.boons:
@@ -583,6 +587,58 @@ class PlayerPanel:
 		Glyphs.draw(self, glyph, pos + Vector2(19, 17), 10, col)
 		CardFace.text_in(self, fnt, Rect2(pos + Vector2(34, 0), Vector2(w - 40, 34)), label, 18, col, HORIZONTAL_ALIGNMENT_LEFT)
 		return w
+
+
+# ================================================================ PhaseBand ===
+## The turn's phases in a row (Phase A: Dawn · Draw · Main · Clash · Main II ·
+## Dusk), the one the turn is in lit, in the side's colour. Under the rival's
+## plate.
+class PhaseBand:
+	extends Control
+	var phase := ""
+	var mine := false
+	var _t := 0.0
+	var _lit := 0.0
+	const ORDER := ["dawn", "draw", "main", "clash", "main2", "dusk"]
+	const SHORT := {"dawn": "DAWN", "draw": "DRAW", "main": "MAIN", "clash": "CLASH", "main2": "MAIN II", "dusk": "DUSK"}
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func set_phase(p: String, p_mine: bool) -> void:
+		if p != phase:
+			_lit = 1.0
+		phase = p
+		mine = p_mine
+		queue_redraw()
+
+	func _process(delta: float) -> void:
+		_t += delta
+		_lit = move_toward(_lit, 0.0, delta * 2.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		if not ORDER.has(phase):
+			return
+		var r := Rect2(Vector2.ZERO, size)
+		CardFace.box(self, Rect2(r.position + Vector2(0, 4), r.size), 12, Color(0, 0, 0, 0.4))
+		CardFace.vgrad(self, r, 12, Color(0.08, 0.09, 0.16, 0.94), Color(0.02, 0.02, 0.05, 0.94))
+		CardFace.box(self, r, 12, Color(0, 0, 0, 0), Color(UITheme.GOLD_DIM, 0.8), 1.5)
+		var edge := UITheme.MINE if mine else UITheme.THEIRS
+		var fnt := CardFace.font("bold")
+		var n := ORDER.size()
+		var w := (size.x - 16.0) / n
+		for i in n:
+			var cell := Rect2(Vector2(8.0 + i * w, 5.0), Vector2(w - 4.0, size.y - 10.0))
+			var here: bool = ORDER[i] == phase
+			var passed: bool = ORDER.find(phase) > i
+			if here:
+				CardFace.box(self, cell, 8, Color(edge, 0.55 + 0.2 * sin(_t * 4.0) + 0.3 * _lit), Color(edge.lightened(0.3), 0.9), 1.5)
+			var col := Color.WHITE if here else (Color(UITheme.TEXT_DIM, 0.55) if passed else Color(UITheme.TEXT_DIM, 0.9))
+			CardFace.text_in(self, fnt, cell, String(SHORT[ORDER[i]]), 14 if ORDER[i] == "main2" else 15, col, HORIZONTAL_ALIGNMENT_CENTER)
+			if i < n - 1:
+				var sx := cell.end.x + 2.0
+				draw_line(Vector2(sx, cell.position.y + 8), Vector2(sx, cell.end.y - 8), Color(1, 1, 1, 0.1), 1.0)
 
 
 # ================================================================= WardZone ===

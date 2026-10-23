@@ -70,6 +70,9 @@ class Slot:
 	var yaw := 0.0                 # the model's current turn
 	var yaw_target := 0.0
 	var yaw_until := 0.0           # when a temporary turn (facing a target) ends
+	var stance := "strike"         # its Totem's stance (Phase A): a held pose when the model has no clip for it
+	var pose := Vector3(1, 1, 0)   # the pose it's at: width, height, lean
+	var stance_clip := false       # the model plays a guard / rest clip of its own
 
 
 func _init() -> void:
@@ -527,7 +530,17 @@ func sync(v) -> void:
 	s.sprite.modulate = m
 	if s.model != null:
 		var k: float = s.creature_h * 1.05 / maxf(0.01, s.model_h) * v.pop
-		s.model.scale = Vector3(k, k, k)
+		# the stance pose: braced lower and leaning for Guard, settled down for Rest
+		var want := Vector3(1, 1, 0)
+		if not s.stance_clip:
+			match s.stance:
+				"guard":
+					want = Vector3(1.06, 0.88, 0.14 * (1.0 if s.mine else -1.0))
+				"rest":
+					want = Vector3(1.04, 0.74, 0.0)
+		s.pose = s.pose.lerp(want, clampf(get_process_delta_time() * 6.0, 0.0, 1.0))
+		s.model.scale = Vector3(k * s.pose.x, k * s.pose.y, k * s.pose.x)
+		s.model.rotation.z = s.pose.z
 		# models face +Z: at rest they stand three-quarters to the camera so their
 		# faces show; during a strike they turn to face their target (face_at)
 		if s.yaw_until > 0.0 and _t > s.yaw_until:
@@ -802,6 +815,8 @@ const CLIP_ALIASES := {
 	"summon": ["summon", "spawn", "appear", "rise", "enter"],
 	"victory": ["victory", "win", "cheer", "celebrate"],
 	"run": ["run", "charge", "walk", "dash"],
+	"guard": ["guard", "block", "defend", "brace"],
+	"rest": ["rest", "sleep", "sit", "lie", "crouch"],
 }
 
 
@@ -927,6 +942,21 @@ func play_clip(side: int, slot: int, want: String, speed_scale: float = 1.0) -> 
 
 func _drive_anim(_s: Slot, _v) -> void:
 	pass   # clips are driven explicitly by the screen's effects (play_clip)
+
+
+## A Totem's stance on its model (Phase A): a guard or rest clip when the
+## model has one; otherwise a held pose (sync: braced lower and leaning for
+## Guard, settled down for Rest, back up for Strike).
+func set_stance(side: int, slot: int, stance: String) -> void:
+	var s: Slot = slots[side][slot]
+	s.stance = stance
+	s.stance_clip = false
+	if s.model == null:
+		return
+	if stance == "strike":
+		play_clip(side, slot, "idle")
+	elif play_clip(side, slot, stance) > 0.0:
+		s.stance_clip = true
 
 
 func _ring_state(s: Slot, h: String, base: Color, a: float) -> void:

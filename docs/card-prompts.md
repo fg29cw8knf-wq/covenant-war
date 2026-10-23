@@ -1636,3 +1636,197 @@ Style: rich painterly brushwork, dramatic rim lighting, glowing magical particle
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
 
+
+# Round 4: the answers (Phase A of the deeper duel, 23 October)
+
+Eight Counter Rites, played on the rival's turn in answer to what they do, and two Wards that can be played from the hand. Card paintings only (no battlefield cut-out: none is a creature).
+
+## Null Sigil (round 4, rite, mystic)
+
+**Card painting · square 1536 × 1536 · save as cards/null_sigil.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of an indigo sigil drawn in the air with one finger, a charging beast stopped dead against it as if against glass.
+
+Main subject: an indigo sigil hanging in the air.
+Colours: deep indigo and violet light, cold white at the sigil's lines.
+Key details: the sigil's lines glowing sharpest where the beast's charge meets them.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Ashen Shroud (round 4, rite, fire)
+
+**Card painting · square 1536 × 1536 · save as cards/ashen_shroud.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a swirl of grey ash and dying embers wrapping round a creature like a cloak, a blow glancing off it.
+
+Main subject: a swirl of grey ash and dying embers.
+Colours: ash grey, dull orange embers, a little dark red.
+Key details: the embers brightest where the blow glances off.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Shieldwall Call (round 4, rite, metal)
+
+**Card painting · square 1536 × 1536 · save as cards/shieldwall_call.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of an iron-shelled guardian beast stepping in front of a smaller creature, a war-horn's note drawn as rings of bronze light.
+
+Main subject: an iron-shelled guardian beast stepping forward.
+Colours: iron grey and bronze, a warm gold in the horn's rings.
+Key details: rings of bronze light spreading from an unseen horn.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Undertow Glyph (round 4, rite, tide)
+
+**Card painting · square 1536 × 1536 · save as cards/undertow_glyph.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a glowing green-blue glyph on wet stone, a spell's light being dragged back into it like water down a drain.
+
+Main subject: a glowing glyph on wet stone.
+Colours: sea green and blue, pale foam white.
+Key details: a spell's light spiralling back into the glyph.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Quicksilver Step (round 4, rite, storm)
+
+**Card painting · square 1536 × 1536 · save as cards/quicksilver_step.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a creature blurring sideways in a crackle of yellow lightning, a claw swiping through the after-image where it stood.
+
+Main subject: a creature blurring sideways.
+Colours: storm yellow and electric white on slate grey.
+Key details: an after-image left behind, a claw passing through it.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Root Toll (round 4, rite, verdant)
+
+**Card painting · square 1536 × 1536 · save as cards/root_toll.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of pale roots rising from the earth round a newly summoned creature's feet, drinking motes of light from it into the soil.
+
+Main subject: pale roots rising from the earth.
+Colours: moss green and loam brown, soft gold motes.
+Key details: motes of light drawn down the roots into the soil.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Whisper of Pages (round 4, rite, psychic)
+
+**Card painting · square 1536 × 1536 · save as cards/whisper_of_pages.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a face-down card on a stone table, a violet whisper of light curling off it and turning the page of an open book nearby.
+
+Main subject: a face-down card on a stone table.
+Colours: violet and dusk purple, parchment cream.
+Key details: a curl of light turning a page by itself.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Rune Break (round 4, rite, earth)
+
+**Card painting · square 1536 × 1536 · save as cards/rune_break.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a stone fist cracking a glowing rune circle in two as it flares, its light going out along the fracture.
+
+Main subject: a stone fist cracking a glowing rune circle.
+Colours: stone grey and ochre, the rune's light amber going dark.
+Key details: the fracture running through the rune, light dying along it.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Lightning Reflex (round 4, ward, storm)
+
+**Card painting · square 1536 × 1536 · save as cards/lightning_reflex.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a hand snapping up from a card fan with lightning between the fingers, a lunging beast jolted in mid-air.
+
+Main subject: a hand snapping up from a fan of cards.
+Colours: electric yellow and white on storm blue.
+Key details: lightning between the fingers, the beast rigid in mid-air.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Hushed Counter (round 4, ward, mystic)
+
+**Card painting · square 1536 × 1536 · save as cards/hushed_counter.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a finger laid across lips wreathed in indigo light, a spell's glow going quiet mid-cast like a snuffed candle.
+
+Main subject: a finger laid across lips.
+Colours: indigo and midnight blue, a last thread of candle gold.
+Key details: a spell's glow going out like a snuffed candle.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a split second caught, the moment between the saying and the doing.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```

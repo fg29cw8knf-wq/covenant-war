@@ -66,7 +66,81 @@ godot --headless --script res://tests/rewards_test.gd                # Resonance
 godot --headless --script res://tests/load_all.gd                    # every script loads
 godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200        # the Lantern Duel as the story plays it (always winnable)
 xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.tscn -- <dir>   # plays Bram's lesson tap by tap
+godot --headless --script res://tests/phase_test.gd                  # the turn's phases, Stances, answers and chains (Phase A)
 ```
+
+### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
+
+Gary (23 October): "I want all of those added to the duels ... more like
+Yu-Gi-Oh", built in phases A to E, each merged as it passes. Phase A is the
+shape of a turn and answering on the rival's turn.
+
+- **The turn has phases** (`DuelGame.phase`, `PHASES`): Dawn (conditions, the
+  Law) · Draw · Main (calls, Ascension, Wards, Summons, Stances, Rites,
+  Shifts) · Clash (attacks) · Main II (a Rite or a Shift) · Dusk. A band under
+  the rival's plate names the one the turn is in (`DuelViews.PhaseBand`); the
+  big button says where the turn goes next (TO CLASH, MAIN II, END TURN) and
+  sends `{type: "next"}`, while "end" ends the turn from anywhere; a phase with
+  nothing to do in it is skipped (`next_phase`, `clash_worth`, `main2_worth`).
+  `phase_problem(kind)` is why an action can't be done now, and the screen
+  says so on the card or the move ("Attacks come in the Clash"). The
+  computer only offers what its phase allows (`DuelAI._candidates`) and asks
+  for "next" when nothing's worth doing. The Lantern Duel's lessons were
+  written before the phases: when Bram asks for an attack in the Main, the
+  Clash comes by itself (`DuelHuman.choose_action`), and Corin's script moves
+  the phase on for a step that needs a later one (`DuelHuman.Scripted`).
+- **Stances** (`DuelTotem.stance`, `{type: "stance", totem, stance}`, free,
+  in the Main, only for a Totem that could attack this turn): Strike;
+  **Guard**, half of every blow turned aside until its owner's next turn and
+  no attack; **Rest**, mended `DuelRules.rest_heal` now and `rest_essence`
+  Essence held over to the owner's next turn, no attack or Shift, and it
+  stays put. A stance is what a ready Totem does with its turn instead of
+  striking, so a Totem called this turn (or asleep, stunned, frozen) has none
+  to take; Rest's Essence comes at the next turn so a rest can't be turned
+  into a call the same turn (with it paid at once the computer rested every
+  Totem that couldn't attack and duels ran to the turn limit). The badge is
+  on the nameplate, the pose on the model (`DuelField3D.set_stance`: a
+  guard or rest clip when the model has one, else a held pose). The computer
+  weighs Guard by the biggest blow that could land on the Totem (halved, and
+  how likely it is to be the one hit) and Rest by the mending, against the
+  Totem's best attack (`DuelAI._candidates`).
+- **Answers** (Counter Rites, `"answer": true` with `"answers"` naming the
+  events: attack, rite, call, ward, ward_spring): played only on the rival's
+  turn, in the **response window** (`DuelGame._window`) that opens after an
+  action is declared and before it lands. The rival of whoever acted is
+  asked first (`choose_response(game, pi, event, cards)`); an answer can be
+  answered by the other side, up to `DuelRules.chain_max` deep, and the chain
+  resolves last in, first out: a cancelled answer does nothing, and the
+  action stands or falls by what's left (`_resolve_answer`). Eight across the
+  elements: Null Sigil (cancel an attack), Ashen Shroud (half its damage),
+  Shieldwall Call (a Guardian takes it), Undertow Glyph (a Rite back to its
+  hand, undone), Quicksilver Step (the Totem attacked swaps slots and the
+  blow lands on what's there now), Root Toll (Essence when they call),
+  Whisper of Pages (a card when they set a Ward), Rune Break (a Ward spent
+  for nothing as it springs). Two Wards play from the hand too, once each a
+  duel (`"from_hand"`, `DuelPlayer.hand_wards_used`): Lightning Reflex and
+  Hushed Counter. Wards in their slots still spring by themselves, and a
+  spring can be answered. An answer on the chain still counts among its
+  owner's cards (`DuelPlayer.answering`, for the sim's card count). Essence
+  left over from a turn is lost at the next Dawn anyway, so keeping some back
+  for an answer is the real cost of answering. The screen's Respond strip
+  (`DuelScreen.begin_respond`, `RespondStrip`): what's coming, the answers in
+  hand (greyed when they can't be paid for), a countdown bar
+  (`DuelRules.respond_secs`, stopped by the pause menu with the tree) and
+  "Let it be"; a tap away from it lets it be. Options: "Ask me to respond:
+  Always / Only when I can / Never" (`Game.settings.respond`). An answer is
+  a link of light from the answerer's plate to what it answers
+  (`fx_answer`); the computer's answers are previewed like its plays. The
+  computer answers when the harm prevented (the blow's damage, a knockout,
+  a Rite's worth) outweighs the card (`DuelAI.choose_response`).
+- One answer card went into each starter deck in its own element (Quicksilver
+  Step, Undertow Glyph, Shieldwall Call, Whisper of Pages) and Rune Break into
+  Dask's; the ten cards' prompts are in `docs/card-prompts.md` (round 4),
+  drawn placeholders until Gary paints them. Bram's one-off lessons the first
+  time each matters: `phases`, `stance`, `answer`, `answered` (on the How to
+  Duel page). Lab rows: Rest mends, Rest gives Essence, Answers in a chain,
+  Seconds to answer. After Phase A `duel_sim 160` plays 28 turns a duel on
+  average (27.6 before), no draws, the decks between 48% and 56%.
 
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and

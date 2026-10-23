@@ -16,6 +16,13 @@ extends RefCounted
 ##              effects [...], fate [{to, damage, effects, text}] (a d20 roll)
 ## art:       the subject for AI art; the file goes in
 ##            assets/art/cards/<card id>.png (see docs/art-prompts.md)
+## answer:    a Rite played only on the rival's turn, in answer to what they
+##            do: "answers" names the events (attack, rite, call, ward,
+##            ward_spring), the effects are negate, halve, redirect_guardian,
+##            bounce_rite, sidestep, essence, essence_next, draw, cancel_ward
+##            (Phase A of the deeper duel, 23 October)
+## from_hand: a Ward that can also be played from the hand in answer to its
+##            trigger, once a duel
 
 const CARDS := {
 	# =================================================================== FIRE
@@ -625,7 +632,59 @@ const CARDS := {
 		"effects": [{"op": "boon", "who": "target", "boon": "hastened"}],
 		"art": "crackling yellow lightning streaks wrapping a creature's legs, after-images trailing behind it",
 	},
+	# ========================================================== COUNTER RITES
+	# (answers, played on the rival's turn: Phase A)
+	"null_sigil": {
+		"kind": "rite", "name": "Null Sigil", "element": "mystic", "tier": 3, "cost": 3, "target": "none",
+		"answer": true, "answers": ["attack"], "effects": [{"op": "negate"}],
+		"art": "an indigo sigil drawn in the air with one finger, a charging beast stopped dead against it as if against glass",
+	},
+	"ashen_shroud": {
+		"kind": "rite", "name": "Ashen Shroud", "element": "fire", "tier": 2, "cost": 2, "target": "none",
+		"answer": true, "answers": ["attack"], "effects": [{"op": "halve"}],
+		"art": "a swirl of grey ash and dying embers wrapping round a creature like a cloak, a blow glancing off it",
+	},
+	"shieldwall_call": {
+		"kind": "rite", "name": "Shieldwall Call", "element": "metal", "tier": 2, "cost": 1, "target": "none",
+		"answer": true, "answers": ["attack"], "effects": [{"op": "redirect_guardian"}],
+		"art": "an iron-shelled guardian beast stepping in front of a smaller creature, a war-horn's note drawn as rings of bronze light",
+	},
+	"undertow_glyph": {
+		"kind": "rite", "name": "Undertow Glyph", "element": "tide", "tier": 2, "cost": 2, "target": "none",
+		"answer": true, "answers": ["rite"], "effects": [{"op": "bounce_rite"}],
+		"art": "a glowing green-blue glyph on wet stone, a spell's light being dragged back into it like water down a drain",
+	},
+	"quicksilver_step": {
+		"kind": "rite", "name": "Quicksilver Step", "element": "storm", "tier": 1, "cost": 1, "target": "none",
+		"answer": true, "answers": ["attack"], "effects": [{"op": "sidestep"}],
+		"art": "a creature blurring sideways in a crackle of yellow lightning, a claw swiping through the after-image where it stood",
+	},
+	"root_toll": {
+		"kind": "rite", "name": "Root Toll", "element": "verdant", "tier": 1, "cost": 0, "target": "none",
+		"answer": true, "answers": ["call"], "effects": [{"op": "essence", "amount": 1}, {"op": "essence_next", "amount": 1}],
+		"art": "pale roots rising from the earth round a newly summoned creature's feet, drinking motes of light from it into the soil",
+	},
+	"whisper_of_pages": {
+		"kind": "rite", "name": "Whisper of Pages", "element": "psychic", "tier": 1, "cost": 0, "target": "none",
+		"answer": true, "answers": ["ward"], "effects": [{"op": "draw", "count": 1}],
+		"art": "a face-down card on a stone table, a violet whisper of light curling off it and turning the page of an open book nearby",
+	},
+	"rune_break": {
+		"kind": "rite", "name": "Rune Break", "element": "earth", "tier": 2, "cost": 1, "target": "none",
+		"answer": true, "answers": ["ward_spring"], "effects": [{"op": "cancel_ward"}],
+		"art": "a stone fist cracking a glowing rune circle in two as it flares, its light going out along the fracture",
+	},
 	# ================================================================== WARDS
+	"lightning_reflex": {
+		"kind": "ward", "name": "Lightning Reflex", "element": "storm", "tier": 2, "cost": 1, "trigger": "foe_attack", "from_hand": true,
+		"effects": [{"op": "status_attacker", "status": "shocked"}, {"op": "shield_target", "amount": 20}],
+		"art": "a hand snapping up from a card fan with lightning between the fingers, a lunging beast jolted in mid-air",
+	},
+	"hushed_counter": {
+		"kind": "ward", "name": "Hushed Counter", "element": "mystic", "tier": 3, "cost": 2, "trigger": "foe_rite", "from_hand": true,
+		"effects": [{"op": "cancel_rite"}],
+		"art": "a finger laid across lips wreathed in indigo light, a spell's glow going quiet mid-cast like a snuffed candle",
+	},
 	"ambush_snare": {
 		"kind": "ward", "name": "Ambush Snare", "element": "any", "tier": 1, "cost": 1, "trigger": "foe_call",
 		"effects": [{"op": "damage_called", "amount": 30}],
@@ -686,7 +745,7 @@ const DECKS := {
 		"attributes": {"might": 2, "swiftness": 2},
 		"cards": {"cinderpup": 3, "blazehound": 2, "emberwisp": 3, "hearth_salamander": 2, "ashen_drake": 1,
 			"sparkkit": 3, "voltlynx": 2, "thunder_ram": 2, "stormcaller": 1,
-			"essence_flask": 2, "firebrand": 2, "thunderclap": 1, "healing_draught": 1,
+			"essence_flask": 1, "firebrand": 2, "thunderclap": 1, "healing_draught": 1, "quicksilver_step": 1,
 			"ambush_snare": 2, "vengeful_spirit": 1, "pyraxis": 1, "travellers_pack": 1},
 	},
 	"tidegrove": {
@@ -696,7 +755,7 @@ const DECKS := {
 		"cards": {"brookfin": 3, "riptide_serpent": 2, "deepmaw": 1, "shellguard": 2,
 			"mossling": 3, "thornwarden": 2, "bloomsprite": 3, "elderbark": 1,
 			"healing_draught": 2, "tidal_surge": 1, "rejuvenate": 2, "seekers_compass": 1, "crystal_vein": 1,
-			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 2, "essence_flask": 1},
+			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 2, "undertow_glyph": 1},
 	},
 	"ironstone": {
 		"name": "Ironstone", "elements": ["earth", "metal"], "mascot": "pebblit",
@@ -704,7 +763,7 @@ const DECKS := {
 		"attributes": {"might": 2, "resolve": 2},
 		"cards": {"pebblit": 3, "boulderox": 2, "burrowmole": 3, "quarry_golem": 1,
 			"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1,
-			"bulwark": 2, "forge_edge": 2, "lure_bell": 1, "healing_draught": 1, "crystal_vein": 1,
+			"bulwark": 2, "forge_edge": 1, "lure_bell": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1,
 			"iron_bastion": 2, "vengeful_spirit": 1, "grondmaw": 1, "essence_flask": 1},
 	},
 	"veilwild": {
@@ -715,7 +774,7 @@ const DECKS := {
 			"blightrat": 3, "plague_asp": 2, "mirewidow": 3,
 			"mind_fog": 2, "toxic_mist": 1, "seekers_compass": 1, "siphon_rune": 1, "puppet_rune": 1,
 			"mirror_veil": 2, "counter_rune": 1, "poison_trap": 2, "somnara": 1,
-			"essence_flask": 1, "healing_draught": 1},
+			"whisper_of_pages": 1, "healing_draught": 1},
 	},
 }
 
@@ -727,7 +786,7 @@ const NPC_DECKS := {
 		"attributes": {"cunning": 1},
 		"cards": {"shieldhound": 3, "brassback": 3, "ironhide": 2, "burrowmole": 2, "pebblit": 3, "boulderox": 1,
 			"blightrat": 3, "plague_asp": 1,
-			"jagged_shards": 2, "hunters_mark": 1, "forge_edge": 1, "healing_draught": 1, "essence_flask": 2,
+			"jagged_shards": 2, "hunters_mark": 1, "forge_edge": 1, "healing_draught": 1, "essence_flask": 1, "rune_break": 1,
 			"poison_trap": 2, "ambush_snare": 2, "iron_bastion": 1},
 	},
 	# Chapter 1, Solhaven (Master Script v3)
@@ -941,9 +1000,14 @@ static func card_text(id: String) -> String:
 	var d: Dictionary = CARDS[id]
 	match d.kind:
 		"rite":
+			if d.get("answer", false):
+				return "Answer, when %s: %s" % [_answers_text(d), _rite_text(d)]
 			return _rite_text(d)
 		"ward":
-			return "%s: %s." % [TRIGGER_TEXT.get(d.trigger, d.trigger), _ward_text(d)]
+			var w := "%s: %s." % [TRIGGER_TEXT.get(d.trigger, d.trigger), _ward_text(d)]
+			if d.get("from_hand", false):
+				w += " Can be played from your hand in answer, once a duel."
+			return w
 		"summon":
 			var m: Dictionary = d.move
 			return "Descends, then returns to the heavens. %s: %s." % [m.name, _cap(outcome_text(int(m.damage), m.get("effects", []), m.get("target", "foe_totem")))]
@@ -960,7 +1024,7 @@ static func _rite_text(d: Dictionary) -> String:
 			parts.append("Deal %d damage to an enemy Totem" % dmg)
 	for e in d.get("effects", []):
 		match e.op:
-			"essence": parts.append("Gain %d Essence this turn" % e.amount)
+			"essence": parts.append(("Gain %d Essence now" if d.get("answer", false) else "Gain %d Essence this turn") % e.amount)
 			"essence_max": parts.append("Your Essence limit rises by %d for the rest of the duel" % e.amount)
 			"heal": parts.append("Heal %d damage from one of your Totems" % e.amount)
 			"cure":
@@ -986,7 +1050,21 @@ static func _rite_text(d: Dictionary) -> String:
 				else:
 					parts.append("An enemy Totem is %s" % STATUS_NAMES[e.status])
 			"drain": parts.append("gain Life equal to the damage dealt")
+			"negate": parts.append("cancel it")
+			"halve": parts.append("it deals half its damage")
+			"redirect_guardian": parts.append("one of your Guardians takes the blow instead")
+			"bounce_rite": parts.append("it returns to their hand, undone (the Essence stays spent)")
+			"sidestep": parts.append("the Totem attacked swaps slots with another of yours, and the blow lands on whatever stands there now")
+			"essence_next": parts.append("%d more at your next turn" % e.amount)
+			"cancel_ward": parts.append("the Ward is spent for nothing")
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
+
+
+static func _answers_text(d: Dictionary) -> String:
+	var parts := []
+	for k in d.get("answers", []):
+		parts.append(String(DuelGame.EVENT_TEXT.get(k, k)))
+	return " or ".join(parts)
 
 
 static func _ward_text(d: Dictionary) -> String:

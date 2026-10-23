@@ -41,7 +41,7 @@ func choose_action(game: DuelGame, pi: int) -> Dictionary:
 			best_score = s
 			best = cand.action
 	if best.is_empty():
-		return {"type": "end"}
+		return {"type": "next"}   # on to the next phase (the engine ends the turn when nothing's left)
 	return best
 
 
@@ -88,6 +88,17 @@ func choose_totems(game: DuelGame, pi: int, _prompt: String, totems: Array, min_
 
 
 func choose_slot(game: DuelGame, pi: int, _prompt: String, slots: Array, context: Dictionary) -> int:
+	if context.get("reason", "") == "sidestep":
+		var me: DuelPlayer = game.players[pi]
+		var best: int = slots[0]
+		var best_v := -INF
+		for s in slots:
+			var o = me.slots[s]
+			var v := 10.0 if o == null else float(o.hp_left()) * 0.1 - _totem_value(game, pi, o) * 0.05
+			if v > best_v:
+				best_v = v
+				best = s
+		return best
 	if context.get("reason", "") == "move_foe":
 		# Put their Totem where it opens the best lane for my ready Totems.
 		var me: DuelPlayer = game.players[pi]
@@ -186,12 +197,188 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 		if not g.is_empty():
 			out.append(g)
 
+	# --- stances (Phase A): Guard a threatened Totem that has no attack worth
+	# more, Rest a hurt one; a Totem that can't attack this turn anyway takes
+	# whichever of the two it needs
+	if game.phase_problem("stance") == "":
+		for t in p.totems():
+			if t.stance != "strike":
+				continue
+			var best_attack := _best_attack_value(game, pi, t)
+			var incoming := _incoming(game, pi, t)
+			var likely := 1.0 / maxf(1.0, float(p.totems().size()))   # they pick one Totem to hit
+			var guard_v := 0.0
+			if incoming > 0.0:
+				guard_v = 0.5 * minf(incoming, float(t.hp_left())) * likely
+				if incoming >= t.hp_left() + t.shield and incoming * 0.5 < t.hp_left() + t.shield:
+					guard_v += _totem_value(game, pi, t) * 0.6 * likely
+			var rest_v := 0.8 * minf(float(DuelRules.rest_heal), float(t.damage)) + DuelRules.rest_essence * 5.0
+			if t.has_status("enraged"):
+				rest_v = -INF
+			for st in [["guard", guard_v], ["rest", rest_v]]:
+				var v: float = st[1] - best_attack
+				if v > 0.5 and game.stance_problem(pi, t, st[0]) == "":
+					out.append({"score": v, "action": {"type": "stance", "totem": t, "stance": st[0]}})
+
 	# --- shifting
 	if true:
 		var sh := _shift_option(game, pi, lethal)
 		if not sh.is_empty():
 			out.append(sh)
-	return out
+	# only what this phase of the turn allows (Phase A): the rest waits for its phase
+	return out.filter(func(c): return game.phase_problem(String(c.action.get("type", ""))) == "")
+
+
+## The best this Totem could do attacking this turn, by the attack scores
+## (0 when it can't attack).
+func _best_attack_value(game: DuelGame, pi: int, t: DuelTotem) -> float:
+	if game.ready_problem(pi, t) != "":
+		return 0.0
+	var best := 0.0
+	var lethal := _lethal_available(game, pi)
+	for i in t.moves().size():
+		if game.move_problem(pi, t, i) != "":
+			continue
+		for target in game.attack_targets(pi, t, i):
+			best = maxf(best, _attack_score(game, pi, t, i, target, lethal))
+	return best
+
+
+## The biggest blow a rival Totem could land on this one next turn.
+func _incoming(game: DuelGame, pi: int, t: DuelTotem) -> float:
+	var total := 0.0
+	for f in game.players[1 - pi].totems():
+		if f.has_status("sleep") or f.has_status("stun") or f.has_status("frozen") or f.has_status("petrified"):
+			continue
+		var best := 0.0
+		for i in f.moves().size():
+			var mv: Dictionary = f.move(i)
+			if not (f.move_target(i) in ["foe", "foe_totem", "all_foes"]):
+				continue
+			var base := float(mv.get("damage", 0))
+			if mv.has("fate"):
+				base = 0.0
+				for b in mv.fate:
+					base += float(b.get("damage", 0))
+				base /= maxf(1.0, mv.fate.size())
+			var amt := float(game.attack_amount(f, i, int(base), t))
+			best = maxf(best, amt)
+		total = maxf(total, best)
+	return total
+
+
+## What an Essence is worth right now: a lot when it unlocks a call or a Rite
+## in the hand, a little otherwise.
+func _essence_now_value(game: DuelGame, pi: int) -> float:
+	var p: DuelPlayer = game.players[pi]
+	for c in p.hand:
+		var cost: int = c.cost()
+		if c.is_basic_totem():
+			if p.empty_slots().is_empty():
+				continue
+			cost = game.call_cost(pi, c)
+		elif c.is_rite() and c.def.get("answer", false):
+			continue
+		if cost == p.essence + 1:
+			return 18.0
+	return 3.0
+
+
+## An answer on the rival's turn (Phase A): the card worth playing against
+## this event, or null to let it be. Essence left over from my turn is lost at
+## my next Dawn anyway, so only the card itself is weighed against the harm
+## it prevents or the gain it brings.
+func choose_response(game: DuelGame, pi: int, event: Dictionary, cards: Array) -> DuelCard:
+	var best: DuelCard = null
+	var best_v := 12.0
+	for c in cards:
+		if game.answer_problem(pi, c, event) != "":
+			continue
+		var v := _answer_value(game, pi, c, event) - _keep_value(game, pi, c) * 0.5
+		if difficulty < 1.0:
+			v += rng.randf_range(-20.0, 20.0) * (1.0 - difficulty)
+		if v > best_v:
+			best_v = v
+			best = c
+	return best
+
+
+func _answer_value(game: DuelGame, pi: int, c: DuelCard, event: Dictionary) -> float:
+	var kind := String(event.get("type", ""))
+	var v := 0.0
+	# what the action would do to me
+	var harm := 0.0
+	var ko_value := 0.0
+	var target = event.get("target")
+	if kind == "attack":
+		var att: DuelTotem = event.get("attacker")
+		var mv: Dictionary = event.get("move", {})
+		var base := float(mv.get("damage", 0))
+		if mv.has("fate"):
+			base = 0.0
+			for b in mv.fate:
+				base += float(b.get("damage", 0))
+			base /= maxf(1.0, mv.fate.size())
+		if target is DuelTotem:
+			var amt := float(game.attack_amount(att, int(event.get("index", 0)), int(base), target))
+			harm = minf(amt, float(target.hp_left() + target.shield))
+			if amt >= target.hp_left() + target.shield:
+				ko_value = _totem_value(game, pi, target)
+		elif target is String and target == DuelGame.LIFE:
+			var p: DuelPlayer = game.players[pi]
+			harm = maxf(0.0, float(game.attack_amount(att, int(event.get("index", 0)), int(base), null)) - p.guard())
+			if harm >= p.life:
+				ko_value = 500.0
+	elif kind == "rite":
+		var rc: DuelCard = event.get("card")
+		if rc != null:
+			harm = 12.0 + rc.cost() * 8.0 + float(rc.def.get("damage", 0)) * 0.8
+			if bool(event.get("answer", false)):
+				harm = 30.0   # their answer to my action: cancelling it keeps my action
+	elif kind == "ward_spring":
+		var w: DuelCard = event.get("card")
+		if w != null:
+			harm = 20.0 + w.tier() * 8.0
+			if (w.def.get("effects", []) as Array).any(func(e): return e.op in ["negate", "cancel_rite", "bounce_called"]):
+				harm += 25.0
+	if c.is_ward():
+		# a Ward from the hand: its own effects, as a set one springing now
+		for e in c.def.effects:
+			match e.op:
+				"negate", "cancel_rite": v += harm + ko_value
+				"shield_target": v += minf(float(e.amount), harm)
+				"damage_attacker": v += float(e.amount) * 0.6
+				"status_attacker":
+					if event.get("attacker") is DuelTotem:
+						v += _status_value(game, event.get("attacker"), e.status) * 0.8
+		return v
+	for e in c.def.get("effects", []):
+		match e.op:
+			"negate": v += harm + ko_value
+			"halve": v += harm * 0.5 + (ko_value if harm * 0.5 < (target.hp_left() + target.shield if target is DuelTotem else INF) else 0.0)
+			"redirect_guardian":
+				var g := game._guardian_of(pi, target)
+				if g != null:
+					v += harm + ko_value - minf(harm, float(g.hp_left())) * 0.5
+					if harm >= g.hp_left() + g.shield:
+						v -= _totem_value(game, pi, g)
+			"sidestep":
+				if target is DuelTotem:
+					var p: DuelPlayer = game.players[pi]
+					var best_other := -INF
+					for sl in p.slots.size():
+						if sl == target.slot:
+							continue
+						var o = p.slots[sl]
+						var there := 0.0 if o == null else -(minf(harm, float(o.hp_left())) * 0.7 + (_totem_value(game, pi, o) if harm >= o.hp_left() + o.shield else 0.0))
+						best_other = maxf(best_other, there)
+					v += harm + ko_value + best_other
+			"bounce_rite": v += harm
+			"essence": v += float(e.amount) * 4.0
+			"essence_next": v += float(e.amount) * 5.0
+			"draw": v += 12.0 * int(e.get("count", 1))
+			"cancel_ward": v += harm
+	return v
 
 
 # ================================================================ scoring ===
@@ -259,6 +446,12 @@ func _attack_score(game: DuelGame, pi: int, t: DuelTotem, i: int, target, lethal
 
 ## Expected value of hitting one enemy Totem with this move.
 func _hit_value(game: DuelGame, pi: int, t: DuelTotem, i: int, f: DuelTotem, outcomes: Array) -> float:
+	if f.stance == "guard":
+		return _hit_value_plain(game, pi, t, i, f, outcomes) * 0.5
+	return _hit_value_plain(game, pi, t, i, f, outcomes)
+
+
+func _hit_value_plain(game: DuelGame, pi: int, t: DuelTotem, i: int, f: DuelTotem, outcomes: Array) -> float:
 	var foe: DuelPlayer = game.players[1 - pi]
 	var hp := f.hp_left() + f.shield
 	var s := 0.0

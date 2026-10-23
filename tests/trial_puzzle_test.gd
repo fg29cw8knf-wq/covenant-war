@@ -114,8 +114,11 @@ class Scripted:
 		if _turn >= turns.size() or _step >= (turns[_turn] as Array).size():
 			return {"type": "end"}
 		var s := String(turns[_turn][_step])
-		_step += 1
 		var a := _action(g, pi, s)
+		# a step for a later phase of the turn (an attack in the Main): the turn moves on first (Phase A)
+		if not a.is_empty() and g.phase_problem(String(a.type)) != "" and g.next_phase(pi) != "end":
+			return {"type": "next"}
+		_step += 1
 		var why: String = g.action_problem(pi, a) if not a.is_empty() else "no such action"
 		if why != "":
 			problems.append("%s: %s" % [s, why])
@@ -156,6 +159,9 @@ class RandomPlayer:
 		if keen:
 			opts = _keen(opts)
 		if opts.is_empty() or (not keen and rng.randf() < 0.12):
+			# on to the next phase of the turn when one is worth entering (Phase A), else end
+			if g.next_phase(pi) != "end" and (opts.is_empty() or rng.randf() < 0.8):
+				return {"type": "next"}
 			log.append("end")
 			return {"type": "end"}
 		var a: Dictionary = opts[rng.randi_range(0, opts.size() - 1)]

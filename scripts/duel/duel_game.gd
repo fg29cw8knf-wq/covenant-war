@@ -10,6 +10,15 @@ extends RefCounted
 ##   choose_slot(game, pi, prompt, slots, context) -> int
 ##   choose_reroll(game, pi, info) -> bool
 ##   choose_scry(game, pi, card) -> bool          (true = leave it on top)
+##   choose_response(game, pi, event, cards) -> DuelCard or null   (an answer on the rival's turn; optional)
+##
+## The turn (Phase A of the deeper duel, 23 October) runs Dawn (conditions,
+## the Law) → Draw → Main (calls, Ascension, Wards, Summons, Stances, Rites,
+## Shifts) → Clash (attacks) → a second Main (a Rite or a Shift) → Dusk;
+## `phase` names the one it's in, a {type: "next"} action moves it on (a
+## phase with nothing to do in it is skipped), "end" ends the turn. An
+## action is declared, may be answered (the response window, `_window`:
+## Counter Rites and Wards from the hand, in chains), then resolves.
 ##
 ## An optional `presenter` is told about things worth animating. Every hook is
 ## optional; with no presenter a whole duel between two computer players runs
@@ -20,13 +29,24 @@ extends RefCounted
 ##   fx_totem_hit(totem, amount, info), fx_life_hit(pi, amount, info),
 ##   fx_heal(totem, amount), fx_life_gain(pi, amount), fx_status(totem, status),
 ##   fx_ko(totem), fx_summon(pi, card), fx_gift(pi, gift), fx_message(text),
-##   fx_game_over(winner, reason)
+##   fx_game_over(winner, reason), fx_phase(pi, phase), fx_stance(totem),
+##   fx_answer(pi, card, event, depth), fx_chain_done(chain)
 
 signal logged(text: String, who: int)
 signal state_changed
 
 const LIFE := "life"      # the attack target that means "their Life"
 const NONE := "none"      # a move that needs no target
+## The turn's phases, in order (Phase A).
+const PHASES := ["dawn", "draw", "main", "clash", "main2", "dusk"]
+const PHASE_NAMES := {"setup": "", "dawn": "Dawn", "draw": "Draw", "main": "Main", "clash": "Clash", "main2": "Main II", "dusk": "Dusk", "over": ""}
+const STANCES := ["strike", "guard", "rest"]
+const STANCE_NAMES := {"strike": "Strike", "guard": "Guard", "rest": "Rest"}
+## The event a Ward's trigger answers to, for a Ward played from the hand.
+const WARD_EVENTS := {"foe_attack": "attack", "foe_direct": "attack", "foe_call": "call", "foe_rite": "rite"}
+## What an answer's event is called on a card and in a lesson.
+const EVENT_TEXT := {"attack": "an enemy Totem attacks", "rite": "your opponent casts a Rite or calls down a Summon",
+	"call": "your opponent calls a Totem", "ward": "your opponent sets a Ward", "ward_spring": "an enemy Ward springs"}
 
 var players: Array = []
 var current := 0
@@ -36,7 +56,8 @@ var rng := RandomNumberGenerator.new()
 var winner := -1          # -1 = still playing, 0/1 = that player, 2 = draw
 var win_reason := ""
 var over := false
-var phase := "setup"      # setup, main, over
+var phase := "setup"      # setup, then PHASES as the turn moves, over
+var _phase_free := false  # a story rule acting at Dawn (Wren's theft, Dawnmane) isn't held to the phase
 var presenter = null
 var log_lines: Array = []
 
@@ -237,7 +258,7 @@ func _new_card(id: String, owner: int) -> DuelCard:
 
 func _take_turn() -> void:
 	turn += 1
-	phase = "main"
+	phase = "dawn"
 	var p: DuelPlayer = players[current]
 	p.shifts = 0
 	p.free_shift = false
@@ -248,15 +269,23 @@ func _take_turn() -> void:
 	for t in p.totems():
 		t.attacked = false
 		t.buff = 0
+		t.stance = "strike"   # a stance holds until its owner's next turn
 	if p.essence_max < DuelRules.essence_cap and not _essence_fixed(p.index):
 		p.essence_max += 1
 	p.essence = p.essence_max
 	if p.pending_essence > 0:
 		p.essence += p.pending_essence
-		_log("%s gains %d drained Essence." % [p.player_name, p.pending_essence], current)
+		_log("%s gains %d Essence held over." % [p.player_name, p.pending_essence], current)
 		p.pending_essence = 0
 	_log("Turn %d - %s" % [turn, p.player_name], -2)
 	await _fx("fx_turn", [current])
+	await _fx("fx_phase", [current, "dawn"])
+	await _dawn_conditions(p)
+	if over:
+		return
+	phase = "draw"
+	_changed()
+	await _fx("fx_phase", [current, "draw"])
 	if turn > 1:
 		var drawn := await _draw(p, 1)
 		if over:
@@ -264,9 +293,6 @@ func _take_turn() -> void:
 		if not drawn.is_empty():
 			await _fx("fx_draw", [current, drawn])
 	_changed()
-	await _dawn_conditions(p)
-	if over:
-		return
 	if DuelRules.has_perk(p.attributes(), "insight") and not p.deck.is_empty():
 		var keep: bool = await p.controller.choose_scry(self, current, p.deck[-1])
 		if not keep:
@@ -282,6 +308,7 @@ func _take_turn() -> void:
 	if over:
 		return
 
+	await _enter_phase("main")
 	var actions := 0
 	while not over and not _rule_mirrors_watch(p):
 		actions += 1
@@ -291,18 +318,115 @@ func _take_turn() -> void:
 		var action = await p.controller.choose_action(self, current)
 		if over:
 			return
-		if action == null or action.is_empty() or action.type == "end":
-			action = _rule_showboat_owed(current)   # no ending the turn with a Showboat attack owed
-		if action == null or action.is_empty() or action.type == "end":
-			break
+		var kind := "end"
+		if action is Dictionary and not action.is_empty():
+			kind = String(action.get("type", "end"))
+		if kind == "end" or kind == "next":
+			var owed = _rule_showboat_owed(current)   # no ending the turn with a Showboat attack owed
+			if owed != null:
+				if phase != "clash":
+					await _enter_phase("clash")
+				await perform(current, owed)
+				continue
+			if kind == "end":
+				break
+			var nxt := next_phase(current)
+			if nxt == "end":
+				break
+			await _enter_phase(nxt)
+			continue
 		await perform(current, action)
 	if over:
 		return
+	await _enter_phase("dusk")
 	await _dusk(p)
 	_rule_mirror_trial_out(p)
 	if over:
 		return
 	current = 1 - current
+
+
+func _enter_phase(name: String) -> void:
+	phase = name
+	_changed()
+	await _fx("fx_phase", [current, name])
+
+
+## Where a "next" action takes the turn from here: a phase with nothing to do
+## in it is skipped, so the Clash only comes when a Totem can attack and the
+## second Main only when a Rite or a Shift is possible.
+func next_phase(pi: int) -> String:
+	match phase:
+		"main":
+			if clash_worth(pi):
+				return "clash"
+			return "main2" if main2_worth(pi) else "end"
+		"clash":
+			return "main2" if main2_worth(pi) else "end"
+	return "end"
+
+
+## A Totem of theirs could attack now (ignoring the phase).
+func clash_worth(pi: int) -> bool:
+	for t in players[pi].totems():
+		if ready_problem(pi, t) != "":
+			continue
+		for i in t.moves().size():
+			if move_problem(pi, t, i) == "":
+				return true
+	return false
+
+
+## A Rite could be cast, a Shift made or the Gift called on (ignoring the phase).
+func main2_worth(pi: int) -> bool:
+	var p: DuelPlayer = players[pi]
+	for c in p.hand:
+		if c.is_rite() and rite_problem(pi, c) == "":
+			return true
+	if gift_problem(pi) == "":
+		return true
+	if shift_cost(pi) <= p.essence:
+		for t in p.totems():
+			for sl in p.slots.size():
+				if sl != t.slot and shift_problem(pi, t, sl) == "":
+					return true
+	return false
+
+
+## Why this kind of action can't be done in the phase the turn is in ("" if it can).
+func phase_problem(kind: String) -> String:
+	match kind:
+		"call":
+			if phase != "main":
+				return "Totems are called in the Main phase, before the Clash."
+		"ascend":
+			if phase != "main":
+				return "Ascension happens in the Main phase, before the Clash."
+		"ward":
+			if phase != "main":
+				return "Wards are set in the Main phase, before the Clash."
+		"summon":
+			if phase != "main":
+				return "Summons are called down in the Main phase, before the Clash."
+		"stance":
+			if phase != "main":
+				return "Stances are set in the Main phase, before the Clash."
+		"attack":
+			if phase == "main":
+				return "Attacks come in the Clash: move on to it when you're ready."
+			if phase != "clash":
+				return "Attacks happen in the Clash."
+		"rite", "gift":
+			if phase != "main" and phase != "main2":
+				return "Rites are cast in a Main phase, not the Clash."
+		"shift":
+			if phase != "main" and phase != "main2":
+				return "Shifting happens in a Main phase, not the Clash."
+	return ""
+
+
+func phase_name() -> String:
+	return String(PHASE_NAMES.get(phase, phase))
 
 
 func _dawn_conditions(p: DuelPlayer) -> void:
@@ -474,6 +598,7 @@ func _finish(w: int, reason: String) -> void:
 ##   {type: "rite", card, target?}       {type: "ward", card}
 ##   {type: "shift", totem, slot}        {type: "attack", attacker, move, target}
 ##   {type: "summon", card, target?}     {type: "gift", target?}
+##   {type: "stance", totem, stance}      {type: "next"} moves the phase on, {type: "end"} ends the turn
 ## Returns false (and does nothing) if the action isn't allowed.
 func perform(pi: int, action: Dictionary) -> bool:
 	var problem := action_problem(pi, action)
@@ -497,6 +622,8 @@ func perform(pi: int, action: Dictionary) -> bool:
 			await _act_summon(pi, action.card, action.get("target"))
 		"gift":
 			await _act_gift(pi, action.get("target"))
+		"stance":
+			await _act_stance(pi, action.totem, String(action.stance))
 	_changed()
 	return true
 
@@ -506,10 +633,16 @@ func action_problem(pi: int, action: Dictionary) -> String:
 		return "The duel is over."
 	if pi != current:
 		return "It isn't your turn."
+	var kind := String(action.get("type", ""))
+	if kind == "next" or kind == "end":
+		return ""
+	var ph := phase_problem(kind) if not _phase_free else ""
+	if ph != "":
+		return ph
 	var showboat := _rule_showboat(pi, action)
 	if showboat != "":
 		return showboat
-	match action.get("type", ""):
+	match kind:
 		"call":
 			return call_problem(pi, action.get("card"), int(action.get("slot", -1)))
 		"ascend":
@@ -526,6 +659,8 @@ func action_problem(pi: int, action: Dictionary) -> String:
 			return summon_problem(pi, action.get("card"), action.get("target"))
 		"gift":
 			return gift_problem(pi, action.get("target"))
+		"stance":
+			return stance_problem(pi, action.get("totem"), String(action.get("stance", "")))
 	return "Unknown action."
 
 
@@ -658,6 +793,8 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 		return "That card isn't in your hand."
 	if not card.is_rite():
 		return "That isn't a Rite."
+	if card.def.get("answer", false):
+		return "An answer: play it on your opponent's turn, when %s." % answers_text(card)
 	if rite_cost(pi, card) > p.essence:
 		return "Needs %d Essence." % rite_cost(pi, card)
 	var tk: String = card.def.get("target", "none")
@@ -721,11 +858,60 @@ func shift_problem(pi: int, totem, slot: int) -> String:
 	for id in ["frozen", "rooted", "enraged", "possessed"]:
 		if totem.has_status(id):
 			return "%s is %s and can't Shift." % [totem.card_name(), DuelConditions.display_name(id)]
+	if totem.stance == "rest":
+		return "%s is resting and can't Shift." % totem.card_name()
 	if slot < 0 or slot >= p.slots.size() or slot == totem.slot:
 		return "Choose a different slot."
 	if shift_cost(pi) > p.essence:
 		return "Needs %d Essence." % shift_cost(pi)
 	return ""
+
+
+## Why this Totem can't take that stance ("" if it can). Free, once a turn,
+## in the Main phase, and only for a Totem that could attack this turn: a
+## stance is what a ready Totem does with its turn instead of striking (one
+## called this turn, asleep or stunned has no stance to take).
+func stance_problem(pi: int, t, stance: String) -> String:
+	if t == null or not (t is DuelTotem) or t.owner != pi or not players[pi].totems().has(t):
+		return "Choose one of your Totems."
+	if not STANCES.has(stance):
+		return "Unknown stance."
+	if t.stance == stance:
+		return "%s is already set to %s." % [t.card_name(), STANCE_NAMES[stance]]
+	if t.stance == "rest":
+		return "%s is resting: it stays put this turn." % t.card_name()
+	if t.stance_turn == turn:
+		return "%s has taken its stance for this turn." % t.card_name()
+	var was: String = t.stance
+	t.stance = "strike"
+	var ready := ready_problem(pi, t)
+	t.stance = was
+	if ready != "":
+		return ready
+	if stance == "rest" and t.has_status("enraged"):
+		return "%s is enraged and won't rest." % t.card_name()
+	return ""
+
+
+func _act_stance(pi: int, t: DuelTotem, stance: String) -> void:
+	var p: DuelPlayer = players[pi]
+	t.stance = stance
+	t.stance_turn = turn
+	p.stats.stances += 1
+	match stance:
+		"guard":
+			_log("%s takes a Guard stance: it turns half of every blow aside, and won't attack." % t.card_name(), pi)
+		"rest":
+			_log("%s rests." % t.card_name(), pi)
+		_:
+			_log("%s is set to Strike." % t.card_name(), pi)
+	await _fx("fx_stance", [t])
+	if stance == "rest":
+		if t.damage > 0:
+			await _heal(t, DuelRules.rest_heal)
+		if DuelRules.rest_essence > 0:
+			p.pending_essence += DuelRules.rest_essence
+			_log("%s's rest gives %s %d Essence at their next turn." % [t.card_name(), p.player_name, DuelRules.rest_essence], pi)
 
 
 ## Why this Totem can't attack right now ("" if it can).
@@ -734,6 +920,10 @@ func ready_problem(pi: int, t) -> String:
 		return "Choose one of your Totems."
 	if t.attacked:
 		return "%s has already attacked this turn." % t.card_name()
+	if t.stance == "guard":
+		return "%s is on Guard this turn." % t.card_name()
+	if t.stance == "rest":
+		return "%s is resting this turn." % t.card_name()
 	if turn == 1:
 		return "Nobody can attack on the first turn of the duel."
 	if t.called_turn == turn and not t.has_keyword("swift"):
@@ -866,7 +1056,9 @@ func _rule_light_fingers(p: DuelPlayer) -> void:
 		await _fx("fx_light_fingers", [p.index, card])
 		if over:
 			return
+		_phase_free = true   # at her Dawn, before the Main
 		await perform(p.index, act)
+		_phase_free = false
 		return
 
 
@@ -960,7 +1152,9 @@ func _rule_dawnmane(p: DuelPlayer) -> void:
 		if act.is_empty():
 			return
 		rule_state["woken"] = true
+		_phase_free = true   # at his Dawn, before the Main
 		await perform(p.index, act)
+		_phase_free = false
 		return
 
 
@@ -1101,28 +1295,31 @@ func _recallable(p: DuelPlayer) -> Array:
 
 
 ## True if the current player has anything left to do besides ending the turn.
+## Something worth doing in the phase the turn is in (a stance or a Shift
+## doesn't count: those are always there).
 func can_do_anything_but_end(pi: int) -> bool:
 	var p: DuelPlayer = players[pi]
 	for c in p.hand:
 		match c.kind():
 			"totem":
-				if c.is_basic_totem() and call_problem(pi, c) == "":
+				if c.is_basic_totem() and phase_problem("call") == "" and call_problem(pi, c) == "":
 					return true
-				if c.is_ascension() and ascend_problem(pi, c) == "":
+				if c.is_ascension() and phase_problem("ascend") == "" and ascend_problem(pi, c) == "":
 					return true
 			"rite":
-				if rite_problem(pi, c) == "":
+				if phase_problem("rite") == "" and rite_problem(pi, c) == "":
 					return true
 			"ward":
-				if ward_problem(pi, c) == "":
+				if phase_problem("ward") == "" and ward_problem(pi, c) == "":
 					return true
 			"summon":
-				if summon_problem(pi, c) == "":
+				if phase_problem("summon") == "" and summon_problem(pi, c) == "":
 					return true
-	for t in p.totems():
-		for i in t.moves().size():
-			if move_problem(pi, t, i) == "":
-				return true
+	if phase_problem("attack") == "":
+		for t in p.totems():
+			for i in t.moves().size():
+				if move_problem(pi, t, i) == "":
+					return true
 	return false
 
 
@@ -1135,8 +1332,10 @@ func can_do_anything_but_end(pi: int) -> bool:
 
 ## The Totems on `pi`'s side that owe an attack right now ([] when none, or
 ## when Showboat isn't theirs).
-func showboat_due(pi: int) -> Array:
-	if int(story_rules.get("showboat", -1)) != pi or over or pi != current or phase != "main":
+func showboat_due(pi: int, any_phase := false) -> Array:
+	if int(story_rules.get("showboat", -1)) != pi or over or pi != current:
+		return []
+	if phase != "clash" and not any_phase:
 		return []
 	var out := []
 	for t in players[pi].totems():
@@ -1150,7 +1349,7 @@ func showboat_due(pi: int) -> Array:
 ## The attack a Showboat Totem makes when its side would rather end the turn:
 ## its first move it can make, at whatever's in its way. {} when none is owed.
 func showboat_attack(pi: int) -> Dictionary:
-	for t in showboat_due(pi):
+	for t in showboat_due(pi, true):
 		for i in (t as DuelTotem).moves().size():
 			if not (t.move_target(i) in ["foe", "foe_totem", "all_foes"]) or move_problem(pi, t, i) != "":
 				continue
@@ -1214,6 +1413,9 @@ func _act_call(pi: int, card: DuelCard, slot: int) -> void:
 		var drawn := await _draw(p, n)
 		if not drawn.is_empty():
 			await _fx("fx_draw", [pi, drawn])
+	await _window(pi, {"type": "call", "called": t})
+	if over:
+		return
 	await _spring_wards(1 - pi, "foe_call", {"called": t})
 	await _resolve_knockouts()
 
@@ -1249,6 +1451,7 @@ func _act_ward(pi: int, card: DuelCard) -> void:
 	else:
 		_log("%s sets a Ward face down." % p.player_name, pi)
 	await _fx("fx_ward_set", [pi, card])
+	await _window(pi, {"type": "ward", "card": card})
 
 
 func _act_shift(pi: int, t: DuelTotem, slot: int) -> void:
@@ -1291,6 +1494,17 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 		_log("Licensed: it costs %s nothing." % p.player_name, pi)
 		await _fx("fx_rule", [pi, "licensed"])
 	await _fx("fx_rite", [pi, card, target])
+	var ans := await _window(pi, {"type": "rite", "card": card, "target": target, "by": pi})
+	if over:
+		return
+	if ans.bounced:
+		_log("%s is swept back into %s hand, undone." % [card.card_name(), whose(p.player_name, true)], pi)
+		p.hand.append(card)
+		return
+	if ans.negated:
+		_log("%s is cancelled!" % card.card_name(), pi)
+		p.discard.append(card)
+		return
 	var res := await _spring_wards(1 - pi, "foe_rite", {"card": card})
 	if res.cancel_rite:
 		_log("%s is cancelled!" % card.card_name(), pi)
@@ -1403,9 +1617,28 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	_log("%s uses %s%s." % [t.card_name(), mv.name, what], pi)
 	await _fx("fx_attack", [t, i, target])
 
-	# the defender's Wards
+	# the response window: the defender's answers, before anything lands
 	var tk := t.move_target(i)
 	var hostile := tk == "foe" or tk == "foe_totem" or tk == "all_foes"
+	var halved := false
+	if hostile:
+		var ans := await _window(pi, {"type": "attack", "attacker": t, "move": mv, "index": i, "target": target})
+		if over:
+			return
+		if ans.negated or t.is_knocked_out():
+			_log("The attack is cancelled.", pi)
+			await _after_attack(t)
+			return
+		halved = ans.halved
+		if not _same_target(ans.target, target):
+			target = ans.target
+			if target is String and target == NONE:
+				_log("%s strikes at empty air." % t.card_name(), pi)
+				await _after_attack(t)
+				return
+			if target is DuelTotem:
+				_log("The blow falls on %s instead." % target.card_name(), pi)
+	# the defender's Wards
 	var res := {"fired": false, "negated": false, "blocked_life": false, "cancel_rite": false, "reduce_life": 0}
 	if hostile:
 		var ctx := {"attacker": t, "target": target, "move": mv}
@@ -1437,6 +1670,8 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 
 	if target is String and target == LIFE:
 		var amt := attack_amount(t, i, base, null) - int(res.reduce_life)
+		if halved:
+			amt = _half(amt)
 		if amt > 0:
 			if res.blocked_life:
 				_log("The Ward blocks the hit on %s Life." % whose(foe.player_name, true), pi)
@@ -1445,6 +1680,8 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	elif tk == "all_foes":
 		for f in foe.totems():
 			var amt := attack_amount(t, i, base, f, effects)
+			if halved:
+				amt = _half(amt)
 			if amt > 0:
 				dealt += await _damage_totem(f, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
 			for e in effects:
@@ -1453,6 +1690,8 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 		effects = effects.filter(func(e): return e.op != "status")
 	elif target is DuelTotem and target.owner != pi:
 		var amt := attack_amount(t, i, base, target, effects)
+		if halved:
+			amt = _half(amt)
 		if amt > 0:
 			dealt = await _damage_totem(target, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
 			if target.has_keyword("thorns") and not t.is_knocked_out():
@@ -1539,6 +1778,17 @@ func _act_summon(pi: int, card: DuelCard, target) -> void:
 	p.note_played(card.id)
 	var mv: Dictionary = card.def.move
 	_log("%s calls down %s!" % [p.player_name, card.card_name()], pi)
+	var ans := await _window(pi, {"type": "rite", "card": card, "target": target, "by": pi, "summon": true})
+	if over:
+		return
+	if ans.bounced:
+		_log("%s is turned back before it can descend." % card.card_name(), pi)
+		p.hand.append(card)
+		return
+	if ans.negated:
+		_log("%s is sealed away before it can strike!" % card.card_name(), pi)
+		p.spent.append(card)
+		return
 	var res := await _spring_wards(1 - pi, "foe_rite", {"card": card})
 	if res.cancel_rite:
 		_log("%s is sealed away before it can strike!" % card.card_name(), pi)
@@ -1862,6 +2112,12 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 		t.shield -= absorbed
 		amount -= absorbed
 		_log("%s's shield absorbs %d." % [t.card_name(), absorbed], t.owner)
+	var guarded := 0
+	if t.stance == "guard" and amount > 0 and not String(info.get("source", "")) in ["burn", "poison", "bleed", "curse", "doom", "recoil", "heat"]:
+		guarded = amount - _half(amount)
+		amount -= guarded
+		if guarded > 0:
+			_log("%s guards: %d turned aside." % [t.card_name(), guarded], t.owner)
 	var before := t.hp_left()
 	if int(totem_floor[t.owner]) > 0:
 		amount = mini(amount, maxi(0, before - int(totem_floor[t.owner])))
@@ -1878,7 +2134,7 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 			t.remove_status("frozen")
 			_log("The fire thaws %s." % t.card_name(), t.owner)
 		_log("%s takes %d damage." % [t.card_name(), amount], t.owner)
-	await _fx("fx_totem_hit", [t, amount, info.merged({"absorbed": absorbed})])
+	await _fx("fx_totem_hit", [t, amount, info.merged({"absorbed": absorbed, "guarded": guarded})])
 	var overflow := amount - before
 	if overflow > 0 and info.get("spill", false):
 		_log("%d spills over." % overflow, t.owner)
@@ -1993,37 +2249,307 @@ func _spring_wards(owner_pi: int, trigger: String, ctx: Dictionary) -> Dictionar
 		p.stats.wards_sprung += 1
 		_log("%s Ward springs: %s!" % [whose(p.player_name), w.card_name()], owner_pi)
 		await _fx("fx_ward_spring", [owner_pi, w, ctx])
-		for e in w.def.effects:
-			match e.op:
-				"negate":
-					res.negated = true
-				"damage_attacker":
-					await _damage_totem(ctx.get("attacker"), int(e.amount), {"source": "ward"})
-				"status_attacker":
-					await _apply_status(ctx.get("attacker"), e.status, null, owner_pi)
-				"status_called":
-					await _apply_status(ctx.get("called"), e.status, null, owner_pi)
-				"damage_called":
-					await _damage_totem(ctx.get("called"), int(e.amount), {"source": "ward"})
-				"bounce_called":
-					await _bounce(ctx.get("called"))
-				"block_life":
-					res.blocked_life = true
-				"shield_target":
-					var tg = ctx.get("target")
-					if tg is DuelTotem:
-						tg.shield += int(e.amount)
-						_log("%s is shielded (%d)." % [tg.card_name(), tg.shield], tg.owner)
-					elif tg is String and tg == LIFE:
-						res.reduce_life = int(e.amount)
-				"cancel_rite":
-					res.cancel_rite = true
-				"survive":
-					p.life = int(e.life)
-					_log("%s refuses to fall!" % p.player_name, owner_pi)
-					await _fx("fx_life_gain", [owner_pi, 0])
+		if trigger != "lethal":
+			var ans := await _window(owner_pi, {"type": "ward_spring", "card": w, "ctx": ctx, "by": owner_pi})
+			if over:
+				return res
+			if ans.negated:
+				_log("%s fizzles: its spring is cancelled." % w.card_name(), owner_pi)
+				break
+		await _apply_ward_effects(w, owner_pi, ctx, res)
 		break
 	return res
+
+
+## What a Ward does when it springs (from its slot, or played from the hand
+## in answer).
+func _apply_ward_effects(w: DuelCard, owner_pi: int, ctx: Dictionary, res: Dictionary) -> void:
+	var p: DuelPlayer = players[owner_pi]
+	for e in w.def.effects:
+		match e.op:
+			"negate":
+				res.negated = true
+			"damage_attacker":
+				await _damage_totem(ctx.get("attacker"), int(e.amount), {"source": "ward"})
+			"status_attacker":
+				await _apply_status(ctx.get("attacker"), e.status, null, owner_pi)
+			"status_called":
+				await _apply_status(ctx.get("called"), e.status, null, owner_pi)
+			"damage_called":
+				await _damage_totem(ctx.get("called"), int(e.amount), {"source": "ward"})
+			"bounce_called":
+				await _bounce(ctx.get("called"))
+			"block_life":
+				res.blocked_life = true
+			"shield_target":
+				var tg = ctx.get("target")
+				if tg is DuelTotem:
+					tg.shield += int(e.amount)
+					_log("%s is shielded (%d)." % [tg.card_name(), tg.shield], tg.owner)
+				elif tg is String and tg == LIFE:
+					res.reduce_life = int(e.amount)
+			"cancel_rite":
+				res.cancel_rite = true
+			"survive":
+				p.life = int(e.life)
+				_log("%s refuses to fall!" % p.player_name, owner_pi)
+				await _fx("fx_life_gain", [owner_pi, 0])
+
+
+# ============================================================ answers ===
+# Phase A: a Rite marked "answer" is played only on the rival's turn, in
+# answer to what they do (its "answers": attack, rite, call, ward,
+# ward_spring); a Ward marked "from_hand" can be played from the hand in
+# answer to its trigger, once a duel. The response window opens after an
+# action is declared and before it resolves.
+
+## The cards in `pi`'s hand that answer this event; with `affordable_only`
+## false, those they can't pay for too (the screen shows them greyed).
+func answers_for(pi: int, event: Dictionary, affordable_only := true) -> Array:
+	var out := []
+	for c in players[pi].hand:
+		if not answer_fits(c, event):
+			continue
+		if affordable_only and answer_problem(pi, c, event) != "":
+			continue
+		out.append(c)
+	return out
+
+
+## Whether this card is an answer to this kind of event at all.
+func answer_fits(c: DuelCard, event: Dictionary) -> bool:
+	var kind := String(event.get("type", ""))
+	if c.is_rite() and bool(c.def.get("answer", false)):
+		return (c.def.get("answers", []) as Array).has(kind)
+	if c.is_ward() and bool(c.def.get("from_hand", false)):
+		return String(WARD_EVENTS.get(c.def.trigger, "")) == kind
+	return false
+
+
+## Why this card can't answer this event right now ("" if it can).
+func answer_problem(pi: int, c: DuelCard, event: Dictionary) -> String:
+	var p: DuelPlayer = players[pi]
+	if c == null or not p.hand.has(c):
+		return "That card isn't in your hand."
+	if not answer_fits(c, event):
+		return "%s doesn't answer this." % c.card_name()
+	var cost := card_cost(pi, c) if c.is_ward() else rite_cost(pi, c)
+	if c.is_ward():
+		if p.hand_wards_used.has(c.id):
+			return "%s has been played from the hand once this duel already." % c.card_name()
+		if c.def.trigger == "foe_direct" and not (event.get("target") is String and event.get("target") == LIFE):
+			return "%s answers an attack on your Life." % c.card_name()
+	if cost > p.essence:
+		return "Needs %d Essence." % cost
+	for e in c.def.get("effects", []):
+		match e.op:
+			"redirect_guardian":
+				if _guardian_of(pi, event.get("target")) == null:
+					return "You need a Guardian standing, apart from the one attacked."
+				if not (event.get("target") is DuelTotem):
+					return "It turns a blow at one of your Totems."
+			"sidestep":
+				var tg = event.get("target")
+				if not (tg is DuelTotem) or tg.owner != pi:
+					return "It answers an attack on one of your Totems."
+				for id in ["frozen", "rooted", "possessed"]:
+					if tg.has_status(id):
+						return "%s is %s and can't move." % [tg.card_name(), DuelConditions.display_name(id)]
+			"cancel_ward":
+				if String(event.get("type", "")) != "ward_spring":
+					return "It answers a Ward as it springs."
+	return ""
+
+
+## "an enemy Totem attacks, or your opponent casts a Rite": when a card answers.
+static func answers_text(c: DuelCard) -> String:
+	var kinds: Array = c.def.get("answers", [])
+	if c.is_ward():
+		kinds = [WARD_EVENTS.get(c.def.trigger, "")]
+	var parts := []
+	for k in kinds:
+		parts.append(String(EVENT_TEXT.get(k, k)))
+	return " or ".join(parts)
+
+
+## A Guardian of `pi`'s that isn't `target`, standing.
+func _guardian_of(pi: int, target) -> DuelTotem:
+	for t in players[pi].totems():
+		if t.has_keyword("guardian") and not (target is DuelTotem and t == target) and not t.is_knocked_out():
+			return t
+	return null
+
+
+## Two attack targets (a Totem, LIFE or NONE) the same (a String and an
+## Object can't be compared with ==).
+static func _same_target(a, b) -> bool:
+	if a is String and b is String:
+		return a == b
+	if a is Object and b is Object:
+		return a == b
+	return false
+
+
+## The response window. The rival of whoever acted is asked first; an answer
+## can be answered by the other side, and so on, up to DuelRules.chain_max
+## answers; both sides passing in a row closes the window. The chain then
+## resolves last-in first-out: an answer that's cancelled does nothing, and
+## the action stands or falls by what's left. Returns what became of the
+## action: negated, halved, target (moved by a sidestep or to a Guardian),
+## bounced (a Rite back to its hand).
+func _window(actor: int, event: Dictionary) -> Dictionary:
+	var res := {"negated": false, "halved": false, "target": event.get("target"), "bounced": false, "chain": []}
+	if over:
+		return res
+	var chain: Array = []
+	var asked := 1 - actor
+	var passes := 0
+	while chain.size() < DuelRules.chain_max and passes < 2:
+		if chain.is_empty() and asked == actor:
+			break   # nobody answered: nothing for the actor to answer back
+		var top: Dictionary = event if chain.is_empty() else _link_event(chain[-1], chain.size() - 1)
+		var pick = null
+		var ctrl = players[asked].controller
+		if ctrl != null and ctrl.has_method("choose_response"):
+			var cards := answers_for(asked, top, false)
+			if not cards.is_empty():
+				pick = await ctrl.choose_response(self, asked, top, cards)
+				if over:
+					return res
+		if pick != null and pick is DuelCard and answer_problem(asked, pick, top) == "":
+			var link := {"card": pick, "pi": asked, "answers": chain.size() - 1, "cancelled": false}
+			_play_answer(asked, pick)
+			chain.append(link)
+			_log("%s answers with %s!" % [players[asked].player_name, pick.card_name()], asked)
+			await _fx("fx_answer", [asked, pick, top, chain.size()])
+			passes = 0
+		else:
+			passes += 1
+		asked = 1 - asked
+	if chain.is_empty():
+		return res
+	for i in range(chain.size() - 1, -1, -1):
+		var link: Dictionary = chain[i]
+		var p: DuelPlayer = players[link.pi]
+		p.answering.erase(link.card)
+		if link.cancelled:
+			if link.get("bounce", false):
+				p.hand.append(link.card)
+				_log("%s is swept back into %s hand." % [link.card.card_name(), whose(p.player_name, true)], link.pi)
+			else:
+				p.discard.append(link.card)
+				_log("%s fizzles." % link.card.card_name(), link.pi)
+			continue
+		await _resolve_answer(link, chain, event, res)
+		if over:
+			return res
+	res.chain = chain
+	await _fx("fx_chain_done", [chain, res])
+	await _resolve_knockouts()
+	return res
+
+
+## An answer, as an event the other side may answer.
+func _link_event(link: Dictionary, index: int) -> Dictionary:
+	var c: DuelCard = link.card
+	return {"type": "rite" if c.is_rite() else "ward_spring", "card": c, "by": link.pi, "answer": true, "link": index}
+
+
+func _play_answer(pi: int, c: DuelCard) -> void:
+	var p: DuelPlayer = players[pi]
+	_spend(p, card_cost(pi, c) if c.is_ward() else rite_cost(pi, c))
+	p.hand.erase(c)
+	p.answering.append(c)   # on the chain until it resolves
+	if c.is_ward():
+		p.hand_wards_used.append(c.id)
+	p.stats.answers += 1
+	p.note_played(c.id)
+
+
+func _resolve_answer(link: Dictionary, chain: Array, event: Dictionary, res: Dictionary) -> void:
+	var c: DuelCard = link.card
+	var pi: int = link.pi
+	var p: DuelPlayer = players[pi]
+	var target_link = chain[int(link.answers)] if int(link.answers) >= 0 else null
+	if c.is_ward():
+		# a Ward from the hand springs now, on the action or on the answer it answers
+		var wres := {"fired": true, "negated": false, "blocked_life": false, "cancel_rite": false, "reduce_life": 0}
+		if target_link != null:
+			if c.def.effects.any(func(e): return e.op in ["cancel_rite", "negate"]):
+				target_link.cancelled = true
+				_log("%s cancels %s." % [c.card_name(), target_link.card.card_name()], pi)
+		else:
+			var ctx := {"attacker": event.get("attacker"), "target": res.target, "move": event.get("move"),
+				"called": event.get("called"), "card": event.get("card")}
+			await _apply_ward_effects(c, pi, ctx, wres)
+			if wres.negated or (wres.cancel_rite and String(event.get("type", "")) == "rite"):
+				res.negated = true
+			if int(wres.reduce_life) > 0:
+				res["reduce_life"] = int(res.get("reduce_life", 0)) + int(wres.reduce_life)
+		p.stats.wards_sprung += 1
+		p.discard.append(c)
+		return
+	for e in c.def.get("effects", []):
+		if over:
+			return
+		match e.op:
+			"negate":
+				if target_link != null:
+					target_link.cancelled = true
+					_log("%s cancels %s." % [c.card_name(), target_link.card.card_name()], pi)
+				else:
+					res.negated = true
+			"halve":
+				res.halved = true
+				_log("%s: the blow will land at half its strength." % c.card_name(), pi)
+			"redirect_guardian":
+				var g := _guardian_of(pi, res.target)
+				if g != null:
+					res.target = g
+			"bounce_rite":
+				if target_link != null:
+					target_link.cancelled = true
+					target_link["bounce"] = true
+				else:
+					res.bounced = true
+			"sidestep":
+				var tg = res.target
+				if tg is DuelTotem and tg.owner == pi and p.totems().has(tg):
+					var from: int = tg.slot
+					var slots := []
+					for sl in p.slots.size():
+						if sl != from:
+							slots.append(sl)
+					var to: int = slots[0]
+					if p.controller != null and p.controller.has_method("choose_slot"):
+						to = await p.controller.choose_slot(self, pi, "Where does %s step to?" % tg.card_name(), slots, {"reason": "sidestep", "totem": tg})
+					if not slots.has(to):
+						to = slots[0]
+					var other = p.slots[to]
+					p.slots[from] = other
+					if other != null:
+						other.slot = from
+					p.slots[to] = tg
+					tg.slot = to
+					_log("%s steps aside." % tg.card_name(), pi)
+					await _fx("fx_shift", [pi])
+					res.target = other if other != null else NONE
+			"essence":
+				p.essence += int(e.amount)
+				_log("%s gains %d Essence." % [p.player_name, e.amount], pi)
+			"essence_next":
+				p.pending_essence += int(e.amount)
+				_log("%s will gain %d Essence at their next turn." % [p.player_name, e.amount], pi)
+			"draw":
+				var drawn := await _draw(p, int(e.get("count", 1)))
+				if not drawn.is_empty():
+					await _fx("fx_draw", [pi, drawn])
+			"cancel_ward":
+				if target_link != null:
+					target_link.cancelled = true
+				else:
+					res.negated = true
+	p.discard.append(c)
 
 
 func _ward_applies(w: DuelCard, ctx: Dictionary) -> bool:

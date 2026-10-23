@@ -202,7 +202,10 @@ static func describe(id: String) -> String:
 					lines.append("    [color=#%s]%s[/color]" % [dim, det])
 		"rite":
 			lines.append(DuelCards.card_text(id))
-			lines.append("[color=#%s]Cast on your turn, then discard.[/color]" % dim)
+			if d.get("answer", false):
+				lines.append("[color=#%s]An answer: played on your opponent's turn, in the moment after they act and before it lands, then discarded. An answer can itself be answered.[/color]" % dim)
+			else:
+				lines.append("[color=#%s]Cast on your turn, then discard.[/color]" % dim)
 		"ward":
 			lines.append(DuelCards.card_text(id))
 			lines.append("[color=#%s]Set face down. Springs on your opponent's turn.[/color]" % dim)
