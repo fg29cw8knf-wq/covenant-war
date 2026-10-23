@@ -18,8 +18,11 @@ and flow Godot can give; afterwards the play-through as all four looks
 (`tools/play_all_looks.sh <dir>`, `PARTS=opening` then `PARTS=solhaven`) with
 the stills looked at, the headless tests, and the web build published so the
 phone link matches `main`. Items 1 to 10 are bugs and feel; 11 to 14 are
-bigger. Do 1 to 10 first, then 11, and ask Gary before 12 to 14 if any of
-them looks like more than an evening.
+bigger. Do 1 to 10 first, then 11 and 12. Item 13 (the deeper duel) is a
+build of several evenings in its own right: Gary has said yes to all of it
+(16:27, 23 October), so do it in the phases written there, telling him at
+the start of each phase roughly how big it is, and merging each phase to
+`main` as it passes so he can play it.
 
 Gary's words are quoted as he sent them from his phone.
 
@@ -309,46 +312,181 @@ Do (the engine side; the voices come from Gary):
 - Web: voice files go in the pack of the part they belong to (`web_packs.py`);
   watch the main pack's 100 MB.
 
-## 13. Making the card game deeper (design; nothing built until Gary picks)
+## 13. The deeper duel (build it all; Gary said yes to every idea)
 
 > "What ways could we make the card games more in depth and more to it?"
+> Then, on the list below: "I want all of those added to the duels, anything
+> else I don't mind. Duels being longer or more in depth, just want to keep
+> them fun and not so repetitive, more like Yu-Gi-Oh."
 
-What's there already: 3 Totem slots a side, 2 Ward slots, 30-card decks, Life
-150, Essence (cap 10), Shift, Rites, Wards, 24 conditions and 6 boons, Fate
-dice bands, Guardians, Divine Gifts, Summons (Demigods), Ascension,
-Attunement/Resonance/Rank, Kingdom Laws and Blessings, seven attributes with
-7+ perks, equipment in three slots on the duellist.
+So the brief is: every idea below, built; longer duels are fine; the test of
+each one is "is there a real choice here, and does the duel feel less like
+the last one". Yu-Gi-Oh is the model: a visible turn with phases, chains of
+answers, calling the big cards by paying for them, the discard as a second
+hand, decks that each play their own way.
 
-Ideas, each a real decision every turn or a reason to build a deck a certain
-way (not more numbers):
-1. **Bonds**: two named Totems on the field together unlock a bond move or
-   boon (Cinderpup + Blazehound). Decks built round pairs.
-2. **Arena rules and Terrain Rites**: each arena has a standing rule (the
-   tidegrove soaks every Totem at Dawn; the emberfield burns a Ward that
-   springs), and a Rite can change the ground mid-duel to your element's.
-3. **Relics on Totems**: a card that attaches to a Totem (a blade, a charm)
-   and stays — one per Totem, lost with it.
-4. **Stances**: each turn a Totem is set to Strike, Guard (half damage, no
-   attack) or Rest (regains Life and 1 Essence); a choice every turn, free.
-5. **Counter Rites**: a Rite marked "in answer" can be played on the rival's
-   turn when they attack or play a Rite — a "Respond?" window, the duel's
-   first interrupt (Wards stay the traps).
-6. **Favour**: a meter that fills as you play your sworn god's element and
-   way; full, it opens a second Gift or a Divine Summon window. Unsworn fill
-   it from any element, slower.
-7. **Veiled calls**: a Totem can be called face down, revealed when it
-   attacks or is hit — hidden information for the rival's reads.
-8. **Tempering** (Gary's own rule): a duplicate re-absorbed gives that card a
-   permanent mark (+Life, then +a Fate band, then +a move), three at most;
-   shown on the card. Teach it in Bram's duel (item 8).
-9. **Two-stage Ascension** for the Legend tier and up (Spark → Ember →
-   Blaze), each stage its own art.
-10. **Oaths mid-duel**: swear to win by turn 8 or with a Totem of your god's
-    element for a reward; fail and pay.
+What's there now (so nothing is built twice): 3 Totem slots a side, 2 Ward
+slots (3 with Cunning 7+), 30-card decks, 5-card hands (limit 10), Life 150,
+Essence to a cap of 10, Shift, Rites, Wards (face-down traps), 24 conditions
+and 6 boons, Fate dice bands on every move, Guardians, Divine Gifts, Summons
+(the five Demigods), Ascension (one stage), Attunement / Resonance / Rank,
+Kingdom Laws and Blessings, seven attributes with 7+ perks, equipment on the
+duellist. A turn is Dawn (conditions, the Law) → draw → actions → Dusk
+(`DuelGame._take_turn`, `_dawn_conditions`, `_dawn_law`, `_dusk`). The pool
+is about 93 cards (35 Totems, 41 Rites, 10 Wards, 5 Summons; tiers 1 to 6)
+in `scripts/duel/duel_cards.gd`, four starter decks (`DECKS`). The computer
+is `scripts/duel/duel_ai.gd` (774 lines): **every new mechanic must be
+played well by the computer too, or it's a trick only the player has.**
 
-For Gary: pick the ones he wants; each goes through `duel_sim` balance
-(2000 duels, `0 invariant errors`), `duel_monkey`, its Codex entry, its
-tutor lesson the first time it matters, and the Duel Lab.
+Where the repetition comes from, and the answer to each: the same four decks
+(archetypes with their own support cards, and more cards); every turn the
+same shape (phases that matter, Stances, answers on the rival's turn); the
+big cards arriving by luck of the draw (Tribute calls, searches, the Favour
+meter); nothing to do with a fallen Totem (the discard as a resource).
+
+### How each piece is built
+
+Each mechanic, in this order: the rule in `duel_game.gd` (with its
+`action_problem` text, so the screen can say why not); its card data in
+`duel_cards.gd`; the computer in `duel_ai.gd` (it must use it, and answer
+it); the screen (`duel_screen.gd`: the action, its highlight, the Fate band
+and the detail text; the 3D field's effect, `duel_field3d.gd` / `duel_fx.gd`,
+to the standard of the rest, never a placeholder); its Codex entry; a gated
+one-off lesson the first time it matters, in Bram's words (`DuelTutor.lesson`,
+`Game.learn`, onto How to Duel); the Duel Lab's tuning panel; then balance:
+`duel_sim 2000` (`0 invariant errors`, no deck over ~60% against the field),
+`deck_rate`, `condition_probe` for anything with a number, `duel_monkey`,
+`law_sim`, `patron_sim`, `rewards_test`, `story_rules_test` (the story
+duels' rules and tutorials must still hold: the Lantern Duel still can't be
+lost, `lantern_sim`; the Trial's puzzle still has its one answer,
+`trial_puzzle_test`). The deck screen (`PauseMenu` Deck) must build and show
+any new card kind. New cards need Gary's paintings: write each new card's
+prompt into `docs/card-prompts.md` in the kit's format and tell him which are
+needed; the drawn placeholder stands in until then.
+
+### Phase A: the turn, and answers on the rival's turn
+
+- **Phases shown**: Dawn · Draw · Main · Clash · Dusk, named on the screen as
+  the turn moves (a small band under the rival's panel), with the rules
+  that only work in one phase saying so. Clash is where attacks happen;
+  Main before it is for calls, Rites, Wards, Stances; a second short Main
+  after Clash for a Rite or a Shift (as Yu-Gi-Oh's Main Phase 2).
+- **Stances** (idea 4): every Totem of yours is set each turn to Strike,
+  Guard (takes half damage, can't attack) or Rest (regains 20 Life and gives
+  you 1 Essence; can't attack or be Shifted). Free; the stance shows on the
+  Totem's card and its model (a guard pose, a rest pose: new clips or holds
+  on the creature models, `Figure3D`-style). The computer picks stances.
+- **Counter Rites** (idea 5): a Rite marked `"answer": true` can be played
+  on the rival's turn when they declare an attack, play a Rite, call a Totem
+  or set a Ward. The engine gets a **response window**: after the action is
+  declared and before it resolves, each side in turn (the rival first) is
+  asked `choose_response(game, pi, event, cards)`; an answer can be answered
+  (a chain, resolved last-in first-out, capped at 4 deep, each step shown on
+  the field as a link of light). The screen: a "Respond?" strip with the
+  answers you hold, a countdown bar (6 s, pause-able), and a "Let it be"
+  button; Options has "Ask me to respond: Always / Only when I can / Never
+  (auto-pass)". Wards stay the traps (they spring by themselves). Eight
+  Counter Rites across the elements to start (negate an attack, halve it,
+  redirect it to a Guardian, bounce a Rite, a free Shift, +1 Essence when
+  they call, draw a card when they Ward, cancel a Ward as it springs).
+- **Hand Wards**: two Wards in the pool that can be played from the hand in
+  answer (once each a duel) — the hand-trap moment.
+
+### Phase B: calling the big cards, and the discard
+
+- **Tribute calls**: a Totem of tier 3 and up (Legend and above) costs its
+  Essence *and* one Totem of yours sent to the discard (tier 5 and 6, two).
+  The call becomes an event (the sacrificed Totem's light goes into the new
+  one on the field). Rites that call a tier-3 for free with a condition are
+  the exception that makes it exciting.
+- **The discard as a resource**: Rites that return a fallen Totem to the hand
+  or straight to the field (a Revival at a cost); Totems with an **Echo**
+  that works from the discard (once, when a condition is met, e.g. "when a
+  Totem of yours falls, Cinderpup's Echo deals 10 to the attacker"); a Rite
+  needing three fallen Totems of one element to work (a Rite of Ashes). The
+  discard pile shown on the screen as a tappable stack (it isn't now).
+- **Special calls**: `"on": {"ally_falls": ...}`-style card triggers: a Totem
+  that calls itself from the hand free when one of yours falls; one that
+  flips its effect when it's hit; one that comes back at Dawn once. Data
+  on the card, resolved by the engine, shown by the screen.
+- **Searches and draws**: Rites that search the deck for a Totem of an
+  element (shown as the deck fanning), that draw two, that put a card from
+  the discard on top of the deck. Decks that can find their pieces play
+  less by luck and feel designed.
+
+### Phase C: what Totems are, and build round
+
+- **Bonds** (idea 1): a `"bond"` field on a Totem naming another; both on
+  the field together unlocks a bond move (shown as a fourth move with both
+  names) or a boon on both. Twelve pairs to start, one or two per element
+  pair; the Codex shows a card's bond partner.
+- **Relics** (idea 3): a new card kind, `"relic"`: attaches to a Totem of
+  yours (one each), stays, gives a move, a boon or a stat, lost when the
+  Totem falls (into the discard with it; a Rite can fetch it back). Ten to
+  start. The Totem's card shows the relic's band; the model carries it
+  where it can (a collar, a glow).
+- **Veiled calls** (idea 7): a Totem can be called face down for +1 Essence
+  (the rival sees a Veiled card on the slot, its back); it is revealed when
+  it attacks, is attacked or at your next Dawn; some Totems have a **Reveal**
+  effect (flip effects). The computer veils when it has a Reveal.
+- **Two-stage Ascension** (idea 9): tiers 3 and up can Ascend twice (Spark →
+  Ember → Blaze: three card ids, three paintings per line), the second
+  stage needing the first on the field for a turn. Eight lines to start.
+- **Tempering** (idea 8, Gary's rule): a duplicate re-absorbed on the Codex
+  marks that card for good: first +20 Life, second one Fate band wider on
+  its first move, third a new move; three at most, shown as marks on the
+  card's frame; the story's "upgrade card manifests from a duplicate".
+  Bram teaches it in the campfire duel (item 8).
+
+### Phase D: the ground, the gods, and the stakes
+
+- **Arena rules and Terrain Rites** (idea 2): each arena (`assets/art/arenas/`:
+  ashford, emberforge, ironstone, solhaven, tidegrove, veilwild) a standing
+  rule at Dawn (the tidegrove Soaks a random Totem, the emberforge Burns a
+  Ward as it springs, ironstone's Guard is +5, the veilwild veils the first
+  call free, solhaven gives whoever has fewer Totems 1 Essence, Ashford's
+  green nothing: the beginner's Circle); five **Terrain Rites** that change
+  the ground to an element's arena for three turns (the field's look changes
+  with it: the Circle's floor shader, the sky, the lights, to the standard of
+  the rest).
+- **Continuous Rites**: a Rite that stays on the field in a slot of its own
+  (two a side) with a standing effect (all Fire Totems +10, every Ward costs
+  1 more), removed by a Counter Rite or when it's replaced. Six to start.
+- **Favour** (idea 6): a meter (0 to 10) that fills as you play your sworn
+  god's element and way (the Law's own actions count double); full, it
+  opens a window for a second Gift or a free Summon of your god's Demigod,
+  then empties. Unsworn fill it from any element, at half pace, for Unbound
+  Will's stronger form. Shown as a ring round your god's seal on the panel.
+- **Oaths** (idea 10): at the start of a duel (and once mid-duel, from the
+  Menu), swear an Oath — win by turn 8; win with a Totem of your god's
+  element; never let your Life under half — for a reward in Resonance and a
+  Favour head start; break it and pay Life. Shown on the panel; the rival's
+  barks notice it. The computer swears sometimes.
+
+### Phase E: decks that play differently
+
+- **Archetypes**: each god's element pair gets a named way of playing with
+  support cards that only work in it (Emberstorm's burn-and-gamble, Tidegrove's
+  outlast-and-heal, Ironstone's guard-and-counter, Veilwild's veil-and-reveal,
+  and three more for the elements without a deck), so every deck is its own
+  puzzle. About 40 new cards across the phases above (Counter Rites, Hand
+  Wards, Relics, Terrain and Continuous Rites, Echo and Reveal Totems, bond
+  pairs, Ascension lines): their prompts for Gary in `docs/card-prompts.md`.
+- **No new starter decks** (the story gives Bram four boxes); the new cards
+  come to the player as the story goes, through Resonance rewards, duel
+  rewards and Tamsin's stall (Still to Make, 13: crowns), so each chapter
+  changes what a deck can be.
+- The computer: a deck's archetype tells `duel_ai.gd` how to play it (a
+  plan per archetype: what it's trying to do, what it holds back for an
+  answer), so the rival feels like a different duellist each time.
+
+### Keep
+
+- A duel still ends: `max_turns` 60 stays, fatigue stays; watch the average
+  duel length in `duel_sim` (aim 12-20 turns, not 40).
+- The phone's frame rate and the duel's load time.
+- The Duel Lab plays all of it; the rules doc ("Duel Rules v2" Claude doc,
+  `docs/`) updated as each phase lands, and the tutor's lessons in order.
 
 ## 14. After everything
 
