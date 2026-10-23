@@ -68,6 +68,12 @@ const OWN_GAIT := {
 	"farmer": {"walk": 1.70, "run": 4.30, "sneak": 0.87},
 	"merchant": {"walk": 1.43, "run": 3.63, "sneak": 0.92},
 	"trader": {"walk": 1.77, "run": 4.48, "sneak": 0.90},
+	# the elder and the two children (23 October, Gary's New Characters 04,
+	# 05 and 06 on the player's clips; the children's short legs take the
+	# same steps at a child's pace)
+	"elder": {"walk": 1.66, "run": 4.20},
+	"child_b": {"walk": 1.15, "run": 2.90},
+	"child_c": {"walk": 0.70, "run": 1.77},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884

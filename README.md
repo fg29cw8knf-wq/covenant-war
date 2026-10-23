@@ -340,9 +340,12 @@ Nell since 18 October, Hob since 19 October, and Bram Gary's own AssetFurnace
 model, in place of the 11 October stand-in, since 20 October); the crowd's farmer,
 merchant and trader are Gary's 22 October models (`farmer.glb`, `merchant.glb`,
 `trader.glb`: the Lantern Night crowd and the P1 dancers with those looks are
-3D figures); the other villagers (Ned, the refugee, the courtier, the elder and
-the children) stay cut-outs until their models exist, and a model dropped into
-`assets/models/characters/<id>.glb` is picked up by itself. A cut-out always
+3D figures); the elder and the two children are his 23 October models
+(`elder.glb`, `child_b.glb`, `child_c.glb`: Old Nell's and Old Maren's look,
+the children of the green, the Lantern Night and Solhaven's gate); the other
+villagers (Ned, the refugee, the courtier) stay cut-outs until their models
+exist, and a model dropped into `assets/models/characters/<id>.glb` is picked
+up by itself. A cut-out always
 shows the camera its painted front, turned left or right (its back picture
 read as a blank white card in a film), and kneels by crouching onto its feet
 rather than sinking into the ground. The models share
@@ -399,7 +402,11 @@ Hob his 19 October one, Bram his 20 October one and the crowd's farmer,
 merchant and trader his 22 October ones (21 clips each, the farmer and the
 trader 52-joint rigs with Player B's clips retargeted, the merchant a 34-joint
 rig on Tam's library; farmer 1.78 m, merchant 1.72 m, trader 1.80 m; their
-paces in `OWN_GAIT`), built the same way by
+paces in `OWN_GAIT`), and the elder and the children are his 23 October ones
+(New Characters 04, 05 and 06, 52-joint rigs with the player's 21 clips; the
+masters come 0.9 m tall whatever the figure, so `rig_villager.sh` sets them:
+the elder 1.62 m, the boy 1.34 m, the girl 1.30 m, a child of ten or so where
+Tilly, at 1.25 m, is seven), built the same way by
 `tools/rig_villager.sh <who> <master.glb>` (then the import, their portrait
 and the checks above, with their id): Corin stands 1.72 m, Tam 1.88 m, Tilly
 1.25 m, Nell 1.50 m, Bram 1.84 m (his own idle, walk, run, strafe, jump, roll,
@@ -473,9 +480,18 @@ the place is `solhaven_set.gd`, stand-ins that give way to Gary's Solhaven model
 (`assets/models/solhaven/<name>.glb`, the names in "Solhaven: Your
 Step-by-Step") (the Golden Gate is his since 22 October: `golden_gate.glb` with its 4096
 atlas beside it, VRAM-compressed, at its real 24 m, the way in under its 5.7 m
-arch, the doors hung in the arch, still stand-ins, `gate_door.glb`, and the
-city wall starting where its wings end; `tests/gate_shot.tscn -- <dir>` takes
-stills of it from the road, under the arch and from the square, shut and open) and his people (`assets/models/characters/<id>.glb`: hale,
+arch, the doors hung in the arch and the city wall starting where its wings
+end; the doors are his since 23 October, `solhaven_gate_door.glb`, one leaf
+made to the arch at its real size, 2.8 m wide and 5 m tall at the hinge rising
+to 7 m where the two meet, hung hinge edge on the hinge and mirrored for the
+other, swinging into the square; `tests/gate_shot.tscn -- <dir>` takes stills
+of it from the road, under the arch and from the square, shut and open; Bram's
+wagon is his `covered_wagon.glb` of the same day, at its real size, turned
+about so its shafts, down on the ground, point the set's way with Turnip
+between them, its let-down tailboard the seat Bram takes in the campfire film
+(`SolSet.tailboard`), and `tests/wagon_shot.tscn -- <dir>` takes stills of it
+in the stable yard by day and with the lamp lit; the atlases of both sit
+beside them, VRAM-compressed, split out by `tools/split_glb.py`) and his people (`assets/models/characters/<id>.glb`: hale,
 sun_guard, ysa, tobin, refugee_b, refugee_c, horse_trader, turnip, tamsin, pip,
 maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Voices
 play from `assets/audio/vo/` (`herald_14`..`16`, `solmaris_01`..`09`,
@@ -494,7 +510,11 @@ People page, use someone's own portrait when there is one, else the face for
 their costume). Ned the fiddler's, Krell's and Corin's mam's are head-and-
 shoulders crops of Gary's 20 October pictures of them (`lookdev/refs/ned_sheet.jpg`,
 `krell_sheet.jpg`, `corin_mam_sheet.jpg`, the sources for their models) on the
-frame's dark blue, until their models exist and can be rendered:
+frame's dark blue, until their models exist and can be rendered; Warden Hale's
+(`hale_portrait.png`) and the Sun Guard's (`gate_warden_portrait.png`, the
+gate warden who speaks in his place after the Trial) are the same from his 23
+October sheets (`hale_sheet.jpg`, `sun_guard_sheet.jpg`), the studio grey
+behind them keyed to the blue:
 
 ```sh
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn

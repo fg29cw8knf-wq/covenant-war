@@ -437,12 +437,17 @@ func _build_gate() -> void:
 			body.position = g + Vector3(side * (half_arch + solid * 0.5), 2.0, 0)
 			body.add_child(cs)
 			add_child(body)
-	# the doors: two leaves, hinged at the arch's sides, closed across the way
+	# the doors: two leaves, hinged at the arch's sides, closed across the way.
+	# Gary's leaf (23 October, solhaven_gate_door.glb) is made to the arch at
+	# its real size: 2.8 m wide, 5.0 m tall at its hinge edge rising to 7.07 m
+	# where the two meet under the crown, its hinge straps at x = 0 and its
+	# studded face +z (the road). It hangs as made, hinge edge on the hinge,
+	# and the other leaf is its mirror.
 	for side in [-1, 1]:
 		var hinge := Node3D.new()
 		hinge.position = g + Vector3(side * half_arch, 0, 0.2)
 		add_child(hinge)
-		var leaf := model("gate_door", hinge, Vector3(-side * leaf_w * 0.5, 0, 0), 0.0, Vector3(0, leaf_h, 0), false)
+		var leaf := model("gate_door", hinge, Vector3.ZERO, 0.0, Vector3.ZERO if real != null else Vector3(0, leaf_h, 0), false)
 		if leaf == null:
 			var l := Node3D.new()
 			hinge.add_child(l)
@@ -451,8 +456,13 @@ func _build_gate() -> void:
 				LevelKit.box(l, Vector3(-side * leaf_w * 0.5, y, 0.2), Vector3(leaf_w - 0.24, 0.18, 0.08), "bronze", false)
 			var boss := LevelKit.sphere(l, Vector3(-side * leaf_w * 0.5, 3.0, 0.25), 0.22, "sun_glow")
 			boss.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		elif side > 0:
-			leaf.scale.x = -1.0   # Gary's one leaf, mirrored for the other
+		else:
+			# model() put the leaf's middle on the hinge: over by half its
+			# width, so its hinge edge (the model's x = 0) is on the hinge
+			var middle: float = -(leaf.get_child(0) as Node3D).position.x
+			leaf.position.x = -side * middle
+			if side > 0:
+				leaf.scale.x = -1.0   # Gary's one leaf, mirrored for the other
 		# a door that's shut is solid
 		var body := StaticBody3D.new()
 		var cs := CollisionShape3D.new()
@@ -608,7 +618,30 @@ func _build_wagon(at: Vector3) -> void:
 	wagon.name = "Wagon"
 	wagon.position = at
 	add_child(wagon)
-	if model("wagon", wagon, Vector3.ZERO, 0, Vector3(0, 2.6, 0)) == null:
+	# Gary's wagon (23 October, covered_wagon.glb) at its real size: 2.6 m
+	# wide, 2.8 m to the top of the canvas, the bed 4 m long with a tailboard
+	# and a seat, and its shafts down on the ground 2 m beyond the front. It
+	# faces +z as made; the set's wagon has its shafts and Turnip at -z and
+	# its tail at +z, so it stands turned about. model() centres the whole of
+	# it, shafts and all, on the mark; the mark should be the middle of the
+	# bed (the model's own origin), where the stand-in's was, so it's moved
+	# back by what model() moved it.
+	var real := model("wagon", wagon, Vector3.ZERO, 180.0, Vector3.ZERO, false)
+	if real != null:
+		var inst := real.get_child(0) as Node3D
+		var back: Vector3 = -(real.transform.basis * inst.position)
+		real.position = Vector3(back.x, 0, back.z)
+		# solid where the bed and the wheels are (not out along the shafts,
+		# where Turnip stands)
+		var solid := StaticBody3D.new()
+		var cs := CollisionShape3D.new()
+		var sh := BoxShape3D.new()
+		sh.size = Vector3(2.7, 2.5, 4.1)
+		cs.shape = sh
+		cs.position = Vector3(0, 1.25, 0)
+		solid.add_child(cs)
+		wagon.add_child(solid)
+	else:
 		LevelKit.box(wagon, Vector3(0, 0.75, 0), Vector3(2.0, 0.2, 3.6), "dark_wood", true)       # bed
 		LevelKit.box(wagon, Vector3(-0.95, 1.2, 0), Vector3(0.1, 0.7, 3.6), "wood", false)         # sides
 		LevelKit.box(wagon, Vector3(0.95, 1.2, 0), Vector3(0.1, 0.7, 3.6), "wood", false)
@@ -622,23 +655,25 @@ func _build_wagon(at: Vector3) -> void:
 				wh.position = Vector3(s * 1.1, 0.55, z)
 				wh.rotation.z = PI * 0.5
 		LevelKit.box(wagon, Vector3(0, 0.5, -2.9), Vector3(0.14, 0.14, 2.4), "wood", false)         # the shafts, forward
-	# the lamp hook at the back corner, and the lamp (dark until it's lit)
-	LevelKit.cylinder(wagon, Vector3(0.9, 1.6, 1.9), 0.03, 0.9, "bronze", false, -1.0, 8)
-	LevelKit.box(wagon, Vector3(0.9, 2.45, 1.75), Vector3(0.04, 0.04, 0.32), "bronze", false)
-	wagon_glow = LevelKit.sphere(wagon, Vector3(0.9, 2.2, 1.6), 0.16, "lamp_glow")
+	# the lamp hook at the back corner (on the tailboard's rail, on Gary's
+	# wagon), and the lamp (dark until it's lit)
+	var hook := Vector3(0.85, 1.14, 2.15) if real != null else Vector3(0.9, 1.6, 1.9)
+	LevelKit.cylinder(wagon, hook, 0.03, 0.9, "bronze", false, -1.0, 8)
+	LevelKit.box(wagon, hook + Vector3(0, 0.85, -0.15), Vector3(0.04, 0.04, 0.32), "bronze", false)
+	wagon_glow = LevelKit.sphere(wagon, hook + Vector3(0, 0.6, -0.3), 0.16, "lamp_glow")
 	wagon_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	wagon_glow.visible = false
 	wagon_lamp = OmniLight3D.new()
-	wagon_lamp.position = Vector3(0.9, 2.2, 1.6)
+	wagon_lamp.position = hook + Vector3(0, 0.6, -0.3)
 	wagon_lamp.light_color = Color("ffc67a")
 	wagon_lamp.light_energy = 1.0
 	wagon_lamp.omni_range = 6.0
 	wagon_lamp.visible = false
 	wagon.add_child(wagon_lamp)
-	# Turnip, in the shafts
+	# Turnip, in the shafts (which lie on the ground either side of him)
 	turnip = Node3D.new()
 	turnip.name = "Turnip"
-	turnip.position = Vector3(0.0, 0, -4.4)
+	turnip.position = Vector3(0.0, 0, -3.6 if real != null else -4.4)
 	turnip.rotation.y = PI
 	wagon.add_child(turnip)
 	var mule_path := "res://assets/models/characters/turnip.glb"
@@ -682,6 +717,13 @@ func _build_wagon(at: Vector3) -> void:
 func light_wagon_lamp(on := true) -> void:
 	wagon_glow.visible = on
 	wagon_lamp.visible = on
+
+
+## Where Bram sits on the wagon's tailboard (the campfire film), wagon-local:
+## x and z the spot, y the height of the board. Gary's wagon has a let-down
+## tailboard at the back of its bed; the stand-in's was a tailgate.
+func tailboard() -> Vector3:
+	return Vector3(0, 1.12, 2.2) if has_model("wagon") else Vector3(0, 0.95, 2.65)
 
 
 ## Moves the wagon (and Turnip) to the field outside the walls, or back.

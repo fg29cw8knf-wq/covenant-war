@@ -11,10 +11,10 @@
 #   tools/rig_villager.sh farmer   .../farmer_model/New_Character_01_Master_21_Animations.glb    (22 Oct)
 #   tools/rig_villager.sh merchant .../merchant_model/New_Character_02_Master_21_Animations.glb  (22 Oct)
 #   tools/rig_villager.sh trader   .../trader_model/New_Character_03_Master_21_Animations.glb    (22 Oct)
-#   tools/rig_villager.sh elder    ".../card game folder/elder/<master>.glb"       (23 Oct, when they come)
-#   tools/rig_villager.sh child_b  ".../card game folder/child b/<master>.glb"
-#   tools/rig_villager.sh child_c  ".../card game folder/child c/<master>.glb"
-#   tools/rig_villager.sh refugee  ".../card game folder/refugee/<master>.glb"
+#   tools/rig_villager.sh elder    ".../card game folder/New_Character_04_Master_21_Animations.glb"  (23 Oct)
+#   tools/rig_villager.sh child_b  ".../card game folder/New_Character_05_Master_21_Animations.glb"  (23 Oct)
+#   tools/rig_villager.sh child_c  ".../card game folder/New_Character_06_Master_21_Animations.glb"  (23 Oct)
+#   tools/rig_villager.sh refugee  ".../card game folder/refugee/<master>.glb"       (when it comes)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -153,18 +153,18 @@ farmer|merchant|trader)
 	;;
 elder|child_b|child_c|refugee)
 	# the last cut-outs to become models (Gary's 23 October masters, from his
-	# "card game folder": the village elder, the two children of the green and
-	# the Lantern Night, and the refugee woman at Solhaven's gate, whose
-	# sheets came 22 October). Built like the crowd's looks; the heights are
-	# the stand-ins' (a child of eight or so; the elder stooped a little) and
-	# are to be checked against the models when they come. A master with its
-	# atlas embedded has it moved out beside the model by rig_character.py,
-	# as the gate's was (tools/split_glb.py), so Godot imports it once with
-	# its own settings.
+	# "card game folder": the village elder (New Character 04, the old woman
+	# in the blue dress and shawl), the two children of the green and the
+	# Lantern Night (05 the boy in the green tunic, 06 the girl in the red
+	# dress) and, when it comes, the refugee woman at Solhaven's gate, whose
+	# sheet came 22 October). Built like the crowd's looks: 52-joint rigs with
+	# the player's 21 clips. The masters come 0.9 m tall whatever the figure,
+	# so the heights are set here: the children about ten (Tilly, at 1.25, is
+	# seven), the elder a little stooped.
 	case "$who" in
-	elder) name="Elder"; height=1.66 ;;
-	child_b) name="Child B"; height=1.22 ;;
-	child_c) name="Child C"; height=1.18 ;;
+	elder) name="Elder"; height=1.62 ;;
+	child_b) name="Child B"; height=1.34 ;;
+	child_c) name="Child C"; height=1.30 ;;
 	refugee) name="Refugee"; height=1.64 ;;
 	esac
 	python3 tools/rig_character.py "$src" "$out" --name "$name" --height "$height" \
