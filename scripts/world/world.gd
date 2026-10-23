@@ -532,7 +532,15 @@ func _move(delta: float) -> void:
 	player.velocity.x = lerpf(player.velocity.x, target_vel.x, minf(1.0, delta * 14.0))
 	player.velocity.z = lerpf(player.velocity.z, target_vel.z, minf(1.0, delta * 14.0))
 	player.velocity.y = 0.0
-	player.move_and_slide()
+	# the body moves itself only while the player is driving it: when the
+	# story has them (busy: a staged walk, or a room walk that sets the body's
+	# position straight, AshfordP1.walk_room), move_and_slide would only push
+	# the body out of whatever it overlaps, and a companion's standing body
+	# (Bram's, following a step behind in the taproom) dragged the player
+	# back a step every frame at the table, so the crate never reached the
+	# door (23 October)
+	if not busy:
+		player.move_and_slide()
 	var moving := Vector2(player.velocity.x, player.velocity.z).length() > 0.4
 	if not cine:   # a cutscene walks the player itself
 		player_doll.walking = moving

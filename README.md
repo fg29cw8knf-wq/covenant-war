@@ -530,6 +530,7 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolu
 #   ... -- /tmp/ash green alt        Tam, Nell, Tilly, Ned and Hob, giving the other answers
 #   ... -- /tmp/ash duel lose        Corin to Tilly's gift, losing the rematch (coach: let Bram coach, no rematch)
 #   ... -- /tmp/ash midnight         straight to Corin, then on into the film
+godot --headless --fixed-fps 8 res://tests/taproom_walk_test.tscn        # the crate walk: the stairs, "Wrong way", the door (5 s)
 godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200            # Lantern Duel balance, as the story plays it
 godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the rematch you can lose
 ```
