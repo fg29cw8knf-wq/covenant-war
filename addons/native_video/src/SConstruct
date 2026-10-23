@@ -28,10 +28,18 @@ env.Append(CPPPATH=["."])
 objc_env = env.Clone()
 objc_env.Append(CCFLAGS=["-fobjc-arc"])
 
-sources = [
-    env.Object("register_types.cpp"),
-    objc_env.Object("native_video_player.mm"),
-]
+# (the Mac's library is shared, so its objects are built as shared objects;
+# SCons refuses a plain Object in a SharedLibrary)
+if env["platform"] == "macos":
+    sources = [
+        env.SharedObject("register_types.cpp"),
+        objc_env.SharedObject("native_video_player.mm"),
+    ]
+else:
+    sources = [
+        env.StaticObject("register_types.cpp"),
+        objc_env.StaticObject("native_video_player.mm"),
+    ]
 
 if env["platform"] == "macos":
     env.Append(LINKFLAGS=["-framework", "Foundation", "-framework", "AppKit", "-framework", "AVFoundation", "-framework", "CoreMedia", "-framework", "QuartzCore"])
