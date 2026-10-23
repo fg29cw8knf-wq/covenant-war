@@ -201,7 +201,9 @@ static func _svg(k: Dictionary, back: bool) -> String:
 	var under := ""
 	var over := ""
 	for sh in shapes:
-		under += _with(sh[0], "#ffffff", "#ffffff", 14)
+		# (a dark edge, not the white sticker border they had until 23 October:
+		# among the painted 3D villagers a white-rimmed cartoon stood out)
+		under += _with(sh[0], "#1c1a26", "#1c1a26", 7)
 		over += _with(sh[0], sh[1], "#1c1a26", 3.5)
 	# face details
 	var face := ""

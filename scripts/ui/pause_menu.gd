@@ -888,6 +888,8 @@ func _options() -> Control:
 	v.add_child(_gap(10))
 	v.add_child(UITheme.label("The Covenant War: Throne of Ages  ·  made by Gary Mannion  ·  early build %s" % Packs.build_label(), 22, UITheme.TEXT_DIM))
 	v.add_child(UITheme.label(NoticeScreen.COPYRIGHT, 22, UITheme.TEXT_DIM))
+	# where to send what's wrong (the notice's second page says the same)
+	v.add_child(UITheme.label("Found something that doesn't work or look right? Tell Gary: %s" % NoticeScreen.CONTACT, 22, UITheme.TEXT_DIM))
 	if LaunchLog.last() != "":
 		# where the last launch got to, for a phone that stuck (LaunchLog)
 		var ll := UITheme.label("Last launch: %s" % LaunchLog.last(), 20, UITheme.TEXT_DIM)

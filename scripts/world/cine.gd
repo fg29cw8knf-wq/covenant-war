@@ -150,6 +150,7 @@ static func shot(w: World, pos: Vector3, look: Vector3, fov := -1.0) -> void:
 	w.cam.look_at(look, Vector3.UP)
 	if fov > 0.0:
 		w.cam.fov = fov
+	light_shot(w, look)
 
 
 ## Glides the camera to a shot over `secs`, easing in and out.
@@ -166,8 +167,10 @@ static func move(w: World, pos: Vector3, look: Vector3, secs: float, fov := -1.0
 			return
 		var e := u * u * (3.0 - 2.0 * u)
 		w.cam.global_position = from_pos.lerp(pos, e)
-		w.cam.look_at(from_look.lerp(look, e), Vector3.UP)
-		w.cam.fov = lerpf(f0, f1, e), 0.0, 1.0, maxf(secs, 0.01))
+		var at := from_look.lerp(look, e)
+		w.cam.look_at(at, Vector3.UP)
+		w.cam.fov = lerpf(f0, f1, e)
+		light_shot(w, at), 0.0, 1.0, maxf(secs, 0.01))
 	_cam_tween(w, tw, secs)
 	await tw.finished
 
@@ -188,9 +191,107 @@ static func drift_tween(w: World, pos_a: Vector3, pos_b: Vector3, look_a: Vector
 		if not has_camera(w, token):
 			return
 		w.cam.global_position = pos_a.lerp(pos_b, u)
-		w.cam.look_at(look_a.lerp(look_b, u), Vector3.UP), 0.0, 1.0, maxf(secs, 0.01))
+		var at := look_a.lerp(look_b, u)
+		w.cam.look_at(at, Vector3.UP)
+		light_shot(w, at), 0.0, 1.0, maxf(secs, 0.01))
 	_cam_tween(w, tw, secs)
 	return tw
+
+
+# ------------------------------------------------------------ the film's light ---
+
+## The look a film's shots get that the walkable world doesn't (23 October,
+## Gary: the cutscenes "don't look very good yet"): a soft warm key light
+## beside the camera on whoever the shot looks at, so faces read in the
+## dark instead of flattening into the moonlight (a cinematographer's fill,
+## never a flash: it sits up and to one side, and the lanterns and the sky
+## still do the colouring); and on a close shot, the background softened
+## (depth of field focused on the subject), on a phone too, where the
+## walkable world leaves it off for its frame rate. Both go when the film
+## ends (World.end_cine). FILL_NIGHT / FILL_DAY: the key's strength by the
+## time of day the set reports.
+const FILL_NIGHT := 0.55
+const FILL_DAY := 0.25
+const FILL_COLOR := Color(1.0, 0.86, 0.68)
+const DOF_FOV := 40.0        # a shot this tight or tighter is a close shot
+const DOF_AMOUNT := 0.05
+
+
+## The film's key light, made on first use.
+static func fill_light(w: World) -> OmniLight3D:
+	if w.has_meta("cine_fill"):
+		var l = w.get_meta("cine_fill")
+		if is_instance_valid(l):
+			return l
+	var l := OmniLight3D.new()
+	l.name = "FilmKey"
+	l.light_color = FILL_COLOR
+	l.shadow_enabled = false
+	l.omni_attenuation = 1.4
+	l.light_specular = 0.25
+	w.add_child(l)
+	w.set_meta("cine_fill", l)
+	return l
+
+
+## Places the key for a shot the camera takes of `look`: up and to the
+## camera's right, a third of the way to the subject, reaching just past it.
+static func light_shot(w: World, look: Vector3) -> void:
+	if w.cam == null:
+		return
+	var l := fill_light(w)
+	var cam_pos := w.cam.global_position
+	var d := cam_pos.distance_to(look)
+	var fwd := (look - cam_pos).normalized() if d > 0.01 else -w.cam.global_transform.basis.z
+	var right := fwd.cross(Vector3.UP).normalized()
+	if right.length() < 0.5:
+		right = Vector3.RIGHT
+	l.global_position = cam_pos + fwd * minf(d * 0.35, 3.0) + right * minf(d * 0.3, 1.6) + Vector3(0, minf(d * 0.25, 1.4), 0)
+	l.omni_range = clampf(d + 4.0, 5.0, 16.0)
+	l.light_energy = _fill_energy(w) * clampf(d / 6.0, 0.5, 1.0)
+	l.visible = true
+	_focus_shot(w, d)
+
+
+## How strong the key is here: by day it only lifts shadows a little
+## (Ashford's nights are the dark ones; the other sets get the day's).
+static func _fill_energy(w: World) -> float:
+	if w.has_meta("village"):
+		var v = w.get_meta("village")
+		if is_instance_valid(v) and v.get("time_kind") != null and String(v.time_kind) != "dawn":
+			return FILL_NIGHT
+	return FILL_DAY
+
+
+## Depth of field on a close shot: the subject sharp, what's beyond it
+## softened; a wide shot keeps everything sharp.
+static func _focus_shot(w: World, d: float) -> void:
+	var ca := w.cam.attributes as CameraAttributesPractical
+	if ca == null:
+		return
+	var close := w.cam.fov <= DOF_FOV
+	if close != ca.dof_blur_far_enabled or close:
+		ca.dof_blur_far_enabled = close
+		if close:
+			ca.dof_blur_far_distance = d + 1.5
+			ca.dof_blur_far_transition = maxf(3.0, d * 0.8)
+			ca.dof_blur_amount = DOF_AMOUNT
+	ca.dof_blur_near_enabled = false
+
+
+## The film is over: the key goes out and the camera's own focus comes back.
+static func end_light(w: World) -> void:
+	if w.has_meta("cine_fill"):
+		var l = w.get_meta("cine_fill")
+		if is_instance_valid(l):
+			(l as OmniLight3D).visible = false
+	if w.cam != null:
+		var ca := w.cam.attributes as CameraAttributesPractical
+		if ca != null:
+			var full := Gfx.level() >= 2
+			ca.dof_blur_far_enabled = full
+			ca.dof_blur_near_enabled = full
+			ca.dof_blur_amount = 0.06
 
 
 ## Keeps the camera with someone moving for `secs`: it sits at `offset` from

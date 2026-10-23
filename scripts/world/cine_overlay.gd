@@ -52,6 +52,7 @@ func _ready() -> void:
 		if (e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed):
 			_tap())
 	_root.add_child(_catch)
+	_vignette = _make_vignette()
 	_top = _bar(true)
 	_bot = _bar(false)
 	_black = ColorRect.new()
@@ -109,6 +110,35 @@ func _ready() -> void:
 	_root.resized.connect(_layout)
 	SafeArea.watch(_root, _layout)
 	_hide_line()
+
+
+## A film's vignette: the corners darkened a little, in with the bars and
+## out with them (23 October: a touch of cinema on every renderer; the
+## subtitles and the picture's middle are untouched).
+var _vignette: ColorRect
+const VIGNETTE := 0.42
+
+func _make_vignette() -> ColorRect:
+	var r := ColorRect.new()
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+uniform float strength : hint_range(0.0, 1.0) = 0.0;
+void fragment() {
+	vec2 p = (UV - 0.5) * vec2(1.25, 1.0);
+	float d = length(p) * 1.5;
+	float v = smoothstep(0.55, 1.25, d);
+	COLOR = vec4(0.0, 0.0, 0.0, v * strength);
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("strength", 0.0)
+	r.material = m
+	_root.add_child(r)
+	return r
 
 
 func _bar(top: bool) -> ColorRect:
@@ -181,6 +211,10 @@ func bars(on: bool, secs := 0.7) -> void:
 	_bars_on = on
 	var h := _bar_h()
 	var tw := create_tween().set_parallel(true).set_trans(Tween.TRANS_SINE)
+	if _vignette != null:
+		tw.tween_method(func(k: float) -> void:
+			(_vignette.material as ShaderMaterial).set_shader_parameter("strength", k), 
+			float((_vignette.material as ShaderMaterial).get_shader_parameter("strength")), VIGNETTE if on else 0.0, secs)
 	tw.tween_property(_top, "offset_bottom", h if on else 0.0, secs)
 	tw.tween_property(_top, "offset_top", 0.0 if on else -h, secs)
 	tw.tween_property(_bot, "offset_top", -h if on else 0.0, secs)

@@ -2495,7 +2495,13 @@ func _process(delta: float) -> void:
 		_rise_lanterns(delta)
 	if absf(tear - tear_target) > 0.001:
 		tear = move_toward(tear, tear_target, delta * 0.45)
-		sky_mat.set_shader_parameter("tear_open", tear * tear * (3.0 - 2.0 * tear))
+		var open := tear * tear * (3.0 - 2.0 * tear)
+		sky_mat.set_shader_parameter("tear_open", open)
+		if sigil_on and tear_light != null:
+			# the rift lights the village from above as it opens (and dims to
+			# its scar's glow after)
+			tear_light.visible = true
+			tear_light.light_energy = 0.3 + 1.1 * open
 	if absf(sky_dim - sky_dim_target) > 0.001:
 		sky_dim = move_toward(sky_dim, sky_dim_target, delta * 0.8)
 		mats.lantern.set_shader_parameter("energy", (1.3 if quality == 0 else 2.2) * sky_dim)
@@ -2720,7 +2726,11 @@ func houses_near(p: Vector3) -> Array:
 ##   "festival"  the last night of the Age (as built)
 ##   "dawn"      the morning after: a low sun through smoke, the fires out
 ##   "burning"   the next night: no festival lights, the village dark
+## The time of day the set is dressed for ("festival", "dawn", "burning"...; Cine's key light reads it).
+var time_kind := "festival"
+
 func set_time(kind: String) -> void:
+	time_kind = kind
 	var dawn := kind == "dawn"
 	sky_mat.set_shader_parameter("dawn", 1.0 if dawn else 0.0)
 	if kind != "festival":
