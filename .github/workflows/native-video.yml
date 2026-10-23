@@ -1,0 +1,105 @@
+# Builds the native video player (addons/native_video: Gary's 4K films through
+# the iPhone's and the Mac's own player) on a Mac runner, with godot-cpp, and
+# puts the two libraries on the "native-video" release, always at the same
+# address, where the iPhone and Mac app workflows fetch them before they
+# export (tools/fetch_native.sh):
+#   https://github.com/fg29cw8knf-wq/covenant-war/releases/download/native-video/native-video.zip
+# Runs when the player's source changes, or by hand from the Actions tab
+# (Native video player > Run workflow).
+name: Native video player
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "addons/native_video/src/**"
+      - ".github/workflows/native-video.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: native-video
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: godot-cpp
+        run: git clone --depth 1 https://github.com/godotengine/godot-cpp addons/native_video/src/godot-cpp
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: SCons
+        run: python3 -m pip install --quiet scons
+
+      - name: Build for Mac (Apple silicon and Intel)
+        working-directory: addons/native_video/src
+        run: scons platform=macos arch=universal target=template_release macos_deployment_target=11.0 -j"$(sysctl -n hw.ncpu)"
+
+      - name: Build for iPhone and iPad
+        working-directory: addons/native_video/src
+        run: scons platform=ios arch=arm64 target=template_release ios_min_version=16.0 -j"$(sysctl -n hw.ncpu)"
+
+      - name: Package the libraries
+        working-directory: addons/native_video/src
+        run: |
+          set -e
+          # iPhone: godot-cpp is merged into the one static library, wrapped as the
+          # .xcframework the .gdextension names (Godot's iOS export links it in)
+          cpp_ios=$(ls godot-cpp/bin/libgodot-cpp.ios.template_release*.a | head -1)
+          libtool -static -o bin/libnativevideo.ios.a bin/libnativevideo.ios.template_release.a "$cpp_ios"
+          rm -rf bin/libnativevideo.ios.template_release.xcframework
+          xcodebuild -create-xcframework -library bin/libnativevideo.ios.a -output bin/libnativevideo.ios.template_release.xcframework
+          rm -f bin/libnativevideo.ios.a bin/libnativevideo.ios.template_release.a
+          # Mac: the framework gets its Info.plist and an ad hoc signature (the
+          # app's own export signs it again ad hoc)
+          fw=bin/libnativevideo.macos.template_release.framework
+          mkdir -p "$fw/Resources"
+          cat > "$fw/Resources/Info.plist" <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+          	<key>CFBundleExecutable</key>
+          	<string>libnativevideo.macos.template_release</string>
+          	<key>CFBundleIdentifier</key>
+          	<string>com.covenantwar.nativevideo</string>
+          	<key>CFBundleInfoDictionaryVersion</key>
+          	<string>6.0</string>
+          	<key>CFBundleName</key>
+          	<string>libnativevideo.macos.template_release</string>
+          	<key>CFBundlePackageType</key>
+          	<string>FMWK</string>
+          	<key>CFBundleShortVersionString</key>
+          	<string>1.0.0</string>
+          	<key>CFBundleVersion</key>
+          	<string>1.0.0</string>
+          	<key>LSMinimumSystemVersion</key>
+          	<string>11.0</string>
+          </dict>
+          </plist>
+          PLIST
+          codesign --force --sign - "$fw/libnativevideo.macos.template_release"
+          lipo -info "$fw/libnativevideo.macos.template_release"
+          ls -R bin/libnativevideo.ios.template_release.xcframework | head -20
+          mkdir -p ../../../build
+          (cd bin && zip -qr -y ../../../../build/native-video.zip libnativevideo.macos.template_release.framework libnativevideo.ios.template_release.xcframework)
+          ls -l ../../../build/native-video.zip
+
+      - name: Publish to the native-video release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          built=$(TZ=Europe/London date '+%-d %b %Y, %H:%M %Z')
+          gh release delete native-video --yes --cleanup-tag || true
+          gh release create native-video build/native-video.zip --target "$GITHUB_SHA" --latest=false \
+            --title "Native video player (built $built)" \
+            --notes "The native video player libraries for the iPhone and Mac apps (addons/native_video), built $built from ${GITHUB_SHA::7} with godot-cpp. The app workflows fetch this zip before exporting; nothing to download by hand."
