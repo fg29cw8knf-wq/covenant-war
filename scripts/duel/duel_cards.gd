@@ -23,11 +23,20 @@ extends RefCounted
 ##            (Phase A of the deeper duel, 23 October)
 ## from_hand: a Ward that can also be played from the hand in answer to its
 ##            trigger, once a duel
+## echo:      {when: "ally_falls", op, amount | status}: a Totem card that acts
+##            from its owner's discard once a duel when another of their
+##            Totems falls (Phase B: damage_attacker, status_attacker,
+##            heal_weakest, shield_one, essence_next)
+## needs_ashes: a Rite that only works with this many Totem cards of one
+##            element in its caster's discard
+## A Basic Totem of tier 3 and up costs one of its caller's Totems on the
+## field as well as its Essence (tier 5 and up, two): a Tribute (Phase B).
 
 const CARDS := {
 	# =================================================================== FIRE
 	"cinderpup": {
 		"kind": "totem", "name": "Cinderpup", "element": "fire", "tier": 1, "stage": 0, "cost": 1,
+		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "damage_attacker", "amount": 10},
 		"hp": 50, "affinity": "might", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Nip", "cost": 0, "damage": 10},
@@ -61,7 +70,7 @@ const CARDS := {
 	},
 	"hearth_salamander": {
 		"kind": "totem", "name": "Hearth Salamander", "element": "fire", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 60, "affinity": "presence", "keywords": ["channel"], "attuned": {"min": 5, "hp": 20},
+		"hp": 60, "affinity": "presence", "keywords": ["channel", "rekindle"], "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Tail Whip", "cost": 0, "damage": 20},
 			{"name": "Fire Spit", "cost": 1, "damage": 30},
@@ -113,6 +122,7 @@ const CARDS := {
 	},
 	"stormcaller": {
 		"kind": "totem", "name": "Stormcaller Heron", "element": "storm", "tier": 3, "stage": 0, "cost": 4,
+		"keywords": ["galvanise"],
 		"hp": 100, "affinity": "intellect", "attuned": {"min": 6, "cost": 1},
 		"moves": [
 			{"name": "Gale Bolt", "cost": 0, "damage": 20},
@@ -127,6 +137,7 @@ const CARDS := {
 	# =================================================================== TIDE
 	"brookfin": {
 		"kind": "totem", "name": "Brookfin", "element": "tide", "tier": 1, "stage": 0, "cost": 1,
+		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "heal_weakest", "amount": 20},
 		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Splash", "cost": 0, "damage": 10},
@@ -220,6 +231,7 @@ const CARDS := {
 	# ================================================================== EARTH
 	"pebblit": {
 		"kind": "totem", "name": "Pebblit", "element": "earth", "tier": 1, "stage": 0, "cost": 1,
+		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "essence_next", "amount": 1},
 		"hp": 60, "affinity": "might", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Pebble Toss", "cost": 0, "damage": 10},
@@ -280,6 +292,7 @@ const CARDS := {
 	},
 	"shieldhound": {
 		"kind": "totem", "name": "Shieldhound", "element": "metal", "tier": 1, "stage": 0, "cost": 2,
+		"keywords": ["loyal"],
 		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Guard Bite", "cost": 0, "damage": 20},
@@ -311,6 +324,7 @@ const CARDS := {
 	},
 	"veilfox": {
 		"kind": "totem", "name": "Veilfox", "element": "psychic", "tier": 2, "stage": 1,
+		"keywords": ["riposte"],
 		"ascends_from": "dreamfox", "cost": 2, "hp": 110, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Mind Lash", "cost": 0, "damage": 30},
@@ -339,6 +353,7 @@ const CARDS := {
 	# ================================================================== VENOM
 	"blightrat": {
 		"kind": "totem", "name": "Blightrat", "element": "venom", "tier": 1, "stage": 0, "cost": 1,
+		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "status_attacker", "status": "poison"},
 		"hp": 70, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Gnaw", "cost": 0, "damage": 10},
@@ -632,6 +647,37 @@ const CARDS := {
 		"effects": [{"op": "boon", "who": "target", "boon": "hastened"}],
 		"art": "crackling yellow lightning streaks wrapping a creature's legs, after-images trailing behind it",
 	},
+	# ===================================================== THE DISCARD (Phase B)
+	"hour_of_need": {
+		"kind": "rite", "name": "Hour of Need", "element": "any", "tier": 3, "cost": 1, "target": "none",
+		"effects": [{"op": "call_legend_free"}],
+		"art": "a lone duellist on one knee in a ruined circle, a great beast of light rising behind them out of the cracked stone",
+	},
+	"second_dawn": {
+		"kind": "rite", "name": "Second Dawn", "element": "radiant", "tier": 1, "cost": 1, "target": "none",
+		"effects": [{"op": "revive_hand"}],
+		"art": "first light breaking over a field of fallen cards, one card lifting from the grass towards the sun",
+	},
+	"rekindle": {
+		"kind": "rite", "name": "Rekindle", "element": "fire", "tier": 2, "cost": 3, "target": "none",
+		"effects": [{"op": "revive_field", "max_tier": 2}],
+		"art": "a pile of grey ash on a stone circle, one ember glowing at its heart and a small creature's shape rising out of the smoke",
+	},
+	"rite_of_ashes": {
+		"kind": "rite", "name": "Rite of Ashes", "element": "any", "tier": 3, "cost": 2, "target": "all_foes",
+		"damage": 40, "needs_ashes": 3,
+		"art": "three urns of ash on an altar, their smoke twisting together into a single burning shape that sweeps across a duelling circle",
+	},
+	"kindred_seek": {
+		"kind": "rite", "name": "Kindred Seek", "element": "any", "tier": 1, "cost": 1, "target": "none",
+		"effects": [{"op": "seek_kindred"}],
+		"art": "a fan of face-down cards spreading in the air, one glowing with the same colour as a creature standing below it",
+	},
+	"memory_thread": {
+		"kind": "rite", "name": "Memory Thread", "element": "psychic", "tier": 1, "cost": 0, "target": "none",
+		"effects": [{"op": "discard_to_top"}],
+		"art": "a violet thread of light pulling a single card up out of a pile of discarded ones and laying it on top of a deck",
+	},
 	# ========================================================== COUNTER RITES
 	# (answers, played on the rival's turn: Phase A)
 	"null_sigil": {
@@ -745,7 +791,7 @@ const DECKS := {
 		"attributes": {"might": 2, "swiftness": 2},
 		"cards": {"cinderpup": 3, "blazehound": 2, "emberwisp": 3, "hearth_salamander": 2, "ashen_drake": 1,
 			"sparkkit": 3, "voltlynx": 2, "thunder_ram": 2, "stormcaller": 1,
-			"essence_flask": 1, "firebrand": 2, "thunderclap": 1, "healing_draught": 1, "quicksilver_step": 1,
+			"essence_flask": 1, "firebrand": 2, "thunderclap": 1, "rite_of_ashes": 1, "quicksilver_step": 1,
 			"ambush_snare": 2, "vengeful_spirit": 1, "pyraxis": 1, "travellers_pack": 1},
 	},
 	"tidegrove": {
@@ -754,7 +800,7 @@ const DECKS := {
 		"attributes": {"resolve": 2, "insight": 2},
 		"cards": {"brookfin": 3, "riptide_serpent": 2, "deepmaw": 1, "shellguard": 2,
 			"mossling": 3, "thornwarden": 2, "bloomsprite": 3, "elderbark": 1,
-			"healing_draught": 2, "tidal_surge": 1, "rejuvenate": 2, "seekers_compass": 1, "crystal_vein": 1,
+			"healing_draught": 2, "tidal_surge": 1, "rejuvenate": 2, "seekers_compass": 1, "second_dawn": 1,
 			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 2, "undertow_glyph": 1},
 	},
 	"ironstone": {
@@ -763,7 +809,7 @@ const DECKS := {
 		"attributes": {"might": 2, "resolve": 2},
 		"cards": {"pebblit": 3, "boulderox": 2, "burrowmole": 3, "quarry_golem": 1,
 			"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1,
-			"bulwark": 2, "forge_edge": 1, "lure_bell": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1,
+			"bulwark": 2, "forge_edge": 1, "rekindle": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1,
 			"iron_bastion": 2, "vengeful_spirit": 1, "grondmaw": 1, "essence_flask": 1},
 	},
 	"veilwild": {
@@ -772,7 +818,7 @@ const DECKS := {
 		"attributes": {"cunning": 2, "insight": 2},
 		"cards": {"dreamfox": 3, "veilfox": 2, "somnowl": 2, "thought_eater": 1,
 			"blightrat": 3, "plague_asp": 2, "mirewidow": 3,
-			"mind_fog": 2, "toxic_mist": 1, "seekers_compass": 1, "siphon_rune": 1, "puppet_rune": 1,
+			"mind_fog": 2, "toxic_mist": 1, "kindred_seek": 1, "siphon_rune": 1, "puppet_rune": 1,
 			"mirror_veil": 2, "counter_rune": 1, "poison_trap": 2, "somnara": 1,
 			"whisper_of_pages": 1, "healing_draught": 1},
 	},
@@ -831,7 +877,30 @@ const KEYWORDS := {
 	"thorns": {"name": "Thorns", "text": "A Totem that attacks it takes 10 damage."},
 	"harvest": {"name": "Harvest", "text": "+1 Essence when it knocks out a Totem."},
 	"burrow": {"name": "Burrow", "text": "Can attack Life even when the slot opposite is filled."},
+	"echo": {"name": "Echo", "text": "Acts once from your discard when another of your Totems falls."},
+	"loyal": {"name": "Loyal", "text": "When a Totem of yours falls, it calls itself from your hand into the empty slot, free."},
+	"rekindle": {"name": "Rekindling", "text": "Once a duel, at your Dawn, it comes back from your discard to an empty slot with half its HP."},
+	"riposte": {"name": "Riposte", "text": "When it's hit and still standing, the attacker is Confused."},
+	"galvanise": {"name": "Galvanise", "text": "When it's hit and still standing, it becomes Empowered."},
 }
+
+
+## What a keyword does on this card (an Echo's own words).
+static func keyword_text(k: String, d: Dictionary) -> String:
+	if k == "echo" and d.has("echo"):
+		return "Once a duel, when another of your Totems falls, from your discard: %s" % echo_text(d)
+	return String(KEYWORDS.get(k, {}).get("text", ""))
+
+
+static func echo_text(d: Dictionary) -> String:
+	var e: Dictionary = d.get("echo", {})
+	match String(e.get("op", "")):
+		"damage_attacker": return "deal %d damage to the Totem that felled it." % int(e.amount)
+		"status_attacker": return "the Totem that felled it is %s." % STATUS_NAMES.get(e.status, e.status)
+		"heal_weakest": return "heal %d damage from your most hurt Totem." % int(e.amount)
+		"shield_one": return "shield your weakest Totem for %d." % int(e.amount)
+		"essence_next": return "gain %d Essence at your next turn." % int(e.amount)
+	return ""
 
 const STATUS_NAMES := DuelConditions.NAMES
 
@@ -1017,6 +1086,8 @@ static func card_text(id: String) -> String:
 static func _rite_text(d: Dictionary) -> String:
 	var dmg := int(d.get("damage", 0))
 	var parts := []
+	if int(d.get("needs_ashes", 0)) > 0:
+		parts.append("Needs %d Totems of one element in your discard" % int(d.needs_ashes))
 	if dmg > 0:
 		if d.target == "all_foes":
 			parts.append("Deal %d damage to each enemy Totem" % dmg)
@@ -1057,6 +1128,11 @@ static func _rite_text(d: Dictionary) -> String:
 			"sidestep": parts.append("the Totem attacked swaps slots with another of yours, and the blow lands on whatever stands there now")
 			"essence_next": parts.append("%d more at your next turn" % e.amount)
 			"cancel_ward": parts.append("the Ward is spent for nothing")
+			"revive_hand": parts.append("Return a Basic Totem from your discard to your hand")
+			"revive_field": parts.append("Call a Basic Totem of tier %d or lower from your discard into an empty slot, with half its HP" % int(e.get("max_tier", 2)))
+			"call_legend_free": parts.append("While your Life is lower than your opponent's, call a Legend Totem from your hand into an empty slot, free and without a Tribute")
+			"seek_kindred": parts.append("Search your deck for a Totem that shares an element with one of yours on the field")
+			"discard_to_top": parts.append("Put a card from your discard on top of your deck")
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
 
 

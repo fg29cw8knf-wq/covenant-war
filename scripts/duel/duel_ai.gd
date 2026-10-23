@@ -163,7 +163,20 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 		match c.kind():
 			"totem":
 				if c.is_basic_totem():
-					if game.call_problem(pi, c) == "":
+					var need := game.tributes_needed(c)
+					if need > 0:
+						# a Tribute call (Phase B): give up the least of mine for it
+						if game.call_problem(pi, c) == "":
+							var mine: Array = p.totems().duplicate()
+							mine.sort_custom(func(a, b): return _totem_value(game, pi, a) < _totem_value(game, pi, b))
+							var tributes: Array = mine.slice(0, need)
+							var slot: int = tributes[0].slot if p.empty_slots().is_empty() else _best_slot(game, pi, c)
+							if game.call_problem(pi, c, slot, tributes) == "":
+								var lost := 0.0
+								for tr in tributes:
+									lost += _totem_value(game, pi, tr) + 6.0
+								out.append({"score": _call_score(game, pi, c, slot) + c.tier() * 6.0 - lost, "action": {"type": "call", "card": c, "slot": slot, "tributes": tributes}})
+					elif game.call_problem(pi, c) == "":
 						var slot := _best_slot(game, pi, c)
 						out.append({"score": _call_score(game, pi, c, slot), "action": {"type": "call", "card": c, "slot": slot}})
 				else:
@@ -768,6 +781,28 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 			"drain":
 				if target is DuelTotem:
 					v += minf(float(dmg), float(p.max_life - p.life)) * 0.5
+			"revive_hand":
+				var best := 0.0
+				for rc in game._revivable(pi, 99):
+					best = maxf(best, _keep_value(game, pi, rc))
+				v += best * 0.8 + (10.0 if p.hand_basics().is_empty() else 0.0)
+			"revive_field":
+				var best := 0.0
+				for rc in game._revivable(pi, int(e.get("max_tier", 2))):
+					best = maxf(best, 10.0 + rc.tier() * 8.0 + float(rc.def.hp) * 0.15 * DuelRules.revive_hp + rc.cost() * ESSENCE_VALUE)
+				v += best + (25.0 if p.totems().is_empty() else 0.0)
+			"call_legend_free":
+				var best := 0.0
+				for lc in game._legends_in_hand(pi):
+					best = maxf(best, _call_score(game, pi, lc, -1) + game.call_cost(pi, lc) * ESSENCE_VALUE * 0.5 + lc.tier() * 8.0)
+				v += best
+			"seek_kindred":
+				v += 16.0 + (14.0 if p.hand_basics().is_empty() else 0.0)
+			"discard_to_top":
+				var best := 0.0
+				for dc in p.discard:
+					best = maxf(best, _keep_value(game, pi, dc))
+				v += best * 0.35
 	if _ward_risk(game, pi, "foe_rite"):
 		v *= 0.9
 	return v - c.cost() * ESSENCE_VALUE
@@ -956,6 +991,8 @@ func _keep_value(game: DuelGame, pi: int, c: DuelCard) -> float:
 	var v := 10.0 + c.tier() * 5.0
 	if c.is_basic_totem():
 		v += 10.0 if p.totems().size() < 3 else 0.0
+		if game.tributes_needed(c) > p.totems().size():
+			v -= 8.0   # can't be paid for yet
 	if c.is_ascension():
 		var has_base := false
 		for t in p.totems():

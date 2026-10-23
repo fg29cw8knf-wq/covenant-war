@@ -1830,3 +1830,121 @@ Mood: a split second caught, the moment between the saying and the doing.
 Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
+
+# Round 5: the discard (Phase B of the deeper duel, 23 October)
+
+Six Rites that call a Legend free, bring a Totem back from the discard, need three fallen Totems of one element, search the deck, or put a discarded card back on top. Card paintings only.
+
+## Hour of Need (round 5, rite, any)
+
+**Card painting · square 1536 × 1536 · save as cards/hour_of_need.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a lone duellist on one knee in a ruined circle, a great beast of light rising behind them out of the cracked stone.
+
+Main subject: a duellist on one knee, a great beast of light rising behind.
+Colours: dusk gold and deep blue, the beast's light warm white.
+Key details: cracks in the stone glowing where the beast rises.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Second Dawn (round 5, rite, radiant)
+
+**Card painting · square 1536 × 1536 · save as cards/second_dawn.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of first light breaking over a field of fallen cards, one card lifting from the grass towards the sun.
+
+Main subject: a single card lifting from the grass into first light.
+Colours: pale gold sunrise over dew-grey grass.
+Key details: long sunbeams through morning mist, the other cards still lying in the grass.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Rekindle (round 5, rite, fire)
+
+**Card painting · square 1536 × 1536 · save as cards/rekindle.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a pile of grey ash on a stone circle, one ember glowing at its heart and a small creature's shape rising out of the smoke.
+
+Main subject: a small creature's shape rising out of ash and smoke.
+Colours: ash grey with a single deep orange ember.
+Key details: sparks lifting from the ember, the creature half made of smoke.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Rite of Ashes (round 5, rite, any)
+
+**Card painting · square 1536 × 1536 · save as cards/rite_of_ashes.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of three urns of ash on an altar, their smoke twisting together into a single burning shape that sweeps across a duelling circle.
+
+Main subject: three urns of ash on an altar, their smoke twisting together.
+Colours: smoke grey, ember red and orange.
+Key details: the three smoke trails braiding into one burning shape.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Kindred Seek (round 5, rite, any)
+
+**Card painting · square 1536 × 1536 · save as cards/kindred_seek.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a fan of face-down cards spreading in the air, one glowing with the same colour as a creature standing below it.
+
+Main subject: a fan of face-down cards in the air.
+Colours: deep blue card backs, one card glowing the creature's colour.
+Key details: a thread of light between the glowing card and the creature below.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Memory Thread (round 5, rite, psychic)
+
+**Card painting · square 1536 × 1536 · save as cards/memory_thread.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a violet thread of light pulling a single card up out of a pile of discarded ones and laying it on top of a deck.
+
+Main subject: a violet thread of light lifting one card.
+Colours: violet and lavender light on dark slate.
+Key details: the thread looping from the discard pile to the top of a neat deck.
+Background: a duelling circle at night, softly blurred and tinted to match.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what has fallen is not quite gone.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```

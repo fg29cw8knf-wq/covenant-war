@@ -30,7 +30,8 @@ extends RefCounted
 ##   fx_heal(totem, amount), fx_life_gain(pi, amount), fx_status(totem, status),
 ##   fx_ko(totem), fx_summon(pi, card), fx_gift(pi, gift), fx_message(text),
 ##   fx_game_over(winner, reason), fx_phase(pi, phase), fx_stance(totem),
-##   fx_answer(pi, card, event, depth), fx_chain_done(chain)
+##   fx_answer(pi, card, event, depth), fx_chain_done(chain),
+##   fx_tribute(totem, card), fx_echo(pi, card), fx_search(pi, cards), fx_revive(pi, card)
 
 signal logged(text: String, who: int)
 signal state_changed
@@ -281,6 +282,9 @@ func _take_turn() -> void:
 	await _fx("fx_turn", [current])
 	await _fx("fx_phase", [current, "dawn"])
 	await _dawn_conditions(p)
+	if over:
+		return
+	await _dawn_rekindle(p)
 	if over:
 		return
 	phase = "draw"
@@ -607,7 +611,7 @@ func perform(pi: int, action: Dictionary) -> bool:
 		return false
 	match action.type:
 		"call":
-			await _act_call(pi, action.card, int(action.slot))
+			await _act_call(pi, action.card, int(action.slot), action.get("tributes", []))
 		"ascend":
 			await _act_ascend(pi, action.card, action.target)
 		"rite":
@@ -644,7 +648,7 @@ func action_problem(pi: int, action: Dictionary) -> String:
 		return showboat
 	match kind:
 		"call":
-			return call_problem(pi, action.get("card"), int(action.get("slot", -1)))
+			return call_problem(pi, action.get("card"), int(action.get("slot", -1)), action.get("tributes", []) if tributes_needed(action.get("card")) > 0 else null)
 		"ascend":
 			return ascend_problem(pi, action.get("card"), action.get("target"))
 		"rite":
@@ -710,17 +714,50 @@ func blessed(pi: int) -> bool:
 	return law != "" and law != "ironvault" and players[pi].patron() == law
 
 
-func call_problem(pi: int, card: DuelCard, slot: int = -1) -> String:
+## How many of your Totems a Basic Totem costs to call besides its Essence
+## (Phase B): none below DuelRules.tribute_tier, one from it, two from
+## tribute_two_tier. A story rule's call (Wren's theft) pays none.
+func tributes_needed(card: DuelCard) -> int:
+	if card == null or not card.is_basic_totem() or _phase_free:
+		return 0
+	if card.tier() >= DuelRules.tribute_two_tier:
+		return 2
+	if card.tier() >= DuelRules.tribute_tier:
+		return 1
+	return 0
+
+
+## Why this Totem can't be called ("" if it can). `tributes` null: whether
+## it could be with some choice of tributes; an Array: with those.
+func call_problem(pi: int, card: DuelCard, slot: int = -1, tributes = null) -> String:
 	var p: DuelPlayer = players[pi]
 	if card == null or not p.hand.has(card):
 		return "That card isn't in your hand."
 	if not card.is_basic_totem():
 		return "Only Basic Totems can be called."
-	if p.empty_slots().is_empty():
-		return "All three of your slots are full."
-	if slot >= 0 and (slot >= p.slots.size() or p.slots[slot] != null):
-		return "That slot is taken."
+	var need := tributes_needed(card)
 	var c := call_cost(pi, card)
+	if need > 0:
+		if p.totems().size() < need:
+			return "%s is a %s: it costs %s of your Totems on the field as well as its Essence." % [
+				card.card_name(), Lore.TIER_NAMES[mini(card.tier(), Lore.TIER_NAMES.size() - 1)], "one" if need == 1 else "two"]
+		if tributes is Array:
+			if tributes.size() != need:
+				return "Choose %d Totem%s of yours to give up." % [need, "" if need == 1 else "s"]
+			var seen := {}
+			for t in tributes:
+				if not (t is DuelTotem) or t.owner != pi or not p.totems().has(t) or seen.has(t.uid):
+					return "Choose your own Totems on the field to give up."
+				seen[t.uid] = true
+			if slot >= 0 and p.slots[slot] != null and not tributes.has(p.slots[slot]):
+				return "That slot is taken."
+		elif slot >= 0 and slot < p.slots.size() and p.slots[slot] != null and p.totems().size() < need:
+			return "That slot is taken."
+	else:
+		if p.empty_slots().is_empty():
+			return "All three of your slots are full."
+		if slot >= 0 and (slot >= p.slots.size() or p.slots[slot] != null):
+			return "That slot is taken."
 	if c > p.essence:
 		return "Needs %d Essence." % c
 	return ""
@@ -819,10 +856,36 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 						break
 				if not any:
 					return "There are no Basic Totems left in your deck."
+			"revive_hand":
+				if _revivable(pi, 99).is_empty():
+					return "There's no Basic Totem in your discard."
+			"revive_field":
+				if p.empty_slots().is_empty():
+					return "All three of your slots are full."
+				if _revivable(pi, int(e.get("max_tier", 2))).is_empty():
+					return "There's no Basic Totem of tier %d or lower in your discard." % int(e.get("max_tier", 2))
+			"call_legend_free":
+				if p.life >= opponent(pi).life:
+					return "Only while your Life is lower than your opponent's."
+				if p.empty_slots().is_empty():
+					return "All three of your slots are full."
+				if _legends_in_hand(pi).is_empty():
+					return "You hold no Legend Totem to call."
+			"seek_kindred":
+				if p.totems().is_empty():
+					return "You need a Totem on the field to seek its kin."
+				if _kindred(pi).is_empty():
+					return "Your deck holds no Totem of your Totems' elements."
+			"discard_to_top":
+				if p.discard.is_empty():
+					return "Your discard is empty."
 			"heal":
 				if e.get("who", "") == "target" and target != null and target is DuelTotem \
 						and target.damage == 0 and not target.has_condition():
 					return "That Totem isn't hurt."
+	var ashes := int(card.def.get("needs_ashes", 0))
+	if ashes > 0 and ashes_element(pi, ashes) == "":
+		return "Needs %d Totems of one element in your discard." % ashes
 	return ""
 
 
@@ -1080,8 +1143,8 @@ func _steal_value(c: DuelCard) -> float:
 func _stolen_play(pi: int, card: DuelCard) -> Dictionary:
 	match card.kind():
 		"totem":
-			if card.is_basic_totem() and call_problem(pi, card) == "":
-				return {"type": "call", "card": card, "slot": players[pi].empty_slots()[0]}
+			if card.is_basic_totem() and not players[pi].empty_slots().is_empty() and call_problem(pi, card) == "":
+				return {"type": "call", "card": card, "slot": players[pi].empty_slots()[0]}   # (a story rule's call: no Tribute)
 		"rite":
 			if rite_needs_target(card):
 				var ts := rite_targets(pi, card)
@@ -1387,13 +1450,26 @@ func _rule_showboat_owed(pi: int):
 
 # ------------------------------------------------------------- calling ---
 
-func _act_call(pi: int, card: DuelCard, slot: int) -> void:
+func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free := false) -> void:
 	var p: DuelPlayer = players[pi]
-	if slot < 0:
-		slot = p.empty_slots()[0]
-	var c := call_cost(pi, card)
+	var c := 0 if free else call_cost(pi, card)
 	_spend(p, c)
 	p.hand.erase(card)
+	p.discard.erase(card)
+	# the Totems given up for it (Phase B): to the discard, their light into the new one
+	for tr in tributes:
+		if not (tr is DuelTotem) or not p.totems().has(tr):
+			continue
+		p.slots[tr.slot] = null
+		for sc in tr.stack:
+			p.discard.append(sc)
+		p.stats.tributes += 1
+		_log("%s gives itself up for %s." % [tr.card_name(), card.card_name()], pi)
+		await _fx("fx_tribute", [tr, card])
+		if slot < 0 or p.slots[slot] != null:
+			slot = tr.slot
+	if slot < 0 or p.slots[slot] != null:
+		slot = p.empty_slots()[0]
 	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
 	if p.free_shift:
 		t.hasted = true   # Ixara's Tempest
@@ -1403,7 +1479,7 @@ func _act_call(pi: int, card: DuelCard, slot: int) -> void:
 	p.totems_called += 1
 	p.stats.totems_called += 1
 	p.note_played(card.id)
-	_log("%s calls %s." % [p.player_name, card.card_name()], pi)
+	_log("%s calls %s%s." % [p.player_name, card.card_name(), " without paying for it" if free else ""], pi)
 	await _fx("fx_call", [t])
 	if t.has_keyword("channel"):
 		p.essence += 1
@@ -2006,6 +2082,59 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 			"essence":
 				p.essence += int(e.amount)
 				_log("%s gains %d Essence." % [p.player_name, e.amount], pi)
+			"revive_hand":
+				var opts := _revivable(pi, 99)
+				if not opts.is_empty():
+					var pick: Array = await p.controller.choose_cards(self, pi, "Bring a Totem back from your discard to your hand.", opts, 1, 1, {"reason": "revive"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					p.discard.erase(c)
+					p.hand.append(c)
+					p.stats.revivals += 1
+					_log("%s takes %s back from the discard." % [p.player_name, c.card_name()], pi)
+					await _fx("fx_revive", [pi, c])
+			"revive_field":
+				var opts := _revivable(pi, int(e.get("max_tier", 2)))
+				if not opts.is_empty() and not p.empty_slots().is_empty():
+					var pick: Array = await p.controller.choose_cards(self, pi, "Bring a Totem back to the field.", opts, 1, 1, {"reason": "revive_field"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					var slots := p.empty_slots()
+					var sl: int = slots[0]
+					if slots.size() > 1:
+						sl = await p.controller.choose_slot(self, pi, "Where does %s come back?" % c.card_name(), slots, {"reason": "revive"})
+						if not slots.has(sl):
+							sl = slots[0]
+					await _revive_to_field(pi, c, sl, "%s rises again from the discard." % c.card_name())
+			"call_legend_free":
+				var opts := _legends_in_hand(pi)
+				if not opts.is_empty() and not p.empty_slots().is_empty():
+					var pick: Array = await p.controller.choose_cards(self, pi, "Call a Legend, free.", opts, 1, 1, {"reason": "legend"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					var slots := p.empty_slots()
+					var sl: int = slots[0]
+					if slots.size() > 1:
+						sl = await p.controller.choose_slot(self, pi, "Where does %s stand?" % c.card_name(), slots, {"reason": "legend"})
+						if not slots.has(sl):
+							sl = slots[0]
+					await _act_call(pi, c, sl, [], true)
+			"seek_kindred":
+				var opts := _kindred(pi)
+				if not opts.is_empty():
+					await _fx("fx_search", [pi, opts])
+					var pick: Array = await p.controller.choose_cards(self, pi, "Search your deck for a Totem of your Totems' elements.", opts, 1, 1, {"reason": "search"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					p.deck.erase(c)
+					p.hand.append(c)
+					_shuffle(p.deck)
+					_log("%s finds %s, and shuffles the deck." % [p.player_name, c.card_name()], pi)
+					await _fx("fx_draw", [pi, [c]])
+			"discard_to_top":
+				if not p.discard.is_empty():
+					var opts: Array = p.discard.duplicate()
+					var pick: Array = await p.controller.choose_cards(self, pi, "Put a card from your discard on top of your deck.", opts, 1, 1, {"reason": "to_top"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					p.discard.erase(c)
+					p.deck.append(c)   # (the top of the deck is the end of the list)
+					_log("%s puts %s on top of the deck." % [p.player_name, c.card_name()], pi)
 			"essence_max":
 				p.essence_max = mini(DuelRules.essence_cap + 2, p.essence_max + int(e.amount))
 				p.essence += int(e.amount)
@@ -2135,6 +2264,8 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 			_log("The fire thaws %s." % t.card_name(), t.owner)
 		_log("%s takes %d damage." % [t.card_name(), amount], t.owner)
 	await _fx("fx_totem_hit", [t, amount, info.merged({"absorbed": absorbed, "guarded": guarded})])
+	if amount > 0 and info.get("attacker") != null and String(info.get("source", "")) == "":
+		await _on_hit(t, info.get("attacker"))
 	var overflow := amount - before
 	if overflow > 0 and info.get("spill", false):
 		_log("%d spills over." % overflow, t.owner)
@@ -2205,8 +2336,8 @@ func _resolve_knockouts() -> void:
 		for pi in [current, 1 - current]:
 			var p: DuelPlayer = players[pi]
 			for t in p.totems():
-				if not t.is_knocked_out():
-					continue
+				if not t.is_knocked_out() or not p.totems().has(t):
+					continue   # (one already taken off the field by a knockout resolved inside this one: a Loyal call, an Echo)
 				found = true
 				p.slots[t.slot] = null
 				p.fallen.append(t.stage())
@@ -2226,8 +2357,111 @@ func _resolve_knockouts() -> void:
 				await _spring_wards(pi, "ally_ko", {"attacker": alive_killer, "fallen": t})
 				if over:
 					return
+				await _after_fall(pi, t, alive_killer)
+				if over:
+					return
 		if not found:
 			return
+
+
+# ======================================================== the discard ===
+# Phase B: what a duellist's fallen Totems still do.
+
+## A Totem of `pi`'s has fallen: a Loyal Totem in the hand calls itself into
+## the empty slot, free; then each Echo in the discard (not the fallen
+## Totem's own cards) answers, once a duel each.
+func _after_fall(pi: int, fallen: DuelTotem, killer) -> void:
+	var p: DuelPlayer = players[pi]
+	if p.slots[fallen.slot] == null:
+		for c in p.hand.duplicate():
+			if (c as DuelCard).is_basic_totem() and (c.def.get("keywords", []) as Array).has("loyal"):
+				_log("%s answers the fall: it calls itself to the empty slot!" % c.card_name(), pi)
+				await _act_call(pi, c, fallen.slot, [], true)
+				break
+	for c in p.discard.duplicate():
+		if over:
+			return
+		var card: DuelCard = c
+		if not card.is_totem() or not card.def.has("echo") or fallen.stack.has(card):
+			continue
+		var key := "echo:%d" % card.uid
+		if p.once_used.has(key):
+			continue
+		var e: Dictionary = card.def.echo
+		if String(e.get("when", "ally_falls")) != "ally_falls":
+			continue
+		if e.op in ["damage_attacker", "status_attacker"] and killer == null:
+			continue
+		p.once_used.append(key)
+		p.stats.echoes += 1
+		_log("%s Echo, from the discard: %s." % [whose(card.card_name()), DuelCards.echo_text(card.def).trim_suffix(".")], pi)
+		await _fx("fx_echo", [pi, card])
+		match String(e.op):
+			"damage_attacker":
+				await _damage_totem(killer, int(e.amount), {"source": "echo"})
+			"status_attacker":
+				await _apply_status(killer, String(e.status), null, pi)
+			"heal_weakest":
+				var w: DuelTotem = null
+				for t in p.totems():
+					if t.damage > 0 and (w == null or t.hp_left() < w.hp_left()):
+						w = t
+				if w != null:
+					await _heal(w, int(e.amount))
+			"shield_one":
+				var best: DuelTotem = null
+				for t in p.totems():
+					if best == null or t.hp_left() < best.hp_left():
+						best = t
+				if best != null:
+					best.shield += int(e.amount)
+					_log("%s is shielded (%d)." % [best.card_name(), best.shield], pi)
+			"essence_next":
+				p.pending_essence += int(e.amount)
+
+
+## At its owner's Dawn, a Rekindling Totem in the discard comes back to an
+## empty slot with half its HP, once a duel.
+func _dawn_rekindle(p: DuelPlayer) -> void:
+	if p.empty_slots().is_empty():
+		return
+	for c in p.discard.duplicate():
+		var card: DuelCard = c
+		if not card.is_basic_totem() or not (card.def.get("keywords", []) as Array).has("rekindle"):
+			continue
+		var key := "rekindle:%d" % card.uid
+		if p.once_used.has(key):
+			continue
+		p.once_used.append(key)
+		await _revive_to_field(p.index, card, p.empty_slots()[0], "%s rekindles from the ashes!" % card.card_name())
+		return
+
+
+## A Totem card from the discard back into a slot, with DuelRules.revive_hp of
+## its HP (Rekindle, the Rekindling keyword).
+func _revive_to_field(pi: int, card: DuelCard, slot: int, line: String) -> void:
+	var p: DuelPlayer = players[pi]
+	p.discard.erase(card)
+	var t := DuelTotem.new(card, pi, slot, turn, p.attributes())
+	t.damage = t.max_hp() - maxi(10, int(round(t.max_hp() * DuelRules.revive_hp / 10.0)) * 10)
+	p.slots[slot] = t
+	p.stats.revivals += 1
+	_log(line, pi)
+	await _fx("fx_revive", [pi, card])
+	await _fx("fx_call", [t])
+
+
+## A Totem hit by an attack that's still standing: Riposte confuses the
+## attacker, Galvanise empowers it.
+func _on_hit(t: DuelTotem, attacker) -> void:
+	if t.is_knocked_out():
+		return
+	if t.has_keyword("riposte") and attacker is DuelTotem and not attacker.is_knocked_out() and attacker.owner != t.owner:
+		_log("%s ripostes!" % t.card_name(), t.owner)
+		await _apply_status(attacker, "confused", t, t.owner)
+	if t.has_keyword("galvanise") and not t.has_boon("empowered"):
+		_log("The blow galvanises %s." % t.card_name(), t.owner)
+		await _give_boon(t, "empowered")
 
 
 # ================================================================== wards ===
@@ -2370,6 +2604,48 @@ static func answers_text(c: DuelCard) -> String:
 	for k in kinds:
 		parts.append(String(EVENT_TEXT.get(k, k)))
 	return " or ".join(parts)
+
+
+## Basic Totem cards in `pi`'s discard of this tier or lower (for a revival).
+func _revivable(pi: int, max_tier: int) -> Array:
+	var out := []
+	for c in players[pi].discard:
+		if (c as DuelCard).is_basic_totem() and c.tier() <= max_tier:
+			out.append(c)
+	return out
+
+
+## Legend-tier Basic Totems (3 and 4) in `pi`'s hand.
+func _legends_in_hand(pi: int) -> Array:
+	var out := []
+	for c in players[pi].hand:
+		if (c as DuelCard).is_basic_totem() and c.tier() >= 3 and c.tier() <= 4:
+			out.append(c)
+	return out
+
+
+## Totem cards in `pi`'s deck that share an element with a Totem of theirs on the field.
+func _kindred(pi: int) -> Array:
+	var els := {}
+	for t in players[pi].totems():
+		els[t.element()] = true
+	var out := []
+	for c in players[pi].deck:
+		if (c as DuelCard).is_totem() and els.has(c.element()):
+			out.append(c)
+	return out
+
+
+## The element `n` Totem cards in `pi`'s discard share ("" if none does).
+func ashes_element(pi: int, n: int) -> String:
+	var counts := {}
+	for c in players[pi].discard:
+		if (c as DuelCard).is_totem():
+			counts[c.element()] = int(counts.get(c.element(), 0)) + 1
+	for el in counts:
+		if int(counts[el]) >= n:
+			return String(el)
+	return ""
 
 
 ## A Guardian of `pi`'s that isn't `target`, standing.

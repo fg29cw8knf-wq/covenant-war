@@ -474,6 +474,8 @@ class PlayerPanel:
 	var flash := 0.0
 	var flash_color := Color(1, 0.2, 0.2)
 	var reveal_wards := false
+	var discard_rect := Rect2()   # where the discard's pill is (a tap there opens it)
+	signal discard_tapped(panel)
 	var _t := 0.0
 
 	func _init() -> void:
@@ -492,7 +494,10 @@ class PlayerPanel:
 
 	func _gui_input(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
-			tapped.emit(self)
+			if discard_rect.has_point(e.position) and not targetable:
+				discard_tapped.emit(self)
+			else:
+				tapped.emit(self)
 			accept_event()
 
 	func main_rect() -> Rect2:
@@ -566,6 +571,10 @@ class PlayerPanel:
 		var x := 70.0
 		x += _stat(Vector2(x, y), "resolve", "Guard %d" % player.guard(), Color("c7d2ff")) + 10
 		x += _stat(Vector2(x, y), "deck", "%d" % player.deck.size(), UITheme.TEXT_DIM) + 10
+		# the discard (Phase B): tap it to read what's there
+		var dw := _stat(Vector2(x, y), "duel", "Discard %d" % player.discard.size(), Color("e0b8ff") if not player.discard.is_empty() else UITheme.TEXT_DIM)
+		discard_rect = Rect2(Vector2(x, y), Vector2(dw, 34))
+		x += dw + 10
 		if not mine:
 			x += _stat(Vector2(x, y), "duel", "Hand %d" % player.hand.size(), UITheme.TEXT_DIM) + 10
 		if player.fortune_left > 0:
@@ -1077,6 +1086,9 @@ class CardPicker:
 	var _cells: Array = []
 	var _ok: Button
 
+	var look_only := false     # the discard pile: cards to read, nothing to pick
+	var cancellable := false   # a choice the player started (tributes): Cancel backs out
+
 	func setup(p_prompt: String, p_items: Array, p_min: int, p_max: int, p_extra: Array = []) -> CardPicker:
 		prompt = p_prompt
 		items = p_items
@@ -1125,12 +1137,19 @@ class CardPicker:
 		_ok.pressed.connect(func() -> void: done.emit(picked.duplicate()))
 		var hb := HBoxContainer.new()
 		hb.alignment = BoxContainer.ALIGNMENT_CENTER
+		hb.add_theme_constant_override("separation", 24)
 		hb.add_child(_ok)
+		if cancellable:
+			var cb := UITheme.button("Cancel", false, 260)
+			cb.pressed.connect(func() -> void: done.emit([]))
+			hb.add_child(cb)
 		box.add_child(hb)
 		_update()
 		box.position = (get_viewport_rect().size - box.get_combined_minimum_size()) * 0.5
 
 	func _toggle(cell) -> void:
+		if look_only:
+			return
 		if picked.has(cell.item):
 			picked.erase(cell.item)
 		else:
@@ -1144,6 +1163,10 @@ class CardPicker:
 		for c in _cells:
 			c.picked = picked.has(c.item)
 			c.queue_redraw()
+		if look_only:
+			_ok.disabled = false
+			_ok.text = "Close"
+			return
 		_ok.disabled = picked.size() < min_n
 		_ok.text = "Confirm" if picked.size() > 0 or min_n > 0 else "Skip"
 

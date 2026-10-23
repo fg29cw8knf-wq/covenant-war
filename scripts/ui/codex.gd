@@ -174,7 +174,7 @@ static func describe(id: String) -> String:
 				lines.append("Weak to %s: takes ×%s damage from them." % [" and ".join(weak.map(func(w): return Lore.element_name(w))), str(DuelRules.weakness_mult)])
 			for k in d.get("keywords", []):
 				var kd: Dictionary = DuelCards.KEYWORDS[k]
-				lines.append("[color=#%s][b]%s[/b][/color]: %s" % [gold, kd.name, kd.text])
+				lines.append("[color=#%s][b]%s[/b][/color]: %s" % [gold, kd.name, DuelCards.keyword_text(k, d)])
 			var at := DuelCardFace.attuned_text(d)
 			if at != "":
 				var mine := int(Game.profile.get("attributes", {}).get(aff, 0))
@@ -183,6 +183,8 @@ static func describe(id: String) -> String:
 				lines.append("[color=#%s][b]Attuned[/b][/color] at %s (%s)." % [gold, at, state])
 			if DuelCards.is_ascension(id):
 				lines.append("Played on top of [b]%s[/b] to Ascend it." % DuelCards.CARDS[d.ascends_from].name)
+			elif tier >= DuelRules.tribute_tier:
+				lines.append("A Tribute call: it costs %s of your Totems on the field, sent to the discard, as well as its Essence." % ("two" if tier >= DuelRules.tribute_two_tier else "one"))
 			lines.append("")
 			lines.append("[color=#%s][b]ATTACKS[/b][/color]" % gold)
 			for m in d.get("moves", []):

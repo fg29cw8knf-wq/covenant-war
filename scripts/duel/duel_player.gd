@@ -40,11 +40,13 @@ var fallen: Array = []        # the stage of each of this duellist's Totems knoc
 var survived := false
 var hand_wards_used: Array = []   # Wards played from the hand in answer this duel (once each, by card id)
 var answering: Array = []      # DuelCard: answers on the chain, between being played and resolving
+var once_used: Array = []      # once-a-duel things already spent: "echo:<uid>", "rekindle:<uid>" (Phase B)
 
 # statistics for the balance tests
 var played := {}              # card id -> times played this duel
 var stats := {"life_damage_dealt": 0, "kos": 0, "totems_called": 0, "rites": 0, "wards_sprung": 0,
-	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0}
+	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0,
+	"tributes": 0, "echoes": 0, "revivals": 0}
 
 
 func _init(p_index: int, p_name: String) -> void:

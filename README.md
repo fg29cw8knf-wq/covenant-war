@@ -67,6 +67,7 @@ godot --headless --script res://tests/load_all.gd                    # every scr
 godot --headless res://tests/lantern_sim.tscn -- 0.3 0.25 200        # the Lantern Duel as the story plays it (always winnable)
 xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.tscn -- <dir>   # plays Bram's lesson tap by tap
 godot --headless --script res://tests/phase_test.gd                  # the turn's phases, Stances, answers and chains (Phase A)
+godot --headless --script res://tests/phase_b_test.gd                # Tributes, Echoes, Loyal, Rekindling, the discard Rites (Phase B)
 ```
 
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
@@ -142,6 +143,48 @@ shape of a turn and answering on the rival's turn.
   Seconds to answer. After Phase A `duel_sim 2000` plays 28.1 turns a duel on
   average (27.6 before), 2 draws in 2000, the decks between 47% and 54%, no
   invariant errors.
+
+### Calling the big cards, and the discard (Phase B, 23 October)
+
+- **Tribute calls** (`DuelGame.tributes_needed`, `DuelRules.tribute_tier` 3,
+  `tribute_two_tier` 5): a Basic Totem of tier 3 and up costs one of its
+  caller's Totems on the field as well as its Essence (tier 5 and up, two).
+  The call carries them (`{type: "call", card, slot, tributes}`); they go
+  to the discard and the new Totem may take one of their slots. The screen
+  offers "Call it with a Tribute", then a picker for who steps down
+  (`DuelScreen._begin_tribute`, with Cancel), then the slot; the step-down is
+  a rise of light (`fx_tribute`). The computer gives up its least valuable
+  Totems when the Legend is worth more (`DuelAI._candidates`). A story rule's
+  own call (Wren's theft) pays none. **Hour of Need** calls a Legend free and
+  without a Tribute while your Life is lower than your opponent's.
+- **The discard as a resource**: **Second Dawn** (a Basic Totem back to the
+  hand), **Rekindle** (one of tier 2 or lower back to the field with half its
+  HP, `DuelRules.revive_hp`), **Rite of Ashes** (40 to every enemy Totem, only
+  with three Totem cards of one element in your discard, `needs_ashes`).
+  **Echo** (`"echo"` on the card): once a duel, when another of your Totems
+  falls, a Totem card in your discard acts: Cinderpup deals 10 to the Totem
+  that felled it, Brookfin heals your most hurt Totem 20, Pebblit gives you
+  an Essence at your next turn (a shield, first tried, spoiled the Trial of
+  Light's Tidegrove board, whose mirrors are two Pebblits and a Brassback),
+  Blightrat poisons the one that felled it
+  (`DuelGame._after_fall`). The discard is a pill on each plate; a tap opens
+  it to read (`PlayerPanel.discard_rect`, `CardPicker.look_only`).
+- **Special calls** (keywords): **Loyal** (Shieldhound calls itself from the
+  hand into the empty slot, free, when a Totem of yours falls), **Rekindling**
+  (Hearth Salamander climbs back from the discard at its owner's Dawn with
+  half its HP, once a duel), **Riposte** (Veilfox: hit and still standing,
+  the attacker is Confused), **Galvanise** (Stormcaller: hit and still
+  standing, it becomes Empowered) (`_on_hit`, `_dawn_rekindle`).
+- **Searches**: **Kindred Seek** (a Totem of an element you have on the
+  field, the deck fanning out, `fx_search`), **Memory Thread** (a card from
+  the discard on top of the deck); Traveller's Pack still draws two.
+- Each starter deck has one Phase B card (Rite of Ashes, Second Dawn,
+  Rekindle, Kindred Seek); Hour of Need and Memory Thread are in the pool.
+  Prompts: `docs/card-prompts.md`, round 5. Bram's lessons: `tribute`,
+  `echo`, `loyal`, `rekindle`, `search`. Lab rows: Tribute from tier, Two
+  tributes from tier, Revived with HP share. A knockout resolved inside
+  another (a Loyal call, an Echo's blow) is never counted twice
+  (`_resolve_knockouts` skips a Totem already off the field).
 
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and

@@ -284,6 +284,8 @@ const TUNE_LABELS := {
 	"wrath_bonus": ["Wrath bonus", 5], "mercy_heal": ["Dawn's Mercy heal", 10],
 	"rest_heal": ["Rest mends", 5], "rest_essence": ["Rest gives Essence", 1],
 	"chain_max": ["Answers in a chain", 1], "respond_secs": ["Seconds to answer", 1],
+	"tribute_tier": ["Tribute from tier", 1], "tribute_two_tier": ["Two tributes from tier", 1],
+	"revive_hp": ["Revived with HP share", 0.1],
 }
 
 

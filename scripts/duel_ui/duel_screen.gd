@@ -102,6 +102,7 @@ var mode := "idle"             # idle, main, pick_slot, respond, busy, over
 var sel_card: DuelCard = null
 var sel_totem: DuelTotem = null
 var sel_move := -1
+var sel_tributes: Array = []   # the Totems given up for the call being placed (Phase B)
 var pending := ""              # call, ascend, rite, summon, move, shift, gift
 var targets: Array = []        # DuelTotem | "life" | int (slot index, on pick_side)
 var pick_side := 0
@@ -323,6 +324,7 @@ func _build() -> void:
 		var p := DuelViews.PlayerPanel.new()
 		p.size = Vector2(412, 250)
 		p.tapped.connect(_on_panel_tapped)
+		p.discard_tapped.connect(_on_discard_tapped)
 		stage.add_child(p)
 		panels.append(p)
 	phase_band = DuelViews.PhaseBand.new()
@@ -854,6 +856,8 @@ func _update_highlights() -> void:
 					h = "target"
 				elif pending == "shift" and side == me and targets.has(v.slot) and v.totem != sel_totem:
 					h = "target"
+				elif pending == "call" and side == me and v.totem != null and sel_tributes.has(v.totem):
+					h = "target"   # (a tribute's slot is free for the Totem it's given up for)
 			if v.totem != null and v.totem == sel_totem:
 				h = "selected"
 			if h == "" and mode == "main" and side == me and v.totem != null and _has_usable_move(v.totem) and game.phase_problem("attack") == "":
@@ -890,6 +894,7 @@ func _clear_selection() -> void:
 	sel_card = null
 	sel_totem = null
 	sel_move = -1
+	sel_tributes = []
 	pending = ""
 	targets = []
 
@@ -1145,8 +1150,14 @@ func _on_hand_tapped(hv) -> void:
 		"totem":
 			if c.is_basic_totem():
 				var prob := game.call_problem(me, c)
+				var need := game.tributes_needed(c)
 				if prob != "":
 					_add_note(prob)
+				elif need > 0:
+					_add_action("Call it with a Tribute", "Give up %s of your Totems on the field for it, as well as its Essence." % ("one" if need == 1 else "two"),
+						game.call_cost(me, c), true, func() -> void: _begin_tribute(c, need), "tribute")
+					if tutor != null:
+						tutor.lesson("tribute", "That %s is a Legend. The big ones don't come for Essence alone: one of your Totems has to step down for it, into the discard, and its light goes into the new one. Choose who you can spare." % c.card_name(), "Tributes", "card:" + c.id)
 				else:
 					pending = "call"
 					pick_side = me
@@ -1231,8 +1242,11 @@ func _on_slot_tapped(v) -> void:
 	if pending != "":
 		match pending:
 			"call":
-				if v.side == me and v.totem == null and targets.has(v.slot):
-					_respond({"type": "call", "card": sel_card, "slot": v.slot})
+				if v.side == me and targets.has(v.slot) and (v.totem == null or sel_tributes.has(v.totem)):
+					var act := {"type": "call", "card": sel_card, "slot": v.slot}
+					if not sel_tributes.is_empty():
+						act["tributes"] = sel_tributes.duplicate()
+					_respond(act)
 					return
 			"shift":
 				if v.side == me and v.slot != sel_totem.slot:
@@ -1246,6 +1260,51 @@ func _on_slot_tapped(v) -> void:
 		_select_totem(v.totem)
 	elif pending != "":
 		_cancel_pending()
+
+
+## Choosing the Totems given up for a Tribute call (Phase B), then the slot.
+func _begin_tribute(c: DuelCard, need: int) -> void:
+	var p: DuelPlayer = game.players[me]
+	mode = "busy"
+	_clear_actions()
+	var picker := DuelViews.CardPicker.new().setup("Give up %s for %s" % ["one Totem" if need == 1 else "two Totems", c.card_name()], p.totems(), need, need)
+	picker.cancellable = true
+	overlay.add_child(picker)
+	var chosen: Array = await picker.done
+	picker.queue_free()
+	mode = "main"
+	if chosen.size() != need:
+		_clear_selection()
+		_show_actions_default()
+		_refresh()
+		return
+	sel_card = c
+	sel_tributes = chosen
+	pending = "call"
+	pick_side = me
+	targets = p.empty_slots()
+	for t in chosen:
+		targets.append((t as DuelTotem).slot)
+	_set_hint("Tap the slot for %s: an empty one, or one you're giving up." % c.card_name())
+	_show_cancel()
+	_refresh()
+
+
+## The discard pile, read (Phase B): every card in it, nothing to pick.
+func _on_discard_tapped(panel) -> void:
+	var p: DuelPlayer = panel.player
+	if p == null or p.discard.is_empty() or mode == "busy" or mode == "respond" or mode == "pick_slot":
+		return
+	sfx.play("ui_select")
+	var was := mode
+	mode = "busy"
+	var picker := DuelViews.CardPicker.new().setup("%s discard (%d)" % [_whose(p.player_name), p.discard.size()], p.discard.duplicate(), 0, 0)
+	picker.look_only = true
+	overlay.add_child(picker)
+	await picker.done
+	picker.queue_free()
+	mode = was
+	_refresh()
 
 
 func _resolve(target) -> void:
@@ -1516,11 +1575,7 @@ func _hide_detail() -> void:
 ## Options says when to ask: always (any answer held), only when one can be
 ## paid for, or never.
 func begin_respond(event: Dictionary, cards: Array) -> void:
-	var setting := String(Game.settings.get("respond", "can"))
 	var affordable := cards.filter(func(c): return game.answer_problem(me, c, event) == "")
-	if _watching() or setting == "never" or (setting == "can" and affordable.is_empty()):
-		human.responded.emit(null)
-		return
 	mode = "respond"
 	_clear_selection()
 	_clear_actions()
@@ -1535,6 +1590,20 @@ func begin_respond(event: Dictionary, cards: Array) -> void:
 	var pick = await strip.done
 	strip.queue_free()
 	_respond(pick)
+
+
+## Whether to ask the player at all (Options: always when an answer is held,
+## only when one can be paid for, or never). Asked before the strip, so a
+## "no" never has to be signalled to a controller that isn't listening yet.
+func wants_respond(event: Dictionary, cards: Array) -> bool:
+	if _watching():
+		return false
+	var setting := String(Game.settings.get("respond", "can"))
+	if setting == "never":
+		return false
+	if setting == "can":
+		return cards.any(func(c): return game.answer_problem(me, c, event) == "")
+	return not cards.is_empty()
 
 
 ## "Corin's Cinderpup attacks your Brookfin": what's being answered.
@@ -1856,6 +1925,68 @@ func fx_answer(pi: int, card: DuelCard, event: Dictionary, _depth: int) -> void:
 	await pause(0.7)
 
 
+## A Totem given up for a Tribute call: its light rises and goes.
+func fx_tribute(t: DuelTotem, card: DuelCard) -> void:
+	var v := _view(t)
+	var at := _center(v)
+	sfx.play("ascend")
+	DuelFX.rise(fx_layer, at, DuelFX.light(t.element()), 140.0, 34)
+	DuelFX.flash(fx_layer, at, DuelFX.light(card.element()), 150.0, 0.4)
+	_toast("%s steps down for %s" % [t.card_name(), card.card_name()])
+	await pause(0.6)
+	_refresh()
+
+
+## An Echo answers from the discard.
+func fx_echo(pi: int, card: DuelCard) -> void:
+	sfx.play("ward_spring")
+	_show_detail(card.id, {})
+	var at: Vector2 = panels[pi].position + panels[pi].discard_rect.get_center()
+	DuelFX.rise(fx_layer, at, DuelFX.light(card.element()), 90.0, 22)
+	_toast("Echo: %s" % card.card_name())
+	if tutor != null:
+		await tutor.lesson("echo", "An Echo. A fallen Totem doesn't always go quiet: some answer once from the discard, when another of yours falls. Read what lies in the discard. Tap it on the plate.", "Echoes", "")
+	await pause(0.6)
+
+
+## A search: the deck fans out, and the card is found.
+func fx_search(pi: int, cards: Array) -> void:
+	sfx.play("shuffle")
+	var base: Vector2 = panels[pi].position + Vector2(220, 160)
+	var n := mini(7, maxi(3, cards.size() + 2))
+	var fan: Array = []
+	for i in n:
+		var back := Panel.new()
+		back.add_theme_stylebox_override("panel", UITheme.sb(Color("1c2140"), UITheme.GOLD_DIM, 8, 2, 0))
+		back.size = Vector2(70, 98)
+		back.pivot_offset = Vector2(35, 98)
+		back.position = base - back.pivot_offset
+		back.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fx_layer.add_child(back)
+		fan.append(back)
+		var tw := back.create_tween().set_parallel(true).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw.tween_property(back, "rotation", lerpf(-0.6, 0.6, float(i) / maxf(1.0, n - 1.0)), 0.35 / speed)
+		tw.tween_property(back, "position:y", back.position.y - 30.0, 0.35 / speed)
+	await pause(0.7)
+	for b in fan:
+		var tw := (b as Panel).create_tween()
+		tw.tween_property(b, "modulate:a", 0.0, 0.25 / speed)
+		tw.tween_callback((b as Panel).queue_free)
+	if tutor != null and pi == me:
+		await tutor.lesson("search", "A search. A deck that can find its own pieces plays less by luck. Keep a few of those in, and the right card comes when you need it.", "Searches", "")
+
+
+## A Totem card back from the discard (to the hand, or rising to the field).
+func fx_revive(pi: int, card: DuelCard) -> void:
+	sfx.play("call_totem")
+	var at: Vector2 = panels[pi].position + panels[pi].discard_rect.get_center()
+	DuelFX.rise(fx_layer, at, DuelFX.light(card.element()), 110.0, 26)
+	_toast("%s returns" % card.card_name())
+	if tutor != null and (card.def.get("keywords", []) as Array).has("rekindle"):
+		await tutor.lesson("rekindle", "That one rekindles. Once a duel, at its owner's Dawn, it climbs out of the discard with half its strength. Put it down twice and it stays down.", "Echoes", "")
+	await pause(0.4)
+
+
 func fx_chain_done(_chain: Array, _res: Dictionary) -> void:
 	_hide_detail()
 	_refresh()
@@ -1891,6 +2022,8 @@ func fx_draw(pi: int, cards: Array) -> void:
 
 func fx_call(t: DuelTotem) -> void:
 	_hide_detail()
+	if tutor != null and t.has_keyword("loyal") and game.current != t.owner:
+		tutor.lesson("loyal", "Loyal. When one of its own falls, it comes out of the hand by itself, free, and takes the empty place. Hounds are like that.", "Echoes", "")
 	if t.owner == me:
 		_coach("essence")
 	if SummonVideo.pick(t.id()) != "":

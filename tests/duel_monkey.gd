@@ -35,6 +35,14 @@ func _ready() -> void:
 			if frames % 3 == 0:
 				_poke()
 		print("duel %d (%s vs %s): turn %d, winner %d, %s, taps %d" % [d, a, b, screen.game.turn, screen.game.winner, screen.game.win_reason, taps])
+		if not done[0]:
+			# stalled: say where (the screen's mode, the turn's phase, what's on the overlay, the last lines)
+			var pops := []
+			for c in screen.overlay.get_children():
+				pops.append(c.get_class() + ("(" + String(c.get_script().get_global_name()) + ")" if c.get_script() else ""))
+			print("  STALLED: mode %s, pending '%s', phase %s, current %d, overlay %s" % [screen.mode, screen.pending, screen.game.phase, screen.game.current, pops])
+			for ln in screen.game.log_lines.slice(-6):
+				print("    ", ln)
 		screen.queue_free()
 		await get_tree().process_frame
 	get_tree().quit()

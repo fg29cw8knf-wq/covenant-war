@@ -65,6 +65,11 @@ static var rest_essence := 1           # ...and gives its duellist this much Ess
 static var chain_max := 4              # answers in one chain, at most
 static var respond_secs := 6.0         # the player's time to answer before the action goes ahead
 
+# --- calling the big cards, and the discard (Phase B) ------------------------------
+static var tribute_tier := 3           # a Basic Totem of this tier and up costs a Totem of yours as well...
+static var tribute_two_tier := 5       # ...and from this tier, two
+static var revive_hp := 0.5            # a Totem brought back to the field comes with this much of its HP
+
 # --- safety ------------------------------------------------------------------------
 static var max_turns := 60             # a duel this long is a draw
 const MAX_ACTIONS_PER_TURN := 60
@@ -78,7 +83,7 @@ static func tunables() -> Array:
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
 		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns",
-		"rest_heal", "rest_essence", "chain_max", "respond_secs"]
+		"rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp"]
 
 
 static func snapshot() -> Dictionary:
@@ -124,6 +129,9 @@ static func get_value(key: String):
 		"rest_essence": return rest_essence
 		"chain_max": return chain_max
 		"respond_secs": return respond_secs
+		"tribute_tier": return tribute_tier
+		"tribute_two_tier": return tribute_two_tier
+		"revive_hp": return revive_hp
 	return null
 
 
@@ -165,6 +173,9 @@ static func set_value(key: String, v) -> void:
 		"rest_essence": rest_essence = int(v)
 		"chain_max": chain_max = int(v)
 		"respond_secs": respond_secs = float(v)
+		"tribute_tier": tribute_tier = int(v)
+		"tribute_two_tier": tribute_two_tier = int(v)
+		"revive_hp": revive_hp = float(v)
 
 
 static func reset() -> void:

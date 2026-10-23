@@ -49,6 +49,8 @@ static func tutor_step_kind(game: DuelGame, pi: int, step: Dictionary) -> String
 ## An answer on the rival's turn (Phase A): the Respond strip, with the
 ## answers in hand; null lets the action be.
 func choose_response(_game: DuelGame, _pi: int, event: Dictionary, cards: Array) -> DuelCard:
+	if not screen.wants_respond(event, cards):
+		return null
 	screen.begin_respond(event, cards)
 	var r = await responded
 	return r if r is DuelCard else null   # (anything else, a turn ended from outside, lets it be)
