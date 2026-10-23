@@ -113,12 +113,27 @@ func _ready() -> void:
 
 # ================================================================= models ===
 
+## Pieces whose file Gary named otherwise than "Solhaven: Your Step-by-Step"
+## does (23 October: the gate's doors came as solhaven_gate_door.glb, Bram's
+## wagon as covered_wagon.glb): each name is tried in turn, his first.
+const MODEL_FILES := {"gate_door": ["solhaven_gate_door", "gate_door"], "wagon": ["covered_wagon", "wagon"]}
+
+
+## The file of Gary's model for a piece, or "" until it's in.
+static func model_path(id: String) -> String:
+	for name in MODEL_FILES.get(id, [id]):
+		var path: String = DIR + name + ".glb"
+		if ResourceLoader.exists(path):
+			return path
+	return ""
+
+
 ## One of Gary's Solhaven models, fitted to `size` (the stand-in's width,
 ## height and depth; 0 keeps that axis in proportion, by height), its base on
 ## `pos`, turned by `yaw` degrees. null when the file isn't there yet.
 func model(id: String, parent: Node3D, pos: Vector3, yaw: float, size: Vector3, collide := true) -> Node3D:
-	var path := DIR + id + ".glb"
-	if not ResourceLoader.exists(path):
+	var path := model_path(id)
+	if path == "":
 		return null
 	var root := Node3D.new()
 	root.name = id.capitalize().replace(" ", "")
@@ -159,7 +174,7 @@ func model(id: String, parent: Node3D, pos: Vector3, yaw: float, size: Vector3, 
 
 ## Is Gary's model for this piece in yet?
 static func has_model(id: String) -> bool:
-	return ResourceLoader.exists(DIR + id + ".glb")
+	return model_path(id) != ""
 
 
 func _mat(col: Color, rough := 0.8, metal := 0.0) -> StandardMaterial3D:

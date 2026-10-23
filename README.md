@@ -212,7 +212,9 @@ from the editor shows the version number instead.
 https://github.com/fg29cw8knf-wq/covenant-war/releases/download/mac/CovenantWar-Mac.zip,
 unzip it and open The Covenant War (the first time: System Settings > Privacy &
 Security > Open Anyway; `docs/mac.md`). `.github/workflows/mac.yml` rebuilds it with
-`tools/build_mac.sh` every time `main` changes. Full quality, one pack.
+`tools/build_mac.sh` every time `main` changes. Full quality, one pack, and
+Gary's opening film at 4K through the Mac's own player (the native video
+player, below).
 
 **Play it on an iPhone as an app:** download
 https://github.com/fg29cw8knf-wq/covenant-war/releases/download/iphone/CovenantWar-iOS.zip
@@ -220,7 +222,9 @@ on a Mac, open `CovenantWar.xcodeproj` in Xcode, choose your Apple ID as the tea
 and press Run. `docs/iphone.md` has the steps, including for a free Apple ID.
 `.github/workflows/iphone.yml` rebuilds it with `tools/build_ios.sh` every time
 `main` changes. The app has everything in one pack at full quality: Forward+ (as on
-the Mac; Android keeps the Mobile renderer) and ASTC textures.
+the Mac; Android keeps the Mobile renderer) and ASTC textures, and Gary's
+opening film at 4K 60 fps through the phone's own player (the native video
+player, below).
 
 Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, `BattleScreen`) are only what `Main.run_duel` falls back to for a spec without decks.
 
@@ -650,22 +654,90 @@ tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the
 
 ## Opening movie
 
-Since 22 October the opening is Gary's one finished film,
-`assets/movies/opening.ogv` (3:12; his animated clips, Morrowen's narration,
-the music, the title and the words on screen all in the picture: Ogg Theora
-1280x720 at 30 fps, about 78 MB, converted from his 4K HEVC master, which
-stays on his Mac). `OpeningMovie` plays it whole when it's there, with nothing
-of the engine's over it (no subtitles, voice, music or title), shown whole:
-as big as fits the screen with nothing cropped, centred, black either side
-on a wide phone (`cut_rect()`; until 23 October it was enlarged to fill the
-phone's width and a fifth of its height went off the top: "you can't see it
-all, some of it is off screen on phone"). A tap shows Skip as before. On the phone link it's the whole `movie` pack (the paintings, voice
-lines and theme below stay out of the web build while the cut exists, or the
-pack would pass GitHub's 100 MB limit); the apps keep both. Check it with
+Since 22 October the opening is Gary's one finished film: his animated clips,
+Morrowen's narration, the music, the title and the words on screen all in the
+picture. His master is 4K (3840x2160 at 60 fps, H.264, 3:14.6, 417 MB; since
+23 October the joined cut of his three parts, "updated 4k opening movie"), and
+the game carries it two ways:
+
+- **At 4K, through the device's own player**, in the iPhone and Mac apps. The
+  master is `opening_4k.mp4` on the repository's **films** release, the app
+  workflows put it loose in the app bundle, and `OpeningMovie` plays it
+  through the native video player (below) when both are there: AVPlayer over
+  the game's view, decoded by the hardware, shown whole, with its own Skip.
+- **As Ogg Theora**, `assets/movies/opening.ogv`: the same film at 1280x720
+  and 30 fps (76.7 MB, Theora at 3000 kb/s with Vorbis sound, made from the
+  master with ffmpeg, 23 October), which the phone link plays and the apps
+  fall back to. It must stay under GitHub's 100 MB limit. To remake it:
+
+  ```sh
+  ffmpeg -i opening_4k.mp4 -vf "scale=1280:720:flags=lanczos,fps=30" -c:v libtheora -b:v 3000k -c:a libvorbis -q:a 5 assets/movies/opening.ogv
+  ```
+
+`OpeningMovie` plays either whole, with nothing of the engine's over it (no
+subtitles, voice, music or title), shown whole: as big as fits the screen with
+nothing cropped, centred, black either side on a wide phone (`cut_rect()`;
+until 23 October it was enlarged to fill the phone's width and a fifth of its
+height went off the top: "you can't see it all, some of it is off screen on
+phone"). A tap shows Skip; Esc, Tab or a pad's Start skip at once, and E,
+Space, Enter or A show Skip and skip on the second press. On the phone link
+the Theora copy is the whole `movie` pack (the paintings, voice lines and theme
+below stay out of the web build while the cut exists, or the pack would pass
+GitHub's 100 MB limit); the apps keep both. Check the Theora copy with
 `tests/movie_shot.tscn -- <dir> cut 0:20 1:30 3:04` (stills at those times;
 it checks nothing of the engine's goes over it and that it runs to its end).
 If it ever stutters on a phone, re-encoding the .ogv again is lossy: convert
 from Gary's master instead.
+
+### The native video player (iPhone and Mac)
+
+Godot's own player only does Theora, and a 4K 60 fps Theora would neither fit
+in git nor play on a phone, so the apps play Gary's masters through the
+device's own player instead: `addons/native_video` is a small GDExtension,
+`NativeVideoPlayer` (`src/native_video_player.h`, `.mm`: AVPlayer in a view
+laid over the game's view, with a Skip label and a subtitle line of its own,
+taps reported to `poll()` once a frame, `set_opacity`/`set_volume` for the
+fade), built for macOS (universal) and iOS (arm64) with godot-cpp at API 4.7
+by `.github/workflows/native-video.yml` on a Mac runner whenever its source
+changes on `main` or a `wip/` branch (or from the Actions tab), and put on
+the **native-video** release as `native-video.zip` with its sum. Nothing built
+is committed: `tools/fetch_native.sh`, run by `iphone.yml` and `mac.yml`
+before they import and export, downloads the libraries into
+`addons/native_video/bin/` with the `.gdextension` beside them (copied from
+`native_video.gdextension.in`: the file isn't live in the repository, so Godot
+never complains of a missing library here or on the web), and every `.mp4` on
+the **films** release into `addons/native_video/films/`, where the export
+plugin (`films_export.gd`, enabled in `project.godot`) ships them loose in
+the bundle: the bundle's root on an iPhone, `Contents/Resources` on a Mac.
+Without either release the apps play the Theora copy, and nothing fails.
+
+`OpeningMovie` asks for the player only where it exists
+(`ClassDB.class_exists("NativeVideoPlayer")`) and the film is in the bundle
+(`find_file("opening_4k.mp4")`), gives it up to 8 s to read the file, and
+falls back to the Theora copy if it can't be opened or read (a failure in the
+middle of the film ends the movie instead). While it plays the engine's own
+Skip button is under the native view, so a tap shows the player's own Skip
+and the next tap on it skips; the keys still work, since the Mac view passes
+them on. The fade-out takes the native picture and its sound down with the
+engine's black, and `stop()` clears the view. The phone's own player pauses
+when the app is put away and goes on when it's back. All of this runs
+headless against a stand-in player, since the real one exists only in the apps:
+
+```sh
+godot --headless --fixed-fps 30 res://tests/native_movie_test.tscn   # prefers it, tap/Skip, keys, fade, its end, the fallbacks
+```
+
+**Putting a film on the films release** (midnight and dawn, when Gary makes
+them in 4K): on a `wip/` branch, commit it to `incoming/films/` as
+`<name>.mp4.part0`, `.part1`... (`split -b 90m <name>.mp4 <name>.mp4.part`)
+with `<name>.mp4.sha256` beside them, push, and `.github/workflows/films.yml`
+joins the parts, checks the sum and uploads `<name>.mp4` (its tag stays on
+`main`); then delete the parts from the branch and keep that commit out of
+`main`'s history (GitHub takes no file over 100 MB, and 400 MB of film would
+be in every clone for good). The opening went up this way on 23 October.
+Not yet seen on a real iPhone or Mac: the first build with it should be
+watched from the title to the attic (`docs/iphone.md`). A simulator build
+has no library and plays the Theora copy.
 
 Without the file, the engine plays the movie shot by shot
 (`tests/movie_shot.tscn` without `cut` checks that path, whether or not the

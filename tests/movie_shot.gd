@@ -99,7 +99,7 @@ func _play_cut(times: Array) -> void:
 	for what in _cut_problems:
 		_check(false, "%s went over the cut at %s" % [what, _ts(_cut_problems[what])])
 	print("the cut ran to %s" % _ts(last))
-	_check(last > 185.0, "the cut played to its end, about 3:12 (%s)" % _ts(last))
+	_check(last > 185.0, "the cut played to its end, about 3:14 (%s)" % _ts(last))
 	print("MOVIE SHOT (the cut): %s (%d problems)" % ["PASS" if _problems == 0 else "FAIL", _problems])
 	get_tree().quit()
 

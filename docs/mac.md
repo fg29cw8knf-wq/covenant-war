@@ -27,4 +27,6 @@ can't check it and won't open it. To allow it:
 After that it opens normally. Each new download asks once more.
 
 The Mac app plays at full quality, with mouse, keyboard or a controller. Your
-progress is saved on the Mac, separately from the iPhone.
+progress is saved on the Mac, separately from the iPhone. Since 23 October the
+opening film plays at its full 4K through the Mac's own video player (about
+420 MB of the download); click it for Skip, or press Esc.
