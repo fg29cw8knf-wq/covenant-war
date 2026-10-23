@@ -18,10 +18,16 @@ for each of these, fetched the first time the game needs it (scripts/game/packs.
               one of them is chosen in the mirror, or a game with one is continued
     midnight  the Lantern Night film (StoryFilm: assets/movies/midnight/, or the cut)
     dawn      the morning-after film (assets/movies/dawn/, or the cut)
+    voices    Ashford's and Thornwood's voice lines (assets/audio/vo/ashford/,
+              thornwood/; VoiceLines), fetched quietly as the world starts;
+              Solhaven's ride in the solhaven pack
+    summon_<id>  a Summon's clip (assets/movies/summons/), one pack a card
 
 The native apps (iPhone, Mac) keep everything in one pack.
 
     python3 tools/web_packs.py presets    # rewrites the pack lists in export_presets.cfg
+                                          # (a pack with no preset yet gets one, cloned from Solhaven's)
+    python3 tools/web_packs.py names      # the packs, for build_web.sh to build
 
 tools/build_web.sh runs it before every export, so a new creature or movie shot
 lands in the right pack without anyone editing the presets.
@@ -64,6 +70,10 @@ PACKS = {
 	"solhaven": {
 		"title": "Solhaven",
 		"files": ["scripts/world/areas/solhaven.gd", "scripts/*/solhaven/*", "assets/*/solhaven/*", "assets/*/*/solhaven/*"],
+	},
+	"voices": {
+		"title": "the voices",
+		"files": ["assets/audio/vo/ashford/*", "assets/audio/vo/thornwood/*"],
 	},
 	"looks": {
 		"title": "your look",
@@ -140,8 +150,23 @@ def presets():
 		assert n == 1, "preset %s has no %s" % (section_name, key)
 		text = text.replace(block, new_block)
 
+	def ensure_preset(name):
+		"""A pack with no preset yet (the voices, a Summon's clip) gets one, cloned from Solhaven's."""
+		nonlocal text
+		if re.search(r'\nname="%s"\n' % re.escape("Web pack: " + name), text):
+			return
+		m = re.search(r'\[preset\.(\d+)\]\n\nname="Web pack: solhaven"\n.*?(?=\n\[preset\.\d+\]\n|\Z)', text, re.S)
+		assert m, "export_presets.cfg has no Solhaven pack preset to clone"
+		n = max(int(x) for x in re.findall(r"\[preset\.(\d+)\]", text)) + 1
+		block = m.group(0).replace("[preset.%s]" % m.group(1), "[preset.%d]" % n).replace("[preset.%s.options]" % m.group(1), "[preset.%d.options]" % n)
+		block = block.replace('name="Web pack: solhaven"', 'name="Web pack: %s"' % name)
+		block = block.replace('export_path="build/web/packs/solhaven.pck"', 'export_path="build/web/packs/%s.pck"' % name)
+		text = text.rstrip("\n") + "\n\n" + block.strip("\n") + "\n"
+		print("export_presets.cfg: preset added for the %s pack" % name)
+
 	set_key("Web", "exclude_filter", cfg_list(NEVER + web_only_out() + in_packs))
 	for name in PACKS:
+		ensure_preset(name)
 		set_key("Web pack: " + name, "include_filter", cfg_list(pack_files(name)))
 		set_key("Web pack: " + name, "exclude_filter", cfg_list(NEVER))
 	for native in ("macOS", "iOS"):
@@ -156,6 +181,8 @@ def presets():
 if __name__ == "__main__":
 	if sys.argv[1:] == ["presets"]:
 		presets()
+	elif sys.argv[1:] == ["names"]:
+		print(" ".join(PACKS))   # (build_web.sh builds each)
 	elif len(sys.argv) == 3 and sys.argv[1] == "count":
 		print(len(pack_files(sys.argv[2])))   # (build_web.sh skips a pack with nothing in it yet)
 	else:

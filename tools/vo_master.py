@@ -17,6 +17,14 @@ Usage:
 Prints each line's trim points, length, loudness and peak. The lengths are what
 scripts/story/opening_movie.gd schedules; tests/movie_shot.gd checks the timeline.
 Gary's recordings are kept, untouched, in assets/audio/source/vo/ (never exported).
+
+The game's spoken lines (tools/vo_sheet.py, scripts/story/voice_lines.gd):
+  python3 tools/vo_master.py --lines <folder of recordings> [docs/script/vo_lines.csv]
+Each recording is named by its number on the sheet (0042.wav, "0042 Bram.wav")
+or its id (c5ab712b.wav); the csv says whose line it is and where it goes
+(assets/audio/vo/<area>/<speaker>/<id>.ogg). Each line is levelled on its own.
+A file that matches no line is reported and left alone. Then run
+`godot --headless --import` so the game sees the new files.
 """
 import os, subprocess, sys
 import numpy as np
@@ -148,7 +156,59 @@ def encode(y, path):
                    input=pcm, check=True)
 
 
+def master_one(path_in, path_out):
+    """One recording, trimmed and levelled on its own, written as Ogg. Returns its report line."""
+    y = decode(path_in)
+    span = speech_span(y)
+    seg = cut(y, *span)
+    out, gain = master([seg])
+    os.makedirs(os.path.dirname(path_out), exist_ok=True)
+    encode(out[0], path_out)
+    i, tp = lufs(decode(path_out))
+    lim = 20 * np.log10(np.maximum(np.abs(seg * 10 ** (gain / 20)), 1e-9) / np.maximum(np.abs(out[0]), 1e-9))
+    lim = lim[np.abs(seg) > 1e-4]
+    return "%7.3f %7.3f %7.3f %+6.1f %6.1f %6.1f %6.1f %5.0f%%" % (
+        span[0], span[1], len(out[0]) / SR, gain, i, tp, lim.max() if len(lim) else 0.0, 100 * (lim > 1).mean() if len(lim) else 0.0)
+
+
+def main_lines(src, sheet):
+    import csv, re
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    rows = list(csv.DictReader(open(sheet)))
+    by_no = {r["no"]: r for r in rows}
+    by_id = {r["id"]: r for r in rows if r["id"]}
+    print("%-28s %-9s %-10s %7s %7s %7s %6s %6s %6s %6s %6s" % ("recording", "speaker", "id", "from", "to", "length", "gain", "LUFS", "dBTP", "limit", ">1dB"))
+    done = 0
+    for f in sorted(os.listdir(src)):
+        if not f.lower().endswith((".wav", ".flac", ".mp3", ".ogg", ".m4a", ".aiff", ".aif")):
+            continue
+        stem = os.path.splitext(f)[0]
+        m = re.search(r"\b([0-9a-f]{8})\b", stem)
+        row = by_id.get(m.group(1)) if m else None
+        if row is None:
+            m = re.match(r"(\d{4})\b", stem)
+            row = by_no.get(m.group(1)) if m else None
+        if row is None:
+            print("%-28s matches no line on the sheet (name it by the line's number or id)" % f)
+            continue
+        if not row["file"]:
+            print("%-28s line %s has no file to go to (%s)" % (f, row["no"], row["note"]))
+            continue
+        if "recorded already" in row["note"]:
+            print("%-28s line %s is one of the named recordings (%s): master it with the movie's lines" % (f, row["no"], row["file"]))
+            continue
+        out = os.path.join(root, row["file"])
+        report = master_one(os.path.join(src, f), out)
+        print("%-28s %-9s %-10s %s" % (f[:28], row["speaker"][:9], row["id"], report))
+        done += 1
+    print("%d line%s in place under assets/audio/vo/; run godot --headless --import so the game sees them" % (done, "" if done == 1 else "s"))
+
+
 def main():
+    if sys.argv[1:2] == ["--lines"]:
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        main_lines(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else os.path.join(root, "docs/script/vo_lines.csv"))
+        return
     src = sys.argv[1]
     dst = sys.argv[2] if len(sys.argv) > 2 else os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets/audio/vo")
     names = sorted(os.path.splitext(f)[0] for f in os.listdir(src)

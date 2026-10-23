@@ -63,7 +63,9 @@ static func caption(w: World, text: String, sub := "", secs := 2.6, timed := fal
 ## A subtitle from `who` (or narration with who = ""). Their figure talks
 ## while it's up. It stays until it's tapped; a voiced line (`timed`, with
 ## `hold` the recording's length) moves on by itself, a tap skipping it.
-static func say(w: World, who: String, text: String, hold := -1.0, timed := false) -> void:
+## A recording of the line (VoiceLines: by the words' id, or `vo` named
+## outright) plays with it and times it.
+static func say(w: World, who: String, text: String, hold := -1.0, timed := false, vo := "") -> void:
 	var f = fig(w, who) if who != "" else null
 	if f is Figure3D:
 		(f as Figure3D).talking = true
@@ -72,7 +74,16 @@ static func say(w: World, who: String, text: String, hold := -1.0, timed := fals
 		nm = String(w.get_meta("extra_names", {}).get(who, "")) if w.has_meta("extra_names") else ""
 		if nm == "":
 			nm = w._speaker(who)
+	var voiced := false
+	if not timed:
+		var secs := VoiceLines.play(w, who, text, vo)
+		if secs > 0.0:
+			hold = secs
+			timed = true
+			voiced = true
 	await overlay(w).say(nm, w._fmt(text), hold, timed)
+	if voiced:
+		VoiceLines.stop(w)
 	if f is Figure3D:
 		(f as Figure3D).talking = false
 

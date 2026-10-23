@@ -21,7 +21,7 @@ GODOT=${GODOT:-godot}
 python3 tools/web_packs.py presets
 rm -rf build/web && mkdir -p build/web/packs
 SIZES=""
-for pack in movie duel solhaven looks midnight dawn; do
+for pack in $(python3 tools/web_packs.py names); do
 	# a story film pack with no clips in it yet isn't built (an empty include
 	# list would export the whole game), and the game plays the 3D scene
 	if [ "$(python3 tools/web_packs.py count "$pack")" = "0" ]; then

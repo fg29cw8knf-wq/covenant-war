@@ -487,7 +487,10 @@ static func _say(w: World, who: String, text: String) -> void:
 			await w.get_tree().create_timer(0.35, false).timeout
 		if fig is Figure3D:
 			(fig as Figure3D).talking = true
-		await w.hud.dialogue.say(_name(w, who), _portrait(w, who), w._fmt(parts[i]))
+		var secs := VoiceLines.play(w, who, parts[i])   # its recording, when there is one
+		await w.hud.dialogue.say(_name(w, who), _portrait(w, who), w._fmt(parts[i]), secs)
+		if secs > 0.0:
+			VoiceLines.stop(w)
 		if fig is Figure3D:
 			(fig as Figure3D).talking = false
 

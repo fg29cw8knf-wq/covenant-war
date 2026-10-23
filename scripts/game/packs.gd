@@ -87,6 +87,19 @@ func need(pack: String, skippable := false) -> bool:
 	return got
 
 
+## Fetches a pack quietly, with no loading screen, for what can wait for it
+## (the voices: a line said before its pack has come plays without one).
+func want(pack: String) -> void:
+	if has(pack) or _busy.has(pack):
+		return
+	_busy[pack] = true
+	var got := await _fetch(pack, null)
+	if got:
+		_have[pack] = true
+	_busy.erase(pack)
+	_loaded.emit(pack)
+
+
 ## A holding screen for a wait that isn't a download (New Game's Ashford still
 ## being built after the movie's skipped): `what` is finished by the caller
 ## with `free_hold()`. The bar creeps along meanwhile so it's seen to be alive.
@@ -142,14 +155,15 @@ func _fetch(pack: String, screen: _Screen) -> bool:
 	var state := "loading"
 	while state == "loading":
 		await get_tree().process_frame
-		if screen.skipped:
+		if screen != null and screen.skipped:
 			# dropped: the browser's fetch is told to stop, and the pack is
 			# fetched afresh if it's ever wanted
 			JavaScriptBridge.eval("(window.__packs[%s] || {}).ctrl && window.__packs[%s].ctrl.abort()" % [JSON.stringify(pack), JSON.stringify(pack)], true)
 			return false
 		var s = JSON.parse_string(str(JavaScriptBridge.eval("JSON.stringify(window.__packs[%s])" % JSON.stringify(pack), true)))
 		state = s.state if s is Dictionary else "lost track of the download"
-		screen.progress(int(s.done) if s is Dictionary else 0, total)
+		if screen != null:
+			screen.progress(int(s.done) if s is Dictionary else 0, total)
 	if state == "ok" and not ProjectSettings.load_resource_pack(path):
 		state = "not a pack"
 	if state != "ok":

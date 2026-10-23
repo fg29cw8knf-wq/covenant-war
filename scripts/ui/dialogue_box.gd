@@ -129,9 +129,17 @@ static func mark_instructions(text: String) -> String:
 	return _instruction.sub(text, "[color=#%s][i]$0[/i][/color]" % UITheme.GOLD.to_html(false), true)
 
 
-## Show a line and wait for the player to tap through it.
-func say(speaker: String, portrait: Texture2D, text: String) -> void:
+## Show a line and wait for the player to tap through it. `hold` > 0 (a
+## recording of it playing, VoiceLines) moves it on by itself after that
+## long; a tap still does.
+func say(speaker: String, portrait: Texture2D, text: String, hold := -1.0) -> void:
 	_bark_n += 1   # a line said over a passing remark replaces it
+	_line_no += 1
+	var this_line := _line_no
+	if hold > 0.0:
+		get_tree().create_timer(hold, false).timeout.connect(func() -> void:
+			if _waiting and _line_no == this_line:
+				_advance.emit())
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	modulate.a = 1.0
 	visible = true
@@ -159,6 +167,7 @@ func say(speaker: String, portrait: Texture2D, text: String) -> void:
 
 
 var _bark_n := 0
+var _line_no := 0
 
 
 ## A line said in passing, while the player keeps walking (Bram following

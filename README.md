@@ -465,6 +465,33 @@ maelis, crane; all seven are Gary's paintings: Vorn, Eiran and Rook since
 once they exist; until then the lines are subtitles and each face is its
 Seat's sign.
 
+**Voices** (Gary, 23 October: "what if we used actual voices instead of just
+text? Then people wouldn't have to click through unless they wanted to
+skip"): every line the game speaks can have a recording, found by the line's
+id (`VoiceLines`, `scripts/story/voice_lines.gd`: the first eight hex digits
+of the sha1 of the words as written in the script, before `{name}` is filled
+in) at `assets/audio/vo/<area>/<speaker>/<id>.ogg` (ashford, thornwood or
+solhaven; a film's stand-in such as `film_wren` uses the person's folder,
+`VoiceLines.PERSON`). A film's subtitle (`Cine.say`), a conversation step
+(`World.run_steps`, `DialogueBox.say`), a side story's line
+(`SolhavenSide._say`) and a story film's line (`StoryFilm._say`) all look one
+up: with a recording the line plays it, holds for its length and a breath
+(`VoiceLines.TAIL`) and moves on by itself, a tap skipping it; without one it
+waits for a tap as before. The Herald's, Solmaris's and Morne's named
+recordings (`"vo": "herald_01"`, `films.gd _voice`) stay as they are.
+`tools/vo_sheet.py` writes every line in play order, numbered, with its
+speaker and id, to `docs/script/vo_lines.md` (the sheet to read from) and
+`.csv` (the tools' key): 483 lines, 29 of them recorded already; `python3
+tools/vo_master.py --lines <folder>` takes recordings named by sheet number
+or id, levels each and puts it in place; then `godot --headless --import`.
+On the web, Ashford's and Thornwood's voices come as a `voices` pack fetched
+quietly as the world starts (`Packs.want`, `VoiceLines.warm`; the main pack
+is near GitHub's 100 MB) and Solhaven's ride in Solhaven's pack
+(`tools/web_packs.py`, which now adds a preset for a pack that has none).
+`godot --headless res://tests/voice_lines_test.tscn` checks the ids and the
+holds. Nothing is recorded yet: who is voiced (everyone, or the cutscenes
+first) is Gary's call.
+
 Chapter 1, The Sun's Court, is Solhaven, line for line from Master Script v3 (a
 copy is in `docs/script/v3_chapter1.md`). `scripts/world/areas/solhaven.gd` is
 the Sun Square as a hub (who is there as the story goes on, and what they say:

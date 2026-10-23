@@ -307,16 +307,13 @@ func _say(ln: Dictionary) -> void:
 	var who := String(ln.get("who", ""))
 	var text := String(ln.get("say", ""))
 	var hold := float(ln.get("hold", -1.0))
-	var vo := String(ln.get("vo", ""))
-	if vo != "":
-		for ext in ["ogg", "wav", "mp3"]:
-			var path := "res://assets/audio/vo/%s.%s" % [vo, ext]
-			if ResourceLoader.exists(path):
-				_voice.stream = load(path)
-				_voice.play()
-				if hold < 0.0:
-					hold = _voice.stream.get_length() + 0.5
-				break
+	# its recording: named ("vo", the Herald's), or by the words' id (VoiceLines)
+	var path := VoiceLines.file_for(who, text, String(ln.get("vo", "")))
+	if path != "":
+		_voice.stream = load(path)
+		_voice.play()
+		if hold < 0.0:
+			hold = _voice.stream.get_length() + 0.5
 	Cine.say(_w, who, text, hold, true)   # (timed, not awaited: the picture keeps its time)
 
 

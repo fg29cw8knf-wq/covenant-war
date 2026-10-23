@@ -99,6 +99,7 @@ func setup(p_area: String, spawn: String) -> World:
 
 
 func _ready() -> void:
+	VoiceLines.warm()
 	if area == null:
 		setup(Game.area, Game.spawn)
 	if ahead:
@@ -747,7 +748,11 @@ func run_steps(steps: Array, npc) -> void:
 			var line := _fmt(st.say)
 			if st.has("during"):
 				_during(String(st.during), DialogueBox.reach_secs(line, String(st.get("at", ""))))
-			await hud.dialogue.say(_speaker(who), _portrait(who), line)
+			# a recording of the line (VoiceLines) plays with it and moves it on
+			var secs := VoiceLines.play(self, who, String(st.say), String(st.get("vo", "")))
+			await hud.dialogue.say(_speaker(who), _portrait(who), line, secs)
+			if secs > 0.0:
+				VoiceLines.stop(self)
 			if talker is Figure3D:
 				(talker as Figure3D).talking = false
 		elif st.has("if"):
