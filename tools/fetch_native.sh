@@ -50,20 +50,24 @@ sum_ok() {
 	test "$have" = "$want"
 }
 
-# the names of the .mp4 files on the films release (the public API; gh when it can)
+# the names of the .mp4 files on the films release: gh when it can (a token
+# that doesn't work, as here outside Actions, gives nothing), else the public API
 film_names() {
+	names=""
 	if [ -n "$GH_TOKEN" ] && command -v gh >/dev/null 2>&1; then
-		gh release view films --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null | grep '\.mp4$' || true
-	else
-		curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/films" 2>/dev/null \
+		names=$(gh release view films --repo "$REPO" --json assets --jq '.assets[].name' 2>/dev/null | grep '\.mp4$' || true)
+	fi
+	if [ -z "$names" ]; then
+		names=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/tags/films" 2>/dev/null \
 			| python3 -c 'import json,sys
 try:
     for a in json.load(sys.stdin).get("assets", []):
         if a["name"].endswith(".mp4"):
             print(a["name"])
 except Exception:
-    pass' || true
+    pass' || true)
 	fi
+	echo "$names"
 }
 
 if [ "$what" = "all" ] || [ "$what" = "player" ]; then
