@@ -1,8 +1,8 @@
 extends Node
 ## Stills of the Golden Gate of Solhaven (Gary's model since 22 October, at
-## its real 24 m): from the road where Bram and the player stop, wide from
-## further down it, under the arch, and from inside the square; then with
-## the doors open.
+## its real 24 m; its doors his since 23 October): from the road where Bram
+## and the player stop, wide from further down it, under the arch, and from
+## inside the square; then with the doors open.
 ##   xvfb-run -a -s "-screen 0 1600x900x24" godot --rendering-driver opengl3 \
 ##       res://tests/gate_shot.tscn -- <out_dir>
 

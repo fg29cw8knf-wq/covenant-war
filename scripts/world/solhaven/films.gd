@@ -1697,12 +1697,13 @@ static func _vault(w: World) -> void:
 	v.light_wagon_lamp(true)
 	Music.play(["solhaven_night", "the_marking"], 2.0, false)
 	var f := SolSet.SPOTS.field as Vector3
-	var tail: Vector3 = v.wagon.to_global(Vector3(0, 0, 2.3))
+	var board: Vector3 = v.tailboard()
+	var tail: Vector3 = v.wagon.to_global(Vector3(board.x, 0, board.z))
 	tail.y = 0.0
-	Cine.place(w, "bram", tail + Vector3(0.0, 0, 0.35), tail + v.wagon.global_transform.basis.z * 3.0)
+	Cine.place(w, "bram", tail, tail + v.wagon.global_transform.basis.z * 3.0)
 	var bf = Cine.fig(w, "bram")
 	if bf is Figure3D:
-		(bf as Figure3D).sit(0.95)
+		(bf as Figure3D).sit(board.y)
 	Cine.place(w, "player", Vector3(1000, 0, 1000))
 	var wheel: Vector3 = v.wagon.to_global(Vector3(-1.9, 0, 0.6))
 	wheel.y = 0.0
