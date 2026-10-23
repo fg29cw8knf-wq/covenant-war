@@ -34,6 +34,10 @@ var _last_caption := ""
 
 
 func _ready() -> void:
+	# the pack pauses the game while it's open (23 October), and Bram's wagon
+	# menu opens the deck screen ("Change my deck"): this driver must keep
+	# running under it to close it again, or the run sits paused for good
+	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	out_dir = args[0] if args.size() > 0 else "user://"
 	_keys = "keys" in args
