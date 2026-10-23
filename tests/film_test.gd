@@ -125,6 +125,13 @@ func _ready() -> void:
 	print("FILM: started ", _part)
 
 
+func _use_later(u) -> void:
+	for i in 8:
+		await get_tree().process_frame
+	if is_instance_valid(u) and not u._done and world != null and world.cam != null:
+		world.hud.tapped.emit(world.cam.unproject_position(u.target.global_position))
+
+
 func _process(_d: float) -> void:
 	_frame += 1
 	if world == null:
@@ -139,6 +146,12 @@ func _process(_d: float) -> void:
 			world.hud.dialogue._advance.emit()
 	if world.hud != null and world.hud.dialogue._choices.visible:
 		world.hud.dialogue._chosen.emit(0)
+	# things to tap on in the world on the way (Tilly's moth to wake, the
+	# last lantern's hook), as ashford_test taps them
+	for u in world.get_children():
+		if u is AshfordP1.Use and not u.has_meta("film_tapped") and not u._done:
+			u.set_meta("film_tapped", true)
+			_use_later(u)
 	# and the film's subtitles, choices, name and deck
 	if world.has_meta("cine_overlay"):
 		var ov: CineOverlay = world.get_meta("cine_overlay")
