@@ -59,7 +59,8 @@ func _initialize() -> void:
 	var got: String = gs.reabsorb("cinderpup", 3)
 	_check(got == "blazehound", "3 spare Cinderpups manifest a Blazehound (got '%s')" % got)
 	_check(int(gs.v2.collection.get("blazehound", 0)) == before + 1, "the Blazehound is added to the collection")
-	_check(DuelRewards.next_ascension("cinderpup", 1) == "", "Cinderpup has no Exalted card yet")
+	_check(DuelRewards.next_ascension("cinderpup", 1) == "infernal_warg", "after the Blazehound, Cinderpup's Attunement goes on to the Infernal Warg (Phase C's second stage)")
+	_check(DuelRewards.next_ascension("cinderpup", 2) == "", "and nothing after that")
 	_check(gs.spare_copies("cinderpup") == 0, "the last copies are kept")
 
 	# the pool pays at half value

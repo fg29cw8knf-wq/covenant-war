@@ -306,8 +306,10 @@ xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/s
 xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/creature_shot.tscn -- <dir> blazehound   # a duel with a given Totem on the field
 ```
 
-The rules are written up in the "Duel Rules v2" Claude doc, and the story in the
-"Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
+The rules are written up in the "Duel Rules v2" Claude doc
+(https://claude.ai/artifact/P1gUzZ7eRcTEe175qadyCd: its page title still says
+v1; "The deeper duel" section has Phases A to C, and "A turn" the new turn),
+and the story in the "Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
 god's Law.
 
 **Play it on a phone:** https://fg29cw8knf-wq.github.io/covenant-war/ (turn the phone sideways; in
