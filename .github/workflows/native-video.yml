@@ -111,7 +111,14 @@ jobs:
           built=$(TZ=Europe/London date '+%-d %b %Y, %H:%M %Z')
           # the tag points at main, never at a work branch (a release's tag keeps its commit forever)
           target=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .commit.sha)
-          gh release delete native-video --yes --cleanup-tag || true
-          gh release create native-video build/native-video.zip build/native-video.zip.sha256 --target "$target" --latest=false \
-            --title "Native video player (built $built)" \
-            --notes "The native video player libraries for the iPhone and Mac apps (addons/native_video), built $built from ${GITHUB_SHA::7} with godot-cpp (api 4.7). The app workflows fetch this zip before exporting (tools/fetch_native.sh); nothing to download by hand."
+          notes="The native video player libraries for the iPhone and Mac apps (addons/native_video), built $built from ${GITHUB_SHA::7} with godot-cpp (api 4.7). The app workflows fetch this zip before exporting (tools/fetch_native.sh); nothing to download by hand."
+          # the release stays up while it's refreshed (the app workflows may be
+          # fetching it this minute): the files are replaced in place
+          if gh release view native-video >/dev/null 2>&1; then
+            gh release upload native-video build/native-video.zip build/native-video.zip.sha256 --clobber
+            gh release edit native-video --title "Native video player (built $built)" --notes "$notes"
+          else
+            gh release create native-video build/native-video.zip build/native-video.zip.sha256 --target "$target" --latest=false \
+              --title "Native video player (built $built)" --notes "$notes"
+          fi
+          gh release view native-video
