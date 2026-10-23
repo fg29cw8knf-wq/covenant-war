@@ -128,8 +128,17 @@ func _ready() -> void:
 func _use_later(u) -> void:
 	for i in 8:
 		await get_tree().process_frame
-	if is_instance_valid(u) and not u._done and world != null and world.cam != null:
-		world.hud.tapped.emit(world.cam.unproject_position(u.target.global_position))
+	if is_instance_valid(u) and not u._done:
+		# E does it (headless, the card may sit off the screen for a tap)
+		var down := InputEventAction.new()
+		down.action = "interact"
+		down.pressed = true
+		Input.parse_input_event(down)
+		await get_tree().process_frame
+		var up := InputEventAction.new()
+		up.action = "interact"
+		up.pressed = false
+		Input.parse_input_event(up)
 
 
 func _process(_d: float) -> void:
