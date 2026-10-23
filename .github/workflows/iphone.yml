@@ -51,6 +51,14 @@ jobs:
           mkdir -p "$dir" && cp ~/godot/templates/* "$dir"/
           sudo ln -sf ~/godot/Godot_v$GODOT_VERSION-stable_linux.x86_64 /usr/local/bin/godot
 
+      # the native video player's libraries and Gary's 4K films, from their
+      # releases (native-video, films), so the app plays the films at full size;
+      # without them it plays the Theora copies (tools/fetch_native.sh)
+      - name: Native video player and the 4K films
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: tools/fetch_native.sh
+
       - name: Import the project
         run: godot --headless --import
 

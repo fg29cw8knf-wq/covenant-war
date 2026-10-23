@@ -5,12 +5,15 @@
 #   scons platform=macos arch=universal target=template_release
 #   scons platform=ios   arch=arm64     target=template_release ios_min_version=16.0
 #
-# godot-cpp is expected next to this file (cloned by the workflow: see
-# .github/workflows/native-video.yml, which also wraps the iOS static library
-# into the .xcframework the .gdextension names). Run on a Mac with Xcode.
+# godot-cpp (master: versioned on its own since v10, it targets the engine
+# version given as api_version, 4.7 here) is expected next to this file,
+# cloned by the workflow: see .github/workflows/native-video.yml, which also
+# wraps the iOS static library into the .xcframework the .gdextension names.
+# build_profile=build_profile.json on the command line keeps the generated
+# bindings to the few engine classes the player uses. Run on a Mac with Xcode.
 import os
 
-env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7", "build_profile": "build_profile.json"})
+env = SConscript("godot-cpp/SConstruct", {"api_version": "4.7"})
 
 if env["platform"] not in ("macos", "ios"):
     print("The native video player is built for macOS and iOS only (platform=%s)." % env["platform"])
@@ -18,11 +21,11 @@ if env["platform"] not in ("macos", "ios"):
 
 env.Append(CPPPATH=["."])
 
-# The Objective-C++ side: ARC, and modules so the frameworks it uses are
-# linked by whoever links the static library (Xcode does this for Godot's own
-# iOS library the same way).
+# The Objective-C++ side, with ARC. The frameworks it uses are linked below
+# on the Mac; on the iPhone the static library is linked into Godot's own app,
+# which links AVFoundation, CoreMedia, QuartzCore and UIKit already.
 objc_env = env.Clone()
-objc_env.Append(CCFLAGS=["-fobjc-arc", "-fmodules", "-fcxx-modules"])
+objc_env.Append(CCFLAGS=["-fobjc-arc"])
 
 sources = [
     env.Object("register_types.cpp"),

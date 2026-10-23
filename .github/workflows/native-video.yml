@@ -4,13 +4,14 @@
 # address, where the iPhone and Mac app workflows fetch them before they
 # export (tools/fetch_native.sh):
 #   https://github.com/fg29cw8knf-wq/covenant-war/releases/download/native-video/native-video.zip
-# Runs when the player's source changes, or by hand from the Actions tab
-# (Native video player > Run workflow).
+# Runs when the player's source changes (on main, or on a wip/ branch while
+# it's being worked on), or by hand from the Actions tab (Native video player >
+# Run workflow).
 name: Native video player
 
 on:
   push:
-    branches: [main]
+    branches: [main, "wip/**"]
     paths:
       - "addons/native_video/src/**"
       - ".github/workflows/native-video.yml"
@@ -30,6 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # godot-cpp is versioned on its own since v10 and targets a Godot
+      # version by api_version (4.7 here, the engine the game is built with;
+      # the SConstruct passes it)
       - name: godot-cpp
         run: git clone --depth 1 https://github.com/godotengine/godot-cpp addons/native_video/src/godot-cpp
 
@@ -42,16 +46,17 @@ jobs:
 
       - name: Build for Mac (Apple silicon and Intel)
         working-directory: addons/native_video/src
-        run: scons platform=macos arch=universal target=template_release macos_deployment_target=11.0 -j"$(sysctl -n hw.ncpu)"
+        run: scons platform=macos arch=universal target=template_release macos_deployment_target=11.0 build_profile=build_profile.json -j"$(sysctl -n hw.ncpu)"
 
       - name: Build for iPhone and iPad
         working-directory: addons/native_video/src
-        run: scons platform=ios arch=arm64 target=template_release ios_min_version=16.0 -j"$(sysctl -n hw.ncpu)"
+        run: scons platform=ios arch=arm64 target=template_release ios_min_version=16.0 build_profile=build_profile.json -j"$(sysctl -n hw.ncpu)"
 
       - name: Package the libraries
         working-directory: addons/native_video/src
         run: |
           set -e
+          ls -l bin
           # iPhone: godot-cpp is merged into the one static library, wrapped as the
           # .xcframework the .gdextension names (Godot's iOS export links it in)
           cpp_ios=$(ls godot-cpp/bin/libgodot-cpp.ios.template_release*.a | head -1)
@@ -62,6 +67,9 @@ jobs:
           # Mac: the framework gets its Info.plist and an ad hoc signature (the
           # app's own export signs it again ad hoc)
           fw=bin/libnativevideo.macos.template_release.framework
+          bin="$fw/libnativevideo.macos.template_release"
+          # (should SCons ever give the binary a .dylib suffix, it's renamed)
+          test -f "$bin" || mv "$bin.dylib" "$bin"
           mkdir -p "$fw/Resources"
           cat > "$fw/Resources/Info.plist" <<'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
@@ -87,11 +95,13 @@ jobs:
           </dict>
           </plist>
           PLIST
-          codesign --force --sign - "$fw/libnativevideo.macos.template_release"
-          lipo -info "$fw/libnativevideo.macos.template_release"
+          codesign --force --sign - "$bin"
+          lipo -info "$bin"
           ls -R bin/libnativevideo.ios.template_release.xcframework | head -20
           mkdir -p ../../../build
+          rm -f ../../../build/native-video.zip
           (cd bin && zip -qr -y ../../../../build/native-video.zip libnativevideo.macos.template_release.framework libnativevideo.ios.template_release.xcframework)
+          (cd ../../../build && shasum -a 256 native-video.zip > native-video.zip.sha256 && cat native-video.zip.sha256)
           ls -l ../../../build/native-video.zip
 
       - name: Publish to the native-video release
@@ -99,7 +109,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           built=$(TZ=Europe/London date '+%-d %b %Y, %H:%M %Z')
+          # the tag points at main, never at a work branch (a release's tag keeps its commit forever)
+          target=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .commit.sha)
           gh release delete native-video --yes --cleanup-tag || true
-          gh release create native-video build/native-video.zip --target "$GITHUB_SHA" --latest=false \
+          gh release create native-video build/native-video.zip build/native-video.zip.sha256 --target "$target" --latest=false \
             --title "Native video player (built $built)" \
-            --notes "The native video player libraries for the iPhone and Mac apps (addons/native_video), built $built from ${GITHUB_SHA::7} with godot-cpp. The app workflows fetch this zip before exporting; nothing to download by hand."
+            --notes "The native video player libraries for the iPhone and Mac apps (addons/native_video), built $built from ${GITHUB_SHA::7} with godot-cpp (api 4.7). The app workflows fetch this zip before exporting (tools/fetch_native.sh); nothing to download by hand."

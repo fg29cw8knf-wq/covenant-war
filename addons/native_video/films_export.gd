@@ -4,7 +4,7 @@ extends EditorExportPlugin
 ## finds them (find_file): the bundle's root on an iPhone, Contents/Resources
 ## on a Mac. The films are every .mp4 in addons/native_video/films/ at export
 ## time; the iPhone and Mac workflows download them from the repository's
-## "films" release first (tools/fetch_films.sh), and nothing is committed (the
+## "films" release first (tools/fetch_native.sh), and nothing is committed (the
 ## opening alone is 420 MB). Without a film the app plays the Theora copy in
 ## the pack instead, so an export never fails for want of one.
 

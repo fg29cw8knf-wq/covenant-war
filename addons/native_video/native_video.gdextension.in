@@ -1,0 +1,25 @@
+; The native video player (NativeVideoPlayer): Gary's 4K films through the
+; iPhone's and the Mac's own player (AVPlayer). Source and notes in src/.
+;
+; This is the .gdextension as a template: tools/fetch_native.sh copies it to
+; bin/native_video.gdextension beside the libraries it downloads from the
+; "native-video" release (built by .github/workflows/native-video.yml), and
+; the iPhone and Mac app workflows run that before they import and export. It
+; isn't live in the repository because Godot complains at every start-up
+; about a .gdextension with no library for its platform (the tests here on
+; Linux, the phone link): where there's no library, there's no .gdextension,
+; the class isn't registered and the game plays its Theora copy instead
+; (OpeningMovie checks ClassDB.class_exists("NativeVideoPlayer")).
+
+[configuration]
+
+entry_symbol = "native_video_library_init"
+compatibility_minimum = "4.7"
+reloadable = false
+
+[libraries]
+
+macos.debug = "res://addons/native_video/bin/libnativevideo.macos.template_release.framework"
+macos.release = "res://addons/native_video/bin/libnativevideo.macos.template_release.framework"
+ios.debug = "res://addons/native_video/bin/libnativevideo.ios.template_release.xcframework"
+ios.release = "res://addons/native_video/bin/libnativevideo.ios.template_release.xcframework"

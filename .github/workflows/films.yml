@@ -1,0 +1,83 @@
+# Puts Gary's 4K films on the "films" release, always at the same address,
+# where the iPhone and Mac app workflows fetch them before they export
+# (tools/fetch_native.sh), e.g.
+#   https://github.com/fg29cw8knf-wq/covenant-war/releases/download/films/opening_4k.mp4
+# A film is too big for git (GitHub takes no file over 100 MB, and a 4K film
+# is about 420 MB), so a film reaches the release through a work branch: the
+# session commits it to incoming/films/ there, whole if it's under 100 MB or
+# as <name>.mp4.part0, .part1... (split -b 90m) with <name>.mp4.sha256 beside
+# it, and this workflow (on a push to a wip/ branch that touches
+# incoming/films/, or by hand) joins the parts, checks the sum and uploads
+# the film; then the session deletes the parts from the branch, so nothing of
+# the film ever reaches main's history.
+name: Films release
+
+on:
+  push:
+    branches: ["wip/**"]
+    paths:
+      - "incoming/films/**"
+      - ".github/workflows/films.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: films-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Join the parts and check the sums
+        id: join
+        run: |
+          set -e
+          mkdir -p build/films
+          shopt -s nullglob
+          found=0
+          for sums in incoming/films/*.mp4.sha256; do
+            name=$(basename "$sums" .sha256)        # opening_4k.mp4
+            if [ -f "incoming/films/$name" ]; then
+              cp "incoming/films/$name" "build/films/$name"
+            else
+              parts=(incoming/films/"$name".part*)
+              if [ ${#parts[@]} -eq 0 ]; then
+                echo "incoming/films/$name: neither the film nor its parts are here"; exit 1
+              fi
+              cat "${parts[@]}" > "build/films/$name"
+            fi
+            cp "$sums" "build/films/$name.sha256"
+            (cd build/films && sha256sum -c "$name.sha256")
+            ls -l "build/films/$name"
+            found=$((found + 1))
+          done
+          echo "found=$found" >> "$GITHUB_OUTPUT"
+          if [ "$found" = "0" ]; then
+            echo "Nothing in incoming/films/ to publish (that's expected once the parts have been deleted)."
+          fi
+
+      - name: Publish to the films release
+        if: steps.join.outputs.found != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          built=$(TZ=Europe/London date '+%-d %b %Y, %H:%M %Z')
+          # the tag points at main, never at a work branch (a release's tag keeps its commit forever)
+          target=$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq .commit.sha)
+          if ! gh release view films >/dev/null 2>&1; then
+            gh release create films --target "$target" --latest=false \
+              --title "Films (Gary's 4K masters)" \
+              --notes "Gary's finished films at full size, for the native video player in the iPhone and Mac apps (addons/native_video). The app workflows fetch them before exporting (tools/fetch_native.sh); nothing to download by hand. The phone link plays the 1280x720 Theora copies in the game's packs instead."
+          fi
+          for f in build/films/*; do
+            gh release upload films "$f" --clobber
+          done
+          gh release edit films --notes "Gary's finished films at full size, for the native video player in the iPhone and Mac apps (addons/native_video). The app workflows fetch them before exporting (tools/fetch_native.sh); nothing to download by hand. The phone link plays the 1280x720 Theora copies in the game's packs instead. Last film added $built from ${GITHUB_SHA::7}."
+          gh release view films
