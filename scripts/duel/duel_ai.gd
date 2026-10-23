@@ -61,6 +61,10 @@ func choose_cards(game: DuelGame, pi: int, _prompt: String, cards: Array, min_n:
 			scored.sort_custom(func(a, b): return a.v < b.v)   # throw away the weakest
 		"whisper":
 			scored.sort_custom(func(a, b): return a.c.cost() > b.c.cost())
+		"unbind":
+			for s in scored:
+				s.v = _standing_value(game, 1 - pi, s.c)
+			scored.sort_custom(func(a, b): return a.v > b.v)
 		"search":
 			var p: DuelPlayer = game.players[pi]
 			for s in scored:
@@ -181,7 +185,10 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 						var cs := _call_score(game, pi, c, slot)
 						out.append({"score": cs, "action": {"type": "call", "card": c, "slot": slot}})
 						# veiled (Phase C): worth the extra Essence when it has a Reveal to spring
-						if c.def.has("reveal") and game.call_cost(pi, c) + 1 <= p.essence:
+						if game.free_veil(pi):
+							# (Shadow Veil: the veil costs nothing, so a Reveal Totem always wears it)
+							out.append({"score": cs + (_reveal_value(game, pi, c, slot) if c.def.has("reveal") else 1.0), "action": {"type": "call", "card": c, "slot": slot, "veiled": true}})
+						elif c.def.has("reveal") and game.call_cost(pi, c) + 1 <= p.essence:
 							out.append({"score": cs + _reveal_value(game, pi, c, slot) - ESSENCE_VALUE, "action": {"type": "call", "card": c, "slot": slot, "veiled": true}})
 				else:
 					for tg in game.ascend_targets(pi, c):
@@ -218,6 +225,25 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 		if not g.is_empty():
 			out.append(g)
 
+	# --- full Favour, spent on the god's Demigod, free (Phase D)
+	if game.demigod_problem(pi) == "":
+		var dc := DuelCard.new(-1, game.demigod_of(pi), pi)
+		var free := game.summon_cost(pi, dc) * ESSENCE_VALUE * 0.6
+		if game.summon_needs_target(dc):
+			for tg in game.targetable(foe.totems()):
+				out.append({"score": _summon_score(game, pi, dc, tg) + free, "action": {"type": "demigod", "target": tg}})
+		else:
+			out.append({"score": _summon_score(game, pi, dc, null) + free, "action": {"type": "demigod"}})
+
+	# --- an Oath (Phase D): sometimes, at the start, the one it's likeliest to keep
+	if game.ai_oaths and game.own_turns(pi) <= 1 and game.phase_problem("oath") == "":
+		if _oath_roll < 0.0:
+			_oath_roll = rng.randf()
+		if _oath_roll < OATH_CHANCE:
+			var pick := _oath_pick(game, pi)
+			if pick != "" and game.oath_problem(pi, pick) == "":
+				out.append({"score": 3.0, "action": {"type": "oath", "oath": pick}})
+
 	# --- stances (Phase A): Guard a threatened Totem that has no attack worth
 	# more, Rest a hurt one; a Totem that can't attack this turn anyway takes
 	# whichever of the two it needs
@@ -248,6 +274,43 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 			out.append(sh)
 	# only what this phase of the turn allows (Phase A): the rest waits for its phase
 	return out.filter(func(c): return game.phase_problem(String(c.action.get("type", ""))) == "")
+
+
+## How often the computer swears an Oath at the start of a duel.
+const OATH_CHANCE := 0.35
+var _oath_roll := -1.0
+
+
+## The Oath this duellist is likeliest to keep: Faith with a deck full of its
+## god's element, the Unbowed with a deck that guards and heals, the Swift End
+## with one that only hits.
+func _oath_pick(game: DuelGame, pi: int) -> String:
+	var p: DuelPlayer = game.players[pi]
+	var el := game.favour_element(pi)
+	var totems := 0
+	var mine := 0
+	var tough := 0
+	var fast := 0
+	for c in p.deck + p.hand:
+		var dc: DuelCard = c
+		if not dc.is_basic_totem():
+			continue
+		totems += 1
+		if el != "" and dc.element() == el:
+			mine += 1
+		if dc.element() in ["earth", "metal", "tide", "verdant"]:
+			tough += 1
+		if dc.element() in ["fire", "storm"]:
+			fast += 1
+	if totems == 0:
+		return ""
+	if el != "" and mine * 2 >= totems:
+		return "faith"
+	if tough * 2 >= totems:
+		return "unbowed"
+	if fast * 2 >= totems and rng.randf() < 0.5:
+		return "swift"
+	return "unbowed"
 
 
 ## The best this Totem could do attacking this turn, by the attack scores
@@ -872,9 +935,73 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 				for dc in p.discard:
 					best = maxf(best, _keep_value(game, pi, dc))
 				v += best * 0.35
+			"terrain":
+				var now := game.arena_now()
+				var gain := _arena_value(game, pi, String(e.arena)) - _arena_value(game, pi, now)
+				v += gain * DuelRules.terrain_turns * 0.5 if String(e.arena) != now else -15.0
+			"unbind":
+				var best := 0.0
+				for sc in foe.continuous:
+					best = maxf(best, _standing_value(game, 1 - pi, sc))
+				v += best
+	if bool(d.get("continuous", false)):
+		v += _standing_value(game, pi, c)
+		if p.continuous.size() >= DuelRules.continuous_slots:
+			v -= _standing_value(game, pi, p.continuous[0])
+		for sc in p.continuous:
+			if (sc as DuelCard).id == c.id:
+				v -= 12.0   # (a second of the same adds less)
 	if _ward_risk(game, pi, "foe_rite"):
 		v *= 0.9
 	return v - c.cost() * ESSENCE_VALUE
+
+
+## Roughly how much a turn on this ground is worth to `pi` (Phase D).
+func _arena_value(game: DuelGame, pi: int, a: String) -> float:
+	var p: DuelPlayer = game.players[pi]
+	var foe: DuelPlayer = game.players[1 - pi]
+	match a:
+		"tidegrove":
+			return (foe.totems().size() - p.totems().size()) * 4.0
+		"emberforge":
+			return (p.wards.size() - foe.wards.size()) * 8.0
+		"ironstone":
+			return 6.0 if p.life < foe.life else -2.0
+		"solhaven":
+			return 8.0 if p.totems().size() < foe.totems().size() else (-6.0 if foe.totems().size() < p.totems().size() else 0.0)
+	return 0.0
+
+
+## What a Continuous Rite standing on `pi`'s side is worth to them, roughly a
+## few turns' use of it.
+func _standing_value(game: DuelGame, pi: int, c: DuelCard) -> float:
+	var p: DuelPlayer = game.players[pi]
+	var foe: DuelPlayer = game.players[1 - pi]
+	var st: Dictionary = c.def.get("standing", {})
+	var v := 6.0
+	if st.has("element_damage"):
+		for t in p.totems():
+			if t.element() == String(st.element):
+				v += float(st.amount) * 1.6
+		for h in p.hand:
+			if (h as DuelCard).is_totem() and (h as DuelCard).element() == String(st.element):
+				v += 4.0
+	elif st.has("dawn_heal"):
+		for t in p.totems():
+			v += minf(float(st.dawn_heal), float(t.damage)) * 1.2 + 4.0
+	elif st.has("foe_ward_tax"):
+		v += 6.0 + foe.wards.size() * 3.0
+	elif st.has("thorn_all"):
+		v += float(st.amount) * 0.8 * foe.totems().size()
+	elif st.has("storm_swift"):
+		for h in p.hand:
+			if (h as DuelCard).is_basic_totem() and (h as DuelCard).element() == "storm":
+				v += 10.0
+	elif st.has("free_veil"):
+		for h in p.hand:
+			if (h as DuelCard).is_basic_totem():
+				v += 10.0 if (h as DuelCard).def.has("reveal") else 2.0
+	return v
 
 
 func _flask_value(game: DuelGame, pi: int, amount: int) -> float:

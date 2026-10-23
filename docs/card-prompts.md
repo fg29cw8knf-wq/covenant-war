@@ -2349,3 +2349,235 @@ Mood: a thing with a history, waiting for a hand to carry it.
 Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
+
+# Round 7: the ground and what stands on it (Phase D of the deeper duel, 23 October)
+
+Five Terrain Rites that turn the Circle into another arena for three turns, six Continuous Rites that stand beside the Wards and keep working, and Unbind, which sends a standing Rite away. Card paintings only.
+
+## Flooded Circle (round 7, rite, tide)
+
+**Card painting · square 1536 × 1536 · save as cards/flooded_circle.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of sea water pouring over the rim of a stone duelling circle, reeds and lily pads rising as its floor becomes a tidal pool.
+
+Main subject: a stone duelling circle half under rising sea water.
+Colours: sea green and pale turquoise, the stone wet and dark.
+Key details: reeds and lily pads opening on the water, foam at the rim.
+Background: a grey sky over a shoreline, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the ground itself changes sides.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Forge Ground (round 7, rite, fire)
+
+**Card painting · square 1536 × 1536 · save as cards/forge_ground.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a stone duelling circle cracking open to glowing forge-fire beneath, anvils and chains rising round its edge.
+
+Main subject: a duelling circle split by cracks full of orange forge-fire.
+Colours: black iron and molten orange, sparks bright yellow.
+Key details: anvils and hanging chains at the circle's edge, heat shimmer above the cracks.
+Background: a smoky forge hall, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the ground itself changes sides.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Iron Ground (round 7, rite, metal)
+
+**Card painting · square 1536 × 1536 · save as cards/iron_ground.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of riveted iron plates sliding over a duelling circle's floor like scales, great iron pillars rising at its edge.
+
+Main subject: iron plates sliding over a stone circle like the scales of a beast.
+Colours: gunmetal grey and warm bronze, rivets catching the light.
+Key details: two great riveted pillars rising at the edge of the circle.
+Background: a mountain quarry under a pale sky, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the ground itself changes sides.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Veilwild Mist (round 7, rite, psychic)
+
+**Card painting · square 1536 × 1536 · save as cards/veilwild_mist.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of violet mist rolling over a duelling circle, twisted trees and watching eyes appearing in it.
+
+Main subject: violet mist rolling across a duelling circle.
+Colours: violet and deep indigo, the eyes pale gold.
+Key details: twisted trees half-seen in the mist, small glowing eyes among them.
+Background: a dark wood at dusk, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the ground itself changes sides.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Sunlit Court (round 7, rite, radiant)
+
+**Card painting · square 1536 × 1536 · save as cards/sunlit_court.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of sunlight breaking through cloud onto a duelling circle, white marble steps and gold banners rising round it.
+
+Main subject: a shaft of sunlight falling on a duelling circle as marble steps rise round it.
+Colours: white marble, warm gold and soft sky blue.
+Key details: gold banners lifting in the light, dust motes glowing in the beam.
+Background: a white city under breaking cloud, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the ground itself changes sides.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Kindled Banner (round 7, rite, fire, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/kindled_banner.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a tall war banner of red cloth burning without being consumed, planted at the edge of a duelling circle.
+
+Main subject: a red war banner on a tall pole, burning without burning away.
+Colours: deep red cloth and bright orange flame, the pole dark iron.
+Key details: the flames streaming sideways like a flag of fire, embers drifting off.
+Background: the edge of a duelling circle at night, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a promise that keeps burning.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Tidewell (round 7, rite, tide, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/tidewell.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a small stone well brimming with glowing sea-green water, a mist of droplets drifting from it over a circle.
+
+Main subject: a small round stone well brimming over with glowing water.
+Colours: sea green and soft silver, the stone mossy grey.
+Key details: droplets lifting from the water into a fine glowing mist.
+Background: a quiet stone courtyard, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a source that never runs dry.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Iron Tithe (round 7, rite, metal, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/iron_tithe.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of an iron collection box chained to a post, a rune-marked coin hovering over its slot.
+
+Main subject: an iron collection box chained to a wooden post.
+Colours: dark iron and dull bronze, the rune glowing pale blue.
+Key details: a rune-marked coin hovering above the slot, heavy chains round the post.
+Background: a stone gatehouse, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: every trick has its price.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Thorn Hedge (round 7, rite, verdant, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/thorn_hedge.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a low hedge of dark briars with white flowers ringing one side of a duelling circle, its thorns long as knives.
+
+Main subject: a low hedge of dark briars ringing one side of a duelling circle.
+Colours: dark green and black, the flowers white, a touch of red on the thorns.
+Key details: thorns as long as knives, small white flowers between them.
+Background: a duelling circle in an overgrown garden, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: come closer, if you must.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Storm Spire (round 7, rite, storm, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/storm_spire.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a thin spire of black stone with lightning curling round its tip, the air around it bright with sparks.
+
+Main subject: a thin spire of black stone standing at the edge of a circle.
+Colours: black stone, electric blue and white lightning.
+Key details: lightning curling round the tip, sparks hanging in the air.
+Background: a storm sky over a high plain, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: the air is charged and waiting.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Shadow Veil (round 7, rite, psychic, continuous)
+
+**Card painting · square 1536 × 1536 · save as cards/shadow_veil.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a curtain of violet shadow hanging in the air over a duelling circle, a creature's eyes glinting behind it.
+
+Main subject: a curtain of violet shadow hanging in mid-air like cloth.
+Colours: violet and near black, two small glints of gold.
+Key details: the edges of the shadow fraying into smoke, a creature's eyes behind it.
+Background: a dim duelling circle, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what you can't see can't be stopped.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Unbind (round 7, rite, any)
+
+**Card painting · square 1536 × 1536 · save as cards/unbind.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of two hands pulling apart a knot of glowing cord, its light unravelling into the air.
+
+Main subject: two hands pulling apart a knot of glowing cord.
+Colours: warm gold cord light against deep blue shadow.
+Key details: strands of light unravelling and fading into the air.
+Background: darkness with faint runes, softly blurred.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: what was bound comes loose.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```

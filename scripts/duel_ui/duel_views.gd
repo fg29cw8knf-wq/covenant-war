@@ -566,7 +566,27 @@ class PlayerPanel:
 			else:
 				Glyphs.draw(self, "crown_sigil", pc, pr * 0.55, UITheme.TEXT_DIM)
 		draw_arc(pc, pr + 3, 0, TAU, 64, UITheme.GOLD, 4.0, true)
-		draw_arc(pc, pr + 10, 0, TAU, 64, Color(UITheme.GOLD_DIM, 0.6), 1.5, true)
+		# Favour (Phase D): a ring round the god's seal that fills, bright when full
+		var fcol: Color = DuelFX.light(Lore.GODS[patron].element) if patron != "" and Lore.GODS.has(patron) else UITheme.GOLD
+		draw_arc(pc, pr + 11, 0, TAU, 64, Color(0, 0, 0, 0.55), 5.0, true)
+		var ff := clampf(player.favour() / maxf(1.0, DuelRules.favour_max), 0.0, 1.0)
+		if player.favour_ready:
+			draw_arc(pc, pr + 11, 0, TAU, 64, Color(fcol, 0.75 + 0.25 * sin(_t * 4.0)), 5.0, true)
+			draw_arc(pc, pr + 15, 0, TAU, 64, Color(fcol, 0.3 + 0.2 * sin(_t * 4.0)), 2.0, true)
+		elif ff > 0.0:
+			draw_arc(pc, pr + 11, -PI / 2.0, -PI / 2.0 + TAU * ff, 48, Color(fcol, 0.9), 5.0, true)
+		else:
+			draw_arc(pc, pr + 11, 0, TAU, 64, Color(UITheme.GOLD_DIM, 0.35), 1.5, true)
+		# an Oath (Phase D): a ribbon across the foot of the seal
+		if player.oath_state != "":
+			var words := {"swift": "SWIFT END", "faith": "FAITHFUL", "unbowed": "UNBOWED"}
+			var otxt: String = "OATH KEPT" if player.oath_state == "kept" else ("BROKEN" if player.oath_state == "broken" else String(words.get(player.oath, "OATH")))
+			var ocol: Color = Color("8fe39a") if player.oath_state == "kept" else (Color("ff6b6b") if player.oath_state == "broken" else UITheme.GOLD)
+			var ofnt := CardFace.font("display_bold")
+			var ow := ofnt.get_string_size(otxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x + 22
+			var orr := Rect2(Vector2(pc.x - ow * 0.5, pc.y + pr - 8), Vector2(ow, 24))
+			CardFace.box(self, orr, 12, Color(0.05, 0.04, 0.02, 0.95), ocol, 2.0)
+			CardFace.text_in(self, ofnt, orr, otxt, 14, ocol, HORIZONTAL_ALIGNMENT_CENTER)
 		# name and patron
 		var fnt := CardFace.font("display_bold")
 		var nm := player.player_name
@@ -679,6 +699,8 @@ class PhaseBand:
 ## A duellist's Ward zone on the field: face-down cards waiting to spring.
 class WardZone:
 	extends Control
+	## A standing Rite was tapped (to read it).
+	signal standing_tapped(card)
 	var player: DuelPlayer = null
 	var mine := false
 	var reveal := false
@@ -687,16 +709,54 @@ class WardZone:
 	var _t := 0.0
 
 	const CARD := Vector2(78, 109)
+	## The row runs from here to the edge of the field; with the Continuous
+	## Rites standing beside the Wards (Phase D), the cards shrink to fit.
+	const LEFT := 96.0
+	const RIGHT := 418.0
+	const GAP := 18.0
+	const CONT_COL := Color("a6e6a0")
 
 	func _init() -> void:
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mouse_filter = Control.MOUSE_FILTER_PASS   # (only the standing Rites take a tap: _has_point)
+		size = Vector2(RIGHT, 140)
 
 	func _process(delta: float) -> void:
 		_t += delta
 		queue_redraw()
 
+	func _k() -> float:
+		if player == null:
+			return 1.0
+		var n := player.ward_slots() + player.continuous.size()
+		var gap := GAP if not player.continuous.is_empty() else 0.0
+		return minf(1.0, (RIGHT - LEFT - gap) / maxf(1.0, n * 94.0 - 16.0))
+
 	func card_rect(i: int) -> Rect2:
-		return Rect2(Vector2(96 + i * 94, 8), CARD)
+		var k := _k()
+		return Rect2(Vector2(LEFT + i * 94 * k, 8), CARD * k)
+
+	## Where the `j`th standing Rite lies, after the Ward slots.
+	func standing_rect(j: int) -> Rect2:
+		var r := card_rect(player.ward_slots() + j)
+		r.position.x += GAP
+		return r
+
+	func _has_point(pt: Vector2) -> bool:
+		if player == null:
+			return false
+		for j in player.continuous.size():
+			if standing_rect(j).has_point(pt):
+				return true
+		return false
+
+	func _gui_input(e: InputEvent) -> void:
+		if player == null or not (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT):
+			return
+		for j in player.continuous.size():
+			if standing_rect(j).has_point(e.position):
+				standing_tapped.emit(player.continuous[j])
+				accept_event()
+				return
 
 	func _draw() -> void:
 		if player == null:
@@ -704,6 +764,13 @@ class WardZone:
 		var col := Color("d9a6f0")
 		CardFace.text(self, CardFace.font("display_bold"), Vector2(4, 58), "WARDS", 18, Color(col, 0.85), HORIZONTAL_ALIGNMENT_LEFT, -1, 3)
 		CardFace.text(self, CardFace.font("body"), Vector2(4, 82), "%d / %d" % [player.wards.size(), player.ward_slots()], 17, Color(col, 0.6))
+		for j in player.continuous.size():
+			var sr := standing_rect(j)
+			DuelFX.draw_glow(self, sr.get_center(), sr.size * 0.95, Color(CONT_COL, 0.4 + 0.1 * sin(_t * 1.6 + j)))
+			DuelCardFace.draw_card(self, sr, (player.continuous[j] as DuelCard).id, {"compact": true})
+		if not player.continuous.is_empty():
+			var s0 := standing_rect(0)
+			CardFace.text(self, CardFace.font("display_bold"), Vector2(s0.position.x, s0.end.y + 17), "STANDING", 13, Color(CONT_COL, 0.85), HORIZONTAL_ALIGNMENT_LEFT, -1, 3)
 		for i in player.ward_slots():
 			var r := card_rect(i)
 			if i < player.wards.size():
@@ -714,7 +781,7 @@ class WardZone:
 					CardFace.draw_back(self, r)
 			else:
 				CardFace.box(self, r, 8, Color(col, 0.04), Color(col, 0.22), 1.5)
-				Glyphs.draw(self, "crown_sigil", r.get_center(), 14, Color(col, 0.18))
+				Glyphs.draw(self, "crown_sigil", r.get_center(), 14.0 * _k(), Color(col, 0.18))
 
 
 # ================================================================ HandBacks ===
@@ -824,6 +891,9 @@ class EmblemButton:
 class GiftButton:
 	extends Control
 	signal pressed
+	var favour := 0.0          # 0-1 (Phase D)
+	var favour_ready := false
+	var favour_col := Color(1, 0.85, 0.4)
 	var god := ""
 	var gift_name := ""
 	var used := false
@@ -860,6 +930,12 @@ class GiftButton:
 			draw_circle(c, r, Color(0, 0, 0, 0.55 if used else 0.3))
 		var rim := UITheme.GOLD if enabled else Color("8a7a50")
 		draw_arc(c, r + 2, 0, TAU, 64, rim, 4.0, true)
+		# Favour (Phase D), round the seal
+		if favour_ready:
+			draw_arc(c, r + 14, 0, TAU, 64, Color(favour_col, 0.7 + 0.3 * sin(_t * 4.0)), 5.0, true)
+		elif favour > 0.0:
+			draw_arc(c, r + 14, 0, TAU, 64, Color(0, 0, 0, 0.5), 5.0, true)
+			draw_arc(c, r + 14, -PI / 2.0, -PI / 2.0 + TAU * favour, 48, Color(favour_col, 0.9), 5.0, true)
 		if enabled:
 			draw_arc(c, r + 9, 0, TAU, 64, Color(UITheme.GOLD, 0.5 + 0.4 * sin(_t * 4.0)), 3.0, true)
 		if used:

@@ -25,7 +25,10 @@ var cfg := {
 	"level": [4, 4],
 	"difficulty": "Normal",
 	"law": "",
+	"arena": "",   # the Circle (Phase D: each has a rule); "" = the rival deck's
 }
+## The Circles the Lab can duel in.
+const ARENAS := ["", "ashford", "tidegrove", "emberforge", "ironstone", "veilwild", "solhaven"]
 var stage: Control
 var _side_boxes := [null, null]
 var _info := [null, null]
@@ -195,6 +198,29 @@ func _fill_side(side: int) -> void:
 				cfg.difficulty = k
 				_changed(side))
 			dl.add_child(b)
+		# the Circle the duel is fought in, and its rule (Phase D)
+		box.add_child(UITheme.label("The Circle", 22, UITheme.TEXT_DIM, "bold"))
+		var ag := GridContainer.new()
+		ag.columns = 4
+		ag.add_theme_constant_override("h_separation", 8)
+		ag.add_theme_constant_override("v_separation", 6)
+		box.add_child(ag)
+		for a in ARENAS:
+			var b := _toggle("By deck" if a == "" else String(a).capitalize(), String(cfg.get("arena", "")) == a, 128)
+			b.add_theme_font_size_override("font_size", 19)
+			b.custom_minimum_size = Vector2(128, 48)
+			_compact(b)
+			b.pressed.connect(func() -> void:
+				cfg.arena = a
+				_changed(side))
+			ag.add_child(b)
+		var an: String = String(cfg.get("arena", ""))
+		if an == "":
+			an = DuelArt.arena_for_deck(cfg.deck[1])
+		var rule := UITheme.label("%s: %s" % [an.capitalize(), DuelGame.ARENA_RULES.get(an, "")], 20, UITheme.TEXT_DIM)
+		rule.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rule.custom_minimum_size = Vector2(538, 0)
+		box.add_child(rule)
 	var info := UITheme.label("", 21, UITheme.TEXT)
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	info.custom_minimum_size = Vector2(538, 0)
@@ -286,6 +312,8 @@ const TUNE_LABELS := {
 	"chain_max": ["Answers in a chain", 1], "respond_secs": ["Seconds to answer", 1],
 	"tribute_tier": ["Tribute from tier", 1], "tribute_two_tier": ["Two tributes from tier", 1],
 	"revive_hp": ["Revived with HP share", 0.1],
+	"terrain_turns": ["Terrain Rite turns", 1], "continuous_slots": ["Standing Rites a side", 1],
+	"arena_guard": ["Ironstone's Guard", 1],
 }
 
 
@@ -426,6 +454,7 @@ func _play(watch: bool) -> void:
 		"ai": [watch, true],
 		"difficulty": LEVELS.get(cfg.difficulty, 0.8),
 		"law": cfg.get("law", ""),
+		"arena": String(cfg.get("arena", "")),
 	})
 	layer.add_child(_screen)
 	var r: String = await _screen.finished
@@ -447,6 +476,7 @@ func _run_tests() -> void:
 	for g in n:
 		var game := DuelGame.new()
 		game.law = cfg.get("law", "")
+		game.arena = String(cfg.get("arena", "")) if String(cfg.get("arena", "")) != "" else DuelArt.arena_for_deck(cfg.deck[1])
 		game.setup(cfg.deck.duplicate(), ["A", "B"], [DuelAI.new(1.0, g * 2 + 1), DuelAI.new(LEVELS.get(cfg.difficulty, 0.8), g * 2 + 2)],
 			[profile(0), profile(1)], 7000 + g)
 		await game.run()

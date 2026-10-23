@@ -9,6 +9,8 @@ extends SceneTree
 ##       godot --headless --script res://tests/duel_sim.gd -- 400 emberstorm ironstone
 
 const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
+## The Circle each duel is fought in (Phase D: each arena has its rule).
+const ARENAS := ["ashford", "tidegrove", "emberforge", "ironstone", "veilwild", "solhaven"]
 
 
 func _initialize() -> void:
@@ -42,6 +44,7 @@ func _initialize() -> void:
 	var stats_total := {}
 	var patron_wins := {}
 	var patron_played := {}
+	var patron_fills := {}   # Favour filled, by patron (Phase D)
 	var card_win := {}
 	var card_play := {}
 	var rng := RandomNumberGenerator.new()
@@ -55,6 +58,7 @@ func _initialize() -> void:
 		var profiles := [_profile("P1", pa, a), _profile("P2", pb, b)]
 		var game := DuelGame.new()
 		game.setup([a, b], ["P1", "P2"], [DuelAI.new(1.0, 500 + g), DuelAI.new(1.0, 900 + g)], profiles, 1000 + g)
+		game.arena = ARENAS[(g / 16) % ARENAS.size()]
 		var checker := Checker.new(game)
 		game.state_changed.connect(checker.check)
 		await game.run()
@@ -67,6 +71,8 @@ func _initialize() -> void:
 		played[b] = int(played.get(b, 0)) + 1
 		patron_played[pa] = int(patron_played.get(pa, 0)) + 1
 		patron_played[pb] = int(patron_played.get(pb, 0)) + 1
+		patron_fills[pa] = int(patron_fills.get(pa, 0)) + int(game.players[0].stats.get("favour_fills", 0))
+		patron_fills[pb] = int(patron_fills.get(pb, 0)) + int(game.players[1].stats.get("favour_fills", 0))
 		for p in game.players:
 			for k in p.stats:
 				stats_total[k] = int(stats_total.get(k, 0)) + int(p.stats[k])
@@ -119,7 +125,8 @@ func _initialize() -> void:
 	print("")
 	for pt in PATRONS:
 		var nm: String = "unsworn" if pt == "" else pt
-		print("  patron %-9s win rate %3.0f%%  (%d)" % [nm, 100.0 * int(patron_wins.get(pt, 0)) / maxf(1, patron_played.get(pt, 0)), patron_played.get(pt, 0)])
+		print("  patron %-9s win rate %3.0f%%  (%d)  Favour filled %.2f a duel" % [nm, 100.0 * int(patron_wins.get(pt, 0)) / maxf(1, patron_played.get(pt, 0)), patron_played.get(pt, 0),
+			float(patron_fills.get(pt, 0)) / maxf(1, patron_played.get(pt, 0))])
 	print("")
 	if "--cards" in args:
 		var rows := []

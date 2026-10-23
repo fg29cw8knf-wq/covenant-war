@@ -69,6 +69,8 @@ xvfb-run -a godot --rendering-driver opengl3 res://tests/lantern_tutorial_test.t
 godot --headless --script res://tests/phase_test.gd                  # the turn's phases, Stances, answers and chains (Phase A)
 godot --headless --script res://tests/phase_b_test.gd                # Tributes, Echoes, Loyal, Rekindling, the discard Rites (Phase B)
 godot --headless --script res://tests/phase_c_test.gd                # bonds, Relics, veiled calls, the second Ascension stage, Tempering (Phase C)
+godot --headless --script res://tests/phase_d_test.gd                # arena rules, Terrain and Continuous Rites, Favour, Oaths (Phase D)
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/phase_d_shot.tscn -- <dir>   # Phase D stills, both fields
 ```
 
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
@@ -237,6 +239,69 @@ shape of a turn and answering on the rival's turn.
   stages need a painting, a cut-out and a model each). Bram's lessons:
   `bond`, `relic`, `veiled`, `revealed`.
 
+### The ground, the gods and the stakes (Phase D, 23 October)
+
+- **Arena rules** (`DuelGame.ARENA_RULES`, `arena_now`): every Circle has a
+  rule for both duellists, all duel long. Ashford's green: none (the
+  beginner's Circle). The tidegrove Soaks a Totem at each Dawn; the
+  emberforge Burns the Totem a springing Ward catches; at ironstone both
+  Guards are 5 higher (`DuelRules.arena_guard`); the veilwild veils each
+  duellist's first call, free; at Solhaven, whoever has fewer Totems at
+  their Dawn gains 1 Essence. The screen sets `game.arena` from the duel's
+  arena, except in a story duel with its own rule (its rule stands in the
+  arena's place) and on the Trial's board. The rule is written under the
+  turn count, and a ripple and a line of text show it acting
+  (`fx_arena_rule`).
+- **Terrain Rites** (op `"terrain"`): Flooded Circle, Forge Ground, Iron
+  Ground, Veilwild Mist and Sunlit Court turn the Circle into that arena,
+  its rule with it, for three turns (`DuelRules.terrain_turns`, counted at
+  each Dusk, `_terrain_tick`); another Terrain Rite takes its place. The
+  field's look changes with it (`fx_terrain`): on the 3D field the new
+  floor and scenery fade in over the old, a wave of its colour runs across
+  the Circle and the hall light and haze take its tint while it holds
+  (`DuelField3D.change_arena`); on the flat field the painting cross-fades
+  (`Arena.fade_to`).
+- **Continuous Rites** (`"continuous": true`, a `"standing"` effect): they
+  stand beside the Wards (STANDING, tap one to read it), two a side
+  (`DuelRules.continuous_slots`); a third sends the oldest to the discard,
+  and **Unbind** sends one of the rival's there. Six: Kindled Banner (Fire
+  Totems +10 damage), Tidewell (heals 10 from each Totem at Dawn), Iron
+  Tithe (the rival's Wards cost 1 more), Thorn Hedge (an attacker takes 10),
+  Storm Spire (Storm Totems attack the turn they're called), Shadow Veil
+  (the first call each turn veiled at no extra cost). A green STANDING RITE
+  band on the card, TERRAIN RITE on the five.
+- **Favour** (`DuelPlayer.favour2`, in half points, 0 to 10): it fills as
+  you play your god's element (calls, Rites, attacks with its Totems) and
+  follow its way, by the god's attribute (`DuelGame.WAYS`: presence calls,
+  might attacks, resolve stances and Wards, swiftness shifts, cunning Wards
+  and Rites, insight Rites and Ascensions, intellect Rites and Relics),
+  twice as fast under the god's own Law; the Unsworn fill it from anything
+  at half pace. Full, it opens the Gift again, or brings the god's Demigod
+  (the Summon of its element: Dawnmane, Pyraxis, Thalassa, Somnyx) down from
+  no card, free (`{type: "demigod"}`); either empties it. The Unsworn's
+  second Unbound Will draws three and gives an Essence. A ring round each
+  god's seal on the plates and round the Gift button; tap the Gift to
+  choose.
+- **Oaths** (`DuelGame.OATHS`, `{type: "oath", oath}`): sworn on your first
+  turn (a Swear an Oath button in the turn's choices) and once more
+  mid-duel (the Menu): the Swift End (win by your eighth turn), the
+  Faithful (win with a Totem of your god's element on the field; not for
+  the Unsworn), the Unbowed (never let your Life fall under half). Sworn,
+  Favour fills 3; broken, it costs 30 Life (`DuelRules.oath_life_cost`);
+  kept, the win's Resonance is a quarter more (`DuelRewards.OATH_MULT`). A
+  ribbon across the foot of the god's seal (UNBOWED, OATH KEPT, BROKEN).
+  The computer swears sometimes at the start (not in story duels,
+  `game.ai_oaths`). A story rival's line for it can be added to a duel's
+  `bark_on` as "my_oath", "my_oath_broken" or "rival_oath_broken" (none is
+  written yet: that's the story's).
+- Each starter deck has a Terrain Rite and a Continuous Rite (Emberstorm:
+  Forge Ground, Kindled Banner; Tidegrove: Flooded Circle, Thorn Hedge;
+  Ironstone: Iron Ground, Iron Tithe; Veilwild: Veilwild Mist, Shadow
+  Veil). The Duel Lab picks the Circle (its rule under the buttons) and has
+  rows for the new numbers. Prompts: `docs/card-prompts.md`, round 7.
+  Bram's lessons: `arena_rule`, `terrain`, `continuous`, `favour`,
+  `favour_rival`, `oath`.
+
 The Lantern Duel is a gated tutorial (`scripts/duel_ui/duel_tutor.gd`, lines in
 `LESSON` in `scripts/world/areas/ashford.gd`): each explanation waits for a tap and
 each instruction locks everything but the one thing to tap (including the tap on
@@ -308,7 +373,7 @@ xvfb-run -a godot --rendering-driver opengl3 --resolution 1280x720 res://tests/c
 
 The rules are written up in the "Duel Rules v2" Claude doc
 (https://claude.ai/artifact/P1gUzZ7eRcTEe175qadyCd: its page title still says
-v1; "The deeper duel" section has Phases A to C, and "A turn" the new turn),
+v1; "The deeper duel" section has Phases A to D, and "A turn" the new turn),
 and the story in the "Master Script" doc. The Duel Lab's Kingdom Law picker plays any duel under a
 god's Law.
 

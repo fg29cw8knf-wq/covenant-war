@@ -151,6 +151,8 @@ func _build() -> void:
 	sun.directional_shadow_max_distance = 40.0
 	world.add_child(sun)
 	var hall := OmniLight3D.new()
+	_hall = hall
+	_env = env
 	hall.position = Vector3(0, 6, 0)
 	hall.light_color = Color(1.0, 0.85, 0.6)
 	hall.light_energy = 0.9
@@ -206,6 +208,15 @@ var _mat: MeshInstance3D
 var _mat_material: StandardMaterial3D
 var _back: MeshInstance3D
 var _back_material: StandardMaterial3D
+var _hall: OmniLight3D
+var _env: Environment
+
+## Each arena's light: the motes, and the tint a Terrain Rite gives the hall
+## light and the haze while its ground holds (Phase D).
+const ARENA_LIGHT := {"emberforge": Color(1.0, 0.6, 0.3), "tidegrove": Color(0.6, 0.95, 0.9), "veilwild": Color(0.7, 0.55, 1.0),
+	"ironstone": Color(1.0, 0.8, 0.5), "solhaven": Color(1.0, 0.92, 0.62), "ashford": Color(0.75, 1.0, 0.6)}
+const HALL_COL := Color(1.0, 0.85, 0.6)
+const FOG_COL := Color(0.1, 0.09, 0.18)
 
 
 func setup(p_arena: String) -> void:
@@ -222,6 +233,62 @@ func setup(p_arena: String) -> void:
 	var light_col: Color = {"emberforge": Color(1.0, 0.6, 0.3), "tidegrove": Color(0.6, 0.95, 0.9), "veilwild": Color(0.7, 0.55, 1.0),
 		"ironstone": Color(1.0, 0.8, 0.5)}.get(arena_name, Color(1.0, 0.9, 0.7))
 	_mote_col = light_col
+
+
+## A Terrain Rite turns the ground (Phase D): the new arena's floor and the
+## scenery beyond fade in over the old, a wave of its colour runs out across
+## the Circle, and while the Rite holds (`held`) the hall light and the haze
+## take its tint; when it fades they go back.
+func change_arena(p_arena: String, held: bool, dur: float = 1.3) -> void:
+	if p_arena == "" or world == null:
+		return
+	var col: Color = ARENA_LIGHT.get(p_arena, Color(1.0, 0.9, 0.7))
+	floor_wave(Vector3(0, 0.05, 0), col, 9.0, dur * 0.8)
+	flash_light(Vector3(0, 3.0, 0), col, 5.0, dur * 0.7, 14.0)
+	var tw := create_tween().set_parallel(true)
+	var temp := []
+	if p_arena != arena_name:
+		var mt := DuelArt.mat(p_arena)
+		if mt != null:
+			var top := MeshInstance3D.new()
+			top.mesh = _mat.mesh
+			var m2 := StandardMaterial3D.new()
+			m2.roughness = 0.8
+			m2.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+			m2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			m2.albedo_texture = mt
+			m2.albedo_color = Color(1, 1, 1, 0)
+			top.material_override = m2
+			top.position.y = 0.006
+			world.add_child(top)
+			tw.tween_property(m2, "albedo_color:a", 1.0, dur)
+			temp.append(top)
+		var bk := DuelArt.backdrop(p_arena)
+		if bk != null and _back.visible:
+			var front := MeshInstance3D.new()
+			front.mesh = _back.mesh
+			var b2 := StandardMaterial3D.new()
+			b2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			b2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+			b2.albedo_texture = bk
+			b2.albedo_color = Color(0.8, 0.8, 0.9, 0)
+			front.material_override = b2
+			front.position = _back.position + Vector3(0, 0, 0.05)
+			world.add_child(front)
+			tw.tween_property(b2, "albedo_color:a", 1.0, dur)
+			temp.append(front)
+	var hall_to: Color = HALL_COL.lerp(col, 0.5) if held else HALL_COL
+	var fog_to: Color = FOG_COL.lerp(col * 0.35, 0.6) if held else FOG_COL
+	if _hall != null:
+		tw.tween_property(_hall, "light_color", hall_to, dur)
+	if _env != null:
+		tw.tween_property(_env, "fog_light_color", fog_to, dur)
+	await get_tree().create_timer(dur + 0.05).timeout
+	if not is_instance_valid(self) or world == null:
+		return
+	setup(p_arena)   # the new ground goes under the faded-in copy, which then goes
+	for n in temp:
+		(n as Node).queue_free()
 
 
 ## Which side is the player's: their row is the near one.

@@ -70,6 +70,15 @@ static var tribute_tier := 3           # a Basic Totem of this tier and up costs
 static var tribute_two_tier := 5       # ...and from this tier, two
 static var revive_hp := 0.5            # a Totem brought back to the field comes with this much of its HP
 
+# --- the ground and the gods (Phase D) ----------------------------------------------
+static var terrain_turns := 3          # a Terrain Rite holds the ground this many turns
+static var continuous_slots := 2       # Continuous Rites a side
+static var arena_guard := 5            # Ironstone's ground: Guard this much higher
+static var favour_max := 10            # Favour, full
+static var oath_favour := 3            # the Favour an Oath gives when it's sworn
+static var oath_turns := 8             # the Oath of the Swift End: win by this many of your turns
+static var oath_life_cost := 30        # a broken Oath costs this much Life
+
 # --- safety ------------------------------------------------------------------------
 static var max_turns := 60             # a duel this long is a draw
 const MAX_ACTIONS_PER_TURN := 60
@@ -83,7 +92,8 @@ static func tunables() -> Array:
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
 		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns",
-		"rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp"]
+		"rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
+		"terrain_turns", "continuous_slots", "arena_guard", "favour_max", "oath_favour", "oath_turns", "oath_life_cost"]
 
 
 static func snapshot() -> Dictionary:
@@ -132,6 +142,13 @@ static func get_value(key: String):
 		"tribute_tier": return tribute_tier
 		"tribute_two_tier": return tribute_two_tier
 		"revive_hp": return revive_hp
+		"terrain_turns": return terrain_turns
+		"continuous_slots": return continuous_slots
+		"arena_guard": return arena_guard
+		"favour_max": return favour_max
+		"oath_favour": return oath_favour
+		"oath_turns": return oath_turns
+		"oath_life_cost": return oath_life_cost
 	return null
 
 
@@ -176,6 +193,13 @@ static func set_value(key: String, v) -> void:
 		"tribute_tier": tribute_tier = int(v)
 		"tribute_two_tier": tribute_two_tier = int(v)
 		"revive_hp": revive_hp = float(v)
+		"terrain_turns": terrain_turns = int(v)
+		"continuous_slots": continuous_slots = int(v)
+		"arena_guard": arena_guard = int(v)
+		"favour_max": favour_max = maxi(1, int(v))
+		"oath_favour": oath_favour = int(v)
+		"oath_turns": oath_turns = int(v)
+		"oath_life_cost": oath_life_cost = int(v)
 
 
 static func reset() -> void:

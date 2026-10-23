@@ -32,7 +32,9 @@ extends RefCounted
 ##   fx_game_over(winner, reason), fx_phase(pi, phase), fx_stance(totem),
 ##   fx_answer(pi, card, event, depth), fx_chain_done(chain),
 ##   fx_tribute(totem, card), fx_echo(pi, card), fx_search(pi, cards), fx_revive(pi, card),
-##   fx_relic(totem, card), fx_reveal(totem), fx_bond(totem, partner)
+##   fx_relic(totem, card), fx_reveal(totem), fx_bond(totem, partner),
+##   fx_terrain(arena, why), fx_arena_rule(pi, rule, text), fx_continuous(pi, card, gone),
+##   fx_favour(pi, full), fx_oath(pi, oath, state)
 
 signal logged(text: String, who: int)
 signal state_changed
@@ -78,6 +80,28 @@ var life_floor: Array = [0, 0]
 var totem_floor: Array = [0, 0]
 ## The Dominion Law this duel is fought under (a god's id, "ironvault" or ""). See DuelLaws.
 var law := ""
+## The Circle's ground (Phase D): the arena the duel is fought in (set by the
+## screen from the spec, "" for none), and a Terrain Rite's while it holds.
+var arena := ""
+var terrain := {}            # {arena, left (turns), by (who cast it)}
+## Whether the computer may swear Oaths (not in a story duel; Phase D).
+var ai_oaths := true
+## Each arena's standing rule, and what the screen says about it.
+const ARENA_RULES := {
+	"ashford": "The beginner's Circle: no rule.",
+	"tidegrove": "At each Dawn, a Totem on the field is Soaked.",
+	"emberforge": "A Ward that springs Burns the Totem it catches.",
+	"ironstone": "Both duellists' Guard is 5 higher.",
+	"veilwild": "Each duellist's first Totem is called veiled, at no extra cost.",
+	"solhaven": "At your Dawn, if you have fewer Totems than your rival, gain 1 Essence.",
+}
+## The Oaths a duellist can swear (Phase D): at the start of a duel, and once
+## more mid-duel. Kept, the win's Resonance is greater; broken, it costs Life.
+const OATHS := {
+	"swift": {"name": "Oath of the Swift End"},
+	"faith": {"name": "Oath of the Faithful"},
+	"unbowed": {"name": "Oath of the Unbowed"},
+}
 ## Ward card uids that lie face up (Ysolde's Unveiling, or the Unveil Gift).
 var face_up := {}
 ## A story duel's own rules (Master Script v3: every story duel has one rule
@@ -299,6 +323,12 @@ func _take_turn() -> void:
 	await _dawn_relics_and_veils(p)
 	if over:
 		return
+	await _dawn_arena(p)
+	if over:
+		return
+	await _dawn_continuous(p)
+	if over:
+		return
 	phase = "draw"
 	_changed()
 	await _fx("fx_phase", [current, "draw"])
@@ -356,10 +386,67 @@ func _take_turn() -> void:
 		return
 	await _enter_phase("dusk")
 	await _dusk(p)
+	await _oath_dusk(p)
+	await _terrain_tick()
 	_rule_mirror_trial_out(p)
 	if over:
 		return
 	current = 1 - current
+
+
+## The ground the duel is on now: a Terrain Rite's while it holds, else the
+## arena; "" on a set board (the Trial) or when no arena was given.
+func arena_now() -> String:
+	if not puzzle.is_empty():
+		return ""
+	if not terrain.is_empty():
+		return String(terrain.arena)
+	return arena
+
+
+func arena_rule_text() -> String:
+	return String(ARENA_RULES.get(arena_now(), ""))
+
+
+func _refresh_arena_guard() -> void:
+	for p in players:
+		p.arena_guard = DuelRules.arena_guard if arena_now() == "ironstone" else 0
+
+
+## The arena's rule at the Dawn of `p`'s turn (Phase D).
+func _dawn_arena(p: DuelPlayer) -> void:
+	_refresh_arena_guard()
+	match arena_now():
+		"tidegrove":
+			var all := []
+			for pl in players:
+				for t in pl.totems():
+					if not t.has_status("soaked"):
+						all.append(t)
+			if not all.is_empty():
+				var t: DuelTotem = all[rng.randi_range(0, all.size() - 1)]
+				_log("The tide rises in the Circle: %s is Soaked." % t.card_name(), -1)
+				await _fx("fx_arena_rule", [p.index, "tidegrove", "%s is Soaked" % t.card_name()])
+				await _apply_status(t, "soaked", null, -1)
+		"solhaven":
+			if p.totems().size() < opponent(p.index).totems().size():
+				p.essence += 1
+				_log("The sun favours the outnumbered: %s gains 1 Essence." % p.player_name, p.index)
+				await _fx("fx_arena_rule", [p.index, "solhaven", "+1 Essence"])
+
+
+## A Terrain Rite's turns run down at each Dusk; when it's spent the ground
+## goes back to the arena.
+func _terrain_tick() -> void:
+	if terrain.is_empty():
+		return
+	terrain.left = int(terrain.left) - 1
+	if int(terrain.left) <= 0:
+		var was := String(terrain.arena)
+		terrain = {}
+		_refresh_arena_guard()
+		_log("The ground of %s fades; the Circle is itself again." % was.capitalize(), -1)
+		await _fx("fx_terrain", [arena_now(), "fade"])
 
 
 func _enter_phase(name: String) -> void:
@@ -441,6 +528,12 @@ func phase_problem(kind: String) -> String:
 		"shift":
 			if phase != "main" and phase != "main2":
 				return "Shifting happens in a Main phase, not the Clash."
+		"demigod":
+			if phase != "main":
+				return "A Demigod is called down in the Main phase, before the Clash."
+		"oath":
+			if phase != "main" and phase != "main2":
+				return "Oaths are sworn in a Main phase, not the Clash."
 	return ""
 
 
@@ -608,6 +701,7 @@ func _finish(w: int, reason: String) -> void:
 	win_reason = reason
 	phase = "over"
 	_log(reason, -2)
+	_settle_oaths(w)
 
 
 # ================================================================ actions ===
@@ -645,6 +739,14 @@ func perform(pi: int, action: Dictionary) -> bool:
 			await _act_stance(pi, action.totem, String(action.stance))
 		"relic":
 			await _act_relic(pi, action.card, action.target)
+		"demigod":
+			await _act_demigod(pi, action.get("target"))
+		"oath":
+			await _act_oath(pi, String(action.get("oath", "")))
+	if not over:
+		await _favour_after(pi, action)
+	if not over:
+		await _check_oaths()
 	_changed()
 	return true
 
@@ -666,7 +768,7 @@ func action_problem(pi: int, action: Dictionary) -> String:
 	match kind:
 		"call":
 			var cp := call_problem(pi, action.get("card"), int(action.get("slot", -1)), action.get("tributes", []) if tributes_needed(action.get("card")) > 0 else null)
-			if cp == "" and bool(action.get("veiled", false)) and call_cost(pi, action.get("card")) + 1 > players[pi].essence:
+			if cp == "" and bool(action.get("veiled", false)) and not free_veil(pi) and call_cost(pi, action.get("card")) + 1 > players[pi].essence:
 				return "Calling it veiled costs %d Essence." % (call_cost(pi, action.get("card")) + 1)
 			return cp
 		"ascend":
@@ -687,6 +789,10 @@ func action_problem(pi: int, action: Dictionary) -> String:
 			return stance_problem(pi, action.get("totem"), String(action.get("stance", "")))
 		"relic":
 			return relic_problem(pi, action.get("card"), action.get("target"))
+		"demigod":
+			return demigod_problem(pi, action.get("target"))
+		"oath":
+			return oath_problem(pi, String(action.get("oath", "")))
 	return "Unknown action."
 
 
@@ -716,8 +822,10 @@ func card_cost(pi: int, card: DuelCard) -> int:
 		return c
 	var el := card.element()
 	var d := _rule_sunspire_mirror_discount(pi, card)
-	if law == "" and d == 0:
+	if law == "" and d == 0 and not (card.is_ward() and not standing(1 - pi, "foe_ward_tax").is_empty()):
 		return c
+	if card.is_ward() and not standing(1 - pi, "foe_ward_tax").is_empty():
+		d += 1   # (Iron Tithe, on the other side)
 	match law:
 		"pyrrhane":
 			if el == "fire": d -= 1
@@ -904,6 +1012,12 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 			"relic_hunt":
 				if not p.discard.any(func(c): return (c as DuelCard).kind() == "relic"):
 					return "There's no Relic in your discard."
+			"unbind":
+				if opponent(pi).continuous.is_empty():
+					return "Your rival has no standing Rite to unbind."
+			"terrain":
+				if not puzzle.is_empty():
+					return "The mirrors' ground can't be turned."
 			"heal":
 				if e.get("who", "") == "target" and target != null and target is DuelTotem \
 						and target.damage == 0 and not target.has_condition():
@@ -1063,7 +1177,8 @@ func ready_problem(pi: int, t) -> String:
 		return "%s is resting this turn." % t.card_name()
 	if turn == 1:
 		return "Nobody can attack on the first turn of the duel."
-	if t.called_turn == turn and not t.has_keyword("swift"):
+	if t.called_turn == turn and not t.has_keyword("swift") \
+			and not (t.element() == "storm" and not standing(pi, "storm_swift").is_empty()):
 		return "%s was called this turn. It can attack next turn." % t.card_name()
 	if t.asleep:
 		return "%s is asleep." % t.card_name()
@@ -1367,7 +1482,7 @@ func summon_needs_target(card: DuelCard) -> bool:
 
 func gift_problem(pi: int, target = null) -> String:
 	var p: DuelPlayer = players[pi]
-	if p.gift_used:
+	if p.gift_used and not p.favour_ready:
 		return "You've already used your Divine Gift this duel."
 	if law == "ironvault":
 		return "Ironvault's Ledger Law forbids Divine Gifts."
@@ -1531,7 +1646,11 @@ func _rule_showboat_owed(pi: int):
 
 func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free := false, veiled := false) -> void:
 	var p: DuelPlayer = players[pi]
-	var c := 0 if free else call_cost(pi, card) + (1 if veiled else 0)
+	var veil_free := free_veil(pi)
+	if arena_now() == "veilwild" and p.stats.totems_called == 0 and not free:
+		veiled = true   # the veilwild veils each duellist's first call, free
+		veil_free = true
+	var c := 0 if free else call_cost(pi, card) + (1 if veiled and not veil_free else 0)
 	_spend(p, c)
 	p.hand.erase(card)
 	p.discard.erase(card)
@@ -1686,8 +1805,301 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 	elif target is DuelTotem and dmg > 0:
 		dealt = await _damage_totem(target, _scaled(dmg, target, card.element()), {"spill": true, "element": card.element()})
 	await _apply_effects(pi, null, target, effects, dealt, true)
-	p.discard.append(card)
+	if bool(d.get("continuous", false)):
+		await _stand_continuous(pi, card)
+	else:
+		p.discard.append(card)
 	await _resolve_knockouts()
+
+
+# ------------------------------------------------- continuous rites (Phase D) ---
+
+## A Continuous Rite takes its place on its side; with the slots full, the
+## oldest goes to the discard.
+func _stand_continuous(pi: int, card: DuelCard) -> void:
+	var p: DuelPlayer = players[pi]
+	if p.continuous.size() >= DuelRules.continuous_slots:
+		await _remove_continuous(pi, p.continuous[0], "replaced")
+	p.continuous.append(card)
+	p.stats.continuous += 1
+	_log("%s stands on %s side of the Circle." % [card.card_name(), whose(p.player_name, true)], pi)
+	await _fx("fx_continuous", [pi, card, false])
+
+
+func _remove_continuous(pi: int, card: DuelCard, why: String) -> void:
+	var p: DuelPlayer = players[pi]
+	if not p.continuous.has(card):
+		return
+	p.continuous.erase(card)
+	p.discard.append(card)
+	_log("%s is %s." % [card.card_name(), why], pi)
+	await _fx("fx_continuous", [pi, card, true])
+
+
+## Whether a standing Rite on `pi`'s side does this ({} if none does).
+func standing(pi: int, key: String) -> Dictionary:
+	for c in players[pi].continuous:
+		var st: Dictionary = (c as DuelCard).def.get("standing", {})
+		if st.has(key):
+			return st
+	return {}
+
+
+## Shadow Veil: the first Totem each turn may be called veiled at no extra cost.
+func free_veil(pi: int) -> bool:
+	return not standing(pi, "free_veil").is_empty() and players[pi].totems_called == 0
+
+
+# ---------------------------------------------------------- favour (Phase D) ---
+
+## The element that fills `pi`'s Favour: their god's ("" for the Unsworn, who
+## fill it from any element, at half pace).
+func favour_element(pi: int) -> String:
+	var g: String = (players[pi] as DuelPlayer).patron()
+	if g == "" or not Lore.GODS.has(g):
+		return ""
+	return String(Lore.GODS[g].element)
+
+
+## Each god's way, by the god's attribute: the actions that fill Favour as
+## well as the god's element does (Phase D).
+## (In half points a time: the rarer the action, the more it fills.)
+const WAYS := {"presence": {"call": 3, "summon": 4}, "might": {"attack": 2}, "resolve": {"stance": 6, "ward": 6},
+	"swiftness": {"shift": 2, "attack": 1}, "cunning": {"ward": 6, "rite": 4}, "insight": {"rite": 2, "ascend": 4},
+	"intellect": {"rite": 5, "relic": 6}}
+const WAY_WORDS := {"call": "calling Totems", "summon": "Summons", "attack": "attacking", "stance": "taking stances",
+	"ward": "setting Wards", "shift": "shifting", "rite": "casting Rites", "ascend": "Ascending", "relic": "giving Relics"}
+
+
+func favour_way(pi: int) -> Dictionary:
+	var g: String = (players[pi] as DuelPlayer).patron()
+	if g == "" or not Lore.GODS.has(g):
+		return {}
+	return WAYS.get(String(Lore.GODS[g].get("attribute", "")), {})
+
+
+## How Favour fills for `pi`, in words.
+func favour_text(pi: int) -> String:
+	var el := favour_element(pi)
+	if el == "":
+		return "Favour fills a little with every card you play and every attack, from any element."
+	var ways := []
+	for w in favour_way(pi).keys():
+		ways.append(String(WAY_WORDS.get(w, w)))
+	return "Favour fills when you play %s cards, attack with %s Totems, or follow %s's way: %s.%s" % [
+		el.capitalize(), el.capitalize(), Lore.GODS[(players[pi] as DuelPlayer).patron()].name, " and ".join(ways),
+		" Under %s's own Law, twice as fast." % Lore.GODS[(players[pi] as DuelPlayer).patron()].name if law == (players[pi] as DuelPlayer).patron() else ""]
+
+
+## The Demigod Summon of `pi`'s god (by its element), "" if it has none.
+func demigod_of(pi: int) -> String:
+	var el := favour_element(pi)
+	if el == "":
+		return ""
+	for id in DuelCards.CARDS:
+		var d: Dictionary = DuelCards.CARDS[id]
+		if d.kind == "summon" and String(d.get("element", "")) == el:
+			return id
+	return ""
+
+
+## What full Favour opens, in words.
+func favour_offer_text(pi: int) -> String:
+	var dg := demigod_of(pi)
+	var gift_word := "Unbound Will, stronger" if players[pi].patron() == "" else "a second %s" % Lore.GIFTS[players[pi].gift()].name
+	if dg != "":
+		return "%s, or %s free" % [gift_word, DuelCards.CARDS[dg].name]
+	return gift_word
+
+
+## After an action: playing your god's element fills your Favour (the Law's
+## own god's, double; the Unsworn, from anything at half pace).
+func _favour_after(pi: int, action: Dictionary) -> void:
+	var p: DuelPlayer = players[pi]
+	if p.favour_ready or not puzzle.is_empty():
+		return
+	var el := ""
+	var kind := String(action.get("type", ""))
+	match kind:
+		"call", "ascend", "rite", "summon", "relic", "ward":
+			var c = action.get("card")
+			if c is DuelCard:
+				el = (c as DuelCard).element()
+		"attack":
+			var t = action.get("attacker")
+			if t is DuelTotem:
+				el = (t as DuelTotem).element()
+	var want := favour_element(pi)
+	var gain := 0
+	if want == "":
+		gain = 1 if el != "" and el != "any" else 0   # (the Unsworn: anything, at half pace)
+	else:
+		if el == want:
+			gain += 2
+		gain += int(favour_way(pi).get(kind, 0))
+		if law == p.patron():
+			gain *= 2   # (the Law's own god: twice as fast)
+	await _add_favour(p, gain)
+
+
+func _add_favour(p: DuelPlayer, half_points: int) -> void:
+	if p.favour_ready or half_points <= 0:
+		return
+	p.favour2 = mini(DuelRules.favour_max * 2, p.favour2 + half_points)
+	if p.favour2 >= DuelRules.favour_max * 2:
+		p.favour_ready = true
+		p.stats.favour_fills += 1
+		_log("%s Favour is full: %s." % [whose(p.player_name), favour_offer_text(p.index)], p.index)
+		await _fx("fx_favour", [p.index, true])
+
+
+func _spend_favour(p: DuelPlayer) -> void:
+	p.favour2 = 0
+	p.favour_ready = false
+
+
+func demigod_problem(pi: int, target = null) -> String:
+	var p: DuelPlayer = players[pi]
+	if not p.favour_ready:
+		return "Your Favour isn't full."
+	var id := demigod_of(pi)
+	if id == "":
+		return "Your god has no Demigod to send." if p.patron() != "" else "The Unsworn have no Demigod."
+	if String(DuelCards.CARDS[id].move.get("target", "foe_totem")) == "foe_totem":
+		var ts := targetable(opponent(pi).totems())
+		if ts.is_empty():
+			return "There's no enemy Totem to strike."
+		if target != null and not ts.has(target):
+			return "Not a valid target."
+	return ""
+
+
+## Full Favour, spent on the god's Demigod: it comes down free, from no card
+## (nothing to answer, no Ward to spring), strikes and goes back.
+func _act_demigod(pi: int, target) -> void:
+	var p: DuelPlayer = players[pi]
+	var id := demigod_of(pi)
+	_spend_favour(p)
+	p.stats.demigods += 1
+	var card := DuelCard.new(-100 - pi * 10 - int(p.stats.demigods), id, pi)   # (from no deck: on no pile)
+	_log("%s Favour brings %s down from the heavens!" % [whose(p.player_name), card.card_name()], pi)
+	await _summon_strike(pi, card, target)
+	_log("%s returns to the heavens." % card.card_name(), pi)
+	await _resolve_knockouts()
+
+
+# ----------------------------------------------------------- oaths (Phase D) ---
+
+## An Oath's words.
+func oath_text(id: String, pi: int = -1) -> String:
+	match id:
+		"swift":
+			return "Win by your %s turn." % ["", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth", "eleventh", "twelfth"][clampi(DuelRules.oath_turns, 1, 12)]
+		"faith":
+			var el := favour_element(pi) if pi >= 0 else ""
+			return "Win with a %s Totem on your side of the field." % el.capitalize() if el != "" else "Win with a Totem of your god's element on your side of the field."
+		"unbowed":
+			return "Never let your Life fall under half."
+	return ""
+
+
+func own_turns(pi: int) -> int:
+	return DuelRewards.turns_taken(self, pi)
+
+
+func oath_problem(pi: int, id: String) -> String:
+	if not OATHS.has(id):
+		return "There's no such Oath."
+	if not puzzle.is_empty():
+		return "The mirrors take no Oaths."
+	var p: DuelPlayer = players[pi]
+	if p.oath_state == "sworn":
+		return "You're already bound by an Oath."
+	var start := own_turns(pi) <= 1
+	if start and p.oath_start_used:
+		return "You've sworn your Oath for the start of the duel."
+	if not start and p.oath_mid_used:
+		return "You've sworn your Oath for this duel."
+	match id:
+		"faith":
+			if favour_element(pi) == "":
+				return "The Unsworn have no god's element to swear by."
+		"swift":
+			if own_turns(pi) >= DuelRules.oath_turns:
+				return "It's too late in the duel for that Oath."
+		"unbowed":
+			if p.life * 2 < p.max_life:
+				return "Your Life is already under half."
+	return ""
+
+
+func _act_oath(pi: int, id: String) -> void:
+	var p: DuelPlayer = players[pi]
+	if own_turns(pi) <= 1:
+		p.oath_start_used = true
+	else:
+		p.oath_mid_used = true
+	p.oath = id
+	p.oath_state = "sworn"
+	p.stats.oaths += 1
+	_log("%s swears the %s: %s" % [p.player_name, OATHS[id].name, oath_text(id, pi)], pi)
+	await _fx("fx_oath", [pi, id, "sworn"])
+	await _add_favour(p, DuelRules.oath_favour * 2)
+
+
+## Oaths that can break at any moment (the Unbowed's Life).
+func _check_oaths() -> void:
+	for p in players:
+		if over:
+			return
+		if p.oath_state == "sworn" and p.oath == "unbowed" and p.life * 2 < p.max_life:
+			await _break_oath(p)
+
+
+## The Swift End breaks at the Dusk of the turn it named, if the duel goes on.
+func _oath_dusk(p: DuelPlayer) -> void:
+	if over:
+		return
+	await _check_oaths()
+	if not over and p.oath_state == "sworn" and p.oath == "swift" and own_turns(p.index) >= DuelRules.oath_turns:
+		await _break_oath(p)
+
+
+func _break_oath(p: DuelPlayer) -> void:
+	p.oath_state = "broken"
+	p.stats.oaths_broken += 1
+	_log("%s breaks the %s, and it costs %d Life." % [p.player_name, OATHS[p.oath].name, DuelRules.oath_life_cost], p.index)
+	await _fx("fx_oath", [p.index, p.oath, "broken"])
+	await _hit_life(p.index, DuelRules.oath_life_cost, {"no_guard": true, "source": "oath"})
+
+
+## At the end: the winner's Oath is kept or broken (the loser's no longer matters).
+func _settle_oaths(w: int) -> void:
+	if w < 0 or w > 1:
+		return
+	var p: DuelPlayer = players[w]
+	if p.oath_state != "sworn":
+		return
+	var kept := true
+	match p.oath:
+		"swift":
+			kept = own_turns(w) <= DuelRules.oath_turns
+		"faith":
+			kept = p.totems().any(func(t): return (t as DuelTotem).element() == favour_element(w))
+		"unbowed":
+			kept = p.life * 2 >= p.max_life
+	p.oath_state = "kept" if kept else "broken"
+	p.stats["oaths_kept" if kept else "oaths_broken"] += 1
+	_log("%s %s the %s." % [p.player_name, "keeps" if kept else "breaks", OATHS[p.oath].name], w)
+
+
+## Standing Rites that act at their owner's Dawn.
+func _dawn_continuous(p: DuelPlayer) -> void:
+	var st := standing(p.index, "dawn_heal")
+	if not st.is_empty():
+		for t in p.totems():
+			if t.damage > 0:
+				await _heal(t, int(st.dawn_heal))
 
 
 # ---------------------------------------------------------------- attacks ---
@@ -1697,6 +2109,9 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 	if base <= 0:
 		return 0
 	var amt := base + att.damage_bonus(i)
+	var ed := standing(att.owner, "element_damage")
+	if not ed.is_empty() and att.element() == String(ed.element):
+		amt += int(ed.amount)
 	if players[att.owner].wrath:
 		amt += DuelRules.wrath_bonus
 	if rule_scrapper(att.owner):
@@ -1867,6 +2282,10 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 			if target.has_keyword("thorns") and not t.is_knocked_out():
 				_log("%s is pricked by thorns." % t.card_name(), pi)
 				await _damage_totem(t, DuelRules.thorns_damage, {"source": "thorns", "attacker": target})
+			var hedge := standing(target.owner, "thorn_all")
+			if not hedge.is_empty() and not t.is_knocked_out():
+				_log("The hedge tears at %s." % t.card_name(), pi)
+				await _damage_totem(t, int(hedge.amount), {"source": "thorns"})
 	if over:
 		return
 	await _apply_effects(pi, t, target, effects, dealt)
@@ -1964,6 +2383,15 @@ func _act_summon(pi: int, card: DuelCard, target) -> void:
 		_log("%s is sealed away before it can strike!" % card.card_name(), pi)
 		p.spent.append(card)
 		return
+	await _summon_strike(pi, card, target)
+	p.spent.append(card)
+	_log("%s returns to the heavens." % card.card_name(), pi)
+	await _resolve_knockouts()
+
+
+## A Summon's descent and its one great blow.
+func _summon_strike(pi: int, card: DuelCard, target) -> void:
+	var mv: Dictionary = card.def.move
 	await _fx("fx_summon", [pi, card])
 	var base := int(mv.get("damage", 0))
 	var effects: Array = mv.get("effects", [])
@@ -1985,9 +2413,6 @@ func _act_summon(pi: int, card: DuelCard, target) -> void:
 				if f != target:
 					await _apply_status(f, "stun", null, pi)
 	await _apply_effects(pi, null, target, effects, dealt)
-	p.spent.append(card)
-	_log("%s returns to the heavens." % card.card_name(), pi)
-	await _resolve_knockouts()
 
 
 # ------------------------------------------------------------------ gifts ---
@@ -1996,7 +2421,11 @@ func _act_gift(pi: int, target) -> void:
 	var p: DuelPlayer = players[pi]
 	var foe := opponent(pi)
 	var g := p.gift()
+	var by_favour := p.gift_used   # (the Gift is spent: this one is the Favour's, Phase D)
 	p.gift_used = true
+	if by_favour:
+		_spend_favour(p)
+		_log("Favour opens the way again.", pi)
 	_log("%s calls on %s!" % [p.player_name, Lore.GIFTS[g].name], pi)
 	await _fx("fx_gift", [pi, g])
 	match g:
@@ -2045,9 +2474,13 @@ func _act_gift(pi: int, target) -> void:
 					p.hand.append(c)
 					_log("%s returns %s to their hand." % [p.player_name, c.card_name()], pi)
 		"unbound":
-			var drawn := await _draw(p, 2)
+			# (full Favour makes Unbound Will stronger: three cards and an Essence)
+			var drawn := await _draw(p, 3 if by_favour else 2)
 			if not drawn.is_empty():
 				await _fx("fx_draw", [pi, drawn])
+			if by_favour:
+				p.essence += 1
+				_log("%s Unbound Will runs strong: 1 Essence more." % whose(p.player_name), pi)
 		"contagion":
 			for t in foe.totems():
 				await _damage_totem(t, 10, {"spill": true, "element": "venom"})
@@ -2230,6 +2663,19 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 					p.discard.erase(c)
 					p.deck.append(c)   # (the top of the deck is the end of the list)
 					_log("%s puts %s on top of the deck." % [p.player_name, c.card_name()], pi)
+			"terrain":
+				var was := arena_now()
+				terrain = {"arena": String(e.arena), "left": DuelRules.terrain_turns, "by": pi}
+				_refresh_arena_guard()
+				p.stats.terrains += 1
+				_log("The ground turns: %s for %d turns." % [String(e.arena).capitalize(), DuelRules.terrain_turns], pi)
+				await _fx("fx_terrain", [String(e.arena), "rite" if was != String(e.arena) else "renew"])
+			"unbind":
+				var opts: Array = opponent(pi).continuous.duplicate()
+				if not opts.is_empty():
+					var pick: Array = await p.controller.choose_cards(self, pi, "Unbind one of their standing Rites.", opts, 1, 1, {"reason": "unbind"})
+					var c: DuelCard = pick[0] if not pick.is_empty() and opts.has(pick[0]) else opts[0]
+					await _remove_continuous(1 - pi, c, "unbound")
 			"relic_hunt":
 				var opts: Array = p.discard.filter(func(c): return (c as DuelCard).kind() == "relic")
 				if not opts.is_empty():
@@ -2657,6 +3103,11 @@ func _spring_wards(owner_pi: int, trigger: String, ctx: Dictionary) -> Dictionar
 ## in answer).
 func _apply_ward_effects(w: DuelCard, owner_pi: int, ctx: Dictionary, res: Dictionary) -> void:
 	var p: DuelPlayer = players[owner_pi]
+	if arena_now() == "emberforge":
+		var caught = ctx.get("attacker") if ctx.get("attacker") is DuelTotem else ctx.get("called")
+		if caught is DuelTotem and not caught.is_knocked_out():
+			_log("The forge's heat catches %s as the Ward springs." % caught.card_name(), owner_pi)
+			await _apply_status(caught, "burn", null, owner_pi)
 	for e in w.def.effects:
 		match e.op:
 			"negate":

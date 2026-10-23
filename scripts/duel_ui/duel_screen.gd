@@ -82,6 +82,7 @@ var _won_resonance := 0
 var _zoom_at := Vector2(1000, 476)
 var _started := false
 var _arena_name := "solhaven"
+var arena_label: Label        # the Circle's rule, under the turn count (Phase D)
 var _pinch := false
 var field: DuelField3D = null    # the 3D field, when the 3D setting is on
 var _herald: PaleHerald = null   # a Pale Herald watching at the Circle's edge (spec.herald_at)
@@ -318,7 +319,10 @@ func _build() -> void:
 	# Ward zones and Life plates down the left
 	for side in 2:
 		var wz := DuelViews.WardZone.new()
-		wz.size = Vector2(400, 126)
+		wz.size = Vector2(418, 140)
+		wz.standing_tapped.connect(func(c: DuelCard) -> void:
+			sfx.play("ui_select")
+			_show_detail(c.id))
 		stage.add_child(wz)
 		ward_zones.append(wz)
 	for side in 2:
@@ -345,6 +349,11 @@ func _build() -> void:
 	_pin(turn_label, Vector2(26, 456), false)
 	turn_label.size = Vector2(390, 44)
 	stage.add_child(turn_label)
+	arena_label = UITheme.label("", 19, UITheme.TEXT_DIM, "body", 4)
+	_pin(arena_label, Vector2(26, 500), false)
+	arena_label.size = Vector2(390, 120)
+	arena_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stage.add_child(arena_label)
 	# the card being looked at (shown when something is tapped)
 	detail = DetailCard.new()
 	detail.position = _detail_pos()
@@ -429,6 +438,17 @@ func _build_lab() -> void:
 	var lg := UITheme.button("Duel log", false, 500)
 	lg.pressed.connect(func() -> void: log_panel.visible = not log_panel.visible)
 	box.add_child(lg)
+	var oath_b := UITheme.button("Swear an Oath", false, 500)
+	oath_b.pressed.connect(func() -> void:
+		lab_panel.visible = false
+		log_panel.visible = false
+		if mode != "main":
+			_toast("Oaths are sworn on your turn.")
+		elif not _oath_available():
+			_toast("No Oath can be sworn now." if _oaths_open() else "Not in this duel.")
+		else:
+			_offer_oaths())
+	box.add_child(oath_b)
 	box.add_child(UITheme.label("Animation speed", 24, UITheme.TEXT_DIM))
 	var sp := HBoxContainer.new()
 	sp.add_theme_constant_override("separation", 10)
@@ -544,6 +564,9 @@ func _start() -> void:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
 	game.law = String(spec.get("law", ""))
 	game.story_rules = spec.get("story_rules", {})
+	# the Circle's own rule (Phase D); a story duel's own rule stands in its place
+	game.arena = "" if (spec.has("rule") or not game.story_rules.is_empty()) else _arena_name
+	game.ai_oaths = not bool(spec.get("story", false))   # (story rivals don't swear)
 	game.life_scale = float(spec.get("life_scale", 1.0))
 	game.kept_back = (spec.get("kept_back", [[], []]) as Array).duplicate(true)
 	game.puzzle = spec.get("puzzle", {})
@@ -627,6 +650,7 @@ func _refresh() -> void:
 	var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
 	if game.turn > 0:
 		turn_label.text = "TURN %d  ·  %s" % [game.turn, whose]
+	arena_label.text = _arena_line()
 	var my_turn := mode == "main"
 	if game.over:
 		end_btn.state = "off"
@@ -641,8 +665,11 @@ func _refresh() -> void:
 	var mp: DuelPlayer = game.players[me]
 	gift_btn.god = mp.patron()
 	gift_btn.gift_name = Lore.GIFTS[mp.gift()].name
-	gift_btn.used = mp.gift_used
-	gift_btn.enabled = my_turn and game.gift_problem(me) == ""
+	gift_btn.used = mp.gift_used and not mp.favour_ready
+	gift_btn.enabled = my_turn and (game.gift_problem(me) == "" or game.demigod_problem(me) == "")
+	gift_btn.favour = clampf(mp.favour() / maxf(1.0, DuelRules.favour_max), 0.0, 1.0)
+	gift_btn.favour_ready = mp.favour_ready
+	gift_btn.favour_col = DuelFX.light(Lore.GODS[mp.patron()].element) if mp.patron() != "" and Lore.GODS.has(mp.patron()) else UITheme.GOLD
 
 
 func _watching() -> bool:
@@ -1088,6 +1115,33 @@ func _on_gift() -> void:
 	if tutor != null and tutor.gating():
 		tutor.nudge()
 		return
+	var mp: DuelPlayer = game.players[me]
+	if mp.favour_ready:
+		# full Favour (Phase D): the Gift again, or the god's Demigod, free
+		_clear_selection()
+		_clear_actions()
+		_hide_detail()
+		_menu_anchor = Vector2(-1, -1)
+		_menu_beside = 0
+		_add_note("Your Favour is full: %s. Either one empties it." % game.favour_offer_text(me))
+		var g0: String = mp.gift()
+		var gp := game.gift_problem(me)
+		var gsub := DuelCards.gift_text(g0)
+		if g0 == "unbound" and mp.gift_used:
+			gsub = "Draw 3 cards and gain 1 Essence."
+		_add_action(("%s again" if mp.gift_used else "%s") % Lore.GIFTS[g0].name, gsub if gp == "" else gp, 0, gp == "", _begin_gift, "gift")
+		var dg := game.demigod_of(me)
+		if dg != "":
+			var dp := game.demigod_problem(me)
+			_add_action("%s, free" % DuelCards.CARDS[dg].name, DuelCards.card_text(dg) if dp == "" else dp, 0, dp == "", _begin_demigod, "demigod")
+		_show_cancel()
+		_set_hint("Full Favour: choose what it brings.")
+		_refresh()
+		return
+	_begin_gift()
+
+
+func _begin_gift() -> void:
 	var prob := game.gift_problem(me)
 	if prob != "":
 		_toast(prob)
@@ -1111,6 +1165,59 @@ func _on_gift() -> void:
 	targets = ts
 	_set_hint("%s: choose one of your Totems." % Lore.GIFTS[g].name)
 	_show_cancel()
+	_refresh()
+
+
+## Full Favour spent on the god's Demigod (Phase D).
+func _begin_demigod() -> void:
+	var prob := game.demigod_problem(me)
+	if prob != "":
+		_toast(prob)
+		return
+	var dc := DuelCard.new(-1, game.demigod_of(me), me)
+	_clear_actions()
+	if not game.summon_needs_target(dc):
+		_respond({"type": "demigod"})
+		return
+	pending = "demigod"
+	targets = game.targetable(game.players[rival].totems())
+	_set_hint("%s: choose the enemy Totem it strikes." % dc.card_name())
+	_show_cancel()
+	_refresh()
+
+
+## Oaths (Phase D): open at the start of the duel and once mid-duel, not in a
+## lesson or on the mirrors' board.
+func _oaths_open() -> bool:
+	return game != null and tutor == null and game.puzzle.is_empty() and not bool(spec.get("no_oaths", false))
+
+
+func _oath_available() -> bool:
+	if not _oaths_open() or game.phase_problem("oath") != "":
+		return false
+	for id in DuelGame.OATHS:
+		if game.oath_problem(me, id) == "":
+			return true
+	return false
+
+
+## The three Oaths, as choices.
+func _offer_oaths() -> void:
+	if mode != "main" or not _oaths_open():
+		return
+	_clear_selection()
+	_clear_actions()
+	_hide_detail()
+	_menu_anchor = Vector2(-1, -1)
+	_menu_beside = 0
+	_add_note("Swear an Oath. Keep it and your win is worth more Resonance; it fills %d Favour now. Break it and it costs %d Life." % [DuelRules.oath_favour, DuelRules.oath_life_cost])
+	for id in DuelGame.OATHS:
+		var prob := game.oath_problem(me, id)
+		var oid: String = id
+		_add_action(String(DuelGame.OATHS[id].name), game.oath_text(id, me) if prob == "" else prob, 0, prob == "",
+			func() -> void: _respond({"type": "oath", "oath": oid}), "oath:" + id)
+	_show_cancel()
+	_set_hint("Choose an Oath, or cancel.")
 	_refresh()
 
 
@@ -1353,6 +1460,8 @@ func _resolve(target) -> void:
 			_respond({"type": "attack", "attacker": sel_totem, "move": sel_move, "target": target})
 		"gift":
 			_respond({"type": "gift", "target": target})
+		"demigod":
+			_respond({"type": "demigod", "target": target})
 		"relic":
 			_respond({"type": "relic", "card": sel_card, "target": target})
 
@@ -1514,6 +1623,9 @@ func _show_actions_default() -> void:
 				_set_hint("Set your stances, or on to the Clash.")
 			else:
 				_set_hint("Nothing left to do: end your turn.")
+			# the Oath at the start of the duel (Phase D): offered on the first turn
+			if game.own_turns(me) <= 1 and _oath_available():
+				_add_action("Swear an Oath", "Now, at the start, and once more mid-duel from the Menu.", 0, true, _offer_oaths, "oath")
 
 
 func _show_cancel() -> void:
@@ -2005,6 +2117,120 @@ func fx_bond(t: DuelTotem, partner: DuelTotem) -> void:
 
 
 ## A Totem given up for a Tribute call: its light rises and goes.
+## The ground's name and rule, under the turn count (Phase D).
+func _arena_line() -> String:
+	if game == null:
+		return ""
+	var a := game.arena_now()
+	if a == "":
+		return ""
+	var nm := a.to_upper()
+	if not game.terrain.is_empty():
+		var left := int(game.terrain.left)
+		nm += "  ·  %d TURN%s LEFT" % [left, "" if left == 1 else "S"]
+	return "%s\n%s" % [nm, game.arena_rule_text()]
+
+
+## The ground turns (Phase D): a Terrain Rite takes the Circle, or one fades.
+func fx_terrain(a: String, why: String) -> void:
+	var look := a if a != "" else _arena_name
+	var col: Color = ARENA_MOTES.get(look, UITheme.GOLD)
+	sfx.play("ascend")
+	if field != null:
+		field.change_arena(look, why != "fade")
+	elif _arena != null:
+		_arena.fade_to(DuelArt.arena(look))
+	if _arena != null:
+		_arena.mote_col = col
+	DuelFX.shockwave(fx_layer, Vector2(FIELD_CX, 476), col, 520.0, 0.8)
+	if why == "fade":
+		_toast("The ground fades: %s again" % look.capitalize())
+	else:
+		_toast("The ground turns: %s" % look.capitalize())
+	_refresh()
+	await pause(1.0)
+	if tutor != null and why != "fade":
+		await tutor.lesson("terrain", "The ground's changed under us. A Terrain Rite turns the Circle into another place for three turns, and that place's rule with it. Read the corner: it says what the ground does now.", "The Circle", "")
+
+
+## The Circle's own rule acts (Phase D).
+func fx_arena_rule(pi: int, rule: String, text: String) -> void:
+	var col: Color = ARENA_MOTES.get(rule, UITheme.GOLD)
+	if field != null:
+		field.floor_wave(Vector3(0, 0.05, 0), col, 6.0, 0.6)
+	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 420), "%s: %s" % [rule.capitalize(), text], col, 28, 1.4)
+	if tutor != null:
+		await tutor.lesson("arena_rule", "Every Circle has a rule of its own, all duel long, for both of you. It's written in the corner under the turn. Ashford's green has none: that's why we learn there.", "The Circle", "")
+	await pause(0.45)
+
+
+## A Continuous Rite takes its place on its side, or leaves it (Phase D).
+func fx_continuous(pi: int, card: DuelCard, gone: bool) -> void:
+	_refresh()
+	var wz: DuelViews.WardZone = ward_zones[pi]
+	var j := maxi(0, game.players[pi].continuous.find(card))
+	var at: Vector2 = wz.position + (wz.standing_rect(j).get_center() if not gone else wz.card_rect(0).get_center())
+	var col := DuelViews.WardZone.CONT_COL
+	sfx.play("ward_set" if not gone else "ward_spring")
+	DuelFX.flash(fx_layer, at, col, 90.0, 0.35)
+	if not gone:
+		DuelFX.rise(fx_layer, at, col, 70.0, 16)
+		_toast("%s stands" % card.card_name())
+	else:
+		_toast("%s is gone" % card.card_name())
+	await pause(0.5)
+	if tutor != null and not gone:
+		await tutor.lesson("continuous", "That one doesn't go to the discard. A Continuous Rite stands beside the Wards and keeps working, two a side, till it's unbound or a third pushes the oldest out. Tap it to read it.", "Continuous Rites", "")
+
+
+## Favour fills to the brim (Phase D).
+func fx_favour(pi: int, full: bool) -> void:
+	_refresh()
+	if not full:
+		return
+	var p: DuelPlayer = game.players[pi]
+	var pan: DuelViews.PlayerPanel = panels[pi]
+	var at := pan.position + pan.portrait_center()
+	var col: Color = DuelFX.light(Lore.GODS[p.patron()].element) if p.patron() != "" and Lore.GODS.has(p.patron()) else UITheme.GOLD
+	sfx.play("gift")
+	DuelFX.flash(fx_layer, at, col, 140.0, 0.45)
+	DuelFX.shockwave(fx_layer, at, col, 170.0, 0.5)
+	DuelFX.rise(fx_layer, at, col, 90.0, 20)
+	_toast("%s Favour is full" % ("Your" if pi == me else _whose(p.player_name)))
+	await pause(0.6)
+	if tutor != null and pi == me:
+		await tutor.lesson("favour", "Feel that? Your god's noticed you. Favour fills as you play your god's element and follow its way; full, it opens your Gift again, or brings your god's Demigod down for nothing. Tap the Gift.", "Favour", "")
+	elif tutor != null:
+		await tutor.lesson("favour_rival", "Their god's noticed them: the ring round their seal is full. That's a second Gift coming, or worse. Be ready.", "Favour", "")
+
+
+## An Oath is sworn, kept or broken (Phase D).
+func fx_oath(pi: int, oath: String, state: String) -> void:
+	_refresh()
+	var p: DuelPlayer = game.players[pi]
+	var pan: DuelViews.PlayerPanel = panels[pi]
+	var at := pan.position + pan.portrait_center() + Vector2(0, 60)
+	match state:
+		"sworn":
+			sfx.play("ascend")
+			DuelFX.flash(fx_layer, at, UITheme.GOLD, 110.0, 0.4)
+			_toast("%s swears the %s" % ["You" if pi == me else p.player_name, DuelGame.OATHS[oath].name])
+			if pi == me:
+				story_bark("my_oath")   # (a story rival's line for it, if the story gives one)
+			await pause(0.7)
+			if tutor != null:
+				await tutor.lesson("oath", "An Oath. Words said in the Circle bind you: keep it and the win's worth more; break it and it takes Life from you.", "Oaths", "")
+		"broken":
+			sfx.play("life_hit")
+			DuelFX.flash(fx_layer, at, Color("ff5050"), 110.0, 0.4)
+			_toast("%s Oath is broken" % ("Your" if pi == me else _whose(p.player_name)))
+			if pi == me:
+				story_bark("my_oath_broken")
+			elif pi == rival:
+				story_bark("rival_oath_broken")
+			await pause(0.6)
+
+
 func fx_tribute(t: DuelTotem, card: DuelCard) -> void:
 	var v := _view(t)
 	var at := _center(v)
@@ -3100,8 +3326,9 @@ func _bark() -> void:
 ## "rival_poisons" (one of yours is Poisoned), "rival_ward_springs" (their
 ## Ward goes off), "my_lethal" (you have enough on the board to finish them),
 ## "weakness_on_rival" (you hit one of theirs on its weakness), "rival_ko_own"
-## (one of theirs is knocked out). Their line for winning is spec.win_line
-## (StoryLoss).
+## (one of theirs is knocked out), "my_oath" (you swear an Oath, Phase D),
+## "my_oath_broken" and "rival_oath_broken" (an Oath breaks). Their line for
+## winning is spec.win_line (StoryLoss).
 var _barked := {}
 
 
@@ -3505,6 +3732,19 @@ class Arena:
 	var tex: Texture2D = null
 	var mote_col := Color(1.0, 0.8, 0.45)
 	var _t := 0.0
+	var _old_tex: Texture2D = null   # the ground a Terrain Rite is fading out (Phase D)
+	var _fade := 1.0
+
+	## A new painting fades in over the old one.
+	func fade_to(t: Texture2D, dur: float = 1.2) -> void:
+		if t == null or t == tex:
+			return
+		_old_tex = tex
+		tex = t
+		_fade = 0.0
+		var tw := create_tween()
+		tw.tween_property(self, "_fade", 1.0, dur)
+		tw.tween_callback(func() -> void: _old_tex = null)
 
 	## Where the painted Circle sits: this point of the picture (0-1)...
 	const ART_ANCHOR := Vector2(0.5, 0.55)
@@ -3560,7 +3800,11 @@ class Arena:
 		w = maxf(w, (br.y - ax.y) / ((1.0 - ART_ANCHOR.y) * aspect))
 		var sz := Vector2(w, w * aspect)
 		var r := Rect2(o + (ax - sz * ART_ANCHOR) * k, sz * k)
-		draw_texture_rect(tex, r, false)
+		if _old_tex != null and _fade < 1.0:
+			draw_texture_rect(_old_tex, r, false)
+			draw_texture_rect(tex, r, false, Color(1, 1, 1, _fade))
+		else:
+			draw_texture_rect(tex, r, false)
 		# dim it so the cards and numbers stay the brightest things on screen
 		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.07, 0.38))
 		# darker under the hand, behind the side columns and at the very top

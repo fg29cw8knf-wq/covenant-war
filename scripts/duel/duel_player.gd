@@ -41,12 +41,21 @@ var survived := false
 var hand_wards_used: Array = []   # Wards played from the hand in answer this duel (once each, by card id)
 var answering: Array = []      # DuelCard: answers on the chain, between being played and resolving
 var once_used: Array = []      # once-a-duel things already spent: "echo:<uid>", "rekindle:<uid>" (Phase B)
+var continuous: Array = []     # DuelCard: Continuous Rites standing on this side, two at most (Phase D)
+var arena_guard := 0           # Guard the arena adds (Ironstone's, Phase D)
+var favour2 := 0               # Favour, in half points (the Unsworn fill at half pace; Phase D)
+var favour_ready := false      # full: a second Gift, or the god's Demigod, free
+var oath := ""                 # the Oath sworn (DuelGame.OATHS), "" for none
+var oath_state := ""           # "sworn", "kept" or "broken"
+var oath_start_used := false   # the Oath at the start of the duel (on your first turn)
+var oath_mid_used := false     # ...and the one mid-duel
 
 # statistics for the balance tests
 var played := {}              # card id -> times played this duel
 var stats := {"life_damage_dealt": 0, "kos": 0, "totems_called": 0, "rites": 0, "wards_sprung": 0,
 	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0,
-	"tributes": 0, "echoes": 0, "revivals": 0, "relics": 0, "veiled": 0, "bond_moves": 0}
+	"tributes": 0, "echoes": 0, "revivals": 0, "relics": 0, "veiled": 0, "bond_moves": 0,
+	"terrains": 0, "continuous": 0, "favour_fills": 0, "demigods": 0, "oaths": 0, "oaths_kept": 0, "oaths_broken": 0}
 
 
 func _init(p_index: int, p_name: String) -> void:
@@ -74,8 +83,13 @@ func gift() -> String:
 
 
 func guard() -> int:
-	var g := DuelRules.guard_for(attributes()) + guard_bonus
+	var g := DuelRules.guard_for(attributes()) + guard_bonus + arena_guard
 	return g * 2 if guard_double else g
+
+
+## Favour, 0 to DuelRules.favour_max (Phase D).
+func favour() -> float:
+	return favour2 / 2.0
 
 
 func ward_slots() -> int:
@@ -106,7 +120,7 @@ func has_guardian() -> bool:
 
 
 func total_card_count() -> int:
-	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size() + answering.size()
+	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size() + answering.size() + continuous.size()
 	for t in totems():
 		n += t.stack.size() + (1 if t.relic != null else 0)
 	return n

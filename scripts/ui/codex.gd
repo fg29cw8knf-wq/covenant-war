@@ -217,6 +217,10 @@ static func describe(id: String) -> String:
 			lines.append(DuelCards.card_text(id))
 			if d.get("answer", false):
 				lines.append("[color=#%s]An answer: played on your opponent's turn, in the moment after they act and before it lands, then discarded. An answer can itself be answered.[/color]" % dim)
+			elif d.get("continuous", false):
+				lines.append("[color=#%s]Cast on your turn; it stands beside your Wards and keeps working. Two can stand on a side: a third sends the oldest to the discard, and Unbind sends one there.[/color]" % dim)
+			elif (d.get("effects", []) as Array).any(func(e): return String(e.get("op", "")) == "terrain"):
+				lines.append("[color=#%s]Cast on your turn, then discard. The new ground holds for %d turns, then the Circle is itself again; another Terrain Rite takes its place.[/color]" % [dim, DuelRules.terrain_turns])
 			else:
 				lines.append("[color=#%s]Cast on your turn, then discard.[/color]" % dim)
 		"ward":

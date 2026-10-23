@@ -19,15 +19,20 @@ const ESSENCE_DARK := Color("1b4f7a")
 const RITE_COL := Color("5c8fd6")
 const WARD_COL := Color("b25bd6")
 const RELIC_COL := Color("c98a2e")   # (Phase C)
+const STANDING_COL := Color("4f9e5a")   # Continuous Rites (Phase D)
 
 
 ## The band colour and word for a non-Totem card's kind.
-static func spell_look(kind: String) -> Array:
+static func spell_look(kind: String, d: Dictionary = {}) -> Array:
 	match kind:
 		"ward":
 			return [WARD_COL, "WARD"]
 		"relic":
 			return [RELIC_COL, "RELIC"]
+	if bool(d.get("continuous", false)):
+		return [STANDING_COL, "STANDING RITE"]   # (Phase D)
+	if (d.get("effects", []) as Array).any(func(e): return String(e.get("op", "")) == "terrain"):
+		return [RITE_COL, "TERRAIN RITE"]
 	return [RITE_COL, "RITE"]
 
 
@@ -310,7 +315,7 @@ static func attuned_text(d: Dictionary) -> String:
 
 static func _draw_spell(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dictionary, opts: Dictionary) -> void:
 	var tier := int(d.get("tier", 1))
-	var look := spell_look(d.kind)
+	var look := spell_look(d.kind, d)
 	var accent: Color = look[0]
 	_shell(ci, o, s, tier)
 	var art_r := _R(o, s, 9, 9, 232, 180)
@@ -380,7 +385,7 @@ static func _draw_compact(ci: CanvasItem, rect: Rect2, id: String, d: Dictionary
 	var inner := _R(o, s, 9, 9, 232, 332)
 	_art_placeholder(ci, inner, id, d)
 	if d.kind == "rite" or d.kind == "ward" or d.kind == "relic":
-		var look := spell_look(d.kind)
+		var look := spell_look(d.kind, d)
 		CardFace.box(ci, _R(o, s, 9, 250, 232, 38), 0, Color(look[0], 0.92))
 		CardFace.text_in(ci, f("bold"), _R(o, s, 9, 250, 232, 38), String(look[1]), _fs(s, 26), Color.WHITE)
 	elif d.kind == "summon":

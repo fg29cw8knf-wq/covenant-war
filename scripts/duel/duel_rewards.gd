@@ -12,6 +12,7 @@ const KO_ASCENDED := 10
 const CLEAN_MULT := 1.25       # half your starting Life or more left
 const QUICK_MULT := 1.25       # won in 10 of your own turns or fewer
 const QUICK_TURNS := 10
+const OATH_MULT := 1.25        # the winner kept the Oath they swore (Phase D)
 const THICK_MULT := 1.5        # a temple, a Sigilfall crater or the Convocation
 const AD_MULT := 2.0           # the once-a-day rewarded ad
 
@@ -56,6 +57,9 @@ static func resonance(game: DuelGame, winner: int, opponent: String = "kingdom",
 	if turns_taken(game, winner) <= QUICK_TURNS:
 		total *= QUICK_MULT
 		lines.append({"text": "Quick win", "mult": QUICK_MULT})
+	if w.oath_state == "kept":
+		total *= OATH_MULT
+		lines.append({"text": "Oath kept", "mult": OATH_MULT})
 	if thick:
 		total *= THICK_MULT
 		lines.append({"text": "Thick magic", "mult": THICK_MULT})

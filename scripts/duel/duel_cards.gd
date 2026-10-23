@@ -785,6 +785,70 @@ const CARDS := {
 		"effects": [{"op": "relic_hunt"}],
 		"art": "a hand brushing dust from a half-buried relic in a ruin, lantern light on old gold",
 	},
+	# ======================================================= TERRAIN RITES (Phase D)
+	# (each turns the Circle's ground to an element's arena for three turns)
+	"flooded_circle": {
+		"kind": "rite", "name": "Flooded Circle", "element": "tide", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "terrain", "arena": "tidegrove"}],
+		"art": "sea water pouring over the rim of a stone duelling circle, reeds and lily pads rising as its floor becomes a tidal pool",
+	},
+	"forge_ground": {
+		"kind": "rite", "name": "Forge Ground", "element": "fire", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "terrain", "arena": "emberforge"}],
+		"art": "a stone duelling circle cracking open to glowing forge-fire beneath, anvils and chains rising round its edge",
+	},
+	"iron_ground": {
+		"kind": "rite", "name": "Iron Ground", "element": "metal", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "terrain", "arena": "ironstone"}],
+		"art": "riveted iron plates sliding over a duelling circle's floor like scales, great iron pillars rising at its edge",
+	},
+	"veilwild_mist": {
+		"kind": "rite", "name": "Veilwild Mist", "element": "psychic", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "terrain", "arena": "veilwild"}],
+		"art": "violet mist rolling over a duelling circle, twisted trees and watching eyes appearing in it",
+	},
+	"sunlit_court": {
+		"kind": "rite", "name": "Sunlit Court", "element": "radiant", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "terrain", "arena": "solhaven"}],
+		"art": "sunlight breaking through cloud onto a duelling circle, white marble steps and gold banners rising round it",
+	},
+	# ==================================================== CONTINUOUS RITES (Phase D)
+	# (they stay on their side of the Circle, two a side, until unbound or replaced)
+	"kindled_banner": {
+		"kind": "rite", "name": "Kindled Banner", "element": "fire", "tier": 2, "cost": 2, "target": "none", "continuous": true,
+		"standing": {"element_damage": true, "element": "fire", "amount": 10},
+		"art": "a tall war banner of red cloth burning without being consumed, planted at the edge of a duelling circle",
+	},
+	"tidewell": {
+		"kind": "rite", "name": "Tidewell", "element": "tide", "tier": 2, "cost": 2, "target": "none", "continuous": true,
+		"standing": {"dawn_heal": 10},
+		"art": "a small stone well brimming with glowing sea-green water, a mist of droplets drifting from it over a circle",
+	},
+	"iron_tithe": {
+		"kind": "rite", "name": "Iron Tithe", "element": "metal", "tier": 2, "cost": 2, "target": "none", "continuous": true,
+		"standing": {"foe_ward_tax": 1},
+		"art": "an iron collection box chained to a post, a rune-marked coin hovering over its slot",
+	},
+	"thorn_hedge": {
+		"kind": "rite", "name": "Thorn Hedge", "element": "verdant", "tier": 2, "cost": 2, "target": "none", "continuous": true,
+		"standing": {"thorn_all": true, "amount": 10},
+		"art": "a low hedge of dark briars with white flowers ringing one side of a duelling circle, its thorns long as knives",
+	},
+	"storm_spire": {
+		"kind": "rite", "name": "Storm Spire", "element": "storm", "tier": 2, "cost": 1, "target": "none", "continuous": true,
+		"standing": {"storm_swift": true},
+		"art": "a thin spire of black stone with lightning curling round its tip, the air around it bright with sparks",
+	},
+	"shadow_veil": {
+		"kind": "rite", "name": "Shadow Veil", "element": "psychic", "tier": 2, "cost": 1, "target": "none", "continuous": true,
+		"standing": {"free_veil": true},
+		"art": "a curtain of violet shadow hanging in the air over a duelling circle, a creature's eyes glinting behind it",
+	},
+	"unbind": {
+		"kind": "rite", "name": "Unbind", "element": "any", "tier": 2, "cost": 1, "target": "none",
+		"effects": [{"op": "unbind"}],
+		"art": "two hands pulling apart a knot of glowing cord, its light unravelling into the air",
+	},
 	# ========================================================== COUNTER RITES
 	# (answers, played on the rival's turn: Phase A)
 	"null_sigil": {
@@ -898,8 +962,8 @@ const DECKS := {
 		"attributes": {"might": 2, "swiftness": 2},
 		"cards": {"cinderpup": 3, "blazehound": 2, "emberwisp": 3, "hearth_salamander": 2, "ashen_drake": 1,
 			"sparkkit": 3, "voltlynx": 2, "thunder_ram": 2, "stormcaller": 1,
-			"ember_collar": 1, "firebrand": 2, "thunderclap": 1, "rite_of_ashes": 1, "quicksilver_step": 1,
-			"ambush_snare": 2, "infernal_warg": 1, "pyraxis": 1, "travellers_pack": 1},
+			"ember_collar": 1, "firebrand": 1, "thunderclap": 1, "rite_of_ashes": 1, "quicksilver_step": 1,
+			"forge_ground": 1, "kindled_banner": 1, "ambush_snare": 1, "infernal_warg": 1, "pyraxis": 1, "travellers_pack": 1},
 	},
 	"tidegrove": {
 		"name": "Tidegrove", "elements": ["tide", "verdant"], "mascot": "brookfin",
@@ -907,7 +971,8 @@ const DECKS := {
 		"attributes": {"resolve": 2, "insight": 2},
 		"cards": {"brookfin": 3, "riptide_serpent": 2, "deepmaw": 1, "shellguard": 2,
 			"mossling": 3, "thornwarden": 2, "bloomsprite": 3, "elderbark": 1,
-			"healing_draught": 2, "tidal_surge": 1, "rejuvenate": 2, "seekers_compass": 1, "second_dawn": 1,
+			"healing_draught": 1, "tidal_surge": 1, "rejuvenate": 1, "seekers_compass": 1, "second_dawn": 1,
+			"flooded_circle": 1, "thorn_hedge": 1,
 			"riptide_snare": 1, "vengeful_spirit": 1, "thalassa": 1, "travellers_pack": 1, "tide_pearl": 1, "undertow_glyph": 1},
 	},
 	"ironstone": {
@@ -916,7 +981,7 @@ const DECKS := {
 		"attributes": {"might": 2, "resolve": 2},
 		"cards": {"pebblit": 3, "boulderox": 2, "burrowmole": 3, "quarry_golem": 1,
 			"brassback": 3, "ironhide": 2, "shieldhound": 3, "gilded_sentinel": 1,
-			"bulwark": 2, "forge_edge": 1, "rekindle": 1, "healing_draught": 1, "crystal_vein": 1, "shieldwall_call": 1,
+			"bulwark": 1, "forge_edge": 1, "rekindle": 1, "iron_ground": 1, "crystal_vein": 1, "shieldwall_call": 1, "iron_tithe": 1,
 			"iron_bastion": 2, "ironclad_behemoth": 1, "grondmaw": 1, "iron_brace": 1},
 	},
 	"veilwild": {
@@ -925,8 +990,8 @@ const DECKS := {
 		"attributes": {"cunning": 2, "insight": 2},
 		"cards": {"dreamfox": 3, "veilfox": 2, "somnowl": 2, "thought_eater": 1,
 			"blightrat": 3, "plague_asp": 2, "mirewidow": 3,
-			"mind_fog": 2, "toxic_mist": 1, "kindred_seek": 1, "siphon_rune": 1, "puppet_rune": 1,
-			"mirror_veil": 2, "ninefold_fox": 1, "poison_trap": 2, "somnara": 1,
+			"mind_fog": 1, "toxic_mist": 1, "kindred_seek": 1, "siphon_rune": 1, "puppet_rune": 1, "shadow_veil": 1, "veilwild_mist": 1,
+			"mirror_veil": 2, "ninefold_fox": 1, "poison_trap": 1, "somnara": 1,
 			"whisper_of_pages": 1, "veil_charm": 1},
 	},
 }
@@ -1273,7 +1338,26 @@ static func card_text(id: String) -> String:
 	return ""
 
 
+## What a Continuous Rite's standing effect does (Phase D).
+static func standing_text(st: Dictionary) -> String:
+	if st.has("element_damage"):
+		return "Your %s Totems deal %d more damage" % [String(st.element).capitalize(), int(st.amount)]
+	if st.has("dawn_heal"):
+		return "At your Dawn, heal %d damage from each of your Totems" % int(st.dawn_heal)
+	if st.has("foe_ward_tax"):
+		return "Your rival's Wards cost %d more Essence" % int(st.foe_ward_tax)
+	if st.has("thorn_all"):
+		return "A Totem that attacks one of yours takes %d damage" % int(st.amount)
+	if st.has("storm_swift"):
+		return "Your Storm Totems can attack the turn they're called"
+	if st.has("free_veil"):
+		return "Your first Totem each turn can be called veiled at no extra cost"
+	return ""
+
+
 static func _rite_text(d: Dictionary) -> String:
+	if bool(d.get("continuous", false)):
+		return "Stands on your side of the Circle (two at most) until it's unbound or replaced: %s." % standing_text(d.get("standing", {}))
 	var dmg := int(d.get("damage", 0))
 	var parts := []
 	if int(d.get("needs_ashes", 0)) > 0:
@@ -1324,6 +1408,9 @@ static func _rite_text(d: Dictionary) -> String:
 			"seek_kindred": parts.append("Search your deck for a Totem that shares an element with one of yours on the field")
 			"discard_to_top": parts.append("Put a card from your discard on top of your deck")
 			"relic_hunt": parts.append("Return a Relic from your discard to your hand")
+			"terrain": parts.append("The Circle becomes %s for %d turns (%s)" % [String(e.arena).capitalize(), DuelRules.terrain_turns,
+				String(DuelGame.ARENA_RULES.get(e.arena, "")).trim_suffix(".").to_lower()])
+			"unbind": parts.append("Send one of your rival's standing Rites to their discard")
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
 
 
