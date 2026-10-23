@@ -13,7 +13,8 @@ extends Node
 ##   godot --headless --fixed-fps 10 res://tests/solhaven_test.tscn -- <out_dir> choice=1   # just the run and its checks
 ##
 ## from=<part> starts at a film part (thief, court, trial, spire) with the
-## story flags before it set, e.g. from=spire.
+## story flags before it set, e.g. from=spire. look=<a|b|c|d> plays it as that
+## look (the player's model everywhere in the chapter).
 
 var out_dir := "user://"
 var world: World
@@ -36,14 +37,19 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out_dir = args[0] if args.size() > 0 else "user://"
 	_keys = "keys" in args
+	var look := ""
 	for a in args:
 		if String(a).begins_with("choice="):
 			_choice = int(String(a).substr(7))
 		elif String(a).begins_with("from="):
 			_from = String(a).substr(5)
+		elif String(a).begins_with("look="):
+			look = String(a).substr(5)
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Rowan", "tidegrove")
+	if look != "":
+		Game.set_flag("look", look)   # the player as look b, c or d (tools/play_all_looks.sh)
 	for f in ["ash_marked", "first_deck", "bram_deck", "hob_gift", "beat_hunter", "thornwood_done"]:
 		Game.set_flag(f)
 	_skip_to(_from)
