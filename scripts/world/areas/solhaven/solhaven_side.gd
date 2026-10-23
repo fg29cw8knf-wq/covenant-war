@@ -484,7 +484,7 @@ static func _say(w: World, who: String, text: String) -> void:
 	var parts := text.split(" | ")
 	for i in parts.size():
 		if i > 0:
-			await w.get_tree().create_timer(0.35).timeout
+			await w.get_tree().create_timer(0.35, false).timeout
 		if fig is Figure3D:
 			(fig as Figure3D).talking = true
 		await w.hud.dialogue.say(_name(w, who), _portrait(w, who), w._fmt(parts[i]))
@@ -523,7 +523,7 @@ static func _beat(w: World, who: String, clip := "") -> void:
 		(fig as Figure3D).act(clip)
 	elif fig != null:
 		Cine.hop(w, who, 0.1)
-	await w.get_tree().create_timer(0.3).timeout
+	await w.get_tree().create_timer(0.3, false).timeout
 
 
 static func _remember(who: String, by: int, why: String) -> void:
@@ -595,9 +595,9 @@ static func _wager_duel(w: World, id: String) -> bool:
 ## The game was closed in the middle of a wager's duel: back into it, from
 ## the place it was sworn, and on with the story.
 static func _resume_duel(w: World) -> void:
-	await w.get_tree().create_timer(1.0).timeout
+	await w.get_tree().create_timer(1.0, false).timeout
 	while is_instance_valid(w) and (w.hud == null or w.busy):
-		await w.get_tree().create_timer(0.25).timeout
+		await w.get_tree().create_timer(0.25, false).timeout
 	if not is_instance_valid(w):
 		return
 	var id := s("side_duel_on")
@@ -703,7 +703,7 @@ static func _mercy_sworn(w: World, how: String) -> void:
 	var healer := Cine.body(w, "healer")
 	if healer != null:
 		healer.visible = false
-	await w.get_tree().create_timer(0.3).timeout
+	await w.get_tree().create_timer(0.3, false).timeout
 	await w.hud.fade(0.0, 0.6)
 	await _see(w, "Next day Tobin is well and Ysa wears a sun disc. She thanks you, and doesn't look you in the eye.")
 	Game.set_flag("ilvane", "none")
@@ -1197,13 +1197,13 @@ static func _meet_shot(w: World, wide := false) -> void:
 
 
 static func _pip_route(w: World, done: Array) -> void:
-	await w.get_tree().create_timer(0.6).timeout
+	await w.get_tree().create_timer(0.6, false).timeout
 	await Cine.hop(w, "pip")
 	Cine.follow(w, "pip", Vector3(-3.6, 2.6, 4.0), Vector3(0, 0.9, 0), 6.5, 2.5)
 	await Cine.walk(w, "pip", SQ.side_door, 3.6, "run")
 	Cine.body(w, "pip").visible = false
 	Cine.walk(w, "player", SQ.player_meet, 1.6)
-	await w.get_tree().create_timer(1.0).timeout
+	await w.get_tree().create_timer(1.0, false).timeout
 	Cine.body(w, "pip").visible = true
 	await Cine.path(w, "pip", [SQ.pip_way[1], SQ.pip_way[0], SQ.pip_meet], 3.6, "run")
 	done[0] = true
@@ -1276,7 +1276,7 @@ static func _pip_note(w: World) -> void:
 	await _say(w, "pip", "That's two crowns! And Mr Pell'll know!")
 	await _see(w, "He runs, not up the hill but away.")
 	Cine.walk(w, "pip", SQ.pip_meet + Vector3(6.0, 0, 4.4), 4.0, "run")
-	await w.get_tree().create_timer(0.8).timeout
+	await w.get_tree().create_timer(0.8, false).timeout
 	if c == 1:
 		Game.set_flag("side_pip", "kept")
 		Game.set_flag("pell_note")
@@ -1546,13 +1546,13 @@ static func _noon(w: World, strokes: int) -> void:
 		else:
 			# until Gary's lash sound exists: a whistle and a crack
 			sfx.play("melee_whoosh", 1.5)
-			w.get_tree().create_timer(0.12).timeout.connect(func() -> void:
+			w.get_tree().create_timer(0.12, false).timeout.connect(func() -> void:
 				if is_instance_valid(sfx):
 					sfx.play("hit_light", 0.8))
 		if full and i < half:
 			w.shake(0.12)
-		await w.get_tree().create_timer(gap).timeout
-	await w.get_tree().create_timer(0.6).timeout
+		await w.get_tree().create_timer(gap, false).timeout
+	await w.get_tree().create_timer(0.6, false).timeout
 	sfx.queue_free()
 	_face(w, "hale_yard", "player")
 	_shot(w, at.call("hale") + Vector3(1.2, 1.7, 3.0), at.call("hale") + Vector3(0.3, 1.2, 0), 34.0)

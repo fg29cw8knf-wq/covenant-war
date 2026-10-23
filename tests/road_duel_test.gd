@@ -73,6 +73,8 @@ func _duel(spec: Dictionary) -> DuelScreen:
 	while t < 90.0 and ds.mode != "main":
 		await _wait(0.2)
 		t += 0.2
+		if ds.banner_waiting:
+			ds.tap_banner()
 		if ds.tutor != null and ds.tutor.blocking:
 			ds.tutor._tapped.emit()
 	_check(ds.mode == "main", "the duel reached the player's turn")

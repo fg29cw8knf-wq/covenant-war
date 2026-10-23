@@ -681,7 +681,7 @@ func turnip_bite() -> void:
 		for c in ["bite", "head_dip", "eat", "attack"]:
 			if turnip_anim.has_animation(c):
 				turnip_anim.play(c, 0.15)
-				await get_tree().create_timer(turnip_anim.get_animation(c).length).timeout
+				await get_tree().create_timer(turnip_anim.get_animation(c).length, false).timeout
 				if turnip_anim.has_animation("idle"):
 					turnip_anim.play("idle", 0.2)
 				return

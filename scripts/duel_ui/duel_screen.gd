@@ -406,6 +406,19 @@ func _build_lab() -> void:
 	box.add_theme_constant_override("separation", 14)
 	lab_panel.add_child(box)
 	box.add_child(UITheme.label("Menu", 34, UITheme.GOLD, "display_bold"))
+	# the duel's own rule, and the Law it's under, to read again any time
+	var rule: Array = spec.get("rule", [])
+	if rule.size() >= 2:
+		var rl := UITheme.label("%s: %s" % [String(rule[0]), String(rule[1])], 24, UITheme.TEXT)
+		rl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rl.custom_minimum_size = Vector2(500, 0)
+		box.add_child(rl)
+	var law := String(spec.get("law", ""))
+	if law != "":
+		var ll := UITheme.label("%s: %s" % [DuelLaws.law_name(law), DuelLaws.describe(law)], 24, UITheme.TEXT)
+		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		ll.custom_minimum_size = Vector2(500, 0)
+		box.add_child(ll)
 	var lg := UITheme.button("Duel log", false, 500)
 	lg.pressed.connect(func() -> void: log_panel.visible = not log_panel.visible)
 	box.add_child(lg)
@@ -505,6 +518,17 @@ func _start() -> void:
 	game.kept_back = (spec.get("kept_back", [[], []]) as Array).duplicate(true)
 	game.puzzle = spec.get("puzzle", {})
 	game.presenter = self
+	if field != null:
+		# every model this duel could call, loaded and drawn once now, so
+		# no summon has to wait for it (DuelField3D.warm_models)
+		var ids := {}
+		for p in game.players:
+			for c in p.deck:
+				ids[c.id] = true
+		for side in game.kept_back:
+			for kid in side:
+				ids[String(kid)] = true
+		field.warm_models(ids.keys())
 	sfx.play("shuffle")
 	# a story duel can name its own music (spec.music: tracks to try first)
 	Music.play((spec.get("music", ["arena_" + _arena_name]) as Array) + Music.duel_theme())
@@ -835,6 +859,12 @@ func _set_hint(t: String) -> void:
 ## selected (or opens the duel menu), Space ends the turn.
 func _unhandled_input(e: InputEvent) -> void:
 	if mode == "over" or not is_visible_in_tree():
+		return
+	if banner_waiting:
+		# the Law or the rule is up to be read: the interact key moves it on
+		if e.is_action_pressed("interact") and not e.is_echo():
+			tap_banner()
+			get_viewport().set_input_as_handled()
 		return
 	if tutor != null and tutor.blocking:
 		# an explanation is up: E, Space, Enter or a pad's A carries on, like a tap
@@ -1498,16 +1528,32 @@ func fx_start() -> void:
 
 ## "DUEL!", then the Law it's fought under and the story duel's own rule
 ## (spec.rule = [name, what it does]: Corin's Showboat in the Lantern Duel,
-## Chapter 1's four).
+## Chapter 1's four). The Law and the rule are read at the player's own
+## pace: each stays up until it's tapped (or E, Space, Enter, a pad's A),
+## since a rule is a thing to know for the whole duel (Gary, 23 October:
+## "when the battle starts and it shows Showboat you don't have long to read
+## it"). Both are on the duel's Menu for the rest of the duel too.
 func _opening_banners() -> void:
 	sfx.play("duel_start")
 	await _banner("DUEL!", UITheme.GOLD, 0.9, 130, "", "Empty your rival's Life to win.")
 	if game.law != "":
 		var god: String = game.law if Lore.GODS.has(game.law) else ""
-		await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law))
+		await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law), true)
 	var rule: Array = spec.get("rule", [])
 	if rule.size() >= 2:
-		await _banner(String(rule[0]).to_upper(), UITheme.GOLD, 2.2, 72, "", "Duel rule: " + String(rule[1]))
+		await _banner(String(rule[0]).to_upper(), UITheme.GOLD, 2.2, 72, "", "Duel rule: " + String(rule[1]), true)
+
+
+## A banner is up waiting for a tap (the Law or the duel's rule).
+var banner_waiting := false
+signal _banner_tapped
+
+
+## Moves a waiting banner on (a tap on the screen, the interact key, or a
+## test driving the duel).
+func tap_banner() -> void:
+	if banner_waiting:
+		_banner_tapped.emit()
 
 
 ## Both duellists roll for the first turn, big in the middle of the Circle.
@@ -2478,7 +2524,7 @@ func fx_game_over(winner: int, _reason: String) -> void:
 
 # --------------------------------------------------------- effect helpers ---
 
-func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: String = "", sub: String = "") -> void:
+func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: String = "", sub: String = "", wait := false) -> void:
 	var b := Banner.new()
 	b.text = text
 	b.sub = sub
@@ -2491,10 +2537,36 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: Stri
 	b.size = Vector2(DESIGN.x, 1)
 	fx_layer.add_child(b)
 	var total := (hold + 0.55) / speed
-	var tw := b.create_tween()
-	tw.tween_property(b, "t", 1.0, total)
-	tw.tween_callback(b.queue_free)
-	await pause(hold + 0.45)
+	if not wait or _watching():   # (nobody to tap when the computer plays both sides)
+		var tw := b.create_tween()
+		tw.tween_property(b, "t", 1.0, total)
+		tw.tween_callback(b.queue_free)
+		await pause(hold + 0.45)
+		return
+	# in, then held at full until it's tapped; the band takes every tap, and
+	# the interact key comes through _unhandled_input (tap_banner)
+	b.footer = "TAP TO CONTINUE  ▸"
+	var catcher := Control.new()
+	catcher.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	catcher.mouse_filter = Control.MOUSE_FILTER_STOP
+	catcher.gui_input.connect(func(e: InputEvent) -> void:
+		if (e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT) \
+				or (e is InputEventScreenTouch and e.pressed):
+			tap_banner())
+	add_child(catcher)
+	var tin := b.create_tween()
+	tin.tween_property(b, "t", 0.5, total * 0.5)
+	await pause(hold * 0.5 + 0.2)   # (the words are in and still before a tap counts)
+	banner_waiting = true
+	await _banner_tapped
+	banner_waiting = false
+	catcher.queue_free()
+	sfx.play("ui_tap")
+	if is_instance_valid(b):
+		var tout := b.create_tween()
+		tout.tween_property(b, "t", 1.0, total * 0.5)
+		tout.tween_callback(b.queue_free)
+	await pause(0.25)
 
 
 func _move_label(pos: Vector2, text: String, col: Color) -> void:
@@ -3096,10 +3168,12 @@ class Banner:
 	extends Control
 	var text := ""
 	var sub := ""
+	var footer := ""      # "TAP TO CONTINUE": the banner waits for a tap
 	var col := Color.WHITE
 	var size_px := 72
 	var god := ""
 	var edge := 0.0
+	var _pulse := 0.0
 	var t := 0.0:
 		set(v):
 			t = v
@@ -3108,11 +3182,16 @@ class Banner:
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
+	func _process(delta: float) -> void:
+		if footer != "":
+			_pulse += delta
+			queue_redraw()
+
 	func _draw() -> void:
 		var tin := clampf(t / 0.16, 0.0, 1.0)
 		var tout := clampf((t - 0.84) / 0.16, 0.0, 1.0)
 		var e_in := 1.0 - pow(1.0 - tin, 3.0)
-		var h := (200.0 if sub != "" else 180.0) * e_in * (1.0 - tout)
+		var h := ((200.0 if sub != "" else 180.0) + (60.0 if footer != "" else 0.0)) * e_in * (1.0 - tout)
 		if h < 1.0:
 			return
 		var x0 := -edge - 40.0
@@ -3143,7 +3222,11 @@ class Banner:
 		draw_set_transform(Vector2(960 + slide, 0), 0.0, Vector2(k, k))
 		CardFace.text(self, fnt, Vector2(-900, y), text, fs, Color(col.lightened(0.3), a), HORIZONTAL_ALIGNMENT_CENTER, 1800, maxi(6, fs / 9), Color(0, 0, 0, 0.85 * a))
 		if sub != "":
-			CardFace.text(self, CardFace.font("bold"), Vector2(-900, y + 48), sub, 28, Color(1, 1, 1, 0.85 * a), HORIZONTAL_ALIGNMENT_CENTER, 1800, 4)
+			CardFace.text(self, CardFace.font("bold"), Vector2(-900, y + 48), sub, 30 if footer != "" else 28, Color(1, 1, 1, 0.85 * a), HORIZONTAL_ALIGNMENT_CENTER, 1800, 4)
+		if footer != "" and tout <= 0.0:
+			# "TAP TO CONTINUE", breathing, once the words are in
+			var fa := clampf((t - 0.3) / 0.15, 0.0, 1.0) * (0.55 + 0.3 * sin(_pulse * 3.2))
+			CardFace.text(self, CardFace.font("bold"), Vector2(-900, y + 96), footer, 22, Color(UITheme.GOLD, fa), HORIZONTAL_ALIGNMENT_CENTER, 1800, 3)
 		draw_set_transform(Vector2.ZERO)
 		if god != "" and DuelArt.god(god) != null and a > 0.05:
 			var tw_px := fnt.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x

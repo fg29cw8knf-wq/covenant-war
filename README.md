@@ -87,7 +87,16 @@ menu's **How to Duel** page.
 Story duels (Master Script v3) each have a rule of their own that says who the
 opponent is, as a real rule in the engine: `spec.story_rules = {rule id: side}`
 (`DuelGame.story_rules`, one `_rule_<id>()` each) and `spec.rule = [name, text]`
-for its banner, shown after "DUEL!". The Prologue's: Dask's Run to Ground (his
+for its banner, shown after "DUEL!" and held until it's tapped (or E, Space,
+Enter, a pad's A; 23 October, Gary: "you don't have long to read it"), as the
+Law's banner is; both are on the duel's Menu (☰) for the rest of the duel.
+A test driving the screen taps a waiting banner with `ds.tap_banner()` (it
+never waits when the computer plays the player's side). Every model a duel
+could call (both decks' Totems and Summons) is loaded in the background and
+drawn once under the Circle's floor as the duel opens
+(`DuelField3D.warm_models`), so no summon reads its model from disk or
+compiles its shaders on the spot (Gary: "the battle's a bit glitchy when you
+load a Totem"). The Prologue's: Dask's Run to Ground (his
 hounds always attack the Totem with the least Life left). Chapter 1's
 (`scripts/world/solhaven/duels.gd`): Warden Hale's Hold the Gate (while his
 Guardian stands his Totems never go for your Life; the duel is at half Life,
@@ -138,8 +147,9 @@ and push `build/web` to the `gh-pages` branch.
 
 **Edge to edge on a phone.** The game fills any screen shape (an iPhone 16 Pro Max
 held sideways is 2.17:1): the 1920 x 1080 base stretches sideways (`canvas_items` +
-`expand`), the opening movie's paintings and clips fill the screen (cropping a
-little top and bottom, `OpeningMovie.frame_rect()`), and the duel's 3D field
+`expand`), the opening movie's paintings and shot clips fill the screen (cropping a
+little top and bottom, `OpeningMovie.frame_rect()`; Gary's finished cut is
+shown whole, `cut_rect()`), and the duel's 3D field
 covers the whole screen on any shape, the iPad's 4:3 included
 (`DuelField3D.fit_to_stage()` widens the lens to match). The buttons and words
 keep clear of the Dynamic Island, the rounded corners and the home bar through
@@ -257,7 +267,9 @@ the look chosen is the `look` flag, which `Figure3D.model_file("player")`
 and `DollArt.portrait("player")` read, so the player and their dialogue
 face are that look from then on; a look whose model isn't there yet would
 show as coming soon). In the taproom Bram is
-stacking paper lanterns into a crate, the shelves behind the bar bare; he hands
+stacking paper lanterns into a crate from the pile on the table beside it
+(seen from the player's side of the room, so every lantern is seen taken
+from the pile: 23 October), the shelves behind the bar bare; he hands
 the crate over, the player carries it out of the inn and across to the green
 with Bram following (indoors he walks round the table and the stools, as the
 player must; the stairs are solid, and anyone carrying the crate back towards
@@ -403,7 +415,10 @@ dance, punch and death. Their rigs are smaller than the player's: Tam's and
 Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
 groups, and Nell has 29 bones in all. Nell's walking stick is part of her
 mesh, in her right hand, so that arm stays as in her idle when she talks,
-cheers, walks or runs. Tilly's leather satchel hangs by her left hand, so
+cheers, walks or runs; the stick itself is bound to her right hand alone
+(`tools/stick_weights.py`, 23 October: AssetFurnace had tied its top to her
+fingers and its foot to her toes, and it bent as she danced), so she pats
+the bench with her left hand. Tilly's leather satchel hangs by her left hand, so
 AssetFurnace bound part of it (and of its strap over her right shoulder) to
 her arms, and it stretched after her hand when she held her card out:
 `--free-of-arms R,G,B:TOL` gives the big patches of the leather's colour the
@@ -425,7 +440,7 @@ Thornwood (`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd
 the riverbank, the campfire (Bram's four decks on a log, tap a box to see it and
 again to choose, `scripts/world/deck_boxes.gd`, then his walk round the deck
 screen, `PackTour.CAMP_DECK`), the practice round on the second morning, Dask's
-road duel and dawn over Solhaven. Films are staged with `scripts/world/cine.gd` (shots, walks, spawns, reveals,
+road duel and dawn over Solhaven. A staged walk (`Cine.path`, `Cine.walk`) goes round whatever solid and small stands in its straight line (23 October: the player and Bram walked straight through Nell's bench on the way to the Lantern, and Tilly ran through it after the duel): the set's static bodies (every `solid_box` and `solid_round`: the bench, the well, a stool, a barrel, the Lantern's foot, a cart; not houses, walls or fences, and never people) are read as circles on the ground (`Cine.blockers`, cached a second at a time), and a leg that crosses one is replaced by the shortest way through the points round each thing in the way over legs that cross nothing (`Cine.route`; the bench against the well is passed by the bench's far end, not squeezed between). A walk that starts or ends on a thing (sitting down on the bench, standing up from it) ignores it. Bram following the player on foot slides round them too (`AshfordP1._round_props`). `godot --headless res://tests/route_test.tscn` checks walks across the green. Films are staged with `scripts/world/cine.gd` (shots, walks, spawns, reveals,
 and `Cine.ask` for a film's questions that can all be asked, as a
 conversation's `{"ask": ...}` step can) and `scripts/world/cine_overlay.gd` (letterbox,
 subtitles, choices, the name prompt). The Herald's voice plays from
@@ -517,9 +532,9 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 
 ## Menus, standing, items and adverts
 
-- **Opening notice** (`scripts/ui/notice_screen.gd`): who made and owns the game and Gary's note about adverts, shown at launch before the title. The title screen carries "Made by Gary Mannion" and the copyright line. It stays up until Continue is pressed (or Enter, Space, E, Esc or a pad's A), and Continue isn't there to press for its first 1.2 s, so a thumb still down from the splash, a tap before it can be read or a key held since before can't move it on (22 October; `tests/controls_test.gd` checks it).
+- **Opening notice** (`scripts/ui/notice_screen.gd`): two pages at launch, before the title: who made and owns the game with Gary's note about adverts, then (23 October) "A one-man job": that one person made all of it, and a plea to tell him what doesn't work or look right so he can fix it (`NoticeScreen.PAGES`; the words are his, polished). The title screen carries "Made by Gary Mannion" and the copyright line. Each page stays up until Continue is pressed (or Enter, Space, E, Esc or a pad's A), and Continue isn't there to press for its first 1.2 s, so a thumb still down from the splash, a tap before it can be read or a key held since before can't move it on (22 October; `tests/controls_test.gd` checks both pages).
 - **First launch** (`Main.first_launch()`, `scripts/game/launch_log.gd`): the first run of a build on a phone or a Mac compiles every shader the opening draws the first time it's drawn, and on an iPhone that held the screen for a long moment with nothing to say why (Gary, 22 October: "the first time launching the game it sticks"). On that first launch Ashford is built and warmed under the title behind a "Getting the game ready" loading bar (`Packs.hold`), and every launch after finds the shaders in the cache. Each launch marks where it got to (the notice, the title, Ashford building, ready, and the slowest frame on the way) in the settings as it goes, and the pause menu's Options page shows the last launch's marks under the build line, so a phone that stuck can say where. `-- --first-launch` makes any run behave as a first one.
-- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit).
+- **Pause menu** (`scripts/ui/pause_menu.gd`, ☰ or Esc in the world): Hero (Sigil Rank, Seals, the seven attributes with their 7+ perks and points to place), Standing, Deck (edit it; only a legal deck is kept), Codex, Items, Controls (phone, tablet, computer, controller; opens on the device in use) and Options (volumes, text speed, camera zoom and its reset, text and buttons size, violence, 3D field, advert previews, save, quit). **The game stops while it's open** (23 October; until then a film, a walk or a voice line carried on behind it): the menu pauses the scene tree (`PauseMenu._set_paused`) and runs on its own (`PROCESS_MODE_ALWAYS`), as do the pack tour over it, the music and the loading screens; the world's own waits are timers that stop with the tree (`create_timer(secs, false)` throughout `scripts/world/`), and a tween made from a world node stops with it. Anything new that must keep going while the menu is up needs `PROCESS_MODE_ALWAYS`.
 - **Camera zoom** (`World.zoom_by()`, saved as `cam_zoom` in the settings): in the world on foot, pinch with two fingers, the mouse wheel or a trackpad, the + and - keys, a pad's right stick, or the small + and - buttons at the right edge. The camera glides closer or further along its usual line (`World.ZOOM_MIN` to `ZOOM_MAX`) and stops in front of any wall, roof or tree it would otherwise end up inside (`World._clear_way()`). Films own the camera: no zooming while one runs, and the player's zoom is back when it ends. In a duel, the wheel or a pinch zooms the 3D field a little (`DuelField3D.VIEW_MIN` to `VIEW_MAX`, saved as `duel_view`).
 - **New Game starts with no cards.** Deck and Codex aren't in the pack until the story opens them: `Game.give_first_deck(cards)` hands over Bram's 12-card Spark deck (shown on the Deck tab, not editable), `Game.unlock("deck")` / `Game.unlock("codex")` add the tabs (the world toasts "New in your pack: Deck and Codex"), and `await hud.pack_tour()` runs a gated tour of the pack (`scripts/ui/pack_tour.gd`, lines in `PackTour.FIRST_DECK`, styled like the duel's tutor; kept on How to Duel under *Your pack*). Master Script v3 opens the deck screen first at the campfire, where the player chooses a deck, so the Lantern Duel doesn't play the tour or open the tabs: Bram hands over the Spark deck (its twelve cards fanned out on screen) and Deck and Codex stay shut in Ashford. Bram's 30-card deck, chosen at the campfire on the Thornwood road (flag `bram_deck`), is the first one the player can edit; old saves past Ashford have everything open.
 - **Codex** (`scripts/ui/codex.gd`): every card the player has found (their own, and cards seen played, greyed out until owned; nothing else is listed), with a detail view: the painting, description, attacks with their Fate bands, how to get it (Resonance), and the Attunement bar towards its Ascended form, with Re-absorb and Pour buttons.
@@ -640,11 +655,11 @@ Since 22 October the opening is Gary's one finished film,
 the music, the title and the words on screen all in the picture: Ogg Theora
 1280x720 at 30 fps, about 78 MB, converted from his 4K HEVC master, which
 stays on his Mac). `OpeningMovie` plays it whole when it's there, with nothing
-of the engine's over it (no subtitles, voice, music or title), fills the
-screen with it as it does the paintings (`frame_rect()`; on a wide phone the
-crop comes off the top, so his words along the foot of the picture stay
-whole: `CUT_FOOT`), and a tap shows Skip
-as before. On the phone link it's the whole `movie` pack (the paintings, voice
+of the engine's over it (no subtitles, voice, music or title), shown whole:
+as big as fits the screen with nothing cropped, centred, black either side
+on a wide phone (`cut_rect()`; until 23 October it was enlarged to fill the
+phone's width and a fifth of its height went off the top: "you can't see it
+all, some of it is off screen on phone"). A tap shows Skip as before. On the phone link it's the whole `movie` pack (the paintings, voice
 lines and theme below stay out of the web build while the cut exists, or the
 pack would pass GitHub's 100 MB limit); the apps keep both. Check it with
 `tests/movie_shot.tscn -- <dir> cut 0:20 1:30 3:04` (stills at those times;
@@ -686,4 +701,36 @@ shots (`shot_08.mp4`) and run:
 
 ```sh
 python3 tools/movie_clips.py <folder of clips>     # -> assets/movies/shots/<shot>.ogv, trimmed to each shot
+```
+
+## Story films: the Lantern Night and the morning after
+
+Since 23 October the Prologue's midnight (the Great Lantern lit, the
+lanterns stopping in the air, the Sigilfall, the cart, the white light) and
+dawn (the Pale Herald) can play as films of Gary's own clips in place of
+their 3D staging, as the finished opening replaced its shot-by-shot version
+(Gary: "the cut scene after all the lanterns go up: can we make a proper
+movie from that like we did for the opening movie? Same for the scene the
+next morning"). `scripts/story/story_film.gd` (`StoryFilm`) holds each
+film as its steps (`FILMS`): shots with their length, what's seen and the
+lines said over them at their moments, and between them what a film can't
+carry on its own: the midnight choice, the Herald's name prompt, a caption,
+the music cues. A shot plays `assets/movies/<film>/<shot>.ogv` (a shot that
+shows the player can have one clip per look, `<shot>_a.ogv` ... `_d`), else
+its painting `assets/art/movie/<film>/<shot>.png` moved by the engine, else
+an animatic card. The lines are the game's subtitles (`CineOverlay`), with
+the Herald's recordings played at theirs, so the choices and the name keep
+working; the picture sits whole between the movie bars. A whole cut,
+`assets/movies/<film>.ogv`, plays instead when it exists, the lines over it
+by the shots' lengths and a choice pausing it. The 3D scene stays until a
+film is all there (`StoryFilm.available`: the cut, or a clip or painting
+for every shot; `-- --story-films` forces the films on, for the animatic),
+and `_midnight_film` / `_dawn_film` in `ashford.gd` set the world around
+each as the 3D version does. On the phone link each film is its own pack
+(`midnight`, `dawn`; `tools/web_packs.py`), built only once it has clips.
+The shot lists, lengths and what Gary makes are in `docs/script/films_plan.md`.
+
+```sh
+python3 tools/movie_clips.py <folder of clips> --film midnight    # -> assets/movies/midnight/<shot>.ogv
+godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film midnight only --story-films   # the film as animatic cards
 ```

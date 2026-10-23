@@ -19,7 +19,8 @@ extends Node
 const BUILD_INFO := "res://build_info.cfg"
 ## Where downloaded packs are kept on the web (memory only, gone when the page closes).
 const WEB_DIR := "/tmp/packs/"
-const TITLES := {"movie": "the opening movie", "duel": "the Totems and Summons", "solhaven": "Solhaven", "looks": "your look"}
+const TITLES := {"movie": "the opening movie", "duel": "the Totems and Summons", "solhaven": "Solhaven", "looks": "your look",
+	"midnight": "the Lantern Night", "dawn": "the morning after"}
 
 signal _loaded(pack: String)
 

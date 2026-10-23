@@ -1,15 +1,18 @@
 class_name NoticeScreen
 extends CanvasLayer
-## The first thing the game shows: who made it and owns it, and a word from
-## Gary about why there are adverts. It stays up until Continue is pressed
-## (or the interact key / pad button, which is the same thing): no timer, and
-## a tap on the page itself doesn't count, so nobody loses it to a stray
-## thumb. (Until 20 October it moved on by itself after seven seconds on every
+## The first thing the game shows, in two pages: who made it and owns it,
+## with a word from Gary about why there are adverts; then (since 23
+## October) a word that it's one man's work, and a plea to tell him what's
+## wrong so he can fix it. Each page stays up until Continue is pressed (or
+## the interact key / pad button, which is the same thing): no timer, and a
+## tap on the page itself doesn't count, so nobody loses it to a stray thumb.
+## (Until 20 October it moved on by itself after seven seconds on every
 ## launch but the first, and any tap dismissed it; Gary asked for it to wait.)
-## Continue isn't there at all for the first moment (MIN_SECONDS), so a thumb
-## still down from the splash, or a tap that lands before the page can be
-## read, can't press it; nothing else (the Ashford build under the title, a
-## held key, a key's repeat) moves it on. tests/controls_test.gd checks it.
+## Continue isn't there at all for the first moment of each page
+## (MIN_SECONDS), so a thumb still down from the splash, or a tap that lands
+## before the page can be read, can't press it; nothing else (the Ashford
+## build under the title, a held key, a key's repeat) moves it on.
+## tests/controls_test.gd checks it.
 
 signal finished
 
@@ -20,10 +23,26 @@ const NOTE := "I want this game to stay free for everyone, so it shows a few adv
 const SIGN_OFF := "Gary"
 const COPYRIGHT := "© 2026 Gary Mannion. All rights reserved."
 
+## The second page: one man's work, and the plea for reports (Gary, 23
+## October: "this is a one man job - please help by letting me know any
+## errors or something that doesn't work right or look right so I can fix it").
+const ONE_MAN_HEAD := "A one-man job"
+const ONE_MAN := "Everything you're about to play was made by one person: me. That means there will be things that don't work right, or don't look right, and I won't have seen them all.\n\nIf you find one, please tell me, so I can fix it. Every report makes the game better for the next person who plays it."
+
+## The pages, in order: a heading, its paragraphs, and whether the maker's
+## name and the ownership line head the page.
+const PAGES := [
+	{"made_by": true, "head": "A note from Gary", "paras": [NOTE]},
+	{"made_by": false, "head": ONE_MAN_HEAD, "paras": [ONE_MAN]},
+]
+
 var _root: Control
+var _col: VBoxContainer
 var _t := 0.0
 var _done := false
 var _continue: Button
+var page := 0            # the page showing now (PAGES)
+var _turning := false    # between pages: no press counts
 
 
 func _ready() -> void:
@@ -38,6 +57,27 @@ func _ready() -> void:
 	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(bg)
 
+	_build_page()
+
+	var cp := UITheme.label(COPYRIGHT, 22, Color(1, 1, 1, 0.45))
+	cp.anchor_left = 0.0
+	cp.anchor_right = 1.0
+	cp.anchor_top = 1.0
+	cp.anchor_bottom = 1.0
+	cp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_root.add_child(cp)
+	SafeArea.watch(cp, func() -> void:   # above a phone's home bar
+		var b := maxf(24.0, SafeArea.insets().w)
+		cp.offset_top = -40 - b
+		cp.offset_bottom = -b)
+
+	_root.modulate.a = 0.0
+	create_tween().tween_property(_root, "modulate:a", 1.0, 0.8)
+
+
+## The page's words and its Continue, centred in the safe area.
+func _build_page() -> void:
+	var spec: Dictionary = PAGES[page]
 	var col := VBoxContainer.new()
 	col.set_anchors_preset(Control.PRESET_CENTER)
 	col.offset_left = -640
@@ -48,19 +88,24 @@ func _ready() -> void:
 	col.add_theme_constant_override("separation", 26)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(col)
+	_col = col
 
-	var made := UITheme.label("CREATED BY", 26, UITheme.GOLD_DIM, "bold")
-	made.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(made)
-	var name_l := UITheme.label("GARY MANNION", 78, UITheme.GOLD, "display_bold", 12)
-	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	col.add_child(name_l)
-	col.add_child(_rule())
-	col.add_child(_para(OWNERSHIP, 30, UITheme.TEXT))
-	var head := UITheme.label("A note from Gary", 40, UITheme.GOLD, "display_bold")
+	if spec.made_by:
+		var made := UITheme.label("CREATED BY", 26, UITheme.GOLD_DIM, "bold")
+		made.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(made)
+		var name_l := UITheme.label("GARY MANNION", 78, UITheme.GOLD, "display_bold", 12)
+		name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(name_l)
+		col.add_child(_rule())
+		col.add_child(_para(OWNERSHIP, 30, UITheme.TEXT))
+	var head := UITheme.label(String(spec.head), 40 if spec.made_by else 56, UITheme.GOLD, "display_bold")
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(head)
-	col.add_child(_para(NOTE, 30, Color(UITheme.TEXT, 0.92)))
+	if not spec.made_by:
+		col.add_child(_rule())
+	for p in spec.paras:
+		col.add_child(_para(String(p), 30 if spec.made_by else 32, Color(UITheme.TEXT, 0.92)))
 	var sig := UITheme.label("~ " + SIGN_OFF, 34, UITheme.GOLD, "display")
 	sig.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(sig)
@@ -89,21 +134,7 @@ func _ready() -> void:
 		col.offset_right = w * 0.5 + c.x
 		col.offset_top = -h * 0.5 + c.y
 		col.offset_bottom = h * 0.5 + c.y)
-
-	var cp := UITheme.label(COPYRIGHT, 22, Color(1, 1, 1, 0.45))
-	cp.anchor_left = 0.0
-	cp.anchor_right = 1.0
-	cp.anchor_top = 1.0
-	cp.anchor_bottom = 1.0
-	cp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_root.add_child(cp)
-	SafeArea.watch(cp, func() -> void:   # above a phone's home bar
-		var b := maxf(24.0, SafeArea.insets().w)
-		cp.offset_top = -40 - b
-		cp.offset_bottom = -b)
-
-	_root.modulate.a = 0.0
-	create_tween().tween_property(_root, "modulate:a", 1.0, 0.8)
+	_t = 0.0
 
 
 func _rule() -> Control:
@@ -123,6 +154,8 @@ func _para(text: String, fs: int, c: Color) -> Label:
 
 
 func _process(delta: float) -> void:
+	if _turning:
+		return
 	_t += delta
 	if _t > MIN_SECONDS and _continue.disabled:
 		_continue.disabled = false
@@ -135,13 +168,17 @@ func _unhandled_input(e: InputEvent) -> void:
 	# a keyboard's or a pad's Continue: a fresh press (not a key held down
 	# since before the page, or its repeats), once Continue is up
 	if (e.is_action_pressed("interact") or e.is_action_pressed("menu")) and not e.is_echo():
-		if not _continue.disabled:
+		if not _continue.disabled and not _turning:
 			_finish()
 		get_viewport().set_input_as_handled()
 
 
+## Continue: the next page, or, from the last, on to the title.
 func _finish() -> void:
-	if _done or _t < MIN_SECONDS:
+	if _done or _turning or _t < MIN_SECONDS:
+		return
+	if page < PAGES.size() - 1:
+		await _turn_page()
 		return
 	_done = true
 	Game.settings["seen_notice"] = true
@@ -151,6 +188,23 @@ func _finish() -> void:
 	await tw.finished
 	finished.emit()
 	queue_free()
+
+
+## The words fade out and the next page's fade in; the backdrop stays.
+func _turn_page() -> void:
+	_turning = true
+	_continue.disabled = true
+	var old := _col
+	var tw := create_tween()
+	tw.tween_property(old, "modulate:a", 0.0, 0.4)
+	await tw.finished
+	old.queue_free()
+	page += 1
+	_build_page()
+	_col.modulate.a = 0.0
+	var tin := create_tween()
+	tin.tween_property(_col, "modulate:a", 1.0, 0.5)
+	_turning = false
 
 
 ## Deep night, a slow gold glow and rising motes, like the title.

@@ -21,7 +21,13 @@ GODOT=${GODOT:-godot}
 python3 tools/web_packs.py presets
 rm -rf build/web && mkdir -p build/web/packs
 SIZES=""
-for pack in movie duel solhaven looks; do
+for pack in movie duel solhaven looks midnight dawn; do
+	# a story film pack with no clips in it yet isn't built (an empty include
+	# list would export the whole game), and the game plays the 3D scene
+	if [ "$(python3 tools/web_packs.py count "$pack")" = "0" ]; then
+		echo "packs/$pack.pck: nothing to pack yet"
+		continue
+	fi
 	"$GODOT" --headless --export-pack "Web pack: $pack" "build/web/packs/$pack.pck"
 	size=$(wc -c < "build/web/packs/$pack.pck")
 	# GitHub Pages refuses files over 100 MB: split the pack in tools/web_packs.py if it grows that big

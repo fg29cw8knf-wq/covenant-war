@@ -102,7 +102,7 @@ static func _drop(w: World, id: String) -> void:
 		b.visible = false
 		b.set_meta("cine_path", -1)
 		b.global_position = Vector3(2000, -200, 2000)
-		w.get_tree().create_timer(40.0).timeout.connect(b.queue_free)
+		w.get_tree().create_timer(40.0, false).timeout.connect(b.queue_free)
 
 
 ## Everyone a film brought on, sent off again (only the films' own: the

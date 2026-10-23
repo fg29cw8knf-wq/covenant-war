@@ -75,14 +75,14 @@ func _play_cut(times: Array) -> void:
 	await get_tree().process_frame
 	_check(_m._cut, "the finished cut is what's playing")
 	_check(_m._video.visible and _m._video.is_playing(), "the video is playing")
-	var fr := OpeningMovie.frame_rect(_m._root.size)
+	var fr := OpeningMovie.cut_rect(_m._root.size)
 	var vr := Rect2(_m._video.position, _m._video.size)
-	_check(vr.size.is_equal_approx(fr.size) and is_equal_approx(vr.position.x, fr.position.x),
-		"the cut fills the screen as the paintings do (%s, frame %s)" % [vr, fr])
-	# on a screen wider than the picture the crop comes off the top: the foot of
-	# the picture (Gary's words) stays on screen, bar CUT_FOOT of it
-	_check(vr.end.y <= _m._root.size.y + fr.size.y * (OpeningMovie.CUT_FOOT + 0.001) and vr.end.y >= _m._root.size.y - 0.5,
-		"the cut's foot stays on screen (bottom at %.0f of %.0f)" % [vr.end.y, _m._root.size.y])
+	_check(vr.size.is_equal_approx(fr.size) and vr.position.is_equal_approx(fr.position),
+		"the cut is shown whole, as big as fits, centred (%s, frame %s)" % [vr, fr])
+	# nothing of the picture is off the screen (Gary's title and words are in it)
+	var screen := Rect2(Vector2.ZERO, _m._root.size)
+	_check(screen.grow(0.5).encloses(vr), "the whole cut is on screen (%s in %s)" % [vr, screen])
+	_check(absf(vr.size.x / vr.size.y - 16.0 / 9.0) < 0.01, "the cut keeps its 16:9 shape (%s)" % vr.size)
 	var last := 0.0
 	while is_instance_valid(_m) and not _m._done:
 		await get_tree().process_frame

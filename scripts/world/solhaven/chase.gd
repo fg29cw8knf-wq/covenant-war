@@ -134,7 +134,7 @@ func play(world: World) -> void:
 		var ex: Dictionary = w.get_meta("extras", {})
 		ex.erase("chase_wren")
 		wren.visible = false
-		w.get_tree().create_timer(40.0).timeout.connect(wren.queue_free)
+		w.get_tree().create_timer(40.0, false).timeout.connect(wren.queue_free)
 	queue_free()
 
 

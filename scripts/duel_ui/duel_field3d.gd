@@ -563,18 +563,112 @@ func face_at(side: int, slot: int, target: Vector3, hold: float = 1.5) -> void:
 	s.yaw_until = _t + hold
 
 
-## Loads assets/models/creatures/<id>.glb (or summons/) when it exists and
-## hides the cut-out behind it.
-func _load_model(s: Slot, id: String) -> void:
-	var path := ""
+## The model file for a card, if there is one (assets/models/creatures/ or summons/).
+static func model_path(id: String) -> String:
 	for sub in ["creatures", "summons"]:
 		var p := "res://assets/models/%s/%s.glb" % [sub, id]
 		if ResourceLoader.exists(p):
-			path = p
-			break
+			return p
+	return ""
+
+
+var _warming := {}   # model path -> true while its background load is on
+var _warmed := {}    # model path -> true once it has been drawn here
+
+
+## Loads the models a duel may call (both decks' Totems and Summons) ahead
+## of their summons, in the background, and draws each one once under the
+## floor of the Circle so its shaders are compiled before it's wanted. Until
+## 23 October a creature's model was read from disk, built and its shaders
+## compiled at the moment it was called, and the duel hitched as it came
+## (Gary: "the battle's a bit glitchy when you load a Totem"). A few models
+## are built a frame, so the opening banners don't stutter either.
+func warm_models(ids: Array) -> void:
+	var paths: Array = []
+	for id in ids:
+		var p := model_path(String(id))
+		if p != "" and not _warmed.has(p) and not _warming.has(p) and not paths.has(p):
+			paths.append(p)
+	if paths.is_empty():
+		return
+	for p in paths:
+		_warming[p] = true
+		ResourceLoader.load_threaded_request(p)
+	var pit := Node3D.new()
+	pit.name = "Warm"
+	pit.position = Vector3(0, -3.0, 0)   # under the mat, in the camera's view, unseen
+	world.add_child(pit)
+	var left: Array = paths.duplicate()
+	while not left.is_empty() and is_inside_tree():
+		await get_tree().process_frame
+		var batch := 0
+		for p in left.duplicate():
+			if ResourceLoader.load_threaded_get_status(p) != ResourceLoader.THREAD_LOAD_LOADED:
+				if ResourceLoader.load_threaded_get_status(p) == ResourceLoader.THREAD_LOAD_FAILED:
+					left.erase(p)
+					_warming.erase(p)
+				continue
+			var scene := ResourceLoader.load_threaded_get(p) as PackedScene
+			left.erase(p)
+			_warming.erase(p)
+			_warmed[p] = true
+			if scene == null:
+				continue
+			var inst := scene.instantiate()
+			if inst is Node3D:
+				_dress_model(inst)
+				pit.add_child(inst)
+				var anim := _find_anim(inst)
+				if anim != null and anim.has_animation(_clip_in(anim, "idle")):
+					anim.play(_clip_in(anim, "idle"))   # (the skinning runs once too)
+			else:
+				inst.queue_free()
+			batch += 1
+			if batch >= 2:
+				break   # (the rest next frame)
+	# two drawn frames for the last of them, then they go
+	for i in 2:
+		await get_tree().process_frame
+	if is_instance_valid(pit):
+		pit.queue_free()
+
+
+## A loaded model, from its background load when one was asked for, else
+## from disk now.
+func _model_scene(path: String) -> PackedScene:
+	if _warming.has(path):
+		var sc := ResourceLoader.load_threaded_get(path) as PackedScene   # (waits for it)
+		_warming.erase(path)
+		_warmed[path] = true
+		return sc
+	return load(path) as PackedScene
+
+
+## Mesh shadows, and push emissive parts (fire, eyes) so they glow through
+## the bloom: the same dressing for a Totem in its slot and for a model
+## drawn once to warm its shaders, so the shaders are the same ones.
+static func _dress_model(inst: Node3D) -> void:
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var mesh := mi as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var mat := mesh.get_active_material(i)
+			if mat is BaseMaterial3D:
+				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
+				_dress_material(m2)
+				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
+				mesh.set_meta("_base_%d" % i, m2)
+
+
+## Loads assets/models/creatures/<id>.glb (or summons/) when it exists and
+## hides the cut-out behind it.
+func _load_model(s: Slot, id: String) -> void:
+	var path := model_path(id)
 	if path == "":
 		return
-	var scene: PackedScene = load(path)
+	var scene: PackedScene = _model_scene(path)
 	if scene == null:
 		return
 	var inst := scene.instantiate()
@@ -608,19 +702,7 @@ func _load_model(s: Slot, id: String) -> void:
 		play_clip(s.side, s.index, "idle")
 	else:
 		WingFlap.attach(inst)   # a model without clips still beats its wings (the Lantern Moth)
-	# mesh shadows, and push emissive parts (fire, eyes) so they glow through the bloom
-	for mi in inst.find_children("*", "MeshInstance3D", true, false):
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		var mesh := mi as MeshInstance3D
-		if mesh.mesh == null:
-			continue
-		for i in mesh.mesh.get_surface_count():
-			var mat := mesh.get_active_material(i)
-			if mat is BaseMaterial3D:
-				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
-				_dress_material(m2)
-				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
-				mesh.set_meta("_base_%d" % i, m2)
+	_dress_model(inst)
 	s.sprite.visible = false
 	s.shadow.visible = true
 
@@ -739,7 +821,7 @@ static func has_summon_model(id: String) -> bool:
 ## roars its attack, then lifts away. Awaitable; `on_land` is called at the
 ## moment it touches down so the screen can fire its own effects.
 func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callable = Callable()) -> void:
-	var scene: PackedScene = load("res://assets/models/summons/%s.glb" % id)
+	var scene: PackedScene = _model_scene("res://assets/models/summons/%s.glb" % id)
 	if scene == null:
 		return
 	var god := scene.instantiate() as Node3D

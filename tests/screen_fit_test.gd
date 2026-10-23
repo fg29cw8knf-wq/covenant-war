@@ -87,6 +87,10 @@ func _notice() -> void:
 	add_child(n)
 	await secs(2.0)
 	await shot("notice", n)
+	# the second page (one man's work, the plea for reports)
+	n._finish()
+	await secs(1.0)
+	await shot("notice_2", n)
 	n.queue_free()
 	await frames(2)
 

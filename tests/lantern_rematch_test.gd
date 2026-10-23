@@ -65,6 +65,11 @@ func _ready() -> void:
 	await _until(func() -> bool: return _banner_up(ds2), 20.0)
 	await get_tree().create_timer(0.4).timeout
 	await _shot("lantern_showboat")
+	# the rule stays up to be read until it's tapped (23 October)
+	await _until(func() -> bool: return ds2.banner_waiting, 20.0)
+	if not ds2.banner_waiting:
+		problems.append("the Showboat banner didn't wait for a tap")
+	ds2.tap_banner()
 	await _until(func() -> bool: return ds2.tutor != null and ds2.tutor.blocking, 20.0)
 	await get_tree().create_timer(0.5).timeout
 	await _shot("lantern_bram_first")

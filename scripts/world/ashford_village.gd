@@ -1163,7 +1163,7 @@ func dust_puff(at: Vector3) -> void:
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(p)
 	p.emitting = true
-	get_tree().create_timer(2.0).timeout.connect(p.queue_free)
+	get_tree().create_timer(2.0, false).timeout.connect(p.queue_free)
 
 ## Lights the Great Lantern at midnight: the flame catches, flares, and settles.
 func light_great_lantern() -> void:
@@ -1209,7 +1209,7 @@ func light_great_lantern() -> void:
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(p)
 	p.emitting = true
-	get_tree().create_timer(2.5).timeout.connect(p.queue_free)
+	get_tree().create_timer(2.5, false).timeout.connect(p.queue_free)
 
 func flag_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
@@ -2655,7 +2655,7 @@ func small_impact(at: Vector3, col: Color) -> void:
 	sp.visibility_aabb = AABB(Vector3(-12, -2, -12), Vector3(24, 14, 24))
 	add_child(sp)
 	sp.emitting = true
-	get_tree().create_timer(2.5).timeout.connect(sp.queue_free)
+	get_tree().create_timer(2.5, false).timeout.connect(sp.queue_free)
 	scorch(at, 3.2)
 	dust_puff(at)
 

@@ -269,7 +269,7 @@ static func _grey_coat(w: World) -> void:
 		if not is_instance_valid(b):
 			break
 		pip.doll.look_toward(b.global_position, w.cam)
-		await w.get_tree().create_timer(0.1).timeout
+		await w.get_tree().create_timer(0.1, false).timeout
 	# (off, and freed once his walk's tween has run out)
 	Films._drop(w, "grey_coat")
 	if is_instance_valid(pip.body):

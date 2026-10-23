@@ -450,6 +450,8 @@ func _duel(spec: Dictionary) -> bool:
 	while t < 90.0 and ds.mode != "main":
 		await _wait(0.25)
 		t += 0.25
+		if ds.banner_waiting:
+			ds.tap_banner()
 	_check(ds.mode == "main", "%s: the duel reached the player's turn" % scenario)
 	_check(ds.game.story_rules.size() == 1, "%s: the engine has the rule" % scenario)
 	await _wait(0.4)

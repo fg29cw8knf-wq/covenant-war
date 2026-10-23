@@ -63,6 +63,8 @@ func _one(which: String) -> void:
 	while r[0] == "" and t < 900.0:
 		await _wait(0.25)
 		t += 0.25
+		if ds.banner_waiting:
+			ds.tap_banner()
 		if ds.tutor != null and ds.tutor.blocking:
 			ds.tutor._tapped.emit()
 		if not shot_at.is_empty() and t >= shot_at[0]:
@@ -223,6 +225,8 @@ func _duel(spec: Dictionary) -> DuelScreen:
 		if not banner_shot and t > 2.4:
 			banner_shot = true
 			await _shot("rule_banner_%s" % String(spec.get("title", "")).get_slice(" ", 1).to_lower())
+		if ds.banner_waiting and t > 2.6:   # (the banner waits to be read: its still first)
+			ds.tap_banner()
 		if ds.tutor != null and ds.tutor.blocking:
 			ds.tutor._tapped.emit()
 	_check(ds.mode == "main", "the duel reached the player's turn")

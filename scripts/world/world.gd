@@ -210,7 +210,7 @@ func _arrive() -> void:
 		if area.get_script_constant_map().has("INTRO"):
 			await area.intro(self)   # the area's own opening shot (Ashford's flight over the festival)
 		else:
-			await get_tree().create_timer(1.2).timeout
+			await get_tree().create_timer(1.2, false).timeout
 		await run_steps(area.arrival(), null)
 		hud.dialogue.close()
 		hud.set_controls_visible(true)
@@ -230,7 +230,7 @@ func _show_first_steps() -> void:
 	if attract or Game.settings.get("first_steps", 0) >= 2:
 		return
 	var step := int(Game.settings.get("first_steps", 0))
-	await get_tree().create_timer(9.0).timeout
+	await get_tree().create_timer(9.0, false).timeout
 	if not is_inside_tree() or int(Game.settings.get("first_steps", 0)) != step:
 		return
 	if step == 0:
@@ -246,9 +246,9 @@ func _first_step_done(step: int) -> void:
 	Game.save_settings()
 	hud.show_hint("")
 	if step == 0:
-		await get_tree().create_timer(2.5).timeout
+		await get_tree().create_timer(2.5, false).timeout
 		while busy and is_inside_tree():   # mid-conversation: wait for it to end
-			await get_tree().create_timer(0.5).timeout
+			await get_tree().create_timer(0.5, false).timeout
 		if is_inside_tree():
 			_show_first_steps()
 
@@ -831,7 +831,7 @@ func swap_player_look() -> void:
 ## passing over on "You keep it").
 func _during(scene_name: String, delay: float) -> void:
 	if delay > 0.0:
-		await get_tree().create_timer(delay).timeout
+		await get_tree().create_timer(delay, false).timeout
 	if is_inside_tree():
 		await area.scene(scene_name, self)
 

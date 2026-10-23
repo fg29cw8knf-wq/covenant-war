@@ -265,7 +265,7 @@ func act(clip: String, speed := 1.0, blend := 0.2) -> void:
 	_held = false
 	_play(clip, blend, speed)
 	var a := anim.get_animation(clip)
-	await get_tree().create_timer(maxf(0.05, a.length / maxf(speed, 0.01) - blend * 0.5)).timeout
+	await get_tree().create_timer(maxf(0.05, a.length / maxf(speed, 0.01) - blend * 0.5), false).timeout
 	if _action == clip and not _held:
 		_action = ""
 
@@ -294,7 +294,7 @@ func pose(clip: String, at: float, blend := 0.2) -> void:
 	var t := anim.get_animation(clip).length * clampf(at, 0.0, 1.0)
 	_play(clip, blend)
 	anim.seek(maxf(0.0, t - blend), true)
-	await get_tree().create_timer(blend).timeout
+	await get_tree().create_timer(blend, false).timeout
 	if n == _pose_n and _action == clip and anim.current_animation == clip:
 		anim.pause()
 		anim.seek(t, true)
@@ -314,7 +314,7 @@ func resume(from := -1.0, speed := 1.0) -> void:
 	if from >= 0.0:
 		anim.seek(a.length * clampf(from, 0.0, 1.0), true)
 	var left := (a.length - anim.current_animation_position) / maxf(speed, 0.01)
-	await get_tree().create_timer(maxf(0.05, left - 0.25)).timeout
+	await get_tree().create_timer(maxf(0.05, left - 0.25), false).timeout
 	if _action == clip:
 		release(0.3)
 

@@ -342,7 +342,7 @@ func say(who: String, text: String, hold := -1.0) -> void:
 	_line_no += 1
 	var this_line := _line_no
 	if auto:
-		timer = get_tree().create_timer(secs)
+		timer = get_tree().create_timer(secs, false)
 		# only this line's own timer may move it on (an earlier line tapped
 		# through early still has its timer running)
 		timer.timeout.connect(func() -> void:

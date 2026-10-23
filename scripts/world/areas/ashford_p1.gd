@@ -997,12 +997,13 @@ static func _follow_step(w: World, who: String, keep: float, dt: float, speed: f
 
 
 ## A step that would take someone into a pile of Gary's sacks or a stack of
-## his crates slides round it instead.
+## his crates, or into anything solid and small (Nell's bench, the well, a
+## stool: Cine.blockers), slides round it instead.
 static func _round_props(w: World, at: Vector3) -> Vector3:
 	var v := village(w)
 	if v == null:
 		return at
-	for pr in v.props_placed:
+	for pr in v.props_placed + Cine.blockers(w):
 		var c: Vector2 = pr[0]
 		var r := float(pr[1]) + 0.35
 		var off := Vector2(at.x, at.z) - c
@@ -1311,14 +1312,20 @@ static func _taproom(w: World) -> void:
 		e["crate"] = cr
 	cr.global_position = e.table_top + Vector3(0.22, 0.0, -0.36)
 	cr.rotation = Vector3.ZERO
+	# the lanterns still to go in: a loose pile on the table beside the
+	# crate, on the side the camera sees (one on top of two), and Bram a
+	# step round the table towards it, so every one he packs is seen taken
+	# from the pile (until 23 October the pile sat behind the crate from
+	# the camera, and he seemed to conjure each lantern: Gary)
 	var pile: Array = []
+	var spots := [Vector3(-0.52, 0.32, 0.02), Vector3(-0.3, 0.32, 0.18), Vector3(-0.6, 0.32, -0.28), Vector3(-0.42, 0.58, -0.05)]
 	for k in 4:
 		var l := paper_lantern(v, 0.55)
 		root.add_child(l)
-		l.global_position = e.table_top + Vector3(-0.42 + (k % 2) * 0.18, 0.32 + (k / 2) * 0.05, -0.52 + (k / 2) * 0.17)
+		l.global_position = e.table_top + root.global_transform.basis * spots[k]
 		l.rotation = Vector3(0.0, k * 1.3, 0.0)
 		pile.append(l)
-	var bram_at: Vector3 = e.bram
+	var bram_at: Vector3 = e.bram + root.global_transform.basis * Vector3(-0.35, 0, 0.15)
 	var me_at: Vector3 = root.to_global(Vector3(1.6, 0, -0.35))
 	Cine.place(w, "bram", bram_at, e.table)
 	Cine.place(w, "player", e.stairs_foot, me_at)
@@ -1328,14 +1335,18 @@ static func _taproom(w: World) -> void:
 	var stacking := [true, false, false]   # [stacking on, paused, finished]
 	w.set_meta("p1_stacking", stacking)
 	_stack(w, cr, pile, stacking)
-	var cam := root.to_global(Vector3(3.55, 1.7, 1.55))
+	# from the player's side of the room, so the pile on the table beside
+	# the crate is seen as Bram takes from it (from the door end the crate
+	# hid it, and he seemed to conjure each lantern from the air: Gary, 23
+	# October)
+	var cam := root.to_global(Vector3(3.1, 1.75, 2.45))
 	Cine.shot(w, cam, (bram_at + me_at) * 0.5 + Vector3(0, 1.2, 0), 40.0)
 	await Cine.fade(w, 0.0, 0.8)
 	# down the last stair and up to the table
 	await Cine.path(w, "player", [me_at], 1.3)
 	Cine.look(w, "player", bram_at)
 	await Cine.wait(w, 0.3)
-	Cine.shot(w, root.to_global(Vector3(2.9, 1.65, 1.9)), (bram_at + me_at) * 0.5 + Vector3(0, 1.25, 0), 36.0)
+	Cine.shot(w, root.to_global(Vector3(2.65, 1.65, 2.35)), (bram_at + me_at) * 0.5 + Vector3(0, 1.25, 0), 36.0)
 	if bf is Figure3D:
 		(bf as Figure3D).look_toward(me_at, w.cam)
 	await w.run_steps(TAPROOM, null)
@@ -2178,7 +2189,10 @@ static func tam_pockets(w: World, folded: bool) -> void:
 
 # -------------------------------------------------------------- Nell's bench ---
 
-## She pats the bench beside her (a 3D Nell's hand on the seat, twice).
+## She pats the bench beside her (a 3D Nell's hand on the seat, twice): her
+## left hand, across her lap to the near half of the free seat, since her
+## right holds her stick (rigid in her hand since 23 October: a right-hand
+## pat would push it through the bench and the ground).
 static func nell_pats(w: World) -> void:
 	var nf = Cine.fig(w, "nell")
 	if not (nf is Figure3D):
@@ -2186,10 +2200,10 @@ static func nell_pats(w: World) -> void:
 	var f := nf as Figure3D
 	var pat := Node3D.new()
 	w.add_child(pat)
-	var seat := bench_seat(w, true)
+	var seat := bench_seat(w, true).lerp(bench_seat(w), 0.3)
 	for k in 2:
 		pat.global_position = seat + Vector3(0, 0.5, 0) + bench_facing(w) * 0.05
-		f.reach(null, pat, 0.3)
+		f.reach(pat, null, 0.3)
 		await Cine.wait(w, 0.35)
 		var tw := w.create_tween()
 		tw.tween_property(pat, "global_position:y", pat.global_position.y - 0.04, 0.12)
@@ -2578,7 +2592,7 @@ static func watch(w: World) -> void:
 		return
 	w.set_meta("p1_watch", true)
 	while is_instance_valid(w) and w.is_inside_tree():
-		await w.get_tree().create_timer(0.15).timeout
+		await w.get_tree().create_timer(0.15, false).timeout
 		if not is_instance_valid(w) or not w.is_inside_tree() or Game.flag("ash_lantern_duel"):
 			break
 		if not Game.flag("ash_started") or w.hud == null:

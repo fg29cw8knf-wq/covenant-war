@@ -189,16 +189,23 @@ static func frame_rect(s: Vector2, aspect: float = 16.0 / 9.0) -> Rect2:
 	return Rect2((s - sz) * 0.5, sz)
 
 
-## How much of the finished cut's height may go off the bottom of a wide
-## screen: Gary's words along its foot end 3.5% up, so the crop comes off the
-## top (sky; the title sits mid-frame) and the words stay whole.
-const CUT_FOOT := 0.01
+## The finished cut is shown whole: as big as fits the screen with nothing
+## cropped, centred, with black either side on a wide phone (a 16:9 film on
+## an iPhone's 2.17:1 screen) or above and below on an iPad. Until 23
+## October it was enlarged to fill the phone's width and a fifth of its
+## height went off the top, with Gary's own picture, title and words made
+## for the whole frame ("you can't see it all, some of it is off screen on
+## phone"). The shot-by-shot fallback keeps frame_rect's fill, since its
+## paintings are framed for it.
+static func cut_rect(s: Vector2, aspect: float = 16.0 / 9.0) -> Rect2:
+	var h := minf(s.x / aspect, s.y)
+	var sz := Vector2(h * aspect, h)
+	return Rect2((s - sz) * 0.5, sz)
 
 
 func _fit_video() -> void:
-	var fr := frame_rect(_root.size)
-	if ResourceLoader.exists(MOVIE) and not shots_only and fr.size.y > _root.size.y:
-		fr.position.y = _root.size.y - fr.size.y * (1.0 - CUT_FOOT)
+	var whole := ResourceLoader.exists(MOVIE) and not shots_only
+	var fr := cut_rect(_root.size) if whole else frame_rect(_root.size)
 	_video.position = fr.position
 	_video.size = fr.size
 

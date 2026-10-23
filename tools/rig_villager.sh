@@ -126,6 +126,9 @@ nell)
 		--borrow assets/models/characters/bram.glb:lift \
 		--hold-arm Right:idle:walk,run,talk,cheer,look_up,duel_idle,play_card,victory,defeat \
 		--head-up=-12:walk,run
+	# the stick itself follows her right hand alone (AssetFurnace bound its
+	# top to her fingers and its foot to her toes, and it bent as she danced)
+	python3 tools/stick_weights.py "$out" --fix
 	;;
 farmer|merchant|trader)
 	# the crowd's looks (22 October): AssetFurnace masters with the player's

@@ -49,6 +49,11 @@ func _drive() -> void:
 			print("PROBLEMS: ", problems if not problems.is_empty() else "none")
 			ds.finished.emit("won" if ds.game.winner == 0 else "lost")
 			return
+		if ds.banner_waiting:
+			await get_tree().create_timer(0.5).timeout
+			await _shot("rule")
+			ds.tap_banner()
+			continue
 		var tu: DuelTutor = ds.tutor
 		if tu == null:
 			continue

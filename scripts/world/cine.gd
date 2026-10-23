@@ -107,7 +107,7 @@ static func cam_pos(w: World) -> Vector3:
 
 
 static func wait(w: World, secs: float) -> void:
-	await w.get_tree().create_timer(secs).timeout
+	await w.get_tree().create_timer(secs, false).timeout
 
 
 # ---------------------------------------------------------------- camera ---
@@ -333,7 +333,196 @@ static func walk(w: World, who: String, to: Vector3, speed := 1.5, gait := "walk
 	await path(w, who, [to], speed, gait)
 
 
-## Walks someone through a list of points.
+## The small solid things a straight walk could cut through (a bench, a
+## stool, the well, a barrel, the Great Lantern's foot, a cart) as circles on
+## the ground: [Vector2 centre, float radius]. Read off the world's static
+## bodies (every solid_box and solid_round the set makes), so a thing that
+## stops the player stops a staged walk too; people, beasts and anything big
+## (a house, a wall, a fence) are left out, since a scene places people round
+## those itself and a detour round a house would be a walk of its own.
+## Cached for a moment (the set changes between parts, not within a step).
+const BLOCK_MAX_R := 2.2
+const BLOCK_CACHE_SECS := 1.0
+
+
+static func blockers(w: World) -> Array:
+	var now := Time.get_ticks_msec() * 0.001
+	if w.has_meta("blockers") and now - float(w.get_meta("blockers_at", -99.0)) < BLOCK_CACHE_SECS:
+		return w.get_meta("blockers")
+	var out: Array = []
+	for n in w.find_children("*", "StaticBody3D", true, false):
+		var sb := n as StaticBody3D
+		if sb.has_meta("npc") or sb.has_meta("beast") or not sb.is_inside_tree() or not sb.is_visible_in_tree():
+			continue
+		for c in sb.get_children():
+			var cs := c as CollisionShape3D
+			if cs == null or cs.shape == null or cs.disabled:
+				continue
+			var gt := cs.global_transform
+			var r := 0.0
+			var top := 0.0
+			var bottom := 0.0
+			if cs.shape is BoxShape3D:
+				var sz: Vector3 = (cs.shape as BoxShape3D).size * gt.basis.get_scale()
+				# a wall or a fence (long and thin) isn't a thing to walk
+				# round by its circle: that would take a walk through a
+				# doorway into the wall beside it
+				var long := maxf(sz.x, sz.z)
+				var thin := minf(sz.x, sz.z)
+				if long > 2.5 and long > thin * 3.0:
+					continue
+				r = Vector2(sz.x, sz.z).length() * 0.5
+				top = gt.origin.y + sz.y * 0.5
+				bottom = gt.origin.y - sz.y * 0.5
+			elif cs.shape is CylinderShape3D:
+				var cy := cs.shape as CylinderShape3D
+				r = cy.radius * maxf(gt.basis.get_scale().x, gt.basis.get_scale().z)
+				top = gt.origin.y + cy.height * 0.5 * gt.basis.get_scale().y
+				bottom = gt.origin.y - cy.height * 0.5 * gt.basis.get_scale().y
+			elif cs.shape is CapsuleShape3D or cs.shape is SphereShape3D:
+				r = cs.shape.radius * maxf(gt.basis.get_scale().x, gt.basis.get_scale().z)
+				top = gt.origin.y + r
+				bottom = gt.origin.y - r
+			else:
+				continue   # the ground, a trimesh: not a thing to walk round
+			if r < 0.1 or r > BLOCK_MAX_R:
+				continue
+			# a thing a walk goes under (a sign, a beam) or steps over (a kerb)
+			# doesn't count (a room built below the village stands on its own floor)
+			var g := ground(w, gt.origin)
+			if absf(gt.origin.y - g) > 5.0:
+				g = bottom
+			if bottom > g + 1.2 or top < g + 0.25:
+				continue
+			out.append([Vector2(gt.origin.x, gt.origin.z), r])
+	w.set_meta("blockers", out)
+	w.set_meta("blockers_at", now)
+	return out
+
+
+## A walk from `from` to `to` that goes round whatever solid thing stands in
+## the straight line (Gary, 23 October: "the player and Bram walk straight
+## through the bench on the way to the pole", "Tilly runs straight through
+## a bench"). A straight line that crosses nothing is left as it is. Else
+## the shortest way is found through the points round each thing in the
+## way (ten a thing, on its clearance circle), over the legs that cross
+## nothing: the bench against the well, say, is gone round by the bench's
+## far end rather than squeezed between the two. A walk that starts or ends
+## on a thing (sitting down on the bench, standing up from it) ignores that
+## thing. `clear` is a body's half-width kept from the thing's edge.
+const ROUTE_REACH := 4.0   # m either side of the straight line the way may wander
+
+
+static func route(w: World, from: Vector3, to: Vector3, clear := 0.35) -> Array:
+	var a := Vector2(from.x, from.z)
+	var b := Vector2(to.x, to.z)
+	if a.distance_to(b) < 0.05:
+		return [to]
+	var all := blockers(w)
+	if _crossings(all, a, b, clear) == 0:
+		return [to]
+	# the things near the way, and the points round each
+	var box := Rect2(a, Vector2.ZERO).expand(b).grow(ROUTE_REACH)
+	var field: Array = []
+	var nodes: Array = [a, b]
+	for bl in all:
+		var o: Vector2 = bl[0]
+		if not box.grow(float(bl[1])).has_point(o):
+			continue
+		field.append(bl)
+		var r := _keep_off(bl, a, b, clear, true, true)
+		if r <= 0.0:
+			continue
+		for k in 10:
+			var ang := k * TAU / 10.0
+			var pt := o + Vector2(cos(ang), sin(ang)) * (r + 0.15)
+			# (not a point in the next thing's clearance: no squeezing between)
+			var clear_of_rest := true
+			for other in all:
+				if other != bl and (other[0] as Vector2).distance_to(pt) < float(other[1]) + clear:
+					clear_of_rest = false
+					break
+			if clear_of_rest:
+				nodes.append(pt)
+	# the shortest way over the legs that cross nothing (Dijkstra)
+	var n := nodes.size()
+	var dist: Array = []
+	var prev: Array = []
+	var done: Array = []
+	for i in n:
+		dist.append(INF)
+		prev.append(-1)
+		done.append(false)
+	dist[0] = 0.0
+	while true:
+		var i := -1
+		for k in n:
+			if not done[k] and dist[k] < INF and (i < 0 or dist[k] < dist[i]):
+				i = k
+		if i < 0 or i == 1:
+			break
+		done[i] = true
+		var pi: Vector2 = nodes[i]
+		for j in n:
+			if done[j] or j == i:
+				continue
+			var pj: Vector2 = nodes[j]
+			var d: float = dist[i] + pi.distance_to(pj)
+			if d >= dist[j]:
+				continue
+			if _crossings(field, pi, pj, clear, i <= 1, j <= 1) > 0:
+				continue
+			dist[j] = d
+			prev[j] = i
+	if dist[1] == INF:
+		return [to]   # (hemmed in: the straight line, as before)
+	var way: Array = []
+	var at := 1
+	while at > 0:
+		var pt: Vector2 = nodes[at]
+		way.push_front(Vector3(pt.x, from.y, pt.y))
+		at = prev[at]
+	way[-1] = to
+	return way
+
+
+## How many blockers a leg from a to b crosses (a_end, b_end: that end is
+## the walk's own start or finish, not a point on the way round something).
+static func _crossings(all: Array, a: Vector2, b: Vector2, clear: float, a_end := true, b_end := true) -> int:
+	var ab := b - a
+	if ab.length_squared() < 0.0001:
+		return 0
+	var n := 0
+	for bl in all:
+		var o: Vector2 = bl[0]
+		var r := _keep_off(bl, a, b, clear, a_end, b_end)
+		if r <= 0.0:
+			continue
+		var t := clampf((o - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+		if (a + ab * t).distance_to(o) < r:
+			n += 1
+	return n
+
+
+## How far a leg from a to b keeps from this blocker's centre: its radius
+## and the body's clearance; just the thing itself when the walk's own
+## start or finish is close beside it (already in the clearance, with
+## nowhere else to be); nothing (0) when the walk starts or ends on the
+## thing (sitting down on the bench, standing up from it). A point on the
+## way round something is never excused that way.
+static func _keep_off(bl: Array, a: Vector2, b: Vector2, clear: float, a_end := true, b_end := true) -> float:
+	var o: Vector2 = bl[0]
+	var body: float = bl[1] + 0.05
+	var r: float = bl[1] + clear
+	if (a_end and o.distance_to(a) < body) or (b_end and o.distance_to(b) < body):
+		return 0.0
+	if (a_end and o.distance_to(a) < r) or (b_end and o.distance_to(b) < r):
+		return body
+	return r
+
+
+## Walks someone through a list of points, going round anything solid in
+## the way of each leg (route).
 static func path(w: World, who: String, points: Array, speed := 1.5, gait := "walk") -> void:
 	var b := body(w, who)
 	var f = fig(w, who)
@@ -351,7 +540,12 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 	b.set_meta("cine_path", token)
 	# over the village's slopes, feet stay on the grass
 	var follow := _on_terrain(w, b)
+	var legs: Array = []
+	var last := b.global_position
 	for p in points:
+		legs.append_array(route(w, last, p))
+		last = p
+	for p in legs:
 		var to: Vector3 = p
 		var from := b.global_position
 		to.y = from.y
@@ -568,7 +762,7 @@ static func beast_play(w: World, id: String, clip: String, speed := 1.0) -> void
 	ap.play(clip, 0.15)
 	var a := ap.get_animation(clip)
 	if a.loop_mode == Animation.LOOP_NONE:
-		await w.get_tree().create_timer(a.length / maxf(speed, 0.01)).timeout
+		await w.get_tree().create_timer(a.length / maxf(speed, 0.01), false).timeout
 		if ap.has_animation("idle") and ap.current_animation == clip:
 			ap.play("idle", 0.25)
 

@@ -1225,12 +1225,45 @@ static func _prologue_film(w: World, part: String) -> void:
 
 # ------------------------------------------------------- P2 · midnight ---
 
+## Midnight as Gary's own film (StoryFilm, once its clips exist; until then
+## the 3D staging below): the green is cleared behind the black as the 3D
+## version does, the film plays with its choice, and the world is left as
+## midnight leaves it (marked, the card put away) for dawn.
+static func _midnight_film(w: World) -> void:
+	await Cine.begin(w)
+	await Cine.fade(w, 1.0, 0.6)
+	AshfordP1.undress(w)
+	_stage(w, MID)
+	await StoryFilm.play(w, "midnight")
+	Game.set_flag("ash_marked")
+	await Cine.fade(w, 1.0, 1.2)
+
+
+## Dawn as Gary's own film (StoryFilm): the morning after is set under it
+## (the mill charred, the cart tipped, everyone where the taproom scene
+## expects them), the film plays with the name prompt, and it ends on black.
+static func _dawn_film(w: World) -> void:
+	var v := village(w)
+	await Cine.begin(w)
+	await Cine.fade(w, 1.0, 0.01)
+	v.set_time("dawn")
+	v.set_cart_tip(1.0)
+	_char_mill(v)
+	_clear_crowd(w)
+	_stage(w, DAWN, HERALD_ROAD[1])
+	await StoryFilm.play(w, "dawn")
+	await Cine.fade(w, 1.0, 1.2)
+
+
 ## Midnight (Master Script v3, P2): the player lights the Great Lantern, Tam
 ## dances with Nell, badly; the sky lanterns go up and stop, the sky tears,
 ## the Sigils fall. Corin is pinned under Tam's cart and dragged clear; one
 ## white light comes down to the player, and leaves them a blank card and a
 ## mark on their hand.
 static func _midnight(w: World) -> void:
+	if StoryFilm.available("midnight"):
+		await _midnight_film(w)
+		return
 	var v := village(w)
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.6)
@@ -1856,6 +1889,9 @@ const KNEELERS := ["nell", "tam", "hob", "ned", "corin", "tilly", "kid"]
 ## hand on your shoulder bringing you down. It reads the Covenant and two
 ## Champions, its lantern shows the other five, and then it names the player.
 static func _dawn(w: World) -> void:
+	if StoryFilm.available("dawn"):
+		await _dawn_film(w)
+		return
 	var v := village(w)
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.01)

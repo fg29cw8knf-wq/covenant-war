@@ -125,6 +125,10 @@ func _ready() -> void:
 	add_child(notice)
 	await _frames(90)
 	await _shot("notice")
+	if is_instance_valid(notice):
+		notice._finish()   # the second page
+		await _frames(45)
+		await _shot("notice_2")
 	if is_instance_valid(notice):   # it may have closed itself already on a slow machine
 		notice.queue_free()
 	Ads._show("interstitial")

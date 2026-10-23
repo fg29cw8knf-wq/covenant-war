@@ -16,6 +16,8 @@ for each of these, fetched the first time the game needs it (scripts/game/packs.
     looks     the player's looks B, C and D (their models and textures; their
               portraits stay in the main pack for the mirror), fetched when
               one of them is chosen in the mirror, or a game with one is continued
+    midnight  the Lantern Night film (StoryFilm: assets/movies/midnight/, or the cut)
+    dawn      the morning-after film (assets/movies/dawn/, or the cut)
 
 The native apps (iPhone, Mac) keep everything in one pack.
 
@@ -45,7 +47,7 @@ MOVIE_FALLBACK = ["assets/art/movie/*", "assets/movies/shots/*", "assets/audio/o
 PACKS = {
 	"movie": {
 		"title": "the opening movie",
-		"files": ["assets/movies/*"] + MOVIE_FALLBACK,
+		"files": ["assets/movies/opening.ogv", "assets/movies/shots/*"] + MOVIE_FALLBACK,
 	},
 	"duel": {
 		"title": "the Totems and Summons",
@@ -60,6 +62,16 @@ PACKS = {
 	"looks": {
 		"title": "your look",
 		"files": ["assets/models/characters/player_b*", "assets/models/characters/player_c*", "assets/models/characters/player_d*"],
+	},
+	# the story films (StoryFilm), one pack each: a film is the size of the
+	# opening movie, so two in one pack would pass GitHub's limit
+	"midnight": {
+		"title": "the Lantern Night",
+		"files": ["assets/movies/midnight.ogv", "assets/movies/midnight/*", "assets/art/movie/midnight/*", "assets/audio/vo/mid_*"],
+	},
+	"dawn": {
+		"title": "the morning after",
+		"files": ["assets/movies/dawn.ogv", "assets/movies/dawn/*", "assets/art/movie/dawn/*"],
 	},
 }
 
@@ -132,5 +144,7 @@ def presets():
 if __name__ == "__main__":
 	if sys.argv[1:] == ["presets"]:
 		presets()
+	elif len(sys.argv) == 3 and sys.argv[1] == "count":
+		print(len(pack_files(sys.argv[2])))   # (build_web.sh skips a pack with nothing in it yet)
 	else:
 		print(__doc__)

@@ -543,12 +543,20 @@ func _movie() -> void:
 # =============================================================== notice ===
 
 func _notice() -> void:
+	# two pages since 23 October (who made it; one man's work, please report
+	# what's wrong): each waits for its own press
 	for way in [ENTER, SPACE, E, PAD_A, ESC]:
 		var n := NoticeScreen.new()
 		add_child(n)
 		await secs(1.5)
 		await _press(way)
-		check("notice: %s carries on" % way.name, n._done)
+		await secs(0.6)   # (the first page fades out before the second is built)
+		check("notice: %s turns to the second page" % way.name, n.page == 1 and not n._done)
+		await _press(way)
+		check("notice: a press during the page turn doesn't count", not n._done)
+		await secs(1.5)
+		await _press(way)
+		check("notice: %s carries on from the second page" % way.name, n._done)
 		await _gone(n)
 	# nothing but Continue moves it on (Gary, 22 October: "the opening message
 	# cuts without me clicking Continue"): not a tap on the page, not a tap
@@ -581,7 +589,11 @@ func _notice() -> void:
 	await click(Vector2(960, 300))
 	check("notice: a tap on the page doesn't carry on", not n._done)
 	await click(spot)
-	check("notice: Continue carries on", n._done)
+	await secs(0.6)
+	check("notice: Continue turns the page", n.page == 1 and not n._done)
+	await secs(NoticeScreen.MIN_SECONDS + 0.9)
+	await click(center_of(n._continue))
+	check("notice: Continue carries on from the second page", n._done)
 	await _gone(n)
 
 

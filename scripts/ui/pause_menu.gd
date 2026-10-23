@@ -40,6 +40,7 @@ var _overlay: Control = null
 var _toast: Label
 var _tab_bar: HBoxContainer
 var _resume: Button
+var _pausing := false   # the game is paused for this menu
 
 
 func _ready() -> void:
@@ -47,6 +48,15 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	theme = UITheme.make()
 	visible = false
+	# The game stops while the menu is up (Gary, 23 October: "when you go to
+	# the menu screen the game needs to pause, not carry on"): the whole tree
+	# is paused (the world, its people and films, the voices, the dialogue),
+	# and only this menu, the pack tour over it, the music and the loading
+	# screens keep running (PROCESS_MODE_ALWAYS). The world's own waits are
+	# timers that stop with the tree (create_timer(..., false)); tweens made
+	# from a world node stop with it.
+	process_mode = Node.PROCESS_MODE_ALWAYS
+	visibility_changed.connect(_on_visibility)
 	var dim := ColorRect.new()
 	dim.color = Color(0.01, 0.01, 0.03, 0.8)
 	dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -100,6 +110,30 @@ func open(at_tab: String = "") -> void:
 	_deck_work = Array(Game.v2.get("deck", [])).duplicate()
 	visible = true
 	show_tab(at_tab if at_tab != "" else tab)
+
+
+## Pauses the game while the menu can be seen, and lets it go the moment it
+## can't (closed, hidden under a duel, or gone with its world).
+func _on_visibility() -> void:
+	_set_paused(is_visible_in_tree())
+
+
+func _set_paused(on: bool) -> void:
+	if _pausing == on:
+		return
+	_pausing = on
+	var t := get_tree()
+	if t != null:
+		t.paused = on
+
+
+func _exit_tree() -> void:
+	_set_paused(false)
+
+
+## Is the game paused for this menu? (the tests)
+func pausing() -> bool:
+	return _pausing
 
 
 ## Is this tab in the bar yet? (Deck and Codex wait for Game.unlock().)
