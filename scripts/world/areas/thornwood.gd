@@ -535,6 +535,7 @@ static func _boxes_on_log(w: World, sack: Node3D, ids: Array) -> Array:
 		to.y = float(lg.top)
 		b.global_position = to
 		b.rotation.y = atan2(along.x, along.z) + randf_range(-0.08, 0.08)
+		b.set_meta("deck", ids[i])   # (so _boxes_to_sack knows which to keep out)
 		boxes.append(b)
 	await Cine.wait(w, 0.2)
 	Cine.fade(w, 0.0, 0.45)

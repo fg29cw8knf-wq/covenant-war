@@ -116,6 +116,10 @@ func _world() -> void:
 	Game.new_game("Sprout", "emberstorm")
 	Game.set_flag("arrived_ashford")   # no opening flight or welcome: straight to walking about
 	world = World.new().setup("ashford", "green")
+	# (the game's lines wait for a tap since 23 October; this test is about
+	# the controls, so its few staged lines move on by themselves, as they
+	# did, rather than one left waiting swallowing every key and click after)
+	Cine.overlay(world).auto = true
 	add_child(world)
 	await until(func() -> bool: return world.hud != null and world.hud._fade.modulate.a < 0.05 and not world.busy, 8.0)
 	hud = world.hud

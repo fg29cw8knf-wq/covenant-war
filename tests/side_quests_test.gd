@@ -421,6 +421,21 @@ func _drive() -> void:
 					await _shot("line")
 				dlg._advance.emit()
 			await _frames(2)
+			continue
+		# a film's line or title card (every line waits for a tap since 23 October)
+		var ov := Cine.overlay(world)
+		if ov._choices.visible and ov._choices.get_child_count() > 0:
+			await _wait(0.45)
+			ov._chosen.emit(0)
+			await _frames(3)
+			continue
+		if ov._waiting:
+			await _wait(0.4)
+			if ov._waiting:
+				if every_line:
+					await _shot("line")
+				ov._next.emit()
+			await _frames(2)
 
 
 func _pick(dlg: DialogueBox) -> int:

@@ -324,6 +324,7 @@ func _process(_d: float) -> void:
 	if world == null or hud == null or _done:
 		return
 	var dlg := hud.dialogue
+	var ov := Cine.overlay(world)
 	if dlg._choices.visible:
 		_wait += 1
 		if _wait == read:
@@ -331,6 +332,19 @@ func _process(_d: float) -> void:
 		if _wait > read + 2:
 			_wait = 0
 			dlg._chosen.emit(_answer(dlg))
+	elif ov._waiting and not ov._choices.visible:
+		# a film's line or title card, waiting for its tap (every line waits
+		# since 23 October): read it, a still, and tap
+		_wait += 1
+		if _wait == read:
+			var t := ov._line.text if ov._line.modulate.a > 0.5 else ov._cap.text
+			if t != _last_line:
+				_last_line = t
+				print("  ", (ov._who.text + ": ") if ov._who.visible and ov._who.text != "" else "", t.left(90))
+				_shot("line")
+		if _wait > read + 1:
+			_wait = 0
+			ov._next.emit()
 	elif dlg._waiting:
 		if dlg._typing:
 			dlg._tap()
