@@ -487,14 +487,6 @@ func _build_lab() -> void:
 		Game.settings["duel_3d"] = on
 		Game.save_settings())
 	box.add_child(d3)
-	var vio := CheckButton.new()
-	vio.text = "Full violence (blood when Totems fall)"
-	vio.button_pressed = String(Game.settings.get("violence", "full")) == "full"
-	vio.add_theme_font_size_override("font_size", 24)
-	vio.toggled.connect(func(on: bool) -> void:
-		Game.settings["violence"] = "full" if on else "reduced"
-		Game.save_settings())
-	box.add_child(vio)
 	var rv := CheckButton.new()
 	rv.text = "Show the rival's hand and Wards"
 	rv.add_theme_font_size_override("font_size", 24)
@@ -2985,21 +2977,16 @@ func fx_ko(t: DuelTotem) -> void:
 	else:
 		story_bark("rival_kos_mine")
 	DuelFX.flash(fx_layer, c, Color(1, 0.95, 0.9), 280.0 * v.depth, 0.5 / speed)
-	# Violence setting: Full spills blood as it falls; Reduced bursts into crystal and light.
-	var gore: bool = String(Game.settings.get("violence", "full")) == "full"
+	# it bursts into crystal and light (no blood: Gary, 24 October, "blood
+	# off"; until then a Full violence setting sprayed red as it fell)
 	if field != null:
 		field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
 		field.burst(_body3(t), col, 70, 9.0, 1.0, 0.15, 0.0)
-		if gore:
-			field.burst(_body3(t), Color(0.55, 0.02, 0.03), 46, 5.0, 0.9, 0.3, 0.0)
-			field.rise(_foot3(t), Color(0.35, 0.0, 0.02), 20, 0.4, 0.8)
 		field.rise(_foot3(t), col, 60, 1.5, 1.6)
 		field.floor_wave(_foot3(t), col, 4.5, 0.7 / speed)
 		field.flash_light(_body3(t), Color(1, 0.95, 0.9), 12.0, 0.6 / speed)
 	else:
 		DuelFX.burst(fx_layer, c, col, 46, 720.0, 18.0, 0.9, Vector2(0, 300), 180.0, Vector2.UP, speed)
-		if gore:
-			DuelFX.burst(fx_layer, c, Color(0.6, 0.02, 0.04), 34, 520.0, 14.0, 0.8, Vector2(0, 900), 120.0, Vector2.UP, speed)
 		DuelFX.rise(fx_layer, foot - Vector2(0, 50), col, 190.0 * v.depth, 50, 1.3, speed)
 		DuelFX.shockwave(fx_layer, foot, col, 260.0 * v.depth, 0.6 / speed, 0.3, 10.0)
 	DuelFX.number(fx_layer, c + Vector2(0, -70), "KNOCKED OUT", Color("ff4d6a"), 54, 1.2 / speed)

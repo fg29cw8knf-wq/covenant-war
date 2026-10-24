@@ -899,8 +899,6 @@ func _options() -> Control:
 		video_btns.append(vb)
 		videos.add_child(vb)
 	v.add_child(videos)
-	v.add_child(_check("Full violence (blood when Totems fall)", String(Game.settings.get("violence", "full")) == "full", func(on: bool) -> void:
-		Game.settings["violence"] = "full" if on else "reduced"))
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
 		Game.settings["duel_3d"] = on))
 	if Gfx.is_phone():
