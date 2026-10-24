@@ -16,6 +16,20 @@ extends Control
 ## Each step's Objective (Master Script v3, P1), and the button in brackets
 ## for each kind of device. The phone's is the script's own.
 const OBJECTIVES := {
+	# Master Script v7 (24 October): the attic on a frosty morning
+	"basin": ["Walk to the washbasin.", {"phone": "(Tap the floor, or drag, to walk.)",
+		"tablet": "(Tap the floor, or drag, to walk.)", "computer": "(W A S D or the arrow keys to walk, or click the floor.)",
+		"controller": "(Left stick to walk.)"}],
+	"mirror": ["Look in the mirror.", {"phone": "(Tap the mirror.)", "tablet": "(Tap the mirror.)",
+		"computer": "(Press E, or click the mirror.)", "controller": "(Press A.)"}],
+	"take_crate": ["Take the lantern crate.", {"phone": "(Walk up to it and tap it.)", "tablet": "(Walk up to it and tap it.)",
+		"computer": "(Walk up to it and press E, or click it.)", "controller": "(Walk up to it and press A.)"}],
+	"green_crate": ["Take the lantern crate down to the green.", {"phone": "(Tap the ground to walk.)",
+		"tablet": "(Tap the ground, or drag, to walk.)", "computer": "(W A S D or the arrow keys to walk, or click the ground.)",
+		"controller": "(Left stick to walk.)"}],
+	"mill_tam": ["Speak to Tam Hayes at the mill entrance.", {"phone": "(Tap the ground to walk.)",
+		"tablet": "(Tap the ground, or drag, to walk.)", "computer": "(W A S D or the arrow keys to walk, or click the ground.)",
+		"controller": "(Left stick to walk.)"}],
 	"look": ["Choose your look.", {"phone": "(Tap a face to see it in the glass. Tap That's me to keep it.)",
 		"tablet": "(Tap a face to see it in the glass. Tap That's me to keep it.)",
 		"computer": "(Click a face to see it in the glass. Click That's me to keep it.)",

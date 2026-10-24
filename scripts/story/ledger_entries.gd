@@ -23,48 +23,57 @@ extends RefCounted
 ## The story and its side stories, in the order they happen.
 const ACCOUNTS := [
 	# ---------------------------------------------------------------- Ashford
+	# (Master Script v7, 24 October: the morning duel, the afternoon's jobs, the
+	# evening; the dawn Herald, that day, Krell at dusk and the tunnel.)
 	{"id": "p_last_night", "title": "The Last Night of the Age", "place": "Ashford", "kind": "story",
 		"when": "arrived_ashford | ash_started", "open": "!ash_lantern_duel & !ash_marked",
 		"parts": [[
-			["", "Ashford hung its lanterns for the last night of the Age, and Bram sent you to Tam first. Corin wanted his Lantern Duel before midnight."],
-			["ash_tam", "Ashford hung its lanterns for the last night of the Age. Corin wanted his Lantern Duel before midnight, and half the green was waiting."],
-			["ash_lantern_duel | ash_marked", "Ashford hung its lanterns for the last night of the Age. You won the Lantern Duel, so the Great Lantern was yours to light at midnight."],
+			["", "Ashford hung its lanterns for the last night of the Age, and Corin wanted his Lantern Duel before anyone had eaten."],
+			["ash_won_lantern", "Ashford hung its lanterns for the last night of the Age. You won the Lantern Duel with Bram's old Sparks, so the Great Lantern was yours to light at midnight."],
+			["ash_evening", "Ashford hung its lanterns for the last night of the Age, and you won the Lantern Duel. When the sun went down, nobody in Ashford owed anybody anything for one evening. I let them have it."],
 		]]},
-	{"id": "a_note", "title": "The Note", "place": "Ashford", "kind": "story", "when": "ash_tam", "open": "!ash_tam",
+	{"id": "a_note", "title": "The Note", "place": "Ashford", "kind": "story", "when": "tam_letter_seen | tam_told",
+		"open": "!pro_part=burning,cellar,reckoning,tunnel & !pro_tunnel_done & !arrived_thornwood",
 		"parts": [[
-			["", "Tam Hayes couldn't read, so you read him Ironvault's letter, and told him the new moon instead of tonight. He had one more good evening."],
-			["tam_told", "Tam Hayes couldn't read, so you read him Ironvault's letter: the mill's note fell due that night. He went to dance with his wife anyway."],
-			["pro_part=cellar | pro_tunnel_done | arrived_thornwood", "Tam Hayes couldn't read, so you told him his note fell due at the new moon. He learned the truth from Krell, lied to her for you anyway, and came to me."],
-			["tam_told & pro_part=cellar | tam_told & pro_tunnel_done | tam_told & arrived_thornwood", "Tam Hayes couldn't read, so you read him Ironvault's letter, and he knew the note fell due that night. When Krell offered him the mill for a word, he lied for you, and came to me."],
+			["", "Tam Hayes couldn't read, so you read him Ironvault's letter: seventy crowns for seed-barley, grown to four hundred in three winters, due at midnight. You promised not to tell Nell until the festival was over."],
+			["pro_part=burning,cellar,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "Tam Hayes couldn't read, so you read him Ironvault's letter. The next evening he stood between Krell and the inn and challenged the debt, and Krell set the stakes. The note was settled with him. He came to me."],
 		]]},
 	{"id": "a_nell", "title": "The Night Bram Came", "place": "Ashford", "kind": "side", "when": "ash_nell", "open": "!ash_nell",
 		"parts": [[
-			["", "Old Nell told you how Bram came down the Shardlands road twenty years ago, with you wrapped in his coat and gold in his pocket. The sky had been white all that night."],
+			["", "Old Nell remembered the night Bram walked out of the Shardlands with you tucked inside his coat, the sky burning white. He paid for the inn in gold that smelled of ash. She has never asked him where he found you."],
 		]]},
-	{"id": "a_corin", "title": "Corin's Letter", "place": "Ashford", "kind": "side", "when": "corin_letter", "open": "!corin_letter",
+	{"id": "a_tilly", "title": "Tilly's Moth", "place": "Ashford", "kind": "side", "when": "ash_tilly", "open": "!tilly_thanks",
 		"parts": [[
-			["", "Corin had signed with Ironvault, to write its contracts from the spring and duel anyone who won't honour one. He put your name down too, and his mam didn't know."],
+			["", "Tilly's Lantern Moth wouldn't wake for anyone in Ashford, not even Tam. It woke for you, and flew round her head."],
+			["tilly_thanks", "Tilly's Lantern Moth wouldn't wake for anyone in Ashford. It woke for you, so that evening she gave it to you, before it could go grey for good. She means to visit it."],
+		]]},
+	{"id": "a_corin", "title": "Corin's Letter", "place": "Ashford", "kind": "side", "when": "corin_letter | corin_truth", "open": "!corin_pond",
+		"parts": [[
+			["", "Corin had a clerkship from the Ironvault Notary Guild, and he'd put your name down too."],
+			["corin_pond", "Corin had a clerkship from the Ironvault Notary Guild. That evening on the mill-race wall he gave you the best button off his new coat."],
+			["corin_truth", "Corin had a clerkship from the Ironvault Notary Guild. On the mill-race wall he told you why: two years clerking, and his mam's note would be written off. She thought he wanted to go. He gave you a button."],
 		]]},
 	{"id": "p_sigilfall", "title": "The Sigilfall", "place": "Ashford", "kind": "story", "when": "ash_marked", "open": "!ash_marked",
 		"parts": [[
-			["", "At midnight the sky split and the gods' light came down in every colour. One white light came to you and no one else, and left a card with nothing on it and a mark on your hand."],
+			["", "At midnight the sky tore open. You pulled Corin out from under a cart, and then one streak of white came down to you and no one else, and left a blank white card in your hand. The mark on your collarbone burned white."],
 		]]},
 	{"id": "p_herald", "title": "The Pale Herald", "place": "Ashford", "kind": "story",
-		"when": "pro_part=taproom,burning,cellar | pro_tunnel_done | arrived_thornwood", "open": "!ash_marked",
+		"when": "pro_part=taproom,burning,cellar,that_day,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "open": "!ash_marked",
 		"parts": [[
-			["", "At dawn my Herald read out the Champions of the Seats, and then your name, which nobody had told it. You were to present your mark at the Sun Court of Solhaven before the new moon."],
+			["", "At dawn my Herald counted the Champions of the seven Seats. Then the Covenant forged an eighth, for the holder of the Last Seal, and the Herald named you the Unsworn. Ashford stepped back from you, and Bram stepped forward."],
 		]]},
-	{"id": "p_burning", "title": "Ashford Burns", "place": "Ashford", "kind": "story",
-		"when": "pro_part=cellar | pro_tunnel_done | arrived_thornwood", "open": "!ash_marked",
+	{"id": "p_burning", "title": "The Ashford Reckoning", "place": "Ashford", "kind": "story",
+		"when": "pro_part=cellar,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "open": "!ash_marked",
 		"parts": [[
-			["", "Ironvault came that night, offering to burn every note in Ashford for one card, and nobody pointed. Krell burned the inn anyway, and Bram took you out through the cellar."],
+			["", "Krell came at dusk, hours early, holding the notes for twenty-two roofs, and offered to burn them all for one white card. Nobody pointed. Tam challenged the debt to buy you time, and Bram took you out through his tunnel."],
+			["pro_tunnel_done | arrived_thornwood", "Krell came at dusk, hours early, and offered to burn every note in Ashford for one white card. Nobody pointed. Tam challenged the debt and died for it, and Bram took you out through his tunnel. From the hill, Ashford was still standing. Corin stayed."],
 		]]},
 	# ------------------------------------------------------------ the road
 	{"id": "p_road", "title": "The Thornwood Road", "place": "The Thornwood", "kind": "story",
 		"when": "arrived_thornwood | pro_tunnel_done", "open": "!thornwood_done & !arrived_solhaven",
 		"parts": [[
-			["", "You left Ashford burning behind you, by the river and the road east. Bram swore on the Lantern that you'd come home."],
-			["bram_deck", "On the road east, Bram set his four old decks on a log and let you choose one. He didn't say anything else that night."],
+			["", "You left Ashford by Bram's tunnel, with Ironvault's grey coats on the green behind you, and walked the Thornwood all night."],
+			["bram_deck", "In a shelter under the Thornwood, Bram set out four old card boxes and let you choose one. Then he taught you what the cellar never had."],
 			["beat_hunter", "On the road east, Hunter Dask staked every card he owned against yours, for his mother's note. He lost them."],
 			["beat_hunter & dask_kept_hound", "On the road east, Hunter Dask staked every card he owned against yours, for his mother's note, and lost them. You gave him back his hound."],
 			["beat_hunter & dask_sent_home", "On the road east, Hunter Dask staked every card he owned against yours, for his mother's note, and lost them. You sent him home."],
@@ -139,25 +148,26 @@ const PEOPLE := [
 	{"id": "bram", "look": "bram", "place": "Ashford", "met": "met_bram | arrived_ashford | ash_started", "lines": [
 		["", "Bram. Kept the Crooked Lantern twenty years, and you in it."],
 		["ash_nell", "Bram. Came down the Shardlands road with you in his coat, and paid for an inn in gold. He has never said where the gold came from."],
-		["pro_part=cellar | pro_tunnel_done | arrived_thornwood", "Bram. Lost his inn and kept his decks, and you. He swore on the Lantern you'd go home."],
+		["pro_part=that_day,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "Bram. Not who you thought he was. Twenty years of lies, and every one of them kept you alive."],
 	]},
 	{"id": "tam", "look": "farmer", "place": "Ashford", "met": "met_tam | ash_tam", "lines": [
 		["", "Tam Hayes. Ashford's miller. Couldn't read, and didn't want his wife to know."],
-		["pro_part=cellar | pro_tunnel_done | arrived_thornwood", "Tam Hayes. Miller of Ashford. Told one lie in his life, to Krell, for you."],
+		["pro_part=cellar,tunnel | pro_tunnel_done | arrived_thornwood", "Tam Hayes. Miller of Ashford. Challenged the debt for you. A terrible card player, Krell said. She was wrong."],
 	]},
 	{"id": "nell", "look": "elder", "place": "Ashford", "met": "met_nell | ash_nell", "lines": [
 		["", "Old Nell. Tam's wife, and the first through the Crooked Lantern's door."],
-		["pro_part=cellar | pro_tunnel_done | arrived_thornwood", "Old Nell. Said Tam's name once, the way she'd call him in for supper."],
+		["pro_part=cellar,tunnel | pro_tunnel_done | arrived_thornwood", "Old Nell. I heard her from the hill, under the bell."],
 	]},
 	{"id": "tilly", "look": "child", "place": "Ashford", "met": "met_tilly | ash_tilly_seen | ash_tilly | has_lantern_moth", "lines": [
 		["", "Tilly. Seven. Her Lantern Moth wouldn't wake for her."],
-		["ash_tilly", "Tilly. Seven. Her Lantern Moth woke for you, and liked you better."],
-		["has_lantern_moth", "Tilly. Seven. Gave you her Lantern Moth, for luck."],
+		["ash_tilly", "Tilly. Seven. Her Lantern Moth woke for you, and flew round her head."],
+		["has_lantern_moth", "Tilly. Seven. Gave you her Lantern Moth so it wouldn't go grey. She means to visit it."],
 	]},
 	{"id": "corin", "look": "corin", "place": "Ashford", "met": "met_corin | corin_met | ash_lantern_duel", "lines": [
 		["", "Corin. Ashford's best duellist, by his own account."],
-		["corin_letter", "Corin. Ashford's best duellist, by his own account, and Ironvault's Notary from the spring."],
-		["pro_tunnel_done | arrived_thornwood", "Corin. Stayed behind on the riverbank with his mam and Nell, because somebody had to."],
+		["corin_letter", "Corin. Ashford's best duellist, by his own account, and an Ironvault clerk from the spring."],
+		["corin_truth", "Corin. Taking Ironvault's clerkship to write off his mam's note. She thinks he wants to go."],
+		["pro_tunnel_done | arrived_thornwood", "Corin. Found your rabbit-hole when you were ten, and never told. Stayed behind with his mam, Nell and Tilly, on a crushed knee."],
 	]},
 	{"id": "hob", "look": "hob", "place": "Ashford", "met": "met_hob | hob_gift", "lines": [
 		["", "Hob. Grew his cabbages early this year, and Sparks came up with them."],
@@ -166,11 +176,11 @@ const PEOPLE := [
 	{"id": "ned", "look": "fiddler", "place": "Ashford", "met": "met_ned | met_seamus", "lines": [
 		["", "Ned. Plays a reel as old as the Age, and wonders how the last night of the last one went."],
 	]},
-	{"id": "herald", "look": "herald", "place": "Ashford", "met": "pro_part=taproom,burning,cellar | pro_tunnel_done | arrived_thornwood", "lines": [
+	{"id": "herald", "look": "herald", "place": "Ashford", "met": "pro_part=taproom,burning,cellar,that_day,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "lines": [
 		["", "My Herald. It says what the Covenant gives it to say, and nothing else."],
 	]},
-	{"id": "krell", "look": "krell", "place": "Ashford", "met": "pro_part=cellar | pro_tunnel_done | arrived_thornwood", "lines": [
-		["", "Sabine Krell. Ironvault's Huntmaster. Reads every term aloud before she enforces it."],
+	{"id": "krell", "look": "krell", "place": "Ashford", "met": "pro_part=cellar,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "lines": [
+		["", "Sabine Krell. Ironvault's Huntmaster. Never raises her voice. Wanted the white card, not a heap of ashes."],
 	]},
 	{"id": "dask", "look": "hunter", "place": "The Thornwood", "met": "beat_hunter", "lines": [
 		["", "Dask. Staked every card he owned to pay off his mother's note, and lost them to you."],

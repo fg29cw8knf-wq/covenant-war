@@ -16,6 +16,10 @@ uniform float sky_dim : hint_range(0.0, 1.0) = 1.0;
 // 0 = night, 1 = the dawn after the Sigilfall: a low sun in the east, smoke-hazed
 uniform float dawn : hint_range(0.0, 1.0) = 0.0;
 uniform vec3 sun_dir = vec3(0.86, 0.10, -0.50);
+// 0 = night, 1 = full day (Master Script v7: the Prologue's morning and
+// afternoon, before the festival evening): a clear northern-English sky,
+// pale at the horizon, with white clouds and the sun where sun_dir says
+uniform float day : hint_range(0.0, 1.0) = 0.0;
 
 vec3 tear_light(vec3 d, out float core) {
 	vec3 a = normalize(tear_a);
@@ -142,6 +146,24 @@ void sky() {
 		}
 		if (h < 0.0) dc = mix(dc, vec3(0.45, 0.36, 0.34), smoothstep(0.0, -0.12, h));
 		col = mix(col, dc, dawn);
+	}
+	if (day > 0.001) {
+		vec3 sd = normalize(sun_dir);
+		float s = max(dot(d, sd), 0.0);
+		vec3 zen = vec3(0.20, 0.40, 0.76);
+		vec3 hor = vec3(0.74, 0.82, 0.90);
+		vec3 dc = mix(hor, zen, pow(clamp(h + 0.02, 0.0, 1.0), 0.5));
+		dc += vec3(1.0, 0.94, 0.82) * pow(s, 10.0) * 0.35;
+		dc += vec3(1.0, 0.97, 0.9) * (smoothstep(0.9994, 0.9997, s) * 9.0 + pow(s, 500.0) * 2.5);
+		if (h > -0.05 && !CUBEPASS) {
+			vec2 cuv = d.xz / (h + 0.12) * 0.55;
+			float cl = fbm(cuv * 1.3 + vec2(TIME * 0.004, 0.0));
+			cl = smoothstep(0.44, 0.82, cl + 0.08 * fbm(cuv * 5.0));
+			vec3 ccol = mix(vec3(0.78, 0.8, 0.86), vec3(1.0, 0.99, 0.96), 0.45 + 0.55 * pow(s, 2.0));
+			dc = mix(dc, ccol, cl * smoothstep(-0.05, 0.14, h) * 0.85);
+		}
+		if (h < 0.0) dc = mix(dc, vec3(0.52, 0.56, 0.5), smoothstep(0.0, -0.12, h));
+		col = mix(col, dc, day);
 	}
 	COLOR = col;
 }

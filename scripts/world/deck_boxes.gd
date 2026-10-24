@@ -160,7 +160,9 @@ func show_deck(i: int) -> void:
 	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.add_child(card)
-	var nm := UITheme.label(String(d.name).to_upper(), 36, UITheme.GOLD, "display_bold")
+	# v7: each deck is a class (Mercenary, Scrivener, Ferryman, Unsworn)
+	var cls := String(ThornwoodShelter.CLASS_NAMES.get(ids[i], ""))
+	var nm := UITheme.label((((cls + " · ") if cls != "" else "") + String(d.name)).to_upper(), 34, UITheme.GOLD, "display_bold")
 	nm.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(nm)
 	var els := StoryScreen.ElementRow.new()

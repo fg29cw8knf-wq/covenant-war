@@ -41,7 +41,14 @@ const DIR := "res://assets/models/characters/"
 ## Pip's and the third child's on the green, plays Gary's boy, child_b, so no
 ## cartoon child stands among the 3D ones: Tilly has her own model, and Pip
 ## will when his comes, pip.glb.)
-const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard", "child": "child_b"}
+const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard", "child": "child_b",
+	# Master Script v7 (24 October): the hero is Player A in every scene and
+	# film, and Gary's other three looks play people instead: Player B is
+	# Dask, Player C is Wren, Player D is Ironvault's hunters and enforcers
+	# (until their own models come). Tilly is the brown-skinned girl he made
+	# (child_c); her first, blonde model is a girl in the crowd ("girl").
+	"dask": "player_b", "wren": "player_c", "hunter": "player_d", "enforcer": "player_d",
+	"tilly": "child_c", "girl": "tilly"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
 ## Where to borrow a clip from when a model doesn't have it: the shared
@@ -145,9 +152,8 @@ static func make(look: String, id := "") -> PaperDoll:
 
 
 ## The model file (without .glb) that plays a look or id. The player's is
-## the look chosen in the attic mirror (the "look" flag: a, b, c or d ->
-## player_a.glb, player_b.glb...; look A when that look's model isn't made
-## yet, so an old save never loses its player).
+## Player A (Master Script v7: one hero, so the films can be made round him;
+## DollArt.player_look() says "a" whatever an older save's "look" flag holds).
 static func model_file(look: String) -> String:
 	if look == "player":
 		var l := "player_" + DollArt.player_look()

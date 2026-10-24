@@ -9,7 +9,8 @@ extends RefCounted
 const HOB_SPARKS := ["mossling", "mossling", "sparkkit", "sparkkit", "emberwisp", "shellguard", "bloomsprite", "burrowmole", "somnowl"]
 
 ## Dask's duel rule, as the duel's banner shows it.
-const RUN_TO_GROUND := ["Run to Ground", "Dask's hounds always attack the Totem with the least Life left."]
+## (Master Script v7: +2 Attack for every turn that passes, in the game's tens.)
+const RUN_TO_GROUND := ["Run to Ground", "Dask's hounds hit 10 harder for every round that passes."]
 
 
 ## Hob's nine Sparks join the collection (once): at the river, the night
@@ -28,7 +29,7 @@ static func prologue_gifts() -> void:
 	if Game.flag("has_lantern_moth") and not Game.flag("moth_given"):
 		Game.set_flag("moth_given")
 		_give(["lantern_moth"])
-	hob_sparks()
+	# (v7: Hob keeps his cabbage Sparks; nothing is skimmed across a river)
 
 
 static func _give(ids: Array) -> void:
@@ -96,7 +97,14 @@ static func practice_duel_spec(mine: String) -> Dictionary:
 		"story": true,
 		"lessons": true,   # Bram explains each new thing once: tiers, Rites, Shift, Fate bands, conditions, Wards, Ascension
 		"rewards": {"opponent": "village"},
-		"title": "By the fire · Bram",
+		# v7: no experience until Dask; and two glimpses of Bram's past
+		"practice": true,
+		"practice_line": "Bram's lesson: no experience is won or lost.",
+		"bark_on": {
+			"rival_ward_springs": "I watched a Ward like that take a man's whole line, once. A pass above Glyphmere, snow to the knees. He never saw it. No. That's not a story for tonight. Again.",
+			"my_ascends": "I raised a Cinderpup once into something you'd not believe. Gave it to a girl in a town that was burning, so she'd have something to hold. Eat your bread.",
+		},
+		"title": "The shelter · Bram",
 	}
 
 

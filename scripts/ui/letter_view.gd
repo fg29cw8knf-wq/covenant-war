@@ -10,7 +10,9 @@ extends Control
 signal closed
 
 ## Tam's letter, word for word (Master Script v3, P1 · Tam and the note).
-const TAM := "To T. Hayes, miller, of Ashford.\n\nThe note of eleven hundred crowns secured on the mill, its stones and its house falls due in full at the close of the present Age.\n\nIronvault thanks you for your custom."
+## Master Script v7: a demand of foreclosure, in legal script, with a dark
+## red wax seal.
+const TAM := "To T. Hayes, miller, of Ashford.\n\nDemand of foreclosure: seventy crowns for seed-barley, with three winters' interest, now four hundred crowns, due at midnight tonight. If unpaid, the millwheel and water rights revert to Ironvault.\n\nIronvault thanks you for your custom."
 
 var body := ""
 var _t := 0.0

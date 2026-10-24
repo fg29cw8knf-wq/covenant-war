@@ -538,6 +538,15 @@ const RING_MODELS := ["cottage_c", "cottage_a", "cottage_b", "cottage_c", "cotta
 ## glass made from its colour atlas, used as the emission texture.
 const WINDOW_GLOW := Color(1.0, 0.6, 0.28)
 var _model_info := {}   # model id -> its chimney top (measured once)
+## The houses' window glow materials ([material, its night energy]) and the
+## lights at their doors, which the daylight turns down (set_daylight).
+var window_mats: Array = []
+var house_lights: Array = []
+## The festival night as built, kept so the daylight can blend back into it
+## (Master Script v7: P1 is a frosty morning and an afternoon, and the
+## lanterns are lit as the sun drops behind the mill).
+var _night := {}
+var daylight := 0.0
 ## Every building model placed: {id, root, L, D, top, inn}, for setting them alight.
 var houses: Array = []
 
@@ -585,6 +594,7 @@ func model_house(id: String, pos: Vector3, seed_i: int, burning: bool) -> bool:
 				gm.emission_texture = glow
 				gm.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 				mi.set_surface_override_material(s, gm)
+				window_mats.append([gm, gm.emission_energy_multiplier])
 	if measure:
 		_model_info[id] = top_v
 	top_v = _model_info[id]
@@ -604,6 +614,7 @@ func model_house(id: String, pos: Vector3, seed_i: int, burning: bool) -> bool:
 		ll.omni_attenuation = 1.4
 		ll.position = spot
 		root.add_child(ll)
+		house_lights.append(ll)
 	if top_v.y > 0.0 and not burning:
 		chimney_smoke(root, top_v + Vector3(0, 0.15, 0))
 	if burning:
@@ -2729,8 +2740,76 @@ func houses_near(p: Vector3) -> Array:
 ## The time of day the set is dressed for ("festival", "dawn", "burning"...; Cine's key light reads it).
 var time_kind := "festival"
 
+## Master Script v7's P1 by day (k = 1) or on the festival night (k = 0),
+## or anywhere between as the sun goes down: the sky, the sun (the moon's
+## light, turned warm and high), the fill and the fog, the lanterns, the
+## bunting's bulbs, the windows and the door lights.
+func set_daylight(k: float) -> void:
+	if _night.is_empty():
+		_night = {"moon_col": moon_light.light_color, "moon_e": moon_light.light_energy, "moon_xf": moon_light.global_transform,
+			"amb_src": env.ambient_light_source, "amb_col": env.ambient_light_color, "amb_e": env.ambient_light_energy,
+			"fog_col": env.fog_light_color, "fog_d": env.fog_density, "exposure": env.tonemap_exposure,
+			"fest": festival_light.light_energy, "tear": tear_light.visible,
+			"lantern": _param(mats.lantern, "energy", 1.0), "bulb": _param(mats.bulb, "energy", 1.0),
+			"tear_open": _param(sky_mat, "tear_open", 0.0),
+			"ll_vis": lantern_lights.map(func(ll) -> bool: return (ll[0] as Node3D).visible)}
+	k = clampf(k, 0.0, 1.0)
+	daylight = k
+	var n := _night
+	# the sun: high in the south-east by day, low in the west at sunset
+	var sun_day := Vector3(0.45, 0.78, 0.43).normalized()
+	var sun_set := Vector3(-0.9, 0.08, 0.42).normalized()
+	var dusk := clampf((0.75 - k) / 0.55, 0.0, 1.0) * clampf(k / 0.12, 0.0, 1.0)   # 0 by day and by night, up at sunset
+	var sun := sun_day.slerp(sun_set, clampf(1.0 - k, 0.0, 1.0)).normalized()
+	sky_mat.set_shader_parameter("day", smoothstep(0.08, 0.6, k))
+	sky_mat.set_shader_parameter("dawn", dusk * 0.85)
+	sky_mat.set_shader_parameter("sun_dir", sun)
+	sky_mat.set_shader_parameter("tear_open", lerpf(float(n.tear_open), 0.0, k))
+	tear_light.visible = bool(n.tear) and k < 0.5
+	if k > 0.0:
+		moon_light.look_at_from_position(Vector3.ZERO, -sun, Vector3.UP)
+	else:
+		moon_light.global_transform = n.moon_xf
+	var day_sun := Color(1.0, 0.95, 0.86).lerp(Color(1.0, 0.62, 0.38), dusk)
+	moon_light.light_color = (n.moon_col as Color).lerp(day_sun, smoothstep(0.0, 0.35, k))
+	moon_light.light_energy = lerpf(float(n.moon_e), [3.0, 2.6, 2.4][quality], smoothstep(0.0, 0.5, k))
+	if k > 0.0:
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR if quality < 2 else Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_color = (n.amb_col as Color).lerp(Color(0.66, 0.7, 0.78), k)
+		env.ambient_light_energy = lerpf(float(n.amb_e), 1.0, k)
+	else:
+		env.ambient_light_source = n.amb_src
+		env.ambient_light_color = n.amb_col
+		env.ambient_light_energy = n.amb_e
+	env.fog_light_color = (n.fog_col as Color).lerp(Color(0.72, 0.78, 0.86).lerp(Color(0.95, 0.62, 0.45), dusk), k)
+	env.fog_density = lerpf(float(n.fog_d), 0.0018, k)
+	# the lanterns and the bunting's bulbs come on as the light goes
+	var lamps := 1.0 - smoothstep(0.15, 0.55, k)
+	mats.lantern.set_shader_parameter("energy", float(n.lantern) * lamps)
+	mats.bulb.set_shader_parameter("energy", float(n.bulb) * lamps)
+	festival_light.light_energy = float(n.fest) * lamps
+	for wm in window_mats:
+		(wm[0] as StandardMaterial3D).emission_energy_multiplier = float(wm[1]) * lamps
+	for hl in house_lights:
+		(hl as OmniLight3D).visible = lamps > 0.05
+	var vis: Array = n.ll_vis
+	for i in lantern_lights.size():
+		var was: bool = vis[i] if i < vis.size() else true
+		(lantern_lights[i][0] as Node3D).visible = was and lamps > 0.05
+
+
+## A shader's uniform as it stands, or `default` if nothing has set it yet
+## (get_shader_parameter() gives null until it's set, not the shader's default).
+static func _param(m: ShaderMaterial, name: String, default: float) -> float:
+	var x = m.get_shader_parameter(name) if m != null else null
+	return float(x) if x != null else default
+
+
 func set_time(kind: String) -> void:
 	time_kind = kind
+	if kind == "day":
+		set_daylight(1.0)
+		return
 	var dawn := kind == "dawn"
 	sky_mat.set_shader_parameter("dawn", 1.0 if dawn else 0.0)
 	if kind != "festival":

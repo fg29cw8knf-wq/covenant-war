@@ -34,7 +34,9 @@ func _ready() -> void:
 ## The opening movie; returns when it ends or is skipped (on the web, its
 ## download can be skipped too).
 func play_opening() -> void:
-	if not await Packs.need("movie", true):
+	# (the phone link streams the film, and fetches the Theora pack only if
+	# the stream can't play: OpeningMovie._play)
+	if not OpeningMovie.streams() and not await Packs.need("movie", true):
 		return
 	var movie := OpeningMovie.new()
 	add_child(movie)
@@ -162,7 +164,7 @@ func _on_new_game() -> void:
 	# under the movie now): the attic starts the moment the movie's done.
 	# On the web the movie's download can be skipped like the movie itself.
 	var done := [false]
-	if await Packs.need("movie", true):
+	if OpeningMovie.streams() or await Packs.need("movie", true):
 		var movie := OpeningMovie.new()
 		add_child(movie)
 		movie.finished.connect(func() -> void: done[0] = true)
@@ -180,6 +182,7 @@ func _on_new_game() -> void:
 		holding.queue_free()
 	Game.settings["seen_opening"] = true
 	Game.save_settings()
+	Packs.want("looks")   # (Ironvault's hunters in Ashford: Player D)
 	var w := _prepared
 	_prepared = null
 	_kept = {}
@@ -202,8 +205,13 @@ func show_lab() -> void:
 func go_world(area: String, spawn: String) -> void:
 	if area == "solhaven":
 		await Packs.need("solhaven")
-	if String(Game.flag("look", "a")) != "a":
-		await Packs.need("looks")   # (the phone link: looks B, C and D's models)
+	# (the phone link: Gary's Player B, C and D models, who play Dask, Wren and
+	# Ironvault's hunters since v7: fetched before the places they're in,
+	# and quietly in the background everywhere else)
+	if area in ["thornwood", "solhaven"]:
+		await Packs.need("looks")
+	else:
+		Packs.want("looks")
 	var w := World.new().setup(area, spawn)
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)

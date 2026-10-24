@@ -83,10 +83,10 @@ static func has_portrait(id: String) -> bool:
 ## Game autoload: it's reached through the tree, not by name, so this script
 ## compiles without it).
 static func player_look() -> String:
-	var tree := Engine.get_main_loop() as SceneTree
-	var g = tree.root.get_node_or_null("Game") if tree != null else null
-	if g != null and g.has_method("flag"):
-		return String(g.flag("look", "a"))
+	# Master Script v7 (Gary, 24 October): the hero is Player A, so the
+	# cutscenes can be made as films round one character; the mirror no
+	# longer offers looks, and an older save's B, C or D plays as A. (The
+	# "look" flag and the picker stay, for when looks come back.)
 	return "a"
 
 

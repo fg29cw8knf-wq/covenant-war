@@ -619,6 +619,8 @@ func _setup_input() -> void:
 		"move_up": [KEY_W, KEY_UP],
 		"move_down": [KEY_S, KEY_DOWN],
 		"interact": [KEY_E, KEY_SPACE, KEY_ENTER, KEY_KP_ENTER],
+		# the second hand: pulling Corin out from under the cart (v7, P2)
+		"pull": [KEY_F],
 		"menu": [KEY_ESCAPE, KEY_TAB],
 		# the camera in the world: + (the = key) and - on the main keys or the keypad
 		"zoom_in": [KEY_EQUAL, KEY_KP_ADD],
@@ -634,6 +636,7 @@ func _setup_input() -> void:
 			InputMap.action_add_event(action, ev)
 	var pads := {
 		"interact": JOY_BUTTON_A,
+		"pull": JOY_BUTTON_X,
 		"menu": JOY_BUTTON_START,
 	}
 	for action in pads:

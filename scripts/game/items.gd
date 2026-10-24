@@ -20,10 +20,12 @@ const ATTRIBUTE_CAP := 10
 
 const ITEMS := {
 	# ---- story items: shown while their flag is set -------------------------------
-	"blank_sigil": {"kind": "story", "name": "The Blank Sigil", "flag": "ash_marked",
-		"text": "A card with nothing on it, warm as a heartbeat. It fell to you at midnight in Ashford and burned its mark into your hand. Bram has never seen one like it. Plenty of people want it."},
+	"blank_sigil": {"kind": "story", "name": "The white card", "flag": "ash_marked",
+		"text": "A pristine white card with nothing on it, impossibly heavy for its size. It fell into your hand at midnight in Ashford, and the mark on your collarbone blazed white. It can't be played, and it can't be put down. Bram calls it the Last Seal, and won't say much more."},
+	"corin_button": {"kind": "story", "name": "Corin's button", "flag": "corin_button",
+		"text": "An iron-plated button off Corin's new coat. \"Best button in Ashford. When I'm rich and horrible in the city, you can sell it and buy a cow.\""},
 	"bram_deck": {"kind": "story", "name": "Bram's old deck", "flag": "bram_deck",
-		"text": "One of the four decks Bram duelled with for thirty years, carried up from the cellar of the Crooked Lantern the night Ashford burned."},
+		"text": "One of the four card boxes Bram left in his shelter under the Thornwood years ago, with the decks he duelled with in the life he won't talk about. You chose this one."},
 	"dask_deck": {"kind": "story", "name": "Hunter Dask's deck", "flag": "beat_hunter",
 		"text": "Thirty cards of hounds, traps and poison, won from Hunter Dask by sworn wager on the road to Solhaven."},
 	"ironvault_seal": {"kind": "story", "name": "Ironvault wax seal", "flag": "beat_wren",

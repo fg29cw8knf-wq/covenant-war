@@ -312,10 +312,20 @@ static func attic(v: AshfordVillage) -> Dictionary:
 		v.box(root, Vector3(0.3, wh, 0.07), Vector3(gx + 0.02, win_c.y, s * (ww * 0.5 + 0.035)), v.mats.beam)
 	v.box(root, Vector3(0.06, wh, 0.04), Vector3(gx, win_c.y, 0), v.mats.beam)
 	v.box(root, Vector3(0.06, 0.04, ww), Vector3(gx, win_c.y, 0), v.mats.beam)
-	# the moon through it, onto the floorboards and the bed
+	# the shutter, swung half to on the inside, with the frost on the glass
+	# beside it (v7: "a frost-cracked shutter")
+	v.box(root, Vector3(0.05, wh + 0.04, ww * 0.52), Vector3(gx + 0.16, win_c.y, -ww * 0.27), v.mats.door_natural, Vector3(0, 0.35, 0))
+	var rime := StandardMaterial3D.new()
+	rime.albedo_color = Color(0.9, 0.95, 1.0, 0.32)
+	rime.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rime.roughness = 0.9
+	rime.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	v.box(root, Vector3(0.005, wh - 0.06, ww * 0.46), Vector3(gx + 0.05, win_c.y, ww * 0.24), rime)
+	# pale morning light through the frost-cracked shutter (Master Script v7:
+	# the Prologue opens on a frosty morning), onto the floorboards and the bed
 	var moon := SpotLight3D.new()
-	moon.light_color = Color(0.62, 0.72, 1.0)
-	moon.light_energy = 2.2
+	moon.light_color = Color(0.86, 0.9, 1.0)
+	moon.light_energy = 3.2
 	moon.spot_range = 7.0
 	moon.spot_angle = 24.0
 	moon.shadow_enabled = v.quality > 0
@@ -331,15 +341,15 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	v.glow_sprite(root, Vector3(-2.1, 0.58, -1.95), Color(1.0, 0.7, 0.35), 0.16, 0.9)
 	var cl := OmniLight3D.new()
 	cl.light_color = Color(1.0, 0.66, 0.34)
-	cl.light_energy = 1.3
+	cl.light_energy = 0.35   # (a guttered stub: it's morning)
 	cl.omni_range = 5.5
 	cl.shadow_enabled = true
 	cl.position = Vector3(-2.1, 0.75, -1.85)
 	root.add_child(cl)
-	v.flicker_lights.append([cl, 1.3])
+	v.flicker_lights.append([cl, 0.35])
 	var fill := OmniLight3D.new()
-	fill.light_color = Color(0.85, 0.72, 0.6)
-	fill.light_energy = 0.5
+	fill.light_color = Color(0.8, 0.84, 0.92)
+	fill.light_energy = 1.15   # (the web's renderer draws it darker than a desktop does)
 	fill.omni_range = 7.0
 	fill.position = Vector3(1.2, 2.2, 0.8)
 	root.add_child(fill)
@@ -347,24 +357,63 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	v.box(root, Vector3(0.75, 0.46, 0.46), Vector3(0.75, 0.23, -2.05), v.mats.wood)
 	v.box(root, Vector3(0.12, 0.05, 0.05), Vector3(-1.4, 0.85, D * 0.5 - 0.03), v.mats.beam)
 	v.box(root, Vector3(0.42, 0.62, 0.08), Vector3(-1.4, 0.55, D * 0.5 - 0.08), v.mats.cloth_blue)
-	# the cracked mirror on the east gable, in a dark wooden frame
+	# the washbasin on its stand against the east gable, an oval mirror over
+	# it veiled in cold grey condensation that clears where a palm wipes it
+	# (Master Script v7: the mirror he writes his name in)
 	var mz := 0.55
-	var my := 1.48
+	var my := 1.42
 	var mx := W * 0.5 - 0.02
-	v.box(root, Vector3(0.06, 0.98, 0.7), Vector3(mx - 0.03, my, mz), v.mats.beam)
+	var stand_x := mx - 0.26
+	for lx in [-0.18, 0.18]:
+		for lz in [-0.22, 0.22]:
+			v.box(root, Vector3(0.05, 0.78, 0.05), Vector3(stand_x + lx, 0.39, mz + lz), v.mats.beam_v)
+	v.box(root, Vector3(0.46, 0.05, 0.56), Vector3(stand_x, 0.8, mz), v.mats.wood_h)
+	var china := StandardMaterial3D.new()
+	china.albedo_color = Color(0.86, 0.84, 0.78)
+	china.roughness = 0.35
+	v.cyl(root, 0.19, 0.12, 0.1, Vector3(stand_x, 0.875, mz), china, 18)
+	var water := StandardMaterial3D.new()
+	water.albedo_color = Color(0.32, 0.38, 0.42, 0.85)
+	water.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	water.roughness = 0.05
+	water.metallic = 0.3
+	v.cyl(root, 0.165, 0.165, 0.004, Vector3(stand_x, 0.9, mz), water, 18)
+	v.cyl(root, 0.05, 0.075, 0.22, Vector3(stand_x + 0.06, 0.94, mz + 0.2), china, 12)
+	# the oval: a dark wooden ring, the glass, and the fog in front of it
+	var oval := Node3D.new()
+	oval.name = "Mirror"
+	root.add_child(oval)
+	oval.position = Vector3(mx - 0.05, my, mz)
+	oval.scale = Vector3(1.0, 1.32, 1.0)
+	v.cyl(oval, 0.31, 0.31, 0.05, Vector3.ZERO, v.mats.beam, 28, Vector3(0, 0, PI * 0.5))
 	var glass := StandardMaterial3D.new()
 	glass.albedo_color = Color(0.5, 0.55, 0.6)
 	glass.metallic = 0.85
 	glass.roughness = 0.12
 	glass.emission_enabled = true
 	glass.emission = Color(0.12, 0.13, 0.16)
-	v.box(root, Vector3(0.02, 0.84, 0.56), Vector3(mx - 0.07, my, mz), glass)
-	var crack := StandardMaterial3D.new()
-	crack.albedo_color = Color(0.85, 0.9, 1.0)
-	crack.emission_enabled = true
-	crack.emission = Color(0.5, 0.55, 0.6)
-	for c2 in [[Vector3(0, 0.1, 0.05), 0.6, 0.5], [Vector3(0, -0.1, -0.06), 0.45, -0.7], [Vector3(0, 0.22, -0.1), 0.28, 1.4]]:
-		v.box(root, Vector3(0.005, 0.008, c2[1]), Vector3(mx - 0.085, my, mz) + c2[0], crack, Vector3(c2[2], 0, 0))
+	v.cyl(oval, 0.27, 0.27, 0.01, Vector3(-0.03, 0, 0), glass, 28, Vector3(0, 0, PI * 0.5))
+	var fog_mat := StandardMaterial3D.new()
+	fog_mat.albedo_color = Color(0.78, 0.8, 0.84, 0.78)
+	fog_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	fog_mat.roughness = 1.0
+	fog_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	var fog := v.cyl(oval, 0.265, 0.265, 0.004, Vector3(-0.042, 0, 0), fog_mat, 28, Vector3(0, 0, PI * 0.5))
+	fog.name = "Fog"
+	# the name written in the frost (filled in at the glass: AshfordP1)
+	var writing := Label3D.new()
+	writing.name = "Writing"
+	writing.text = ""
+	writing.font_size = 64
+	writing.pixel_size = 0.0016
+	writing.modulate = Color(0.95, 0.97, 1.0, 0.0)
+	writing.outline_size = 0
+	writing.double_sided = false
+	writing.shaded = false
+	oval.add_child(writing)
+	writing.position = Vector3(-0.05, 0.02, 0)
+	writing.rotation = Vector3(0, -PI * 0.5, 0)
+	writing.scale = Vector3(1.0, 1.0 / 1.32, 1.0)
 	# the hatch down to the stairs, by the south-east corner
 	var hatch := Vector3(2.0, 0.0, 1.35)
 	v.box(root, Vector3(0.85, 0.015, 0.85), hatch + Vector3(0, 0.008, 0), v.mats.dark)
@@ -378,13 +427,22 @@ static func attic(v: AshfordVillage) -> Dictionary:
 		# (the mattress's edge; the dip a body lies in; the edge under someone sat on it)
 		"bed_top": BED_TOP, "lie_top": BED_TOP - BED_SAG, "edge_top": BED_TOP - EDGE_SINK,
 		"blanket": bed_parts.blanket, "blanket_off": bed_parts.blanket_off,
-		"mirror_stand": root.to_global(Vector3(mx - 0.72, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
-		"floor_y": ATTIC_AT.y, "view_quad": null}
+		"mirror_stand": root.to_global(Vector3(mx - 0.82, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
+		"floor_y": ATTIC_AT.y, "view_quad": null,
+		"mirror_node": oval, "fog": fog, "fog_mat": fog_mat, "writing": writing,
+		# for walking it (AshfordP1.walk_room): the floor clear of the eaves,
+		# round the bed, the candle crate, the chest, the washstand and the hatch
+		"walk": Rect2(-2.55, -1.3, 5.05, 2.95),
+		"blocks": [[Vector2(-1.25, -1.9), 0.62], [Vector2(-0.25, -1.9), 0.62], [Vector2(-2.1, -1.95), 0.4],
+			[Vector2(0.75, -2.05), 0.5], [Vector2(stand_x, mz), 0.34], [Vector2(hatch.x, hatch.z), 0.62]]}
 	# the green through the window: the village itself, from the inn's upper floor
 	var front := inn_front(v)
 	var eye: Vector3 = front.root.to_global(Vector3(2.2, 6.6, front.front_z + 0.4))
 	var q := view_of(v, root, eye, Vector3(0.0, 3.6, 0.0), Transform3D(Basis(Vector3.UP, PI * 0.5), win_c + Vector3(-0.85, 0.05, 0)), Vector2(2.2, 1.5))
 	out["view_quad"] = q
+	# the morning's light, the candle and the fill (the awakening, before
+	# sunrise, turns them down: AshfordWake)
+	out["lights"] = {"window": moon, "candle": cl, "fill": fill}
 	v.set_meta("attic", out)
 	return out
 

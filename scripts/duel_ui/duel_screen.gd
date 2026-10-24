@@ -2386,6 +2386,8 @@ func fx_call(t: DuelTotem) -> void:
 
 func fx_ascend(t: DuelTotem) -> void:
 	_hide_detail()
+	if t.owner == me:
+		story_bark("my_ascends")   # (Bram's second glimpse of his past, v7)
 	var v := _view(t)
 	v.set_totem(t)
 	var foot := _foot(v)
@@ -3696,6 +3698,11 @@ func _trial_reset() -> String:
 ## player's progress is updated; in the Lab it only says what it's worth.
 func _reward_lines() -> Array:
 	var rw: Dictionary = spec.get("rewards", {})
+	# a practice game (Master Script v7, Gary 24 October: the Lantern Duel,
+	# the village's friendly games and Bram's lesson): no experience, no
+	# Resonance, no card; experience starts with Dask
+	if spec.get("practice", false):
+		return [String(spec.get("practice_line", "A practice game: no experience is won or lost."))]
 	var kind: String = rw.get("opponent", "kingdom")
 	if rw.is_empty() or not spec.get("story", false):
 		var res := DuelRewards.resonance(game, me, kind, bool(rw.get("thick", false)), false)

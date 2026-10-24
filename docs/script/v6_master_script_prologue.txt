@@ -1,0 +1,591 @@
+THE COVENANT WAR
+DOCUMENT: Master Script v6 - Complete Prologue
+STATUS: Updated 24 October 2026
+
+Prologue P1: The Attic
+(The protagonist awakens on a cot under bare timber rafters. Pale morning light filters through a frost-cracked
+shutter. On the washbasin opposite the bed sits an oval mirror veiled in cold grey condensation.)
+
+[NARRATOR - MORROWEN] (V.O.)
+"Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked
+for, trying to balance an account that was written before they were born."
+[OBJECTIVE: Walk to the washbasin (LS/WASD).]
+
+(The protagonist steps up to the mirror and presses E/X to inspect their reflection.)
+INTERACTIVE REFLECTION HUB
+
+(The protagonist wipes the frost from the glass with a bare palm, studying their reflection. The ash-grey mark
+on their collarbone resembles a broken seal.)
+Q0 (REQUIRED): "What's my name again?"
+[CHARACTER NAME ENTRY] A name-entry screen opens. Player types and confirms their name; save it as
+[PLAYER_NAME] for future dialogue and UI before advancing.
+[INNER VOICE] "That's right. [PLAYER_NAME]. Bram still calls me Sprout."
+Q1: "Why do I hide this mark under my collar?"
+[INNER VOICE] "Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt
+for your birth. In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a
+rarity... and a threat to Aurex Morne's bank."
+Q2: "How long have I lived under Bram's roof?"
+[INNER VOICE] "Twenty years. Ever since an old man walked out of a crater in the Shardlands carrying a baby
+tucked inside his heavy coat. He bought this inn with unexplained gold, gave you a bed, and taught you to keep
+your head down."
+Option 3: Step away from the glass. (Progresses Scene after name confirmation.)
+
+[BRAM] (CALLING UP THROUGH THE FLOORBOARDS)
+"You coming down, Sprout? The draft blew out the pilot lamp, the porridge is getting cold, and Ironvault's
+bailiffs don't wait for the sun to clear the pass."
+
+The Covenant War - Master Script v6
+
+Page 1
+
+Prologue P1: The Taproom
+(The camera tracks behind the protagonist descending the creaking stairs into the taproom. Bram stands
+behind the counter, rubbing a rag over an oak surface that doesn't need cleaning.)
+[BRAM]
+"Left the shutter unlatched again. Cold air costs firewood, wood costs coin, and coin is the one thing
+nobody in Ashford has enough of today. Eat something first. I’m not having you walking down to the
+green on an empty stomach."
+INTERACTIVE DIALOGUE HUB: BRAM HOLLOWAY
+
+Q1: "Ironvault's bailiffs are on the road early today."
+[BRAM] "They're always early when a note falls due. Caldus Morne doesn't let his clerks sleep when
+there's interest compounding in the valley. They've cleared every roof in Ashford except this one."
+↳ Sub-Node: "Is Morne really as dangerous as people say?"
+[BRAM] "Morne doesn't raise a sword. He takes off his reading glasses, looks at your ledger page,
+and gives you a price that sounds completely fair until you realize it costs you everything you own
+three years down the line."
+Q2: "Is Tam Hayes going to lose the mill tonight?"
+[BRAM] "Tam’s down there right now counting flour sacks he hasn't even ground yet. Poor bastard
+can't read the legal script on the letter in his own pocket, and he's too proud to ask Nell to look at it.
+Go down to the mill first before you head to the green."
+Q3: "Why is this inn the only roof Ironvault doesn't own?"
+[BRAM] "Because I paid Aurex Morne in full thirty years back. Four thousand gold crowns, signed
+and sealed on a single page before his son Caldus took the desk. Gold I bled for. Some debts you pay
+off in coin, Sprout. Some you carry around in your ribs until your knees give out."
+Option 4: "I'm ready for the festival prep." (Progress)
+[BRAM] "Eat every crumb. Then grab the lantern crate from the corner and take it down to the
+green."
+[OBJECTIVE: Take the lantern crate and proceed to the village green.]
+
+The Covenant War - Master Script v6
+
+Page 2
+
+Prologue P1: The Mill (Tam Hayes)
+(The protagonist approaches the mill. Tam stands by the heavy wooden waterwheel, running flourdusted fingers over a thick parchment letter with a dark red wax seal. He rubs the back of his neck,
+staring helplessly at the ink.)
+[TAM]
+"Ah, Sprout. Mind the flour dust on your boots—the draft's blowing hard through the timber seams
+today. I was just... checking the alignment on the lower stone. Making sure we get a fine grind for the
+festival loaves before the sun drops."
+[OBJECTIVE: Speak to Tam Hayes at the mill entrance.]
+
+INTERACTIVE DIALOGUE HUB: TAM HAYES
+
+Q1: [Notice the letter] "Is that a notice from Ironvault, Tam?"
+[TAM] "Aye. Handed it to me without a word. You know how it is for me with the ink, Sprout. Can
+you... tell me what the House has written down under my name?"
+[PROTAGONIST] "It's a demand of foreclosure, Tam. It says the advance for the seed-barley falls
+due at midnight tonight. If four hundred crowns aren't paid in full, the millwheel and water rights
+revert to Ironvault."
+[TAM] "Four hundred crowns? I took seventy crowns to buy seed. How in the Seven Courts does
+seventy crowns turn into four hundred in three winters?"
+↳ Sub-Node: "Why haven't you asked Nell to help you read this?"
+[TAM] "Nell's carried enough weight in this valley since the night the sky tore open twenty years
+back. If she knows the mill is gone at midnight, she won't dance on the green tonight. I just want her
+to have one warm evening before the bailiffs come."
+Q2: "How is the harvest coming along this year?"
+[TAM] "The stream’s been running cold and dark ever since the Sigilfall up in the Shardlands two
+weeks back. Waterwheel grinds slow when the river magic goes sour."
+Option 3: "I won't say a word to Nell until the festival ends." (Progress)
+[TAM] "Thank you, Sprout. You're a good lad. Go on up to the green—Corin’s been strutting around
+the lantern pole for an hour."
+
+The Covenant War - Master Script v6
+
+Page 3
+
+Prologue P1: The Village Green (Tilly & Nell)
+(The protagonist steps onto the bustling green. Villagers are stringing paper lanterns between the timber
+eaves. Near the well, seven-year-old Tilly is staring sadly at a flat, grey Tier I Spark card in her hands.
+On a bench nearby sits Nell Hayes.)
+[OBJECTIVE: Speak to Tilly and Nell on the green.]
+
+INTERACTIVE DIALOGUE HUB: TILLY & NELL
+
+Q1: [Speak to Tilly] "Is your moth card not working, Tilly?"
+[TILLY] "It won't wake up. Father bought it from a merchant last winter, but the wings just stay flat.
+Even Tam couldn't summon it, and he calls down a River Hound every morning!"
+(The protagonist kneels and gently touches the edge of the card. Instantly, the grey crystal surface
+flares with warm amber light. A spectral Lantern Moth flutters up from the card, circling Tilly's
+head.)
+[TILLY] "It flew! Why does it only fly for you?"
+[INNER VOICE] "You don't know. Anyone in Ashford can summon a basic Totem, but the magic in
+this valley has always bent toward you without you even asking. A quiet, terrifying habit you've learned
+to hide."
+Q2: [Speak to Nell] "Are you waiting for the lantern lighting, Nell?"
+[NELL] "I'm waiting for Tam to come up from the mill. He thinks I don't know about the bank's
+letter. A man's pride is a heavy thing to carry on festival night."
+↳ Sub-Node: "How long have you and Tam lived in Ashford?"
+[NELL] "Long enough to remember the night Bram walked out of the Shardlands with you tucked
+inside his coat. The sky was burning white, and he paid for the inn with gold that smelled of ash. I've
+never asked him where he found you."
+Option 3: Step away from the well. (Progress)
+[OBJECTIVE: Approach Corin by the Great Lantern pole.]
+
+The Covenant War - Master Script v6
+
+Page 4
+
+Prologue P1: The Lantern Pole (Corin & Bram)
+(Corin is twirling a brass-bound dueling card between his knuckles with flashy speed. He wears a crisp,
+new wool coat with iron-plated buttons.)
+[CORIN]
+"Well, look who finally came down! I was starting to think Bram locked you in the attic so you wouldn't
+embarrass yourself in front of everyone during the Lantern Duel."
+INTERACTIVE DIALOGUE HUB: CORIN
+
+Q1: "What’s that letter tucked into your coat?"
+[CORIN] "My ticket out of this mud-hole! A clerkship offer from the Ironvault Notary Guild. I put
+your name down for an apprenticeship too."
+↳ Sub-Node: "What exactly does an Ironvault Notary do?"
+[CORIN] "They calculate the interest on the world, Sprout. They sit in warm rooms while the rest of
+Veyl freezes, deciding whose fields get watered and whose roofs get taken. It's better to hold the pen
+than the plough."
+Q2: "You really think you can just walk away from Ashford tonight?"
+[CORIN] "The Turning year starts at midnight. Every Seat in Veyl is up for grabs! I’m not staying in a
+village dying on credit."
+Option 3: "Enough talking. Let's settle the Lantern Duel." (Progress)
+[PROTAGONIST] "I would, but I don't have a deck."
+(A heavy hand lands on the protagonist's shoulder. Bram steps into the lantern light, pulling a worn
+leather deck-box from his coat.)
+[BRAM]
+"You do now. Remember what I taught you in the cellar. Draw your Essence, set your Ward, and don't
+let him distract you."
+Encounter
+
+Opponent Special Rule
+
+The Lantern Duel
+(Tutorial)
+
+Corin
+
+The Covenant War - Master Script v6
+
+Showboat: Corin plays flashy, sub-optimal moves to impress the
+crowd.
+
+Page 5
+
+Prologue P2: The Midnight Sigilfall
+(The Lantern Duel ends with a cheer from the village. Corin laughs, catching his breath and brushing off
+his new coat.)
+[CORIN]
+"Alright, I yield! You win this year, Sprout. I'll be over by the merchant carts if anyone wants a signed
+card before I leave for the city!"
+(Corin wades away into the bustling crowd. Hours pass. The festival reaches its joyous peak as midnight
+approaches. Cinematic: The Great Lantern burns with a rich, golden flame. Little Tilly steps back, her
+face glowing. Then, the wind simply stops. Every lantern freezes mid-air. The village goes dead silent.)
+(With a deafening, glass-shattering crack, the sky tears open. A violent, blindingly pure white light
+bleeds down from the Empyrean, turning the midnight green as stark and pale as bone. The earth bucks
+violently. The shockwave shatters the merchant carts lining the green.)
+[OBJECTIVE: The ground is buckling. Find Corin.]
+
+(Screams finally break the silence. Through the blinding dust and falling debris, you see Corin on the
+ground, his new coat torn. A massive, iron-banded wagon wheel has him pinned into the mud.)
+[CORIN]
+"Sprout! My leg—it's caught on the axle! I can't shift it, it's crushing the bone!"
+[OBJECTIVE: Mash (E/X) repeatedly to heave the cart upward, then press (F/Square) at the
+precise moment to pull Corin clear.]
+
+(You throw your weight against the splintered oak. A tension meter fills as you heave the wood upward,
+your muscles burning. You drag Corin free just as the sky unleashes a second, blinding pulse.)
+
+The Covenant War - Master Script v6
+
+Page 6
+
+Prologue P3: The Awakening (Part 1)
+(A single streak of white light separates from the tear above. It plummets directly toward you. Time
+slows. The light crashes silently into your open palm. It feels impossibly heavy. A pristine, blank white
+card rests in your hand.)
+(An instant later, a searing agony erupts beneath your collarbone. The ash-grey broken seal you've
+hidden your whole life blazes with white fire. Bram shoves his way through the screaming crowd. His
+face is pale with terror. He throws his heavy wool coat over you.)
+[BRAM]
+"Close your fist. Don't look at it. Hide it. Now."
+(You shove the card deep into your coat. But the moment the card is concealed, an overwhelming surge
+of magical pressure rushes through your veins. Your vision swims. You collapse into the mud, everything
+going black.)
+(You open your eyes. The familiar wooden beams of the inn's attic are above you. The sun hasn't quite
+risen yet. Bram is sitting on a stool beside the cot, his face haggard, gripping a damp cloth.)
+[BRAM]
+"Thank the Courts. You gave me quite a scare out there, Sprout."
+(He leans forward, his voice dropping into a heavy, unfamiliar severity.)
+[BRAM]
+"Listen to me carefully. I wanted to break this to you slowly, but the turning of the Age just tore up that
+timeline. I'm not who you think I am, and you aren't who you think you are. Everything I've done has
+been to protect you. To protect what you are... and what you're going to become."
+INTERACTIVE DIALOGUE HUB: THE BETRAYAL
+
+Q1: "Protect me from what? Bram, you aren't making any sense."
+[PROTAGONIST]
+(You stare at him, the ringing in your ears slowly fading as you try to piece his disjointed words
+together.)
+"Protect me from what? What do you mean you aren't who I think you are? Bram, you're not making
+any sense. And last night... the sky tore open. I remember the cart, and then that light... what
+happened to me out there? What was that card?"
+
+The Covenant War - Master Script v6
+
+Page 7
+
+Prologue P3: The Awakening (Part 2)
+[LORE RULE: Bram is deeply reluctant to reveal his past. He only tells the protagonist
+what is strictly necessary for survival, fearing his history will unfairly influence
+their choices. The full truth of his age and former master will come much later from
+other gods and quests.]
+
+[BRAM]
+"The inn was a lie. My name is a lie. But keeping you safe... that was the truest thing I've ever done. I
+can't tell you everything yet. I've seen too many kingdoms burn because of the powers I used to serve. I
+just wanted to stop. I wanted you to just be a boy."
+(He looks down at his scarred hands.)
+[BRAM]
+"I kept you away from magic because magic *wants* you. I knew channeling Essence would wake you
+up and light a beacon for every god in Veyl. But the dreams started again. Visions from an old master I
+haven't heard from in a very long time. I was going to train you slowly, but that card falling forced my
+hand."
+INTERACTIVE DIALOGUE HUB: THE ARTIFACT
+
+Q2: "What exactly did I catch out there? What is that card?"
+[BRAM] "The most dangerous thing in Veyl. A blank space at the bottom of the Covenant. The Last
+Seal. The gods didn't create this world, they borrowed it—and the Covenant is the loan agreement.
+Whoever holds the two halves of that seal decides who owns the world."
+Option 3: "But my chest was on fire. I thought it was going to kill me." (Progress)
+[BRAM] "I thought so too. The resonance should have stopped a mortal heart. Tell me, how do you
+feel now? Is the mark burning?"
+[PROTAGONIST] "No... I feel fine. Actually... I feel better than I ever have."
+(You look at your hands. The exhaustion is gone. A strange vitality courses through your veins. The
+card unlocked something dormant inside you.)
+[BRAM] "I was afraid of that. The seal isn't just a piece of paper, Sprout. It’s a lock. And finding its
+other half just turned the key."
+(Suddenly, the frantic ringing of the chapel bell cuts through the cold morning air.)
+[VILLAGERS OUTSIDE]
+"Look at the mist! A Herald! A Herald is approaching!"
+[BRAM]
+"We're out of time. Keep your head down, and whatever happens out there, do not draw your deck."
+
+The Covenant War - Master Script v6
+
+Page 8
+
+Prologue P3: Dawn & The Pale Herald
+(Dawn breaks. The paper lanterns litter the frost-covered grass like dead moths. The villagers stand in a
+wide, terrified ring around the center of the green. The temperature drops sharply. There is no sound of
+arrival. It is simply suddenly there, hovering inches above the crushed grass: a towering, shifting mass
+of grey burial cloth and rusted iron chains. The Pale Herald.)
+[THE PALE HERALD] (VOICED)
+"The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven
+Dominion Seats, subject to open challenge. Let the blood of the contenders be counted."
+(It begins to list the current Champions. Suddenly, a suffocating heat rises in your chest. The Last Seal in
+your coat hums with a violent Resonance. The mark on your collarbone blazes bright white. The Pale
+Herald stops speaking mid-sentence. It pauses in absolute silence. The featureless grey hood snaps
+directly down to lock onto you. Its grinding voice stutters, as if the ancient laws of Veyl are rewriting
+themselves in real-time.)
+[THE PALE HERALD] (VOICED)
+"The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position.
+Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn."
+(The Herald dissolves into a thick grey mist. The silence on the green is agonizing. Tam Hayes looks at
+the ground. Nell quietly pulls Tilly away. They are stepping away from you for pure, primal survival.
+Bram steps firmly into the empty space between you and the village.)
+INTERACTIVE DIALOGUE HUB: BRAM HOLLOWAY (DAWN)
+
+Q1: "What was that thing, Bram?"
+[BRAM] "The Covenant’s shadow. The Pale Herald. It’s the thing the gods send to enforce the rules
+they wrote for themselves. It doesn't judge, and it doesn't fight. It just records who dies, who owes
+what, and who holds a Champion’s mark."
+Q2: "Why are they looking at me like that?"
+[BRAM] "Because a Champion’s mark brings duels, armies, and gods to your doorstep. And Ashford
+doesn't even have a wall. They've kept you a secret for twenty years. That silence just ended."
+Option 3: "We can't stay here. I'm putting everyone in danger." (Progress)
+[BRAM] "No. We can't. Come back inside. We have to pack."
+
+The Covenant War - Master Script v6
+
+Page 9
+
+Prologue P4: The Ashford Reckoning
+
+(That night. The village is eerily quiet. Hoofbeats shatter the silence. Huntmaster Sabine Krell rides into
+the center of the green on a heavy warhorse, flanked by Ironvault bailiffs bearing torches. She wears the
+immaculate grey coat of the House. She does not shout; her voice is perfectly measured and polite.)
+[HUNTMASTER KRELL]
+"Good evening. I hold the foreclosure notes for twenty-two properties in this valley. By the authority of
+Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit
+tonight. Alternatively, you may surrender one card—the white one—and the notes are burned. I will
+wait five minutes."
+[LORE RULE: The Ashford Pact. The villagers have always known the protagonist was a
+magical foundling pulled from the Shardlands. Over the years, they formed an unspoken
+pact to protect the child from the outside world. This collective loyalty is why no one
+points them out to Ironvault, and why Tam Hayes sacrifices himself.]
+
+(Nobody speaks. The silence stretches, heavy and terrified. Then, Tam Hayes steps forward. He places
+himself deliberately between Krell's horse and the dirt path leading up to the Crooked Lantern. He
+reaches into his coat with trembling hands, pulls out his foreclosure note, and slaps it onto a rainbarrel.)
+[TAM HAYES]
+"The note says midnight. Take the mill, Huntmaster. It's yours. But you leave the people out of this. The
+one you're looking for—the Unsworn—they fled over the northern ridge hours ago."
+(Krell looks down at the crumpled note, then back to Tam. She doesn't raise her voice. Instead, she leans
+forward in her saddle with a cold, almost sympathetic smile, her eyes tracking how Tam has firmly
+planted his boots across the path.)
+[HUNTMASTER KRELL]
+"A brave lie, Miller. But you're a terrible card player. You put your body between my hounds and the
+inn before you even opened your mouth. Guards, search every building. Collect every note. If they don't
+have the coin, take the property."
+(Tam realizes he needs to buy more time. He reaches into his coat, but not for another note. He draws a
+worn deck of dueling cards. The crowd gasps.)
+[TAM HAYES]
+"I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand."
+[LORE RULE: The Law of Challenge. By the ancient rules of the Covenant, an official
+representative of a Dominion Seat or recognized House cannot refuse a formal duel if
+challenged, but the challenged party has the right to set the stakes.]
+
+The Covenant War - Master Script v6
+
+Page 10
+
+Prologue P4: The Ashford Reckoning
+[HUNTMASTER KRELL]
+"Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the
+right to set the stakes. And to deter anyone else from trying it... we fight to the death. Draw your Essence."
+(Cut to: Inside the Crooked Lantern's cellar. Krell's words carry across the green. The protagonist turns and
+rushes toward the stairs.)
+
+[PROTAGONIST]
+"He's going to get himself killed for me! Bram, we have to help him. We can't just leave him out there!"
+(Bram catches the protagonist by the arm before they reach the stairs. For a moment he looks as though he
+might go back himself. Then he pulls them toward a hidden tunnel behind the ale casks.)
+
+[BRAM]
+"I know, Sprout. And Tam knows what he's sacrificing, and why. If you go out there, you won't save him.
+You'll give Krell exactly what she came for, and his sacrifice will mean nothing. He's buying us time. We
+honour that by using it. Through the tunnel, now. I dug it the year we came to Ashford. Don't let Tam's hand
+go to waste!"
+(Cut back to the green. A massive, armoured hound made of shadow tears through Tam's spectral River Hound.
+The magical feedback shatters Tam's Ward. He collapses into the dirt, clutching his chest as the last of his life
+force is drained away. Nell screams, dropping to her knees.)
+
+[HUNTMASTER KRELL]
+"The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more
+standing. If anyone interferes, subdue them. I want the white card, not a heap of ashes."
+(WIDE SHOT FROM A DISTANT RIDGE: Two Ironvault enforcers draw cards in the moonlit green. One
+summons a controlled line of fire to block villagers from passing, without touching a house. The other binds a
+resisting citizen in glowing strands, forcing them to their knees. Soldiers search the homes behind them. No roof
+burns.)
+(At the tree line, the protagonist and Bram emerge from the secret passage. Corin waits in the shadows,
+watching the soldiers take control of the green.)
+
+[CORIN]
+"I'm staying, Sprout. My mam's still down there. Nell and Tilly need someone too. We all swore to keep you
+hidden, and I'm not walking away now. That clerkship Ironvault offered me... maybe I can use it to find out
+how to make the House answer for this. You get clear. I'll see you in the city."
+[LORE RULE: Corin later returns bound to Ironvault, his mind altered. He seeks the white
+Last Seal card and lays traps for the protagonist. How Ironvault changed him remains a
+future reveal; his loyalty here is sincere. The soldiers use restraint magic, not arson.]
+
+The Covenant War - Master Script v6
+
+Page 11
+
+Prologue P5: The Thornwood Road
+(Night, several hours after the escape. Bram and the protagonist have walked deep into the Thornwood, keeping
+off the road. The trees knit together overhead; moonlight barely reaches the ground. At last Bram stops beside a
+bracken-covered rise and pulls aside the roots hanging over a low stone door.)
+
+[PROTAGONIST]
+"What is this place? I thought we were going to keep moving."
+
+[BRAM]
+"An old shelter. Built into the hillside; you'd never find it from the path. I made sure of that. We should be
+safe here for tonight. We won't stay long - just enough time to eat, sleep and get our strength back. Then
+we're on our way again. There are provisions inside."
+[OBJECTIVE: Enter Bram's hidden shelter and inspect the provisions.]
+
+(The door opens on a cramped stone room. Shelves hold sealed water, bread wrapped in waxed cloth, dried
+meat and a battered cooking pot. Old Ward marks have been cut into the walls. Bram shuts the door behind
+them and tests the latch. There is no fire, no lantern, and no window for an enemy to watch.)
+(While the protagonist lays out the food, Bram rests the cooking pot on a flat stone. He passes his fingers over
+the metal. A low warmth spreads through it, heating the meal without a spark. For an instant, a faint pattern
+moves across his knuckles and disappears.)
+
+[PROTAGONIST]
+"You can do that? You never used magic at the inn."
+
+[BRAM]
+"A little heat, kept where it belongs. No flame, no smoke, no glow for a tracker to follow. And at the inn I
+had good reason not to draw attention. Eat before it goes cold."
+(They sit on opposite sides of a small table and begin to eat. The silence only lasts a moment.)
+
+[PROTAGONIST]
+"Bram... what happened to Tam? Did you know Krell was coming? Why did you have a tunnel, and this
+place, ready? What are you hiding from me? What am I? And that white card - what has it done to me?"
+(Bram lowers his food. He lets the questions hang in the dark.)
+
+[BRAM]
+"I don't know what happened to Tam after we went below. I won't pretend otherwise. And yes, I prepared a
+way out. I hoped it would never be needed. As for the rest... you deserve answers, Sprout. You do. But
+answers won't stop Krell's hounds when they find our trail."
+
+[PROTAGONIST]
+"Then tell me what I need to know. Just that much."
+
+The Covenant War - Master Script v6
+
+Page 12
+
+Prologue P5: The Thornwood Road (Continued)
+[BRAM]
+"The Herald named you before the whole valley. That makes you a target, and the white card is the reason
+Ironvault came. It's part of the Last Seal, not an ordinary duelling card. Keep it hidden. Don't try to play it,
+don't show it to anyone, and don't let anyone take it. The rest of what I know has waited twenty years. It can
+wait one more night."
+(Bram reaches into his coat and sets three worn deck-boxes on the table.)
+
+[BRAM]
+"I wasn't always an innkeeper. There was a time I travelled this kingdom and survived by my deck. I'm not
+proud of everything I did. The one I lent you for the Lantern Duel was only a start. Now you need a hand
+you can trust when I'm not there to tell you what to do. Choose one. I'll teach you what matters."
+[OBJECTIVE: Choose your starting class deck - Scrivener, Mercenary, or Unsworn.]
+[LORE RULE: Bram's disclosure limits. He admits preparing the tunnel/shelter and that he
+used to duel. He shares only the immediate danger: the Herald's public declaration,
+Ironvault's pursuit, and the need to hide the white card. He does not reveal his former
+master, true identity, exact age, or full history. Bram does not claim to know Tam's
+ultimate fate from what he personally witnessed.]
+
+(Bram notices the protagonist glance toward the white card tucked inside their coat. He shakes his head.)
+
+[BRAM]
+"Not that one. These walls carry old Wards, enough to keep a practice hand from signalling beyond the hill.
+My warning on the green still stands: don't reveal your power to anyone hunting us. We practise with
+ordinary cards tonight."
+[OBJECTIVE: Begin Bram's sheltered practice duel.]
+
+INTERACTIVE TUTORIAL: BRAM'S NIGHT LESSON
+
+ROUND 1 - THE HAND AND ESSENCE
+
+(The table becomes a practice duelling field. Bram lays out a simple opening hand and gestures to the Essence
+crystals.)
+
+[BRAM]
+"Draw your hand. Watch your Essence. It returns as the turns pass, but spend it carelessly and you'll have
+nothing when you need to defend yourself. Read your cards before you play them."
+[TUTORIAL: Draw a card; observe Essence refreshing on the next turn; spend Essence to
+play a card.]
+
+The Covenant War - Master Script v6
+
+Page 13
+
+Prologue P5: The Thornwood Road (Continued)
+ROUND 2 - CALL A TOTEM
+
+[BRAM]
+"A Totem fights on the field for you. Call it where it can protect you, then choose your attack. An enemy can
+block, and a bad match of elements can turn a small mistake into a hard lesson."
+[TUTORIAL: Summon a Totem; choose an attack; observe blocking, damage and elemental
+weakness.]
+
+ROUND 3 - THE WARD AND THE RITE
+
+(Bram turns one of his cards face down. As the player's Totem advances, the hidden card springs into light.)
+
+[BRAM]
+"A Ward waits until the right moment and catches a careless opponent. A Rite is different: you cast it when
+you choose, and its effect comes at once. A good duellist wins with timing, not just force."
+[TUTORIAL: Set a Ward face down; trigger a Ward; cast a Rite and resolve its effect.]
+
+ROUND 4 - ASCENSION AND TIERS
+
+[BRAM]
+"Cards can grow stronger. Learn which Totems can Ascend, and when the next tier is worth the Essence. A
+stronger creature played too soon can leave you helpless on the next turn."
+[TUTORIAL: Inspect card tiers; apply a practice upgrade; Ascend an eligible Totem.]
+
+ROUND 5 - PUT IT TOGETHER
+
+(Bram plays a short, controlled sequence: a Totem attack, a face-down Ward and a counterattack. The
+protagonist must decide whether to defend, cast a Rite or press the advantage. The duel ends before anyone can
+be seriously hurt.)
+
+[BRAM]
+"Better. Remember what each card is for. Essence keeps you moving. Totems hold the field. Rites change a
+moment. Wards punish an opening. And power means very little if you don't know when to hold it back."
+[TUTORIAL: Finish the scripted practice duel using the chosen starter deck.]
+[LORE RULE: Tutorial design. The Lantern Duel with Corin remains the early introductory
+encounter. Bram's shelter lesson is a second, more complete tutorial for draw/Essence
+refresh, Totems, attacks, elemental weakness, blocks, Rites, face-down Wards and Tier/Ascend
+upgrades. Do not use or reveal the white Last Seal card here. Exact stats, upgrade costs and
+turn counts are implemented by the battle system, not fixed by this screenplay.]
+
+(Bram closes the deck-boxes. The protagonist opens their mouth, but he raises a tired hand.)
+
+[PROTAGONIST]
+"And the other things? Who you really are... and where I came from?"
+
+The Covenant War - Master Script v6
+
+Page 14
+
+Prologue P5: The Thornwood Road (Continued)
+[BRAM]
+"We'll get to your questions. I promise. But not tonight. You've eaten, and now you've learned enough to
+make it through a fight without me. That's enough for one day. Get some sleep. At first light, we move."
+(The protagonist settles beneath a folded wool blanket. Bram stays awake by the door, watching the darkness
+between the Ward marks. Outside, the Thornwood is silent.)
+(The next morning. No fire has been lit and the shelter is left as they found it. Bram unhooks the door and leads
+the protagonist back through the trees toward Solhaven.)
+
+[BRAM]
+"Stay close. The city is our best chance of finding someone who understands the old Covenant - and of
+getting lost in a crowd before Ironvault catches up."
+[OBJECTIVE: Leave the shelter and follow Bram through the Thornwood.]
+
+(Further down the road, a young man steps out from the treeline. Dask, Krell's tracker, holds a heavy crossbow
+and is flanked by a snarling hound. He looks terrified but determined.)
+
+[DASK]
+"Stop right there! Krell put a bounty on you both. I stake every card I own on this duel. If I bring you in, she
+clears my mother's note. If I don't... well, I'm not going back without trying!"
+Encounter
+
+Opponent
+
+Special Rule
+
+The Bounty Hunter
+
+Dask (19)
+
+Run to Ground: Dask's hound Totem gains +2 Attack for
+every turn that passes.
+
+POST-DUEL CHOICE: DASK'S FATE
+
+Option 1: Let him keep his hound.
+
+(Dask remembers this mercy. He will warn you off Krell's ambush in Interlude A.)
+Option 2: Take everything and send him home.
+
+(Dask is humiliated. He will lead Krell's ambush against you in Interlude A.)
+
+(The protagonist and Bram leave Dask behind and crest the final ridge of the Thornwood. Below them, bathed
+in the blinding light of Solmaris, lies Solhaven - the Sun's Court. The end of the Prologue.)
+
+The Covenant War - Master Script v6
+
+Page 15
+
+

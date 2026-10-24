@@ -1,11 +1,11 @@
 extends RefCounted
-## The Thornwood: the end of the Prologue's film (Master Script v3, P4's
-## river and P5). The riverbank below burning Ashford, the road east, Bram's
-## campfire and his four old decks, his duel by the fire (the practice round,
-## moved from the second morning on 23 October: he picks the deck that shows
-## yours its weakness, and it isn't optional), the second morning,
-## the narrow road where Dask is waiting, and at dawn the first sight of
-## Solhaven. The place itself is ThornwoodSet.
+## The Thornwood: the end of the Prologue's film (Master Script v7, P5,
+## docs/script/v7_prologue.md): the night walk to Bram's hidden shelter in the
+## hillside, his four boxes and the class deck chosen, his lesson duel and the
+## night (ThornwoodShelter), the morning, the road where Dask steps out of the
+## trees (Run to Ground; the first duel that gives experience), and the ridge
+## with Solhaven below in Solmaris's light. The place itself is ThornwoodSet.
+## (v3's riverbank and campfire are kept below, unused, for their staging.)
 
 const NAME := "The Thornwood"
 const SUBTITLE := "The road east"
@@ -23,15 +23,9 @@ const ENV := {}
 
 
 static func npcs() -> Array:
-	var fb: Vector3 = ThornwoodSet.SPOTS.far_bank
+	# v7: only Bram comes this way (Ashford's people stay behind with Corin)
 	return [
 		{"id": "bram", "look": "bram", "name": "Bram", "pos": ThornwoodSet.SPOTS.tunnel + Vector3(0.9, 0, -0.6), "talk": []},
-		{"id": "corin", "look": "corin", "name": "Corin", "pos": fb + Vector3(-0.6, 0, 0.0), "talk": []},
-		{"id": "tilly", "look": "child", "name": "Tilly", "pos": fb + Vector3(0.2, 0, 0.3), "talk": []},
-		{"id": "hob", "look": "hob", "name": "Hob", "pos": fb + Vector3(1.8, 0, 0.8), "talk": []},
-		{"id": "ned", "look": "fiddler", "name": "Ned", "pos": fb + Vector3(-2.2, 0, 1.4), "talk": []},
-		{"id": "nell", "look": "elder", "name": "Old Nell", "pos": fb + Vector3(4.6, 0, -0.6), "talk": []},
-		{"id": "corin_mam", "look": "refugee", "name": "Corin's mam", "pos": fb + Vector3(3.95, 0, -0.35), "talk": []},
 	]
 
 
@@ -68,7 +62,7 @@ static func arrival() -> Array:
 
 static func scene(name: String, w: World) -> void:
 	if name == "film":
-		await _film(w, "river")
+		await _film(w, "shelter")
 
 
 static func resume(w: World) -> void:
@@ -77,25 +71,34 @@ static func resume(w: World) -> void:
 		return
 	if not Game.flag("arrived_thornwood_film"):
 		return
-	await _film(w, String(Game.flag("thorn_part", "river")))
+	await _film(w, String(Game.flag("thorn_part", "shelter")))
 
 
 ## The film from `part` to the end; each part saves, so a closed game
 ## carries on from where it was.
 static func _film(w: World, part: String) -> void:
 	Game.set_flag("arrived_thornwood_film")
-	var parts := ["river", "camp", "morning", "road", "ridge"]
+	var parts := ["shelter", "morning", "road", "ridge"]
+	part = String({"river": "shelter", "camp": "shelter"}.get(part, part))
 	var i0 := maxi(0, parts.find(part))
 	for i in range(i0, parts.size()):
 		Game.set_flag("thorn_part", parts[i])
 		Game.save_game()
 		match parts[i]:
-			"river":
-				await _river(w)
-			"camp":
-				await _camp(w)
+			"shelter":
+				if Game.flag("bram_deck") and Game.flag("practice_on"):
+					# the game was closed during Bram's lesson: straight back to it
+					var r := ThornwoodShelter.room(village(w))
+					await Cine.begin(w)
+					Cine.overlay(w).black(true)
+					AshfordP1.sit_down(w, "bram", r.bram_seat, Vector3.BACK, 0.44, 0.0)
+					AshfordP1.sit_down(w, "player", r.player_seat, Vector3.FORWARD, 0.44, 0.0)
+					await ThornwoodShelter.lesson(w, r, [])
+					await ThornwoodShelter.after_lesson(w, r)
+				else:
+					await ThornwoodShelter.night(w)
 			"morning":
-				await _morning(w)
+				await ThornwoodShelter.morning(w)
 			"road":
 				await _road(w)
 			"ridge":
@@ -716,7 +719,7 @@ static func _cards_on_log(w: World, lg: Dictionary) -> void:
 ## note, Morne, and Keep your hound / Go home.
 static func _road(w: World) -> void:
 	var v := village(w)
-	v.set_scene("road")
+	v.set_scene("morning")   # (v7: the morning after the shelter)
 	_only(w, ["bram"])
 	await Cine.begin(w)
 	Cine.overlay(w).black(true)
@@ -734,7 +737,7 @@ static func _road(w: World) -> void:
 		v.fireflies.amount_ratio = 0.0
 		Cine.place(w, "bram", r + Vector3(0.3, 0, -1.0), dask_at)
 		Cine.place(w, "player", r + Vector3(-0.5, 0, -2.4), dask_at)
-		Cine.spawn(w, "dask", "hunter", dask_at, "Dask")
+		Cine.spawn(w, "dask", "dask", dask_at, "Dask")
 		Cine.beast(w, "dhound", "shieldhound", dask_at + Vector3(1.0, 0, 0.6), Color(1.0, 0.8, 0.35, 1.0))
 		Cine.look(w, "dask", w.player.global_position)
 	else:
@@ -786,8 +789,10 @@ static func _road(w: World) -> void:
 			Game.v2.codex[id] = "seen"
 	await Cine.reveal(w, DuelCards.card_list("dask_hounds").slice(0, 12), "DASK'S DECK", "thirty cards of hounds, traps and poison, yours by the Covenant")
 	Cine.shot(w, w.player.global_position + Vector3(-1.4, 1.6, -1.8), Cine.head(w, "dask"), 34.0)
-	var k := await Cine.choose(w, ["Keep your hound.", "Go home, Dask."])
+	# v7: his fate (remembered: he warns you off Krell's ambush, or leads it)
+	var k := await Cine.choose(w, ["Let him keep his hound.", "Take everything and send him home."])
 	var dpos := Cine.body(w, "dask").global_position
+	Game.shift_standing("dask", 1 if k == 0 else -1, "You let him keep his hound." if k == 0 else "You took everything and sent him home.")
 	if k == 0:
 		# you take his Shieldhound's card out of the deck and hold it out
 		Game.set_flag("dask_kept_hound")
@@ -850,22 +855,7 @@ static func _road(w: World) -> void:
 		box.queue_free()
 	await Cine.say(w, "bram", "Morne.", 2.0)
 	await Cine.wait(w, 1.0)
-	# he keeps watch till dawn, and doesn't wake you for your turn
 	await Cine.fade(w, 1.0, 1.2)
-	var pf2 = Cine.fig(w, "player")
-	Cine.place(w, "player", r + Vector3(-2.2, 0, -2.4), r + Vector3(-2.2, 0, 0))
-	if pf2 is Figure3D:
-		(pf2 as Figure3D).lie_down(0.01, true)
-	Cine.place(w, "bram", r + Vector3(-0.6, 0, -1.2), r + Vector3(2.0, 0, 6.0))
-	var watch := Cine.light(w, r + Vector3(-1.4, 0.4, -1.8), Color(1.0, 0.55, 0.25), 1.2, 6.0)
-	# (looking down a little more: level, only your boots showed at the bottom)
-	Cine.shot(w, r + Vector3(-4.8, 1.8, -5.0), r + Vector3(-1.6, 0.4, -1.8), 38.0)
-	await Cine.fade(w, 0.0, 1.2)
-	await Cine.wait(w, 3.0)
-	await Cine.fade(w, 1.0, 1.6)
-	watch.queue_free()
-	if pf2 is Figure3D:
-		(pf2 as Figure3D).get_up(0.01)
 
 
 ## A three-quarter shot of someone's face as they look toward a point (for a
@@ -883,24 +873,15 @@ static func _front_shot(w: World, who: String, toward: Vector3, fov: float) -> v
 ## the trees, the wager is sworn.
 static func _road_meeting(w: World, r: Vector3, dask_at: Vector3, dask_cam: Vector3, mid: Vector3) -> void:
 	var v := village(w)
-	v.fireflies.amount_ratio = 1.0
-	await Cine.caption(w, "The second night")
+	v.fireflies.amount_ratio = 0.0
 	Cine.shot(w, r + Vector3(1.8, 1.4, 4.0), r + Vector3(0, 1.4, -8.0), 40.0)
 	Cine.fade(w, 0.0, 1.6)
 	Cine.walk(w, "bram", r + Vector3(0.3, 0, -1.0), 1.2)
 	await Cine.walk(w, "player", r + Vector3(-0.5, 0, -2.4), 1.2)
-	# the fireflies go out, all at once
+	# further down the road, a young man steps out from the treeline: Dask,
+	# Krell's tracker, a heavy crossbow, a snarling hound; terrified, determined
 	Music.stop(1.0)
-	Cine.shot(w, r + Vector3(-1.0, 1.7, -5.0), r + Vector3(0.6, 1.6, 4.0), 38.0)
-	await Cine.wait(w, 1.2)
-	v.fireflies.amount_ratio = 0.0
-	v.fireflies.restart()
-	await Cine.wait(w, 1.8)
-	Cine.look(w, "bram", w.player.global_position)
-	Cine.over_shoulder(w, "player", "bram", 1.0, 30.0)
-	await Cine.say(w, "bram", "Stay close.", 1.6)
-	# a wiry figure steps out of the trees, a Shieldhound clanking at his heel
-	Cine.spawn(w, "dask", "hunter", r + Vector3(3.6, 0, 4.2), "Dask")
+	Cine.spawn(w, "dask", "dask", r + Vector3(3.6, 0, 4.2), "Dask")
 	Cine.beast(w, "dhound", "shieldhound", r + Vector3(4.6, 0, 5.4), Color(1.0, 0.8, 0.35, 1.0))
 	Cine.shot(w, r + Vector3(-1.4, 1.4, -2.6), dask_at + Vector3(0, 1.3, 0), 36.0)
 	Cine.path(w, "dhound", [dask_at + Vector3(1.0, 0, 0.6)], 1.4)
@@ -911,22 +892,9 @@ static func _road_meeting(w: World, r: Vector3, dask_at: Vector3, dask_cam: Vect
 	Music.play(["dask"], 1.0, true)
 	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
 	_tremble(w, "dask", 2.4, 0.01)   # his hands aren't steady
-	await Cine.say(w, "dask", "That's far enough. The card. The blank one.")
-	# Bram, from beside Dask (a cut-out can't be looked past)
-	var to_b: Vector3 = Cine.body(w, "bram").global_position - dask_at
-	to_b.y = 0.0
-	to_b = to_b.normalized()
-	var bram_cam := dask_at + to_b * 1.2 + to_b.cross(Vector3.UP) * 1.1 + Vector3(0, 1.6, 0)
-	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
-	await Cine.say(w, "bram", "Covenant law, lad. Stake it in a sworn duel, or walk away.")
-	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
-	await Cine.say(w, "dask", "I know the law.")
-	await Cine.wait(w, 0.9)
-	await Cine.say(w, "dask", "Fine. Sworn duel, Unsworn. Your card against my deck.")
-	Cine.shot(w, bram_cam, Cine.head(w, "bram") + Vector3(0, -0.1, 0), 32.0)
-	await Cine.say(w, "bram", "That's every card you own.")
-	Cine.shot(w, dask_cam, dask_at + Vector3(0.3, 1.25, 0), 34.0)
-	await Cine.say(w, "dask", "And that card's worth more than everything I own. Do the sums, old man.")
+	_crossbow(w)
+	await Cine.say(w, "dask", "Stop right there! Krell put a bounty on you both. I stake every card I own on this duel.")
+	await Cine.say(w, "dask", "If I bring you in, she clears my mother's note. If I don't... well, I'm not going back without trying!")
 	# the oath: the air closes round the words like a lock, a ring of light
 	await _oath(w, mid)
 	await Cine.fade(w, 1.0, 0.5)
@@ -1047,7 +1015,6 @@ static func _ridge(w: World) -> void:
 	Cine.place(w, "bram", rg + Vector3(0.8, 0, -2.4), sol)
 	Cine.place(w, "player", rg + Vector3(-0.6, 0, -2.8), sol)
 	Music.play(["solhaven_dawn", "menu_theme"], 2.0, true)
-	await Cine.caption(w, "Dawn")
 	# from behind the two of them, the plains, and Solhaven far off
 	Cine.shot(w, rg + Vector3(1.2, 2.0, -7.5), sol + Vector3(0, 12.0, 0), 34.0)
 	Cine.fade(w, 0.0, 2.2)
@@ -1066,3 +1033,23 @@ static func _ridge(w: World) -> void:
 	await Cine.wait(w, 2.2)
 	await Cine.fade(w, 1.0, 1.8)
 	await Cine.caption(w, "Chapter 1", "The Sun's Court", 2.4)
+
+
+## Dask's heavy crossbow (v7), in his hands: a drawn one until there's a model.
+static func _crossbow(w: World) -> void:
+	var f = Cine.fig(w, "dask")
+	if not (f is Figure3D) or w.has_meta("dask_bow"):
+		return
+	var v := village(w)
+	var bow := Node3D.new()
+	bow.name = "Crossbow"
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.32, 0.22, 0.13)
+	var iron := StandardMaterial3D.new()
+	iron.albedo_color = Color(0.22, 0.22, 0.24)
+	iron.metallic = 0.7
+	v.box(bow, Vector3(0.06, 0.06, 0.62), Vector3(0, 0, 0.18), wood)
+	v.box(bow, Vector3(0.62, 0.03, 0.04), Vector3(0, 0.02, 0.44), iron)
+	bow.set_meta("p1_prop", true)
+	(f as Figure3D).hand_light(bow)
+	w.set_meta("dask_bow", bow)

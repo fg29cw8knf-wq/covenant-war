@@ -7,8 +7,11 @@ extends CanvasLayer
 ##      the device's own video player, on an iPhone or a Mac whose app carries
 ##      the film loose in its bundle and the native player (NativeVideoPlayer,
 ##      addons/native_video: AVPlayer over the game's view, drawn by the system
-##      with the hardware decoder). Nothing of the engine's goes over it; a tap
-##      shows its own Skip, and the next tap on Skip skips.
+##      with the hardware decoder); on the phone link, through the browser's
+##      own video player (WebVideoPlayer: the film streamed as HLS from
+##      films/opening/ beside the page, 4K as the connection allows, since 24
+##      October). Nothing of the engine's goes over it; a tap shows its own
+##      Skip, and the next tap on Skip skips.
 ##   2. the finished cut as Ogg Theora: res://assets/movies/opening.ogv (the
 ##      same film at 1280x720 and 30 fps, since 22 October: his clips,
 ##      Morrowen's narration, the music, the title and the words already in
@@ -237,10 +240,15 @@ func _fit_video() -> void:
 func _play() -> void:
 	_lines = schedule()
 	if not shots_only:
-		# the 4K film through the device's own player where the app has it,
-		# else the Theora copy
-		if not await _play_native() and ResourceLoader.exists(MOVIE):
-			await _play_full_cut()
+		# the 4K film through the device's own player where the app has it
+		# (or the browser's, on the phone link), else the Theora copy
+		if not await _play_native():
+			# the phone link streams the film and only fetches the Theora
+			# copy's pack if the stream can't play
+			if not ResourceLoader.exists(MOVIE) and OS.has_feature("web") and not _done:
+				await Packs.need("movie", true)
+			if ResourceLoader.exists(MOVIE) and not _done:
+				await _play_full_cut()
 	if not _cut and not _done:
 		# the engine's own movie: the theme, and Morrowen's lines over the shots
 		if ResourceLoader.exists(MUSIC):
@@ -252,14 +260,23 @@ func _play() -> void:
 
 ## The device's own video player (NativeVideoPlayer, addons/native_video):
 ## the iPhone and Mac apps, when the native-video libraries were fetched into
-## the build. Null everywhere else (the phone link, Linux, the editor), and
-## the Theora copy plays. A test puts a stand-in in `native_stub`.
+## the build; on the phone link, the browser's own (WebVideoPlayer, the same
+## methods). Null everywhere else (Linux, the editor), and the Theora copy
+## plays. A test puts a stand-in in `native_stub`.
 static func native_player():
 	if native_stub != null:
 		return native_stub
+	if WebVideoPlayer.available():
+		return WebVideoPlayer.new()
 	if not ClassDB.class_exists("NativeVideoPlayer"):
 		return null
 	return ClassDB.instantiate("NativeVideoPlayer")
+
+
+## The phone link streams the film through the browser's own player, so the
+## Theora copy's pack needn't be fetched before the movie starts (Main).
+static func streams() -> bool:
+	return WebVideoPlayer.available()
 
 
 ## Gary's 4K master through the device's own player, when the app has the
@@ -292,8 +309,8 @@ func _play_native() -> bool:
 	if p.has_failed():
 		return _native_gave_up(path)
 	_cut = true
-	if OS.is_debug_build():
-		print("movie: the 4K film through the native player (%s, %s, %.1f s)" % [path, p.get_video_size(), p.get_length()])
+	if OS.is_debug_build() or OS.has_feature("web"):
+		print("movie: the 4K film through the %s player (%s, %s, %.1f s)" % ["browser's" if p is WebVideoPlayer else "native", path, p.get_video_size(), p.get_length()])
 	while not _done:
 		var ev: int = p.poll()
 		if ev & NV_FINISHED:
@@ -329,6 +346,7 @@ func _native_gave_up(path: String) -> bool:
 ## clock follows it, for the log. Returns false if the file can't play, and the
 ## shots take over.
 func _play_full_cut() -> bool:
+	_fit_video()   # (on the phone link its pack may only just have come)
 	var stream := load(MOVIE) as VideoStream
 	if stream == null:
 		push_warning("OpeningMovie: %s won't load; playing the shots instead" % MOVIE)

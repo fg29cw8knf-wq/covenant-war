@@ -1280,8 +1280,18 @@ func _restrict_targets(pi: int, t: DuelTotem, out: Array) -> Array:
 
 ## Run to Ground (Hunter Dask, on the Thornwood road): his hounds always go for
 ## the Totem with the least Life left, never past it at anything else.
-func _rule_run_to_ground(pi: int, out: Array) -> Array:
+## Run to Ground (Hunter Dask, v7): his hounds gain +2 Attack for every turn
+## that passes, which in the game's tens is +10 to their blows for each full
+## round gone by. (v3's rule, the hounds going for the weakest Totem, is
+## kept only as `run_to_ground_v3`.)
+func run_to_ground_bonus(pi: int) -> int:
 	if not story_rules.has("run_to_ground") or int(story_rules.run_to_ground) != pi:
+		return 0
+	return 10 * maxi(0, (turn - 1) / 2)
+
+
+func _rule_run_to_ground(pi: int, out: Array) -> Array:
+	if not story_rules.has("run_to_ground_v3") or int(story_rules.run_to_ground_v3) != pi:
 		return out
 	var foes := out.filter(func(x): return x is DuelTotem)
 	if foes.is_empty():
@@ -2160,6 +2170,7 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 		amt += DuelRules.wrath_bonus
 	if rule_scrapper(att.owner):
 		amt += SCRAPPER_BONUS
+	amt += run_to_ground_bonus(att.owner)
 	if att.has_status("terrified"):
 		amt = _half(amt)
 	if att.has_status("staggered"):

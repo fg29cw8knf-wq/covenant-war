@@ -809,17 +809,26 @@ func run_steps(steps: Array, npc) -> void:
 ## line is picked or nothing's left to ask; a single question left is offered
 ## on its own. A plain answer to what someone's just said or asked stays a
 ## "choice": picked once, and the talk moves on.
+##
+## A follow-up question (Master Script v7's "sub-nodes") joins the list once
+## the question it follows has been asked: "follow": {0: ["Is Morne really
+## as dangerous as people say?", [...steps]]} (keyed by the question's index,
+## as a number or a string). It can be left unasked like any other.
+## "ends": [i, ...] are questions that end the talk once answered (a second
+## way on besides the leave line: Bram's "It's nearly midnight.").
 func _ask(st: Dictionary, npc) -> void:
-	var qs: Array = st.ask
-	var branches: Array = st.get("then", [])
+	var qs: Array = (st.ask as Array).duplicate()
+	var branches: Array = (st.get("then", []) as Array).duplicate()
+	var follow: Dictionary = st.get("follow", {})
 	var leave := String(st.get("leave", ""))
+	var ends: Array = st.get("ends", [])
 	var left: Array = range(qs.size())   # which questions are still to ask
 	while not left.is_empty() and is_inside_tree():
 		var options: Array = []
 		for i in left:
-			options.append(qs[i])
+			options.append(_fmt(String(qs[i])))
 		if leave != "":
-			options.append(leave)
+			options.append(_fmt(leave))
 		var k := await hud.dialogue.choose(options)
 		if k >= left.size():
 			return   # the leave line
@@ -827,6 +836,13 @@ func _ask(st: Dictionary, npc) -> void:
 		left.remove_at(k)
 		if q < branches.size():
 			await run_steps(branches[q], npc)
+		if q in ends:
+			return   # a question that moves things on (v7's "Progress" options)
+		var f = follow.get(q, follow.get(str(q), null))
+		if f is Array and (f as Array).size() >= 2:
+			qs.append(f[0])
+			branches.append(f[1])
+			left.append(qs.size() - 1)
 
 
 ## The player's figure made again for the look chosen in the attic mirror:

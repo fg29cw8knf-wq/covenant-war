@@ -80,15 +80,18 @@ func _ready() -> void:
 	Game.new_game("Sprout", "")
 	for f in ["arrived_ashford", "ash_started", "ash_tam", "ash_tilly", "ash_nell", "ash_ready"]:
 		Game.set_flag(f)
-	var thorn := _part in ["river", "camp", "morning", "road", "ridge"]
+	var thorn := _part in ["river", "camp", "shelter", "morning", "road", "ridge"]
 	if _part != "corin":
 		for f in ["first_deck", "ash_lantern_duel", "ash_won_lantern", "has_lantern_moth", "moth_given"]:
 			Game.set_flag(f)
-	if _part in ["dawn", "taproom", "burning", "cellar"] or thorn:
+	if _part in ["awakening", "dawn", "that_day", "reckoning", "look_back", "taproom", "burning", "cellar"] or thorn:
 		Game.set_flag("ash_marked")
-		Game.set_flag("pro_part", _part if not thorn else "cellar")
+		Game.set_flag("pro_part", _part if not thorn else "look_back")
+	if _part in ["midnight", "awakening", "dawn", "that_day", "reckoning", "look_back"]:
+		Game.set_flag("ash_evening")
+		Game.player_name = "Rowan"
 	if thorn:
-		if _part in ["river", "camp"]:
+		if _part in ["river", "camp", "shelter"]:
 			Game.player_name = "Ash"   # Bram's decks are opened at the campfire
 		else:
 			Game.new_game("Ash", "tidegrove", true)
@@ -182,6 +185,22 @@ func _process(_d: float) -> void:
 				break
 		if ov._chart != null:
 			ov._chart.call("tap")
+	# the cart off Corin (v7): heave, heave, then pull in the gold
+	for q in get_tree().root.find_children("*", "CartHeave", true, false):
+		var qh := q as CartHeave
+		if qh.phase == "heave" and _frame % 2 == 0:
+			qh.heave()
+		elif qh.phase == "pull":
+			var g := qh.gold()
+			if qh.marker > g.x + 0.03 and qh.marker < g.y - 0.03:
+				qh.pull()
+	# walked parts (the tunnel): a tap on the way on now and then
+	if world.hud != null and String(Game.flag("objective", "")) == "Follow Bram through the tunnel." and _frame % 6 == 0 and world.has_meta("village"):
+		var tv = world.get_meta("village")
+		if tv.has_meta("tunnel"):
+			var tend: Vector3 = tv.get_meta("tunnel").end
+			if not world.cam.is_position_behind(tend):
+				world.hud.tapped.emit(world.cam.unproject_position(tend))
 	# Bram's four boxes at the campfire: tap one, then the same one again
 	if world.has_meta("deck_boxes"):
 		var picker = world.get_meta("deck_boxes")

@@ -796,6 +796,22 @@ const CARDS := {
 		],
 		"art": "a small round sprite of warm sunlight with stubby wings and a halo of soft gold rays, cheerful and bright",
 	},
+	"river_hound": {
+		# Tam Hayes's Totem (Master Script v6/v7): he calls her down every
+		# morning; the player meets her in his friendly game, and sees her
+		# torn apart by Krell's shadow hound that night
+		"kind": "totem", "name": "River Hound", "element": "tide", "tier": 1, "stage": 0, "cost": 1,
+		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "4a9fd8",
+		"keywords": ["loyal"],
+		"moves": [
+			{"name": "Snap", "cost": 0, "damage": 10},
+			{"name": "Mill-Race Bite", "cost": 1, "damage": 0, "fate": [
+				{"to": 3, "damage": 0, "text": "Slips on the stones"},
+				{"to": 12, "damage": 20},
+				{"to": 99, "damage": 40}]},
+		],
+		"art": "a lean grey-blue hound made of running river water, a mill-race foam ruff at its neck, droplets flying as it lopes through reeds",
+	},
 	"hallowed_hound": {
 		"kind": "totem", "name": "Hallowed Hound", "element": "spirit", "tier": 2, "stage": 0, "cost": 2,
 		"hp": 100, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "5fc4b2",

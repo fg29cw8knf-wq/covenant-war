@@ -47,7 +47,13 @@ void fragment() { ALBEDO = vec3(0.0); ALPHA = 0.96 * fade; }
 """
 
 var walking := false
+## "rider": the v3 Herald, a grey horse and an empty-hooded rider with a
+## lantern on a staff. "shroud" (Master Script v7): "a towering, shifting mass
+## of grey burial cloth and rusted iron chains", hovering inches above the
+## grass, an empty hood at the top. Set before it's added to the tree.
+var form := "rider"
 var _t := 0.0
+var _chains: Array = []     # [link node, phase]
 var _legs: Array = []      # [hip node, phase]
 var _body: Node3D
 var _rider: Node3D
@@ -84,6 +90,10 @@ func _ready() -> void:
 	_void.shader.code = VOID_SHADER
 	_body = Node3D.new()
 	add_child(_body)
+	if form == "shroud":
+		_build_shroud()
+		_add_mist()
+		return
 	# the horse, facing +z: barrel, chest, neck, head, tail and four legs
 	_cap(_body, 0.40, 1.9, Vector3(0, 1.42, -0.05), Vector3(PI / 2, 0, 0))
 	_cap(_body, 0.37, 0.9, Vector3(0, 1.48, 0.72), Vector3(PI / 2 - 0.35, 0, 0))
@@ -236,7 +246,11 @@ func _ready() -> void:
 	_lantern_light.light_energy = 0.8
 	_lantern_light.omni_range = 5.0
 	_lantern.add_child(_lantern_light)
-	# a cold light about it, and mist off its hooves
+	_add_mist()
+
+
+## A cold light about it, and mist off its hooves (or the hem of its shroud).
+func _add_mist() -> void:
 	var l := OmniLight3D.new()
 	l.light_color = Color(0.75, 0.8, 0.95)
 	l.light_energy = 1.2
@@ -284,6 +298,131 @@ func _ready() -> void:
 	_mist.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_mist.visibility_aabb = AABB(Vector3(-6, -1, -6), Vector3(12, 6, 12))
 	add_child(_mist)
+
+
+## v7's Herald: layers of grey burial cloth, each a little turned and
+## tattered, rising to a hood with nothing in it; rusted iron chains hang in
+## loops about it and sway; it hovers just off the grass. Its "lantern" is a
+## pale light inside the cloth at the chest (the faces come out of it).
+func _build_shroud() -> void:
+	var layers := [[0.95, 0.62, 0.0, 1.5], [0.82, 0.5, 0.9, 1.45], [0.66, 0.38, 1.75, 1.2], [0.5, 0.3, 2.45, 0.85]]
+	for i in layers.size():
+		var L: Array = layers[i]
+		var mi := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.bottom_radius = L[0]
+		cm.top_radius = L[1]
+		cm.height = L[3]
+		cm.radial_segments = 22
+		cm.rings = 3
+		mi.mesh = cm
+		mi.material_override = _mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.position = Vector3(0.0, float(L[2]) + float(L[3]) * 0.5, 0.0)
+		mi.rotation = Vector3(0.03 * (i % 2), 0.7 * i, -0.025 * (i % 3))
+		_body.add_child(mi)
+	# torn strips of cloth hanging from the hem
+	for k in 9:
+		var a := TAU * k / 9.0 + 0.2
+		_cap(_body, 0.07, 0.9, Vector3(cos(a) * 0.82, 0.25, sin(a) * 0.82), Vector3(0.18 * sin(a), 0, -0.18 * cos(a)))
+	_rider = Node3D.new()
+	_rider.position = Vector3(0, 3.1, 0)
+	_body.add_child(_rider)
+	_hood = Node3D.new()
+	_hood.position = Vector3(0, 0.38, 0.05)
+	_rider.add_child(_hood)
+	var hood := MeshInstance3D.new()
+	var hm := SphereMesh.new()
+	hm.radius = 0.34
+	hm.height = 0.8
+	hood.mesh = hm
+	hood.material_override = _mat
+	hood.scale = Vector3(1.0, 1.1, 1.08)
+	_hood.add_child(hood)
+	var hole := MeshInstance3D.new()
+	var hh := SphereMesh.new()
+	hh.radius = 0.21
+	hh.height = 0.46
+	hole.mesh = hh
+	hole.material_override = _void
+	hole.position = Vector3(0, -0.03, 0.2)
+	hole.scale = Vector3(1.0, 1.2, 0.6)
+	_hood.add_child(hole)
+	var hole2 := MeshInstance3D.new()
+	var hq := QuadMesh.new()
+	hq.size = Vector2(0.32, 0.46)
+	hole2.mesh = hq
+	var vm := StandardMaterial3D.new()
+	vm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	vm.albedo_color = Color(0, 0, 0)
+	hole2.material_override = vm
+	hole2.position = Vector3(0, -0.03, 0.3)
+	_hood.add_child(hole2)
+	# rusted iron chains: loops of links about the cloth, swaying
+	var rust := StandardMaterial3D.new()
+	rust.albedo_color = Color(0.34, 0.2, 0.12)
+	rust.metallic = 0.55
+	rust.roughness = 0.78
+	var loops := [[1.05, 0.72, 0.0], [1.6, 0.6, 1.2], [2.25, 0.5, 2.3], [0.7, 0.85, 3.6]]
+	for L in loops:
+		var chain := Node3D.new()
+		chain.position = Vector3(0, float(L[0]), 0)
+		chain.rotation = Vector3(0.22, float(L[2]), 0.08)
+		_body.add_child(chain)
+		var r: float = L[1] + 0.06
+		var links := 26
+		for j in links:
+			var a := PI * 1.15 * j / float(links - 1) - PI * 0.575
+			var link := MeshInstance3D.new()
+			var tm := TorusMesh.new()
+			tm.inner_radius = 0.025
+			tm.outer_radius = 0.048
+			tm.rings = 10
+			tm.ring_segments = 5
+			link.mesh = tm
+			link.material_override = rust
+			# a sagging arc round the front of the cloth
+			link.position = Vector3(sin(a) * r, -0.32 * cos(a * 0.87) + 0.32, cos(a) * r)
+			link.rotation = Vector3(0.0, a, PI * 0.5 * (j % 2))
+			chain.add_child(link)
+		_chains.append([chain, float(L[2])])
+	# the light the faces come out of, low in the cloth at the chest
+	_lantern = Node3D.new()
+	_lantern.position = Vector3(0, 2.2, 0.55)
+	_body.add_child(_lantern)
+	var glass := StandardMaterial3D.new()
+	glass.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glass.albedo_color = Color(0.9, 0.95, 1.0)
+	var flame := MeshInstance3D.new()
+	var fm0 := SphereMesh.new()
+	fm0.radius = 0.02
+	fm0.height = 0.04
+	flame.mesh = fm0
+	flame.material_override = glass
+	_lantern.add_child(flame)
+	_lantern_flame = flame
+	_lantern_glow = MeshInstance3D.new()
+	var gq := QuadMesh.new()
+	gq.size = Vector2(1.2, 1.2)
+	_lantern_glow.mesh = gq
+	var gm := StandardMaterial3D.new()
+	gm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	gm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	gm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	var gg := Gradient.new(); gg.set_color(0, Color(1, 1, 1, 1)); gg.set_color(1, Color(1, 1, 1, 0))
+	var ggt := GradientTexture2D.new(); ggt.gradient = gg; ggt.fill = GradientTexture2D.FILL_RADIAL
+	ggt.fill_from = Vector2(0.5, 0.5); ggt.fill_to = Vector2(0.5, 0.0)
+	gm.albedo_texture = ggt
+	gm.albedo_color = Color(0.75, 0.85, 1.0, 0.35)
+	_lantern_glow.material_override = gm
+	_lantern_glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_lantern.add_child(_lantern_glow)
+	_lantern_light = OmniLight3D.new()
+	_lantern_light.light_color = Color(0.78, 0.86, 1.0)
+	_lantern_light.light_energy = 0.6
+	_lantern_light.omni_range = 5.0
+	_lantern.add_child(_lantern_light)
 
 
 func _cap(parent: Node3D, r: float, h: float, pos: Vector3, rot: Vector3) -> MeshInstance3D:
@@ -346,7 +485,14 @@ func _process(delta: float) -> void:
 	for leg in _legs:
 		var hip: Node3D = leg[0]
 		hip.rotation.x = sin(_t * 3.4 + float(leg[1])) * 0.32 * k
-	_body.position.y = (absf(sin(_t * 3.4)) * 0.05 * k) + sin(_t * 0.9) * 0.03
+	if form == "shroud":
+		# hovering just off the grass, the cloth shifting, the chains swaying
+		_body.position.y = 0.12 + sin(_t * 0.8) * 0.05
+		_body.rotation.y = sin(_t * 0.37) * 0.05
+		for c in _chains:
+			(c[0] as Node3D).rotation.z = 0.08 + sin(_t * 1.1 + float(c[1]) * 2.0) * 0.06
+	else:
+		_body.position.y = (absf(sin(_t * 3.4)) * 0.05 * k) + sin(_t * 0.9) * 0.03
 	_rider.rotation.z = sin(_t * 1.7) * 0.02
 	_flare = move_toward(_flare, _flare_to, delta * 2.5)
 	if _lantern_light != null:
