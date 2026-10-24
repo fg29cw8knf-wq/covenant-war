@@ -1,120 +1,196 @@
 class_name StoryFilm
 extends CanvasLayer
-## A story film made of Gary's own clips, played in place of the engine's 3D
-## staging of the same scene (as the finished opening movie replaced its
-## shot-by-shot version). Midnight (P2) and Dawn (P3) first (Gary, 23
-## October: "the cut scene after all the lanterns go up: can we make a proper
-## movie from that like we did for the opening movie? Same for the scene the
-## next morning").
+## A story film: one of Gary's own films, played in place of the engine's 3D
+## staging of the same stretch of a scene, as the finished opening movie
+## replaced its shot-by-shot version (Gary, 23 October: "the cut scene after
+## all the lanterns go up: can we make a proper movie from that like we did
+## for the opening movie?"; 24 October: the cutscenes as videos built round
+## one hero, Player A). Master Script v7 has seven (the Still to Make doc,
+## the "Films for Player A" tab): midnight, white_light, herald, reckoning,
+## tams_hand, no_roof and ridge. Conversations, choices and the things the
+## player does (the cart, the tunnel, the look back) stay in the game
+## between them.
 ##
-## A film is a list of steps (FILMS): shots, and between them the things a
-## film can't carry on its own (a choice, the name prompt, a caption):
+## A film plays, best first:
+##   1. Gary's 4K film, `<film>_4k.mp4`, through the device's own player
+##      (NativeVideoPlayer in the iPhone and Mac apps, the film loose in the
+##      bundle from the films release; on the phone link the browser's own,
+##      streaming films/<film>/ beside the page: WebVideoPlayer), as the
+##      opening does. Its lines go over it as the player's own subtitles.
+##   2. The whole cut as Ogg Theora, res://assets/movies/<film>.ogv.
+##   3. Its shots one by one: each shot's clip res://assets/movies/<film>/<id>.ogv
+##      (tools/movie_clips.py --film <film> makes them from Gary's clips), or
+##      its painting res://assets/art/movie/<film>/<id>.png (.jpg), or, while
+##      neither exists, an animatic card saying what the shot is.
+## The engine's 3D scene stays the fallback: a film is only used once it's
+## there (available()), or when "--story-films" is on the command line (the
+## animatic, to check a scene runs with its films).
+##
+## A film is a list of steps (FILMS):
 ##   {"id": "mid_01", "len": 8.0, "see": "...", "lines": [{"at": 0.5, "who": "", "say": "..."}]}
-##       a shot: its clip res://assets/movies/<film>/<id>.ogv (made from
-##       Gary's clip by tools/movie_clips.py --film <film>), or its painting
-##       res://assets/art/movie/<film>/<id>.png (.jpg), or, while neither
-##       exists, an animatic card saying what the shot is. A shot that
-##       shows the player can have one clip per look (<id>_a.ogv ... _d),
-##       used for the look chosen in the mirror. Its lines are the game's
-##       subtitles (CineOverlay), each at its moment; a line with "vo"
-##       plays that voice file from res://assets/audio/vo/ (the Herald's
-##       lines, Gary's recordings) and stays up as long as it does.
-##   {"choice": [...], "flag": "..."}   the player's choice, over the last
-##       frame; the pick (0, 1, ...) is kept in that story flag
+##       a shot, `len` seconds of the film; "see" says what's in it (Gary's
+##       brief, and the animatic's card), "player": true when Player A is in
+##       it. Its lines are the game's subtitles, each `at` seconds into the
+##       shot; a line with "vo" plays that recording (assets/audio/vo/, the
+##       Herald's lines), any other its own if VoiceLines has one; "if":
+##       [flag, pick] shows it only after that pick; "hold" keeps it up that long.
+##   {"choice": [...], "flag": "..."}   the player's choice: the film pauses
+##       (the 4K film steps aside for the game's buttons, over black); the
+##       pick (0, 1, ...) is kept in that story flag
 ##   {"name": "<the question>"}          the name prompt (Game.player_name)
 ##   {"caption": "Dawn"}                 a caption over the picture
 ##   {"music": ["dawn_after"]}           music from here (Music.play); "stop" ends it
 ##   {"stinger": "the_marking"}          a stinger (Music.stinger)
-## The whole cut, res://assets/movies/<film>.ogv, is played instead when it
-## exists (every shot's clip in one, with its music, as Gary made the opening):
-## the lines still go over it at their moments, and a choice pauses it.
-##
-## The engine's 3D scene stays as the fallback: a film is only used once it's
-## all there (available()), or when "--story-films" is on the command line.
+## The 4K film and the whole cut have their own music and captions: those
+## steps are for the shots alone. The shot lengths say where each shot starts
+## in a whole film, so its lines come at their moments: when Gary's film is
+## in, its shot lengths here are set to match it.
 
 signal finished
 
-## What the film replaces, and what the scene around it must still do, is in
-## scripts/world/areas/ashford.gd (_midnight_film, _dawn_film).
+## What each film replaces, and what the scene around it still does, is in
+## the scene's own script: midnight, white_light and herald in
+## scripts/world/areas/ashford.gd (_midnight_film, _white_light_film,
+## _herald_film), reckoning, tams_hand and no_roof in
+## scripts/world/areas/ashford_night.gd, ridge in
+## scripts/world/areas/thornwood.gd. The lines are the 3D scene's own, word
+## for word; Master Script v7 (docs/script/v7_prologue.md) has them in order.
 const FILMS := {
 	"midnight": {
 		"title": "Midnight",
 		"steps": [
-			{"id": "mid_01", "len": 8.0, "see": "The green at night, packed, every face turned up to the unlit Great Lantern; the chapel tower; the bell swinging.",
-				"lines": [{"at": 0.6, "who": "", "say": "Midnight. The chapel bell counts twelve, and all of Ashford counts with it.", "vo": "mid_01"}]},
-			{"id": "mid_02", "len": 7.0, "see": "From behind: the player climbs the Lantern's steps with a lit taper and touches it to the wick. The Great Lantern catches with a roar, and the whole village roars back.", "player": true},
-			{"id": "mid_03", "len": 6.0, "see": "Tam dancing with Nell, badly, in the Lantern's gold light; Ned's fiddle; paper lanterns bobbing in the crowd."},
-			{"id": "mid_04", "len": 7.0, "see": "Corin beside the player, both watching the crowd; he says it without looking over.",
+			{"id": "mid_01", "len": 7.0, "see": "Midnight on the packed green, every face turned up to the unlit Great Lantern; the chapel tower, its bell swinging.",
+				"lines": [{"at": 0.6, "who": "", "say": "Midnight. The chapel bell counts twelve, and all of Ashford counts with it."}]},
+			{"id": "mid_02", "len": 7.0, "player": true, "see": "From behind: he climbs the Lantern's steps with a lit taper and touches it to the wick. The Great Lantern burns with a rich, golden flame, and the whole green roars."},
+			{"id": "mid_03", "len": 5.0, "see": "Little Tilly steps back from the Lantern, her face glowing gold. Behind her, Tam dances with Nell, badly; Ned's fiddle."},
+			{"id": "mid_04", "len": 6.0, "player": true, "see": "Corin beside him, both of them watching the crowd; he says it without looking over.",
 				"lines": [{"at": 0.8, "who": "corin", "say": "It's a good village, this. Don't tell anyone I said so."}]},
-			{"id": "mid_05", "len": 10.0, "see": "Bram, looking up at the first paper lanterns being readied, their candles lit one by one.",
+			{"id": "mid_05", "len": 10.0, "see": "Bram, looking up at the paper lanterns being readied, their candles lit one by one.",
 				"lines": [{"at": 0.5, "who": "bram", "say": "Folk think we send them up for the gods. We don't. A lantern's for whoever's out in the dark, so they know which way is home."}]},
 			{"id": "mid_06", "len": 6.0, "see": "Bram's face, the Lantern behind him, his eyes going up to the stars.",
 				"lines": [{"at": 0.4, "who": "bram", "say": "Two thousand years. Wonder who'll be sitting up there tomorrow."}]},
 			{"choice": ["Does it matter to us?", "Whoever it is owes us a better year."], "flag": "mid_choice"},
 			{"id": "mid_07", "len": 5.0, "see": "Bram, close, the ghost of a laugh.",
 				"lines": [{"at": 0.3, "who": "bram", "say": "It shouldn't. It always seems to.", "if": ["mid_choice", 0]},
-					{"at": 0.3, "who": "bram", "say": "Write and tell them. See who writes back.", "if": ["mid_choice", 1]}]},
-			{"music": "stop"},   # (the fiddle trails off: the festival reel goes with the lanterns)
-			{"id": "mid_08", "len": 11.0, "see": "Hundreds of paper lanterns rise over Ashford. Then they stop, every one, hanging in the air as if the night has taken hold of them. The fiddle trails off. One by one, faces turn up."},
+					{"at": 0.8, "who": "bram", "say": "Write and tell them. See who writes back.", "if": ["mid_choice", 1]}]},
+			{"music": "stop"},
+			{"id": "mid_08", "len": 10.0, "player": true, "see": "Hundreds of paper lanterns rise over Ashford. Then the wind simply stops. Every lantern freezes mid-air; the fiddle trails off; the village goes dead silent, every face turned up, his among them."},
 			{"id": "mid_09", "len": 5.0, "see": "Corin, looking up, then at Bram.",
 				"lines": [{"at": 0.4, "who": "corin", "say": "Bram. Is it meant to do that?"}]},
 			{"music": ["sigilfall"]},
-			{"id": "mid_10", "len": 8.0, "see": "The sky splits from one horizon to the other. Light pours down in every colour. For a breath the children cheer."},
-			{"id": "mid_11", "len": 5.0, "see": "A strike hits the mill and the thatch goes up.",
-				"lines": [{"at": 1.6, "who": "nell", "say": "The mill! The mill's on fire!", "hold": 2.4}]},
-			{"id": "mid_12", "len": 5.0, "see": "Bram, shouting over the noise, pointing the player at the inn.",
-				"lines": [{"at": 0.3, "who": "bram", "say": "Inside! Everyone inside! Sprout, the inn. Now!", "hold": 2.8}]},
-			{"id": "mid_13", "len": 9.0, "see": "Everyone runs for their doors. Corin grabs Tilly and runs her up the lane past Tam's hay cart. The player runs for the inn (from behind); strikes land all round, and one knocks them flat.", "player": true},
-			{"id": "mid_14", "len": 5.0, "see": "A blast on the far side of the hay cart throws it over, onto Corin. Tilly screams.",
-				"lines": [{"at": 1.8, "who": "tilly", "say": "Corin! CORIN!", "hold": 1.8}]},
-			{"id": "mid_15", "len": 7.0, "see": "The player gets up off the ground, sees him, and runs back. Bram is already running too. Corin under the cart's edge, his leg pinned.", "player": true,
-				"lines": [{"at": 2.8, "who": "corin", "say": "My leg. It's stuck, I can't, I can't get it —"}]},
-			{"id": "mid_16", "len": 8.0, "see": "Bram arrives at the cart. He and the player take its top edge, one either side of Corin, and heave; Corin drags himself clear and the cart crashes back down.", "player": true,
-				"lines": [{"at": 0.3, "who": "bram", "say": "Other side. On three. One, two —", "hold": 2.8}]},
-			{"id": "mid_17", "len": 6.0, "see": "Corin on his feet, limping, trying to make light of it. He isn't all right: his hands are shaking.",
-				"lines": [{"at": 0.4, "who": "corin", "say": "I'm all right. I'm all right."}]},
-			{"music": "stop"},
-			{"stinger": "the_marking"},
-			{"id": "mid_18", "len": 10.0, "see": "One light falls differently. White. Slow. Silent. It passes Bram. It passes Corin. It stops at the player.", "player": true},
-			{"id": "mid_19", "len": 9.0, "see": "The player's hand held out, and the light settles on it: a card with nothing on it. Every other light in the sky goes out at once. Then a white mark burns itself into the back of the hand.", "player": true},
-			{"id": "mid_20", "len": 7.0, "see": "Corin, staring at the card, then down at his own empty hand.",
-				"lines": [{"at": 0.4, "who": "corin", "say": "It came to you."}, {"at": 3.6, "who": "corin", "say": "It just came to you."}]},
-			{"id": "mid_21", "len": 9.0, "see": "Bram crosses to the player and closes their fingers over the card. Its glow dies between them. His hand is shaking too. He looks the player in the eye.", "player": true,
-				"lines": [{"at": 4.0, "who": "bram", "say": "Put that away. Don't show anyone. Not anyone."}]},
+			{"id": "mid_10", "len": 8.0, "see": "With a deafening, glass-shattering crack the sky tears open. A blinding white light bleeds down from the Empyrean, and the midnight green goes as stark and pale as bone. For a breath the children cheer."},
+			{"id": "mid_11", "len": 6.0, "see": "The first strike lands in the top field. The earth bucks; the shockwave shatters the merchant carts lining the green.",
+				"lines": [{"at": 3.4, "who": "", "say": "[i]Screams finally break the silence.[/i]", "hold": 2.2}]},
+			{"id": "mid_12", "len": 4.0, "see": "Bram, shouting over the noise, pointing him at the inn.",
+				"lines": [{"at": 0.3, "who": "bram", "say": "Inside! Everyone inside! Sprout, the inn. Now!", "hold": 2.6}]},
+			{"id": "mid_13", "len": 8.0, "player": true, "see": "Everyone runs for their doors. Corin grabs Tilly's hand and runs her up the lane past Tam's cart. He runs for the inn (from behind); strikes land all round him, and one knocks him flat."},
+			{"id": "mid_14", "len": 6.0, "see": "A blast on the far side of the cart throws it over onto Corin; an iron-banded wheel pins him in the mud. Tilly screams.",
+				"lines": [{"at": 2.4, "who": "tilly", "say": "Corin! CORIN!", "hold": 1.8}]},
+			{"id": "mid_15", "len": 4.0, "player": true, "see": "He gets up in the dust and falling debris, sees Corin under the wheel, and turns back. (The game takes over: Find Corin, and the cart.)"},
 		],
 	},
-	"dawn": {
-		"title": "Dawn",
+	"white_light": {
+		"title": "The White Light",
+		"steps": [
+			{"stinger": "the_marking"},
+			{"id": "wl_01", "len": 9.0, "see": "By the cart, one light falls differently: white, slow, silent. Time slows. It passes Bram across the green. It passes Corin."},
+			{"id": "wl_02", "len": 6.0, "player": true, "see": "His open palm, and the white streak settling into it: a card with nothing on it. Every other light in the sky goes out at once."},
+			{"id": "wl_03", "len": 4.0, "player": true, "see": "Close: under his collarbone the ash-grey broken seal he has hidden all his life blazes with white fire. He doubles over."},
+			{"id": "wl_04", "len": 7.0, "see": "Corin, staring at the card, then down at his own empty hand.",
+				"lines": [{"at": 0.4, "who": "corin", "say": "It came to you."}, {"at": 3.6, "who": "corin", "say": "It just came to you."}]},
+			{"id": "wl_05", "len": 7.0, "player": true, "see": "Bram shoves through the screaming crowd, his face pale with terror, throws his heavy wool coat over him and closes his fingers over the card.",
+				"lines": [{"at": 3.4, "who": "bram", "say": "Close your fist. Don't look at it. Hide it. Now."}]},
+			{"id": "wl_06", "len": 5.0, "player": true, "see": "The card's glow dies between their hands. His vision swims, and he goes down into the mud. Black."},
+		],
+	},
+	"herald": {
+		"title": "The Pale Herald",
 		"steps": [
 			{"music": ["dawn_after"]},
-			{"caption": "Dawn"},
-			{"id": "dawn_01", "len": 9.0, "see": "Dawn over Ashford. Smoke lies over the hills. The mill is a black shell. Children pick fallen Sparks out of the furrows and squabble over them like conkers."},
-			{"id": "dawn_02", "len": 8.0, "see": "Hob on the green with a fan of glowing cards in his big hands, showing Bram.",
-				"lines": [{"at": 0.5, "who": "hob", "say": "Lost half the barley and the mill roof. Found nine cards in the cabbages. Can't tell if that's a good trade."}]},
-			{"id": "dawn_03", "len": 10.0, "see": "A mist comes down the road against the wind. In it walks a grey horse that leaves no prints. Its rider's hood is empty, and it carries a staff topped with a pale lantern."},
-			{"id": "dawn_04", "len": 7.0, "see": "The villagers kneel without being told. Bram's hand on the player's shoulder brings them down with the rest (from behind the pair).", "player": true,
-				"lines": [{"at": 2.4, "who": "bram", "say": "A Pale Herald. Morrowen's own. Head down. Hand in your pocket."}]},
-			{"id": "dawn_05", "len": 4.0, "see": "The Herald stops at the edge of the green. The empty hood.",
-				"lines": [{"at": 0.3, "who": "herald", "say": "Hear the Covenant.", "vo": "herald_01"}]},
-			{"id": "dawn_06", "len": 16.5, "see": "The pale lantern on the staff brightens as it speaks; Ashford's faces, kneeling, lit by it.",
-				"lines": [{"at": 0.3, "who": "herald", "say": "The Age of Solmaris is ending. By the Covenant, the Turning begins. For one year, any Seat in Veyl may be challenged by anyone.", "vo": "herald_02"}]},
-			{"id": "dawn_07", "len": 8.5, "see": "The lantern's light shows a knight kneeling in a sun chapel (Ser Aldric Vane, Gary's painting).",
+			{"id": "her_01", "len": 8.0, "see": "Dawn over Ashford: frost on the green, burnt-out paper lanterns lying everywhere like dead moths, the merchant carts in pieces."},
+			{"id": "her_02", "len": 6.0, "see": "Tilly and a small boy picking fallen Sparks out of the furrows, squabbling over them like conkers."},
+			{"id": "her_03", "len": 7.0, "see": "Hob with a fan of glowing cards in his big hands, showing Bram.",
+				"lines": [{"at": 0.5, "who": "hob", "say": "Lost half the barley. Found nine cards in the cabbages. Can't tell if that's a good trade."}]},
+			{"id": "her_04", "len": 6.0, "see": "The temperature drops. No sound of arrival: it is simply there, hovering inches above the crushed grass, a towering, shifting mass of grey burial cloth and rusted iron chains. The village draws back into a wide, terrified ring."},
+			{"id": "her_05", "len": 6.0, "player": true, "see": "Bram's hand comes down on his shoulder (from behind the pair).",
+				"lines": [{"at": 1.4, "who": "bram", "say": "A Pale Herald. Morrowen's own. Head down. Hand in your pocket."}]},
+			{"id": "her_06", "len": 16.0, "see": "The Herald's empty hood; the pale light in its mist on Ashford's frightened faces.",
+				"lines": [{"at": 0.3, "who": "herald", "say": "The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven Dominion Seats, subject to open challenge. Let the blood of the contenders be counted.", "vo": "herald_21"}]},
+			{"id": "her_07", "len": 6.0, "see": "In its mist, a knight kneeling in a sun chapel (Ser Aldric Vane).",
 				"lines": [{"at": 0.3, "who": "herald", "say": "Solhaven, for Solmaris: Ser Aldric Vane.", "vo": "herald_03"}]},
-			{"id": "dawn_08", "len": 8.0, "see": "Five more faces in the lantern's light, a name written under each, too quick to hold: a scarred warlord, a boy on an ice throne, a grinning captain, a mask in the dark, a blindfolded priestess. The camera stays mostly on Ashford's faces."},
-			{"id": "dawn_09", "len": 6.5, "see": "The sixth face. At the name, Bram's hand tightens on the player's shoulder.", "player": true,
+			{"id": "her_08", "len": 6.0, "player": true, "see": "A grey scholar's face in the mist (Magister Tobias Crane); at the name, Bram's hand tightens on his shoulder.",
 				"lines": [{"at": 0.3, "who": "herald", "say": "Glyphmere, for Aldrith: Magister Tobias Crane.", "vo": "herald_09"}]},
-			{"id": "dawn_10", "len": 12.0, "see": "The empty hood, and the lantern's light turning towards the kneeling crowd.",
-				"lines": [{"at": 0.3, "who": "herald", "say": "And one more. Bound to no god. Holding no Seat. Marked by the Covenant itself.", "vo": "herald_10"}]},
-			{"id": "dawn_11", "len": 7.0, "see": "The mark on the player's hand blazes straight through their pocket. Every head in Ashford turns. Last of all, slowly, the empty hood.", "player": true},
-			{"name": "Nobody has told the Herald your name. The empty hood speaks it anyway. What does it say?"},
-			{"id": "dawn_12", "len": 5.0, "see": "The empty hood, facing the player.",
-				"lines": [{"at": 0.2, "who": "herald", "say": "{name}.", "hold": 2.0}, {"at": 2.4, "who": "herald", "say": "The Unsworn.", "vo": "herald_12"}]},
-			{"id": "dawn_13", "len": 10.0, "see": "The Herald, the staff raised a little, the lantern's light on the player.",
-				"lines": [{"at": 0.3, "who": "herald", "say": "Present your mark at the Sun Court of Solhaven before the new moon, or forfeit it.", "vo": "herald_13"}]},
-			{"id": "dawn_14", "len": 9.0, "see": "The Herald rides back into the mist, and the mist goes with it. Nobody speaks. Tilly, uncertain, waves at the place where it was."},
+			{"id": "her_09", "len": 5.0, "see": "Five more faces in the mist, too quick to hold: a scarred warlord, a young king on an ice throne, a grinning captain, a silk mask in the dark, a blindfolded priestess. The camera stays on Ashford's faces."},
+			{"id": "her_10", "len": 6.0, "player": true, "see": "A suffocating heat in his chest: the mark on his collarbone blazes bright white through his shirt. Every head turns. The Herald stops mid-word, and its hood snaps down onto him."},
+			{"id": "her_11", "len": 17.0, "see": "The hood, facing him; its grinding voice stutters, as if the old laws are rewriting themselves.",
+				"lines": [{"at": 0.3, "who": "herald", "say": "The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn.", "vo": "herald_22"}]},
+			{"id": "her_12", "len": 5.0, "see": "It dissolves into a thick grey mist, and the mist goes."},
+			{"id": "her_13", "len": 7.0, "player": true, "see": "The silence on the green. Tam looks at the ground. Nell quietly pulls Tilly away; the villagers step back from him. Bram steps firmly into the empty space between him and the village. (The game takes over: the Hero note, and Bram.)"},
+		],
+	},
+	"reckoning": {
+		"title": "The Reckoning",
+		"steps": [
+			{"music": ["ashford_burns"]},
+			{"id": "rk_01", "len": 8.0, "see": "Dusk on the green. Hoofbeats: Huntmaster Krell rides in on a heavy warhorse, her bailiffs behind her with torches, a hound of shadow at her stirrup."},
+			{"id": "rk_02", "len": 17.0, "see": "Krell in the saddle, a ledger open in her hand, reading the terms to the gathered village.",
+				"lines": [{"at": 0.4, "who": "krell", "say": "Good evening. I hold the foreclosure notes for twenty-two properties in this valley."},
+					{"at": 5.0, "who": "krell", "say": "By the authority of Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit tonight."},
+					{"at": 11.0, "who": "krell", "say": "Alternatively, you may surrender one card, the white one, and the notes are burned. I will wait five minutes."}]},
+			{"music": "stop"},
+			{"id": "rk_03", "len": 4.0, "see": "Nobody speaks. The silence stretches across the frightened faces, Nell's among them."},
+			{"id": "rk_04", "len": 12.0, "see": "Tam steps forward, between her horse and the path up to the inn, and slaps his note down on a rain barrel.",
+				"lines": [{"at": 2.0, "who": "tam", "say": "The note says midnight. Take the mill, Huntmaster. It's yours. But you leave the people out of this."},
+					{"at": 7.4, "who": "tam", "say": "The one you're looking for, the Unsworn, they fled over the northern ridge hours ago."}]},
+			{"id": "rk_05", "len": 15.0, "see": "Krell looks down at the note, then at Tam, and leans from the saddle with a cold, almost sympathetic smile, her eyes on where he's planted his boots.",
+				"lines": [{"at": 1.6, "who": "krell", "say": "A brave lie, Miller. But you're a terrible card player."},
+					{"at": 5.4, "who": "krell", "say": "You put your body between my hounds and the inn before you even opened your mouth."},
+					{"at": 9.6, "who": "krell", "say": "Guards, search every building. Collect every note. If they don't have the coin, take the property."}]},
+			{"id": "rk_06", "len": 6.0, "see": "Tam reaches into his coat: not for another note. A worn deck. The crowd gasps.",
+				"lines": [{"at": 1.2, "who": "tam", "say": "I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand."}]},
+			{"id": "rk_07", "len": 11.0, "see": "Krell, unhurried, closing her ledger. (The game takes over: the cellar.)",
+				"lines": [{"at": 0.3, "who": "krell", "say": "Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes."},
+					{"at": 6.0, "who": "krell", "say": "And to deter anyone else from trying it... we fight to the death. Draw your Essence."}]},
+		],
+	},
+	"tams_hand": {
+		"title": "Tam's Hand",
+		"steps": [
+			{"music": ["sigilfall"]},
+			{"id": "th_01", "len": 6.0, "see": "The duelling Circle glows gold on the green between them. Tam calls his River Hound out of its card, blue and shining, as she was in your friendly game; Krell's hound of shadow waits."},
+			{"id": "th_02", "len": 4.0, "see": "The shadow hound tears through the River Hound, and she bursts into blue light."},
+			{"id": "th_03", "len": 5.0, "see": "The feedback shatters Tam's Ward. He clutches his chest and goes down, his life drawn out of him by the duel. No blood."},
+			{"id": "th_04", "len": 5.0, "see": "Nell screams, and drops to her knees.",
+				"lines": [{"at": 0.6, "who": "nell", "say": "Tam!", "hold": 2.0}]},
+			{"music": "stop"},
+			{"id": "th_05", "len": 13.0, "see": "Krell, giving her orders without looking at him.",
+				"lines": [{"at": 0.4, "who": "krell", "say": "The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing."},
+					{"at": 7.0, "who": "krell", "say": "If anyone interferes, subdue them. I want the white card, not a heap of ashes."}]},
+		],
+	},
+	"no_roof": {
+		"title": "No Roof Burns",
+		"steps": [
+			{"id": "nr_01", "len": 12.0, "see": "From a distant ridge, the moonlit green: two enforcers draw cards. One summons a controlled line of fire that stops the villagers passing and touches no house; the other binds a resisting villager in glowing strands and forces them to their knees. Behind them, soldiers search the houses."},
+		],
+	},
+	"ridge": {
+		"title": "Solhaven",
+		"steps": [
+			{"music": ["solhaven_dawn", "menu_theme"]},
+			{"id": "sol_01", "len": 7.0, "player": true, "see": "From behind him and Bram: they crest the Thornwood's last ridge at dawn; the plains below, and far off Solhaven's white towers, catching the first sun in Solmaris's light."},
+			{"id": "sol_02", "len": 6.0, "see": "Bram, turning to him.",
+				"lines": [{"at": 0.3, "who": "bram", "say": "Go through Dask's cards when we stop. Swap in what's nastier than what you've got. That's most of duelling."}]},
+			{"id": "sol_03", "len": 5.0, "see": "Solhaven, as close as the eye can get it.",
+				"lines": [{"at": 0.4, "who": "bram", "say": "There she is. Solhaven."}]},
+			{"id": "sol_04", "len": 4.0, "see": "Bram's face. He doesn't sound pleased."},
 		],
 	},
 }
+
+## Gary's 4K film for a story film, as the apps carry it (the films release)
+## and the phone link streams it (films/<film>/).
+const NATIVE_SUFFIX := "_4k.mp4"
 
 var film := ""
 var _w: World
@@ -125,11 +201,19 @@ var _voice: AudioStreamPlayer
 var _done := false
 var _cut := false
 var _picks := {}       # flag -> pick, and "name" -> the name given
+var _played := true    # false: nothing of the film could play (the 3D scene plays instead)
+var _native = null     # the device's (or browser's) own player, while the 4K film plays
+var _sub_line := 0     # the 4K film's subtitle now up (a newer line replaces it)
 
 
-## Is this film there to play: the whole cut, or a clip or painting for every shot?
+## Is this film there to play: the 4K film, the whole cut, or a clip or
+## painting for every shot?
 static func available(p_film: String) -> bool:
+	if not FILMS.has(p_film):
+		return false
 	if "--story-films" in OS.get_cmdline_user_args():
+		return true
+	if native_path(p_film) != "":
 		return true
 	if Packs.in_build(p_film) and not Packs.has(p_film):
 		return true   # (the phone link: its pack is there to fetch, so the film is)
@@ -144,6 +228,16 @@ static func available(p_film: String) -> bool:
 		if clip_path(p_film, String(st.id)) == "" and still_path(p_film, String(st.id)) == "":
 			return false
 	return shots > 0
+
+
+## Where the device's own player finds the 4K film ("": no player here, or
+## no such film: the app's bundle hasn't got it, or the site's list of films
+## says it isn't there).
+static func native_path(p_film: String) -> String:
+	var p = OpeningMovie.native_player()
+	if p == null:
+		return ""
+	return String(p.find_file(p_film + NATIVE_SUFFIX))
 
 
 static func cut_path(p_film: String) -> String:
@@ -173,16 +267,29 @@ static func shots(p_film: String) -> Array:
 	return FILMS.get(p_film, {}).get("steps", []).filter(func(st): return st.has("id"))
 
 
+## How long the film runs, by its shots.
+static func length(p_film: String) -> float:
+	var t := 0.0
+	for st in shots(p_film):
+		t += float(st.len)
+	return t
+
+
 ## Plays the film over the world, under its movie bars and subtitles
-## (CineOverlay), and returns the picks made: {flag: pick, "name": name}.
+## (CineOverlay), and returns the picks made: {flag: pick, "name": name},
+## with "played": false if nothing of it could play (the 4K film wouldn't
+## open and there's no other copy), when the scene plays its 3D version
+## instead. It ends on black: the scene fades the world back in itself.
 static func play(w: World, p_film: String) -> Dictionary:
-	await Packs.need(p_film)
+	if native_path(p_film) == "":
+		await Packs.need(p_film)   # (streamed on the phone link: no pack to fetch first)
 	var f := StoryFilm.new()
 	f.film = p_film
 	f._w = w
 	w.add_child(f)
 	await f.finished
-	var picks := f._picks
+	var picks := f._picks.duplicate()
+	picks["played"] = f._played
 	f.queue_free()
 	return picks
 
@@ -232,12 +339,137 @@ func _run() -> void:
 	var ov := Cine.overlay(_w)
 	ov.black(false)
 	var steps: Array = FILMS.get(film, {}).get("steps", [])
-	if ResourceLoader.exists(cut_path(film)):
-		await _play_cut(steps)
+	var how := "4K"
+	if await _play_native(steps):
+		pass
 	else:
-		await _play_shots(steps)
+		how = "cut" if ResourceLoader.exists(cut_path(film)) else "shots"
+		if Packs.in_build(film) and not Packs.has(film):
+			await Packs.need(film)   # (the 4K stream failed: the Theora copy after all)
+		if ResourceLoader.exists(cut_path(film)):
+			await _play_cut(steps)
+		elif "--story-films" in OS.get_cmdline_user_args() or _shots_there(steps):
+			await _play_shots(steps)
+		else:
+			_played = false
+			how = "nothing to play"
+	if OS.is_debug_build():
+		print("story film: %s (%s)" % [film, how])
+	# it ends on black: the overlay's, under which the scene carries on
+	ov.black(true)
 	_done = true
 	finished.emit()
+
+
+func _shots_there(steps: Array) -> bool:
+	var n := 0
+	for st in steps:
+		if st.has("id"):
+			n += 1
+			if clip_path(film, String(st.id)) == "" and still_path(film, String(st.id)) == "":
+				return false
+	return n > 0
+
+
+# --------------------------------------------------- the 4K film (native) ---
+
+## Gary's 4K film through the device's own player (or the browser's), as the
+## opening plays: it draws over the whole game view, so the lines go over it
+## as its own subtitles and a choice has it step aside. Returns false if
+## there's no player or film, or it can't be read before anything is seen
+## (the Theora copy or the shots play instead).
+func _play_native(steps: Array) -> bool:
+	var p = OpeningMovie.native_player()
+	if p == null:
+		return false
+	var path: String = p.find_file(film + NATIVE_SUFFIX)
+	if path == "":
+		return false
+	if not p.open(path):
+		push_warning("StoryFilm: %s won't open (%s)" % [path, p.get_error()])
+		return false
+	p.set_volume(1.0)
+	p.play()
+	var waited := 0.0
+	while not p.is_ready() and not p.has_failed() and waited < OpeningMovie.NATIVE_READY_SECS and is_inside_tree():
+		await get_tree().process_frame
+		waited += get_process_delta_time()
+	if p.has_failed() or not p.is_ready():
+		push_warning("StoryFilm: %s can't be played (%s)" % [path, p.get_error()])
+		p.stop()
+		return false
+	_native = p
+	_cut = true
+	_stage.visible = false
+	_video.visible = false
+	if OS.is_debug_build() or OS.has_feature("web"):
+		print("story film: %s through the %s player (%s, %.1f s)" % [film, "browser's" if p is WebVideoPlayer else "native", path, p.get_length()])
+	var ov := Cine.overlay(_w)
+	var at := 0.0
+	var ended := [false]
+	var watch := func() -> float:
+		var ev: int = p.poll()
+		if ev & (OpeningMovie.NV_FINISHED | OpeningMovie.NV_FAILED):
+			ended[0] = true
+		return maxf(0.0, p.get_position())
+	for st in steps:
+		if not is_inside_tree() or ended[0]:
+			break
+		if st.has("id"):
+			var length := float(st.len)
+			var start := at
+			await _lines_over(st.get("lines", []), length, func() -> float:
+				var c: float = watch.call()
+				return length if ended[0] else c - start)
+			at += length
+		elif st.has("choice") or st.has("name"):
+			# the film pauses and steps aside: the game's buttons over black
+			p.pause()
+			_native_sub("")
+			p.set_visible(false)
+			await _between(st, ov)
+			p.set_visible(true)
+			p.play()
+	# the rest of the film, to its end
+	while is_inside_tree() and not ended[0]:
+		watch.call()
+		await get_tree().process_frame
+	_native_sub("")
+	_voice.stop()
+	p.stop()
+	_native = null
+	return true
+
+
+## A line as the 4K film's own subtitle ("" takes it down): the speaker's
+## name and the line, as the game's subtitles have them.
+func _native_sub(text: String, who := "", hold := -1.0) -> void:
+	if _native == null:
+		return
+	_sub_line += 1
+	if text == "":
+		_native.set_subtitle("")
+		return
+	var nm := ""
+	if who != "":
+		nm = String(_w.get_meta("extra_names", {}).get(who, "")) if _w.has_meta("extra_names") else ""
+		if nm == "":
+			nm = _w._speaker(who)
+	var plain := _w._fmt(text)
+	var tags := RegEx.create_from_string("\\[/?[a-z]+[^\\]]*\\]")
+	plain = tags.sub(plain, "", true)
+	_native.set_subtitle(("%s: %s" % [nm, plain]) if nm != "" else plain)
+	var speed := maxf(0.4, float(Game.settings.get("text_speed", 1.0)))
+	var secs := hold if hold > 0.0 else (CineOverlay.READ_BASE + plain.length() * CineOverlay.READ_PER_CHAR) / speed
+	var this_line := _sub_line
+	get_tree().create_timer(secs, false).timeout.connect(func() -> void:
+		if _sub_line == this_line and _native != null:
+			_native.set_subtitle(""))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE and _native != null:
+		_native.stop()   # (never leave the device's player over the game)
 
 
 # ---------------------------------------------------------------- shots ---
@@ -302,7 +534,8 @@ func _lines_over(lines: Array, length: float, clock: Callable) -> void:
 			_say(pending.pop_front())
 
 
-## A line as the game's subtitle, with its voice when it has one.
+## A line as the game's subtitle (or the 4K film's own), with its voice when
+## it has one.
 func _say(ln: Dictionary) -> void:
 	var who := String(ln.get("who", ""))
 	var text := String(ln.get("say", ""))
@@ -314,6 +547,9 @@ func _say(ln: Dictionary) -> void:
 		_voice.play()
 		if hold < 0.0:
 			hold = _voice.stream.get_length() + 0.5
+	if _native != null:
+		_native_sub(text, who, hold)
+		return
 	Cine.say(_w, who, text, hold, true)   # (timed, not awaited: the picture keeps its time)
 
 
@@ -376,7 +612,7 @@ func _play_cut(steps: Array) -> void:
 				return maxf(0.0, _video.stream_position - start))
 			at += length
 		else:
-			if st.has("music") or st.has("stinger"):
+			if st.has("music") or st.has("stinger") or st.has("caption"):
 				continue   # (the cut has its own music)
 			await _between(st, ov)
 	while _video.is_playing() and is_inside_tree():

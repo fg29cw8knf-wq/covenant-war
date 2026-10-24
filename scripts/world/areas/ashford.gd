@@ -1550,46 +1550,101 @@ static func _prologue_film(w: World, part: String) -> void:
 
 # ------------------------------------------------------- P2 · midnight ---
 
-## Midnight as Gary's own film (StoryFilm, once its clips exist; until then
-## the 3D staging below): the green is cleared behind the black as the 3D
-## version does, the film plays with its choice, and the world is left as
-## midnight leaves it (marked, the card put away) for dawn.
-static func _midnight_film(w: World) -> void:
-	await Cine.begin(w)
-	await Cine.fade(w, 1.0, 0.6)
-	AshfordP1.undress(w)
-	_stage(w, MID)
-	await StoryFilm.play(w, "midnight")
-	Game.set_flag("ash_marked")
-	await Cine.fade(w, 1.0, 1.2)
-
-
-## Dawn as Gary's own film (StoryFilm): the morning after is set under it
-## (the mill charred, the cart tipped, everyone where the taproom scene
-## expects them), the film plays with the name prompt, and it ends on black.
-static func _dawn_film(w: World) -> void:
+## Midnight as Gary's own film (StoryFilm "midnight": lighting the Lantern
+## to Find Corin), when it's there. It plays over the green staged as the 3D
+## version stages it, and leaves the world as the 3D version leaves it for
+## the cart: the Lantern lit, the sky lanterns hanging, the sky torn and the
+## Sigils falling, everyone gone for their doors but Corin, pinned under the
+## cart with Tilly by him, and the player back on his feet in the west.
+## False if the film couldn't play (the 3D version plays instead).
+static func _midnight_film(w: World) -> bool:
 	var v := village(w)
-	await Cine.begin(w)
-	await Cine.fade(w, 1.0, 0.01)
-	v.set_time("dawn")
+	var r := await StoryFilm.play(w, "midnight")
+	if not r.get("played", true):
+		return false
+	v.light_great_lantern()
+	v.release_lanterns()
+	v.lantern_t = 1000.0   # (they're up, and hanging)
+	v.start_sigilfall()
+	v.tear = 0.999
+	v.first_impact()
+	for who in RUN_DOORS:
+		var way = RUN_DOORS[who]
+		Cine.place(w, String(who), way[way.size() - 1] if way is Array else way)
+	var cc := v.cart_centre()
+	var fd := v.cart_fall_dir()
+	var al := v.cart_along()
 	v.set_cart_tip(1.0)
-	_char_mill(v)
-	_clear_crowd(w)
-	_stage(w, DAWN, HERALD_ROAD[1])
-	await StoryFilm.play(w, "dawn")
-	await Cine.fade(w, 1.0, 1.2)
+	var corin_at := cc + fd * 2.7
+	Cine.place(w, "corin", corin_at, cc)
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D:
+		(cf as Figure3D).pose("fall", CORIN_DOWN, 0.0)
+	Cine.place(w, "tilly", cc + fd * 2.6 + al * 1.7 + Vector3(0.5, 0, 0.6), corin_at)
+	Cine.place(w, "player", RUN_END, cc)
+	Music.play(["sigilfall"], 0.5, true)
+	Cine.shot(w, RUN_END + Vector3(-3.0, 1.4, 3.0), RUN_END + Vector3(0, 1.0, 0), 40.0)
+	await Cine.fade(w, 0.0, 0.6)
+	return true
 
 
-## Midnight (Master Script v3, P2): the player lights the Great Lantern, Tam
-## dances with Nell, badly; the sky lanterns go up and stop, the sky tears,
-## the Sigils fall. Corin is pinned under Tam's cart and dragged clear; one
-## white light comes down to the player, and leaves them a blank card and a
-## mark on their hand.
-static func _midnight(w: World) -> void:
-	if StoryFilm.available("midnight"):
-		await _midnight_film(w)
-		return
+## The white light as Gary's own film (StoryFilm "white_light": after the
+## cart, to black), when it's there. It leaves the world as the 3D version
+## does: every other light in the sky out, the player marked, on black.
+## False if the film couldn't play.
+static func _white_light_film(w: World) -> bool:
 	var v := village(w)
+	Music.stop(1.0)
+	var r := await StoryFilm.play(w, "white_light")
+	if not r.get("played", true):
+		return false
+	v.lights_out()
+	v.hide_white_light()
+	Game.set_flag("ash_marked")
+	await Cine.say(w, "", "[i](The white card is in your Items. It can't be played, and it can't be put down.)[/i]")
+	return true
+
+
+## The Pale Herald as Gary's own film (StoryFilm "herald": dawn, up to it
+## dissolving and Bram stepping between), when it's there. It leaves the
+## green as the 3D version does (the village stepped back from the player,
+## Tam looking at the ground, Bram between them), and the hub follows.
+## False if the film couldn't play.
+static func _herald_film(w: World) -> bool:
+	var r := await StoryFilm.play(w, "herald")
+	if not r.get("played", true):
+		return false
+	var p := w.player.global_position
+	for d in [["nell", 1.6], ["tilly", 1.8], ["hob", 1.4], ["ned", 1.4], ["kid", 1.6]]:
+		var b := Cine.body(w, String(d[0]))
+		if b == null:
+			continue
+		var away := b.global_position - p
+		away.y = 0.0
+		Cine.place(w, String(d[0]), b.global_position + away.normalized() * float(d[1]))
+	var tf = Cine.fig(w, "tam")
+	if tf is Figure3D:
+		(tf as Figure3D).pose("defeat", 0.3, 0.0)
+	var nell_at := Cine.body(w, "nell").global_position
+	var village_dir := nell_at - p
+	village_dir.y = 0.0
+	village_dir = village_dir.normalized()
+	var between := p + village_dir * 1.1
+	Cine.place(w, "bram", between, nell_at)
+	Cine.shot(w, p - village_dir * 2.6 + village_dir.cross(Vector3.UP) * 1.2 + Vector3(0, 1.6, 0), between + Vector3(0, 1.3, 0), 38.0)
+	Music.play(["dawn_after"], 1.0, true)
+	await Cine.fade(w, 0.0, 0.8)
+	return true
+
+
+## Midnight (Master Script v7, P2, with v3's lines kept): the player lights
+## the Great Lantern, Tam dances with Nell, badly; the sky lanterns go up and
+## stop, the sky tears, the shockwave shatters the carts; Corin is pinned
+## under Tam's cart (Find Corin) and heaved clear; one white light comes down
+## to the player, and leaves them a blank card and the mark blazing on their
+## collarbone. Each film (midnight, white_light) plays in place of its 3D
+## stretch when it's there.
+static func _midnight(w: World) -> void:
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.6)
 	# the evening's extras go and everyone's hands are emptied, behind the
@@ -1597,6 +1652,23 @@ static func _midnight(w: World) -> void:
 	AshfordP1.undress(w)
 	_stage(w, MID)
 	_crowd(w)
+	var filmed := false
+	if StoryFilm.available("midnight"):
+		filmed = await _midnight_film(w)
+	if not filmed:
+		await _midnight_3d(w)
+	await _the_heave(w)
+	filmed = false
+	if StoryFilm.available("white_light"):
+		filmed = await _white_light_film(w)
+	if not filmed:
+		await _the_white_light(w)
+
+
+## Midnight in the engine's 3D, from the bell to the player getting up after
+## the cart's gone over on Corin (what the midnight film shows).
+static func _midnight_3d(w: World) -> void:
+	var v := village(w)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
 	# the bell, and everyone waiting under the Lantern
 	Cine.shot(w, Vector3(3.2, 1.0, 12.5), top * 0.55, 34.0)
@@ -1738,8 +1810,7 @@ static func _midnight(w: World) -> void:
 	w.shake(0.2)
 	await Cine.say(w, "bram", "Inside! Everyone inside! Sprout, the inn. Now!", 2.6)
 	await _the_run(w)
-	await _the_cart(w)
-	await _the_white_light(w)
+	await _the_cart_falls(w)
 
 
 ## Where Tam and Nell dance at midnight, on the open east side of the green,
@@ -1797,15 +1868,21 @@ static func _sfx(w: World, sound: String, pitch := 1.0) -> void:
 
 ## Panic on the green. The player runs for the inn and a strike knocks them
 ## flat; Corin grabs Tilly and runs her for home, past Tam's cart.
+## Where everyone runs when the sky tears: their doors (Nell and the child
+## on the south-west side go round behind the camera that follows the
+## player, not through it).
+const RUN_DOORS := {"v1": Vector3(-14, 0, 14), "v2": Vector3(4, 0, 18), "v3": Vector3(16, 0, 12), "v4": Vector3(-17, 0, 8),
+	"v5": [Vector3(2, 0, 12), Vector3(-6, 0, 16)], "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
+	"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": [Vector3(0, 0, 13), Vector3(-10, 0, 12)], "hob": Vector3(16, 0, 6),
+	"ned": Vector3(-15, 0, -6), "tam": Vector3(12, 0, -16)}
+## Where the player's run for the inn ends, knocked flat.
+const RUN_END := Vector3(-8.2, 0, 6.8)
+
+
 static func _the_run(w: World) -> void:
 	var v := village(w)
 	# everyone scatters for their doors
-	# (Nell and the child on the south-west side go round behind the camera
-	# that follows you, not through it)
-	var doors := {"v1": Vector3(-14, 0, 14), "v2": Vector3(4, 0, 18), "v3": Vector3(16, 0, 12), "v4": Vector3(-17, 0, 8),
-		"v5": [Vector3(2, 0, 12), Vector3(-6, 0, 16)], "v6": Vector3(18, 0, -2), "v7": Vector3(-18, 0, 0), "v8": Vector3(14, 0, -10),
-		"v9": Vector3(-12, 0, -10), "v10": Vector3(6, 0, 18), "nell": [Vector3(0, 0, 13), Vector3(-10, 0, 12)], "hob": Vector3(16, 0, 6),
-		"ned": Vector3(-15, 0, -6), "tam": Vector3(12, 0, -16)}
+	var doors := RUN_DOORS
 	for who in doors:
 		var way: Array = doors[who] if doors[who] is Array else [doors[who]]
 		Cine.path(w, String(who), way, 3.0 + randf() * 1.2, "run")
@@ -1819,7 +1896,7 @@ static func _the_run(w: World) -> void:
 	_corin_and_tilly(w, lane_a, lane_b)
 	# the player runs west for the inn
 	var run_a := Vector3(-4.6, 0, 6.0)
-	var run_b := Vector3(-8.2, 0, 6.8)
+	var run_b := RUN_END
 	Cine.shot(w, Vector3(3.6, 2.0, 8.8), Vector3(-3.0, 1.2, 5.0), 44.0)
 	Cine.follow(w, "player", Vector3(4.6, 2.0, 2.6), Vector3(-2.0, 1.1, 0.0), 2.4, 3.0)
 	_strike_later(w, Vector3(-6.8, 0, 9.6), SIGIL_COLS[3], 0.55)
@@ -1872,10 +1949,10 @@ const CORIN_DOWN := 0.26
 const CORIN_UP := 0.51
 
 
-## The cart: a strike lands beside it, it goes over on Corin, and Tilly
-## screams for him. The player gets up and runs back; Bram is there too, and
-## between them they heave it up off his leg.
-static func _the_cart(w: World) -> void:
+## The cart goes over: a strike lands beside it, it comes down on Corin, and
+## Tilly screams for him; the player gets up in the west and turns back (the
+## end of what the midnight film shows; _the_heave goes on from here).
+static func _the_cart_falls(w: World) -> void:
 	var v := village(w)
 	var cc := v.cart_centre()
 	var fd := v.cart_fall_dir()
@@ -1930,6 +2007,19 @@ static func _the_cart(w: World) -> void:
 		(pf as Figure3D).release(0.2)
 	Cine.look(w, "player", cc)
 	await Cine.wait(w, 0.4)
+
+
+## The cart, from "Find Corin" (after its fall, the 3D version's or the
+## midnight film's): the player runs to it and takes its edge, Corin's cry,
+## and the heave (CartHeave: v7 has him alone, Bram across the green); Corin
+## dragged clear as the sky lets go a second pulse, on his feet, shaking.
+static func _the_heave(w: World) -> void:
+	var v := village(w)
+	var cc := v.cart_centre()
+	var fd := v.cart_fall_dir()
+	var al := v.cart_along()
+	var corin := Cine.body(w, "corin")
+	var cf = Cine.fig(w, "corin")
 	# "The ground is buckling. Find Corin." The player runs to the cart and
 	# takes hold of its top edge beside him (v7: alone; Bram is across the green)
 	w.hud.set_objective("The ground is buckling. Find Corin.")
@@ -2248,9 +2338,6 @@ const KNEELERS := ["nell", "tam", "hob", "ned", "corin", "tilly", "kid"]
 ## hand on your shoulder bringing you down. It reads the Covenant and two
 ## Champions, its lantern shows the other five, and then it names the player.
 static func _dawn(w: World) -> void:
-	if StoryFilm.available("dawn"):
-		await _dawn_film(w)
-		return
 	var v := village(w)
 	await Cine.begin(w)
 	await Cine.fade(w, 1.0, 0.01)
@@ -2261,8 +2348,23 @@ static func _dawn(w: World) -> void:
 	Cine.place(w, "tilly", DAWN.tilly, Vector3(-4.6, 0, 13.6))
 	Cine.spawn(w, "kid", "child_b", Vector3(-5.4, 0, 12.6))
 	Cine.place(w, "kid", Vector3(-5.4, 0, 12.6), Vector3(-4.6, 0, 13.6))
-	Music.play(["dawn_after"], 2.0, true)
 	await Cine.caption(w, "Dawn")
+	var left := {}
+	var filmed := false
+	if StoryFilm.available("herald"):
+		filmed = await _herald_film(w)
+	if not filmed:
+		left = await _herald_3d(w)
+	await _dawn_hub(w, left)
+
+
+## Dawn and the Pale Herald in the engine's 3D, up to Bram stepping between
+## the player and the village (what the herald film shows). Hands back what
+## the hub takes down after: the Herald, its mist, the mark's blaze and the
+## tracker on the player's shoulder.
+static func _herald_3d(w: World) -> Dictionary:
+	var v := village(w)
+	Music.play(["dawn_after"], 2.0, true)
 	# the morning after, smoke over the hills
 	Cine.shot(w, Vector3(-30.0, 14.0, 40.0), Vector3(8.0, 4.0, -16.0), 46.0)
 	Cine.fade(w, 0.0, 1.6)
@@ -2461,6 +2563,14 @@ static func _dawn(w: World) -> void:
 	Cine.look(w, "bram", Cine.body(w, "nell").global_position)
 	Cine.shot(w, p - village_dir.normalized() * 2.6 + village_dir.normalized().cross(Vector3.UP) * 1.2 + Vector3(0, 1.6, 0), between + Vector3(0, 1.3, 0), 38.0)
 	await Cine.wait(w, 1.4)
+	return {"herald": herald, "mist": mist, "blaze": blaze, "shoulder": shoulder}
+
+
+## After the Herald (the 3D version or the film): the Hero note, and Bram's
+## dawn hub; then the green is put back as it was.
+static func _dawn_hub(w: World, left: Dictionary) -> void:
+	var p := w.player.global_position
+	var tf = Cine.fig(w, "tam")
 	await Cine.say(w, "", "[i](You are the Unsworn: bound to no god, +1 to every attribute. See Hero in the menu.)[/i]")
 	Game.set_flag("named_unsworn")
 	# Bram, at dawn: his hub
@@ -2481,14 +2591,14 @@ static func _dawn(w: World) -> void:
 	if tf is Figure3D:
 		(tf as Figure3D).release(0.0)
 	SealMark.show_on(w, false)
-	herald.queue_free()
-	if is_instance_valid(mist):
-		mist.queue_free()
-	if is_instance_valid(blaze):
-		blaze.queue_free()
+	for k in ["herald", "mist", "blaze"]:
+		var n = left.get(k)
+		if n != null and is_instance_valid(n):
+			(n as Node).queue_free()
 	for who in KNEELERS + ["bram", "player"]:
 		_stand(w, who, 0.01)
-	_free_tracker(shoulder)
+	if left.get("shoulder") != null:
+		_free_tracker(left.shoulder)
 	Cine.despawn(w, "kid")
 
 

@@ -1,6 +1,6 @@
 """Turns Gary's image-to-video clips into a movie's shots.
 
-Usage: python3 tools/movie_clips.py <folder of clips> [--film midnight|dawn] [--size 1600x900] [--q 5]
+Usage: python3 tools/movie_clips.py <folder of clips> [--film <film>] [--size 1600x900] [--q 5]
 
 The opening movie (no --film): each clip is named after its shot (shot_01.mp4,
 shot_07a.mov, shot_15.webm...). It is cut (or held on its last frame) to that
@@ -9,13 +9,15 @@ sound dropped (the movie has its own narration and music) and saved as Ogg
 Theora, the video format Godot plays, in assets/movies/shots/<shot>.ogv. The
 movie picks each one up automatically; shots without a clip keep their painting.
 
-A story film (--film midnight, --film dawn: StoryFilm in
-scripts/story/story_film.gd): the clips are named after the film's shots
-(mid_01.mp4, dawn_07.mov...), and a shot that shows the player can come as
-one clip per look (mid_02_a.mp4, mid_02_b.mp4, _c, _d). They are cut to the
-shot's length the same way and saved in assets/movies/<film>/<shot>.ogv. The
-film plays in place of the engine's 3D scene once every shot has a clip or a
-painting (assets/art/movie/<film>/<shot>.png).
+A story film (--film midnight, white_light, herald, reckoning, tams_hand,
+no_roof or ridge: StoryFilm in scripts/story/story_film.gd): the clips are
+named after the film's shots (mid_01.mp4, wl_03.mov, her_11.mp4...). They are
+cut to the shot's length the same way and saved in
+assets/movies/<film>/<shot>.ogv. The film plays in place of the engine's 3D
+scene once every shot has a clip or a painting (assets/art/movie/<film>/<shot>.png).
+Gary's finished 4K film of it (<film>_4k.mp4, on the films release) is better
+still: the apps play it through the device's own player, and the phone link
+streams it (tools/make_hls.sh), as the opening does.
 """
 import os, re, subprocess, sys
 

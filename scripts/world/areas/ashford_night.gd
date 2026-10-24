@@ -428,83 +428,19 @@ static func reckoning(w: World) -> void:
 	await Cine.say(w, "bram", "She's hours early.")
 	await Cine.fade(w, 1.0, 0.5)
 	InnRooms.outside(v)
-	# ---- the green: Krell and the bailiffs ride in
-	Music.play(["ashford_burns"], 1.0, true)
+	# ---- the green: Krell and the bailiffs ride in (the reckoning film, or the 3D)
 	var hunters := ["h1", "h2", "h3", "h4", "h5", "h6"]
-	var line := [Vector3(9.5, 0, 3.4), Vector3(10.2, 0, 5.4), Vector3(10.4, 0, 7.6), Vector3(10.0, 0, 9.8), Vector3(9.2, 0, 11.8), Vector3(11.6, 0, 6.6)]
-	for i in hunters.size():
-		var start := Vector3(46.0 + i * 3.0, 0, 10.0 + (i % 3) * 1.2)
-		Cine.spawn(w, hunters[i], "hunter", start, "Bailiff")
-		A.call("_torch", v, Cine.body(w, hunters[i]))
 	var KRELL_AT: Vector3 = _c(w, "KRELL_AT")
-	Cine.spawn(w, "krell", "krell", Vector3(42.0, 0, 11.0), "Krell")
-	Cine.beast(w, "hound1", "shieldhound", Vector3(44.0, 0, 13.0), Color(1.0, 0.2, 0.15, 1.0))
-	_tint_beast(w, "hound1", Color(0.06, 0.05, 0.08), 1.0)
-	var ledger: Node3D = A.call("_ledger", w, "krell")
-	Cine.shot(w, Vector3(3.0, 2.0, 12.5), Vector3(36.0, 1.5, 10.5), 32.0)
-	Cine.fade(w, 0.0, 1.0)
-	for i in hunters.size():
-		Cine.path(w, hunters[i], [Vector3(20.0, 0, 11.0 + (i % 3)), line[i]], 6.0, "run")
-	Cine.path(w, "hound1", [Vector3(20.0, 0, 13.0), KRELL_AT + Vector3(1.0, 0, 1.8)], 6.5)
-	await Cine.path(w, "krell", [Vector3(20.0, 0, 10.0), KRELL_AT], 5.6, "run")
-	for i in hunters.size():
-		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
-	Cine.look(w, "krell", Vector3(-2, 0, 5))
-	await Cine.wait(w, 0.6)
+	# where Tam plants his boots: between her horse and the path up to the inn
+	var stand := KRELL_AT + (Vector3(-6.0, 0, 7.0) - KRELL_AT).normalized() * 3.2
 	var krell_cam := KRELL_AT + Vector3(-4.2, 1.5, 2.2)
-	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
-	await Cine.say(w, "krell", "Good evening. I hold the foreclosure notes for twenty-two properties in this valley.")
-	await Cine.say(w, "krell", "By the authority of Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit tonight.")
-	await Cine.say(w, "krell", "Alternatively, you may surrender one card, the white one, and the notes are burned. I will wait five minutes.")
-	# nobody speaks; the silence stretches
-	Music.stop(1.0)
-	var np := Cine.body(w, "nell").global_position
-	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
-	await Cine.wait(w, 2.0)
-	Cine.shot(w, np + Vector3(4.4, 1.7, -3.6), np + Vector3(-0.4, 1.1, -0.4), 34.0)
-	await Cine.wait(w, 1.8)
-	# Tam steps forward, between her horse and the path up to the inn, and
-	# slaps his note on a rain barrel
-	var tb := Cine.body(w, "tam")
-	var inn_way := Vector3(-6.0, 0, 7.0)
-	var stand := KRELL_AT + (inn_way - KRELL_AT).normalized() * 3.2
-	Cine.shot(w, Vector3(0.4, 1.6, 9.6), (stand + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
-	await Cine.walk(w, "tam", stand, 1.1)
-	Cine.look(w, "tam", KRELL_AT)
-	var barrel := v.make_barrel()
-	v.add_child(barrel)
-	var bpos := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * 0.9
-	barrel.global_position = Vector3(bpos.x, v.height(bpos.x, bpos.z) + AshfordVillage.BARREL_HALF, bpos.z)
-	barrel.set_meta("p1_prop", true)
-	var note := AshfordP1.letter(v)
-	v.add_child(note)
-	note.global_position = barrel.global_position + Vector3(0, AshfordVillage.BARREL_HALF + 0.01, 0)
-	note.rotation = Vector3(-PI * 0.5, 0.4, 0)
-	note.scale = Vector3.ONE * 0.9
-	_sfx(w, "hit_light", 0.9)
-	var tam_cam := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * -1.7 + Vector3(0, 1.5, 0) + (stand - KRELL_AT).normalized() * 0.6
-	Cine.shot(w, tam_cam, Cine.head(w, "tam"), 30.0)
-	await Cine.say(w, "tam", "The note says midnight. Take the mill, Huntmaster. It's yours. But you leave the people out of this.")
-	await Cine.say(w, "tam", "The one you're looking for, the Unsworn, they fled over the northern ridge hours ago.")
-	# she looks down at the note, then at Tam, and leans forward with a cold,
-	# almost sympathetic smile, her eyes on where he's planted his boots
-	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.65, 1.4), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
-	await Cine.wait(w, 1.6)
-	await Cine.say(w, "krell", "A brave lie, Miller. But you're a terrible card player.")
-	await Cine.say(w, "krell", "You put your body between my hounds and the inn before you even opened your mouth.")
-	await Cine.say(w, "krell", "Guards, search every building. Collect every note. If they don't have the coin, take the property.")
-	# he reaches into his coat: not for another note. A worn deck. The crowd gasps.
-	Cine.shot(w, tam_cam, Cine.head(w, "tam") - Vector3(0, 0.35, 0), 30.0)
-	var deck: Node3D = A.call("_card_box")
-	A.call("_hold_box", w, "tam", deck)
-	await Cine.wait(w, 0.8)
-	for c in _c(w, "CROWD"):
-		Cine.hop(w, String(c[0]), 0.08)
-	await Cine.say(w, "tam", "I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand.")
-	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
-	await Cine.say(w, "krell", "Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes.")
-	await Cine.say(w, "krell", "And to deter anyone else from trying it... we fight to the death. Draw your Essence.")
-	A.call("_close_ledger", w, ledger)
+	var props := {}
+	if StoryFilm.available("reckoning"):
+		props = await _krell_film(w, hunters, KRELL_AT, stand)
+	if props.is_empty():
+		props = await _krell_arrives(w, hunters, KRELL_AT, stand, krell_cam)
+	var barrel: Node3D = props.barrel
+	var note: Node3D = props.note
 	# ---- the cellar: the player for the stairs, Bram's hand on the arm
 	await Cine.fade(w, 1.0, 0.4)
 	InnRooms.inside(v)
@@ -553,13 +489,27 @@ static func reckoning(w: World) -> void:
 	_all_seen(w)
 	# ---- the tunnel, walked (no light but the Ward marks as Bram passes)
 	await tunnel(w)
-	# ---- the green: Tam's duel, to the death
-	await _tam_falls(w, KRELL_AT, stand)
-	# ---- Krell's orders; the restraint magic, from the distant ridge
-	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
-	await Cine.say(w, "krell", "The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing.")
-	await Cine.say(w, "krell", "If anyone interferes, subdue them. I want the white card, not a heap of ashes.")
-	await _restraint(w, hunters)
+	# ---- the green: Tam's duel, to the death, and Krell's orders (the
+	# tams_hand film, or the 3D)
+	var filmed := false
+	if StoryFilm.available("tams_hand"):
+		filmed = await _tam_film(w, KRELL_AT, stand)
+	if not filmed:
+		await _tam_falls(w, KRELL_AT, stand)
+		Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+		await Cine.say(w, "krell", "The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing.")
+		await Cine.say(w, "krell", "If anyone interferes, subdue them. I want the white card, not a heap of ashes.")
+	# ---- the restraint magic, from the distant ridge (the no_roof film, or the 3D)
+	var on_black := filmed
+	filmed = false
+	if StoryFilm.available("no_roof"):
+		var nr := await StoryFilm.play(w, "no_roof")
+		filmed = bool(nr.get("played", true))
+	if not filmed:
+		if on_black:
+			Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+			Cine.fade(w, 0.0, 0.6)
+		await _restraint(w, hunters)
 	await Cine.fade(w, 1.0, 1.0)
 	for id in hunters + ["krell", "hound1", "river_hound"]:
 		Cine.despawn(w, id)
@@ -571,6 +521,123 @@ static func reckoning(w: World) -> void:
 	if cb != null:
 		Cine.fig(w, "corin").visible = true
 
+
+## Where the bailiffs stand in a line before the green, torches up.
+const BAILIFF_LINE := [Vector3(9.5, 0, 3.4), Vector3(10.2, 0, 5.4), Vector3(10.4, 0, 7.6), Vector3(10.0, 0, 9.8), Vector3(9.2, 0, 11.8), Vector3(11.6, 0, 6.6)]
+
+
+## Krell rides in with her bailiffs and reads the terms; Tam's note on the
+## rain barrel and his lie; her answer; his drawn hand, and her stakes (the
+## engine's 3D of what the reckoning film shows). Hands back the barrel and
+## the note, for the scene to take away after.
+static func _krell_arrives(w: World, hunters: Array, KRELL_AT: Vector3, stand: Vector3, krell_cam: Vector3) -> Dictionary:
+	var v := village(w)
+	var A = _area(w)
+	Music.play(["ashford_burns"], 1.0, true)
+	var line := BAILIFF_LINE
+	for i in hunters.size():
+		var start := Vector3(46.0 + i * 3.0, 0, 10.0 + (i % 3) * 1.2)
+		Cine.spawn(w, hunters[i], "hunter", start, "Bailiff")
+		A.call("_torch", v, Cine.body(w, hunters[i]))
+	Cine.spawn(w, "krell", "krell", Vector3(42.0, 0, 11.0), "Krell")
+	Cine.beast(w, "hound1", "shieldhound", Vector3(44.0, 0, 13.0), Color(1.0, 0.2, 0.15, 1.0))
+	_tint_beast(w, "hound1", Color(0.06, 0.05, 0.08), 1.0)
+	var ledger: Node3D = A.call("_ledger", w, "krell")
+	Cine.shot(w, Vector3(3.0, 2.0, 12.5), Vector3(36.0, 1.5, 10.5), 32.0)
+	Cine.fade(w, 0.0, 1.0)
+	for i in hunters.size():
+		Cine.path(w, hunters[i], [Vector3(20.0, 0, 11.0 + (i % 3)), line[i]], 6.0, "run")
+	Cine.path(w, "hound1", [Vector3(20.0, 0, 13.0), KRELL_AT + Vector3(1.0, 0, 1.8)], 6.5)
+	await Cine.path(w, "krell", [Vector3(20.0, 0, 10.0), KRELL_AT], 5.6, "run")
+	for i in hunters.size():
+		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
+	Cine.look(w, "krell", Vector3(-2, 0, 5))
+	await Cine.wait(w, 0.6)
+	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	await Cine.say(w, "krell", "Good evening. I hold the foreclosure notes for twenty-two properties in this valley.")
+	await Cine.say(w, "krell", "By the authority of Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit tonight.")
+	await Cine.say(w, "krell", "Alternatively, you may surrender one card, the white one, and the notes are burned. I will wait five minutes.")
+	# nobody speaks; the silence stretches
+	Music.stop(1.0)
+	var np := Cine.body(w, "nell").global_position
+	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
+	await Cine.wait(w, 2.0)
+	Cine.shot(w, np + Vector3(4.4, 1.7, -3.6), np + Vector3(-0.4, 1.1, -0.4), 34.0)
+	await Cine.wait(w, 1.8)
+	# Tam steps forward, between her horse and the path up to the inn, and
+	# slaps his note on a rain barrel
+	Cine.shot(w, Vector3(0.4, 1.6, 9.6), (stand + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
+	await Cine.walk(w, "tam", stand, 1.1)
+	Cine.look(w, "tam", KRELL_AT)
+	var props := _rain_barrel(w, stand, KRELL_AT)
+	_sfx(w, "hit_light", 0.9)
+	var tam_cam := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * -1.7 + Vector3(0, 1.5, 0) + (stand - KRELL_AT).normalized() * 0.6
+	Cine.shot(w, tam_cam, Cine.head(w, "tam"), 30.0)
+	await Cine.say(w, "tam", "The note says midnight. Take the mill, Huntmaster. It's yours. But you leave the people out of this.")
+	await Cine.say(w, "tam", "The one you're looking for, the Unsworn, they fled over the northern ridge hours ago.")
+	# she looks down at the note, then at Tam, and leans forward with a cold,
+	# almost sympathetic smile, her eyes on where he's planted his boots
+	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.65, 1.4), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
+	await Cine.wait(w, 1.6)
+	await Cine.say(w, "krell", "A brave lie, Miller. But you're a terrible card player.")
+	await Cine.say(w, "krell", "You put your body between my hounds and the inn before you even opened your mouth.")
+	await Cine.say(w, "krell", "Guards, search every building. Collect every note. If they don't have the coin, take the property.")
+	# he reaches into his coat: not for another note. A worn deck. The crowd gasps.
+	Cine.shot(w, tam_cam, Cine.head(w, "tam") - Vector3(0, 0.35, 0), 30.0)
+	var deck: Node3D = A.call("_card_box")
+	A.call("_hold_box", w, "tam", deck)
+	await Cine.wait(w, 0.8)
+	for c in _c(w, "CROWD"):
+		Cine.hop(w, String(c[0]), 0.08)
+	await Cine.say(w, "tam", "I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand.")
+	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	await Cine.say(w, "krell", "Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes.")
+	await Cine.say(w, "krell", "And to deter anyone else from trying it... we fight to the death. Draw your Essence.")
+	A.call("_close_ledger", w, ledger)
+	return props
+
+
+## The reckoning as Gary's own film (StoryFilm "reckoning": Krell's arrival to
+## her stakes), when it's there. It leaves the green as the 3D version does:
+## the bailiffs in their line with their torches, Krell and her hound of
+## shadow, Tam where he planted his boots with his deck in his hand, his note
+## on the rain barrel. Hands back the barrel and the note ({}: the film
+## couldn't play, and the 3D version plays instead).
+static func _krell_film(w: World, hunters: Array, KRELL_AT: Vector3, stand: Vector3) -> Dictionary:
+	var v := village(w)
+	var A = _area(w)
+	var r := await StoryFilm.play(w, "reckoning")
+	if not r.get("played", true):
+		return {}
+	for i in hunters.size():
+		Cine.spawn(w, hunters[i], "hunter", BAILIFF_LINE[i], "Bailiff")
+		A.call("_torch", v, Cine.body(w, hunters[i]))
+		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
+	Cine.spawn(w, "krell", "krell", KRELL_AT, "Krell")
+	Cine.look(w, "krell", Vector3(-2, 0, 5))
+	Cine.beast(w, "hound1", "shieldhound", KRELL_AT + Vector3(1.0, 0, 1.8), Color(1.0, 0.2, 0.15, 1.0))
+	_tint_beast(w, "hound1", Color(0.06, 0.05, 0.08), 1.0)
+	Cine.place(w, "tam", stand, KRELL_AT)
+	var props := _rain_barrel(w, stand, KRELL_AT)
+	A.call("_hold_box", w, "tam", A.call("_card_box"))
+	Music.stop(0.5)
+	return props
+
+
+## Tam's rain barrel, beside where he stands, with his note slapped down on it.
+static func _rain_barrel(w: World, stand: Vector3, KRELL_AT: Vector3) -> Dictionary:
+	var v := village(w)
+	var barrel := v.make_barrel()
+	v.add_child(barrel)
+	var bpos := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * 0.9
+	barrel.global_position = Vector3(bpos.x, v.height(bpos.x, bpos.z) + AshfordVillage.BARREL_HALF, bpos.z)
+	barrel.set_meta("p1_prop", true)
+	var note := AshfordP1.letter(v)
+	v.add_child(note)
+	note.global_position = barrel.global_position + Vector3(0, AshfordVillage.BARREL_HALF + 0.01, 0)
+	note.rotation = Vector3(-PI * 0.5, 0.4, 0)
+	note.scale = Vector3.ONE * 0.9
+	return {"barrel": barrel, "note": note}
 
 ## Tam's duel: his River Hound against Krell's hound of shadow, in the
 ## Circle on the green. It tears through her; the feedback shatters his Ward
@@ -594,6 +661,7 @@ static func _tam_falls(w: World, krell_at: Vector3, tam_at: Vector3) -> void:
 	Cine.look(w, "river_hound", krell_at)
 	var ring: MeshInstance3D = _ring(w, mid, 2.6)
 	Cine.shot(w, mid + side * 6.0 + Vector3(0, 2.4, 0), mid + Vector3(0, 0.8, 0), 40.0)
+	Cine.fade(w, 0.0, 0.8)   # (up out of the tunnel's black)
 	Music.play(["sigilfall"], 0.5, true)
 	await Cine.wait(w, 1.6)
 	# it tears through her
@@ -636,6 +704,31 @@ static func _tam_falls(w: World, krell_at: Vector3, tam_at: Vector3) -> void:
 	A.call("_kneel", w, "nell", 0.6)
 	await Cine.wait(w, 1.6)
 	Music.stop(2.0)
+
+
+
+## Tam's duel as Gary's own film (StoryFilm "tams_hand": the duel, his fall,
+## Nell, and Krell's orders), when it's there. It leaves the green as the 3D
+## version does: Tam down, Nell on her knees by him, Krell's hound back by
+## her. False if the film couldn't play.
+static func _tam_film(w: World, krell_at: Vector3, tam_at: Vector3) -> bool:
+	var A = _area(w)
+	A.call("_stage", w, {"tam": tam_at}, krell_at)
+	var r := await StoryFilm.play(w, "tams_hand")
+	if not r.get("played", true):
+		return false
+	var across := (krell_at - tam_at).normalized()
+	Cine.place(w, "hound1", krell_at - across * 1.4, tam_at)
+	var tf = Cine.fig(w, "tam")
+	if tf is Figure3D:
+		(tf as Figure3D).let_go(0.0)
+		A.call("_tam_down", tf, 0.0)
+	var nb := Cine.body(w, "nell")
+	if nb != null:
+		Cine.place(w, "nell", nb.global_position, tam_at)
+		A.call("_kneel", w, "nell", 0.01)
+	Music.stop(0.5)
+	return true
 
 
 ## From a distant ridge: two enforcers draw cards on the moonlit green. One

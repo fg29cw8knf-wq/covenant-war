@@ -16,8 +16,11 @@ for each of these, fetched the first time the game needs it (scripts/game/packs.
     looks     the player's looks B, C and D (their models and textures; their
               portraits stay in the main pack for the mirror), fetched when
               one of them is chosen in the mirror, or a game with one is continued
-    midnight  the Lantern Night film (StoryFilm: assets/movies/midnight/, or the cut)
-    dawn      the morning-after film (assets/movies/dawn/, or the cut)
+    midnight, white_light, herald, reckoning, tams_hand, no_roof, ridge
+              the story films' Theora copies (StoryFilm: assets/movies/<film>/,
+              or the cut), one pack each, built once there's something in
+              them; the phone link streams Gary's 4K films instead when the
+              site has them (films/<film>/), and needs no pack then
     voices    Ashford's and Thornwood's voice lines (assets/audio/vo/ashford/,
               thornwood/; VoiceLines), fetched quietly as the world starts;
               Solhaven's ride in the solhaven pack
@@ -81,15 +84,10 @@ PACKS = {
 	},
 	# the story films (StoryFilm), one pack each: a film is the size of the
 	# opening movie, so two in one pack would pass GitHub's limit
-	"midnight": {
-		"title": "the Lantern Night",
-		"files": ["assets/movies/midnight.ogv", "assets/movies/midnight/*", "assets/art/movie/midnight/*", "assets/audio/vo/mid_*"],
-	},
-	"dawn": {
-		"title": "the morning after",
-		"files": ["assets/movies/dawn.ogv", "assets/movies/dawn/*", "assets/art/movie/dawn/*"],
-	},
 }
+for _film, _title in [("midnight", "the Lantern Night"), ("white_light", "the white light"), ("herald", "the Pale Herald"),
+		("reckoning", "the Reckoning"), ("tams_hand", "Tam's hand"), ("no_roof", "the green, from the ridge"), ("ridge", "the road's end")]:
+	PACKS[_film] = {"title": _title, "files": ["assets/movies/%s.ogv" % _film, "assets/movies/%s/*" % _film, "assets/art/movie/%s/*" % _film]}
 
 # Gary's Summon clips (SummonVideo): one pack a card, holding its full and
 # short clips, fetched the first time that card is summoned or called

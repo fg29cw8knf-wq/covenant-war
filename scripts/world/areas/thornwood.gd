@@ -1003,7 +1003,8 @@ static func _tremble(w: World, who: String, secs: float, amp := 0.015) -> void:
 # ------------------------------------------------------------ the ridge ---
 
 ## At dawn (v3, P5), white towers catch the first sun across the plains.
-## Bram doesn't sound pleased.
+## Bram doesn't sound pleased. Gary's film of it (StoryFilm "ridge") plays
+## instead of the 3D when it's there; Chapter 1's caption follows either.
 static func _ridge(w: World) -> void:
 	var v := village(w)
 	v.set_scene("ridge")
@@ -1016,6 +1017,12 @@ static func _ridge(w: World) -> void:
 	w.cam.far = 1200.0   # Solhaven is a long way off across the plains
 	Cine.place(w, "bram", rg + Vector3(0.8, 0, -2.4), sol)
 	Cine.place(w, "player", rg + Vector3(-0.6, 0, -2.8), sol)
+	if StoryFilm.available("ridge"):
+		var r := await StoryFilm.play(w, "ridge")
+		if r.get("played", true):
+			Music.play(["solhaven_dawn", "menu_theme"], 1.0, true)
+			await Cine.caption(w, "Chapter 1", "The Sun's Court", 2.4)
+			return
 	Music.play(["solhaven_dawn", "menu_theme"], 2.0, true)
 	# from behind the two of them, the plains, and Solhaven far off
 	Cine.shot(w, rg + Vector3(1.2, 2.0, -7.5), sol + Vector3(0, 12.0, 0), 34.0)
