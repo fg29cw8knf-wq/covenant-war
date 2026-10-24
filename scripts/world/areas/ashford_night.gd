@@ -698,8 +698,11 @@ static func _tam_falls(w: World, krell_at: Vector3, tam_at: Vector3) -> void:
 	var side := across.cross(Vector3.UP)
 	# the River Hound, called out of his card, and Krell's hound of shadow
 	var rh_at := tam_at + across * 1.4
-	Cine.beast(w, "river_hound", "shieldhound", rh_at, Color(0.7, 0.9, 1.0, 1.0))
-	_tint_beast(w, "river_hound", Color(0.3, 0.62, 0.9), 0.75)
+	# (Gary's own River Hound when it's made; until then a Shieldhound tinted river blue)
+	var own_hound := ResourceLoader.exists("res://assets/models/creatures/river_hound.glb")
+	Cine.beast(w, "river_hound", "river_hound" if own_hound else "shieldhound", rh_at, Color(0.7, 0.9, 1.0, 1.0))
+	if not own_hound:
+		_tint_beast(w, "river_hound", Color(0.3, 0.62, 0.9), 0.75)
 	var hp: Node3D = Cine.body(w, "hound1")
 	if hp != null:
 		Cine.place(w, "hound1", krell_at - across * 1.4, tam_at)
