@@ -1002,6 +1002,31 @@ static func _tremble(w: World, who: String, secs: float, amp := 0.015) -> void:
 
 # ------------------------------------------------------------ the ridge ---
 
+## Gary's painting of Solhaven from the ridge (the ridge film's shot sol_03,
+## assets/art/movie/ridge/sol_03.png), over the 3D while Bram says her name,
+## drifting slowly closer; null until it exists. The rest of the ridge stays
+## 3D until the whole film comes.
+static func _ridge_painting(w: World) -> Control:
+	var path := StoryFilm.still_path("ridge", "sol_03")
+	if path == "":
+		return null
+	var ov := Cine.overlay(w)
+	var tr := TextureRect.new()
+	tr.name = "RidgePainting"
+	tr.texture = load(path)
+	tr.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ov._root.add_child(tr)
+	ov._root.move_child(tr, 0)   # behind the bars and the subtitle
+	tr.pivot_offset = ov._root.size * 0.5
+	tr.modulate.a = 0.0
+	var tw := tr.create_tween().set_parallel(true)
+	tw.tween_property(tr, "modulate:a", 1.0, 0.8)
+	tw.tween_property(tr, "scale", Vector2.ONE * 1.06, 9.0)
+	return tr
+
 ## At dawn (v3, P5), white towers catch the first sun across the plains.
 ## Bram doesn't sound pleased. Gary's film of it (StoryFilm "ridge") plays
 ## instead of the 3D when it's there; Chapter 1's caption follows either.
@@ -1035,7 +1060,10 @@ static func _ridge(w: World) -> void:
 	await Cine.say(w, "bram", "Go through Dask's cards when we stop. Swap in what's nastier than what you've got. That's most of duelling.")
 	Cine.look(w, "bram", sol)
 	Cine.shot(w, rg + Vector3(-1.7, 1.85, -3.2), sol + Vector3(0, 16.0, 0), 24.0)
+	var pic := _ridge_painting(w)
 	await Cine.say(w, "bram", "There she is. Solhaven.")
+	if pic != null:
+		pic.queue_free()
 	# he doesn't sound pleased
 	var bh := Cine.head(w, "bram")
 	Cine.shot(w, bh + Vector3(1.1, -0.05, 1.3), bh + Vector3(0, -0.08, 0), 28.0)
