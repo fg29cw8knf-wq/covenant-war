@@ -12,7 +12,7 @@ const SLOTS := ["charm", "ring", "case"]
 const SLOT_NAMES := {"charm": "Charm", "ring": "Ring", "case": "Deck case"}
 const SLOT_HINTS := {
 	"charm": "Worn at the throat. Lifts one attribute.",
-	"ring": "Worn on the marked hand. Lifts one attribute.",
+	"ring": "Worn on your right hand. Lifts one attribute.",
 	"case": "Holds your deck. Lifts one attribute.",
 }
 ## The most an attribute can reach with equipment on.

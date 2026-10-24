@@ -1065,8 +1065,14 @@ static func _held_village(w: World) -> void:
 
 
 static func _release_village(w: World) -> void:
+	# (the greys are mid-walk: stopped and hidden rather than freed, so their
+	# walks' tweens don't call into a body that's gone; the Thornwood clears them)
+	w.set_meta("greys_stop", true)
 	for g in GREYS:
-		Cine.despawn(w, String(g[0]))
+		var gb := Cine.body(w, String(g[0]))
+		if gb != null:
+			Cine.place(w, String(g[0]), gb.global_position)
+			gb.visible = false
 	for i in KNEELING.size():
 		Cine.despawn(w, "kneel%d" % i)
 	var v := village(w)
@@ -1082,9 +1088,10 @@ static func _release_village(w: World) -> void:
 
 ## Two greys walking a beat back and forth, together.
 static func _pace(w: World, id: String, a: Vector3, b: Vector3) -> void:
-	while is_instance_valid(w) and Cine.body(w, id) != null:
+	w.remove_meta("greys_stop")
+	while is_instance_valid(w) and Cine.body(w, id) != null and not w.has_meta("greys_stop"):
 		await Cine.path(w, id, [b], 1.1)
-		if Cine.body(w, id) == null:
+		if Cine.body(w, id) == null or w.has_meta("greys_stop"):
 			return
 		await Cine.path(w, id, [a], 1.1)
 

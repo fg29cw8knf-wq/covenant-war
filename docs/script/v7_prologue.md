@@ -1056,3 +1056,23 @@ the main plot yet.
 
 **Experience (Gary, 24 October).** None from the Lantern Duel, the friendly games
 or Bram's lesson. The first experience is Dask's duel.
+
+---
+
+## Small lines the game needed (new, Claude, 24 October)
+
+While building v7 the game needed a few short lines the script doesn't have. They're in the game; Gary can change any of them.
+
+- **Bram, sending you on in the afternoon:** "Tam's at the mill, Sprout. Down the lane past the last cottage, where the sign is. He won't ask, so you'll have to." / "Tilly's been sat by the well with a face like a wet week. Go and see what's wrong." / "Nell's on her bench by the well. Sit with her a minute. She'll not ask twice." Once all three are done: "That's the jobs done, then. Look at that sky. Last sunset of the Age." (Talking to him then makes the sun go down, so there's time for another friendly game first.)
+- **Corin:** walking off after the duel, "It was the wind! Everyone saw the wind!" By the merchant carts: "Signed cards, a copper each. For you, two. You know why." On the race wall once you've talked: "Go on. Bram'll be looking for you."
+- **Tam:** back at the mill, "Back again? She's still keen if you are." In his game: "Come on, girl. Bite." / "Steady, girl. Back you come." Dancing: "Not now, Sprout. I'm concentrating."
+- **Nell**, dancing: "Hush. He's nearly in time."
+- **Tilly**, after the moth: "It's gone grey again. It always goes grey again." In the evening, after: "Every day. You promised."
+- **Bram's evening hub** has a way out that isn't midnight: "I'll have a last look round."
+- **On screen:** "Find Corin by the mill race." / "The sun's going down. Find Bram at the Great Lantern." / "A friendly game: no experience is won or lost." / "The Lantern Duel is the village's game: nothing is won but the Lantern." / "Bram's lesson: no experience is won or lost." / Run to Ground: "Dask's hounds hit 10 harder for every round that passes."
+
+**Kept from v3 (nothing in v7 clashes):** Corin's "It's a good village, this." and "Bram. Is it meant to do that?", Bram's lantern line and "Two thousand years..." with its choice; Corin's "I'm all right. I'm all right." at the cart and "It came to you. It just came to you."; Bram's "A Pale Herald. Morrowen's own. Head down. Hand in your pocket."; Hob's "Lost half the barley. Found nine cards in the cabbages."; Dask's lines after his duel and Bram's "Morne."; the ridge.
+
+**Taken out (v7 changed the story):** the mill on fire at midnight, the Herald riding in and asking your name, "Present your mark at the Sun Court", the inn burning, Hob's nine Sparks across the river, v3's campfire talk.
+
+**New recordings needed:** herald_21 ("The Age is turned...") and herald_22 ("The Covenant updates..."); nell_crying.ogg for the look back.

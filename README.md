@@ -525,7 +525,57 @@ Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, 
 
 ## Story mode
 
-The Prologue's first part (P1: Ashford, before midnight) follows Gary's "Master
+**Since 24 October the Prologue follows Gary's Master Script v7**
+(`docs/script/v7_prologue.md`, made from his v6 PDF beside it; the Claude doc
+"Master Script v7" is the master). Where the code below still describes v3,
+v7 wins; the parts it changed:
+
+- **P1, the morning** (`ashford_p1.gd`): the attic on a frosty morning, Walk to
+  the washbasin, the fogged mirror wiped clear, the name written in the frost
+  (`ask_name`, the only name prompt now), the reflection hub, the mark
+  (`SealMark`: ash-grey on the collarbone, on the Neck bone), Bram's taproom
+  hub, the crate from the corner, the menu at the door, the crate down at the
+  Lantern. The whole day is lit as day (`AshfordVillage.set_daylight(1)`).
+- **The Lantern Duel first** (Gary): Corin comes over the moment the crate's
+  down; his hub; "I would, but I don't have a deck."; Bram's hand on the
+  shoulder and his line, his offer to talk you through it (a choice), the
+  deck, the duel (no experience: spec `practice`), Corin yields, Gary's Bram
+  lines and the two objectives.
+- **The afternoon** (`ashford_day.gd`, `AshfordDay`): Tam at his watermill
+  down the lane (`MillSet`, a set of its own at x 700, reached by the lane's
+  sign north-east of the green), his hub, the letter on screen, the Ledger
+  note; Tilly's moth by the well (it circles her head) and the Standing note;
+  Nell's hub; friendly games with Tam (River Hound) and Nell (Wards), no
+  experience, repeatable (`ashford.gd FRIENDLY`). When all three are seen,
+  talking to Bram makes the sun go down (`AshfordDay.sunset`).
+- **The evening**: Tilly's thanks and her card, Tam's bread, Nell's dance
+  (tell Tam and he dances with her), Corin on the mill-race wall and his
+  button (Items), Bram by the Lantern ("It's nearly midnight." starts it).
+- **Midnight**: no mill fire; Find Corin; the cart heaved off him with a QTE
+  (`CartHeave`: HEAVE/E/A again and again, PULL/F/X in the gold; it can't be
+  failed); the white light, the mark blazing on the collarbone, Bram's coat,
+  the collapse.
+- **After midnight** (`ashford_night.gd`, `AshfordNight`; `ashford.gd
+  FILM_PARTS`): the awakening in the attic before sunrise (how you take it:
+  `temper_angry`/`afraid`/`resolved`), the dawn and the v7 Herald (cloth and
+  chains, `PaleHerald.form = "shroud"`; it names you the Unsworn, no name
+  prompt), That Day in the cellar (22 Ward marks), the Reckoning at dusk
+  (Krell early, Tam's challenge, the cellar, the tunnel walked, Tam's duel to
+  the death, the restraint magic; nothing burns, no blood), and the look back
+  from the hill (walked; he steps down on his own; Bram's hand; Corin limping
+  up with his farewell).
+- **The Thornwood** (`thornwood_shelter.gd`, `ThornwoodShelter`): the shelter
+  in the hillside, the four class boxes (Mercenary, Scrivener, Ferryman,
+  Unsworn), the tour, Bram's lesson (no experience; his two glimpses are the
+  duel's lines `rival_ward_springs` and `my_ascends`), the morning, Dask by
+  day (Player B, a crossbow; Run to Ground is +10 a round,
+  `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
+
+`tests/p1_v7_test.tscn` plays P1 New Game to midnight as a player would (taps,
+answers, the name, both friendly games, the sunset, the evening);
+`tests/film_test.tscn -- <dir> midnight` plays on from there to the Thornwood.
+
+The Prologue's first part (P1: Ashford, before midnight) followed Gary's "Master
 Script v3" Claude doc word for word (`docs/script/v3_prologue_p1.md` is a copy;
 the doc is the master); the parts after it still follow the older "Spoken
 Script" until they're rebuilt to v3. The words and talk trees are in
@@ -1019,6 +1069,19 @@ the game carries it two ways:
   ```sh
   ffmpeg -i opening_4k.mp4 -vf "scale=1280:720:flags=lanczos,fps=30" -c:v libtheora -b:v 3000k -c:a libvorbis -q:a 5 assets/movies/opening.ogv
   ```
+
+- **At 4K on the phone link, streamed** (24 October): through the browser's
+  own video player (`scripts/ui/film_web.js`, put into the page by
+  `tools/build_web.sh`; `WebVideoPlayer` drives it with the native player's
+  API). Safari plays the HLS stream itself; other browsers through hls.js
+  (`tools/web/hls.light.min.js`, Apache-2.0). The stream is on the site at
+  `films/opening/`: `tools/make_hls.sh <master.mp4> <dir>` makes it (the 4K
+  copied untouched, 1080p60 and 540p60 cut at the same keyframes, about 600
+  MB), and `tools/publish_web.sh "<message>" --film opening <dir>` publishes
+  the site with it (later publishes keep `films/` without uploading it again;
+  it refuses a site over 980 MB, GitHub Pages' limit is 1 GB). The web build's
+  Theora fallback is a 480p copy (`build/opening_480.ogv`, made by
+  `build_web.sh`; the apps keep the 720p one).
 
 `OpeningMovie` plays either whole, with nothing of the engine's over it (no
 subtitles, voice, music or title), shown whole: as big as fits the screen with

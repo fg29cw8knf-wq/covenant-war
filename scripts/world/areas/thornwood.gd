@@ -821,6 +821,8 @@ static func _road(w: World) -> void:
 		if is_instance_valid(card):
 			var df = Cine.fig(w, "dask")
 			if df is Figure3D:
+				if card.get_parent() != null:
+					card.get_parent().remove_child(card)
 				(df as Figure3D).hand_light(card)
 				card.position = Vector3(0.0, 0.06, 0.04)
 			else:

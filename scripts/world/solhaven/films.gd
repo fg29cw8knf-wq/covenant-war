@@ -243,36 +243,28 @@ static func _ots(w: World, from: String, to: String, side := 1.0, fov := 30.0) -
 	Cine.over_shoulder(w, from, to, side, fov)
 
 
-## The player raises the marked hand; the white mark glows.
+## The player pulls their collar aside and the mark on the collarbone glows
+## white (Master Script v7: the mark is there, not on the hand).
 static func _raise_mark(w: World) -> Node3D:
 	var glow := Node3D.new()
-	var s := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.05
-	sm.height = 0.1
-	s.mesh = sm
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.albedo_color = Color(0.92, 0.96, 1.0)
-	m.emission_enabled = true
-	m.emission = Color(0.85, 0.92, 1.0)
-	m.emission_energy_multiplier = 6.0
-	s.material_override = m
-	s.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	glow.add_child(s)
 	var l := OmniLight3D.new()
 	l.light_color = Color(0.85, 0.92, 1.0)
 	l.light_energy = 0.0
 	l.omni_range = 3.0
 	glow.add_child(l)
 	var f = Cine.fig(w, "player")
+	w.player.add_child(glow)
+	glow.position = Vector3(0.05, 1.42, 0.18)
+	glow.name = "MarkGlow"
 	if f is Figure3D:
-		(f as Figure3D).hand_light(glow)
-		glow.position = Vector3(0.0, 0.05, 0.03)
-		(f as Figure3D).pose("wave", 0.32, 0.4)
-	else:
-		w.player.add_child(glow)
-		glow.position = Vector3(0.3, 1.7, 0.2)
+		# a hand up to the collar, drawing it aside
+		var collar := Node3D.new()
+		collar.name = "CollarHand"
+		glow.add_child(collar)
+		collar.position = Vector3(0.08, -0.02, 0.02)
+		(f as Figure3D).reach(collar, null, 0.4)
+	SealMark.show_on(w, true)
+	SealMark.blaze(w, 0.9, 0.5)
 	w.create_tween().tween_property(l, "light_energy", 2.2, 0.6)
 	return glow
 
@@ -280,12 +272,13 @@ static func _raise_mark(w: World) -> Node3D:
 static func _lower_mark(w: World) -> void:
 	var f = Cine.fig(w, "player")
 	if f is Figure3D:
-		(f as Figure3D).hand_light(null)
+		(f as Figure3D).let_go(0.4)
 		(f as Figure3D).release(0.4)
-	else:
-		for c in w.player.get_children():
-			if c is Node3D and c.get_child_count() == 2 and c.get_child(1) is OmniLight3D:
-				c.queue_free()
+	SealMark.blaze(w, 0.0, 0.6)
+	SealMark.show_on(w, false)
+	for c in w.player.get_children():
+		if c is Node3D and String(c.name) == "MarkGlow":
+			c.queue_free()
 
 
 ## A main-story duel: straight back into it if the game was closed during it
@@ -467,7 +460,7 @@ static func _gate_meeting(w: World) -> void:
 	Cine.look(w, "bram", HALE_AT)
 	var mark := _raise_mark(w)
 	Cine.shot(w, w.player.global_position + Vector3(1.6, 1.5, 1.4), w.player.global_position + Vector3(0.1, 1.45, -0.3), 30.0)
-	await _narrate(w, "You raise your hand. The white mark glows.")
+	await _narrate(w, "You pull your collar aside. The mark on your collarbone glows white.")
 	# he looks closer
 	Cine.shot(w, w.player.global_position + Vector3(-1.4, 1.7, 1.8), HALE_AT + Vector3(0, 1.4, 0), 32.0)
 	await Cine.walk(w, "hale_gate", HALE_AT + Vector3(0, 0, 2.6), 1.0)
@@ -521,7 +514,7 @@ static func _gate_after(w: World) -> void:
 			_front(w, "hale_gate", w.player.global_position, 28.0)
 			await Cine.say(w, "hale_gate", "The Hierarch's orders are —", 1.6)
 			Cine.shot(w, HALE_AT + Vector3(-1.2, 1.6, 0.2), w.player.global_position + Vector3(0, 1.5, 0), 30.0)
-			await _narrate(w, "You hold his eye. He's just opened his gate for a mark on your hand.")
+			await _narrate(w, "You hold his eye. He's just opened his gate for a mark on your collarbone.")
 			await _narrate(w, "Behind you are people whose homes burned the same night yours did.")
 			# a long breath; then, to his guards
 			_front(w, "hale_gate", w.player.global_position, 30.0)
@@ -976,7 +969,7 @@ static func _court(w: World) -> void:
 	await Cine.say(w, "hierarch", "You'll present your mark, as the law requires.")
 	var mark := _raise_mark(w)
 	Cine.shot(w, w.player.global_position + Vector3(1.6, 1.5, 1.4), w.player.global_position + Vector3(0.1, 1.45, -0.3), 30.0)
-	await _narrate(w, "You raise your hand; the mark glows.")
+	await _narrate(w, "You pull your collar aside; the mark glows white.")
 	_lower_mark(w)
 	if is_instance_valid(mark):
 		mark.queue_free()
@@ -1066,12 +1059,12 @@ static func _solmaris(w: World, throne: Vector3) -> void:
 	Cine.shot(w, throne + Vector3(5.0, 2.4, 7.5), face + Vector3(0, -3.0, 0), 48.0)
 	await _voice(w, "solmaris_03", "solmaris", ["And what I want from you, I can't take.", "The Covenant lets me ask. Nothing more."])
 	Cine.shot(w, under, face + Vector3(0, -2.6, 0), 48.0)
-	await _voice(w, "solmaris_04", "solmaris", ["So I will offer. Give me that card, freely, and Ashford will stand again by the next new moon.", "Every roof. Every note paid.", "The mill turning."])
+	await _voice(w, "solmaris_04", "solmaris", ["So I will offer. Give me that card, freely, and Ashford will be its own again by the next new moon.", "Every roof. Every note paid.", "The mill turning."])
 	await _voice(w, "solmaris_05", "solmaris", ["I can't give you back the miller. Morrowen keeps what she keeps.", "Everything else, I can."])
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.6)
 	Cine.shot(w, w.player.global_position + Vector3(-1.6, 1.6, 3.0), face + Vector3(0, -4.0, 0), 46.0)
-	var k := await Cine.choose(w, ["No. Ashford didn't burn so I could sell it.", "Not yet.", "Tell me what it is first."])
+	var k := await Cine.choose(w, ["No. Tam didn't die so I could sell it.", "Not yet.", "Tell me what it is first."])
 	Cine.shot(w, throne + Vector3(-3.0, 2.0, 7.0), face + Vector3(0, -2.0, 0), 44.0)
 	match k:
 		0:
