@@ -2474,12 +2474,13 @@ static func _herald_3d(w: World) -> Dictionary:
 	await _herald_say(w, 9, "Glyphmere, for Aldrith: Magister Tobias Crane.")
 	await _vision_out(w, cv)
 	# then the other five, too quick to hold; the camera on Ashford's faces
+	# (at face height: at 0.85 m they showed chests and legs)
 	var faces := [
 		[Vector3(-4.0, 1.7, 15.6), Vector3(4.0, 2.6, 12.0)],
-		[DAWN.nell + Vector3(1.6, 0.75, -1.3), DAWN.nell + Vector3(0.0, 0.85, 0.0)],
-		[DAWN.tam + Vector3(1.8, 0.75, -1.1), DAWN.tam + Vector3(0.0, 0.85, 0.0)],
-		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 0.85, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 0.85, 0)],
-		[DAWN.hob + Vector3(2.0, 0.8, -1.0), DAWN.hob + Vector3(0.0, 0.85, 0.0)],
+		[DAWN.nell + Vector3(1.6, 1.5, -1.3), DAWN.nell + Vector3(0.0, 1.42, 0.0)],
+		[DAWN.tam + Vector3(1.8, 1.6, -1.1), DAWN.tam + Vector3(0.0, 1.55, 0.0)],
+		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 1.6, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 1.5, 0)],
+		[DAWN.hob + Vector3(2.0, 1.65, -1.0), DAWN.hob + Vector3(0.0, 1.6, 0.0)],
 	]
 	var flick := Cine.light(w, HERALD_AT + Vector3(-2.0, 3.0, 0.0), Color(0.8, 0.86, 1.0), 0.0, 22.0)
 	for i in 5:
