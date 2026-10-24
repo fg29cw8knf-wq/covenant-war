@@ -263,7 +263,7 @@ static func that_day(w: World) -> void:
 	await Cine.say(w, "", "[i]Bread, a flint, a spare shirt. The white card, wrapped in a handkerchief and buttoned into the inside pocket.[/i]")
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.4)
-	Cine.shot(w, close + Vector3(-0.4, 0.2, 0.6), wall + Vector3(0.3, 0.8, 0), 40.0)
+	Cine.shot(w, close + Vector3(-0.3, 0.25, -0.1), wall + Vector3(0.3, 0.8, 0), 40.0)   # (in the room: +0.6 put it in the wall)
 	await Cine.say(w, "bram", "Twenty-two marks. I cut them the year we came and I've never once had to use them.")
 	# he presses the last
 	var last: MeshInstance3D = marks[marks.size() - 1]
@@ -416,8 +416,9 @@ static func reckoning(w: World) -> void:
 	# ---- in the cellar: hoofbeats overhead
 	InnRooms.inside(v)
 	Cine.place(w, "bram", r.stairs + Vector3(-0.4, 0, -0.6), r.stairs + Vector3(0, 2.0, -2.0))
-	Cine.place(w, "player", r.stairs + Vector3(-1.2, 0, 0.2), r.stairs)
-	Cine.shot(w, r.stairs + Vector3(-2.6, 1.6, 1.4), r.stairs + Vector3(-0.4, 1.4, -0.6), 40.0)
+	# (beside Bram as the camera sees them, not between: there he hid Bram)
+	Cine.place(w, "player", r.stairs + Vector3(-1.85, 0, -0.45), r.stairs)
+	Cine.shot(w, r.stairs + Vector3(-1.25, 1.6, -2.0), r.stairs + Vector3(-0.4, 1.55, -0.6), 40.0)   # (his face as he looks up)
 	await Cine.fade(w, 0.0, 0.8)
 	_sfx(w, "hooves")
 	w.shake(0.05)
@@ -433,7 +434,8 @@ static func reckoning(w: World) -> void:
 	var KRELL_AT: Vector3 = _c(w, "KRELL_AT")
 	# where Tam plants his boots: between her horse and the path up to the inn
 	var stand := KRELL_AT + (Vector3(-6.0, 0, 7.0) - KRELL_AT).normalized() * 3.2
-	var krell_cam := KRELL_AT + Vector3(-4.2, 1.5, 2.2)
+	# (from the south-west, between Tam's spot and the Lantern: clear of the crowd)
+	var krell_cam := KRELL_AT + Vector3(-4.0, 1.5, -1.6)
 	var props := {}
 	if StoryFilm.available("reckoning"):
 		props = await _krell_film(w, hunters, KRELL_AT, stand)
@@ -474,9 +476,12 @@ static func reckoning(w: World) -> void:
 	A.call("_free_tracker", arm)
 	var cask: Node3D = r.cask
 	var mouth_at: Vector3 = r.mouth_at
-	Cine.path(w, "bram", [mouth_at + Vector3(0.9, 0, -0.6)], 2.4, "run")
-	await Cine.path(w, "player", [mouth_at + Vector3(1.4, 0, 0.5)], 2.4, "run")
-	Cine.shot(w, mouth_at + Vector3(2.4, 1.4, 1.6), mouth_at + Vector3(0, 0.8, 0), 40.0)
+	# Bram on the mouth's south side, the player back on its north, so the
+	# camera sees the cask go, the marks light and Bram's face
+	Cine.path(w, "bram", [mouth_at + Vector3(0.7, 0, 0.6)], 2.4, "run")
+	await Cine.path(w, "player", [mouth_at + Vector3(1.6, 0, -1.1)], 2.4, "run")
+	Cine.look(w, "bram", w.player.global_position)
+	Cine.shot(w, mouth_at + Vector3(2.65, 1.5, -0.7), mouth_at + Vector3(0.35, 1.0, -0.1), 44.0)
 	var roll := w.create_tween()
 	roll.tween_property(cask, "position", cask.position + Vector3(0.1, 0, -0.9), 0.8).set_trans(Tween.TRANS_SINE)
 	await roll.finished
@@ -562,28 +567,28 @@ static func _krell_arrives(w: World, hunters: Array, KRELL_AT: Vector3, stand: V
 	var np := Cine.body(w, "nell").global_position
 	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
 	await Cine.wait(w, 2.0)
-	Cine.shot(w, np + Vector3(4.4, 1.7, -3.6), np + Vector3(-0.4, 1.1, -0.4), 34.0)
+	Cine.shot(w, np + Vector3(-1.0, 1.6, -3.2), np + Vector3(0.3, 1.2, 0.2), 34.0)
 	await Cine.wait(w, 1.8)
 	# Tam steps forward, between her horse and the path up to the inn, and
 	# slaps his note on a rain barrel
-	Cine.shot(w, Vector3(0.4, 1.6, 9.6), (stand + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
+	Cine.shot(w, Vector3(0.2, 1.7, 3.2), (stand + KRELL_AT) * 0.5 + Vector3(0, 1.2, 0), 38.0)
 	await Cine.walk(w, "tam", stand, 1.1)
 	Cine.look(w, "tam", KRELL_AT)
 	var props := _rain_barrel(w, stand, KRELL_AT)
 	_sfx(w, "hit_light", 0.9)
-	var tam_cam := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * -1.7 + Vector3(0, 1.5, 0) + (stand - KRELL_AT).normalized() * 0.6
+	var tam_cam := stand + (KRELL_AT - stand).normalized().cross(Vector3.UP) * -1.6 + Vector3(0, 1.55, 0) + (KRELL_AT - stand).normalized() * 1.3
 	Cine.shot(w, tam_cam, Cine.head(w, "tam"), 30.0)
 	await Cine.say(w, "tam", "The note says midnight. Take the mill, Huntmaster. It's yours. But you leave the people out of this.")
 	await Cine.say(w, "tam", "The one you're looking for, the Unsworn, they fled over the northern ridge hours ago.")
 	# she looks down at the note, then at Tam, and leans forward with a cold,
 	# almost sympathetic smile, her eyes on where he's planted his boots
-	Cine.shot(w, KRELL_AT + Vector3(-3.4, 1.65, 1.4), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
+	Cine.shot(w, KRELL_AT + Vector3(-3.0, 1.65, -0.9), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
 	await Cine.wait(w, 1.6)
 	await Cine.say(w, "krell", "A brave lie, Miller. But you're a terrible card player.")
 	await Cine.say(w, "krell", "You put your body between my hounds and the inn before you even opened your mouth.")
 	await Cine.say(w, "krell", "Guards, search every building. Collect every note. If they don't have the coin, take the property.")
 	# he reaches into his coat: not for another note. A worn deck. The crowd gasps.
-	Cine.shot(w, tam_cam, Cine.head(w, "tam") - Vector3(0, 0.35, 0), 30.0)
+	Cine.shot(w, tam_cam, Cine.head(w, "tam") - Vector3(0, 0.3, 0), 36.0)   # (his face and the deck)
 	var deck: Node3D = A.call("_card_box")
 	A.call("_hold_box", w, "tam", deck)
 	await Cine.wait(w, 0.8)
@@ -681,7 +686,7 @@ static func _tam_falls(w: World, krell_at: Vector3, tam_at: Vector3) -> void:
 	await w.flash(Color(0.6, 0.8, 1.0), 0.06, 0.5)
 	# the feedback shatters his Ward; he goes down, clutching his chest
 	var tf = Cine.fig(w, "tam")
-	Cine.shot(w, tam_at + side * 2.4 + Vector3(0, 1.2, 0) - across * 0.6, tam_at + Vector3(0, 0.9, 0), 32.0)
+	Cine.shot(w, tam_at + side * 2.4 + Vector3(0, 1.4, 0) - across * 0.6, tam_at + Vector3(0, 1.1, 0), 40.0)
 	if tf is Figure3D:
 		(tf as Figure3D).pose("defeat", 0.45, 0.3)
 	await Cine.wait(w, 1.0)
@@ -699,7 +704,7 @@ static func _tam_falls(w: World, krell_at: Vector3, tam_at: Vector3) -> void:
 	to_t.y = 0.0
 	to_t = to_t.normalized()
 	Cine.place(w, "nell", np, tam_at)
-	Cine.shot(w, np - to_t * 3.0 + to_t.cross(Vector3.UP) * 1.4 + Vector3(0, 1.5, 0), np + to_t * 1.5 + Vector3(0, 0.8, 0), 32.0)
+	Cine.shot(w, np - to_t * 3.0 - to_t.cross(Vector3.UP) * 1.4 + Vector3(0, 1.5, 0), np + to_t * 1.5 + Vector3(0, 0.8, 0), 32.0)   # (from her left: Hob stood in the way on her right)
 	await Cine.say(w, "nell", "Tam!", 2.0)
 	A.call("_kneel", w, "nell", 0.6)
 	await Cine.wait(w, 1.6)
@@ -747,7 +752,7 @@ static func _restraint(w: World, hunters: Array) -> void:
 		Cine.path(w, String(hunters[k]), [Vector3(-14.0 + k * 6.0, 0, -12.0 + (k % 2) * 4.0)], 2.6, "run")
 	await Cine.wait(w, 1.2)
 	# the ridge
-	Cine.shot(w, Vector3(-30.0, 11.0, 40.0), Vector3(0.0, 0.5, 5.0), 34.0)
+	Cine.shot(w, Vector3(-26.0, 22.0, 36.0), Vector3(0.0, 0.5, 7.0), 34.0)
 	for i in 12:
 		var p := a.lerp(b, i / 11.0)
 		p.y = v.height(p.x, p.z) + 0.35

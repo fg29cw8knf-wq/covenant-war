@@ -1493,9 +1493,12 @@ static func _stage(w: World, marks: Dictionary, look_at = null) -> void:
 ## The crowd round the green (made once, then moved where they're wanted).
 ## The night the riders come, they stand bunched on the near side of the
 ## green, facing the road.
-const CROWD_NIGHT := [Vector3(-3.1, 0, 8.1), Vector3(-0.7, 0, 8.5), Vector3(2.1, 0, 8.9), Vector3(-5.2, 0, 8.6),
-	Vector3(-1.6, 0, 7.1), Vector3(-6.4, 0, 10.6), Vector3(-8.5, 0, 4.9), Vector3(2.8, 0, 10.4),
-	Vector3(-5.8, 0, 1.9), Vector3(0.8, 0, 9.9)]
+## (all on the inn's side of the green, west of where Tam stands: the
+## Reckoning's cameras look across it at Krell, and a villager standing by
+## one filled the picture)
+const CROWD_NIGHT := [Vector3(-3.1, 0, 8.1), Vector3(-0.7, 0, 8.5), Vector3(-3.4, 0, 5.8), Vector3(-5.2, 0, 8.6),
+	Vector3(-1.6, 0, 7.1), Vector3(-6.4, 0, 10.6), Vector3(-8.5, 0, 4.9), Vector3(-7.0, 0, 6.5),
+	Vector3(-5.8, 0, 1.9), Vector3(-0.9, 0, 10.1)]
 
 
 static func _crowd(w: World, at := [], face_to := Vector3.ZERO) -> void:
@@ -2978,7 +2981,9 @@ const NIGHT := {
 	"tilly": Vector3(-3.9, 0, 6.6), "nell": Vector3(0.2, 0, 5.2), "tam": Vector3(1.6, 0, 4.8),
 	"hob": Vector3(-1.4, 0, 4.4), "ned": Vector3(-5.4, 0, 4.6),
 }
-const KRELL_AT := Vector3(6.2, 0, 6.4)
+## Where Krell sits her horse: in front of Tilly's red stall (until 24
+## October she stood in it, behind its counter).
+const KRELL_AT := Vector3(5.4, 0, 7.8)
 ## The woodpile behind the inn, and the way through the back gardens to its back door.
 const WOODPILE := Vector3(-21.4, 0, 13.0)
 const GARDENS := [Vector3(-25.0, 0, 17.5), Vector3(-30.5, 0, 14.5), Vector3(-31.5, 0, 9.0)]
