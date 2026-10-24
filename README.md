@@ -1078,8 +1078,9 @@ the game carries it two ways:
   `films/opening/`: `tools/make_hls.sh <master.mp4> <dir>` makes it (the 4K
   copied untouched, 1080p60 and 540p60 cut at the same keyframes, about 600
   MB), and `tools/publish_web.sh "<message>" --film opening <dir>` publishes
-  the site with it (later publishes keep `films/` without uploading it again;
-  it refuses a site over 980 MB, GitHub Pages' limit is 1 GB). The web build's
+  the site with it (later publishes keep `films/` without uploading or
+  downloading it, its sizes kept in `films/sizes.txt`; it refuses a site over
+  980 MB, GitHub Pages' limit is 1 GB). The web build's
   Theora fallback is a 480p copy (`build/opening_480.ogv`, made by
   `build_web.sh`; the apps keep the 720p one).
 

@@ -3017,10 +3017,7 @@ static func _burning(w: World) -> void:
 		_drop_cap(w, cap, fall_at + Vector3(0.5, 0.0, 0.6))
 	Cine.place(w, "hound1", KRELL_AT + Vector3(-1.2, 0, 1.0), tam_at)
 	await Cine.wait(w, 1.8)
-	# back: Full, his blood between the cobbles and his cap where he fell;
-	# Reduced, he is still
-	if gore:
-		_blood(v, fall_at + Vector3(0, 0.04, 0))
+	# back: he is still, his cap where he fell (no blood: v7)
 	Cine.shot(w, fall_at + Vector3(-2.2, 1.3, 2.0), fall_at + Vector3(0.2, 0.1, 0.2), 34.0)
 	await Cine.wait(w, 2.0)
 	Cine.shot(w, tam_at + to_k * 1.4 - to_k.cross(Vector3.UP) * 1.0 + Vector3(0, 1.3, 0), Cine.head(w, "nell") + Vector3(0, -0.1, 0), 22.0)
@@ -3350,21 +3347,6 @@ static func _throw_torch(w: World, from: Vector3, to: Vector3, house_i: int) -> 
 	await tw.finished
 	g.queue_free()
 	v.burn_house(house_i)
-
-
-## Blood between the cobbles (Violence: Full).
-static func _blood(v: AshfordVillage, at: Vector3) -> void:
-	var dm := QuadMesh.new(); dm.size = Vector2(1.6, 1.1); dm.orientation = PlaneMesh.FACE_Y
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(0.22, 0.01, 0.01, 0.92)
-	m.roughness = 0.15
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	var g := Gradient.new(); g.set_color(0, Color(1, 1, 1, 1)); g.add_point(0.6, Color(1, 1, 1, 0.9)); g.set_color(1, Color(1, 1, 1, 0))
-	var gt := GradientTexture2D.new(); gt.gradient = g; gt.fill = GradientTexture2D.FILL_RADIAL; gt.fill_from = Vector2(0.5, 0.5); gt.fill_to = Vector2(0.5, 0.0)
-	m.albedo_texture = gt
-	var mi := v.add_mesh(v, dm, m, Transform3D(Basis(Vector3.UP, 0.4), at), false)
-	mi.scale = Vector3.ONE * 0.2
-	v.create_tween().tween_property(mi, "scale", Vector3.ONE, 3.0)
 
 
 ## The woodpile behind the inn: split logs stacked against the wall.
