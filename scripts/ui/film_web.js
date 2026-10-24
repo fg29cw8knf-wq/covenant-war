@@ -31,6 +31,18 @@
 	let events = 0;
 	let ready = false, failed = false, finished = false, error = '';
 	let wantPlaying = false, skipShown = false, open = false;
+	// Which films are on the site: films/sizes.txt, a line a film ("<name>
+	// <bytes>", kept by tools/publish_web.sh), read once as the page loads.
+	// null: not known (still coming, or the list isn't there), when a film is
+	// simply tried and a missing one fails within a moment.
+	let published = null;
+	try {
+		fetch('films/sizes.txt', { cache: 'no-cache' }).then((r) => (r.ok ? r.text() : null)).then((t) => {
+			if (t !== null) {
+				published = new Set(t.split('\n').map((l) => l.trim().split(/\s+/)[0]).filter((n) => n));
+			}
+		}).catch(() => {});
+	} catch (e) { /* no fetch: films are tried as they come */ }
 
 	function make() {
 		if (video) {
@@ -249,6 +261,10 @@
 			}
 			return true;
 		},
+		// Whether the site has the film called `name`: 1 yes, 0 no, -1 not known.
+		has: function (name) {
+			return published === null ? -1 : (published.has(name) ? 1 : 0);
+		},
 		play: function () { startPlaying(); },
 		pause: function () { wantPlaying = false; if (video) { video.pause(); } },
 		stop: function () {
@@ -293,6 +309,9 @@
 		},
 		set_volume: function (k) { if (video) { video.volume = Math.max(0, Math.min(1, k)); } },
 		set_opacity: function (k) { if (root) { root.style.opacity = String(Math.max(0, Math.min(1, k))); } },
+		// Hidden (a story film paused for a choice): out of the way altogether,
+		// so taps reach the game's own buttons under it.
+		set_visible: function (on) { if (root) { root.style.display = on && open ? 'block' : 'none'; } },
 		set_subtitle: function (text) { if (sub) { sub.textContent = text || ''; } },
 		show_skip: function (on, text) {
 			make();

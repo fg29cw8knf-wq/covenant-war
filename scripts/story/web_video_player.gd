@@ -42,15 +42,19 @@ static func available() -> bool:
 
 
 ## The stream for a film the apps carry as `<name>_4k.mp4` (or `<name>.mp4`):
-## films/<name>/master.m3u8 beside the page. Whether it's really there is
-## found out when it's opened (a missing one fails within a moment, and the
-## game plays the Theora copy).
+## films/<name>/master.m3u8 beside the page, or "" when the site's list of
+## films (films/sizes.txt, read by the page as it loads) says it isn't there.
+## Without the list, whether it's really there is found out when it's opened
+## (a missing one fails within a moment, and the game plays the Theora copy).
 func find_file(file_name: String) -> String:
 	if not available():
 		return ""
 	var stem := file_name.get_basename()
 	if stem.ends_with("_4k"):
 		stem = stem.trim_suffix("_4k")
+	var known = JavaScriptBridge.eval("window.CWFilm.has ? window.CWFilm.has(%s) : -1" % JSON.stringify(stem), true)
+	if typeof(known) in [TYPE_INT, TYPE_FLOAT] and int(known) == 0:
+		return ""
 	return "%s/%s/master.m3u8" % [FILMS_DIR, stem]
 
 
@@ -164,7 +168,8 @@ func set_opacity(k: float) -> void:
 
 
 func set_visible(on: bool) -> void:
-	set_opacity(1.0 if on else 0.0)
+	if _open:
+		JavaScriptBridge.eval("window.CWFilm.set_visible(%s)" % ("true" if on else "false"), true)
 
 
 func is_visible() -> bool:
