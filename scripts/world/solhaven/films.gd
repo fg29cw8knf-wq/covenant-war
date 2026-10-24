@@ -947,6 +947,7 @@ static func _court(w: World) -> void:
 	Cine.look(w, "aldric_court", c)
 	var herald := PaleHerald.new()
 	herald.name = "PaleHerald"
+	herald.form = "shroud"   # (v7's Herald: grey burial cloth and chains, as at dawn in Ashford)
 	w.add_child(herald)
 	herald.global_position = c + Vector3(-6.4, 0, -21.0)
 	herald.snap_dir(Vector3(1, 0, 0.4))
@@ -1441,6 +1442,7 @@ static func _roof_people(w: World, top: Vector3) -> void:
 	Cine.look(w, "hierarch", top)
 	var herald := PaleHerald.new()
 	herald.name = "PaleHerald"
+	herald.form = "shroud"   # (v7's Herald: grey burial cloth and chains, as at dawn in Ashford)
 	w.add_child(herald)
 	herald.global_position = top + Vector3(-5.4, 0, 4.4)
 	herald.snap_dir(top - herald.global_position)
@@ -1650,19 +1652,26 @@ static func _the_writ(w: World, top: Vector3, me_at: Vector3) -> void:
 	else:
 		writ.global_position = ab.global_position + Vector3(0, 1.2, 0.3)
 	await Cine.walk(w, "aldric_roof", me_at + (ab.global_position - me_at).normalized() * 0.8, 0.9)
-	Cine.shot(w, me_at + Vector3(1.0, 1.4, 1.2), (me_at + ab.global_position) * 0.5 + Vector3(0, 1.1, 0), 30.0)
-	await _narrate(w, "He unpins a gold seal on a strip of white silk from his belt, turns it over once, and presses it into your hand.")
+	# it goes into your hand, and you hold it up to look at it: close on it
+	var pf = Cine.fig(w, "player")
 	if is_instance_valid(writ):
 		if writ.get_parent() != null:
 			writ.get_parent().remove_child(writ)
-		var pf = Cine.fig(w, "player")
 		if pf is Figure3D:
 			(pf as Figure3D).hand_light(writ)
+			(pf as Figure3D).pose("play_card", 0.42, 0.4)
 		else:
 			v.add_child(writ)
 			writ.global_position = me_at + Vector3(0, 1.1, 0.3)
+	await Cine.wait(w, 0.5)
+	# the two of them from the side (close on the hand, his stand-in cut-out
+	# filled the picture)
+	Cine.two_shot(w, "player", "aldric_roof", 2.8, 1.45, 1.0, 34.0)
+	await _narrate(w, "He unpins a gold seal on a strip of white silk from his belt, turns it over once, and presses it into your hand.")
 	_front(w, "aldric_roof", me_at, 30.0)
 	await Cine.say(w, "aldric_roof", "The Court's writ. Your name's in the book now, beside your mark, whatever His Grace thinks of it. Keep it close. They'll ask for it at the Throne.")
+	if pf is Figure3D:
+		(pf as Figure3D).release(0.4)
 	Game.set_flag("sun_writ")
 	await _narrate(w, "(The Sun Court's writ is in your Items. Every Seat must take your challenge now, and anyone may challenge you for your mark. You'll show it at the Throne when the Turning ends.)")
 	if is_instance_valid(writ):

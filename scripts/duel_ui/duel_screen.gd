@@ -142,6 +142,7 @@ func _ready() -> void:
 		if spec.has("herald_at"):
 			# the story's Pale Herald, at the Circle's edge, watching
 			_herald = PaleHerald.new()
+			_herald.form = "shroud"   # (v7's Herald, as everywhere in the story)
 			field.world.add_child(_herald)
 			_herald.position = spec.herald_at
 			_herald.scale = Vector3.ONE * float(spec.get("herald_scale", 1.0))
