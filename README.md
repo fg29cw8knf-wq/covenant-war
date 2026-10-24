@@ -557,8 +557,10 @@ v7 wins; the parts it changed:
   the collapse.
 - **After midnight** (`ashford_night.gd`, `AshfordNight`; `ashford.gd
   FILM_PARTS`): the awakening in the attic before sunrise (how you take it:
-  `temper_angry`/`afraid`/`resolved`), the dawn and the v7 Herald (cloth and
-  chains, `PaleHerald.form = "shroud"`; it names you the Unsworn, no name
+  `temper_angry`/`afraid`/`resolved`), the dawn and the v7 Herald (heavy grey
+  burial cloth torn at every hem, rusted chains, an empty hood:
+  `PaleHerald.form = "shroud"`, its cloth `PaleHerald.CLOTH_SHADER`, its look
+  checked with `tests/herald_shot.tscn`; it names you the Unsworn, no name
   prompt), That Day in the cellar (22 Ward marks), the Reckoning at dusk
   (Krell early, Tam's challenge, the cellar, the tunnel walked, Tam's duel to
   the death, the restraint magic; nothing burns, no blood), and the look back
