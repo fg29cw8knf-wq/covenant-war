@@ -560,7 +560,7 @@ static func _the_duel() -> Array:
 		{"duel": {"v1": true, "id": "corin_lantern", "name": "Corin", "difficulty": 0.25},
 			"win": _after_the_duel(),
 			"lose": [
-				{"who": "morrowen", "say": "No. That isn't how it went."},
+				{"who": "morrowen", "say": "No. That isn't how it went.", "vo": "morrowen_loss_01"},   # (recorded already, for the lost duels)
 				{"goto_duel": "_the_duel"},
 			]},
 	]

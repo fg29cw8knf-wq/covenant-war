@@ -1078,7 +1078,9 @@ static func follow(w: World, who: String, keep: float, on: Array) -> void:
 # Master Script v3, P1 · The attic and the taproom. The lines, word for word.
 
 const ATTIC := [
-	{"who": "morrowen", "say": "Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born."},
+	# Gary records it as morrowen_attic.wav (his opening's fifteen lines and
+	# the four for a lost duel are his already; this is v7's one new line)
+	{"who": "morrowen", "say": "Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.", "vo": "morrowen_attic"},
 ]
 ## At the glass, once the name's written in the frost (v7, Q0; Gary, 24
 ## October: written, not remembered, so it doesn't sound like amnesia).

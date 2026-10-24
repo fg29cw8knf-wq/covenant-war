@@ -331,6 +331,16 @@ def gather():
 				row["file"] = "assets/audio/vo/%s/%s/%s.ogg" % (area, speaker, lid)
 			elif lid:
 				row["file"] = "assets/audio/vo/%s.ogg" % lid
+			# "recorded already" only when the recording is really there: a
+			# line named by its file (the Herald's, Solmaris's, Morne's) may
+			# not be made yet
+			if row["file"]:
+				there = any(os.path.exists(os.path.join(ROOT, os.path.splitext(row["file"])[0] + "." + e)) for e in ("ogg", "mp3", "wav"))
+				named = note.split("recorded already: ", 1)[1].split(";")[0] if "recorded already: " in note else ""
+				if named and not there:
+					row["note"] = note.replace("recorded already: " + named, "to record, as %s.wav" % named)
+				elif there and not named:
+					row["note"] = (note + "; " if note else "") + "recorded already"
 			seen[key] = row
 			rows.append(row)
 	for n, r in enumerate(rows, 1):
@@ -348,8 +358,8 @@ def stamp():
 def write_md(rows):
 	o = io.StringIO()
 	o.write("# The lines, for recording\n\n")
-	o.write("Every line the game speaks, in the order it's played: %d lines, %d of them recorded already "
-		"(the Herald's, Solmaris's, Morne's). Written by `tools/vo_sheet.py` from the scripts as of %s; "
+	o.write("Every line the game speaks, in the order it's played: %d lines, %d of them recorded already. "
+		"A line marked \"to record, as <name>.wav\" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of %s; "
 		"run it again after the words change.\n\n" % (len(rows), sum(1 for r in rows if "recorded already" in r["note"]), stamp()))
 	o.write("**How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any "
 		"format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place "
