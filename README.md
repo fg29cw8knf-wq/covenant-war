@@ -1213,34 +1213,54 @@ skipped. `docs/script/summon_clips.md` lists the cards to make, lengths and
 what each should show (the four Demigod Summons first, then every starter
 Totem). `godot --headless res://tests/summon_video_test.tscn` checks the rule.
 
-## Story films: the Lantern Night and the morning after
+## Story films: the Prologue's cutscenes as Gary's own films
 
-Since 23 October the Prologue's midnight (the Great Lantern lit, the
-lanterns stopping in the air, the Sigilfall, the cart, the white light) and
-dawn (the Pale Herald) can play as films of Gary's own clips in place of
-their 3D staging, as the finished opening replaced its shot-by-shot version
+Since 23 October a stretch of a 3D cutscene can play as one of Gary's own
+films instead, as the finished opening replaced its shot-by-shot version
 (Gary: "the cut scene after all the lanterns go up: can we make a proper
-movie from that like we did for the opening movie? Same for the scene the
-next morning"). `scripts/story/story_film.gd` (`StoryFilm`) holds each
-film as its steps (`FILMS`): shots with their length, what's seen and the
-lines said over them at their moments, and between them what a film can't
-carry on its own: the midnight choice, the Herald's name prompt, a caption,
-the music cues. A shot plays `assets/movies/<film>/<shot>.ogv` (a shot that
-shows the player can have one clip per look, `<shot>_a.ogv` ... `_d`), else
-its painting `assets/art/movie/<film>/<shot>.png` moved by the engine, else
-an animatic card. The lines are the game's subtitles (`CineOverlay`), with
-the Herald's recordings played at theirs, so the choices and the name keep
-working; the picture sits whole between the movie bars. A whole cut,
-`assets/movies/<film>.ogv`, plays instead when it exists, the lines over it
-by the shots' lengths and a choice pausing it. The 3D scene stays until a
-film is all there (`StoryFilm.available`: the cut, or a clip or painting
-for every shot; `-- --story-films` forces the films on, for the animatic),
-and `_midnight_film` / `_dawn_film` in `ashford.gd` set the world around
-each as the 3D version does. On the phone link each film is its own pack
-(`midnight`, `dawn`; `tools/web_packs.py`), built only once it has clips.
-The shot lists, lengths and what Gary makes are in `docs/script/films_plan.md`.
+movie from that like we did for the opening movie?"; 24 October, v7: the
+cutscenes as videos built round one hero, Player A). Master Script v7 has
+seven, in the Still to Make doc's "Films for Player A" tab:
+
+| film | where | in place of |
+|---|---|---|
+| `midnight` | the bell to the cart going over on Corin | `Ashford._midnight_3d` (the run and `_the_cart_falls`) |
+| `white_light` | after the cart, to black | `Ashford._the_white_light` |
+| `herald` | dawn, to Bram stepping between | `Ashford._herald_3d` |
+| `reckoning` | Krell's arrival to her stakes | `AshfordNight._krell_arrives` |
+| `tams_hand` | Tam's duel, his fall, Nell, Krell's orders | `AshfordNight._tam_falls` and her two lines |
+| `no_roof` | the wide shot from the ridge | `AshfordNight._restraint` |
+| `ridge` | the Thornwood's last ridge, Solhaven below | `Thornwood._ridge`'s 3D |
+
+What the player does stays in the game between them (the cart heave, the
+tunnel, the look back, the conversations). `scripts/story/story_film.gd`
+(`StoryFilm`) holds each film as its steps (`FILMS`): shots with their
+length, what's seen (Gary's brief, and the animatic's card), whether Player
+A is in it, and the lines said over them at their moments (the 3D scene's
+own lines, word for word); between them what a film can't carry on its own
+(Bram's midnight question, the music cues). A film plays, best first: Gary's
+4K film `<film>_4k.mp4` through the device's own player (the apps: from the
+films release, as the opening; the phone link: streamed from `films/<film>/`
+if the site has it, `films/sizes.txt` saying so), its lines as the player's
+own subtitles and the choice pausing it with the picture stepped aside for
+the game's buttons; else the whole cut `assets/movies/<film>.ogv`; else its
+shots (`assets/movies/<film>/<shot>.ogv`, or a painting
+`assets/art/movie/<film>/<shot>.png`). Each scene asks `StoryFilm.available`
+first and plays its 3D when the film isn't there, or when `StoryFilm.play`
+says it couldn't play (`"played": false`); after a film the scene sets the
+world as its 3D would have left it (`_midnight_film`, `_white_light_film`,
+`_herald_film`, `_krell_film`, `_tam_film`), so any mix of films and 3D
+plays on. `-- --story-films` forces every film on, as animatic cards.
+When a film comes in, its shot lengths in `FILMS` are set to match it, so
+its lines land at their moments. On the phone link each film's Theora copy
+would be its own pack (`tools/web_packs.py`), built only once it has
+something in it; GitHub Pages has no room left for more 4K streams (the
+opening's take 632 MB of its 1 GB). Gary's step-by-step, with every film's
+shots, where each line falls and which shots show Player A, is
+`docs/script/films_plan.md` (made from `FILMS`).
 
 ```sh
 python3 tools/movie_clips.py <folder of clips> --film midnight    # -> assets/movies/midnight/<shot>.ogv
-godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film midnight only --story-films   # the film as animatic cards
+godot --headless --fixed-fps 10 res://tests/film_test.tscn -- /tmp/film midnight only 0 --story-films   # the films as animatic cards
+godot --headless --fixed-fps 30 --path . res://tests/story_film_test.tscn   # the 4K path, with a stand-in player
 ```
