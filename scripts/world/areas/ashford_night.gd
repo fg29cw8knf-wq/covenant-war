@@ -373,9 +373,42 @@ static func satchel(v: AshfordVillage) -> Node3D:
 	v.add_child(s)
 	var lm := StandardMaterial3D.new()
 	lm.albedo_color = Color(0.36, 0.24, 0.14)
-	lm.roughness = 0.9
-	v.box(s, Vector3(0.42, 0.3, 0.16), Vector3(0, 0.15, 0), lm)
-	v.box(s, Vector3(0.44, 0.04, 0.18), Vector3(0, 0.31, 0), lm, Vector3(0.25, 0, 0))
+	lm.roughness = 0.85
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.22, 0.14, 0.08)
+	dark.roughness = 0.9
+	var brass := StandardMaterial3D.new()
+	brass.albedo_color = Color(0.62, 0.48, 0.22)
+	brass.metallic = 0.7
+	brass.roughness = 0.4
+	# a soft leather bag (a rounded body, not a box), its flap over the
+	# top, a buckle, and the strap lying in a loop beside it
+	var body := MeshInstance3D.new()
+	var cm := CapsuleMesh.new()
+	cm.radius = 0.15
+	cm.height = 0.44
+	cm.radial_segments = 20
+	cm.rings = 8
+	body.mesh = cm
+	body.material_override = lm
+	body.rotation = Vector3(0, 0, PI * 0.5)
+	body.scale = Vector3(0.95, 1.0, 0.55)
+	body.position = Vector3(0, 0.14, 0)
+	s.add_child(body)
+	v.box(s, Vector3(0.36, 0.025, 0.2), Vector3(0, 0.27, 0.0), dark, Vector3(0.12, 0, 0))
+	v.box(s, Vector3(0.34, 0.16, 0.02), Vector3(0, 0.2, 0.085), dark, Vector3(-0.1, 0, 0))
+	v.box(s, Vector3(0.05, 0.04, 0.015), Vector3(0, 0.14, 0.1), brass)
+	var strap := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 0.2
+	tm.outer_radius = 0.225
+	tm.rings = 24
+	tm.ring_segments = 4
+	strap.mesh = tm
+	strap.material_override = dark
+	strap.scale = Vector3(1.0, 0.3, 0.7)
+	strap.position = Vector3(0.05, 0.012, -0.14)
+	s.add_child(strap)
 	v.set_meta("satchel", s)
 	return s
 
