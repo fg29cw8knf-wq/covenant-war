@@ -20,24 +20,28 @@ GODOT=${GODOT:-godot}
 . tools/build_info.sh
 python3 tools/web_packs.py presets
 rm -rf build/web && mkdir -p build/web/packs
+# Godot leaves build/ alone (no scanning, no importing, nothing of it in a
+# pack): the copies of the opening below sat in build/ and went into the
+# main pack, 133 MB of it, until 24 October
+touch build/.gdignore
 # The opening film streams in 4K through the browser's own player on the web
 # (films/opening on the site), so its Theora copy in the movie pack is only a
-# fallback for a browser that can't: a 480p copy goes into the web's pack
-# instead of the 720p one the apps keep, which keeps the site (streams and
-# all) inside GitHub Pages' 1 GB. The 720p file is put back however the build
-# ends. KEEP_MOVIE=1 builds with the 720p copy.
+# fallback for a browser that can't stream (an old one): a 360p copy goes
+# into the web's pack instead of the 720p one the apps keep, which keeps the
+# site (the streams' 632 MB and all) inside GitHub Pages' 1 GB. The 720p file
+# is put back however the build ends. KEEP_MOVIE=1 builds with the 720p copy.
 MOVIE=assets/movies/opening.ogv
 if [ -f "$MOVIE" ] && [ -z "$KEEP_MOVIE" ]; then
-	SMALL=build/opening_480.ogv
+	SMALL=build/opening_360.ogv
 	if [ ! -f "$SMALL" ] || [ "$MOVIE" -nt "$SMALL" ]; then
-		ffmpeg -hide_banner -loglevel error -y -i "$MOVIE" -vf scale=854:480:flags=lanczos \
-			-c:v libtheora -q:v 5 -c:a libvorbis -q:a 3 "$SMALL"
+		ffmpeg -hide_banner -loglevel error -y -i "$MOVIE" -vf scale=640:360:flags=lanczos \
+			-c:v libtheora -q:v 4 -c:a libvorbis -q:a 2 "$SMALL"
 		touch -r "$MOVIE" "$SMALL"
 	fi
 	cp -p "$MOVIE" build/opening_full.ogv
 	trap 'cp -p build/opening_full.ogv "$MOVIE"' EXIT
 	cp -p "$SMALL" "$MOVIE"
-	echo "opening.ogv: the 480p copy for the web pack ($(du -m "$SMALL" | cut -f1) MB)"
+	echo "opening.ogv: the 360p copy for the web pack ($(du -m "$SMALL" | cut -f1) MB)"
 fi
 SIZES=""
 for pack in $(python3 tools/web_packs.py names); do

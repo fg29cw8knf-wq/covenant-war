@@ -1081,8 +1081,14 @@ the game carries it two ways:
   the site with it (later publishes keep `films/` without uploading or
   downloading it, its sizes kept in `films/sizes.txt`; it refuses a site over
   980 MB, GitHub Pages' limit is 1 GB). The web build's
-  Theora fallback is a 480p copy (`build/opening_480.ogv`, made by
-  `build_web.sh`; the apps keep the 720p one).
+  Theora fallback, for a browser that can't stream, is a 360p copy
+  (`build/opening_360.ogv`, made by `build_web.sh`; the apps keep the 720p
+  one). With the opening's streams the site is about 950 MB: **there's no
+  room on GitHub Pages for another 4K film**, so the story films will need
+  somewhere else to stream from on the phone link (the apps carry them from
+  the films release as they do the opening). `build/` has a `.gdignore`
+  (`build_web.sh` makes it), so nothing put there goes into a pack: until 24
+  October the opening's two spare copies there added 133 MB to the main pack.
 
 `OpeningMovie` plays either whole, with nothing of the engine's over it (no
 subtitles, voice, music or title), shown whole: as big as fits the screen with
