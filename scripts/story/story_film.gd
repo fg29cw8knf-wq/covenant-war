@@ -402,6 +402,7 @@ func _play_native(steps: Array) -> bool:
 	_cut = true
 	_stage.visible = false
 	_video.visible = false
+	Music.stop(0.8)   # (the film has its own)
 	if OS.is_debug_build() or OS.has_feature("web"):
 		print("story film: %s through the %s player (%s, %.1f s)" % [film, "browser's" if p is WebVideoPlayer else "native", path, p.get_length()])
 	var ov := Cine.overlay(_w)
@@ -594,6 +595,7 @@ func _play_cut(steps: Array) -> void:
 	_video.stream = stream
 	_video.visible = true
 	_video.play()
+	Music.stop(0.8)   # (the cut has its own)
 	await get_tree().process_frame
 	if not _video.is_playing():
 		push_warning("StoryFilm: %s won't play; playing the shots instead" % cut_path(film))

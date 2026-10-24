@@ -2348,12 +2348,18 @@ static func _dawn(w: World) -> void:
 	Cine.place(w, "tilly", DAWN.tilly, Vector3(-4.6, 0, 13.6))
 	Cine.spawn(w, "kid", "child_b", Vector3(-5.4, 0, 12.6))
 	Cine.place(w, "kid", Vector3(-5.4, 0, 12.6), Vector3(-4.6, 0, 13.6))
+	# (Gary's film has its own music; the 3D has the morning-after theme)
+	var with_film := StoryFilm.available("herald")
+	if not with_film:
+		Music.play(["dawn_after"], 2.0, true)
 	await Cine.caption(w, "Dawn")
 	var left := {}
 	var filmed := false
-	if StoryFilm.available("herald"):
+	if with_film:
 		filmed = await _herald_film(w)
 	if not filmed:
+		if with_film:
+			Music.play(["dawn_after"], 2.0, true)
 		left = await _herald_3d(w)
 	await _dawn_hub(w, left)
 
@@ -2364,7 +2370,6 @@ static func _dawn(w: World) -> void:
 ## tracker on the player's shoulder.
 static func _herald_3d(w: World) -> Dictionary:
 	var v := village(w)
-	Music.play(["dawn_after"], 2.0, true)
 	# the morning after, smoke over the hills
 	Cine.shot(w, Vector3(-30.0, 14.0, 40.0), Vector3(8.0, 4.0, -16.0), 46.0)
 	Cine.fade(w, 0.0, 1.6)
