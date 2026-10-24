@@ -237,7 +237,9 @@ static func that_day(w: World) -> void:
 	w.area.call("_kneel", w, "bram", 0.8)
 	var bf = Cine.fig(w, "bram")
 	var marks: Array = r.marks
-	var close := wall + Vector3(1.4, 1.0, 0.9)
+	# from the north, past the casks: Bram side-on at the marks (from behind
+	# him, all you saw was his back)
+	var close := wall + Vector3(0.6, 1.0, -1.2)
 	Cine.shot(w, close, wall + Vector3(0, 0.7, 0), 38.0)
 	for i in mini(5, marks.size()):
 		var m: MeshInstance3D = marks[marks.size() - 5 + i]
@@ -263,7 +265,7 @@ static func that_day(w: World) -> void:
 	await Cine.say(w, "", "[i]Bread, a flint, a spare shirt. The white card, wrapped in a handkerchief and buttoned into the inside pocket.[/i]")
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.4)
-	Cine.shot(w, close + Vector3(-0.3, 0.25, -0.1), wall + Vector3(0.3, 0.8, 0), 40.0)   # (in the room: +0.6 put it in the wall)
+	Cine.shot(w, wall + Vector3(0.5, 1.2, -1.4), wall + Vector3(0.2, 0.9, 0), 40.0)
 	await Cine.say(w, "bram", "Twenty-two marks. I cut them the year we came and I've never once had to use them.")
 	# he presses the last
 	var last: MeshInstance3D = marks[marks.size() - 1]
@@ -1057,8 +1059,11 @@ static func look_back(w: World) -> void:
 		sm.albedo_color = Color(0.4, 0.28, 0.16)
 		v.cyl(spoke, 0.025, 0.03, 1.0, Vector3(0, -0.45, 0), sm, 8)
 		spoke.set_meta("p1_prop", true)
-		if cfig is Figure3D:
-			(cfig as Figure3D).hand_light(spoke)
+		# planted at his right side like a crutch (held in the hand it stuck
+		# out sideways like a pole)
+		Cine.body(w, "corin").add_child(spoke)
+		spoke.position = Vector3(-0.3, 0.97, 0.12)
+		spoke.rotation = Vector3(0.0, 0.0, -0.06)
 		Cine.look(w, "player", c0)
 		if bf is Figure3D:
 			(bf as Figure3D).let_go(0.6)
@@ -1071,6 +1076,10 @@ static func look_back(w: World) -> void:
 		Cine.look(w, "player", Cine.body(w, "corin").global_position)
 		var mid := (cto + w.player.global_position) * 0.5
 		var sd := (w.player.global_position - cto).normalized().cross(Vector3.UP)
+		# from the side away from Bram (from his side, he filled the picture)
+		var bram_at := Cine.body(w, "bram").global_position
+		if (mid + sd * 2.9).distance_to(bram_at) < (mid - sd * 2.9).distance_to(bram_at):
+			sd = -sd
 		Cine.shot(w, mid + sd * 2.9 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.3, 0), 36.0)
 		await Cine.say(w, "corin", "Found your rabbit-hole when we were ten. Never told him I knew.")
 		Cine.look(w, "corin", Cine.body(w, "bram").global_position)

@@ -39,6 +39,67 @@ void fragment() {
 }
 """
 
+## v7's shroud: grey burial cloth, opaque and heavy, in vertical folds with
+## the wrappings showing, grimed, its hem torn ragged (each piece's bottom
+## edge eaten away by noise: `half_h` is the piece's half-height), shifting
+## slowly; it fades by dithering away, so it stays solid until it goes.
+const CLOTH_SHADER := """
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_disabled, diffuse_burley, specular_disabled;
+uniform vec3 tint : source_color = vec3(0.4, 0.41, 0.42);
+uniform float fade = 1.0;
+instance uniform float half_h = 1.0;
+instance uniform float cut = 0.0;   // the hood: its face opened (an empty dark)
+instance uniform float fray = 0.16;
+instance uniform float folds = 0.06;
+varying vec3 wpos;
+varying float ang;
+varying float low;
+varying vec3 lp;
+float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	float a = mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y);
+	float b = mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y);
+	return mix(a, b, f.z);
+}
+void vertex() {
+	lp = VERTEX;
+	ang = atan(VERTEX.z, VERTEX.x);
+	low = clamp((half_h - VERTEX.y) / (2.0 * half_h), 0.0, 1.0);
+	vec3 radial = vec3(VERTEX.x, 0.0, VERTEX.z);
+	radial = length(radial) > 0.001 ? normalize(radial) : vec3(0.0, 0.0, 1.0);
+	float f = sin(ang * 9.0 + n3(vec3(ang * 2.0, VERTEX.y * 1.5, 0.0)) * 3.0) * 0.5 + 0.5;
+	float sway = sin(TIME * 0.9 + VERTEX.y * 2.2 + ang * 2.0);
+	VERTEX += radial * f * folds * (0.4 + low);
+	VERTEX.x += sway * 0.035 * low;
+	VERTEX.z += cos(TIME * 0.7 + VERTEX.y * 1.7) * 0.035 * low;
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	// the torn hem
+	float rag = n3(vec3(wpos.x * 5.0, 0.3, wpos.z * 5.0)) * 0.65 + n3(vec3(wpos.x * 17.0, 1.7, wpos.z * 17.0)) * 0.35;
+	if (low > 1.0 - fray * rag) discard;
+	if (cut > 0.5) {
+		vec2 q = vec2(lp.x / 0.21, (lp.y + 0.06) / 0.27);
+		if (lp.z > 0.0 && dot(q, q) < 1.0) discard;
+	}
+	// going: dithered away (it stays solid till then)
+	if (h(vec3(floor(FRAGCOORD.xy), 3.1)) > fade) discard;
+	float fold = sin(ang * 9.0) * 0.5 + 0.5;
+	float band = fract(wpos.y * 1.7 + ang * 0.27);
+	float wrap = smoothstep(0.38, 0.48, band) * (1.0 - smoothstep(0.52, 0.62, band));
+	float grime = n3(wpos * 4.0) * 0.6 + n3(wpos * 13.0) * 0.4;
+	vec3 c = tint * (0.62 + 0.38 * fold) * (0.72 + 0.42 * grime) * (1.0 - 0.28 * wrap);
+	c *= mix(1.0, 0.72, low);   // dirtier down where it drags
+	if (!FRONT_FACING) { c *= 0.28; }
+	float fr = pow(1.0 - clamp(abs(dot(NORMAL, VIEW)), 0.0, 1.0), 2.5);
+	ALBEDO = c;
+	EMISSION = vec3(0.5, 0.55, 0.65) * fr * 0.22;
+	ROUGHNESS = 1.0;
+}
+"""
+
 const VOID_SHADER := """
 shader_type spatial;
 render_mode unshaded, cull_front;
@@ -84,7 +145,7 @@ var fade := 1.0:
 func _ready() -> void:
 	_mat = ShaderMaterial.new()
 	_mat.shader = Shader.new()
-	_mat.shader.code = SHADER
+	_mat.shader.code = CLOTH_SHADER if form == "shroud" else SHADER
 	_void = ShaderMaterial.new()
 	_void.shader = Shader.new()
 	_void.shader.code = VOID_SHADER
@@ -300,70 +361,100 @@ func _add_mist() -> void:
 	add_child(_mist)
 
 
-## v7's Herald: layers of grey burial cloth, each a little turned and
-## tattered, rising to a hood with nothing in it; rusted iron chains hang in
-## loops about it and sway; it hovers just off the grass. Its "lantern" is a
-## pale light inside the cloth at the chest (the faces come out of it).
+## v7's Herald: a towering mass of grey burial cloth, a heavy robe under a
+## mantle and a wrap, torn strips hanging off it all round, rising to a hood
+## with nothing in it; rusted iron chains hang in loops about it and sway;
+## it hovers just off the grass. Its "lantern" is a pale light inside the
+## cloth at the chest (the faces come out of it).
 func _build_shroud() -> void:
-	var layers := [[0.95, 0.62, 0.0, 1.5], [0.82, 0.5, 0.9, 1.45], [0.66, 0.38, 1.75, 1.2], [0.5, 0.3, 2.45, 0.85]]
-	for i in layers.size():
-		var L: Array = layers[i]
+	# [top radius, bottom radius, height, bottom y, turn, fray, folds]
+	var pieces := [[0.3, 0.98, 2.95, 0.0, 0.0, 0.1, 0.07], [0.38, 0.9, 1.35, 1.68, 0.6, 0.3, 0.06],
+		[0.78, 1.12, 0.95, 0.32, 1.9, 0.45, 0.08]]
+	for P in pieces:
 		var mi := MeshInstance3D.new()
 		var cm := CylinderMesh.new()
-		cm.bottom_radius = L[0]
-		cm.top_radius = L[1]
-		cm.height = L[3]
-		cm.radial_segments = 22
-		cm.rings = 3
+		cm.top_radius = P[0]
+		cm.bottom_radius = P[1]
+		cm.height = P[2]
+		cm.radial_segments = 48
+		cm.rings = 24
+		cm.cap_top = false
+		cm.cap_bottom = false
 		mi.mesh = cm
 		mi.material_override = _mat
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.position = Vector3(0.0, float(L[2]) + float(L[3]) * 0.5, 0.0)
-		mi.rotation = Vector3(0.03 * (i % 2), 0.7 * i, -0.025 * (i % 3))
+		mi.position = Vector3(0.0, float(P[3]) + float(P[2]) * 0.5, 0.0)
+		mi.rotation.y = P[4]
+		mi.set_instance_shader_parameter("half_h", float(P[2]) * 0.5)
+		mi.set_instance_shader_parameter("fray", P[5])
+		mi.set_instance_shader_parameter("folds", P[6])
 		_body.add_child(mi)
-	# torn strips of cloth hanging from the hem
-	for k in 9:
-		var a := TAU * k / 9.0 + 0.2
-		_cap(_body, 0.07, 0.9, Vector3(cos(a) * 0.82, 0.25, sin(a) * 0.82), Vector3(0.18 * sin(a), 0, -0.18 * cos(a)))
+	# torn strips of cloth hanging off it all round, longer low down
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	for k in 18:
+		var a := TAU * k / 18.0 + rng.randf_range(-0.12, 0.12)
+		var y := rng.randf_range(0.5, 2.3)
+		var rad := lerpf(1.02, 0.5, (y - 0.5) / 1.8) + 0.04
+		var len := rng.randf_range(0.8, 1.5) * (1.2 - (y - 0.5) / 3.6)
+		var strip := MeshInstance3D.new()
+		var pm := PlaneMesh.new()
+		pm.size = Vector2(rng.randf_range(0.12, 0.24), len)
+		pm.subdivide_depth = 8
+		pm.orientation = PlaneMesh.FACE_Z
+		strip.mesh = pm
+		strip.material_override = _mat
+		strip.position = Vector3(cos(a) * rad, y - len * 0.5 + 0.1, sin(a) * rad)
+		strip.rotation = Vector3(0.0, -a + PI * 0.5, 0.0)
+		strip.rotate_object_local(Vector3.RIGHT, -0.08)
+		strip.set_instance_shader_parameter("half_h", len * 0.5)
+		strip.set_instance_shader_parameter("fray", 0.35)
+		strip.set_instance_shader_parameter("folds", 0.0)
+		_body.add_child(strip)
 	_rider = Node3D.new()
-	_rider.position = Vector3(0, 3.1, 0)
+	_rider.position = Vector3(0, 2.95, 0)
 	_body.add_child(_rider)
 	_hood = Node3D.new()
-	_hood.position = Vector3(0, 0.38, 0.05)
+	_hood.position = Vector3(0, 0.26, 0.05)
 	_rider.add_child(_hood)
 	var hood := MeshInstance3D.new()
 	var hm := SphereMesh.new()
-	hm.radius = 0.34
-	hm.height = 0.8
+	hm.radius = 0.42
+	hm.height = 0.92
+	hm.radial_segments = 32
+	hm.rings = 16
 	hood.mesh = hm
 	hood.material_override = _mat
-	hood.scale = Vector3(1.0, 1.1, 1.08)
+	hood.scale = Vector3(1.0, 1.12, 1.1)
+	hood.set_instance_shader_parameter("half_h", 0.46)
+	hood.set_instance_shader_parameter("fray", 0.12)
+	hood.set_instance_shader_parameter("folds", 0.03)
+	hood.set_instance_shader_parameter("cut", 1.0)
 	_hood.add_child(hood)
 	var hole := MeshInstance3D.new()
 	var hh := SphereMesh.new()
-	hh.radius = 0.21
-	hh.height = 0.46
+	hh.radius = 0.22
+	hh.height = 0.5
 	hole.mesh = hh
 	hole.material_override = _void
-	hole.position = Vector3(0, -0.03, 0.2)
+	hole.position = Vector3(0, -0.04, 0.22)
 	hole.scale = Vector3(1.0, 1.2, 0.6)
 	_hood.add_child(hole)
 	var hole2 := MeshInstance3D.new()
 	var hq := QuadMesh.new()
-	hq.size = Vector2(0.32, 0.46)
+	hq.size = Vector2(0.3, 0.44)
 	hole2.mesh = hq
 	var vm := StandardMaterial3D.new()
 	vm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	vm.albedo_color = Color(0, 0, 0)
 	hole2.material_override = vm
-	hole2.position = Vector3(0, -0.03, 0.3)
+	hole2.position = Vector3(0, -0.04, 0.33)
 	_hood.add_child(hole2)
 	# rusted iron chains: loops of links about the cloth, swaying
 	var rust := StandardMaterial3D.new()
-	rust.albedo_color = Color(0.34, 0.2, 0.12)
-	rust.metallic = 0.55
-	rust.roughness = 0.78
-	var loops := [[1.05, 0.72, 0.0], [1.6, 0.6, 1.2], [2.25, 0.5, 2.3], [0.7, 0.85, 3.6]]
+	rust.albedo_color = Color(0.21, 0.13, 0.09)
+	rust.metallic = 0.6
+	rust.roughness = 0.85
+	var loops := [[1.05, 0.86, 0.0], [1.6, 0.72, 1.2], [2.2, 0.56, 2.3], [0.62, 1.02, 3.6], [2.6, 0.46, 4.7]]
 	for L in loops:
 		var chain := Node3D.new()
 		chain.position = Vector3(0, float(L[0]), 0)
@@ -375,8 +466,8 @@ func _build_shroud() -> void:
 			var a := PI * 1.15 * j / float(links - 1) - PI * 0.575
 			var link := MeshInstance3D.new()
 			var tm := TorusMesh.new()
-			tm.inner_radius = 0.025
-			tm.outer_radius = 0.048
+			tm.inner_radius = 0.03
+			tm.outer_radius = 0.058
 			tm.rings = 10
 			tm.ring_segments = 5
 			link.mesh = tm

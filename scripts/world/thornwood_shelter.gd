@@ -373,6 +373,10 @@ static func _boxes_on_table(w: World, r: Dictionary, ids: Array) -> Array:
 	var tb: Dictionary = r.table
 	var mid: Vector3 = tb.mid
 	var along: Vector3 = tb.along
+	# the pot's eaten from and put back on its stone by the table, out of
+	# the way of the boxes (it stood in front of the first)
+	if r.has("pot") and is_instance_valid(r.pot):
+		(r.pot as Node3D).global_position = r.flat
 	Cine.shot(w, mid + Vector3(0, 0.9, 1.2), mid + Vector3(0, 0.05, 0), 40.0)
 	var bf = Cine.fig(w, "bram")
 	var boxes: Array = []
