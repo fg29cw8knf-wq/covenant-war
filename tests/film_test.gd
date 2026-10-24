@@ -21,7 +21,8 @@ extends Node
 ## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
 ## close look at a moment the watch pointed at. "ui=1.3" plays it at the
 ## biggest Text and buttons size. "scale3d=0.5" draws the 3D at half size,
-## for a quicker reference video recorded with Movie Maker (24 fps).
+## for a quicker reference video recorded with Movie Maker; "stop=<frames>"
+## ends the recording after that many frames.
 
 var out_dir := "user://"
 var every := 0
@@ -42,6 +43,7 @@ var _choice := 0
 var _box := 1
 var _qa = null   # QA monitor (tests/qa_monitor.gd)
 var _notap := false
+var _stop := 0   # stop=<frames>: quit after that many frames (a recording of part of a part)
 var _from := -1
 var _to := -1
 var _windows: Array = []
@@ -59,6 +61,9 @@ func _ready() -> void:
 	_only = "only" in args
 	_keys = "keys" in args
 	_notap = "notap" in args
+	for a in args:
+		if String(a).begins_with("stop="):
+			_stop = int(String(a).substr(5))
 	for a in args:
 		if String(a).begins_with("read="):
 			_read = int(String(a).substr(5))
@@ -152,6 +157,10 @@ func _use_later(u) -> void:
 
 func _process(_d: float) -> void:
 	_frame += 1
+	if _stop > 0 and _frame >= _stop:
+		print("FILM: stopped at frame ", _frame)
+		get_tree().quit()
+		return
 	if world == null:
 		return
 	# tap through the world's dialogue box
