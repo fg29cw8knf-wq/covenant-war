@@ -83,10 +83,10 @@ const ACCOUNTS := [
 	{"id": "c1_sun_court", "title": "The Sun's Court", "place": "Solhaven", "kind": "story", "when": "arrived_solhaven", "open": "!beat_aldric",
 		"parts": [[
 			["", "You reached Solhaven three days after the fire, with the smoke still in your clothes. Warden Hale would not open his gate for a mark he took for paint."],
-			["beat_hale", "Warden Hale tested your mark in the Circle and found it real. The Sun Court, up the hill, was waiting to see it."],
+			["beat_hale", "Warden Hale tested your mark in the Circle and found it real. Up the hill, the Sun Court would have to enter it before your claim on the Throne was true."],
 			["sun_court_done | c4_done", "The Hierarch asked for your card and my Herald forbade it; then Solmaris stopped the light to ask for it herself. Ser Aldric would test you, once the Temple's Trial of Light was passed."],
 			["temple_leave | trial_light_passed | c5_done", "You passed the Trial of Light. Ser Aldric was waiting to duel you in front of his whole city."],
-			["beat_aldric", "You beat Ser Aldric in front of his own city, and were found worthy to challenge any Seat in Veyl. In Ironvault, a man wrote the day's date beside an old debt."],
+			["beat_aldric", "You beat Ser Aldric in front of his own city, and were found worthy to challenge any Seat in Veyl. The Hierarch left without entering your name, so Ser Aldric entered it himself and gave you the Court's writ, to be shown at the Throne. In Ironvault, a man wrote the day's date beside an old debt."],
 		]]},
 	{"id": "s_mercy", "title": "The Price of Mercy", "place": "Solhaven", "kind": "side",
 		"when": "side_mercy | side_duel_on=mercy", "open": "side_duel_on=mercy",

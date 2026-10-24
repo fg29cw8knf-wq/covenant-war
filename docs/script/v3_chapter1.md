@@ -126,7 +126,17 @@ _Bram hangs a lamp on the hook and lights it._
 
 **Narration:** Turnip bites your sleeve. Not hard.
 
-**Objective:** Present your mark at the Sun Court. (The gold building up the hill.)
+_(New, 24 October: why the Sun Court. Gary: a claim on the Throne is only true once a Sun Court has registered it; registered, anyone can challenge you for your mark; and you'll need what they give you at the big duel at the end.)_
+
+**Bram:** In the morning, the Sun Court.
+
+**Bram:** The Herald named you, so the Covenant knows your name. That isn't a claim on the Throne. A claim's only true once a Sun Court has entered it: your name, beside your mark, in their book.
+
+**Bram:** Once it's entered, every Seat has to take your challenge, and anyone in Veyl can challenge you for that mark. And when the Turning ends, they'll want the Court's writ before they let you anywhere near the Throne.
+
+**Bram:** So we go up the hill, you show them your collar, and you let the Hierarch talk.
+
+**Objective:** Register your mark at the Sun Court. (The gold building up the hill.)
 
 
 ### C2 · Bram at the wagon
@@ -338,7 +348,7 @@ _A vast white hall under a sun-window. Light falls in a single gold column onto 
 
 **Aldric:** _(Stepping forward.)_ Then let the Unsworn be tested, honestly. No challenger enters the Turning without the Sun Court's Trial. I'll give it myself, before the whole city. Your Grace?
 
-**Hierarch:** _(A moment.)_ As you wish, Ser Aldric. After the Trial of Light, as every pilgrim must. If they pass it.
+**Hierarch:** _(A moment.)_ As you wish, Ser Aldric. After the Trial of Light, as every pilgrim must. If they pass it, the Court will enter their name.
 
 _The sun-window blazes white and sound stops. Courtiers, Hierarch and Aldric turn to statues of light mid-gesture. Only you can move. Above the throne, something vast leans down out of the glare: Solmaris, white and gold, her face lost in light. When she speaks, it's quiet, the way you'd speak at a sickbed._
 
@@ -469,6 +479,18 @@ _(If you opened the gate.) From the cheap seats at the very top, one voice, then
 _(If you let the children in.) From high in the stands, children's voices, a handful, shouting your name until somebody hushes them._
 
 _(If you left the gate shut.) A single coin spins down from the stands and rings on the stone at your feet. A crown, for a forgery._
+
+_(New, 24 October: the writ.)_
+
+**Aldric:** _(Looking at the empty box.)_ He's gone without entering you. He'd rather the Herald's word stood on its own, with nothing written beside it.
+
+**Aldric:** A Champion of the Court can enter a name as well as a Hierarch can.
+
+**Narration:** He unpins a gold seal on a strip of white silk from his belt, turns it over once, and presses it into your hand.
+
+**Aldric:** The Court's writ. Your name's in the book now, beside your mark, whatever His Grace thinks of it. Keep it close. They'll ask for it at the Throne.
+
+**Narration:** (The Sun Court's writ is in your Items. Every Seat must take your challenge now, and anyone may challenge you for your mark. You'll show it at the Throne when the Turning ends.)
 
 _Pip, on someone's shoulders, is crying, and furious about it._
 

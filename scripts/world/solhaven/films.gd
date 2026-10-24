@@ -674,8 +674,18 @@ static func _wagon(w: World) -> void:
 	v.turnip_bite()
 	await _narrate(w, "Turnip bites your sleeve. Not hard.")
 	_drop(w, "horse_trader")
-	Game.set_flag("objective", "Present your mark at the Sun Court. (The gold building up the hill.)")
-	w.hud.set_objective("Present your mark at the Sun Court. (The gold building up the hill.)")
+	# why the Sun Court (Gary, 24 October: a claim on the Throne is only true
+	# once a Sun Court has registered it; registered, anyone may challenge you
+	# for your mark; and its writ must be shown at the Throne at the end)
+	Cine.look(w, "bram", w.player.global_position)
+	Cine.look(w, "player", Cine.body(w, "bram").global_position)
+	_ots(w, "player", "bram", -1.0, 30.0)
+	await Cine.say(w, "bram", "In the morning, the Sun Court.")
+	await Cine.say(w, "bram", "The Herald named you, so the Covenant knows your name. That isn't a claim on the Throne. A claim's only true once a Sun Court has entered it: your name, beside your mark, in their book.")
+	await Cine.say(w, "bram", "Once it's entered, every Seat has to take your challenge, and anyone in Veyl can challenge you for that mark. And when the Turning ends, they'll want the Court's writ before they let you anywhere near the Throne.")
+	await Cine.say(w, "bram", "So we go up the hill, you show them your collar, and you let the Hierarch talk.")
+	Game.set_flag("objective", "Register your mark at the Sun Court. (The gold building up the hill.)")
+	w.hud.set_objective("Register your mark at the Sun Court. (The gold building up the hill.)")
 	Cine.place(w, "player", wg + Vector3(-2.4, 0, 2.8), Vector3(0, 0, -10))
 	await Cine.end(w)
 
@@ -904,7 +914,7 @@ static func _alley_after(w: World, me_at: Vector3, wren_at: Vector3, bram_at: Ve
 	# back to the square, by the market
 	Cine.place(w, "player", Vector3(9.0, 0, 9.0), Vector3(0, 0, -10))
 	Cine.place(w, "bram", Vector3(10.6, 0, -1.6))
-	var obj := "Present your mark at the Sun Court. (The gold building up the hill.)"
+	var obj := "Register your mark at the Sun Court. (The gold building up the hill.)"
 	Game.set_flag("objective", obj)
 	w.hud.set_objective(obj)
 	w.cine_home(0.01)
@@ -994,7 +1004,7 @@ static func _court(w: World) -> void:
 	_front(w, "hierarch", (Cine.body(w, "aldric_court").global_position + w.player.global_position) * 0.5, 30.0, 1.9)
 	await Cine.wait(w, 1.0)
 	await Cine.say(w, "hierarch", "As you wish, Ser Aldric. After the Trial of Light, as every pilgrim must.")
-	await Cine.say(w, "hierarch", "If they pass it.")
+	await Cine.say(w, "hierarch", "If they pass it, the Court will enter their name.")
 	await _solmaris(w, throne)
 	# the steps outside: Aldric catches you up, away from the courtiers
 	await Cine.fade(w, 1.0, 0.8)
@@ -1561,6 +1571,7 @@ static func _spire_after(w: World, top: Vector3, me_at: Vector3, ald_at: Vector3
 			t2.tween_property(coin, "rotation", Vector3(PI * 0.5, TAU * 3.0, 0), 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			await t2.finished
 			await Cine.wait(w, 1.0)
+	await _the_writ(w, top, me_at)
 	# Pip, on someone's shoulders, crying, and furious about it
 	var pf = Cine.fig(w, "pip_roof")
 	Cine.shot(w, Cine.body(w, "pip_roof").global_position + Vector3(1.4, 0.6, 2.0), Cine.head(w, "pip_roof"), 32.0)
@@ -1594,6 +1605,68 @@ static func _spire_after(w: World, top: Vector3, me_at: Vector3, ald_at: Vector3
 	if af2 is Figure3D:
 		(af2 as Figure3D).release(0.5)
 	v.swing_mirror(0.0, 3.0)
+
+
+## The Hierarch has gone without entering your name; Ser Aldric enters it
+## himself, as the Court's Champion, and gives you the Court's writ: a gold
+## seal on white silk, to be shown at the Throne when the Turning ends
+## (Gary, 24 October). It goes into Items (flag sun_writ).
+static func _the_writ(w: World, top: Vector3, me_at: Vector3) -> void:
+	var v := _v(w)
+	var ab := Cine.body(w, "aldric_roof")
+	var af = Cine.fig(w, "aldric_roof")
+	Cine.look(w, "aldric_roof", top + Vector3(3.0, 0, -4.0))
+	_front(w, "aldric_roof", me_at, 30.0)
+	await Cine.wait(w, 0.8)
+	Cine.look(w, "aldric_roof", me_at)
+	await Cine.say(w, "aldric_roof", "He's gone without entering you. He'd rather the Herald's word stood on its own, with nothing written beside it.")
+	await Cine.say(w, "aldric_roof", "A Champion of the Court can enter a name as well as a Hierarch can.")
+	# the seal: a gold disc stamped with the sun, on a strip of white silk
+	var writ := Node3D.new()
+	writ.name = "SunWrit"
+	var disc := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.045
+	cm.bottom_radius = 0.045
+	cm.height = 0.012
+	disc.mesh = cm
+	disc.material_override = LevelKit.mat("gold")
+	disc.rotation = Vector3(PI * 0.5, 0, 0)
+	writ.add_child(disc)
+	var silk := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(0.035, 0.22, 0.004)
+	silk.mesh = bm
+	var sm := StandardMaterial3D.new()
+	sm.albedo_color = Color(0.95, 0.94, 0.9)
+	sm.roughness = 0.6
+	silk.material_override = sm
+	silk.position = Vector3(0, -0.12, -0.008)
+	writ.add_child(silk)
+	v.add_child(writ)
+	if af is Figure3D:
+		v.remove_child(writ)
+		(af as Figure3D).hand_light(writ)
+	else:
+		writ.global_position = ab.global_position + Vector3(0, 1.2, 0.3)
+	await Cine.walk(w, "aldric_roof", me_at + (ab.global_position - me_at).normalized() * 0.8, 0.9)
+	Cine.shot(w, me_at + Vector3(1.0, 1.4, 1.2), (me_at + ab.global_position) * 0.5 + Vector3(0, 1.1, 0), 30.0)
+	await _narrate(w, "He unpins a gold seal on a strip of white silk from his belt, turns it over once, and presses it into your hand.")
+	if is_instance_valid(writ):
+		if writ.get_parent() != null:
+			writ.get_parent().remove_child(writ)
+		var pf = Cine.fig(w, "player")
+		if pf is Figure3D:
+			(pf as Figure3D).hand_light(writ)
+		else:
+			v.add_child(writ)
+			writ.global_position = me_at + Vector3(0, 1.1, 0.3)
+	_front(w, "aldric_roof", me_at, 30.0)
+	await Cine.say(w, "aldric_roof", "The Court's writ. Your name's in the book now, beside your mark, whatever His Grace thinks of it. Keep it close. They'll ask for it at the Throne.")
+	Game.set_flag("sun_writ")
+	await _narrate(w, "(The Sun Court's writ is in your Items. Every Seat must take your challenge now, and anyone may challenge you for your mark. You'll show it at the Throne when the Turning ends.)")
+	if is_instance_valid(writ):
+		writ.queue_free()
 
 
 ## The light a fallen Totem sheds, pouring into the player's open hand.

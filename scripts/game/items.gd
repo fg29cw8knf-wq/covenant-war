@@ -32,6 +32,8 @@ const ITEMS := {
 		"text": "A coin crossed with a key. Wren's proof of the ten-thousand-crown price on a blank Sigil and the hand that holds it."},
 	"wren_tag": {"kind": "story", "name": "Wren's tin tag", "flag": "wren_tag",
 		"text": "A black-market marker on a cord: real tin, a real stamp, a Shardlands fence's mark, and Wren's name. She has another."},
+	"sun_writ": {"kind": "story", "name": "The Sun Court's writ", "flag": "sun_writ",
+		"text": "A gold seal stamped with the sun, on a strip of white silk. Ser Aldric entered your name in the Sun Court's book beside your mark when the Hierarch wouldn't. With it your claim on the Throne is true: every Seat must take your challenge, and anyone may challenge you for your mark. You'll show it at the Throne when the Turning ends."},
 	"revival_candle": {"kind": "story", "name": "The Revival Candle", "flag": "trial_light_passed",
 		"text": "Given to every pilgrim who passes the Trial of Light in the Sun Temple. It has carried more than one Totem back from the dark."},
 	# ---- equipment (not yet given anywhere in the story) ---------------------------
