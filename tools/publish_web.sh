@@ -30,6 +30,10 @@ if git cat-file -e "$PARENT:films" 2>/dev/null; then
 		# this only happens if build/web grew a films folder of its own
 		echo "build/web has its own films/ folder: remove it"; exit 1; }
 fi
+# the films' sizes, kept in films/sizes.txt ("<name> <bytes>" a line): the
+# films' own files aren't downloaded, so their sizes can't be read from git
+SIZES=$(mktemp)
+git cat-file blob "$PARENT:films/sizes.txt" > "$SIZES" 2>/dev/null || : > "$SIZES"
 while [ $# -gt 0 ]; do
 	[ "$1" = "--film" ] || { echo "unknown option $1"; exit 1; }
 	name=$2; dir=$3; shift 3
@@ -43,10 +47,20 @@ while [ $# -gt 0 ]; do
 	cp -r "$dir" "$tmp/films/$name"
 	git --work-tree="$tmp" add -f "films/$name"
 	rm -rf "$tmp"
+	grep -v "^$name " "$SIZES" > "$SIZES.new" || :
+	echo "$name $(du -sb "$dir" | cut -f1)" >> "$SIZES.new"
+	mv "$SIZES.new" "$SIZES"
 done
+if [ -s "$SIZES" ]; then
+	git update-index --add --cacheinfo "100644,$(git hash-object -w "$SIZES"),films/sizes.txt"
+fi
 TREE=$(git write-tree)
-# the published size, summed from the index's own record of each file
-SIZE=$(git ls-files -s | awk '{print $2}' | git cat-file --batch-check='%(objectsize)' 2>/dev/null | awk '{s+=$1} END {print s+0}')
+# the published size: build/web's files (here, so git knows their sizes) and
+# the films' sizes from films/sizes.txt
+WEB=$(git ls-files -s | awk -F '\t' '$2 !~ /^films\//' | awk '{print $2}' | git cat-file --batch-check='%(objectsize)' | awk '{s+=$1} END {print s+0}')
+FILMS=$(awk '{s+=$2} END {print s+0}' "$SIZES")
+rm -f "$SIZES"
+SIZE=$((WEB + FILMS))
 echo "gh-pages: $(git ls-files | wc -l) files, $((SIZE / 1000000)) MB"
 [ "$SIZE" -lt 980000000 ] || { echo "Over GitHub Pages' 1 GB: not published"; exit 1; }
 COMMIT=$(git commit-tree "$TREE" -p "$PARENT" -m "$MSG")
