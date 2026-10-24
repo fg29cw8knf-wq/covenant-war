@@ -265,7 +265,10 @@ static func that_day(w: World) -> void:
 	await Cine.say(w, "", "[i]Bread, a flint, a spare shirt. The white card, wrapped in a handkerchief and buttoned into the inside pocket.[/i]")
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.4)
-	Cine.shot(w, wall + Vector3(0.5, 1.2, -1.4), wall + Vector3(0.2, 0.9, 0), 40.0)
+	# he turns on his knees to the player for it: from the middle of the
+	# room, his face (from behind or beside him, the cask hid it all)
+	Cine.look(w, "bram", w.player.global_position)
+	Cine.shot(w, wall + Vector3(3.1, 1.4, -0.4), wall + Vector3(0.7, 0.95, 0), 34.0)
 	await Cine.say(w, "bram", "Twenty-two marks. I cut them the year we came and I've never once had to use them.")
 	# he presses the last
 	var last: MeshInstance3D = marks[marks.size() - 1]
