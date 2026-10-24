@@ -123,15 +123,18 @@ static func build(v: AshfordVillage) -> Dictionary:
 	house.name = "MillHouse"
 	root.add_child(house)
 	var wheel: Node3D = null
+	# where the house stands: its east wall on the race's west bank, so the
+	# wheel turns against it (Gary's model, its origin at the middle of its
+	# base and its long side north to south, stands in the same place)
+	var L := 7.0
+	var D := 5.5
+	var H := 3.4
+	house.position = Vector3(race_x - race_w * 0.5 - 0.5 - D * 0.5, 0, -1.0)
 	if ResourceLoader.exists(MILL_MODEL):
 		var m: Node3D = load(MILL_MODEL).instantiate()
 		house.add_child(m)
 		wheel = m.find_child("Wheel", true, false) as Node3D
 	else:
-		var L := 7.0
-		var D := 5.5
-		var H := 3.4
-		house.position = Vector3(race_x - race_w * 0.5 - 0.5 - D * 0.5, 0, -1.0)
 		v.box(house, Vector3(D, H, L), Vector3(0, H * 0.5, 0), v.mats.stone)
 		# a timbered upper storey and a steep thatch
 		v.box(house, Vector3(D + 0.1, 0.25, L + 0.1), Vector3(0, H, 0), v.mats.beam)
