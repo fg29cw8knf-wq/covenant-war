@@ -521,8 +521,15 @@ def hold_arm(clip, src, side):
     """Keeps one arm (the hand on a walking stick) moving as it does in clip
     `src` (idle) for the whole of `clip`, so the stick doesn't swing through
     the body: src runs a whole number of times over the clip so a loop still
-    meets its start, or stays at its first moment in a short clip (a step)."""
+    meets its start, or stays at its first moment in a short clip (a step).
+    `src` None keeps the arm as it is in the rest pose (the sculpted model's,
+    with the hand on the stick): for a model whose clips were retargeted from
+    a library and hang that hand loose, Old Nell's of 25 October."""
     n = len(clip.times)
+    if src is None:
+        for nm in arm_bones(side):
+            clip.rot[nm] = np.repeat(I4[None], n, 0)
+        return clip
     L = clip.length
     if L < 0.5 * src.length:
         u = np.zeros(n)
@@ -996,7 +1003,7 @@ def build(args):
         side, src_nm, which = spec.split(":")
         for nm in which.split(","):
             if nm in clips:
-                hold_arm(clips[nm], clips[src_nm], side)
+                hold_arm(clips[nm], None if src_nm == "rest" else clips[src_nm], side)
         report.append("%s arm kept as in %s in %s" % (side.lower(), src_nm, which))
     for spec in args.head_up:
         deg, _, which = spec.partition(":")
@@ -1094,7 +1101,7 @@ def main():
     ap.add_argument("--texture-size", type=int, default=2048)
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
     ap.add_argument("--hold-arm", action="append", default=[],
-                    help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM (a walking stick's hand)")
+                    help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM, or in the rest pose (FROM = rest), in these clips (a walking stick's hand)")
     ap.add_argument("--normal-map", action="store_true", help="use the model's normal map (off by default: see above)")
     ap.add_argument("--double-sided", action="store_true")
     ap.add_argument("--free-of-arms", default="", help="R,G,B:TOL (0-1) a bag or strap of about this colour moves with the body, not an arm")

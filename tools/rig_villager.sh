@@ -122,13 +122,19 @@ tilly)
 	;;
 nell)
 	# a small, stooped old woman with a walking stick (part of her mesh, in her
-	# right hand): that arm stays as in her idle wherever it would swing the
-	# stick through her (talking, cheering, walking...)
+	# right hand). Gary's 25 October model (Nell_model.glb, her new look from
+	# the Cast tab: the blue headscarf, the cream shawl, the plum dress; a
+	# 21-joint rig with 22 clips retargeted from a library, 0.9 m tall as made)
+	# replaced his 18 October one. Its clips hang her right hand loose at her
+	# side, so the stick (rigid to that hand) would point back through her
+	# skirt: that arm stays as in the rest pose, hand on the stick, wherever
+	# she stands, walks, talks, cheers or dances; her wave and her fall move
+	# it (she waves the stick).
 	python3 tools/rig_character.py "$src" "$out" --name "Old Nell" --height 1.50 \
 		--cycle walk --cycle run --seam idle --seam dance \
 		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
 		--borrow assets/models/characters/bram.glb:lift \
-		--hold-arm Right:idle:walk,run,talk,cheer,look_up,duel_idle,play_card,victory,defeat \
+		--hold-arm Right:rest:idle,walk,run,sneak,talk,cheer,dance,look_up,duel_idle,play_card,victory,defeat,lift \
 		--head-up=-12:walk,run
 	# the stick itself follows her right hand alone (AssetFurnace bound its
 	# top to her fingers and its foot to her toes, and it bent as she danced)

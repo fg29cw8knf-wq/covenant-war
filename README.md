@@ -748,7 +748,8 @@ can play a scene while it's up: `{"say": ..., "during": "<scene>", "at":
 
 Bram, Corin, Tam, Tilly, Old Nell, Hob and the player are their 3D models
 everywhere (`scripts/world/figure_3d.gd`; Tam and Tilly since 16 October,
-Nell since 18 October, Hob since 19 October, and Bram Gary's own AssetFurnace
+Nell since 18 October (her new look, the Cast tab's Nell Hayes, since 25
+October), Hob since 19 October, and Bram Gary's own AssetFurnace
 model, in place of the 11 October stand-in, since 20 October); the crowd's farmer,
 merchant and trader are Gary's 22 October models (`farmer.glb`, `merchant.glb`,
 `trader.glb`: the Lantern Night crowd and the P1 dancers with those looks are
@@ -811,7 +812,8 @@ same 21 clips as look A's, retargeted from a library), built by
 (52 joints), C 1.68 m (40 joints, three fingers a hand), D 1.82 m (52 joints).
 `Figure3D.OWN_GAIT` has their paces.
 
-Corin, Tam, Tilly and Old Nell are Gary's 18 October AssetFurnace models,
+Corin, Tam and Tilly are Gary's 18 October AssetFurnace models (Old Nell was
+too, until her 25 October one, below),
 Hob his 19 October one, Bram his 20 October one and the crowd's farmer,
 merchant and trader his 22 October ones (21 clips each, the farmer and the
 trader 52-joint rigs with Player B's clips retargeted, the merchant a 34-joint
@@ -835,15 +837,23 @@ October model (`git show 0afe166:assets/models/characters/corin.glb`). Each
 keeps its own clips besides the game's: Corin cheer, dance, death,
 fight_stance, flying_kick, hit_react, jump, kata, kick, punch and punch_combo;
 Tam and Tilly jump,
-sit, wave, cheer, dance, kick, punch and death; Nell jump, sit, wave, cheer,
-dance, punch and death. Their rigs are smaller than the player's: Tam's and
-Nell's hands are a thumb and the fingers as one, Tilly's a thumb and two
-groups, and Nell has 29 bones in all. Nell's walking stick is part of her
-mesh, in her right hand, so that arm stays as in her idle when she talks,
-cheers, walks or runs; the stick itself is bound to her right hand alone
-(`tools/stick_weights.py`, 23 October: AssetFurnace had tied its top to her
-fingers and its foot to her toes, and it bent as she danced), so she pats
-the bench with her left hand. Tilly's leather satchel hangs by her left hand, so
+sit, wave, cheer, dance, kick, punch and death. Their rigs are smaller than
+the player's: Tam's hands are a thumb and the fingers as one, Tilly's a thumb
+and two groups. **Old Nell** is Gary's 25 October model (`Nell_model.glb`,
+her new look from the Cast tab: Nell Hayes, the faded blue headscarf, the
+cream knitted shawl, the plum dress, the carved stick in her right hand; it
+replaced his 18 October one, `git show 9cd9cdc:assets/models/characters/nell.glb`):
+a 21-joint rig with no fingers, 0.9 m tall as made and set to 1.50 m, with 22
+clips retargeted from a library (the player's 21 and a `get_out_of_bed`).
+Her walking stick is part of her mesh, in her right hand; the library's
+clips hang that hand loose at her side, which would point the stick back
+through her skirt, so that arm stays as it is in her rest pose (hand on the
+stick) in her idle, walk, run, talk, cheer, dance, look_up and duel clips
+(`--hold-arm Right:rest:...`); her wave lifts the stick (it reads as her
+waving it) and her fall takes it down with her. The stick itself is bound to
+her right hand alone (`tools/stick_weights.py`, 23 October: AssetFurnace
+ties a stick's top to the fingers and its foot to the toes, and it bent as
+she danced), so she pats the bench with her left hand. Tilly's leather satchel hangs by her left hand, so
 AssetFurnace bound part of it (and of its strap over her right shoulder) to
 her arms, and it stretched after her hand when she held her card out:
 `--free-of-arms R,G,B:TOL` gives the big patches of the leather's colour the
