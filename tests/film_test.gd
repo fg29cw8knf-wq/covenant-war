@@ -16,7 +16,7 @@ extends Node
 ## four boxes to choose at the campfire, and flag=<name> to set a story flag
 ## first (flag=tam_told, flag=want_solhaven). "qa" watches the film for
 ## glitches as it plays (QAMonitor: jumps, slides, pops after cuts, two lines
-## at once, music, hitches); "notap" leaves the subtitles to go by themselves,
+## at once, music, hitches); "notap" leaves each subtitle up for its reading time,
 ## as they do for a player who just watches; "frames=a-b" (or
 ## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
 ## close look at a moment the watch pointed at. "ui=1.3" plays it at the
@@ -43,6 +43,7 @@ var _choice := 0
 var _box := 1
 var _qa = null   # QA monitor (tests/qa_monitor.gd)
 var _notap := false
+var _line_secs := 0.0   # how long the subtitle now up has been up (game time)
 var _stop := 0   # stop=<frames>: quit after that many frames (a recording of part of a part)
 var _from := -1
 var _to := -1
@@ -186,11 +187,21 @@ func _process(_d: float) -> void:
 		# sees each one on screen
 		if ov._waiting:
 			_line_frames += 1
-			if _line_frames > 12 and not _notap:
+			_line_secs += _d
+			if _notap:
+				# as a player who just watches reads it: up for its reading
+				# time (game time, so a slow recording still keeps it)
+				var plain := ov._line.get_parsed_text()
+				if _line_secs > CineOverlay.READ_BASE + plain.length() * CineOverlay.READ_PER_CHAR:
+					_line_frames = 0
+					_line_secs = 0.0
+					ov._next.emit()
+			elif _line_frames > 12:
 				_line_frames = 0
 				ov._next.emit()
 		else:
 			_line_frames = 0
+			_line_secs = 0.0
 		if ov._choices.visible and ov._choices.get_child_count() > 0:
 			ov._chosen.emit(mini(_choice, ov._choices.get_child_count() - 1))
 		for b in ov.find_children("*", "Button", true, false):
@@ -203,6 +214,9 @@ func _process(_d: float) -> void:
 	# the cart off Corin (v7): heave, heave, then pull in the gold
 	for q in get_tree().root.find_children("*", "CartHeave", true, false):
 		var qh := q as CartHeave
+		if not qh.has_meta("film_seen"):
+			qh.set_meta("film_seen", true)
+			print("FILM: the cart heave at frame ", _frame)
 		if qh.phase == "heave" and _frame % 2 == 0:
 			qh.heave()
 		elif qh.phase == "pull":
