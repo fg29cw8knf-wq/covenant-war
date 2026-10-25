@@ -1078,7 +1078,8 @@ static func _clear_boxes(w: World, who: String) -> void:
 	var box = w.get_meta("box_" + who, null)
 	if box != null and is_instance_valid(box):
 		box.queue_free()
-	w.remove_meta("box_" + who)
+	if w.has_meta("box_" + who):
+		w.remove_meta("box_" + who)
 	var f = Cine.fig(w, who)
 	var b := Cine.body(w, who)
 	for host in [f, b]:

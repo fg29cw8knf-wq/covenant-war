@@ -606,8 +606,12 @@ v7 wins; the parts it changed:
   cheering his own loss (`AshfordDay.after_lantern`).
 - **The afternoon** (`ashford_day.gd`, `AshfordDay`): Tam at his watermill
   down the lane (`MillSet`, a set of its own at x 700, reached by the lane's
-  sign north-east of the green), his hub, the letter on screen, the Ledger
-  note; Tilly's moth by the well (it circles her head) and the Standing note;
+  sign north-east of the green; since the evening of 25 October Gary's own
+  mill house and waterwheel, `assets/models/ashford/watermill.glb` and
+  `waterwheel.glb`, the house on a stone footing so the axle hole in its
+  east wall meets the wheel's axle, its windows lit in the evening;
+  `tests/mill_shot.tscn` takes its stills), his hub, the letter on screen,
+  the Ledger note; Tilly's moth by the well (it circles her head) and the Standing note;
   Nell's hub; friendly games with Tam (River Hound) and Nell (Wards), no
   experience, repeatable (`ashford.gd FRIENDLY`). When all three are seen,
   talking to Bram makes the sun go down (`AshfordDay.sunset`).

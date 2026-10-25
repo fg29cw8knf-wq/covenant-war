@@ -9,9 +9,14 @@ extends RefCounted
 ## banks with a low wall to sit on, sacks and a barrel by the door, oaks round
 ## it, and the lane back up to the green. Tam's afternoon is here (his letter,
 ## his friendly game), and Corin's evening on the race wall (his button).
-## Gary's own watermill takes the drawn one's place the moment it exists
-## (assets/models/ashford/watermill.glb, its wheel a node named "Wheel" that
-## turns on its x axis, or waterwheel.glb on its own).
+## Gary's own watermill (25 October 2026) stands here in the drawn one's place:
+## his mill house (assets/models/ashford/watermill.glb: grey fieldstone under a
+## thatched roof, 6.5 by 7.8 m and 6.4 m to the ridge, its origin at the
+## middle of its base, the door in its south gable, the axle hole low in its
+## east wall) on a stone footing that brings that hole up to the wheel's
+## axle, and his waterwheel (waterwheel.glb: 3.8 m across and 1.2 m wide,
+## wet oak and wrought iron, its axle along x) turning in the race against
+## that wall. Either model missing, the drawn stand-in takes its place.
 ##
 ##   var m := MillSet.build(village)      # once; then m.root, m.tam, m.corin...
 ##   MillSet.enter(w) / MillSet.leave(w)  # a haze over it while the player's there
@@ -26,6 +31,18 @@ const WHEEL_MODEL := "res://assets/models/ashford/waterwheel.glb"
 const WHEEL_R := 1.9
 const WHEEL_W := 0.9
 const WHEEL_SPEED := 0.55      # radians a second: a slow, heavy turn (the river's gone sour)
+## The wheel's axle, above the set's floor: the lower third of the wheel is
+## under the race's water, in its pit.
+const WHEEL_Y := WHEEL_R - 0.55
+## Gary's mill house, measured from its origin: its east wall (the roof's
+## eaves reach 0.43 m past it), the middle of the axle hole through that wall
+## (0.26 m across), and the walls' footprint. It stands on a stone footing
+## MILL_FOOT high, so the hole meets the wheel's axle, with two steps up to
+## its door (in the middle of the south gable; its sill reaches 3.69 m south).
+const MILL_WALL_E := 2.80
+const MILL_HOLE := Vector3(2.80, 0.84, -0.50)
+const MILL_WALLS := Vector2(5.6, 7.1)
+const MILL_FOOT := WHEEL_Y - MILL_HOLE.y
 ## Where people stand, in the set's own frame (it isn't turned, so the world
 ## spot is AT + this): Tam at the mill's door by the wheel, the player coming
 ## down the lane, Corin on the race wall in the evening.
@@ -123,18 +140,42 @@ static func build(v: AshfordVillage) -> Dictionary:
 	house.name = "MillHouse"
 	root.add_child(house)
 	var wheel: Node3D = null
-	# where the house stands: its east wall on the race's west bank, so the
-	# wheel turns against it (Gary's model, its origin at the middle of its
-	# base and its long side north to south, stands in the same place)
+	# where the house stands: its east wall against the race's west bank, so
+	# the wheel turns against it; the wheel's axle in the race, a little
+	# north of the door
+	var bank_out := race_x - race_w * 0.5 - 0.445
+	var wheel_pos := Vector3(race_x - 0.15, WHEEL_Y, -1.2)
 	var L := 7.0
 	var D := 5.5
 	var H := 3.4
-	house.position = Vector3(race_x - race_w * 0.5 - 0.5 - D * 0.5, 0, -1.0)
+	var glass: Array = []    # the model's window panes, lit in the evening
 	if ResourceLoader.exists(MILL_MODEL):
+		# Gary's mill house on its stone footing, the axle hole in its east
+		# wall at the wheel's axle; two steps up to the door
+		house.position = Vector3(bank_out - MILL_WALL_E, MILL_FOOT, -1.0)
+		wheel_pos.z = house.position.z + MILL_HOLE.z
+		var foot := Vector3(MILL_WALLS.x + 0.3, MILL_FOOT, MILL_WALLS.y + 0.3)
+		v.box(root, foot, Vector3(house.position.x, MILL_FOOT * 0.5, house.position.z), v.mats.stone)
+		var door_z := house.position.z + MILL_WALLS.y * 0.5 + 0.15
+		v.box(root, Vector3(1.7, MILL_FOOT * 0.5, 0.6), Vector3(house.position.x, MILL_FOOT * 0.75, door_z + 0.3), v.mats.stone)
+		v.box(root, Vector3(1.7, MILL_FOOT * 0.5, 1.2), Vector3(house.position.x, MILL_FOOT * 0.25, door_z + 0.6), v.mats.stone)
 		var m: Node3D = load(MILL_MODEL).instantiate()
 		house.add_child(m)
+		for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+			# its window glass, lit from inside in the evening (lamps)
+			for si in mi.mesh.get_surface_count():
+				var sm := mi.get_active_material(si)
+				if sm is StandardMaterial3D and "Glass" in sm.resource_name:
+					var pane: StandardMaterial3D = sm.duplicate()
+					pane.emission_enabled = true
+					pane.emission = Color(1.0, 0.62, 0.28)
+					pane.emission_energy_multiplier = 0.0
+					mi.set_surface_override_material(si, pane)
+					glass.append(pane)
 		wheel = m.find_child("Wheel", true, false) as Node3D
 	else:
+		house.position = Vector3(race_x - race_w * 0.5 - 0.5 - D * 0.5, 0, -1.0)
 		v.box(house, Vector3(D, H, L), Vector3(0, H * 0.5, 0), v.mats.stone)
 		# a timbered upper storey and a steep thatch
 		v.box(house, Vector3(D + 0.1, 0.25, L + 0.1), Vector3(0, H, 0), v.mats.beam)
@@ -160,15 +201,18 @@ static func build(v: AshfordVillage) -> Dictionary:
 		wheel = Node3D.new()
 		wheel.name = "Wheel"
 		root.add_child(wheel)
-		wheel.position = Vector3(race_x - 0.15, WHEEL_R - 0.55, -1.2)
+		wheel.position = wheel_pos
 		if ResourceLoader.exists(WHEEL_MODEL):
-			wheel.add_child((load(WHEEL_MODEL) as PackedScene).instantiate())
+			var gw: Node3D = (load(WHEEL_MODEL) as PackedScene).instantiate()
+			wheel.add_child(gw)
+			_on_axle(gw)
 		else:
 			_drawn_wheel(v, wheel)
 		# the axle into the wall
 		v.cyl(root, 0.14, 0.14, 1.4, wheel.position + Vector3(-0.9, 0, 0), v.mats.beam_v, 10, Vector3(0, 0, PI * 0.5))
-	# sacks, a barrel and a cart by the door; oaks round the meadow
-	var props := [["sacks", Vector3(-1.4, 0, 3.6), 0.4], ["crate", Vector3(-4.8, 0, 3.0), 1.1], ["hay_cart", Vector3(-8.5, 0, 6.5), 2.4]]
+	# sacks by the door (east of its steps, where Tam stands), a barrel and
+	# a cart; oaks round the meadow
+	var props := [["sacks", Vector3(-0.35, 0, 3.5), 0.4], ["crate", Vector3(-4.8, 0, 3.0), 1.1], ["hay_cart", Vector3(-8.5, 0, 6.5), 2.4]]
 	for p in props:
 		var path := "res://assets/models/ashford/%s.glb" % p[0]
 		if ResourceLoader.exists(path):
@@ -215,11 +259,11 @@ static func build(v: AshfordVillage) -> Dictionary:
 		ol.position = l.position + Vector3(0, 0.3, 0)
 		root.add_child(ol)
 		lamps.append([l, ol])
-	var out := {"root": root, "wheel": wheel, "water_mat": wm, "lamps": lamps,
+	var out := {"root": root, "wheel": wheel, "water_mat": wm, "lamps": lamps, "glass": glass,
 		"floor_y": AT.y,
 		# where people stand: Tam by the wheel, the player arriving down the lane
 		"tam": root.to_global(TAM),
-		"wheel_at": root.to_global(Vector3(race_x - 0.15, WHEEL_R - 0.55, -1.2)),
+		"wheel_at": root.to_global(wheel_pos),
 		"arrive": root.to_global(ARRIVE),
 		"lane_end": root.to_global(Vector3(-4.2, 0, 21.0)),
 		"wall_seat": wall_seat,
@@ -227,7 +271,7 @@ static func build(v: AshfordVillage) -> Dictionary:
 		# walking it (AshfordP1.walk_room): the meadow by the mill, round the house, the race and the props
 		"walk": Rect2(-9.0, -4.0, 10.6, 26.0),
 		"blocks": [[Vector2(house.position.x, house.position.z - 1.8), 3.2], [Vector2(house.position.x, house.position.z + 1.8), 3.2],
-			[Vector2(-1.4, 3.6), 0.8], [Vector2(-4.8, 3.0), 0.7], [Vector2(-8.5, 6.5), 1.8], [Vector2(-2.9, 3.3), 0.5],
+			[Vector2(-0.35, 3.5), 0.8], [Vector2(-4.8, 3.0), 0.7], [Vector2(-8.5, 6.5), 1.8], [Vector2(-2.9, 3.3), 0.5],
 			[Vector2(race_x - race_w * 0.5 - 0.45, 7.5), 0.45]],
 		"keep_out": [Rect2(race_x - race_w * 0.5 - 0.5, -40, race_w + 2.0, 80)]}
 	v.set_meta("mill_set", out)
@@ -236,6 +280,23 @@ static func build(v: AshfordVillage) -> Dictionary:
 	spin.water = wm
 	root.add_child(spin)
 	return out
+
+
+## Gary's wheel set on its axle: its meshes are moved so the middle of their
+## bounds sits at the wheel node's origin (his export lifts the mesh 1.9 m, to
+## stand it on the ground), so turning the node turns the wheel about its hub
+## rather than swinging it round a point under it.
+static func _on_axle(inst: Node3D) -> void:
+	var box := AABB()
+	var first := true
+	var inv := inst.global_transform.affine_inverse()
+	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		var b := (inv * mi.global_transform) * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	if not first:
+		inst.position -= box.get_center()
 
 
 ## The wheel drawn until Gary's comes: two iron-banded oak rims, sixteen
@@ -265,9 +326,12 @@ static func _drawn_wheel(v: AshfordVillage, wheel: Node3D) -> void:
 	v.cyl(wheel, 0.22, 0.22, WHEEL_W + 0.3, Vector3.ZERO, iron, 12, Vector3(0, 0, PI * 0.5))
 
 
-## Light the race wall's lanterns (the evening) or put them out.
+## Light the race wall's lanterns and the mill's windows (the evening) or
+## put them out.
 static func lamps(v: AshfordVillage, on: bool) -> void:
 	var m: Dictionary = build(v)
+	for pane in m.glass:
+		(pane as StandardMaterial3D).emission_energy_multiplier = 1.8 if on else 0.0
 	for pair in m.lamps:
 		(pair[1] as OmniLight3D).light_energy = 1.4 if on else 0.0
 		var mm := (pair[0] as Node3D).get_node_or_null("Paper") as MultiMeshInstance3D
