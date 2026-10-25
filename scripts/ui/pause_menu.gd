@@ -779,36 +779,39 @@ func _controls() -> Control:
 
 # =========================================================== how to duel ===
 
-## Every lesson Bram has given, in the order he gave it (Game.lessons()),
-## under the heading each belongs to, with the element chart once he's shown it.
+## The manual (DuelManual): a chapter for everything the game has taught so
+## far, in plain words, with the element chart once it's been shown. (Until
+## 25 October this page listed Bram's lines as he'd said them; Gary: "it
+## needs to be a proper easy-to-read manual".)
 func _howto() -> Control:
-	var lessons: Array = Game.lessons()
-	if lessons.is_empty():
-		return _empty_page("How to Duel", "Bram hasn't taught you anything yet. Every lesson he gives is kept here, so you can read it again.")
+	var secs: Array = DuelManual.sections()
+	if secs.is_empty():
+		return _empty_page("How to Duel", "Nothing to read yet. Once you've a deck in your hands, everything you're shown about duelling is set down here, chapter by chapter, so you can read it again.")
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
-	v.add_child(_wrap("Everything Bram has told you about duelling, in the order he said it.", 24, UITheme.TEXT_DIM))
-	var groups := []
-	for l in lessons:
-		if not groups.has(l.group):
-			groups.append(l.group)
-	for g in groups:
-		v.add_child(_gap(10))
-		v.add_child(UITheme.label(String(g).to_upper(), 30, UITheme.GOLD, "display_bold"))
-		for l in lessons:
-			if l.group != g:
-				continue
-			var r := HBoxContainer.new()
-			r.add_theme_constant_override("separation", 16)
-			var who := UITheme.label(String(l.who).to_upper(), 23, UITheme.GOLD_DIM, "bold")
-			who.custom_minimum_size = Vector2(110, 0)
-			r.add_child(who)
-			var say := UITheme.label(String(l.say), 25, UITheme.TEXT)
-			say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-			say.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			r.add_child(say)
-			v.add_child(r)
-		if g == "The elements":
+	v.add_theme_constant_override("separation", 8)
+	v.add_child(_wrap("Everything you've been shown about duelling so far, set out plainly. New chapters appear as you learn more.", 24, UITheme.TEXT_DIM))
+	for s in secs:
+		v.add_child(_gap(16))
+		v.add_child(UITheme.label(String(s.title).to_upper(), 30, UITheme.GOLD, "display_bold"))
+		for item in s.body:
+			if item is Dictionary and (item as Dictionary).has("bullets"):
+				for b in item.bullets:
+					var r := HBoxContainer.new()
+					r.add_theme_constant_override("separation", 14)
+					var dot := UITheme.label("•", 25, UITheme.GOLD_DIM, "bold")
+					dot.custom_minimum_size = Vector2(24, 0)
+					r.add_child(dot)
+					var say := UITheme.label(String(b), 25, UITheme.TEXT)
+					say.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+					say.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+					r.add_child(say)
+					v.add_child(r)
+			else:
+				var p := UITheme.label(String(item), 25, UITheme.TEXT)
+				p.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				v.add_child(p)
+		if bool(s.get("chart", false)):
 			var chart := ElementChart.new()
 			chart.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 			v.add_child(chart)

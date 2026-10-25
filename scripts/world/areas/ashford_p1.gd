@@ -551,9 +551,13 @@ static func pose(w: World) -> void:
 			w.set_meta("tam_letter", tl)
 		var corin = Cine.fig(w, "corin")
 		if corin is Figure3D:
-			attach(corin, "LeftHand", card_boxes(v), Vector3(0.0, 0.07, 0.05), Vector3(0.0, 0.0, 0.3))
+			# his card boxes on their strap at his hip, and the clerkship
+			# letter tucked into his coat ("What's that letter tucked into
+			# your coat?"): until 25 October both sat on his hand bones and
+			# stuck out of his arms (Gary)
+			attach(corin, "Hips", card_boxes(v), HIP_BOXES, HIP_BOXES_ROT)
 			var cl := letter(v)
-			attach(corin, "RightHand", cl, Vector3(0.0, 0.08, 0.05), Vector3(0.3, 0.4, 1.2))
+			attach(corin, "Spine2", cl, COAT_LETTER, COAT_LETTER_ROT)
 			w.set_meta("corin_letter", cl)
 	nell_sit(w)
 	if Game.flag("ash_started") and not w.get_meta("bram_seated", false) and not w.has_meta("bram_stop") and not w.has_meta("bram_to_stool"):
@@ -562,6 +566,16 @@ static func pose(w: World) -> void:
 ## Where a letter sits in a shirt pocket, in the chest bone's own space.
 const POCKET := Vector3(0.09, 0.07, 0.13)
 const POCKET_ROT := Vector3(-0.2, 0.0, 1.45)
+## Where Corin's strapped card boxes hang at his hip, in the Hips bone's own
+## space (x to his left, y up, z ahead): on his left side, under the belt,
+## turned to lie flat against the hip.
+const HIP_BOXES := Vector3(0.22, -0.06, 0.03)
+const HIP_BOXES_ROT := Vector3(0.0, PI * 0.5, 0.0)
+## Where his clerkship letter is tucked into his vest, in the chest bone's
+## space: inside the vest's right panel, standing, leaning back into him, so
+## only its top corner shows above the vest's edge (tests/corin_props_shot.tscn).
+const COAT_LETTER := Vector3(-0.075, 0.02, 0.095)
+const COAT_LETTER_ROT := Vector3(0.35, 0.0, -1.45)
 
 
 ## Bram on his stool by the Lantern, facing the green's south side.
@@ -1234,11 +1248,14 @@ static func _attic(w: World) -> void:
 	# bed, and the white light that takes it; cut to black on the drum
 	if DREAM_SECS > 0.0:
 		await ov.dream_sky(DREAM_SECS)
-	await Cine.wait(w, 0.5)
-	Cine.fade(w, 0.0, 1.4)
+	# (25 October, Gary: getting out of bed "a little bit faster": the whole
+	# rise, from the fade-up to standing, is about seven seconds now where
+	# it was twelve; each movement is the same, just brisker)
+	await Cine.wait(w, 0.2)
+	Cine.fade(w, 0.0, 1.0)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
-		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 4.0, 46.0)
-	await Cine.wait(w, 3.0)
+		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
+	await Cine.wait(w, 1.4)
 	# wakes to the drum: sits up, throws the blanket back, swings his legs
 	# over the side of the bed, sits there a breath, then stands up off it
 	var side: Vector3 = a.bed_side
@@ -1247,7 +1264,7 @@ static func _attic(w: World) -> void:
 		# his right hand finds the blanket's hem beside him and throws it
 		# back across him to the wall, the cloth following the hand
 		# (BlanketThrow); then the hand goes down on the mattress and he
-		# pushes himself up on it, slowly (he's only just awake)
+		# pushes himself up on it
 		var hand := Node3D.new()
 		hand.name = "BedHand"
 		w.add_child(hand)
@@ -1256,47 +1273,47 @@ static func _attic(w: World) -> void:
 		if bl is MeshInstance3D and bl.has_meta("rows"):
 			var corner := BlanketThrow.corner_of(bl)
 			hand.global_position = corner
-			fig.reach(null, hand, 0.45)
-			await Cine.wait(w, 0.45)
-			var bt := BlanketThrow.start(bl, a.blanket_off, hand, 1.1)
+			fig.reach(null, hand, 0.35)
+			await Cine.wait(w, 0.3)
+			var bt := BlanketThrow.start(bl, a.blanket_off, hand, 0.8)
 			var to := BlanketThrow.corner_in_heap(bl, a.blanket_off)
 			var sweep := w.create_tween()
 			sweep.tween_method(func(u: float) -> void:
-				hand.global_position = corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.22, 0), 0.0, 1.0, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				hand.global_position = corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.22, 0), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await sweep.finished
 			bt.let_go()
 			var down := w.create_tween()
-			down.tween_property(hand, "global_position", on_mattress, 0.45).set_trans(Tween.TRANS_SINE)
+			down.tween_property(hand, "global_position", on_mattress, 0.3).set_trans(Tween.TRANS_SINE)
 			await down.finished
 		else:
 			hand.global_position = on_mattress
-			fig.reach(null, hand, 0.5)
-			await Cine.wait(w, 0.35)
-		fig.sit_long(a.lie_top, 1.5)
-		await Cine.wait(w, 1.7)
+			fig.reach(null, hand, 0.35)
+			await Cine.wait(w, 0.25)
+		fig.sit_long(a.lie_top, 1.0)
+		await Cine.wait(w, 1.05)
 		# sat up: a breath, then he slides to the edge and turns to face it,
 		# his legs still out along the mattress (they swing down only once
 		# they're over the edge: nothing goes through the bed), the hand
 		# coming off the mattress as he does
+		await Cine.wait(w, 0.2)
+		await fig.shift_seat(a.edge_at, Vector3.BACK, 0.8, 0.05)
+		fig.sit(a.edge_top, 0.6)
+		fig.let_go(0.6)
 		await Cine.wait(w, 0.5)
-		await fig.shift_seat(a.edge_at, Vector3.BACK, 1.2, 0.05)
-		fig.sit(a.edge_top, 0.8)
-		fig.let_go(0.8)
-		await Cine.wait(w, 0.8)
-		# a moment on the edge, then up, a little unsteady, and away from it
-		await Cine.wait(w, 0.4)
-		fig.stand(0.9)
+		# a moment on the edge, then up and away from it
+		await Cine.wait(w, 0.15)
+		fig.stand(0.7)
 		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await tw.finished
 		if is_instance_valid(hand):
 			hand.queue_free()
 	else:
 		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.9).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.7).set_trans(Tween.TRANS_SINE)
 		await tw.finished
 	Cine.look(w, "player", a.window)
-	await Cine.wait(w, 0.7)
+	await Cine.wait(w, 0.4)
 	# Morrowen, over the frosty morning (v7)
 	await w.run_steps(ATTIC, null)
 	w.hud.dialogue.close()
@@ -1354,19 +1371,23 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	await wipe.finished
 	if pf is Figure3D:
 		(pf as Figure3D).let_go(0.4)
-	# the camera in the glass, looking back at him: the face, and under the
-	# collar the mark like a broken seal
-	# (just in front of the glass: from behind it the frost and the letters
-	# filled the shot instead of his face)
-	var face := Cine.head(w, "player") - Vector3(0, 0.16, 0)
-	var in_glass := glass_at + (face - glass_at).normalized() * 0.12
-	Cine.move(w, in_glass, face, 0.9, 54.0)
+	# the camera in the glass, looking back at him through the mirror's
+	# oval: the face, and under the collar the mark like a broken seal. A cut
+	# (until 25 October the camera glided there through his head and came
+	# out as a wide shot up his chin: Gary, "the camera angle goes weird");
+	# the picture is masked to the oval, so it reads as his reflection.
+	var face := Cine.head(w, "player") - Vector3(0, 0.08, 0)
+	var in_glass := glass_at + (face - glass_at).normalized() * 0.1
+	in_glass.y = glass_at.y + 0.1
+	mirror_mask(w, true)
+	Cine.shot(w, in_glass, face, 44.0)
 	SealMark.show_on(w, true)
 	await Cine.wait(w, 1.6)
 	# the frost already creeping back; without thinking he writes his name in it
 	var back := w.create_tween()
 	back.tween_method(func(k: float) -> void: fog_mat.albedo_color.a = k, 0.12, 0.6, 1.6)
-	Cine.move(w, over, glass_at, 0.8, 36.0)
+	mirror_mask(w, false)
+	Cine.shot(w, over, glass_at, 36.0)
 	await Cine.wait(w, 0.9)
 	hand.global_position = glass_at + toward + Vector3(0, 0.05, 0.1)
 	if pf is Figure3D:
@@ -1385,12 +1406,17 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	Game.set_flag("named")
 	Game.save_game()
 	await w.run_steps(NAMED, null)
-	# the questions he asks the glass; stepping away moves on
-	var head := Cine.head(w, "player") - Vector3(0, 0.1, 0)
-	Cine.move(w, glass_at + (head - glass_at).normalized() * 0.12, head, 0.8, 52.0)
+	# the questions he asks the glass (his reflection, in the oval again);
+	# stepping away moves on
+	var head := Cine.head(w, "player") - Vector3(0, 0.08, 0)
+	var in_glass2 := glass_at + (head - glass_at).normalized() * 0.1
+	in_glass2.y = glass_at.y + 0.1
+	mirror_mask(w, true)
+	Cine.shot(w, in_glass2, head, 44.0)
 	await w.run_steps(REFLECTION, null)
 	w.hud.dialogue.close()
 	SealMark.show_on(w, false)
+	mirror_mask(w, false)
 	# a step back from the glass, and Bram's voice up through the floorboards
 	var away := w.player.global_position + (w.player.global_position - glass_at).normalized() * 0.5
 	away.y = w.player.global_position.y
@@ -1402,6 +1428,56 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	w.hud.dialogue.close()
 	await Cine.wait(w, 0.3)
 	await Cine.fade(w, 1.0, 0.7)
+
+
+## The mirror's oval over the picture: dark wood outside a soft-edged oval
+## the shape of the glass (taller than wide, as the oval is), its rim a
+## thin ring, so a shot taken from the glass reads as the reflection in it.
+## Drawn under the dialogue box (layer 9), so the questions sit over it.
+static func mirror_mask(w: World, on: bool) -> void:
+	var layer: CanvasLayer = w.get_meta("mirror_mask", null)
+	if not on:
+		if layer != null and is_instance_valid(layer):
+			var r: ColorRect = layer.get_child(0)
+			var tw := w.create_tween()
+			tw.tween_property(r, "modulate:a", 0.0, 0.3)
+			tw.tween_callback(layer.queue_free)
+		w.remove_meta("mirror_mask")
+		return
+	if layer != null and is_instance_valid(layer):
+		return
+	layer = CanvasLayer.new()
+	layer.name = "MirrorMask"
+	layer.layer = 9
+	w.add_child(layer)
+	var r := ColorRect.new()
+	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+uniform float aspect = 1.78;
+void fragment() {
+	// the oval: centred, 1.32 times taller than wide, nearly the screen's height
+	vec2 p = (UV - 0.5) * vec2(aspect, 1.0);
+	float d = length(p * vec2(1.32, 1.0)) / 0.47;
+	float wood = smoothstep(0.97, 1.03, d);
+	float rim = smoothstep(0.985, 1.0, d) * (1.0 - smoothstep(1.03, 1.07, d));
+	vec3 col = mix(vec3(0.07, 0.045, 0.03), vec3(0.2, 0.13, 0.07), rim);
+	// the glass itself a touch cold and dim towards its edge, like old silvering
+	float edge = smoothstep(0.55, 0.97, d) * 0.35;
+	COLOR = vec4(mix(vec3(0.05, 0.07, 0.1), col, wood), max(wood, edge));
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	m.set_shader_parameter("aspect", maxf(0.5, float(w.get_viewport().get_visible_rect().size.x) / maxf(1.0, w.get_viewport().get_visible_rect().size.y)))
+	r.material = m
+	layer.add_child(r)
+	r.modulate.a = 0.0
+	var tw := w.create_tween()
+	tw.tween_property(r, "modulate:a", 1.0, 0.25)
+	w.set_meta("mirror_mask", layer)
 
 
 ## Under the title screen (World.prepare): the attic and the taproom built,
@@ -1471,7 +1547,7 @@ static func _taproom(w: World) -> void:
 		var bowl := Node3D.new()
 		bowl.name = "Porridge"
 		root.add_child(bowl)
-		bowl.position = Vector3(-3.55, 1.13, 0.55)
+		bowl.position = Vector3(InnRooms.BAR_X, 1.13, 0.55)
 		v.cyl(bowl, 0.09, 0.06, 0.06, Vector3(0, 0.03, 0), v.mats.wood_h, 14)
 		var oats := StandardMaterial3D.new()
 		oats.albedo_color = Color(0.86, 0.8, 0.66)
@@ -1479,8 +1555,10 @@ static func _taproom(w: World) -> void:
 		v.cyl(bowl, 0.08, 0.08, 0.005, Vector3(0, 0.058, 0), oats, 14)
 		v.box(bowl, Vector3(0.015, 0.008, 0.16), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15))
 		e["porridge"] = bowl
-	var bram_at := root.to_global(Vector3(-4.12, 0, -0.1))
-	var me_at := root.to_global(Vector3(-2.75, 0, 0.35))
+	# Bram in the walkway behind the counter, the player a step off its front
+	# (25 October: he stood inside the counter, his back in the shelves)
+	var bram_at: Vector3 = e.bar_behind
+	var me_at := root.to_global(Vector3(InnRooms.BAR_X + 0.85, 0, 0.35))
 	Cine.place(w, "bram", bram_at, me_at)
 	Cine.place(w, "player", e.stairs_foot, me_at)
 	var bf = Cine.fig(w, "bram")
@@ -1553,7 +1631,7 @@ static func _wipe(w: World, root: Node3D, state: Array) -> void:
 	var hand := Node3D.new()
 	hand.name = "RagHand"
 	w.add_child(hand)
-	var at := root.to_global(Vector3(-3.72, 1.14, -0.25))
+	var at := root.to_global(Vector3(InnRooms.BAR_X - 0.1, 1.14, -0.25))
 	hand.global_position = at
 	fig.reach(null, hand, 0.5)
 	var t := 0.0

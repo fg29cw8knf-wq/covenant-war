@@ -236,15 +236,23 @@ static func watch(w: World) -> void:
 
 # ======================================================== after the duel ===
 
-## The cheer from the green; Corin catches his breath and brushes off his
-## new coat.
+## The cheer from the green (the children's: it's the winner they cheer);
+## Corin can't believe it, then takes it badly (25 October, Gary: he was
+## cheering his own loss; now a jolt of surprise, then his defeat pose, held
+## while he yields, and off it comes as he walks away).
 static func after_lantern(w: World) -> void:
 	w.cine = true
 	for k in AshfordP1.KIDS:
 		Cine.hop(w, String(k[0]), 0.2)
-	Cine.act(w, "corin", "cheer")
 	AshfordP1.two_shot(w, "player", "corin", 3.4, 1.5, 36.0)
-	await Cine.wait(w, 1.2)
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D:
+		(cf as Figure3D).act("hit_react", 1.0, 0.15)
+		await Cine.wait(w, 0.9)
+		(cf as Figure3D).hold("defeat", 1.0, 0.3)
+		await Cine.wait(w, 0.6)
+	else:
+		await Cine.wait(w, 1.2)
 	Cine.look(w, "corin", w.player.global_position)
 
 
@@ -254,6 +262,9 @@ static func corin_off(w: World) -> void:
 	var v := village(w)
 	var to := CORIN_CARTS
 	to.y = v.height(to.x, to.z)
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D:
+		(cf as Figure3D).release(0.3)   # (the defeat pose, off as he goes)
 	Cine.path(w, "corin", AshfordP1.round_lantern(w, Cine.body(w, "corin").global_position, to), 1.6)
 	await Cine.wait(w, 0.9)
 	w.hud.dialogue.bark(w._speaker("corin"), w._portrait("corin"), "It was the wind! Everyone saw the wind!")

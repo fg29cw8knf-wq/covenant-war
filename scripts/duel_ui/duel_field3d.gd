@@ -1438,8 +1438,13 @@ class Lightning3D:
 		var pts := [a]
 		var d := b - a
 		var n := 12
-		var up := Vector3.UP
-		var side := d.cross(up).normalized()
+		# the two ways the bolt can wander, both across its line (a bolt
+		# straight down from the sky has no "side" against UP: 25 October)
+		var side := d.cross(Vector3.UP)
+		if side.length() < 0.01:
+			side = d.cross(Vector3.RIGHT)
+		side = side.normalized()
+		var up := side.cross(d).normalized()
 		for i in range(1, n):
 			var k := float(i) / n
 			var amp := 0.45 * sin(k * PI)
@@ -1467,3 +1472,562 @@ class Lightning3D:
 				im.surface_set_color(c)
 				im.surface_add_vertex(p - side)
 			im.surface_end()
+
+
+# ========================================================== Rite motifs ===
+## Every Rite has an effect of its own on the field (25 October, Gary: "when
+## you use the Bulwark card have it actually animate putting a wall around
+## the Totem, then fades; same for others"). The motif is picked from what
+## the card does (its effects' ops and its damage) and its element, so each
+## card gets a picture that fits what it is: a stone wall for a shield, a
+## block of ice for Frostbind, roots for Strangling Roots, rain for Drowning
+## Rain, cards fanning up for a draw, and so on. `at` is where it lands (a
+## Totem's body, or the duellist's plate for a Rite on nobody); `ahead` is
+## the way towards that Totem's enemy (a wall stands on that side). Returns
+## how long it plays (s), for the screen to wait.
+func rite_motif(card: DuelCard, at: Vector3, ahead: Vector3, col: Color) -> float:
+	var d: Dictionary = card.def
+	var el := String(d.get("element", "any"))
+	var effects: Array = d.get("effects", [])
+	var dmg := int(d.get("damage", 0))
+	var ops := []
+	for e in effects:
+		ops.append(String((e as Dictionary).get("op", "")))
+	var foot := Vector3(at.x, 0.0, at.z)
+	var status := ""
+	for e in effects:
+		if String((e as Dictionary).get("op", "")) == "status":
+			status = String((e as Dictionary).get("status", ""))
+	if "shield" in ops:
+		return wall_ring(foot, ahead, el)
+	if "heal" in ops or "cure" in ops or "regen" in ops or "life" in ops:
+		return mend(foot, col)
+	if "buff" in ops or "empower" in ops:
+		return aura(foot, col)
+	if "draw" in ops or "search_totem" in ops or "search" in ops or "search_rite" in ops:
+		return cards_fan(foot, col)
+	if "essence" in ops or "essence_max" in ops:
+		return essence_motes(foot, col)
+	if "bounce" in ops or "move_foe" in ops or "drain" in ops:
+		return wave(foot, ahead, col)
+	if status != "":
+		return status_motif(foot, status, el, col)
+	if dmg > 0 or String(d.get("target", "none")) in ["foe_totem", "all_foes"]:
+		return strike_motif(foot, el, col, ahead)
+	# a Rite on nobody in particular: the god's light at the plate
+	pillar(foot, col, 4.0, 1.4, 0.8)
+	rise(foot, col, 18, 0.9, 1.0)
+	return 0.6
+
+
+## Where a Rite on nobody in particular plays: on the ground in front of
+## that side's row, in view (the plates themselves sit past the camera's
+## edge, under the hand).
+func plate_world(side: int) -> Vector3:
+	return Vector3(0, 0, MY_Z + 0.6) if side == me else Vector3(0, 0, RIVAL_Z - 0.8)
+
+
+## The way from a slot towards the row across from it.
+func ahead_of(side: int) -> Vector3:
+	return Vector3(0, 0, -1) if side == me else Vector3(0, 0, 1)
+
+
+## A blow by element: fire flares, storm strikes down, tide sweeps over (in
+## from the caster's side, so against `ahead`), frost spikes up, metal
+## flies, venom rolls low, verdant grasps, wind whirls, earth falls, and the
+## gods' elements come down as light.
+func strike_motif(foot: Vector3, el: String, col: Color, ahead: Vector3) -> float:
+	match el:
+		"fire":
+			return flames(foot, col)
+		"storm":
+			lightning(foot + Vector3(0.3, 4.6, 0), foot + Vector3(0, 0.8, 0), col, 0.4, 0.3)
+			get_tree().create_timer(0.12).timeout.connect(func() -> void:
+				lightning(foot + Vector3(-0.5, 4.6, 0.3), foot + Vector3(0.1, 0.9, 0), col, 0.3, 0.2))
+			flash_sprite(foot + Vector3(0, 1.0, 0), Color(1, 1, 1), 2.6, 0.3)
+			flash_light(foot + Vector3(0, 1.5, 0), col, 9.0, 0.4)
+			burst(foot + Vector3(0, 0.6, 0), col, 30, 5.5, 0.5, 0.12, 1.0)
+			return 0.55
+		"tide":
+			return wave(foot, -ahead, col)
+		"frost":
+			return spikes(foot, Color(0.78, 0.92, 1.0), 9, 1.4, 0.5, 0.12)
+		"metal":
+			burst(foot + Vector3(0, 1.0, 0), col.lightened(0.3), 34, 7.5, 0.5, 0.14, 0.4)
+			flash_sprite(foot + Vector3(0, 1.0, 0), Color(1, 1, 1), 1.8, 0.25)
+			return 0.45
+		"venom":
+			return cloud(foot, col, 1.1)
+		"verdant":
+			return spikes(foot, Color(0.3, 0.55, 0.22), 8, 1.3, 0.6, 0.1)
+		"wind":
+			return swirl(foot, col, 0.9, 2.2)
+		"earth":
+			return rockfall(foot, col)
+		_:
+			pillar(foot, col, 4.5, 1.6, 0.7)
+			swirl(foot, col, 0.7, 1.2)
+			return 0.6
+
+
+## A condition settling on a Totem, each in its own way.
+func status_motif(foot: Vector3, status: String, el: String, col: Color) -> float:
+	var sc := Color(String(DuelConditions.DEFS.get(status, {}).get("color", "ffffff")))
+	match status:
+		"frozen":
+			return ice_block(foot, sc)
+		"burn":
+			return flames(foot, Color(1.0, 0.55, 0.2))
+		"poison", "corroded":
+			return cloud(foot, sc, 1.1)
+		"soaked":
+			return rain_sheet(foot, sc, 0.8)
+		"rooted":
+			return spikes(foot, Color(0.3, 0.55, 0.22), 8, 1.2, 0.7, 0.1)
+		"petrified":
+			rockfall(foot, Color(0.72, 0.66, 0.54))
+			return 0.9
+		"shocked", "stun":
+			lightning(foot + Vector3(-0.3, 4.2, 0), foot + Vector3(0, 0.9, 0), sc, 0.35, 0.26)
+			flash_sprite(foot + Vector3(0, 1.0, 0), Color(1, 1, 0.9), 2.2, 0.3)
+			flash_light(foot + Vector3(0, 1.5, 0), sc, 7.0, 0.3)
+			return 0.45
+		"blinded":
+			flash_sprite(foot + Vector3(0, 1.1, 0), Color(1, 1, 0.9), 3.6, 0.45)
+			flash_light(foot + Vector3(0, 1.2, 0), Color(1, 1, 0.85), 9.0, 0.4)
+			return 0.45
+		"bleed":
+			burst(foot + Vector3(0, 1.0, 0), sc, 24, 4.0, 0.5, 0.12, 0.2)
+			return 0.4
+		"staggered":
+			return swirl(foot, sc, 0.7, 2.0)
+		"sleep":
+			return swirl(foot, sc, 1.1, 0.6)
+		_:
+			# the mind and the soul: a slow ring of light climbing the body
+			return swirl(foot, sc, 0.9, 1.0)
+
+
+# ---------------------------------------------------------------- pieces ---
+
+func _solid(col: Color, rough: float = 0.9, emit: float = 0.0) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = col
+	m.roughness = rough
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if emit > 0.0:
+		m.emission_enabled = true
+		m.emission = col
+		m.emission_energy_multiplier = emit
+	return m
+
+
+## A half-ring of stone slabs rising out of the ground round the Totem, on
+## the side its enemies are, dust at their feet; they stand a moment, then
+## sink and fade (Bulwark). Another element's shield is the same wall in its
+## own light.
+func wall_ring(foot: Vector3, ahead: Vector3, el: String) -> float:
+	var stone := Color(0.46, 0.42, 0.36)
+	var glow := 0.0
+	if el != "earth" and el != "any":
+		stone = DuelFX.light(el).darkened(0.35)
+		glow = 0.6
+	var n := 7
+	var r := 1.45
+	var h := 1.55
+	var base := atan2(ahead.x, ahead.z)
+	var slabs: Array = []
+	for i in n:
+		var a := base + (float(i) / (n - 1) - 0.5) * PI * 1.05
+		var m := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		bm.size = Vector3(0.62, h, 0.24)
+		m.mesh = bm
+		m.material_override = _solid(stone.lightened(randf_range(-0.08, 0.08)), 0.95, glow)
+		m.position = foot + Vector3(sin(a) * r, -h * 0.5 - 0.05, cos(a) * r)
+		m.rotation.y = a
+		m.rotation.z = randf_range(-0.06, 0.06)
+		_fx_parent().add_child(m)
+		slabs.append(m)
+		var delay := 0.05 * absf(float(i) - (n - 1) * 0.5)
+		var tw := m.create_tween()
+		tw.tween_interval(delay)
+		tw.tween_property(m, "position:y", foot.y + h * 0.5 - 0.02, 0.28).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+		tw.tween_interval(1.0 - delay)
+		tw.tween_property(m, "position:y", foot.y - h * 0.5 - 0.05, 0.5).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw.parallel().tween_property(m.material_override, "albedo_color:a", 0.0, 0.5)
+		tw.tween_callback(m.queue_free)
+		get_tree().create_timer(delay + 0.05).timeout.connect(func() -> void:
+			if is_instance_valid(m):
+				burst(Vector3(m.position.x, foot.y + 0.05, m.position.z), Color(0.6, 0.52, 0.4), 10, 2.2, 0.5, 0.1, 1.0))
+	cam_shake(0.12)
+	flash_light(foot + Vector3(0, 1.2, 0), DuelFX.light(el) if el != "any" else Color(0.9, 0.8, 0.6), 3.0, 0.6)
+	return 1.4
+
+
+## Thin spikes thrusting up out of the ground round the feet and sinking
+## again: roots (green), ice (pale blue), shards of stone.
+func spikes(foot: Vector3, col: Color, count: int, h: float, hold: float, width: float) -> float:
+	for i in count:
+		var a := randf() * TAU
+		var r := randf_range(0.35, 1.0)
+		var m := MeshInstance3D.new()
+		var cm := CylinderMesh.new()
+		cm.top_radius = 0.0
+		cm.bottom_radius = width
+		cm.height = h * randf_range(0.7, 1.1)
+		cm.radial_segments = 6
+		m.mesh = cm
+		m.material_override = _solid(col.lightened(randf_range(-0.1, 0.1)), 0.7, 0.25)
+		var p := foot + Vector3(sin(a) * r, 0, cos(a) * r)
+		m.position = p + Vector3(0, -cm.height * 0.5, 0)
+		m.rotation = Vector3(randf_range(-0.25, 0.25), 0, randf_range(-0.25, 0.25))
+		_fx_parent().add_child(m)
+		var tw := m.create_tween()
+		tw.tween_interval(randf_range(0.0, 0.12))
+		tw.tween_property(m, "position:y", p.y + cm.height * 0.5 - 0.05, 0.22).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_interval(hold)
+		tw.tween_property(m, "position:y", p.y - cm.height * 0.5, 0.35).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(m.material_override, "albedo_color:a", 0.0, 0.35)
+		tw.tween_callback(m.queue_free)
+	burst(foot + Vector3(0, 0.2, 0), col, 14, 2.5, 0.5, 0.1, 1.0)
+	return 0.35 + hold + 0.2
+
+
+## A block of ice closing round the Totem, held a breath, then shattered.
+func ice_block(foot: Vector3, col: Color) -> float:
+	var m := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.7, 2.1, 1.5)
+	m.mesh = bm
+	var mat := _solid(Color(col.r, col.g, col.b, 0.55), 0.1, 0.35)
+	mat.metallic = 0.3
+	m.material_override = mat
+	m.position = foot + Vector3(0, 1.05, 0)
+	m.scale = Vector3(0.05, 0.05, 0.05)
+	_fx_parent().add_child(m)
+	var tw := m.create_tween()
+	tw.tween_property(m, "scale", Vector3.ONE, 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_interval(0.7)
+	tw.tween_callback(func() -> void:
+		burst(foot + Vector3(0, 1.0, 0), col.lightened(0.3), 40, 6.0, 0.7, 0.16, 0.5)
+		flash_sprite(foot + Vector3(0, 1.0, 0), col, 2.6, 0.3))
+	tw.tween_property(m, "scale", Vector3(0.02, 0.02, 0.02), 0.12)
+	tw.tween_callback(m.queue_free)
+	flash_light(foot + Vector3(0, 1.4, 0), col, 4.0, 0.6)
+	return 1.25
+
+
+## Flames licking up round the Totem: a flickering column, sparks, light.
+func flames(foot: Vector3, col: Color) -> float:
+	pillar(foot, col, 3.2, 1.9, 0.7)
+	get_tree().create_timer(0.18).timeout.connect(func() -> void:
+		pillar(foot + Vector3(0.3, 0, 0.2), col.lightened(0.2), 2.4, 1.3, 0.6))
+	burst(foot + Vector3(0, 0.5, 0), col, 36, 4.5, 0.8, 0.13, 1.0)
+	rise(foot, Color(1.0, 0.7, 0.3), 20, 0.9, 1.4)
+	flash_light(foot + Vector3(0, 1.2, 0), col, 7.0, 0.7)
+	return 0.8
+
+
+## A wave sweeping over the Totem and on past it: a body of translucent
+## water with a rolling white crest (solid geometry, which reads on the
+## bright floor where a glow would not), then spray as it passes.
+func wave(foot: Vector3, dir: Vector3, col: Color) -> float:
+	var holder := Node3D.new()
+	var flat := Vector3(dir.x, 0, dir.z).normalized()
+	var from := foot - flat * 2.0
+	var to := foot + flat * 2.0
+	holder.position = from
+	_fx_parent().add_child(holder)
+	holder.look_at(from + flat, Vector3.UP)
+	var water := Color(col.r * 0.8, col.g * 0.9, col.b * 1.05, 0.62)
+	var body := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(3.2, 1.4, 0.7)
+	body.mesh = bm
+	var wm := _solid(water, 0.08, 0.55)
+	wm.metallic = 0.2
+	body.material_override = wm
+	body.position = Vector3(0, 0.7, 0)
+	body.rotation.x = 0.3
+	holder.add_child(body)
+	var crest := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.34
+	cm.bottom_radius = 0.34
+	cm.height = 3.0
+	cm.radial_segments = 14
+	crest.mesh = cm
+	var crm := _solid(Color(0.9, 0.97, 1.0, 0.85), 0.2, 0.9)
+	crest.material_override = crm
+	crest.position = Vector3(0, 1.45, 0.2)
+	crest.rotation.z = PI * 0.5
+	holder.add_child(crest)
+	var tw := holder.create_tween()
+	tw.tween_property(holder, "position", to, 0.6).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_property(crest, "rotation:x", -TAU * 1.5, 0.6)
+	tw.parallel().tween_property(wm, "albedo_color:a", 0.0, 0.25).set_delay(0.4)
+	tw.parallel().tween_property(crm, "albedo_color:a", 0.0, 0.25).set_delay(0.4)
+	tw.tween_callback(holder.queue_free)
+	floor_wave(foot, col, 3.0, 0.5)
+	# spray thrown up as it passes
+	get_tree().create_timer(0.22).timeout.connect(func() -> void:
+		burst(foot + Vector3(0, 0.9, 0), Color(0.85, 0.95, 1.0), 44, 4.5, 0.7, 0.14, 1.0))
+	flash_light(foot + Vector3(0, 1.0, 0), col, 4.0, 0.6)
+	return 0.7
+
+
+## Rain pouring down on the Totem.
+func rain_sheet(foot: Vector3, col: Color, secs: float) -> float:
+	var p := CPUParticles3D.new()
+	p.position = foot + Vector3(0, 3.4, 0)
+	p.amount = 90
+	p.lifetime = 0.45
+	p.one_shot = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	p.emission_box_extents = Vector3(1.1, 0.1, 0.9)
+	p.direction = Vector3.DOWN
+	p.spread = 3.0
+	p.initial_velocity_min = 7.0
+	p.initial_velocity_max = 8.5
+	p.gravity = Vector3.ZERO
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 1.0])
+	g.colors = PackedColorArray([Color(col.lightened(0.4), 0.9), Color(col, 0.5)])
+	p.color_ramp = g
+	var q := QuadMesh.new()
+	q.size = Vector2(0.035, 0.4)
+	var qm := _additive(DuelFX.dot_tex())
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+	qm.vertex_color_use_as_albedo = true
+	q.material = qm
+	p.mesh = q
+	p.emitting = true
+	_fx_parent().add_child(p)
+	get_tree().create_timer(secs).timeout.connect(func() -> void:
+		if is_instance_valid(p):
+			p.emitting = false)
+	get_tree().create_timer(secs + 0.6).timeout.connect(p.queue_free)
+	floor_wave(foot, col, 2.4, secs)
+	return secs + 0.2
+
+
+## A low cloud rolling round the feet (venom, poison).
+func cloud(foot: Vector3, col: Color, secs: float) -> float:
+	var p := CPUParticles3D.new()
+	p.position = foot + Vector3(0, 0.25, 0)
+	p.amount = 64
+	p.lifetime = secs
+	p.one_shot = true
+	p.explosiveness = 0.8
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 0.6
+	p.direction = Vector3(1, 0.1, 0)
+	p.spread = 180.0
+	p.initial_velocity_min = 0.6
+	p.initial_velocity_max = 1.6
+	p.gravity = Vector3(0, 0.15, 0)
+	p.damping_min = 1.0
+	p.damping_max = 2.0
+	p.scale_amount_min = 2.0
+	p.scale_amount_max = 4.0
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.4))
+	sc.add_point(Vector2(0.3, 1))
+	sc.add_point(Vector2(1, 0))
+	p.scale_amount_curve = sc
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	var bright := Color(col.r * 2.4, col.g * 2.4, col.b * 2.4)
+	g.colors = PackedColorArray([Color(bright, 0.0), Color(bright, 1.0), Color(bright, 0)])
+	p.color_ramp = g
+	var q := QuadMesh.new()
+	q.size = Vector2(0.7, 0.7)
+	var qm := _additive(DuelFX.glow_tex())
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	qm.vertex_color_use_as_albedo = true
+	q.material = qm
+	p.mesh = q
+	p.emitting = true
+	_fx_parent().add_child(p)
+	get_tree().create_timer(secs + 0.4).timeout.connect(p.queue_free)
+	floor_wave(foot, col, 2.6, secs * 0.8)
+	flash_light(foot + Vector3(0, 0.6, 0), col, 4.0, secs)
+	return secs * 0.7
+
+
+## Lights whirling round the body and climbing it.
+func swirl(foot: Vector3, col: Color, secs: float, speed: float) -> float:
+	var p := CPUParticles3D.new()
+	p.position = foot + Vector3(0, 0.3, 0)
+	p.amount = 48
+	p.lifetime = secs
+	p.one_shot = true
+	p.explosiveness = 0.7
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	p.emission_ring_radius = 0.9
+	p.emission_ring_inner_radius = 0.8
+	p.emission_ring_height = 0.2
+	p.emission_ring_axis = Vector3.UP
+	p.direction = Vector3.UP
+	p.spread = 5.0
+	p.initial_velocity_min = 1.2
+	p.initial_velocity_max = 1.8
+	p.gravity = Vector3.ZERO
+	p.tangential_accel_min = 4.0 * speed
+	p.tangential_accel_max = 6.0 * speed
+	p.radial_accel_min = -1.5
+	p.radial_accel_max = -0.5
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.6))
+	sc.add_point(Vector2(0.5, 1))
+	sc.add_point(Vector2(1, 0))
+	p.scale_amount_curve = sc
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.7, 1.0])
+	g.colors = PackedColorArray([Color(col.lightened(0.4), 1), Color(col, 0.9), Color(col, 0)])
+	p.color_ramp = g
+	var q := QuadMesh.new()
+	q.size = Vector2(0.14, 0.14)
+	var qm := _additive(DuelFX.dot_tex())
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	qm.vertex_color_use_as_albedo = true
+	q.material = qm
+	p.mesh = q
+	p.emitting = true
+	_fx_parent().add_child(p)
+	get_tree().create_timer(secs + 0.4).timeout.connect(p.queue_free)
+	flash_light(foot + Vector3(0, 1.2, 0), col, 3.5, secs)
+	return secs * 0.8
+
+
+## Rocks tumbling down on the Totem, dust where they land, gone again.
+func rockfall(foot: Vector3, col: Color) -> float:
+	var stone := Color(0.5, 0.45, 0.38)
+	for i in 5:
+		var m := MeshInstance3D.new()
+		var bm := BoxMesh.new()
+		var sz := randf_range(0.28, 0.5)
+		bm.size = Vector3(sz, sz * 0.8, sz * 0.9)
+		m.mesh = bm
+		m.material_override = _solid(stone.lightened(randf_range(-0.1, 0.1)), 0.95, 0.0)
+		var land := foot + Vector3(randf_range(-0.8, 0.8), sz * 0.4, randf_range(-0.7, 0.7))
+		m.position = land + Vector3(0, 3.8, 0)
+		m.rotation = Vector3(randf() * TAU, randf() * TAU, 0)
+		_fx_parent().add_child(m)
+		var tw := m.create_tween()
+		tw.tween_interval(0.08 * i)
+		tw.tween_property(m, "position", land, 0.3).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+		tw.tween_callback(func() -> void:
+			burst(Vector3(land.x, foot.y + 0.05, land.z), Color(0.6, 0.52, 0.4), 10, 2.2, 0.45, 0.1, 1.0)
+			cam_punch(0.06))
+		tw.tween_interval(0.6)
+		tw.tween_property(m.material_override, "albedo_color:a", 0.0, 0.4)
+		tw.parallel().tween_property(m, "position:y", foot.y - sz, 0.4).set_ease(Tween.EASE_IN)
+		tw.tween_callback(m.queue_free)
+	flash_light(foot + Vector3(0, 1.2, 0), col, 2.5, 0.6)
+	return 1.1
+
+
+## Mending: a warm ring on the ground and motes climbing the body.
+func mend(foot: Vector3, col: Color) -> float:
+	floor_wave(foot, col, 2.8, 0.6)
+	pillar(foot, col, 2.6, 1.5, 1.0)
+	rise(foot, col, 44, 1.3, 1.4)
+	flash_sprite(foot + Vector3(0, 1.0, 0), col, 2.4, 0.6)
+	flash_light(foot + Vector3(0, 1.2, 0), col, 4.0, 0.9)
+	return 0.8
+
+
+## A buff: a ring of the element's light climbing the body and tightening on it.
+func aura(foot: Vector3, col: Color) -> float:
+	var m := MeshInstance3D.new()
+	var tm := TorusMesh.new()
+	tm.inner_radius = 1.05
+	tm.outer_radius = 1.2
+	tm.rings = 24
+	tm.ring_segments = 8
+	m.mesh = tm
+	var mat := _additive(DuelFX.glow_tex())
+	mat.albedo_color = Color(col.r * 1.6, col.g * 1.6, col.b * 1.6, 0.9)
+	m.material_override = mat
+	m.position = foot + Vector3(0, 0.1, 0)
+	_fx_parent().add_child(m)
+	var tw := m.create_tween()
+	tw.tween_property(m, "position:y", foot.y + 1.9, 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_property(m, "scale", Vector3(0.45, 1, 0.45), 0.6).set_ease(Tween.EASE_IN)
+	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.6).set_delay(0.25)
+	tw.tween_callback(m.queue_free)
+	burst(foot + Vector3(0, 0.3, 0), col, 20, 3.0, 0.6, 0.1, 1.0)
+	flash_light(foot + Vector3(0, 1.2, 0), col, 4.0, 0.6)
+	return 0.7
+
+
+## Cards rising from the duellist's plate and fanning out as they fade (a draw, a search).
+func cards_fan(at: Vector3, col: Color) -> float:
+	for i in 3:
+		var m := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(0.34, 0.48)
+		m.mesh = q
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(0.92, 0.88, 0.78, 1.0)
+		mat.emission_enabled = true
+		mat.emission = col
+		mat.emission_energy_multiplier = 0.6
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.material_override = mat
+		m.position = at + Vector3(0, 0.6, 0)
+		m.rotation = Vector3(-0.3, (i - 1) * 0.35, 0)
+		_fx_parent().add_child(m)
+		var tw := m.create_tween()
+		tw.tween_interval(0.07 * i)
+		tw.tween_property(m, "position", at + Vector3((i - 1) * 0.55, 2.2, 0), 0.5).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.parallel().tween_property(m, "rotation:z", (i - 1) * 0.3, 0.5)
+		tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.5).set_delay(0.25)
+		tw.tween_callback(m.queue_free)
+	rise(at + Vector3(0, 0.5, 0), col, 16, 0.9, 0.9)
+	flash_light(at + Vector3(0, 1.4, 0), col, 3.0, 0.6)
+	return 0.7
+
+
+## Essence drawn in: motes gathering to the plate out of the air.
+func essence_motes(at: Vector3, col: Color) -> float:
+	var p := CPUParticles3D.new()
+	p.position = at + Vector3(0, 1.4, 0)
+	p.amount = 48
+	p.lifetime = 0.7
+	p.one_shot = true
+	p.explosiveness = 0.9
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 1.8
+	p.direction = Vector3.UP
+	p.spread = 180.0
+	p.initial_velocity_min = 0.0
+	p.initial_velocity_max = 0.3
+	p.gravity = Vector3.ZERO
+	p.radial_accel_min = -12.0
+	p.radial_accel_max = -9.0
+	var sc := Curve.new()
+	sc.add_point(Vector2(0, 0.5))
+	sc.add_point(Vector2(1, 1))
+	p.scale_amount_curve = sc
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 1.0])
+	g.colors = PackedColorArray([Color(col, 0.2), Color(col.lightened(0.5), 1)])
+	p.color_ramp = g
+	var q := QuadMesh.new()
+	q.size = Vector2(0.18, 0.18)
+	var qm := _additive(DuelFX.dot_tex())
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	qm.vertex_color_use_as_albedo = true
+	q.material = qm
+	p.mesh = q
+	p.emitting = true
+	_fx_parent().add_child(p)
+	get_tree().create_timer(1.2).timeout.connect(p.queue_free)
+	get_tree().create_timer(0.65).timeout.connect(func() -> void:
+		flash_sprite(at + Vector3(0, 1.4, 0), col, 2.4, 0.4)
+		flash_light(at + Vector3(0, 1.4, 0), col, 6.0, 0.4))
+	return 0.9

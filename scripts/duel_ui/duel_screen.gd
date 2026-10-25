@@ -819,6 +819,9 @@ func tutor_rect(f: String) -> Rect2:
 			return Rect2(wz.position + wz.card_rect(0).position, Vector2(94 * n, 109)).grow(6)
 		"end":
 			return Rect2(end_btn.position, end_btn.size)
+		"band":
+			if phase_band != null:
+				return Rect2(phase_band.position, phase_band.size)
 		"move":
 			for b in actions.get_children():
 				if b is ActionButton and String(b.get_meta("key", "")) == "move:" + arg:
@@ -2054,7 +2057,12 @@ func fx_phase(pi: int, p_phase: String) -> void:
 			sfx.play("ui_select")
 			_toast("THE CLASH" if p_phase == "clash" else "MAIN II")
 		if p_phase == "main" and tutor != null and game.turn > 1:
-			await tutor.lesson("phases", "A turn has its parts, and the band under my plate keeps count: Dawn, the draw, then the Main for calling, setting and casting; the Clash for the blows; a last breath for a Rite or a Shift; then Dusk. Nothing happens out of its turn.", "The turn", "")
+			# (25 October, Gary: the one-line version "didn't make much
+			# sense": four short lines now, the band lit while he says them)
+			await tutor.lesson("phases", "See the little band under his plate? That's one turn, in six steps, left to right. The lit one is where you are now.", "The turn", "band")
+			await tutor.lesson("phases_2", "The first two happen on their own: DAWN wakes anything that wakes at the start of a turn, then DRAW gives you a card.", "The turn", "band")
+			await tutor.lesson("phases_3", "MAIN is yours: call Totems, set Wards, cast Rites. Then the CLASH: your Totems strike. MAIN II is a last chance for a Rite or a Shift if you've Essence left, and DUSK ends the turn.", "The turn", "band")
+			await tutor.lesson("phases_4", "That's why a button goes dark sometimes. It isn't broken. It's just not the step of the turn for it.", "The turn", "band")
 
 
 ## A Totem takes a stance (Phase A): its badge, its pose on the field.
@@ -2426,6 +2434,12 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 	var c := await _show_card_big(card.id, "RITE", DuelCardFace.RITE_COL, 0.75 if pi != me else 0.45, from)
 	sfx.play("rite_cast")
 	var col := DuelFX.light(card.element())
+	# the card's own picture on the field (DuelField3D.rite_motif: a wall for
+	# Bulwark, ice for Frostbind, cards for a draw...), where it lands: the
+	# Totem it's aimed at, every Totem across the Circle for an all_foes
+	# Rite, or the caster's own plate for a Rite on nobody. The screen waits
+	# for the longest of them (25 October, Gary).
+	var hold := 0.0
 	if target is DuelTotem:
 		var to := _center(_view(target))
 		var b := DuelFX.projectile(fx_layer, c, to, col, 0.3 / speed, 30.0, 60.0)
@@ -2434,12 +2448,22 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 		if field != null:
 			field.burst(_body3(target), col, 30, 5.0, 0.6, 0.1, 0.0)
 			field.flash_light(_body3(target), col, 6.0, 0.4 / speed)
+			hold = field.rite_motif(card, _body3(target), field.ahead_of(target.owner), col)
 		else:
 			DuelFX.burst(fx_layer, to, col, 22, 420.0, 14.0, 0.6, Vector2(0, 200), 180.0, Vector2.UP, speed)
+	elif field != null and String(card.def.get("target", "none")) == "all_foes":
+		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
+		var foes: Array = game.players[1 - pi].totems()
+		if foes.is_empty():
+			hold = field.rite_motif(card, field.plate_world(1 - pi), field.ahead_of(1 - pi), col)
+		for f in foes:
+			hold = maxf(hold, field.rite_motif(card, _body3(f), field.ahead_of(f.owner), col))
 	else:
 		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
 		DuelFX.burst(fx_layer, c, col, 30, 520.0, 14.0, 0.7, Vector2(0, 200), 180.0, Vector2.UP, speed)
-	await pause(0.1)
+		if field != null:
+			hold = field.rite_motif(card, field.plate_world(pi), field.ahead_of(pi), col)
+	await pause(maxf(0.1, minf(hold, 1.6) / speed))
 	if tutor != null:
 		await tutor.lesson("rite", ("That was a Rite of mine." if pi == rival and _bram_rival() else ("That was a Rite." if pi == rival else "A Rite.")) + " Cast once and gone, and it answers at once. The Essence it costs is Essence you're not calling a Totem with: spend it when the board asks for it, not because it's in your hand.", "Rites")
 	if tutor != null and pi == rival:

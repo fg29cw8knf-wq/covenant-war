@@ -16,7 +16,10 @@ extends Node
 ##       res://tests/p1_v7_test.tscn -- <out_dir> [coach] [keys] [read=<n>]
 ##
 ## coach: ask Bram to talk you through the duel; keys: draw only the frames
-## kept (much faster); read: frames each line stays up (6 by default).
+## kept (much faster); read: frames each line stays up (6 by default);
+## stop=<words>: stop (and pass) once the step whose wait is described by
+## those words is reached, e.g. stop=street for the attic and the taproom
+## only (25 October: a look at the opening without the half hour).
 
 const NAME := "Rowan"
 
@@ -36,6 +39,7 @@ var _keys := false
 var _uses := {}
 var _goal := Callable()    # where the player is walking to now (returns a Vector3)
 var _tap_t := 0.0
+var _stop_at := ""         # stop=<words>: finish when this wait is reached
 
 
 func _ready() -> void:
@@ -51,6 +55,8 @@ func _ready() -> void:
 			_keys = true
 		elif s.begins_with("read="):
 			read = int(s.substr(5))
+		elif s.begins_with("stop="):
+			_stop_at = s.substr(5)
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
@@ -330,6 +336,10 @@ func _expect(ok: bool, what: String) -> void:
 
 
 func _until(cond: Callable, secs: float, what: String) -> void:
+	if _stop_at != "" and _stop_at in what:
+		print("stopping at: ", what)
+		_finish()
+		await get_tree().create_timer(1000.0).timeout
 	var t := 0.0
 	while not cond.call():
 		await get_tree().process_frame

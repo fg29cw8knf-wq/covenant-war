@@ -84,7 +84,10 @@ func _ready() -> void:
 	_line.add_theme_constant_override("line_separation", 4)
 	_line.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_root.add_child(_line)
-	_hint = UITheme.label("▸", 30, UITheme.GOLD, "bold", 8)
+	# the hint under a line that waits: words, not a lone arrow (25 October:
+	# a player new to the game didn't know a lone "▸" meant tap)
+	_hint = UITheme.label("TAP ▸", 22, UITheme.GOLD, "bold", 6)
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
 	_hint.modulate.a = 0.0
 	_root.add_child(_hint)
@@ -198,8 +201,8 @@ func _layout() -> void:
 	_line.size.y = 0.0
 	_who.offset_left = mid - w * 0.5
 	_who.offset_right = mid + w * 0.5
-	_hint.offset_left = -110 - m.z
-	_hint.offset_right = -60 - m.z
+	_hint.offset_left = -220 - m.z
+	_hint.offset_right = -40 - m.z
 	_hint.offset_top = -(low + m.w) * 0.5 - 24.0
 	_hint.offset_bottom = _hint.offset_top + 48.0
 	var cw := minf(_root.size.x - m.x - m.z - 160.0, 900.0 * ts)
@@ -443,9 +446,13 @@ func choose(options: Array) -> int:
 	return idx
 
 
-## A title card in the middle of the screen, over whatever is showing. It
-## stays until it's tapped; `timed` (a card over a story film's picture,
-## which keeps its own time) it goes after `secs`.
+## A title card in the middle of the screen, over whatever is showing
+## ("Dawn", "Ashford / The last night of the Age."). Unlike a spoken line it
+## isn't reading matter: it holds for `secs` once it's faded in and then goes
+## on by itself, a tap (E, Space, Enter, a pad's A) going on sooner (Gary, 25
+## October: the opening's card sat there until it was tapped, and nobody
+## would know to tap a title). `timed` is kept for callers that pass it and
+## means the same thing.
 func caption(text: String, sub := "", secs := 2.6, timed := false) -> void:
 	_cap.text = text
 	_cap_sub.text = sub
@@ -454,19 +461,15 @@ func caption(text: String, sub := "", secs := 2.6, timed := false) -> void:
 	tw.tween_property(_cap_sub, "modulate:a", 1.0 if sub != "" else 0.0, 1.0).set_delay(0.3)
 	await tw.finished
 	_waiting = true
+	_shown_at = Time.get_ticks_msec()
 	_catch.mouse_filter = Control.MOUSE_FILTER_STOP
 	_line_no += 1
 	var this_line := _line_no
-	if auto or timed:
-		get_tree().create_timer(secs, false).timeout.connect(func() -> void:
-			if _waiting and _line_no == this_line:
-				_next.emit())
+	get_tree().create_timer(maxf(0.5, secs), false).timeout.connect(func() -> void:
+		if _waiting and _line_no == this_line:
+			_next.emit())
 	_hint.modulate.a = 0.0
-	var ht := create_tween()
-	ht.tween_interval(0.8)
-	ht.tween_property(_hint, "modulate:a", 0.75, 0.4)
 	await _next
-	ht.kill()
 	_waiting = false
 	_catch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hint.modulate.a = 0.0

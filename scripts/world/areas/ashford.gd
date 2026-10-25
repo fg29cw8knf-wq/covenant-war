@@ -66,8 +66,11 @@ const LESSON := {
 		"intro": [
 			{"say": "Right. Those cards are Sigils. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window."},
 			{"say": "Yours are Sparks, the smallest kind. That's the gods on a quiet day. When they fight, it doesn't drip. It pours."},
-			{"say": "There's more to duelling than one night's worth. Tonight, just the basics. The rest comes as the cards do."},
+			# (25 October, Gary: it's the afternoon, not night; and say what's
+			# at stake, since other duels will have more riding on them)
+			{"say": "There's more to duelling than one afternoon's worth. Today, just the basics. The rest comes as the cards do."},
 			{"say": "Your Totems do the fighting. Bring his Life down to nothing and you've won.", "focus": "life"},
+			{"say": "Every duel has its stakes. Some are played for cards, some for coin, and some for a good deal worse. This one's a friendly: nothing to win or lose but your pride."},
 			{"say": "Roll for who goes first. Highest starts.", "do": "die"},
 		],
 		"rival_call": [
@@ -84,7 +87,7 @@ const LESSON := {
 		],
 		"ko_rival": [
 			# (v7: so it doesn't clash with Tam's death the next evening)
-			{"say": "Out it goes, back into its card. Nobody bleeds inside a Circle unless the stakes say so, and tonight they don't."},
+			{"say": "Out it goes, back into its card. Nobody bleeds inside a Circle unless the stakes say so, and today they don't."},
 		],
 		"hit_mine": [
 			{"say": "He's throwing Rites now. Brookfin's tougher than it looks."},
@@ -540,15 +543,21 @@ static func _corin_morning() -> Array:
 		# a heavy hand lands on the player's shoulder: Bram, pulling a worn
 		# leather deck-box from his coat
 		{"scene": "bram_comes"},
-		{"who": "bram", "say": "You do now. You've seen enough duels to know how it works, but in case you're not sure, I'll talk you through it."},
+		# (25 October, Gary: "You do now." on its own; then he hands the box
+		# over, the player reaches out and takes it, and the next line starts
+		# "You've seen enough duels"; and a line of Gary's as he gives it)
+		{"who": "bram", "say": "You do now."},
+		{"scene": "box_out"},
+		{"who": "bram", "say": "I've always told you, when you were ready, I'd let you start using cards. I suppose the end of an Age is as good a time as any. So let's start you with this lot."},
+		# the player takes it: YOUR FIRST DECK
+		{"scene": "first_deck"},
+		{"who": "bram", "say": "You've seen enough duels to know how it works, but in case you're not sure, I'll talk you through it."},
 		{"who": "bram", "say": "There's no shame in it, it being your first duel."},
 		{"set": "coach_asked"},
 		{"choice": ["Talk me through it.", "I've watched enough duels."], "then": [
 			[{"scene": "coach_on"}, {"who": "bram", "say": "Right. Listen for me."}],
 			[{"set": "coach_off"}, {"who": "bram", "say": "Then I'll keep quiet. Mostly."}],
 		]},
-		# he holds the box out and the player takes it: YOUR FIRST DECK
-		{"scene": "first_deck"},
 	] + _the_duel()
 
 
@@ -746,6 +755,8 @@ static func scene(name: String, w: World) -> void:
 			await _bram_goes_back(w)
 		"bram_comes":
 			await _bram_comes(w)
+		"box_out":
+			await _box_out_scene(w)
 		"first_deck":
 			await _first_deck(w)
 		"coach_on":
@@ -1024,6 +1035,10 @@ static func _card_box() -> Node3D:
 ## sit on the lantern-hand point with the fingers through it: Gary, 23
 ## October, "his arm goes through it"). A cut-out gets it beside them.
 static func _hold_box(w: World, who: String, box: Node3D) -> Node3D:
+	# one box at a time: the one he's holding already goes (until 25
+	# October a second box given to him while he carried one left the first
+	# floating at his chest, and he handed over a third: Gary, "it duplicates")
+	_clear_boxes(w, who)
 	var f = Cine.fig(w, who)
 	if f is Figure3D:
 		var fig := f as Figure3D
@@ -1054,10 +1069,24 @@ static func _drop_box(w: World, who: String) -> void:
 	var f = Cine.fig(w, who)
 	if f is Figure3D:
 		(f as Figure3D).let_go(0.3)
+	_clear_boxes(w, who)
+
+
+## Every card box someone carries goes (the one on record, and any left
+## behind in their hands by an earlier hand-over).
+static func _clear_boxes(w: World, who: String) -> void:
 	var box = w.get_meta("box_" + who, null)
 	if box != null and is_instance_valid(box):
 		box.queue_free()
 	w.remove_meta("box_" + who)
+	var f = Cine.fig(w, who)
+	var b := Cine.body(w, who)
+	for host in [f, b]:
+		if host == null or not is_instance_valid(host):
+			continue
+		for n in (host as Node).find_children("*", "Node3D", true, false):
+			if n.has_meta("card_box") and is_instance_valid(n) and not n.is_queued_for_deletion():
+				n.queue_free()
 
 
 ## Puts a prop in someone's hand (a 3D figure's right hand; beside a cut-out).
@@ -1204,11 +1233,12 @@ static func _bram_comes(w: World) -> void:
 		await Cine.wait(w, 0.4)
 
 
-## Bram holds out the box, the player takes it, and it's theirs: the Spark
-## deck, its twelve cards fanned out across the screen. (v3 opens the Deck
-## and Codex later, when the player chooses a deck at the campfire, so they
-## stay shut here.)
-static func _first_deck(w: World) -> void:
+## "You do now.": his hand comes off the player's shoulder, the worn deck
+## box comes out of his coat and he holds it out in both hands (25 October,
+## Gary: the box is handed over on "You do now", the player takes it, and
+## only then does Bram go on). The two-shot it's taken in stays for
+## _first_deck.
+static func _box_out_scene(w: World) -> void:
 	var stop: Vector3 = w.get_meta("bram_stop", Cine.body(w, "bram").global_position)
 	var p := w.player.global_position
 	var mid := (p + stop) * 0.5
@@ -1218,10 +1248,7 @@ static func _first_deck(w: World) -> void:
 	var look := mid + Vector3(0, 1.15, 0)
 	Cine.shot(w, AshfordP1.clear_cam(w, [mid + perp * 2.6 + Vector3(0, 1.55, 0), mid - perp * 2.6 + Vector3(0, 1.55, 0),
 		mid + perp * 2.2 + Vector3(0, 2.3, 0), mid - perp * 2.2 + Vector3(0, 2.3, 0)], look, ["player", "bram"]), look, 34.0)
-	# he holds the box out in both hands, and the player's hands come up
-	# and take it (it passes between them rather than appearing)
 	var f = Cine.fig(w, "bram")
-	# his hand comes off the player's shoulder and the box comes out of his coat
 	if w.has_meta("bram_shoulder"):
 		_free_tracker(w.get_meta("bram_shoulder"))
 		w.remove_meta("bram_shoulder")
@@ -1231,7 +1258,18 @@ static func _first_deck(w: World) -> void:
 	if AshfordP1.meta(w, "box_bram") == null:
 		_hold_box(w, "bram", _card_box())
 	await _box_out(w, "bram", true, 0.5)
-	await Cine.wait(w, 0.3)
+	await Cine.wait(w, 0.2)
+
+
+## The player reaches out and takes the box from his hands, and it's theirs:
+## the Spark deck, its twelve cards fanned out across the screen. (v3 opens
+## the Deck and Codex later, when the player chooses a deck at the campfire,
+## so they stay shut here.)
+static func _first_deck(w: World) -> void:
+	var f = Cine.fig(w, "bram")
+	if AshfordP1.meta(w, "box_bram") == null:
+		# (a game picked up here, or the scene before skipped: out it comes now)
+		await _box_out_scene(w)
 	var pf = Cine.fig(w, "player")
 	var box: Node3D = w.get_meta("box_bram", null)
 	if box != null and is_instance_valid(box) and pf is Figure3D:

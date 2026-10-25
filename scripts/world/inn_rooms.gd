@@ -15,6 +15,16 @@ const CELLAR_AT := Vector3(30.0, -40.0, 0.0)
 ## taproom with Bram stacking paper lanterns into a crate (attic(), eve()).
 const ATTIC_AT := Vector3(0.0, -40.0, 30.0)
 const EVE_AT := Vector3(30.0, -40.0, 30.0)
+## The P1 taproom's bar (in the room's own x/z): its middle line, stood
+## forward of the west wall (at -4.5) so a man stands behind it clear of the
+## counter and the shelves; where it runs from and to (north to south);
+## where the counter stops for the lift-up flap at its south end; and where
+## Bram stands behind it.
+const BAR_X := -3.25
+const BAR_Z0 := -2.4
+const BAR_Z1 := 1.8
+const BAR_FLAP_Z := 1.05
+const BAR_BEHIND := Vector3(-3.92, 0.0, -0.1)
 
 
 ## The taproom: plaster and black beams, a long bar, the hearth, a table with a
@@ -739,9 +749,21 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		v.box(root, Vector3(0.22, H, 0.22), Vector3(x, H * 0.5, D * 0.5 - 0.05), v.mats.beam_v)
 	for z in [-2.6, -1.3, 0.0, 1.3, 2.6]:
 		v.box(root, Vector3(W, 0.24, 0.2), Vector3(0, H - 0.12, z), v.mats.beam)
-	# the bar along the west wall; the shelves behind it bare, hooks empty
-	v.box(root, Vector3(0.7, 1.05, 4.2), Vector3(-3.75, 0.525, -0.3), v.mats.wood)
-	v.box(root, Vector3(0.85, 0.08, 4.4), Vector3(-3.75, 1.09, -0.3), v.mats.beam)
+	# the bar along the west wall, stood forward of it so there's a walkway
+	# behind (BAR_X; 25 October, Gary: Bram stood half inside the counter
+	# with his back in the shelves); the shelves behind it bare, hooks
+	# empty; at its south end the counter stops short and its lift-up flap
+	# stands raised on its hinge, so there's plainly a way in and out
+	var bar_len := BAR_FLAP_Z - BAR_Z0
+	var bar_mid := (BAR_Z0 + BAR_FLAP_Z) * 0.5
+	v.box(root, Vector3(0.7, 1.05, bar_len), Vector3(BAR_X, 0.525, bar_mid), v.mats.wood)
+	v.box(root, Vector3(0.85, 0.08, bar_len + 0.1), Vector3(BAR_X, 1.09, bar_mid - 0.05), v.mats.beam)
+	# the flap: the counter top's last 0.7 m, hinged at the counter's end and
+	# raised upright (and a brass hook on the wall post it rests against)
+	v.box(root, Vector3(0.85, 0.7, 0.08), Vector3(BAR_X, 1.09 + 0.35, BAR_FLAP_Z + 0.04), v.mats.beam)
+	v.box(root, Vector3(0.1, 0.03, 0.03), Vector3(BAR_X, 1.09 + 0.72, BAR_FLAP_Z + 0.08), v.mats.metal)
+	# the gap's far post, where the counter would have ended
+	v.box(root, Vector3(0.12, 1.05, 0.12), Vector3(BAR_X - 0.29, 0.525, BAR_Z1), v.mats.beam_v)
 	for y in [1.5, 2.1]:
 		v.box(root, Vector3(0.3, 0.05, 3.9), Vector3(-W * 0.5 + 0.18, y, -0.3), v.mats.wood_h)
 	for k in 8:
@@ -788,12 +810,13 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		"bram": root.to_global(t + Vector3(0.0, 0, -1.05)), "player": root.to_global(t + Vector3(-0.15, 0, 1.15)),
 		"stairs_foot": root.to_global(Vector3(0.35, 0, D * 0.5 - 0.6)), "stairs_top": root.to_global(Vector3(-3.4, 2.9, D * 0.5 - 0.5)),
 		"door_in": root.to_global(Vector3(dx, 0, -D * 0.5 + 0.75)), "door_out": root.to_global(Vector3(dx, 0, -D * 0.5 - 0.7)),
-		"bar": root.to_global(Vector3(-3.1, 0, -0.3)), "hearth": root.to_global(Vector3(W * 0.5 - 0.8, 0, 0.9)),
-		# where the player may walk (in the room's own x/z), and what's in the way:
-		# round things (the table and the stools) and square ones (the stairs,
-		# their rail included), and the foot of the stairs, where Bram stops
-		# anyone heading back up them
-		"walk": Rect2(-3.15, -D * 0.5 + 0.35, 6.75, D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
+		"bar": root.to_global(Vector3(BAR_X + 0.75, 0, -0.3)), "bar_behind": root.to_global(BAR_BEHIND),
+		"hearth": root.to_global(Vector3(W * 0.5 - 0.8, 0, 0.9)),
+		# where the player may walk (in the room's own x/z: east of the bar's
+		# front), and what's in the way: round things (the table and the
+		# stools) and square ones (the stairs, their rail included), and the
+		# foot of the stairs, where Bram stops anyone heading back up them
+		"walk": Rect2(BAR_X + 0.75, -D * 0.5 + 0.35, 3.6 - (BAR_X + 0.75), D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
 			[Vector2(t.x + 1.15, t.z + 0.55), 0.42]],
 		"keep_out": [Rect2(-3.95, D * 0.5 - 1.38, 4.3, 1.6)],
 		"stairs_zone": Rect2(-1.3, D * 0.5 - 1.95, 2.0, 1.2),

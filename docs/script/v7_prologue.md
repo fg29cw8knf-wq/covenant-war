@@ -156,12 +156,20 @@ grabs! I'm not staying in a village dying on credit."
 **[PROTAGONIST]:** "I would, but I don't have a deck."
 _(A heavy hand lands on the protagonist's shoulder. Bram steps into the lantern
 light, pulling a worn leather deck-box from his coat.)_
-**[BRAM] (changed: Gary's line, 24 October):** "You do now. You've seen enough
-duels to know how it works, but in case you're not sure, I'll talk you through it.
-There's no shame in it, it being your first duel."
+**[BRAM] (changed: Gary's line, 24 October; split and the box handed over
+here, Gary, 25 October):** "You do now."
+_(His hand comes off the protagonist's shoulder; the worn deck-box comes out of
+his coat and he holds it out in both hands.)_
+**[BRAM] (new: Gary's line, 25 October):** "I've always told you, when you were
+ready, I'd let you start using cards. I suppose the end of an Age is as good a
+time as any. So let's start you with this lot."
+_(The protagonist reaches out and takes it.)_
+[GAME] YOUR FIRST DECK: Bram's twelve Sparks fan out on screen.
+**[BRAM]:** "You've seen enough duels to know how it works, but in case you're
+not sure, I'll talk you through it. There's no shame in it, it being your first
+duel."
 **Choice:** "Talk me through it." → **[BRAM]:** "Right. Listen for me." /
 "I've watched enough duels." → **[BRAM]:** "Then I'll keep quiet. Mostly."
-[GAME] YOUR FIRST DECK: Bram's twelve Sparks fan out on screen.
 
 **Encounter: The Lantern Duel (Tutorial)** · Corin · _Special rule:_ **Showboat.**
 Corin plays flashy, sub-optimal moves to impress the crowd (his Cinderpup attacks
@@ -1075,4 +1083,6 @@ While building v7 the game needed a few short lines the script doesn't have. The
 
 **Taken out (v7 changed the story):** the mill on fire at midnight, the Herald riding in and asking your name, "Present your mark at the Sun Court", the inn burning, Hob's nine Sparks across the river, v3's campfire talk.
 
-**New recordings needed:** herald_21 ("The Age is turned...") and herald_22 ("The Covenant updates..."); nell_crying.ogg for the look back.
+**New recordings needed:** herald_21 ("The Age is turned...") and herald_22 ("The Covenant updates..."); nell_crying.ogg for the look back; Morrowen's attic line ("Every soul in my book starts with a debt...") as morrowen_attic (the game shows it as text until it's recorded: Gary, 25 October, noticed it).
+
+**Bram's lesson, reworded (Gary, 25 October):** "There's more to duelling than one afternoon's worth. Today, just the basics. The rest comes as the cards do." (it was "one night's worth. Tonight"); a new line before the roll, "Every duel has its stakes. Some are played for cards, some for coin, and some for a good deal worse. This one's a friendly: nothing to win or lose but your pride."; the knockout line ends "and today they don't"; and the turn's steps are four short lines in place of one: "See the little band under his plate? That's one turn, in six steps, left to right. The lit one is where you are now." / "The first two happen on their own: DAWN wakes anything that wakes at the start of a turn, then DRAW gives you a card." / "MAIN is yours: call Totems, set Wards, cast Rites. Then the CLASH: your Totems strike. MAIN II is a last chance for a Rite or a Shift if you've Essence left, and DUSK ends the turn." / "That's why a button goes dark sometimes. It isn't broken. It's just not the step of the turn for it."
