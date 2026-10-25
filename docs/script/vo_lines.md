@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 542 lines, 3 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-10-25 (8c29623); run it again after the words change.
+Every line the game speaks, in the order it's played: 542 lines, 4 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-10-25 (f3fd749); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -11,7 +11,7 @@ Every line the game speaks, in the order it's played: 542 lines, 3 of them recor
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0001 | Morrowen | Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born. *(to record, as morrowen_attic.wav)* | `morrowen_attic` |
+| 0001 | Morrowen | Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born. *(recorded already: morrowen_attic)* | `morrowen_attic` |
 | 0002 | Narrator | {name}. Same as every winter. Bram still calls me Sprout. *({name} is the player's name)* | `3ce37a3b` |
 | 0003 | Narrator | Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt for your birth. | `6dbe7635` |
 | 0004 | Narrator | In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a rarity... and a threat to Aurex Morne's bank. | `082baed5` |

@@ -1,5 +1,5 @@
 no,area,speaker,id,words,file,scene,note
-0001,ashford,morrowen,morrowen_attic,"Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.",assets/audio/vo/morrowen_attic.ogg,"Bram and the player, walking","to record, as morrowen_attic.wav"
+0001,ashford,morrowen,morrowen_attic,"Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.",assets/audio/vo/morrowen_attic.ogg,"Bram and the player, walking",recorded already: morrowen_attic
 0002,ashford,narrator,3ce37a3b,[i]{name}. Same as every winter. Bram still calls me Sprout.[/i],assets/audio/vo/ashford/narrator/3ce37a3b.ogg,"Bram and the player, walking",{name} is the player's name
 0003,ashford,narrator,6dbe7635,"[i]Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt for your birth.[/i]",assets/audio/vo/ashford/narrator/6dbe7635.ogg,"Bram and the player, walking",
 0004,ashford,narrator,082baed5,"[i]In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a rarity... and a threat to Aurex Morne's bank.[/i]",assets/audio/vo/ashford/narrator/082baed5.ogg,"Bram and the player, walking",
