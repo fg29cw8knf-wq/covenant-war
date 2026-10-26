@@ -12,7 +12,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var clips := ["idle", "walk", "run", "talk", "cheer", "dance", "victory", "defeat", "play_card", "look_up", "fall", "lift", "wave", "duel_idle"]
 	var bad := 0
-	for id in ["player", "player_b", "player_c", "player_d", "bram", "corin", "tam", "tilly", "nell", "hob", "farmer", "merchant", "trader", "elder", "child_b", "child_c"]:
+	for id in ["player", "player_b", "player_c", "player_d", "bram", "corin", "tam", "tilly", "nell", "hob", "ned", "farmer", "merchant", "trader", "elder", "child_b", "child_c"]:
 		var f := Figure3D.make(id, id) as Figure3D
 		root.add_child(f)
 		await process_frame

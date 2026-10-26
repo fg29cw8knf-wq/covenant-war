@@ -94,11 +94,26 @@ bram)
 		--head-up=-12:walk,run
 	;;
 hob)
-	# a farmer (bald, in his fifties): his own walk and run
+	# a farmer (South Asian, in his fifties, broad and bald, a red neckerchief):
+	# Gary's 26 October model (Hob_new_model.glb, his new look from the Cast
+	# tab: a 34-joint rig with 22 clips retargeted from a library, 0.9 m tall
+	# as made) replaced his 19 October one; his own walk and run
 	python3 tools/rig_character.py "$src" "$out" --name Hob --height 1.80 \
-		--cycle walk --cycle run --seam idle \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
 		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
 		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
+ned)
+	# the fiddler (a Black man in his seventies, white beard, waistcoat, his
+	# fiddle on his back): Gary's 26 October model, a 52-joint rig with one
+	# clip, his idle (sent as Hob_3d_model.glb). Everything else comes from
+	# the player (walk, run and the rest) and the game's shared clips.
+	python3 tools/rig_character.py "$src" "$out" --name Ned --height 1.72 \
+		--rename ArmatureAction=idle --seam idle \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--borrow assets/models/characters/player_a.glb:walk,run,sneak,sit,wave,cheer,dance,jump,hit_react,death,fight_stance,punch \
 		--head-up=-12:walk,run
 	;;
 tam)
@@ -180,7 +195,7 @@ elder|child_b|child_c|refugee)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|farmer|merchant|trader|elder|child_b|child_c|refugee <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

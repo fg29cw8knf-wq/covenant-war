@@ -52,6 +52,7 @@ godot -- --lab
 | --- | --- |
 | `scripts/duel/` | The rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`), the computer duellist (`duel_ai.gd`), the 24 conditions and 6 boons (`duel_conditions.gd`), the Kingdom Laws and Blessings (`duel_laws.gd`), and Resonance, Rank and Attunement (`duel_rewards.gd`). No graphics code. |
 | `scripts/duel_ui/` | The Duel Lab set-up screen, the duel screen, card faces and the pieces they're built from. |
+| `assets/models/creatures/` | The Totems' 3D models, `<card id>.glb` with `<card id>_atlas.png` beside it (`assets/models/PUT_MODELS_HERE.txt`). A Tripo3D creature (one material, 4K base colour, roughness-metal and normal maps embedded) is readied with `python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb --glow`: the atlas out at 2048, the other maps dropped, and with `--glow` the fire-coloured parts of the atlas as an emission map (`<id>_glow.png`), so a Cinderpup's flames shine through the bloom. Cinderpup is Gary's 26 October Tripo3D model, with its seven clips (idle, spawn, attack, hit, defeat, victory, run); under the duel's warm lights its orange coat reads red. |
 
 ```sh
 godot --headless --script res://tests/duel_sim.gd -- 2000            # balance: every deck vs every deck
@@ -617,7 +618,14 @@ v7 wins; the parts it changed:
   talking to Bram makes the sun go down (`AshfordDay.sunset`).
 - **The evening**: Tilly's thanks and her card, Tam's bread, Nell's dance
   (tell Tam and he dances with her), Corin on the mill-race wall and his
-  button (Items), Bram by the Lantern ("It's nearly midnight." starts it).
+  button (Items; since 26 October Gary's `assets/models/ashford/corin_button.glb`
+  passes from his hand to the player's, the drawn disc if it's missing), Bram
+  by the Lantern ("It's nearly midnight." starts it).
+- **The merchant carts** (26 October): Gary's `merchant_cart_a.glb` twice,
+  west of the blue stall where Corin sells his signed cards in the afternoon
+  (`AshfordVillage.merchant_carts`; his `merchant_cart_b.glb` takes the second
+  place when it comes), thrown over by the shockwave at midnight
+  (`shatter_carts`, from `_midnight_3d`).
 - **Midnight**: no mill fire; Find Corin; the cart heaved off him with a QTE
   (`CartHeave`: HEAVE/E/A again and again, PULL/F/X in the gold; it can't be
   failed); the white light, the mark blazing on the collarbone, Bram's coat,
@@ -778,8 +786,20 @@ hers, the player beside her): hips on the seat, thighs along it, feet on
 the ground (Tilly's swing); whatever they do sitting (talking, a wave, a
 held pose) stays sitting until `stand()` or they walk off.
 
-The player (look A) is Gary's young man since 17 October, from AssetFurnace
-with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
+The player (look A) is Gary's young man: since 26 October his new look from
+the Cast tab (about 20, lean, freckles, a scar through his left eyebrow,
+wavy dark brown hair, cream shirt and moss-green waistcoat), a Tripo3D model
+(`New_Player_A_Master_22_Animations.glb`) whose own rig couldn't be used (its
+skeleton stood turned 90 degrees to the mesh, so every clip mangled him):
+`tools/reskin.py` put the new mesh onto the game's skeleton instead, fitted
+from his 17 October model's, with fresh bone-distance weights, and
+`rig_character.py` then gave him every clip of the model he replaced (the
+AssetFurnace 21, the game's and Bram's lift) and a `get_out_of_bed` clip
+fitted from Hob's new model (not yet played in the attic: `AshfordP1._attic`
+still throws the blanket its own way). Bram was remade the same way the same
+day (Gary's `Bram_new_model.glb`, a Tripo3D model with no skin weights at
+all), with his 20 October model's clips. From 17 to 25 October look A was
+his AssetFurnace master with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
 AssetFurnace model into a game character: the shared skeleton's bone names
 (AssetFurnace numbers them), every bone's rest square to the world, a set
 height (the player stands 1.76 m), walking clips cut to one step cycle that
@@ -791,7 +811,10 @@ splits the face into a light and a dark half, so it's left out. To rebuild
 him from Gary's master file:
 
 ```sh
-tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>
+tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>        # an AssetFurnace master with its clips
+python3 tools/reskin.py <tripo_model.glb> assets/models/characters/player_a.glb /tmp/pa.glb --height 1.76   # a model whose rig is no good: the mesh onto the game's skeleton
+python3 tools/rig_character.py /tmp/pa.glb assets/models/characters/player_a.glb --name "Player A" --height 1.76 \
+    --borrow "assets/models/characters/player_a.glb:<every clip of the old model>" --borrow <hob_new.glb>:get_out_of_bed
 godot --headless --import
 xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
 godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses, and sit
@@ -818,7 +841,12 @@ same 21 clips as look A's, retargeted from a library), built by
 
 Corin, Tam and Tilly are Gary's 18 October AssetFurnace models (Old Nell was
 too, until her 25 October one, below),
-Hob his 19 October one, Bram his 20 October one and the crowd's farmer,
+Hob his 26 October one (`Hob_new_model.glb`, his new look: South Asian,
+broad and bald, a red neckerchief; a 34-joint rig with 22 library clips,
+`rig_villager.sh hob`), Ned the fiddler his 26 October one too (sent as
+`Hob_3d_model.glb`: a 52-joint rig with one clip, his idle; the rest fitted
+from the player and the shared clips, `rig_villager.sh ned`; `ned.glb`, where
+the cut-out "fiddler" stood), Bram his 26 October Tripo3D one (above) and the crowd's farmer,
 merchant and trader his 22 October ones (21 clips each, the farmer and the
 trader 52-joint rigs with Player B's clips retargeted, the merchant a 34-joint
 rig on Tam's library; farmer 1.78 m, merchant 1.72 m, trader 1.80 m; their

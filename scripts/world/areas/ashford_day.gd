@@ -523,6 +523,9 @@ static func _dancing(w: World) -> void:
 
 ## Corin twists one of the iron-plated buttons off his new coat and holds it
 ## out; it passes into the player's hand.
+const BUTTON_MODEL := "res://assets/models/ashford/corin_button.glb"
+
+
 static func corin_button(w: World) -> void:
 	var cf = Cine.fig(w, "corin")
 	var pf = w.player_doll
@@ -535,19 +538,26 @@ static func corin_button(w: World) -> void:
 		return
 	var b := Node3D.new()
 	b.name = "Button"
-	var iron := StandardMaterial3D.new()
-	iron.albedo_color = Color(0.42, 0.42, 0.44)
-	iron.metallic = 0.85
-	iron.roughness = 0.35
-	var c := CylinderMesh.new()
-	c.top_radius = 0.014
-	c.bottom_radius = 0.014
-	c.height = 0.006
-	var mi := MeshInstance3D.new()
-	mi.mesh = c
-	mi.material_override = iron
-	mi.rotation.x = PI * 0.5
-	b.add_child(mi)
+	if ResourceLoader.exists(BUTTON_MODEL):
+		# Gary's button (26 October): iron-plated, a scrap of his coat's blue
+		# wool on its back, 2.8 cm across, made lying flat
+		var gm: Node3D = load(BUTTON_MODEL).instantiate()
+		gm.rotation.x = PI * 0.5
+		b.add_child(gm)
+	else:
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.42, 0.42, 0.44)
+		iron.metallic = 0.85
+		iron.roughness = 0.35
+		var c := CylinderMesh.new()
+		c.top_radius = 0.014
+		c.bottom_radius = 0.014
+		c.height = 0.006
+		var mi := MeshInstance3D.new()
+		mi.mesh = c
+		mi.material_override = iron
+		mi.rotation.x = PI * 0.5
+		b.add_child(mi)
 	b.set_meta("p1_prop", true)
 	(cf as Figure3D).pose("play_card", 0.3, 0.3)
 	await Cine.wait(w, 0.5)

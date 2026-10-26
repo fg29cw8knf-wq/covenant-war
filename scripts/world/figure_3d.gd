@@ -33,15 +33,15 @@ extends PaperDoll
 
 const DIR := "res://assets/models/characters/"
 ## Model files that aren't named after who they play (Ned the fiddler's is
-## Gary's seamus.glb, from before he was renamed; Solhaven's gate warden wears
-## the Sun Guard's). The player's is player_<look>.glb for the look chosen
+## Solhaven's gate warden wears the Sun Guard's; Ned, the fiddler, has his own
+## since 26 October, ned.glb). The player's is player_<look>.glb for the look chosen
 ## in the mirror (model_file()). Everyone else's model is characters/<their
 ## id or look>.glb (hob, krell, dask, hunter), picked up the moment it exists.
 ## (The third child look, "child", the blonde cut-out that was Tilly's and
 ## Pip's and the third child's on the green, plays Gary's boy, child_b, so no
 ## cartoon child stands among the 3D ones: Tilly has her own model, and Pip
 ## will when his comes, pip.glb.)
-const MODELS := {"player": "player_a", "ned": "seamus", "gate_warden": "sun_guard", "child": "child_b",
+const MODELS := {"player": "player_a", "gate_warden": "sun_guard", "child": "child_b",
 	# Master Script v7 (24 October): the hero is Player A in every scene and
 	# film, and Gary's other three looks play people instead: Player B is
 	# Dask, Player C is Wren, Player D is Ironvault's hunters and enforcers
@@ -70,7 +70,9 @@ const OWN_GAIT := {
 	"player_d": {"walk": 1.75, "run": 4.44, "sneak": 0.90},
 	"corin": {"walk": 1.70, "run": 4.32},
 	"bram": {"walk": 1.69, "run": 4.30},
-	"hob": {"walk": 1.65, "run": 4.17},
+	"hob": {"walk": 1.85, "run": 4.70, "sneak": 0.95},
+	# Ned walks and runs on the player's clips, fitted to his height
+	"ned": {"walk": 1.67, "run": 4.23, "sneak": 0.85},
 	"tam": {"walk": 1.63, "run": 4.12},
 	"tilly": {"walk": 1.00, "run": 2.54},
 	"nell": {"walk": 1.11, "run": 2.81},

@@ -51,6 +51,12 @@ var hay_cart_rest := Transform3D.IDENTITY
 var hay_cart_tip := 0.0
 ## The festival stalls on the green: Tilly's red one, and the blue one.
 var stalls: Array = []
+## The traders' carts lining the green's west side (Gary's merchant_cart_a.glb,
+## 26 October: a cart with a striped awning, 3.5 m long with its shafts; his
+## second cart, merchant_cart_b.glb, takes the second place when it comes),
+## where Corin sells his signed cards in the afternoon; the shockwave throws
+## them over at midnight (shatter_carts).
+var merchant_carts: Array = []
 
 
 ## Built a piece a frame (build_spread()) rather than all at once in _ready:
@@ -985,6 +991,17 @@ func build_green() -> void:
 	# festival stalls (the red one is Tilly's, where Tam's cider goes)
 	var red := stall(g, Vector3(7.5, 0, 6.0), deg_to_rad(-30), mats.cloth_red)
 	stalls = [red, stall(g, Vector3(-4.0, 0, -8.5), deg_to_rad(160), mats.cloth_blue)]
+	# the merchant carts, west of the blue stall, their shafts towards the
+	# ring road, a step inside it
+	merchant_carts = []
+	for k in [[Vector3(-9.6, 0, -8.2), 1.35, "merchant_cart_a"], [Vector3(-12.3, 0, -2.6), 1.95, "merchant_cart_b"]]:
+		var cid: String = k[2]
+		if not ResourceLoader.exists("res://assets/models/ashford/%s.glb" % cid):
+			cid = "merchant_cart_a"
+		var mc := prop_model(cid, g, k[0], k[1])
+		if mc != null:
+			mc.set_meta("rest", mc.transform)
+			merchant_carts.append(mc)
 	# the barrel goes down just past the stall's left-hand post
 	var beside := Vector3(-2.35 if red.has_meta("model") else -2.1, 0.0, 0.05)
 	barrel_spot = red.to_global(beside) if red.is_inside_tree() else red.transform * beside
@@ -2592,6 +2609,36 @@ func cart_fall_dir() -> Vector3:
 
 
 ## The middle of the cart where it stands, on the ground.
+## The shockwave at midnight throws the merchant carts over: each rolls onto
+## its side away from the Lantern, lifting as it goes, and settles.
+func shatter_carts() -> void:
+	for mc in merchant_carts:
+		if not is_instance_valid(mc):
+			continue
+		var c := mc as Node3D
+		var rest: Transform3D = c.get_meta("rest", c.transform)
+		var away := Vector3(rest.origin.x, 0, rest.origin.z).normalized()
+		var side := signf(away.dot(rest.basis.x))
+		if side == 0.0:
+			side = 1.0
+		var tw := create_tween()
+		tw.set_parallel(true)
+		# over onto its side: roll about its long axis, and a shove outward
+		var end := rest.rotated_local(Vector3(0, 0, 1), -side * 1.45)
+		end.origin = rest.origin + away * 1.3 + Vector3(0, 0.45, 0)
+		tw.tween_property(c, "transform", end, 0.55).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		var down := end
+		down.origin.y = rest.origin.y + 0.05
+		tw.chain().tween_property(c, "transform", down, 0.35).set_trans(Tween.TRANS_BOUNCE).set_ease(Tween.EASE_OUT)
+
+
+## The carts back on their wheels (a new game, the morning).
+func carts_upright() -> void:
+	for mc in merchant_carts:
+		if is_instance_valid(mc) and (mc as Node3D).has_meta("rest"):
+			(mc as Node3D).transform = (mc as Node3D).get_meta("rest")
+
+
 func cart_centre() -> Vector3:
 	var c := hay_cart_rest.origin
 	if hay_cart != null and hay_cart.get_parent() != null:

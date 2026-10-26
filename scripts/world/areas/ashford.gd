@@ -1075,10 +1075,10 @@ static func _drop_box(w: World, who: String) -> void:
 ## Every card box someone carries goes (the one on record, and any left
 ## behind in their hands by an earlier hand-over).
 static func _clear_boxes(w: World, who: String) -> void:
-	var box = w.get_meta("box_" + who, null)
-	if box != null and is_instance_valid(box):
-		box.queue_free()
 	if w.has_meta("box_" + who):
+		var box = w.get_meta("box_" + who)
+		if box != null and is_instance_valid(box):
+			box.queue_free()
 		w.remove_meta("box_" + who)
 	var f = Cine.fig(w, who)
 	var b := Cine.body(w, who)
@@ -1840,6 +1840,7 @@ static func _midnight_3d(w: World) -> void:
 	# merchant carts lining the green)
 	w.shake(0.7)
 	_sfx(w, "sigil_strike", 0.7)
+	v.shatter_carts()
 	await w.flash(Color(0.95, 0.96, 1.0), 0.1, 0.9)
 	Cine.shot(w, Vector3(-4.0, 1.8, 11.0), Vector3(2.0, 0.8, 2.0), 46.0)
 	await Cine.say(w, "", "[i]Screams finally break the silence.[/i]", 2.0)
