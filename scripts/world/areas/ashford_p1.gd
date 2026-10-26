@@ -1435,7 +1435,7 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 ## thin ring, so a shot taken from the glass reads as the reflection in it.
 ## Drawn under the dialogue box (layer 9), so the questions sit over it.
 static func mirror_mask(w: World, on: bool) -> void:
-	var layer: CanvasLayer = w.get_meta("mirror_mask", null)
+	var layer: CanvasLayer = w.get_meta("mirror_mask") if w.has_meta("mirror_mask") else null
 	if not on:
 		if layer != null and is_instance_valid(layer):
 			var r: ColorRect = layer.get_child(0)
