@@ -41,6 +41,8 @@ func choose_action(game: DuelGame, pi: int) -> Dictionary:
 			best_score = s
 			best = cand.action
 	if best.is_empty():
+		if not DuelRules.phases:
+			return {"type": "end"}   # one free Main: nothing worth doing means the turn is done
 		return {"type": "next"}   # on to the next phase (the engine ends the turn when nothing's left)
 	return best
 
@@ -250,12 +252,15 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 
 	# --- stances (Phase A): Guard a threatened Totem that has no attack worth
 	# more, Rest a hurt one; a Totem that can't attack this turn anyway takes
-	# whichever of the two it needs
+	# whichever of the two it needs. With phases on the stance is weighed
+	# against the attack that would come in the Clash (not on offer yet); with
+	# them off the attack is a candidate beside it, so each stands on its own
+	# worth and the better of the two wins
 	if game.phase_problem("stance") == "":
 		for t in p.totems():
 			if t.stance != "strike":
 				continue
-			var best_attack := _best_attack_value(game, pi, t)
+			var best_attack := _best_attack_value(game, pi, t) if DuelRules.phases else 0.0
 			var incoming := _incoming(game, pi, t)
 			var likely := 1.0 / maxf(1.0, float(p.totems().size()))   # they pick one Totem to hit
 			var guard_v := 0.0
@@ -277,7 +282,8 @@ func _candidates(game: DuelGame, pi: int) -> Array:
 		if not sh.is_empty():
 			out.append(sh)
 	_apply_plan(game, pi, out)
-	# only what this phase of the turn allows (Phase A): the rest waits for its phase
+	# only what this phase of the turn allows (Phase A): the rest waits for its
+	# phase (with phases off nothing is held back: everything above is on offer)
 	return out.filter(func(c): return game.phase_problem(String(c.action.get("type", ""))) == "")
 
 

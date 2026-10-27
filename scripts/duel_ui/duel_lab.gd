@@ -314,6 +314,7 @@ const TUNE_LABELS := {
 	"weakness_mult": ["Weakness multiplier", 0.25], "burn_damage": ["Burn damage", 5],
 	"poison_damage": ["Poison damage", 5], "shift_cost": ["Shift cost", 1],
 	"wrath_bonus": ["Wrath bonus", 5], "mercy_heal": ["Dawn's Mercy heal", 10],
+	"phases": ["Turn phases (Dawn, Clash...)", 1],
 	"rest_heal": ["Rest mends", 5], "rest_essence": ["Rest gives Essence", 1],
 	"chain_max": ["Answers in a chain", 1], "respond_secs": ["Seconds to answer", 1],
 	"tribute_tier": ["Tribute from tier", 1], "tribute_two_tier": ["Two tributes from tier", 1],
@@ -426,7 +427,9 @@ func _show_law() -> void:
 func _nudge(key: String, dir: int) -> void:
 	var step = TUNE_LABELS[key][1]
 	var v = DuelRules.get_value(key)
-	if v is float:
+	if v is bool:
+		DuelRules.set_value(key, dir > 0)   # (the turn's phases: up is on, down is off)
+	elif v is float:
 		DuelRules.set_value(key, maxf(1.0, v + step * dir))
 	else:
 		DuelRules.set_value(key, maxi(0, int(v) + int(step) * dir))
@@ -436,7 +439,7 @@ func _nudge(key: String, dir: int) -> void:
 func _refresh_tuning() -> void:
 	for key in _tune_rows:
 		var v = DuelRules.get_value(key)
-		_tune_rows[key].text = ("%.2f" % v) if v is float else str(v)
+		_tune_rows[key].text = ("on" if v else "off") if v is bool else (("%.2f" % v) if v is float else str(v))
 	for side in 2:
 		if _info[side] != null:
 			_update_info(side)

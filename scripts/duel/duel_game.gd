@@ -12,11 +12,18 @@ extends RefCounted
 ##   choose_scry(game, pi, card) -> bool          (true = leave it on top)
 ##   choose_response(game, pi, event, cards) -> DuelCard or null   (an answer on the rival's turn; optional)
 ##
-## The turn (Phase A of the deeper duel, 23 October) runs Dawn (conditions,
-## the Law) → Draw → Main (calls, Ascension, Wards, Summons, Stances, Rites,
+## The turn: with DuelRules.phases off (the game's setting since 27 October;
+## Gary: "let's go back to how we used to have it") the start-of-turn work
+## runs (conditions, the Law, the draw, Essence), then the whole turn is one
+## free Main, `phase` "main" throughout: calls, Ascension, Wards, Summons,
+## Stances, Rites, Shifts and attacks in any order, "end" ends it, and the
+## end-of-turn work follows. With phases on (Phase A of the deeper duel, 23
+## October; the Duel Lab's "Turn phases" row) it runs Dawn (conditions, the
+## Law) → Draw → Main (calls, Ascension, Wards, Summons, Stances, Rites,
 ## Shifts) → Clash (attacks) → a second Main (a Rite or a Shift) → Dusk;
 ## `phase` names the one it's in, a {type: "next"} action moves it on (a
-## phase with nothing to do in it is skipped), "end" ends the turn. An
+## phase with nothing to do in it is skipped), and phase_problem(kind) says
+## why an action can't be done now (never, with phases off). Either way an
 ## action is declared, may be answered (the response window, `_window`:
 ## Counter Rites and Wards from the hand, in chains), then resolves.
 ##
@@ -41,7 +48,7 @@ signal state_changed
 
 const LIFE := "life"      # the attack target that means "their Life"
 const NONE := "none"      # a move that needs no target
-## The turn's phases, in order (Phase A).
+## The turn's phases, in order (Phase A; only with DuelRules.phases on).
 const PHASES := ["dawn", "draw", "main", "clash", "main2", "dusk"]
 const PHASE_NAMES := {"setup": "", "dawn": "Dawn", "draw": "Draw", "main": "Main", "clash": "Clash", "main2": "Main II", "dusk": "Dusk", "over": ""}
 const STANCES := ["strike", "guard", "rest"]
@@ -60,7 +67,7 @@ var rng := RandomNumberGenerator.new()
 var winner := -1          # -1 = still playing, 0/1 = that player, 2 = draw
 var win_reason := ""
 var over := false
-var phase := "setup"      # setup, then PHASES as the turn moves, over
+var phase := "setup"      # setup, then PHASES as the turn moves (or "main" all turn with phases off), over
 var _phase_free := false  # a story rule acting at Dawn (Wren's theft, Dawnmane) isn't held to the phase
 var presenter = null
 var log_lines: Array = []
@@ -292,7 +299,9 @@ func _new_card(id: String, owner: int) -> DuelCard:
 
 func _take_turn() -> void:
 	turn += 1
-	phase = "dawn"
+	# (with phases off the turn is "main" from its first moment to its last:
+	# the start-of-turn work below runs the same, with no phase of its own)
+	phase = "dawn" if DuelRules.phases else "main"
 	var p: DuelPlayer = players[current]
 	p.shifts = 0
 	p.free_shift = false
@@ -313,7 +322,8 @@ func _take_turn() -> void:
 		p.pending_essence = 0
 	_log("Turn %d - %s" % [turn, p.player_name], -2)
 	await _fx("fx_turn", [current])
-	await _fx("fx_phase", [current, "dawn"])
+	if DuelRules.phases:
+		await _fx("fx_phase", [current, "dawn"])
 	await _dawn_conditions(p)
 	if over:
 		return
@@ -329,9 +339,10 @@ func _take_turn() -> void:
 	await _dawn_continuous(p)
 	if over:
 		return
-	phase = "draw"
-	_changed()
-	await _fx("fx_phase", [current, "draw"])
+	if DuelRules.phases:
+		phase = "draw"
+		_changed()
+		await _fx("fx_phase", [current, "draw"])
 	if turn > 1:
 		var drawn := await _draw(p, 1)
 		if over:
@@ -370,13 +381,13 @@ func _take_turn() -> void:
 		if kind == "end" or kind == "next":
 			var owed = _rule_showboat_owed(current)   # no ending the turn with a Showboat attack owed
 			if owed != null:
-				if phase != "clash":
+				if DuelRules.phases and phase != "clash":
 					await _enter_phase("clash")
 				await perform(current, owed)
 				continue
 			if kind == "end":
 				break
-			var nxt := next_phase(current)
+			var nxt := next_phase(current)   # ("end" with phases off: a stray "next" ends the turn)
 			if nxt == "end":
 				break
 			await _enter_phase(nxt)
@@ -450,6 +461,10 @@ func _terrain_tick() -> void:
 
 
 func _enter_phase(name: String) -> void:
+	if not DuelRules.phases:
+		phase = "main"   # one free Main all turn long: no phase to enter, nothing to show
+		_changed()
+		return
 	phase = name
 	_changed()
 	await _fx("fx_phase", [current, name])
@@ -457,8 +472,11 @@ func _enter_phase(name: String) -> void:
 
 ## Where a "next" action takes the turn from here: a phase with nothing to do
 ## in it is skipped, so the Clash only comes when a Totem can attack and the
-## second Main only when a Rite or a Shift is possible.
+## second Main only when a Rite or a Shift is possible. With phases off there
+## is nowhere to go but the end of the turn.
 func next_phase(pi: int) -> String:
+	if not DuelRules.phases:
+		return "end"
 	match phase:
 		"main":
 			if clash_worth(pi):
@@ -496,8 +514,11 @@ func main2_worth(pi: int) -> bool:
 	return false
 
 
-## Why this kind of action can't be done in the phase the turn is in ("" if it can).
+## Why this kind of action can't be done in the phase the turn is in ("" if it
+## can; always "" with phases off, when anything goes at any point in the turn).
 func phase_problem(kind: String) -> String:
+	if not DuelRules.phases:
+		return ""
 	match kind:
 		"call":
 			if phase != "main":
@@ -711,7 +732,7 @@ func _finish(w: int, reason: String) -> void:
 ##   {type: "rite", card, target?}       {type: "ward", card}
 ##   {type: "shift", totem, slot}        {type: "attack", attacker, move, target}
 ##   {type: "summon", card, target?}     {type: "gift", target?}
-##   {type: "stance", totem, stance}      {type: "next"} moves the phase on, {type: "end"} ends the turn
+##   {type: "stance", totem, stance}      {type: "next"} moves the phase on (ends the turn with phases off), {type: "end"} ends the turn
 ## Returns false (and does nothing) if the action isn't allowed.
 func perform(pi: int, action: Dictionary) -> bool:
 	var problem := action_problem(pi, action)
@@ -1147,7 +1168,8 @@ func _drop_relic(t: DuelTotem, to_hand: bool) -> void:
 
 
 ## Why this Totem can't take that stance ("" if it can). Free, once a turn,
-## in the Main phase, and only for a Totem that could attack this turn: a
+## in the Main phase (anywhere in the turn with phases off), and only for a
+## Totem that could attack this turn (so not one that already has): a
 ## stance is what a ready Totem does with its turn instead of striking (one
 ## called this turn, asleep or stunned has no stance to take).
 func stance_problem(pi: int, t, stance: String) -> String:
@@ -1630,7 +1652,9 @@ func can_do_anything_but_end(pi: int) -> bool:
 func showboat_due(pi: int, any_phase := false) -> Array:
 	if int(story_rules.get("showboat", -1)) != pi or over or pi != current:
 		return []
-	if phase != "clash" and not any_phase:
+	# (with phases on the attack is owed in the Clash; with them off, from the
+	# turn's first moment, as the rule was written)
+	if DuelRules.phases and phase != "clash" and not any_phase:
 		return []
 	var out := []
 	for t in players[pi].totems():

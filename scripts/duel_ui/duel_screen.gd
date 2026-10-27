@@ -69,7 +69,7 @@ var turn_label: Label
 var end_btn: DuelViews.EmblemButton
 var gift_btn: DuelViews.GiftButton
 var ward_zones := []           # [side] -> WardZone
-var phase_band: DuelViews.PhaseBand   # the turn's phases, under the rival's plate (Phase A)
+var phase_band: DuelViews.PhaseBand   # the turn's phases, under the rival's plate (Phase A; only built with DuelRules.phases on, else null)
 var rival_hand: DuelViews.HandBacks
 var _menu_anchor := Vector2(-1, -1)
 var _menu_beside := 0            # 0: above the anchor; -1 / 1: to that side of it (3D field)
@@ -333,9 +333,12 @@ func _build() -> void:
 		p.discard_tapped.connect(_on_discard_tapped)
 		stage.add_child(p)
 		panels.append(p)
-	phase_band = DuelViews.PhaseBand.new()
-	phase_band.size = Vector2(400, 42)
-	stage.add_child(phase_band)
+	if DuelRules.phases:
+		# (the band only exists when the turn has phases; with them off there
+		# are no stages to show, and nothing below may assume it's there)
+		phase_band = DuelViews.PhaseBand.new()
+		phase_band.size = Vector2(400, 42)
+		stage.add_child(phase_band)
 	# aiming arrows while a target is being picked
 	var arrows := TargetArrows.new()
 	arrows.screen = self
@@ -589,7 +592,8 @@ func _start() -> void:
 		field.set_rows(me)
 	_pin(panels[rival], Vector2(6, 6), false)
 	_pin(panels[me], Vector2(6, 822), false)
-	_pin(phase_band, Vector2(20, 258), false)
+	if phase_band != null:
+		_pin(phase_band, Vector2(20, 258), false)
 	_pin(ward_zones[rival], Vector2(20, 306), false)
 	_pin(ward_zones[me], Vector2(20, 690), false)
 	for side in 2:
@@ -670,10 +674,11 @@ func _watching() -> bool:
 	return ai_flags[me]
 
 
-## What the big button does now: on to the Clash, on to the second Main, or
-## end the turn (Phase A). A tutorial step that says "end" ends it.
+## What the big button does now: END TURN all turn long with phases off; with
+## them on, on to the Clash, on to the second Main, or end the turn (Phase A).
+## A tutorial step that says "end" ends it.
 func _end_label() -> String:
-	if _tutor_wants_end():
+	if not DuelRules.phases or _tutor_wants_end():
 		return "END TURN"
 	match game.next_phase(me):
 		"clash":
@@ -1089,16 +1094,18 @@ func _back_out() -> void:
 func _on_end_turn() -> void:
 	if mode == "main":
 		if tutor != null and not tutor.allows("end"):
-			# the lesson wants something else; moving on to the Clash for an
-			# attack it asks for is fine (its steps were written before the phases)
+			# the lesson wants something else; with phases on, moving on to the
+			# Clash for an attack it asks for is fine (its steps were written
+			# before the phases); with them off the button is only END TURN
 			var kind := DuelHuman.tutor_step_kind(game, me, tutor._current_do())
-			if not (kind != "" and game.phase_problem(kind) != "" and game.next_phase(me) != "end"):
+			if not (DuelRules.phases and kind != "" and game.phase_problem(kind) != "" and game.next_phase(me) != "end"):
 				tutor.nudge()
 				return
 			sfx.play("end_turn")
 			_respond({"type": "next"})
 			return
-		var ends := game.next_phase(me) == "end" or _tutor_wants_end()
+		# (with phases off the button always ends the turn: next_phase is "end")
+		var ends := not DuelRules.phases or game.next_phase(me) == "end" or _tutor_wants_end()
 		if tutor != null:
 			tutor.did("end")
 		sfx.play("end_turn")
@@ -1607,21 +1614,31 @@ func _show_actions_default() -> void:
 	for t in p.totems():
 		if _has_usable_move(t):
 			any = true
-	match game.phase:
-		"clash":
-			_set_hint("The Clash: tap a glowing Totem to attack." if any else "Nothing can attack: move on.")
-		"main2":
-			_set_hint("A last breath: a Rite or a Shift, or end your turn." if game.can_do_anything_but_end(me) else "Nothing left to do: end your turn.")
-		_:
-			if game.can_do_anything_but_end(me):
-				_set_hint("Tap a glowing card to play it, or a Totem to set its stance." if any else "Tap a glowing card in your hand to play it.")
-			elif any:
-				_set_hint("Set your stances, or on to the Clash.")
-			else:
-				_set_hint("Nothing left to do: end your turn.")
-			# the Oath at the start of the duel (Phase D): offered on the first turn
-			if game.own_turns(me) <= 1 and _oath_available():
-				_add_action("Swear an Oath", "Now, and once more mid-duel.", 0, true, _offer_oaths, "oath")
+	if not DuelRules.phases:
+		# one free Main: attack and play in any order (the words from before the phases)
+		if any:
+			_set_hint("Tap a glowing Totem to attack, or a glowing card to play it.")
+		elif game.can_do_anything_but_end(me):
+			_set_hint("Tap a glowing card in your hand to play it.")
+		else:
+			_set_hint("Nothing left to do: end your turn.")
+	else:
+		match game.phase:
+			"clash":
+				_set_hint("The Clash: tap a glowing Totem to attack." if any else "Nothing can attack: move on.")
+			"main2":
+				_set_hint("A last breath: a Rite or a Shift, or end your turn." if game.can_do_anything_but_end(me) else "Nothing left to do: end your turn.")
+			_:
+				if game.can_do_anything_but_end(me):
+					_set_hint("Tap a glowing card to play it, or a Totem to set its stance." if any else "Tap a glowing card in your hand to play it.")
+				elif any:
+					_set_hint("Set your stances, or on to the Clash.")
+				else:
+					_set_hint("Nothing left to do: end your turn.")
+	if not DuelRules.phases or game.phase == "main":
+		# the Oath at the start of the duel (Phase D): offered on the first turn
+		if game.own_turns(me) <= 1 and _oath_available():
+			_add_action("Swear an Oath", "Now, and once more mid-duel.", 0, true, _offer_oaths, "oath")
 
 
 func _show_cancel() -> void:

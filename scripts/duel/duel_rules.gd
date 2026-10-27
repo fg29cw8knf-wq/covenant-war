@@ -60,6 +60,15 @@ static var wrath_bonus := 30
 static var tempest_essence := 3
 
 # --- the turn (Phase A of the deeper duel, 23 October) -----------------------------
+## Whether a turn runs in phases (Dawn · Draw · Main · Clash · Main II · Dusk,
+## with the band under the rival's plate and the big button moving the turn
+## on). Off (27 October, Gary: "I don't like the different stages of the fight,
+## let's go back to how we used to have it"), the whole turn is one free Main:
+## calls, Rites, Wards, Stances, Shifts and attacks in any order, END TURN
+## when you're done. The start-of-turn work (conditions, the Law, the draw,
+## Essence) and the end-of-turn work still happen. The Duel Lab can turn
+## phases back on (its "Turn phases" row); tests/phase_test.gd does.
+static var phases := false
 static var rest_heal := 20             # a Totem set to Rest mends this much...
 static var rest_essence := 1           # ...and gives its duellist this much Essence
 static var chain_max := 4              # answers in one chain, at most
@@ -92,7 +101,7 @@ static func tunables() -> Array:
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
 		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns",
-		"rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
+		"phases", "rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
 		"terrain_turns", "continuous_slots", "arena_guard", "favour_max", "oath_favour", "oath_turns", "oath_life_cost"]
 
 
@@ -135,6 +144,7 @@ static func get_value(key: String):
 		"regen_heal": return regen_heal
 		"wake_roll": return wake_roll
 		"burn_turns": return burn_turns
+		"phases": return phases
 		"rest_heal": return rest_heal
 		"rest_essence": return rest_essence
 		"chain_max": return chain_max
@@ -186,6 +196,7 @@ static func set_value(key: String, v) -> void:
 		"regen_heal": regen_heal = int(v)
 		"wake_roll": wake_roll = int(v)
 		"burn_turns": burn_turns = int(v)
+		"phases": phases = bool(v)
 		"rest_heal": rest_heal = int(v)
 		"rest_essence": rest_essence = int(v)
 		"chain_max": chain_max = int(v)

@@ -12,11 +12,12 @@ func choose_action(game: DuelGame, pi: int) -> Dictionary:
 	if screen.tutor != null:
 		await screen.tutor.at_main()   # the tutorial's next lesson, before the player can act
 		await screen.lessons_at_main()   # and anything new on the table (an Ascension)
-		# the tutorial asks for something the turn's phase doesn't allow yet (an
-		# attack in the Main, a Rite after the Clash): the turn moves on by
-		# itself (Bram's lessons were written before the phases)
+		# with phases on, the tutorial asks for something the turn's phase
+		# doesn't allow yet (an attack in the Main, a Rite after the Clash):
+		# the turn moves on by itself (Bram's lessons were written before the
+		# phases; with them off, phase_problem never objects and this is skipped)
 		var kind := tutor_step_kind(game, pi, screen.tutor._current_do())
-		if kind != "" and game.phase_problem(kind) != "" and game.next_phase(pi) != "end":
+		if DuelRules.phases and kind != "" and game.phase_problem(kind) != "" and game.next_phase(pi) != "end":
 			return {"type": "next"}
 	screen.begin_main()
 	var r = await responded
@@ -160,10 +161,11 @@ class Scripted:
 			return await super.choose_action(game, pi)
 		while not _queue.is_empty():
 			var a := _resolve(game, pi, _queue[0])
-			if not a.is_empty() and game.phase_problem(String(a.type)) != "":
-				# a step for a later phase (an attack while the turn is in its
-				# Main): the turn moves on to it, the step kept; with no later
-				# phase to come, the step can't be done this turn
+			if DuelRules.phases and not a.is_empty() and game.phase_problem(String(a.type)) != "":
+				# (phases on) a step for a later phase (an attack while the turn
+				# is in its Main): the turn moves on to it, the step kept; with
+				# no later phase to come, the step can't be done this turn. With
+				# phases off every step is done in the order written.
 				if game.next_phase(pi) != "end":
 					await _pause(0.3)
 					return {"type": "next"}
@@ -182,8 +184,8 @@ class Scripted:
 		# a story rule may still owe an attack (Showboat): make it before ending
 		var owed := game.showboat_attack(pi)
 		if not owed.is_empty():
-			if game.phase != "clash":
-				return {"type": "next"}
+			if DuelRules.phases and game.phase != "clash":
+				return {"type": "next"}   # (on to the Clash, where the attack is owed)
 			await _pause(0.6)
 			if screen != null:
 				await screen.preview_ai_action(pi, owed)

@@ -69,18 +69,28 @@ static func sections() -> Array:
 			"Nobody attacks on the first turn of the duel, and a Totem that's just been called can't attack until your next turn: it needs a moment to find its feet.",
 		]},
 	]})
-	out.append({"title": "A turn, step by step", "body": [
-		"The little band under your rival's plate shows the steps of a turn, left to right, and lights the one you're in.",
-		{"bullets": [
-			"DAWN: anything that wakes at the start of a turn, wakes.",
-			"DRAW: you draw a card.",
-			"MAIN: your time. Call Totems, set Wards, cast Rites, in any order you like.",
-			"THE CLASH: your Totems attack, one at a time, each once.",
-			"MAIN II: a last chance for a Rite or a Shift, if you've Essence left.",
-			"DUSK: the turn ends and anything that fades, fades. Then it's your rival's turn.",
-		]},
-		"When a button goes dark it isn't broken: it's just not the step of the turn for it. End Turn is there whenever you've nothing more to do.",
-	]})
+	if DuelRules.phases:
+		out.append({"title": "A turn, step by step", "body": [
+			"The little band under your rival's plate shows the steps of a turn, left to right, and lights the one you're in.",
+			{"bullets": [
+				"DAWN: anything that wakes at the start of a turn, wakes.",
+				"DRAW: you draw a card.",
+				"MAIN: your time. Call Totems, set Wards, cast Rites, in any order you like.",
+				"THE CLASH: your Totems attack, one at a time, each once.",
+				"MAIN II: a last chance for a Rite or a Shift, if you've Essence left.",
+				"DUSK: the turn ends and anything that fades, fades. Then it's your rival's turn.",
+			]},
+			"When a button goes dark it isn't broken: it's just not the step of the turn for it. End Turn is there whenever you've nothing more to do.",
+		]})
+	else:
+		# (27 October, Gary: no stages to the turn, as it was before)
+		out.append({"title": "Your turn", "body": [
+			{"bullets": [
+				"Your turn starts with a card drawn and your Essence filled. Anything that wakes at the start of a turn, wakes.",
+				"Then it's all yours, in any order you like: call Totems, set Wards, cast Rites, set a Totem's stance, and attack.",
+				"Each of your Totems attacks once a turn. Tap END TURN when you've nothing more to do.",
+			]},
+		]})
 	out.append({"title": "Attacking", "body": [
 		{"bullets": [
 			"Tap one of your Totems, pick one of its moves, then pick what to hit.",
@@ -144,7 +154,7 @@ static func sections() -> Array:
 		]})
 	if any_known(["veiled", "revealed"]):
 		out.append({"title": "Veiled calls", "body": [
-			"A Totem can be called face down. Your rival sees a card back and nothing else until it fights, it's struck, or your next Dawn comes. Some have a trick for the moment they're turned up.",
+			"A Totem can be called face down. Your rival sees a card back and nothing else until it fights, it's struck, or your next turn comes. Some have a trick for the moment they're turned up.",
 		]})
 	if known("relic"):
 		out.append({"title": "Relics", "body": [
@@ -196,7 +206,7 @@ static func sections() -> Array:
 		if known("echo"):
 			b.append("An ECHO: a fallen Totem that answers once from the discard, when another of yours falls. Read what lies in your discard; tap it on your plate.")
 		if known("rekindle"):
-			b.append("One that REKINDLES climbs out of the discard once a duel, at your Dawn, with half its strength. Put it down twice and it stays down.")
+			b.append("One that REKINDLES climbs out of the discard once a duel, at the start of your turn, with half its strength. Put it down twice and it stays down.")
 		if known("loyal"):
 			b.append("A LOYAL Totem comes out of your hand by itself, free, when one of its own falls, and takes the empty place.")
 		out.append({"title": "The discard", "body": [{"bullets": b}]})

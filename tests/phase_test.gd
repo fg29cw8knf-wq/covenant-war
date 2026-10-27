@@ -39,10 +39,18 @@ class Answerer:
 
 
 func _initialize() -> void:
+	# the turn's phases are off in the game since 27 October (Gary: "let's go
+	# back to how we used to have it"); the Lab can turn them on, so the phase
+	# rules are checked with them on, and the rest both ways
+	DuelRules.phases = true
 	_phases()
-	_stances()
-	_answers()
-	await _whole_duels()
+	for on in [false, true]:
+		DuelRules.phases = on
+		print("  (turn phases %s)" % ("on" if on else "off"))
+		_stances()
+		_answers()
+		await _whole_duels()
+	DuelRules.phases = false
 	print("PHASE TEST: %s" % ("PASS" if fails == 0 else "%d FAILED" % fails))
 	quit(0 if fails == 0 else 1)
 
@@ -208,7 +216,8 @@ func _answers() -> void:
 	var shroud := _give(g, 0, "ashen_shroud")
 	g.phase = "main"
 	_check(g.rite_problem(0, shroud) != "", "an answer isn't cast on its owner's turn")
-	_check(not g.can_do_anything_but_end(0) or g.players[0].hand.size() > 1, "an answer in hand isn't 'something to do'")
+	if DuelRules.phases:   # (with phases off the Totem's attack is something to do in the Main)
+		_check(not g.can_do_anything_but_end(0) or g.players[0].hand.size() > 1, "an answer in hand isn't 'something to do'")
 
 	# 6. halving, and a sidestep onto an empty slot
 	b = _board()
