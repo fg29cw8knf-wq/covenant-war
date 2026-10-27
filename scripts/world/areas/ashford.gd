@@ -146,6 +146,9 @@ const CORIN_BARK_ON := {
 	"rival_first_fate": "Six. Give me a six.",
 	"weakness_on_rival": "Water. Course you'd bring water.",
 	"rival_ko_own": "Cinderpup! Get up!",
+	"my_big_hit": "Lucky. That was lucky.",
+	"rival_life_third": "That's... fine. That's fine.",
+	"rival_falls": "No. No, no, no.",
 }
 ## Corin's duel rule (v3, "DUEL · The Lantern Duel"), named as the duel starts
 ## and played by the rules engine (DuelGame story_rules "showboat").
@@ -333,7 +336,11 @@ static func _tam_mill() -> Array:
 static func _tam_game() -> Array:
 	return [
 		{"duel": {"v1": true, "id": "tam_friendly", "name": "Tam"},
-			"win": [{"set": "beat_tam"}, {"who": "tam", "say": "Ha! Bram's been teaching you more than sums down there."}],
+			"win": [{"set": "beat_tam"}, {"who": "tam", "say": "Ha! Bram's been teaching you more than sums down there."},
+				{"if": "told_loyal_hound", "then": [], "else": [
+					{"set": "told_loyal_hound"},
+					{"say": "[i](You've learned Tam's duel skill, Loyal Hound: the first time one of your Totems would be knocked out, it holds on. Choose your skill in the menu, under Deck.)[/i]"},
+				]}],
 			"lose": [{"who": "tam", "say": "Forty years of mornings with that hound, Sprout. You'll get there."}]},
 	]
 
@@ -427,7 +434,11 @@ static func _nell_game() -> Array:
 	return [
 		{"scene": "nell_sit"},
 		{"duel": {"v1": true, "id": "nell_friendly", "name": "Old Nell"},
-			"win": [{"set": "beat_nell"}, {"who": "nell", "say": "Hm. Tam owes me a ribbon. I told him you would."}],
+			"win": [{"set": "beat_nell"}, {"who": "nell", "say": "Hm. Tam owes me a ribbon. I told him you would."},
+				{"if": "told_old_wards", "then": [], "else": [
+					{"set": "told_old_wards"},
+					{"say": "[i](You've learned Nell's duel skill, Old Wards: your first Ward costs no Essence. Choose your skill in the menu, under Deck.)[/i]"},
+				]}],
 			"lose": [{"who": "nell", "say": "There. Now you know what a long life's for."}]},
 		{"scene": "nell_stand"},
 	]
@@ -595,6 +606,11 @@ static func _after_the_duel() -> Array:
 		], "else": [
 			{"say": "[i](Everything Bram showed you is kept in the menu, under How to Duel.)[/i]"},
 		]},
+		# duel skills (27 October): the first the player hears of them
+		{"if": "told_skills", "then": [], "else": [
+			{"set": "told_skills"},
+			{"say": "[i](Duel skills: every duellist has one, shown on their plate. It works once a duel, by itself. Yours is Second Wind, and you learn others by beating people at cards. Corin's Showman is yours now. Choose your skill in the menu, under Deck.)[/i]"},
+		]},
 		{"scene": "afternoon"},
 	]
 
@@ -660,12 +676,34 @@ const NELL_DECK := [
 ]
 ## The friendly games (Gary, 24 October): no experience, no card, can be lost,
 ## and played again as often as the player likes until the sun goes down.
+## Each has a duel skill of their own (27 October), which the player learns
+## by beating them (DuelSkills.LEARNED_BY), and says more as it goes.
 const FRIENDLY := {
-	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75,
-		"bark_on": {"rival_first_fate": "Come on, girl. Bite.", "rival_ko_own": "Steady, girl. Back you come."}},
-	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3,
-		# Bram isn't at her bench to explain a Ward, so she does
-		"bark_on": {"rival_ward_springs": "That's a Ward, love. Face down till it bites."}},
+	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75, "skill": "loyal_hound",
+		"bark_on": {
+			"rival_first_fate": "Come on, girl. Bite.",
+			"rival_ko_own": "Steady, girl. Back you come.",
+			"rival_skill": "Told you. She doesn't let go.",
+			"my_big_hit": "Ha! Where'd you learn that one?",
+			"rival_kos_mine": "Sorry, Sprout. She's quicker than she looks.",
+			"my_skill": "Oho. Bram's been teaching you tricks.",
+			"my_comeback": "There it is. There's the Ashford in you.",
+			"arena_event": "Mind the lanterns, now.",
+			"my_lethal": "Go on, then. Finish it.",
+			"rival_falls": "Ha! Good. That's good, Sprout.",
+		}},
+	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards",
+		"bark_on": {
+			# Bram isn't at her bench to explain a Ward, so she does
+			"rival_ward_springs": "That's a Ward, love. Face down till it bites.",
+			"rival_skill": "Old Wards, love. They don't cost what new ones do.",
+			"my_big_hit": "Oh, my.",
+			"my_skill": "Clever. Who taught you that?",
+			"rival_life_third": "Don't fuss. I'm old, not done.",
+			"arena_event": "Pretty, aren't they? The lanterns.",
+			"rival_comeback": "Not yet, love. I've a little left.",
+			"rival_falls": "There. Well played, love.",
+		}},
 }
 const FRIENDLY_LIFE := 40
 
@@ -737,6 +775,7 @@ static func _friendly_spec(id: String, me: String, arena: String) -> Dictionary:
 		"life": FRIENDLY_LIFE,
 		"story": true,
 		"stacked": [true, true],
+		"rival_skill": String(f.get("skill", "")),
 		"bark_on": f.bark_on,
 		"rewards": {"opponent": "village"},
 		"practice": true,

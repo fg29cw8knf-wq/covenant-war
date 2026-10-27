@@ -12,6 +12,7 @@ signal new_game
 signal continue_game
 signal watch_opening
 signal open_lab
+signal open_puzzles
 
 const KEY_ART := "res://assets/art/title/title_key_art"
 const CLOUDS := "res://assets/art/title/title_clouds"
@@ -109,6 +110,10 @@ void fragment() {
 	var lab := UITheme.button("Duel Lab", false, 500)
 	lab.pressed.connect(func() -> void: open_lab.emit())
 	box.add_child(lab)
+	# one-turn duel puzzles, each teaching a trick (27 October)
+	var riddles := UITheme.button("Bram's Riddles", false, 500)
+	riddles.pressed.connect(func() -> void: open_puzzles.emit())
+	box.add_child(riddles)
 	var movie := UITheme.button("Watch the opening", false, 500)
 	movie.pressed.connect(func() -> void: watch_opening.emit())
 	box.add_child(movie)

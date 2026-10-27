@@ -314,7 +314,7 @@ static func _cache_cards(n: int) -> Array:
 	var pool := []
 	for id in DuelCards.CARDS:
 		var d: Dictionary = DuelCards.CARDS[id]
-		if int(d.get("tier", 1)) <= 2 and d.kind != "summon" and not DuelCards.is_ascension(id) and String(d.get("element", "")) != "radiant":
+		if int(d.get("tier", 1)) <= 2 and d.kind != "summon" and not d.get("granted", false) and not DuelCards.is_ascension(id) and String(d.get("element", "")) != "radiant":
 			pool.append(id)
 	var out := []
 	for i in n:

@@ -420,6 +420,7 @@ func _deck() -> Control:
 		26, Color("8fe0a0") if probs.is_empty() else Color("ff8a80"))
 	st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(st)
+	v.add_child(_skill_row())
 	var ids := []
 	for id in Codex.all_ids():
 		if _deck_work.has(id):
@@ -433,6 +434,45 @@ func _deck() -> Control:
 	grid.card_tapped.connect(func(id: String) -> void: _open_card(id))
 	v.add_child(grid)
 	return v
+
+
+## The duel skill the player takes into their duels (27 October): one of
+## those they know (DuelSkills.known: the starters, and any learned by
+## beating their owner), with what it does under the buttons.
+func _skill_row() -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 6)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	box.add_child(row)
+	var l := UITheme.label("Duel skill", 28, UITheme.TEXT, "bold")
+	l.custom_minimum_size = Vector2(170, 0)
+	row.add_child(l)
+	var words := UITheme.label("", 24, UITheme.TEXT_DIM)
+	words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var btns := []
+	var cur := DuelSkills.chosen()
+	for id in DuelSkills.known():
+		var b := UITheme.button(DuelSkills.skill_name(id), false, 0)
+		b.toggle_mode = true
+		b.button_pressed = id == cur
+		b.custom_minimum_size = Vector2(0, 60)
+		b.add_theme_font_size_override("font_size", 22)
+		b.pressed.connect(func() -> void:
+			DuelSkills.choose(id)
+			for o in btns:
+				(o as Button).button_pressed = o == b
+			words.text = _skill_words(id))
+		btns.append(b)
+		row.add_child(b)
+	words.text = _skill_words(cur)
+	box.add_child(words)
+	return box
+
+
+static func _skill_words(id: String) -> String:
+	var from := String(DuelSkills.SKILLS.get(id, {}).get("from", ""))
+	return "%s%s Works once a duel, by itself." % [DuelSkills.text(id), (" (Learned from %s.)" % from) if from != "" else ""]
 
 
 ## "1 Totem  ·  11 Rites"
@@ -902,6 +942,27 @@ func _options() -> Control:
 		video_btns.append(vb)
 		videos.add_child(vb)
 	v.add_child(videos)
+	# how fast a duel plays out (27 October; the duel's own Speed button too)
+	var speeds := HBoxContainer.new()
+	speeds.add_theme_constant_override("separation", 24)
+	var spl := UITheme.label("Battle speed", 30, UITheme.TEXT, "bold")
+	spl.custom_minimum_size = Vector2(300, 0)
+	speeds.add_child(spl)
+	var speed_btns := []
+	for m in [[1.0, "Normal"], [2.0, "Fast"], [4.0, "Fastest"]]:
+		var sb := UITheme.button(String(m[1]), false, 200)
+		sb.toggle_mode = true
+		sb.button_pressed = is_equal_approx(float(Game.settings.get("duel_speed", 1.0)), float(m[0]))
+		sb.custom_minimum_size = Vector2(200, 64)
+		sb.add_theme_font_size_override("font_size", 26)
+		sb.pressed.connect(func() -> void:
+			Game.settings["duel_speed"] = float(m[0])
+			Game.save_settings()
+			for o in speed_btns:
+				(o as Button).button_pressed = o == sb)
+		speed_btns.append(sb)
+		speeds.add_child(sb)
+	v.add_child(speeds)
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
 		Game.settings["duel_3d"] = on))
 	if Gfx.is_phone():

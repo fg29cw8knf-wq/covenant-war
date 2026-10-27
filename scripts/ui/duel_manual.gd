@@ -176,6 +176,25 @@ static func sections() -> Array:
 		out.append({"title": "Bonds", "body": [
 			"Some Totems know each other. While both stand, they share a move, or something more. Keep the pair together.",
 		]})
+	# the 27 October additions (Gary: "add all the go battles")
+	if bool(Game.flag("told_skills")) or known("skills"):
+		out.append({"title": "Duel skills", "body": [
+			"Every duellist has one skill, shown on a ribbon across the top of their plate. It works once a duel, by itself: there's nothing to press. Tap the ribbon to read it; it greys out once it's used.",
+			"You start knowing a few, and learn others by beating people at cards. Choose yours in the menu, under Deck.",
+		]})
+	if known("comeback"):
+		out.append({"title": "Rallying Light", "body": [
+			"When your Life first falls to a quarter, your god sends you one card, once a duel: Rallying Light. It costs nothing. It heals every Totem you have, Empowers them, and draws you a card. Play it before you attack.",
+			"Your rival's god does the same for them.",
+		]})
+	if known("arena_event"):
+		out.append({"title": "The Circle joins in", "body": [
+			"Every few turns the Circle itself does something, to both sides alike: Ashford's lanterns flare, the tide surges, the forge roars. The corner under the turn counts it down.",
+		]})
+	out.append({"title": "Aiming", "body": [
+		"While you pick what a move will hit, each target shows what it would take: the damage (a range, for a move that rolls Fate), KO if it would fall, and WINS if the blow would end the duel. A face-down Ward or an answer can still change it.",
+		"The Speed button at the top of the duel plays it faster: 1x, 2x or 4x. Options has it too.",
+	]})
 	if known("guardian"):
 		out.append({"title": "Guardians", "body": [
 			"A Guardian stands in front of everything: every blow goes through it first, and nothing on its side can be hit at the Life while it stands. Break it, or go nowhere.",

@@ -75,7 +75,78 @@ godot --headless --script res://tests/phase_e_test.gd                # the seven
 godot --headless --script res://tests/duel_sim.gd -- 980 --ways      # the seven ways' sample decks against each other
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/phase_e_shot.tscn -- <dir>   # Phase E stills: the tinted stand-ins
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/phase_d_shot.tscn -- <dir>   # Phase D stills, both fields
+godot --headless --script res://tests/skills_test.gd                 # duel skills, Rallying Light, the Circle's events, the damage preview (27 October)
+godot --headless --script res://tests/puzzles_test.gd                # Bram's Riddles: each answer wins, a wrong try doesn't
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 res://tests/battle_extras_shot.tscn -- <dir>   # their stills
 ```
+
+### Skills, the comeback card, the Circle joining in, and Bram's Riddles (27 October)
+
+Gary (27 October): "add all the go battles", the seven ideas sent him that
+morning, with the phases gone. Each can be switched off in the Lab's tuning
+list, and none of them is in a lesson (the Lantern Duel), on a set board (the
+Trial, a riddle) or where a spec says no (`no_skills`, `no_comeback`,
+`no_arena_events`).
+
+- **Duel skills** (`scripts/duel/duel_skills.gd`, `DuelGame.has_skill` and
+  `_use_skill`): one a side, on a ribbon across the top of the plate (gold;
+  grey and struck through once used; tap it for its words), each working
+  once a duel by itself. Second Wind (at half Life your Totems heal 30),
+  Quick Start (+1 Essence on your first turn), Lucky Charm (the first Fate
+  roll rolled twice, the better counts), Keen Eye (the rival's first Ward
+  set face up), and three learned from their owners by beating them: Loyal
+  Hound (Tam's: the first Totem to be knocked out holds on with 10 HP), Old
+  Wards (Nell's: the first Ward is free) and Showman (Corin's: the first
+  attack +20; learned from the Lantern Duel). The player chooses theirs in
+  the menu under Deck (`DuelSkills.chosen`, Game setting `duel_skill`); a
+  story duel gives its rival's as `spec.rival_skill`, the Lab picks each
+  side's (Random, None or one) and `spec.skills` sets both. When one works,
+  its name comes across the Circle (`fx_skill`). Notes after the Lantern
+  Duel, Tam's and Nell's games say what was learned.
+- **Rallying Light, the comeback card** (`DuelGame._after_life_loss`): the
+  first time a duellist's Life falls to a quarter, their god sends them a
+  free Rite, once a duel: every Totem heals 30 and is Empowered, and a card
+  is drawn (`rallying_light`, "granted": never in a deck, the Codex, a cache
+  or the rewards, and not counted among a duellist's own cards). Its
+  painting is a stand-in drawn here until Gary's comes. There was a Ward
+  called Last Stand already, so it has its own name.
+- **The finishing blow** (`DuelScreen._finishing_start`, `_finishing_end`):
+  the blow that empties a Life flies at a third of the speed
+  (`Engine.time_scale`), the camera leans in to where it lands, the screen's
+  edges darken and the one going down says their last line
+  (`rival_falls`); time comes back up over half a second after, and is put
+  back whatever ends the duel. Not at the tests' 20x autoplay.
+- **Opponents speak up** (`DuelBarks`): Tam, Nell and Corin have more lines
+  (their big hits, skills, Rallying Light, the Circle, the last blow), and a
+  Lab rival, or any duel without its own lines, says one of the generic
+  ones. Each event once a duel, as before.
+- **Bram's Riddles** (`scripts/duel_ui/duel_puzzles.gd`, `PuzzleMenu`, the
+  title screen's button): seven one-turn puzzles on set boards, each
+  teaching a trick: an open lane (Shift), spill-over, a Guardian first,
+  weakness, baiting a Ward, the order of Essence and power-ups, and
+  Rallying Light. Bram's side only watches; a wrong try and he sets it again
+  with his hint from the second try (the Trial's reset); solved ones are
+  ticked (setting `riddles_solved`). The aiming preview shows only the
+  damage there (what wins is the riddle). `tests/puzzles_test.gd` plays each
+  answer and a wrong try. The rules engine took four puzzle keys for them:
+  `wards` (set face down), `no_gift`, `attack_first` and `out_text`.
+- **The Circle joins in** (`DuelGame.ARENA_EVENTS`, `_arena_event`): at turn
+  5 and every 6 turns after, the arena does something to both sides
+  (Ashford's lanterns flare: every Totem Empowered, Fire Totems heal 20; the
+  tide surges; the forge roars; the stone wakes; the mists part; the noon
+  bell), counted down in the corner under the turn for the last three turns
+  (`fx_arena_event`).
+- **The damage preview** (`DuelGame.preview_attack`, `DuelScreen.PreviewChips`):
+  while a move is aimed, a chip over each target says what it would take
+  (a range for a Fate move), KO (or its chance), and WINS (or its chance)
+  if the blow, or its spill-over, would end the duel. Face-down Wards and
+  answers aren't counted. **Speed** is one tap away at the top of the duel
+  (Normal, Fast, Fastest: 1x, 2x, 4x), and in Options as Battle speed.
+
+`friendly_sim` with the skills, Rallying Light and the lanterns: Tam 86% for
+a new player's plain play (82% before), Nell 50% (53%). `duel_sim -- 300`
+with a random skill each side: 0 invariant errors, 26.7 turns on average
+(25.6 before), first player 49%.
 
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
 

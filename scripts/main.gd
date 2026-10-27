@@ -73,6 +73,9 @@ func show_title() -> void:
 	title.open_lab.connect(func() -> void:
 		_drop_prepared()
 		show_lab())
+	title.open_puzzles.connect(func() -> void:
+		_drop_prepared()
+		show_puzzles())
 	_swap(holder)
 	_world = null
 	_starting = false
@@ -198,6 +201,21 @@ func show_lab() -> void:
 	var lab := DuelLab.new()
 	lab.closed.connect(show_title)
 	_swap(lab)
+
+
+# --------------------------------------------------------- Bram's Riddles ---
+
+## The one-turn duel puzzles (DuelPuzzles): pick one, play it (as many tries
+## as it takes, or leave), and back to the list with it ticked if solved.
+func show_puzzles() -> void:
+	var menu := PuzzleMenu.new()
+	menu.closed.connect(show_title)
+	menu.play.connect(func(i: int) -> void:
+		var won := await run_duel(DuelPuzzles.spec(i, Game.player_name))
+		if won:
+			DuelPuzzles.mark_solved(String(DuelPuzzles.get_puzzle(i).id))
+		show_puzzles())
+	_swap(menu)
 
 
 # ---------------------------------------------------------------- world ---

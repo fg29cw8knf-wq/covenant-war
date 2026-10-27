@@ -331,6 +331,7 @@ func _build() -> void:
 		p.size = Vector2(412, 250)
 		p.tapped.connect(_on_panel_tapped)
 		p.discard_tapped.connect(_on_discard_tapped)
+		p.skill_tapped.connect(_on_skill_tapped)
 		stage.add_child(p)
 		panels.append(p)
 	if DuelRules.phases:
@@ -344,6 +345,10 @@ func _build() -> void:
 	arrows.screen = self
 	arrows.size = DESIGN
 	stage.add_child(arrows)
+	var chips := PreviewChips.new()
+	chips.screen = self
+	chips.size = DESIGN
+	stage.add_child(chips)
 	# guidance across the middle, and the turn count on the left
 	hint = DuelViews.HintView.new()
 	hint.position = Vector2(440, 450)
@@ -380,6 +385,21 @@ func _build() -> void:
 	end_btn.size = Vector2(228, 228)
 	end_btn.pressed.connect(_on_end_turn)
 	stage.add_child(end_btn)
+	# the battle's speed, one tap away (27 October): 1x, 2x, 4x
+	speed_btn = UITheme.button(_speed_text(), false, 0)
+	speed_btn.custom_minimum_size = Vector2(250, 74)
+	speed_btn.size = Vector2(250, 74)
+	speed_btn.add_theme_font_size_override("font_size", 24)
+	_pin(speed_btn, Vector2(1578, 10), true)
+	speed_btn.pressed.connect(func() -> void:
+		sfx.play("ui_tap")
+		var steps := [1.0, 2.0, 4.0]
+		var i := 0
+		for k in steps.size():
+			if is_equal_approx(speed, float(steps[k])):
+				i = k
+		_set_speed(float(steps[(i + 1) % steps.size()])))
+	stage.add_child(speed_btn)
 	var menu := DuelViews.IconButton.new()
 	_pin(menu, Vector2(1838, 10), true)
 	menu.size = Vector2(74, 74)
@@ -391,6 +411,26 @@ func _build() -> void:
 	stage.add_child(menu)
 	_build_log()
 	_build_lab()
+
+
+var speed_btn: Button
+
+
+func _speed_text() -> String:
+	# (in words: the display font's 1 reads as an I)
+	if speed <= 1.0:
+		return "Speed: Normal"
+	if speed <= 2.0:
+		return "Speed: Fast"
+	return "Speed: Fastest"
+
+
+func _set_speed(v: float) -> void:
+	speed = v
+	Game.settings["duel_speed"] = v
+	Game.save_settings()
+	if speed_btn != null:
+		speed_btn.text = _speed_text()
 
 
 func _small_button(t: String) -> Button:
@@ -460,10 +500,7 @@ func _build_lab() -> void:
 	for v in [1.0, 2.0, 4.0]:
 		var b := _small_button("%dx" % int(v))
 		b.custom_minimum_size = Vector2(160, 72)
-		b.pressed.connect(func() -> void:
-			speed = v
-			Game.settings["duel_speed"] = v
-			Game.save_settings())
+		b.pressed.connect(func() -> void: _set_speed(v))
 		sp.add_child(b)
 	# Gary's Summon clips: the long one first, then the short; or short
 	# always, or none (SummonVideo)
@@ -566,6 +603,23 @@ func _start() -> void:
 	game.life_scale = float(spec.get("life_scale", 1.0))
 	game.kept_back = (spec.get("kept_back", [[], []]) as Array).duplicate(true)
 	game.puzzle = spec.get("puzzle", {})
+	# 27 October (Gary: "add all the go battles"): each side's duel skill
+	# (spec.skills for both, else the player's chosen one and spec.rival_skill),
+	# the comeback card and the Circle's events. None of them in a lesson, on
+	# a set board (a puzzle, the Trial) or where the spec says no.
+	var plain := tutor != null or spec.has("tutorial") or not game.puzzle.is_empty() or bool(spec.get("trial", false))
+	var sk: Array = ["", ""]
+	if spec.has("skills"):
+		sk = (spec.skills as Array).duplicate()
+	else:
+		if not ai_flags[me]:
+			sk[me] = DuelSkills.chosen()
+		sk[rival] = String(spec.get("rival_skill", ""))
+	game.skills = ["", ""] if plain or bool(spec.get("no_skills", false)) else sk
+	if plain or bool(spec.get("no_comeback", false)):
+		game.comeback = false
+	if plain or bool(spec.get("no_arena_events", false)):
+		game.arena_events = false
 	game.presenter = self
 	if field != null:
 		# every model this duel could call, loaded and drawn once now, so
@@ -633,6 +687,8 @@ func _refresh() -> void:
 		for v in views[side]:
 			v.set_totem(p.slots[v.slot])
 		panels[side].active = game.current == side and not game.over
+		panels[side].skill = DuelSkills.skill_name(game.skill_of(side))
+		panels[side].skill_used = game.skill_used(side)
 	_layout_hand()
 	_update_highlights()
 	rival_hand.count = game.players[rival].hand.size()
@@ -648,6 +704,8 @@ func _refresh() -> void:
 	if game.turn > 0:
 		turn_label.text = "TURN %d  ·  %s" % [game.turn, whose]
 	arena_label.text = _arena_line()
+	if speed_btn != null:
+		speed_btn.text = _speed_text()
 	var my_turn := mode == "main"
 	if game.over:
 		end_btn.state = "off"
@@ -927,6 +985,7 @@ func begin_main() -> void:
 
 
 func _clear_selection() -> void:
+	_previews.clear()
 	sel_card = null
 	sel_totem = null
 	sel_move = -1
@@ -1581,6 +1640,7 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 	sel_move = i
 	pending = "move"
 	targets = ts
+	_preview_targets(t, i)
 	var life := ts.has(DuelGame.LIFE)
 	var tk := t.move_target(i)
 	if tk == "ally":
@@ -1594,6 +1654,41 @@ func _choose_move(t: DuelTotem, i: int) -> void:
 	_menu_beside = 0
 	_show_cancel()
 	_refresh()
+
+
+## The damage preview (27 October): over each target while a move is being
+## aimed, what the hit would do if nothing answers it (DuelGame.preview_attack).
+var _previews := {}
+
+
+func _preview_targets(t: DuelTotem, i: int) -> void:
+	_previews.clear()
+	if game == null or t.move_target(i) == "ally":
+		return
+	for tg in targets:
+		var is_life: bool = tg is String and tg == DuelGame.LIFE
+		if not is_life and not (tg is DuelTotem and (tg as DuelTotem).owner != me):
+			continue
+		var pv := game.preview_attack(me, t, i, tg)
+		if int(pv.hi) <= 0 and not bool(pv.fate):
+			continue
+		_previews["life" if is_life else tg] = pv
+
+
+## The words on a preview chip, and their colour.
+func preview_words(pv: Dictionary) -> Array:
+	var dmg := ("-%d" % int(pv.hi)) if int(pv.lo) == int(pv.hi) else ("-%d to -%d" % [int(pv.lo), int(pv.hi)])
+	if bool(spec.get("preview_plain", false)):
+		return [dmg, Color.WHITE]   # (a riddle: working out what wins is the point)
+	if bool(pv.lethal):
+		return ["%s  ·  WINS" % dmg, Color("ffd36b")]
+	if float(pv.lethal_chance) > 0.0:
+		return ["%s  ·  %d%% TO WIN" % [dmg, int(round(float(pv.lethal_chance) * 100))], Color("ffd36b")]
+	if bool(pv.ko):
+		return ["%s  ·  KO" % dmg, Color("ff8a70")]
+	if float(pv.ko_chance) > 0.0:
+		return ["%s  ·  KO %d%%" % [dmg, int(round(float(pv.ko_chance) * 100))], Color("ffb08a")]
+	return [dmg, Color.WHITE]
 
 
 # ============================================================ action list ===
@@ -1937,7 +2032,7 @@ func _opening_banners() -> void:
 		await _banner(DuelLaws.law_name(game.law).to_upper(), UITheme.GOLD, 1.6, 72, god, DuelLaws.describe(game.law), true)
 	var rule: Array = spec.get("rule", [])
 	if rule.size() >= 2:
-		await _banner(String(rule[0]).to_upper(), UITheme.GOLD, 2.2, 72, "", "Duel rule: " + String(rule[1]), true)
+		await _banner(String(rule[0]).to_upper(), UITheme.GOLD, 2.2, 72, "", String(spec.get("rule_word", "Duel rule: ")) + String(rule[1]), true)
 
 
 ## A banner is up waiting for a tap (the Law or the duel's rule).
@@ -2155,7 +2250,12 @@ func _arena_line() -> String:
 	if not game.terrain.is_empty():
 		var left := int(game.terrain.left)
 		nm += "  ·  %d TURN%s LEFT" % [left, "" if left == 1 else "S"]
-	return "%s\n%s" % [nm, game.arena_rule_text()]
+	var line := "%s\n%s" % [nm, game.arena_rule_text()]
+	# the Circle's next event, counted down (27 October)
+	var due := game.arena_event_in()
+	if due > 0 and due <= 3 and game.turn > 0:
+		line += "\n%s %s." % [game.arena_event_name(), "next turn" if due == 1 else "in %d turns" % due]
+	return line
 
 
 ## The ground turns (Phase D): a Terrain Rite takes the Circle, or one fades.
@@ -2189,6 +2289,117 @@ func fx_arena_rule(pi: int, rule: String, text: String) -> void:
 	if tutor != null:
 		await tutor.lesson("arena_rule", "Every Circle has a rule of its own, all duel long, for both of you. It's written in the corner under the turn. Ashford's green has none: that's why we learn there.", "The Circle", "")
 	await pause(0.45)
+
+
+## A duel skill works (27 October): its ribbon on the plate lights, and its
+## name comes across the Circle with what it did.
+func fx_skill(pi: int, id: String, line: String) -> void:
+	_refresh()
+	var pan: DuelViews.PlayerPanel = panels[pi]
+	pan.skill_flash = 1.0
+	var at := pan.position + pan.skill_rect.get_center()
+	sfx.play("gift")
+	DuelFX.flash(fx_layer, at, UITheme.GOLD, 110.0, 0.4)
+	DuelFX.rise(fx_layer, at, UITheme.GOLD, 60.0, 14)
+	var who := "YOUR SKILL" if pi == me and not _watching() else "%s SKILL" % _whose(String(game.players[pi].player_name)).to_upper()
+	await _banner(DuelSkills.skill_name(id).to_upper(), UITheme.GOLD, 0.7, 56, "", "%s  ·  %s" % [who, line])
+	story_bark("my_skill" if pi == me else "rival_skill")
+	_learn("skills", "Duel skills", "Every duellist has one skill, on their plate. It works once a duel, by itself.")
+
+
+## Something the How to Duel manual covers has happened in a duel the player
+## is in (not one they only watch): it can be read there from now on.
+func _learn(id: String, group: String, text: String) -> void:
+	if not _watching():
+		Game.learn(id, group, "", text)
+
+
+## Tapping a plate's skill ribbon: what the skill does.
+func _on_skill_tapped(panel) -> void:
+	var pi := panels.find(panel)
+	if pi < 0 or game == null:
+		return
+	var id := game.skill_of(pi)
+	if id == "":
+		return
+	sfx.play("ui_select")
+	var used := game.skill_used(pi)
+	var at := Vector2(panel.position.x + 24, panel.position.y + 196) if pi == rival else Vector2(panel.position.x + 24, panel.position.y - 196)
+	_show_note("%s%s" % [DuelSkills.skill_name(id), "  (used)" if used else ""],
+		"%s\n%s" % [DuelSkills.text(id), "Each skill works once a duel, by itself." if pi == me else "Their skill: it works once a duel, by itself."], at)
+
+
+var _note: PanelContainer
+var _note_tw: Tween
+
+
+## A small note beside something tapped (a skill's words), gone after a few
+## seconds or the next tap.
+func _show_note(title: String, body: String, at: Vector2) -> void:
+	if _note != null and is_instance_valid(_note):
+		_note.queue_free()
+	_note = PanelContainer.new()
+	_note.add_theme_stylebox_override("panel", UITheme.sb(Color(0.03, 0.04, 0.08, 0.95), UITheme.GOLD_DIM, 16, 2, 18))
+	_note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	_note.add_child(v)
+	v.add_child(UITheme.label(title.to_upper(), 22, UITheme.GOLD, "bold"))
+	var b := UITheme.label(body, 24, UITheme.TEXT)
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	b.custom_minimum_size = Vector2(440, 0)
+	v.add_child(b)
+	stage.add_child(_note)
+	_note.position = Vector2(clampf(at.x, 20.0, DESIGN.x - 520.0), clampf(at.y, 20.0, DESIGN.y - 200.0))
+	_note.modulate.a = 0.0
+	_note_tw = _note.create_tween()
+	_note_tw.tween_property(_note, "modulate:a", 1.0, 0.2)
+	_note_tw.tween_interval(3.6)
+	_note_tw.tween_property(_note, "modulate:a", 0.0, 0.4)
+	_note_tw.tween_callback(_note.queue_free)
+
+
+## A duellist's Life has fallen to a quarter and their god sends them a card
+## (27 October, Gary's "comeback card"): Rallying Light, once a duel.
+func fx_comeback(pi: int, card: DuelCard) -> void:
+	_refresh()
+	var p: DuelPlayer = game.players[pi]
+	var god := p.patron()
+	var col: Color = DuelFX.light(Lore.GODS[god].element) if god != "" and Lore.GODS.has(god) else UITheme.GOLD
+	var pan: DuelViews.PlayerPanel = panels[pi]
+	var at := pan.position + pan.portrait_center()
+	sfx.play("ascend")
+	DuelFX.flash(fx_layer, at, col, 170.0, 0.5)
+	DuelFX.shockwave(fx_layer, at, col, 260.0, 0.6)
+	DuelFX.rise(fx_layer, at, col, 110.0, 26)
+	if field != null:
+		field.flash_light(field.life_world(pi), col, 7.0, 0.8)
+	var giver := String(Lore.GODS[god].name) if god != "" and Lore.GODS.has(god) else "The Circle"
+	var sub := "%s hears you. Its light heals and Empowers your Totems, and draws a card." % giver
+	if pi != me or _watching():
+		sub = "%s hears %s: a card for their hand." % [giver, p.player_name]
+	await _banner("RALLYING LIGHT", col, 1.0, 64, "", sub)
+	if pi == me:
+		await fx_draw(pi, [card])
+	story_bark("my_comeback" if pi == me else "rival_comeback")
+	_learn("comeback", "Rallying Light", "When your Life first falls to a quarter, your god sends you Rallying Light, once a duel.")
+
+
+## The Circle joins in (27 October): every few turns something happens to
+## both sides (DuelGame.ARENA_EVENTS).
+func fx_arena_event(_pi: int, a: String, ev_name: String, text: String) -> void:
+	var col: Color = ARENA_MOTES.get(a, UITheme.GOLD)
+	if a == "ashford":
+		col = Color(1.0, 0.72, 0.35)   # the festival's lanterns
+	sfx.play("ascend")
+	if field != null:
+		field.floor_wave(Vector3(0, 0.05, 0), col, 7.0, 0.9)
+		field.flash_light(Vector3(0, 2.5, 0), col, 6.0, 1.0, 14.0)
+	DuelFX.shockwave(fx_layer, Vector2(FIELD_CX, 476), col, 620.0, 0.9)
+	await _banner(ev_name.to_upper(), col, 0.9, 60, "", text)
+	story_bark("arena_event")
+	_learn("arena_event", "The Circle", "Every few turns the Circle itself joins in, for both sides alike.")
+	_refresh()
 
 
 ## A Continuous Rite takes its place on its side, or leaves it (Phase D).
@@ -2818,6 +3029,10 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	var to := _life_center(pi)
 	var att = info.get("attacker")
 	var land3: Vector3 = field.life_world(pi) if field != null else Vector3.ZERO
+	# the blow that ends the duel lands slowly, the camera close (27 October)
+	var finishing: bool = game.players[pi].life <= 0 and not _finished_slow and not _watching_fast()
+	if finishing:
+		await _finishing_start(pi, land3)
 	if info.get("spill", false):
 		if field != null and _impact3 != Vector3.ZERO:
 			var b3 := field.bolt(_impact3, land3, Color(1, 0.35, 0.4), 0.28 / speed, 0.7, 1.0)
@@ -2850,15 +3065,86 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	tw.tween_property(p, "shake", 0.0, 0.45 / speed)
 	if pi == me:
 		_vignette(Color(1, 0.05, 0.1))
-	if pi == rival:
+	if pi == rival and not finishing:
 		if att != null and att.owner == me and amount >= 60:
 			story_bark("my_big_hit")
 		_rival_life_barks()
-	await pause(0.5)
+	await pause(0.5 if not finishing else 0.4)
+	if finishing:
+		await _finishing_end(to)
 	if field != null:
 		field.cam_home(0.7 / speed)
 	if pi == me:
 		await _blank_eye_check()
+
+
+## The finishing blow (27 October, Gary: "add all the go battles"): time
+## slows to a crawl as it flies, the camera closes in on where it lands, the
+## edges of the screen darken, and the one going down says their last line.
+var _finished_slow := false
+var _slow_shade: ColorRect
+const FINISH_SLOW := 0.35
+
+
+func _watching_fast() -> bool:
+	return _watching() and speed > 4.0   # (the tests' autoplay at 20x: no slow motion)
+
+
+func _finishing_start(pi: int, land3: Vector3) -> void:
+	_finished_slow = true
+	if pi == rival:
+		story_bark("rival_falls")
+	_slow_shade = ColorRect.new()
+	_slow_shade.color = Color(0, 0, 0, 0)
+	_slow_shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_slow_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_slow_shade.material = _vignette_material()
+	overlay.add_child(_slow_shade)
+	overlay.move_child(_slow_shade, 0)
+	var tw := _slow_shade.create_tween()
+	tw.tween_property(_slow_shade, "color:a", 0.75, 0.25)
+	if field != null:
+		field.cam_focus(land3, 1.0, 0.45)
+	Engine.time_scale = FINISH_SLOW
+	sfx.play("ascend")
+
+
+func _finishing_end(at: Vector2) -> void:
+	DuelFX.flash(fx_layer, at, Color(1, 0.95, 0.85), 420.0, 0.5)
+	await pause(0.25)
+	# back up to speed over a moment of real time
+	var t0 := Time.get_ticks_msec()
+	while true:
+		var k := clampf((Time.get_ticks_msec() - t0) / 450.0, 0.0, 1.0)
+		Engine.time_scale = lerpf(FINISH_SLOW, 1.0, k * k)
+		if k >= 1.0:
+			break
+		await get_tree().process_frame
+	Engine.time_scale = 1.0
+	if _slow_shade != null and is_instance_valid(_slow_shade):
+		var tw := _slow_shade.create_tween()
+		tw.tween_property(_slow_shade, "color:a", 0.0, 0.4)
+		tw.tween_callback(_slow_shade.queue_free)
+
+
+## A shade dark at the screen's edges and clear in the middle.
+static func _vignette_material() -> ShaderMaterial:
+	var sh := Shader.new()
+	sh.code = """
+shader_type canvas_item;
+void fragment() {
+	vec2 c = UV - 0.5;
+	float r = length(c * vec2(1.0, 0.75)) * 2.0;
+	COLOR = vec4(0.0, 0.0, 0.0, COLOR.a * smoothstep(0.35, 1.05, r));
+}
+"""
+	var m := ShaderMaterial.new()
+	m.shader = sh
+	return m
+
+
+func _exit_tree() -> void:
+	Engine.time_scale = 1.0   # (never left slow, whatever ended the duel)
 
 
 ## Story barks tied to the rival's Life: below a third ("rival_life_third"),
@@ -3226,6 +3512,7 @@ func fx_message(text: String) -> void:
 
 
 func fx_game_over(winner: int, _reason: String) -> void:
+	Engine.time_scale = 1.0
 	if tutor != null:
 		tutor.finish()
 	Music.stop(0.4)
@@ -3373,11 +3660,25 @@ var _barked := {}
 
 
 func story_bark(event: String) -> void:
-	var lines: Dictionary = spec.get("bark_on", {})
+	var lines := _bark_lines()
 	if not lines.has(event) or _barked.has(event):
 		return
 	_barked[event] = true
-	_show_bark(String(lines[event]))
+	var line := DuelBarks.pick(lines, event)
+	if line != "":
+		_show_bark(line)
+
+
+## The rival's lines: the story's (spec.bark_on), else, for a Lab rival or
+## any duel without its own, DuelBarks.GENERIC (27 October). None in a
+## lesson, on a set board, or with the computer playing both sides.
+func _bark_lines() -> Dictionary:
+	if spec.has("bark_on"):
+		return spec.bark_on
+	if spec.get("story", false) or spec.has("barks") or tutor != null or _watching() or spec.get("no_barks", false) \
+			or (game != null and not game.puzzle.is_empty()):
+		return {}
+	return DuelBarks.GENERIC
 
 
 ## A story duel's own rule just made a difference on the board (DuelGame's
@@ -3390,7 +3691,7 @@ func fx_rule(pi: int, _rule_id: String) -> void:
 
 ## "my_lethal": checked each time the player is about to act.
 func _bark_if_lethal() -> void:
-	if not spec.get("bark_on", {}).has("my_lethal") or _barked.has("my_lethal") or game == null or game.over:
+	if not _bark_lines().has("my_lethal") or _barked.has("my_lethal") or game == null or game.over:
 		return
 	if DuelAI.new()._lethal_available(game, me):
 		story_bark("my_lethal")
@@ -3636,8 +3937,8 @@ func _show_result(r: String) -> String:
 	hb.add_theme_constant_override("separation", 24)
 	v.add_child(hb)
 	var story: bool = spec.get("story", false)
-	var again := UITheme.button("Try again" if story else "Duel again", not story or r != "won", 340)
-	var back := UITheme.button("Continue" if story else "Back to the Lab", story and r == "won", 340)
+	var again := UITheme.button("Try again" if story else String(spec.get("again_label", "Duel again")), not story or r != "won", 340)
+	var back := UITheme.button("Continue" if story else String(spec.get("back_label", "Back to the Lab")), story and r == "won", 340)
 	# spec.once: the result stands, win or lose (the Lantern Duel's rematch)
 	again.visible = not (story and r == "won") and not spec.get("once", false)
 	hb.add_child(again)
@@ -3677,7 +3978,10 @@ func _trial_reset() -> String:
 	var n := int(spec.get("_resets", 0)) + 1
 	spec["_resets"] = n
 	var lines: Array = spec.get("reset_lines", ["Again."])
-	var line := String(lines[1]) if n == 3 and lines.size() > 1 else String(lines[0])
+	# (the second line once, on the third reset: Liora's; a riddle's hint
+	# from spec.hint_after on, and every time after if spec.hint_stays)
+	var ha := int(spec.get("hint_after", 3))
+	var line := String(lines[1]) if lines.size() > 1 and (n == ha or (bool(spec.get("hint_stays", false)) and n > ha)) else String(lines[0])
 	if hint != null:
 		hint.visible = false
 	var root := Control.new()
@@ -4212,6 +4516,51 @@ class TargetArrows:
 		var head := PackedVector2Array([tip + dir * 26, tip - dir * 10 + nn * 20, tip - dir * 10 - nn * 20])
 		draw_colored_polygon(head, Color(col, 0.85))
 		DuelFX.draw_glow(self, tip, Vector2(40, 40), Color(col, 0.6))
+
+
+## The damage preview's chips, over each target being aimed at (27 October).
+class PreviewChips:
+	extends Control
+	var screen: DuelScreen
+	var _t := 0.0
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if screen != null and not screen._previews.is_empty():
+			queue_redraw()
+		elif _t > 0.0:
+			_t = 0.0
+			queue_redraw()
+
+	func _draw() -> void:
+		if screen == null or screen.mode != "main" or screen.pending != "move" or screen._previews.is_empty():
+			return
+		var fnt := CardFace.font("display_bold")
+		for key in screen._previews:
+			var pv: Dictionary = screen._previews[key]
+			var at: Vector2
+			if key is String:
+				var pan: Control = screen.panels[screen.rival]
+				at = Vector2(pan.position.x + pan.size.x + 20, screen._life_center(screen.rival).y)
+			elif is_instance_valid(key) and screen.targets.has(key):
+				at = screen._center(screen._view(key)) + Vector2(0, -96)
+			else:
+				continue
+			var words: Array = screen.preview_words(pv)
+			var txt := String(words[0])
+			var col: Color = words[1]
+			var fs := 26
+			var w := fnt.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 36
+			if key is String:
+				at.x += w * 0.5   # (beside the plate, not over it)
+			var r := Rect2(at - Vector2(w * 0.5, 22), Vector2(w, 44))
+			var pulse := 0.5 + 0.5 * sin(_t * 4.0)
+			CardFace.box(self, Rect2(r.position + Vector2(0, 4), r.size), 22, Color(0, 0, 0, 0.5))
+			CardFace.box(self, r, 22, Color(0.06, 0.03, 0.04, 0.94), Color(col, 0.6 + 0.4 * pulse), 2.5)
+			CardFace.text_in(self, fnt, r, txt, fs, col, HORIZONTAL_ALIGNMENT_CENTER)
 
 
 ## The end of the duel: rays, a burst of light and the big word.

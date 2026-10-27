@@ -26,6 +26,7 @@ var cfg := {
 	"difficulty": "Normal",
 	"law": "",
 	"arena": "",   # the Circle (Phase D: each has a rule); "" = the rival deck's
+	"skill": ["random", "random"],   # each side's duel skill (27 October): an id, "random" or "none"
 }
 ## The Circles the Lab can duel in.
 const ARENAS := ["", "ashford", "tidegrove", "emberforge", "ironstone", "veilwild", "solhaven"]
@@ -36,9 +37,11 @@ var _tune_rows := {}
 var _result: Label
 var _screen: DuelScreen = null
 var _busy := false
+var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
+	_rng.randomize()
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	theme = UITheme.make()
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -187,11 +190,37 @@ func _fill_side(side: int) -> void:
 		cfg.level[side] = mini(8, int(cfg.level[side]) + 1)
 		_changed(side))
 	lv.add_child(plus)
+	# the side's duel skill (27 October)
+	var sr := HBoxContainer.new()
+	sr.add_theme_constant_override("separation", 12)
+	box.add_child(sr)
+	sr.add_child(UITheme.label("Duel skill", 24, UITheme.TEXT_DIM, "bold"))
+	var spick := OptionButton.new()
+	spick.custom_minimum_size = Vector2(330, 54)
+	spick.add_theme_font_size_override("font_size", 22)
+	var sids: Array = ["random", "none"] + DuelSkills.SKILLS.keys()
+	var scur := _skill_cfg(side)
+	for i in sids.size():
+		var sid: String = sids[i]
+		spick.add_item("Random" if sid == "random" else ("None" if sid == "none" else DuelSkills.skill_name(sid)), i)
+		if sid == scur:
+			spick.select(i)
+	spick.item_selected.connect(func(i: int) -> void:
+		var sk: Array = (cfg.get("skill", ["random", "random"]) as Array).duplicate()
+		sk[side] = sids[i]
+		cfg.skill = sk
+		_changed(side))
+	sr.add_child(spick)
+	if DuelSkills.SKILLS.has(scur):
+		var st := UITheme.label(DuelSkills.text(scur), 20, UITheme.TEXT_DIM)
+		st.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		st.custom_minimum_size = Vector2(538, 0)
+		box.add_child(st)
 	if side == 1:
 		var dl := HBoxContainer.new()
 		dl.add_theme_constant_override("separation", 8)
 		box.add_child(dl)
-		dl.add_child(UITheme.label("Skill", 24, UITheme.TEXT_DIM, "bold"))
+		dl.add_child(UITheme.label("Plays", 24, UITheme.TEXT_DIM, "bold"))
 		for k in LEVELS:
 			var b := _toggle(k, cfg.difficulty == k, 150)
 			b.custom_minimum_size = Vector2(150, 54)
@@ -228,6 +257,24 @@ func _fill_side(side: int) -> void:
 	box.add_child(info)
 	_info[side] = info
 	_update_info(side)
+
+
+## A side's duel skill as set: an id, "random" or "none".
+func _skill_cfg(side: int) -> String:
+	var sk = cfg.get("skill", ["random", "random"])
+	return String(sk[side]) if sk is Array and (sk as Array).size() > side else "random"
+
+
+## Both sides' skills for a duel: "random" picked now (never both the same).
+func _skills_now(rng: RandomNumberGenerator) -> Array:
+	var out := ["", ""]
+	for side in 2:
+		var id := _skill_cfg(side)
+		if id == "random":
+			out[side] = DuelSkills.random(rng, String(out[0]) if side == 1 else "")
+		elif DuelSkills.SKILLS.has(id):
+			out[side] = id
+	return out
 
 
 ## A deck the Lab offers: a starter, or one of the ways' sample decks.
@@ -315,6 +362,9 @@ const TUNE_LABELS := {
 	"poison_damage": ["Poison damage", 5], "shift_cost": ["Shift cost", 1],
 	"wrath_bonus": ["Wrath bonus", 5], "mercy_heal": ["Dawn's Mercy heal", 10],
 	"phases": ["Turn phases (Dawn, Clash...)", 1],
+	"skills": ["Duel skills", 1], "comeback": ["Comeback card at a quarter Life", 1],
+	"arena_events": ["The Circle joins in", 1], "arena_event_first": ["...first on turn", 1],
+	"arena_event_every": ["...then every so many turns", 1],
 	"rest_heal": ["Rest mends", 5], "rest_essence": ["Rest gives Essence", 1],
 	"chain_max": ["Answers in a chain", 1], "respond_secs": ["Seconds to answer", 1],
 	"tribute_tier": ["Tribute from tier", 1], "tribute_two_tier": ["Two tributes from tier", 1],
@@ -464,6 +514,7 @@ func _play(watch: bool) -> void:
 		"difficulty": LEVELS.get(cfg.difficulty, 0.8),
 		"law": cfg.get("law", ""),
 		"arena": String(cfg.get("arena", "")),
+		"skills": _skills_now(_rng),
 	})
 	layer.add_child(_screen)
 	var r: String = await _screen.finished
@@ -488,6 +539,7 @@ func _run_tests() -> void:
 		game.arena = String(cfg.get("arena", "")) if String(cfg.get("arena", "")) != "" else DuelArt.arena_for_deck(cfg.deck[1])
 		game.setup(cfg.deck.duplicate(), ["A", "B"], [DuelAI.new(1.0, g * 2 + 1), DuelAI.new(LEVELS.get(cfg.difficulty, 0.8), g * 2 + 2)],
 			[profile(0), profile(1)], 7000 + g)
+		game.skills = _skills_now(_rng)
 		await game.run()
 		if game.winner in [0, 1]:
 			wins[game.winner] += 1

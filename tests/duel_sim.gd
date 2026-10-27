@@ -8,6 +8,7 @@ extends SceneTree
 ##       godot --headless --script res://tests/duel_sim.gd -- 2000
 ##       godot --headless --script res://tests/duel_sim.gd -- 400 emberstorm ironstone
 ##       godot --headless --script res://tests/duel_sim.gd -- 700 --ways   # the seven ways' sample decks (Phase E)
+##       ... --no-skills   # no duel skills (27 October: each side has a random one)
 
 const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
 ## The Circle each duel is fought in (Phase D: each arena has its rule).
@@ -62,6 +63,9 @@ func _initialize() -> void:
 		var game := DuelGame.new()
 		game.setup([a, b], ["P1", "P2"], [DuelAI.new(1.0, 500 + g), DuelAI.new(1.0, 900 + g)], profiles, 1000 + g)
 		game.arena = ARENAS[(g / 16) % ARENAS.size()]
+		if not "--no-skills" in args:
+			# (27 October: a duel skill each side, as the game gives them)
+			game.skills = [DuelSkills.random(rng), DuelSkills.random(rng)]
 		var checker := Checker.new(game)
 		game.state_changed.connect(checker.check)
 		await game.run()
@@ -196,3 +200,6 @@ class Checker:
 		errors += 1
 		if errors <= 12:
 			print("INVARIANT: ", msg)
+			if OS.get_cmdline_user_args().has("--why"):
+				for l in game.log_lines.slice(maxi(0, game.log_lines.size() - 6)):
+					print("    | ", l)

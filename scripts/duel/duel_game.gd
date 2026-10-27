@@ -137,6 +137,25 @@ var puzzle := {}
 ## What the story rules remember during a duel (the mirror has swung, Wren's
 ## hand has been in your pocket...).
 var rule_state := {}
+## Each side's duel skill (DuelSkills.SKILLS, "" for none), whether a
+## duellist's god sends the comeback card (Rallying Light) when their Life
+## first falls to a quarter, and whether the Circle joins in every few turns (27 October:
+## DuelRules has the switches; the screen turns the last two off for a
+## lesson and a puzzle).
+var skills: Array = ["", ""]
+var comeback := true
+var arena_events := true
+## The Circle's events (27 October, Gary: "add all the go battles"): at the
+## start of turn DuelRules.arena_event_first, then every arena_event_every
+## turns, the Circle does something to both sides. Each is _arena_event().
+const ARENA_EVENTS := {
+	"ashford": {"name": "The Lanterns Flare", "text": "Every Totem is Empowered; Fire Totems heal 20."},
+	"tidegrove": {"name": "The Tide Surges", "text": "Every Totem is Soaked; Tide Totems heal 30."},
+	"emberforge": {"name": "The Forge Roars", "text": "Every Totem but a Fire one takes 10; Fire Totems are Empowered."},
+	"ironstone": {"name": "The Stone Wakes", "text": "Every Totem is shielded (20)."},
+	"veilwild": {"name": "The Mists Part", "text": "Both duellists draw a card."},
+	"solhaven": {"name": "The Noon Bell", "text": "Whoever has less Life gains some back."},
+}
 
 
 # ------------------------------------------------------------------ setup ---
@@ -149,6 +168,8 @@ func setup(decks: Array, names: Array, controllers: Array, profiles: Array = [],
 	else:
 		rng.randomize()
 	players.clear()
+	comeback = DuelRules.comeback
+	arena_events = DuelRules.arena_events
 	for i in 2:
 		var p := DuelPlayer.new(i, names[i])
 		var spec = decks[i]
@@ -270,6 +291,11 @@ func _setup_puzzle() -> void:
 			for k in range(1, ids.size()):
 				t.stack.append(_new_card(String(ids[k]), i))
 			p.slots[s] = t
+		# (27 October, Bram's Riddles) Wards set face down, and no Gift
+		for id in (puzzle.get("wards", [[], []]) as Array)[i]:
+			p.wards.append(_new_card(String(id), i))
+		if bool(puzzle.get("no_gift", false)):
+			p.gift_used = true
 	if String(puzzle.get("log", "")) != "":
 		_log(String(puzzle.log))
 
@@ -322,6 +348,9 @@ func _take_turn() -> void:
 		p.pending_essence = 0
 	_log("Turn %d - %s" % [turn, p.player_name], -2)
 	await _fx("fx_turn", [current])
+	if has_skill(current, "quick_start"):
+		p.essence += 1
+		await _use_skill(current, "quick_start", "%s starts with 1 more Essence." % p.player_name)
 	if DuelRules.phases:
 		await _fx("fx_phase", [current, "dawn"])
 	await _dawn_conditions(p)
@@ -336,6 +365,10 @@ func _take_turn() -> void:
 	await _dawn_arena(p)
 	if over:
 		return
+	if arena_event_now():
+		await _arena_event(p)
+		if over:
+			return
 	await _dawn_continuous(p)
 	if over:
 		return
@@ -444,6 +477,78 @@ func _dawn_arena(p: DuelPlayer) -> void:
 				p.essence += 1
 				_log("The sun favours the outnumbered: %s gains 1 Essence." % p.player_name, p.index)
 				await _fx("fx_arena_rule", [p.index, "solhaven", "+1 Essence"])
+
+
+## True at the start of a turn the Circle's event falls on.
+func arena_event_now() -> bool:
+	return arena_event_in() == 0
+
+
+## How many turns until the Circle's next event (0: this turn), or -1 if
+## this duel has none (no arena, a set board, or switched off).
+func arena_event_in() -> int:
+	if not arena_events or not puzzle.is_empty() or not ARENA_EVENTS.has(arena_now()):
+		return -1
+	var first := DuelRules.arena_event_first
+	var every := DuelRules.arena_event_every
+	if turn <= first:
+		return first - turn
+	return (every - (turn - first) % every) % every
+
+
+func arena_event_name() -> String:
+	return String(ARENA_EVENTS.get(arena_now(), {}).get("name", ""))
+
+
+## The Circle joins in, for both sides alike.
+func _arena_event(p: DuelPlayer) -> void:
+	var a := arena_now()
+	var ev: Dictionary = ARENA_EVENTS[a]
+	_log("%s! %s" % [ev.name, ev.text], -1)
+	await _fx("fx_arena_event", [p.index, a, String(ev.name), String(ev.text)])
+	var all: Array = []
+	for pi in [current, 1 - current]:
+		all.append_array(players[pi].totems())
+	match a:
+		"ashford":
+			for t in all:
+				await _give_boon(t, "empowered")
+				if t.element() == "fire":
+					await _heal(t, 20)
+		"tidegrove":
+			for t in all:
+				if not t.has_status("soaked"):
+					await _apply_status(t, "soaked", null, -1)
+				if t.element() == "tide":
+					await _heal(t, 30)
+		"emberforge":
+			for t in all:
+				if t.element() == "fire":
+					await _give_boon(t, "empowered")
+				else:
+					await _damage_totem(t, 10, {"source": "heat"})
+			await _resolve_knockouts()
+		"ironstone":
+			for t in all:
+				t.shield += 20
+				_log("%s is shielded (%d)." % [t.card_name(), t.shield], t.owner)
+		"veilwild":
+			for pi in [current, 1 - current]:
+				var drawn := await _draw(players[pi], 1)
+				if over:
+					return
+				if not drawn.is_empty():
+					await _fx("fx_draw", [pi, drawn])
+		"solhaven":
+			var a0: DuelPlayer = players[0]
+			var a1: DuelPlayer = players[1]
+			var f0 := float(a0.life) / maxf(1.0, a0.max_life)
+			var f1 := float(a1.life) / maxf(1.0, a1.max_life)
+			if not is_equal_approx(f0, f1):
+				var low: DuelPlayer = a0 if f0 < f1 else a1
+				var gain := clampi(int(round(low.max_life * 0.15 / 10.0)) * 10, 10, 40)
+				await _gain_life(low.index, gain)
+	_changed()
 
 
 ## A Terrain Rite's turns run down at each Dusk; when it's spent the ground
@@ -838,6 +943,8 @@ func summon_cost(pi: int, card: DuelCard) -> int:
 ## A card's Essence cost under this duel's Law (never below 1 for a card
 ## that costs anything).
 func card_cost(pi: int, card: DuelCard) -> int:
+	if card.is_ward() and has_skill(pi, "old_wards"):
+		return 0   # (Nell's skill: her first Ward is free, tax and all)
 	# Iron Tithe on the other side (Phase D): Wards and Rites cost more, free ones too
 	var tax := 0
 	if card.is_ward() or card.is_rite():
@@ -1225,7 +1332,7 @@ func ready_problem(pi: int, t) -> String:
 		return "%s is on Guard this turn." % t.card_name()
 	if t.stance == "rest":
 		return "%s is resting this turn." % t.card_name()
-	if turn == 1:
+	if turn == 1 and not bool(puzzle.get("attack_first", false)):
 		return "Nobody can attack on the first turn of the duel."
 	if t.called_turn == turn and not t.has_keyword("swift") \
 			and not (t.element() == "storm" and not standing(pi, "storm_swift").is_empty()):
@@ -1484,7 +1591,7 @@ func _rule_mirror_trial_out(p: DuelPlayer) -> void:
 	var n := int(rule_state.get("trial_turns", 0)) + 1
 	rule_state["trial_turns"] = n
 	if n >= int(puzzle.get("turns", 3)):
-		_finish(int(story_rules.mirror_trial), "The mirrors go dark. They begin again.")
+		_finish(int(story_rules.mirror_trial), String(puzzle.get("out_text", "The mirrors go dark. They begin again.")))
 
 
 func move_problem(pi: int, t, i: int, target = null, check_target: bool = false) -> String:
@@ -1784,7 +1891,15 @@ func _act_ward(pi: int, card: DuelCard) -> void:
 	p.hand.erase(card)
 	p.wards.append(card)
 	p.note_played(card.id)
-	if law == "ysolde" and not blessed(pi):
+	var free_ward := has_skill(pi, "old_wards")
+	if free_ward:
+		_skill_spent(pi, "old_wards")
+	var seen := has_skill(1 - pi, "keen_eye")
+	if seen:
+		_skill_spent(1 - pi, "keen_eye")
+		face_up[card.uid] = true
+		_log("%s sets %s, and %s sees it plainly." % [p.player_name, card.card_name(), opponent(pi).player_name], pi)
+	elif law == "ysolde" and not blessed(pi):
 		face_up[card.uid] = true
 		_log("%s sets %s face up, as the Unveiling demands." % [p.player_name, card.card_name()], pi)
 	elif int(story_rules.get("patter", -1)) == pi:
@@ -1793,6 +1908,10 @@ func _act_ward(pi: int, card: DuelCard) -> void:
 	else:
 		_log("%s sets a Ward face down." % p.player_name, pi)
 	await _fx("fx_ward_set", [pi, card])
+	if free_ward:
+		await _skill_shown(pi, "old_wards", "%s first Ward costs nothing." % whose(p.player_name))
+	if seen:
+		await _skill_shown(1 - pi, "keen_eye", "%s is set face up." % card.card_name())
 	await _window(pi, {"type": "ward", "card": card})
 
 
@@ -2194,6 +2313,8 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 		amt += DuelRules.wrath_bonus
 	if rule_scrapper(att.owner):
 		amt += SCRAPPER_BONUS
+	if has_skill(att.owner, "showman"):
+		amt += DuelSkills.SHOWMAN_BONUS
 	amt += run_to_ground_bonus(att.owner)
 	if att.has_status("terrified"):
 		amt = _half(amt)
@@ -2375,6 +2496,10 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 				await _damage_totem(t, int(hedge.amount), {"source": "thorns"})
 	if over:
 		return
+	if base > 0 and hostile and has_skill(pi, "showman"):
+		await _use_skill(pi, "showman", "%s first attack hits 20 harder." % whose(p.player_name))
+		if over:
+			return
 	await _apply_effects(pi, t, target, effects, dealt)
 	await _after_attack(t)
 
@@ -2940,6 +3065,12 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 	var before := t.hp_left()
 	if int(totem_floor[t.owner]) > 0:
 		amount = mini(amount, maxi(0, before - int(totem_floor[t.owner])))
+	var held := false
+	if amount >= before and before > 0 and has_skill(t.owner, "loyal_hound"):
+		# (Tam's skill: the first of his Totems to be knocked out holds on)
+		amount = maxi(0, before - DuelSkills.LOYAL_HOLD)
+		held = true
+		_skill_spent(t.owner, "loyal_hound")
 	if amount > 0:
 		t.damage += amount
 		var att = info.get("attacker")
@@ -2954,6 +3085,8 @@ func _damage_totem(t: DuelTotem, amount: int, info: Dictionary = {}) -> int:
 			_log("The fire thaws %s." % t.card_name(), t.owner)
 		_log("%s takes %d damage." % [t.card_name(), amount], t.owner)
 	await _fx("fx_totem_hit", [t, amount, info.merged({"absorbed": absorbed, "guarded": guarded})])
+	if held:
+		await _skill_shown(t.owner, "loyal_hound", "%s holds on with %d HP." % [t.card_name(), t.hp_left()])
 	if amount > 0 and info.get("attacker") != null and String(info.get("source", "")) == "":
 		await _on_hit(t, info.get("attacker"))
 	var overflow := amount - before
@@ -2983,7 +3116,30 @@ func _hit_life(pi: int, amount: int, info: Dictionary = {}) -> int:
 	await _fx("fx_life_hit", [pi, amt, info])
 	await _rule_sunspire_mirror_check(pi)
 	await _check_life(pi)
+	await _after_life_loss(pi)
 	return amt
+
+
+## Life has just fallen: Second Wind at half, and the comeback card
+## (Rallying Light) at a quarter, once a duel each (27 October).
+func _after_life_loss(pi: int) -> void:
+	var p: DuelPlayer = players[pi]
+	if over or p.life <= 0:
+		return
+	if p.life * 2 <= p.max_life and has_skill(pi, "second_wind"):
+		await _use_skill(pi, "second_wind", "%s Totems heal %d." % [whose(p.player_name), DuelSkills.SECOND_WIND_HEAL])
+		for t in p.totems():
+			await _heal(t, DuelSkills.SECOND_WIND_HEAL)
+	if over:
+		return
+	if comeback and p.life * 4 <= p.max_life and not p.once_used.has("comeback"):
+		p.once_used.append("comeback")
+		var c := _new_card(COMEBACK_CARD, pi)
+		p.hand.append(c)
+		var god := p.patron()
+		_log("%s: %s sends %s a card, Rallying Light." % [p.player_name,
+			String(Lore.GODS[god].name) if god != "" and Lore.GODS.has(god) else "the Circle", p.player_name], pi)
+		await _fx("fx_comeback", [pi, c])   # (no state_changed here: it can come mid-Summon, with a card in the air)
 
 
 func _check_life(pi: int) -> void:
@@ -3650,11 +3806,20 @@ func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dicti
 		roll = rng.randi_range(1, 20)
 		if roll == 19 and law == "aster" and blessed(pi):
 			roll = 20
+	var charmed := 0
+	if not forced and not queued and has_skill(pi, "lucky_charm"):
+		# (the skill: rolled twice, the better one counts)
+		var second := rng.randi_range(1, 20)
+		charmed = mini(roll, second)
+		roll = maxi(roll, second)
+		_skill_spent(pi, "lucky_charm")
 	var info := band_for(bands, roll, mod)
 	info["label"] = label
 	info["bands"] = bands
 	info["forced"] = forced
 	p.stats.fate_rolls += 1
+	if charmed > 0:
+		await _skill_shown(pi, "lucky_charm", "Rolled %d and %d: the %d counts." % [charmed, roll, roll])
 	await _fx("fx_roll", [pi, info])
 	if p.fortune_left > 0 and not forced and not queued and int(info.index) < bands.size() - 1:
 		var again: bool = await p.controller.choose_reroll(self, pi, info)
@@ -3715,6 +3880,116 @@ static func band_odds(bands: Array, mod: int) -> Array:
 		var i: int = band_for(bands, r, mod).index
 		odds[i] += 0.05
 	return odds
+
+
+# ============================================================ duel skills ===
+# 27 October (Gary: "add all the go battles"): a skill each side, once a
+# duel, by itself (DuelSkills); the comeback card; the damage preview.
+
+## The card a duellist's god sends when their Life first falls to a quarter
+## (Gary's "comeback card"; there's a Ward called Last Stand already).
+const COMEBACK_CARD := "rallying_light"
+
+
+## `pi`'s skill, if it's `id` and not yet used this duel.
+func has_skill(pi: int, id: String) -> bool:
+	return DuelRules.skills and pi >= 0 and pi < skills.size() and String(skills[pi]) == id \
+		and not players[pi].once_used.has("skill:" + id)
+
+
+## `pi`'s skill ("" for none), used or not.
+func skill_of(pi: int) -> String:
+	if not DuelRules.skills or pi < 0 or pi >= skills.size():
+		return ""
+	return String(skills[pi])
+
+
+func skill_used(pi: int) -> bool:
+	var id := skill_of(pi)
+	return id != "" and players[pi].once_used.has("skill:" + id)
+
+
+func _skill_spent(pi: int, id: String) -> void:
+	if not players[pi].once_used.has("skill:" + id):
+		players[pi].once_used.append("skill:" + id)
+
+
+func _skill_shown(pi: int, id: String, line: String) -> void:
+	_log("%s skill, %s: %s" % [whose(players[pi].player_name), DuelSkills.skill_name(id), line], pi)
+	await _fx("fx_skill", [pi, id, line])
+
+
+func _use_skill(pi: int, id: String, line: String) -> void:
+	_skill_spent(pi, id)
+	await _skill_shown(pi, id, line)
+
+
+## What an attack would do if nothing answers it (the screen shows it over
+## each target while one is picked): {lo, hi} damage to the target (to Life,
+## for LIFE), the Life it would spill over, whether it knocks the Totem out
+## for certain ("ko"), might ("ko_chance" 0 to 1), and whether it could end
+## the duel ("lethal": certain, "lethal_chance"). Face-down Wards and
+## answers aren't known, so they aren't counted.
+func preview_attack(pi: int, t: DuelTotem, i: int, target) -> Dictionary:
+	var mv := t.move(i)
+	var outs: Array = []   # [base damage, effects, chance]
+	if mv.has("fate"):
+		var odds := band_odds(mv.fate, fate_mod(pi, t.affinity()))
+		for k in (mv.fate as Array).size():
+			if float(odds[k]) > 0.0:
+				var b: Dictionary = mv.fate[k]
+				outs.append([int(b.get("damage", 0)), b.get("effects", []), float(odds[k])])
+	else:
+		outs.append([int(mv.get("damage", 0)), mv.get("effects", []), 1.0])
+	var foe := opponent(pi)
+	var lo := 1 << 30
+	var hi := 0
+	var spill_hi := 0
+	var ko_p := 0.0
+	var lethal_p := 0.0
+	for o in outs:
+		var dmg := 0
+		var life_lost := 0
+		var kos := false
+		var pierce: bool = (o[1] as Array).any(func(e): return e.op == "pierce")
+		if target is String and target == LIFE:
+			dmg = attack_amount(t, i, int(o[0]), null)
+			dmg = dmg if pierce else _life_after_guard(1 - pi, dmg)
+			life_lost = dmg
+		elif target is DuelTotem:
+			var d: DuelTotem = target
+			var amt := attack_amount(t, i, int(o[0]), d, o[1])
+			amt = maxi(0, amt - d.shield)
+			if d.stance == "guard" and amt > 0:
+				amt = _half(amt)
+			if int(totem_floor[d.owner]) > 0:
+				amt = mini(amt, maxi(0, d.hp_left() - int(totem_floor[d.owner])))
+			var hold := has_skill(d.owner, "loyal_hound")
+			if amt >= d.hp_left() and not hold:
+				kos = amt > 0
+				life_lost = amt - d.hp_left() if pierce else _life_after_guard(d.owner, amt - d.hp_left())
+				spill_hi = maxi(spill_hi, life_lost)
+			dmg = mini(amt, d.hp_left()) if not hold else mini(amt, maxi(0, d.hp_left() - DuelSkills.LOYAL_HOLD))
+		lo = mini(lo, dmg)
+		hi = maxi(hi, dmg)
+		if kos:
+			ko_p += float(o[2])
+		if life_lost > 0 and life_lost >= foe.life and int(life_floor[1 - pi]) <= 0:
+			lethal_p += float(o[2])
+	if lo > hi:
+		lo = hi
+	return {"lo": lo, "hi": hi, "spill": spill_hi, "ko": ko_p >= 0.999, "ko_chance": ko_p,
+		"lethal": lethal_p >= 0.999, "lethal_chance": lethal_p, "fate": mv.has("fate")}
+
+
+## A hit of `amount` on `pi`'s Life, after their Guard (as _hit_life takes it).
+func _life_after_guard(pi: int, amount: int) -> int:
+	if amount <= 0:
+		return 0
+	var amt: int = amount - (players[pi] as DuelPlayer).guard()
+	if amt < DuelRules.guard_min_hit:
+		amt = mini(amount, DuelRules.guard_min_hit)
+	return amt
 
 
 # ================================================================ helpers ===

@@ -44,7 +44,7 @@ static func count_in(deck: Array, id: String) -> int:
 
 ## Every card in collection order: by element, then kind, then cost.
 static func all_ids() -> Array:
-	var ids: Array = DuelCards.CARDS.keys()
+	var ids: Array = DuelCards.CARDS.keys().filter(func(k): return not DuelCards.CARDS[k].get("granted", false))
 	var el_order := {}
 	for i in Lore.CORE_ELEMENTS.size():
 		el_order[Lore.CORE_ELEMENTS[i]] = i

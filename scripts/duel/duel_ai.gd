@@ -971,7 +971,10 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 			"essence_max":
 				v += maxf(0.0, (DuelRules.essence_cap - p.essence_max) * 6.0)
 			"heal":
-				if target is DuelTotem:
+				if e.get("who", "target") == "allies":
+					for a in p.totems():
+						v += minf(float(e.amount), float(a.damage)) * (-1.0 if a.has_status("cursed") else 0.8)
+				elif target is DuelTotem:
 					if target.has_status("cursed") and e.get("who", "target") == "target":
 						v -= float(e.amount)
 					else:

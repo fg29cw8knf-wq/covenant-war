@@ -119,8 +119,14 @@ func has_guardian() -> bool:
 	return false
 
 
+## The duellist's own cards, wherever they are (not counting one a god sent
+## them mid-duel: Rallying Light, 27 October).
 func total_card_count() -> int:
-	var n := deck.size() + hand.size() + discard.size() + spent.size() + wards.size() + answering.size() + continuous.size()
+	var n := 0
+	for pile in [deck, hand, discard, spent, wards, answering, continuous]:
+		for c in pile:
+			if not (c as DuelCard).def.get("granted", false):
+				n += 1
 	for t in totems():
 		n += t.stack.size() + (1 if t.relic != null else 0)
 	return n

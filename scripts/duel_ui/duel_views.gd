@@ -501,6 +501,13 @@ class PlayerPanel:
 	var reveal_wards := false
 	var discard_rect := Rect2()   # where the discard's pill is (a tap there opens it)
 	signal discard_tapped(panel)
+	## The duellist's duel skill (27 October): its name on a ribbon across the
+	## top of the plate, dim once it's been used; tap it to read it.
+	var skill := ""
+	var skill_used := false
+	var skill_flash := 0.0
+	var skill_rect := Rect2()
+	signal skill_tapped(panel)
 	var _t := 0.0
 
 	func _init() -> void:
@@ -513,13 +520,16 @@ class PlayerPanel:
 				shown_life = player.life
 				lag_life = player.life
 			shown_life = move_toward(shown_life, float(player.life), delta * 260.0)
+			skill_flash = move_toward(skill_flash, 0.0, delta * 0.8)
 			lag_life = maxf(lag_life, shown_life)
 			lag_life = move_toward(lag_life, shown_life, delta * 70.0)
 		queue_redraw()
 
 	func _gui_input(e: InputEvent) -> void:
 		if e is InputEventMouseButton and e.button_index == MOUSE_BUTTON_LEFT and e.pressed:
-			if discard_rect.has_point(e.position) and not targetable:
+			if skill_rect.has_point(e.position) and not targetable:
+				skill_tapped.emit(self)
+			elif discard_rect.has_point(e.position) and not targetable:
 				discard_tapped.emit(self)
 			else:
 				tapped.emit(self)
@@ -605,6 +615,23 @@ class PlayerPanel:
 			CardFace.box(self, Rect2(br.position, Vector2(br.size.x * lag, br.size.y)), 5.5, Color(1, 0.92, 0.85, 0.85))
 		if frac > 0.0:
 			CardFace.vgrad(self, Rect2(br.position, Vector2(maxf(11.0, br.size.x * frac), br.size.y)), 5.5, lcol.lightened(0.3), lcol.darkened(0.25))
+		skill_rect = Rect2()
+		if skill != "" and not targetable:
+			# the skill's ribbon, on the plate's top edge (gold until it's used)
+			var stxt := skill.to_upper()
+			var sfnt := CardFace.font("bold")
+			var sw := sfnt.get_string_size(stxt, HORIZONTAL_ALIGNMENT_LEFT, -1, 18).x + 44
+			skill_rect = Rect2(Vector2(m.end.x - sw - 10, m.position.y - 17), Vector2(sw, 32))
+			var lit := skill_flash > 0.0
+			var scol: Color = UITheme.GOLD if not skill_used else Color(UITheme.TEXT_DIM, 0.7)
+			if lit:
+				DuelFX.draw_glow(self, skill_rect.get_center(), skill_rect.size * (1.6 + skill_flash), Color(UITheme.GOLD, 0.7 * skill_flash))
+			CardFace.box(self, skill_rect, 14, Color(0.06, 0.05, 0.02, 0.96) if not skill_used else Color(0.04, 0.04, 0.06, 0.9), Color(scol, 0.9), 1.5)
+			var dc := skill_rect.position + Vector2(18, 16)
+			draw_colored_polygon(PackedVector2Array([dc + Vector2(0, -8), dc + Vector2(6, 0), dc + Vector2(0, 8), dc + Vector2(-6, 0)]), scol)
+			CardFace.text_in(self, sfnt, Rect2(skill_rect.position + Vector2(28, 0), skill_rect.size - Vector2(34, 0)), stxt, 18, scol if not lit else Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+			if skill_used:
+				draw_line(skill_rect.position + Vector2(12, 16), skill_rect.end - Vector2(12, 16), Color(scol, 0.6), 1.5)
 		if targetable:
 			var a := 0.55 + 0.45 * sin(_t * 6.0)
 			CardFace.box(self, m.grow(8), 24, Color(UITheme.GOLD, 0.1 * a), Color(UITheme.GOLD, a), 5.0)

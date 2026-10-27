@@ -69,6 +69,16 @@ static var tempest_essence := 3
 ## Essence) and the end-of-turn work still happen. The Duel Lab can turn
 ## phases back on (its "Turn phases" row); tests/phase_test.gd does.
 static var phases := false
+## The 27 October additions (Gary: "add all the go battles"): each side's
+## duel skill (DuelSkills), the card a duellist's god sends when their Life
+## first falls to a quarter (Rallying Light), and the Circle joining in every
+## few turns (DuelGame.ARENA_EVENTS: the first at turn arena_event_first,
+## then every arena_event_every turns). The Lab can turn each off.
+static var skills := true
+static var comeback := true
+static var arena_events := true
+static var arena_event_first := 5
+static var arena_event_every := 6
 static var rest_heal := 20             # a Totem set to Rest mends this much...
 static var rest_essence := 1           # ...and gives its duellist this much Essence
 static var chain_max := 4              # answers in one chain, at most
@@ -101,7 +111,7 @@ static func tunables() -> Array:
 		"start_hand", "second_player_bonus_cards", "hand_limit", "weakness_mult",
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
 		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns",
-		"phases", "rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
+		"phases", "skills", "comeback", "arena_events", "arena_event_first", "arena_event_every", "rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
 		"terrain_turns", "continuous_slots", "arena_guard", "favour_max", "oath_favour", "oath_turns", "oath_life_cost"]
 
 
@@ -145,6 +155,11 @@ static func get_value(key: String):
 		"wake_roll": return wake_roll
 		"burn_turns": return burn_turns
 		"phases": return phases
+		"skills": return skills
+		"comeback": return comeback
+		"arena_events": return arena_events
+		"arena_event_first": return arena_event_first
+		"arena_event_every": return arena_event_every
 		"rest_heal": return rest_heal
 		"rest_essence": return rest_essence
 		"chain_max": return chain_max
@@ -197,6 +212,11 @@ static func set_value(key: String, v) -> void:
 		"wake_roll": wake_roll = int(v)
 		"burn_turns": burn_turns = int(v)
 		"phases": phases = bool(v)
+		"skills": skills = bool(v)
+		"comeback": comeback = bool(v)
+		"arena_events": arena_events = bool(v)
+		"arena_event_first": arena_event_first = maxi(1, int(v))
+		"arena_event_every": arena_event_every = maxi(2, int(v))
 		"rest_heal": rest_heal = int(v)
 		"rest_essence": rest_essence = int(v)
 		"chain_max": chain_max = int(v)

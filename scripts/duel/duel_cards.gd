@@ -526,6 +526,16 @@ const CARDS := {
 		"effects": [{"op": "essence", "amount": 2}],
 		"art": "a crystal flask holding swirling motes of many-coloured light",
 	},
+	# (27 October) Never in a deck: a duellist's god sends it, once a duel, when
+	# their Life first falls to a quarter (DuelGame._after_life_loss: Gary's "comeback card"). "granted"
+	# keeps it out of the Codex, the caches and the rewards.
+	"rallying_light": {
+		"kind": "rite", "name": "Rallying Light", "element": "any", "tier": 1, "cost": 0, "target": "none",
+		"granted": true,
+		"effects": [{"op": "heal", "who": "allies", "amount": 30}, {"op": "boon", "who": "allies", "boon": "empowered"},
+			{"op": "draw", "count": 1}],
+		"art": "a single card blazing with golden light in a darkened duelling circle, embers rising round a duellist's raised hand",
+	},
 	"crystal_vein": {
 		"kind": "rite", "name": "Crystal Vein", "element": "any", "tier": 2, "cost": 2, "target": "none",
 		"effects": [{"op": "essence_max", "amount": 1}],
