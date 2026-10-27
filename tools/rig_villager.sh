@@ -14,7 +14,9 @@
 #   tools/rig_villager.sh elder    ".../card game folder/New_Character_04_Master_21_Animations.glb"  (23 Oct)
 #   tools/rig_villager.sh child_b  ".../card game folder/New_Character_05_Master_21_Animations.glb"  (23 Oct)
 #   tools/rig_villager.sh child_c  ".../card game folder/New_Character_06_Master_21_Animations.glb"  (23 Oct)
-#   tools/rig_villager.sh refugee  ".../card game folder/refugee/<master>.glb"       (when it comes)
+#   tools/rig_villager.sh refugee   .../Travel_Worn_Woman_Master_21_Animations.glb  (27 Oct)
+#   tools/rig_villager.sh corin_mam .../Cornis_mam.glb                                (27 Oct)
+#   tools/rig_villager.sh krell     .../Huntmaster_Krel.glb                           (27 Oct)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -172,7 +174,7 @@ farmer|merchant|trader)
 		--borrow assets/models/characters/bram.glb:lift \
 		--head-up=-12:walk,run
 	;;
-elder|child_b|child_c|refugee)
+elder|child_b|child_c|refugee|corin_mam|krell)
 	# the last cut-outs to become models (Gary's 23 October masters, from his
 	# "card game folder": the village elder (New Character 04, the old woman
 	# in the blue dress and shawl), the two children of the green and the
@@ -187,6 +189,12 @@ elder|child_b|child_c|refugee)
 	child_b) name="Child B"; height=1.34 ;;
 	child_c) name="Child C"; height=1.30 ;;
 	refugee) name="Refugee"; height=1.64 ;;
+	# (27 October: Gary's Corin's mam at the bakery door, and Huntmaster
+	# Krell of Ironvault, the same 52-joint rigs with the 21 clips and a
+	# get_out_of_bed; the refugee woman came the same day, as
+	# Travel_Worn_Woman_Master_21_Animations.glb)
+	corin_mam) name="Corin's Mam"; height=1.66 ;;
+	krell) name="Huntmaster Krell"; height=1.80 ;;
 	esac
 	python3 tools/rig_character.py "$src" "$out" --name "$name" --height "$height" \
 		--cycle walk --cycle run --seam idle --seam dance \
@@ -195,7 +203,7 @@ elder|child_b|child_c|refugee)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

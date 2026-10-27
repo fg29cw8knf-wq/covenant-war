@@ -129,6 +129,7 @@ static func stage(w: World) -> void:
 		_sit_corin(w)
 		if Game.flag("tam_dances"):
 			_dancing(w)
+		festival_loaf(w)
 	lane_sign(w)
 	if ph == "afternoon":
 		_set_objective(w, SUN_GOING if jobs_done() else FESTIVAL)
@@ -525,6 +526,7 @@ static func sunset(w: World) -> void:
 	Game.save_game()
 	for id in ["tam", "corin", "tilly"]:
 		_to_spot(w, id)
+	festival_loaf(w)
 	if not w.get_meta("bram_seated", false):
 		AshfordP1.bram_sit(w)
 	lane_sign(w)
@@ -542,27 +544,97 @@ static func sunset(w: World) -> void:
 
 # ============================================================ the evening ===
 
+## Gary's festival loaf (27 October) and the piece Tam tears off it.
+const LOAF_MODEL := "res://assets/models/ashford/festival_loaf.glb"
+const LOAF_PIECE_MODEL := "res://assets/models/ashford/loaf_piece.glb"
+## The loaf has a little round table of its own beside Tam at the bread stall
+## (the stall's counter is full of Gary's bowls and jars): where it stands,
+## from Tam's evening spot, and how high and wide its top is.
+const LOAF_TABLE := Vector3(1.05, 0, 0.35)
+const LOAF_TABLE_H := 0.82
+const LOAF_TABLE_R := 0.36
+const LOAF_SCALE := 0.55
+
+
+## The festival loaf on its table by the bread stall, all evening (it's what
+## Tam's selling, and the first loaf off the stone is torn from it).
+static func festival_loaf(w: World) -> void:
+	var v := village(w)
+	if v == null or v.has_meta("festival_loaf") or not ResourceLoader.exists(LOAF_MODEL):
+		return
+	var g := Node3D.new()
+	g.name = "LoafTable"
+	var at := TAM_BREAD + LOAF_TABLE
+	at.y = v.height(at.x, at.z)
+	g.position = at
+	v.add_child(g)
+	# a round table on one leg, and a bread board on it (a cloth round the
+	# edge was tried: in the lantern light it read as a pale plastic rim)
+	v.cyl(g, 0.07, 0.1, LOAF_TABLE_H, Vector3(0, LOAF_TABLE_H * 0.5, 0), v.mats.wood, 10)
+	v.cyl(g, 0.22, 0.26, 0.05, Vector3(0, 0.025, 0), v.mats.wood, 12)
+	v.cyl(g, LOAF_TABLE_R, LOAF_TABLE_R, 0.045, Vector3(0, LOAF_TABLE_H, 0), v.mats.wood_h, 20)
+	v.cyl(g, 0.24, 0.24, 0.022, Vector3(0, LOAF_TABLE_H + 0.034, 0), v.mats.wood, 16)
+	v.solid_round(at, LOAF_TABLE_R + 0.1)
+	var loaf: Node3D = (load(LOAF_MODEL) as PackedScene).instantiate()
+	loaf.name = "FestivalLoaf"
+	loaf.scale = Vector3.ONE * LOAF_SCALE
+	loaf.position = Vector3(0, LOAF_TABLE_H + 0.045, 0)
+	loaf.rotation.y = 2.4
+	g.add_child(loaf)
+	for mi: MeshInstance3D in loaf.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	v.set_meta("festival_loaf", loaf)
+
+
+## The piece of bread Tam hands over: Gary's model, or (without it) a round of crust.
+static func _bread_piece() -> Node3D:
+	var bread := Node3D.new()
+	bread.name = "Bread"
+	if ResourceLoader.exists(LOAF_PIECE_MODEL):
+		var inst: Node3D = (load(LOAF_PIECE_MODEL) as PackedScene).instantiate()
+		# (made standing on its base, 14 cm across: held by its middle)
+		inst.position = Vector3(0, -0.05, 0)
+		bread.add_child(inst)
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	else:
+		var crust := StandardMaterial3D.new()
+		crust.albedo_color = Color(0.72, 0.48, 0.24)
+		crust.roughness = 0.85
+		var s := SphereMesh.new()
+		s.radius = 0.07
+		s.height = 0.09
+		var mi := MeshInstance3D.new()
+		mi.mesh = s
+		mi.material_override = crust
+		bread.add_child(mi)
+	bread.set_meta("p1_prop", true)
+	return bread
+
+
 ## Tam breaks the first loaf off the stone and hands a piece over.
 static func tam_bread(w: World) -> void:
 	var tf = Cine.fig(w, "tam")
 	var pf = w.player_doll
+	festival_loaf(w)
 	AshfordP1.two_shot(w, "player", "tam", 3.0, 1.4, 34.0)
 	if not (tf is Figure3D):
 		await Cine.wait(w, 0.6)
 		return
-	var bread := Node3D.new()
-	bread.name = "Bread"
-	var crust := StandardMaterial3D.new()
-	crust.albedo_color = Color(0.72, 0.48, 0.24)
-	crust.roughness = 0.85
-	var s := SphereMesh.new()
-	s.radius = 0.07
-	s.height = 0.09
-	var mi := MeshInstance3D.new()
-	mi.mesh = s
-	mi.material_override = crust
-	bread.add_child(mi)
-	bread.set_meta("p1_prop", true)
+	var bread := _bread_piece()
+	# he reaches across to the loaf on the counter and tears the piece off it
+	var v := village(w)
+	var loaf: Node3D = v.get_meta("festival_loaf") if v != null and v.has_meta("festival_loaf") else null
+	if loaf != null and is_instance_valid(loaf):
+		var tear := Node3D.new()
+		w.add_child(tear)
+		tear.global_position = loaf.global_position + Vector3(0, 0.12, 0)
+		Cine.look(w, "tam", loaf.global_position)
+		(tf as Figure3D).reach(null, tear, 0.35)
+		await Cine.wait(w, 0.7)
+		(tf as Figure3D).let_go(0.3)
+		tear.queue_free()
+		Cine.look(w, "tam", Cine.body(w, "player").global_position)
 	(tf as Figure3D).hand_light(bread)
 	(tf as Figure3D).pose("play_card", 0.45, 0.35)
 	await Cine.wait(w, 0.8)

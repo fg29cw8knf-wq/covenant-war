@@ -1015,7 +1015,7 @@ const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 
 ## A worn leather card box with brass corners: Bram's Spark deck, held in
 ## both hands (the "L" and "R" nodes on its sides are the hands' targets).
 ## Gary's model takes its place when it exists (assets/models/ashford/
-## card_box.glb, 12 cm tall, its origin at the middle of its base).
+## card_box.glb, since 27 October: sized by its width, its lid on its hinge).
 const CARD_BOX_MODEL := "res://assets/models/ashford/card_box.glb"
 ## The worn deck box (Bram's, from his Shard days): a small oak case with a
 ## lid, brass at its corners and a clasp, the old sigil worked into the lid.
@@ -1038,17 +1038,38 @@ static func _card_box() -> Node3D:
 	var H := CARD_BOX_SIZE.y
 	var D := CARD_BOX_SIZE.z
 	if ResourceLoader.exists(CARD_BOX_MODEL):
+		# Gary's (27 October): a worn oak box with brass, its lid on a hinge
+		# along the back edge ("Hinged_Oak_Lid", its origin on the hinge, -105
+		# degrees about its X to open, as he made it to match). Sized by its
+		# width to the drawn one's, its middle on the origin; the lid is named
+		# "Lid" for open_box_lid, and the Spark deck lies inside
 		var inst: Node3D = (load(CARD_BOX_MODEL) as PackedScene).instantiate()
 		n.add_child(inst)
 		var box := AABB()
 		var first := true
 		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
-			var b := mi.transform * mi.get_aabb()
+			var b := _local_to(inst, mi) * mi.get_aabb()
 			box = b if first else box.merge(b)
 			first = false
-		if not first and box.size.y > 0.001:
-			inst.scale = Vector3.ONE * (H / box.size.y)
+		if not first and box.size.x > 0.001:
+			inst.scale = Vector3.ONE * (W / box.size.x)
 			inst.position = -box.get_center() * inst.scale.x
+		var glid := inst.find_child("*Lid*", true, false) as Node3D
+		if glid != null:
+			glid.name = "Lid"
+			# the deck in it, under the lid: card backs up, the Spark deck's blue
+			var backs := StandardMaterial3D.new()
+			backs.albedo_color = Color(0.12, 0.16, 0.34)
+			backs.roughness = 0.5
+			var deck := MeshInstance3D.new()
+			deck.name = "Deck"
+			var dm := BoxMesh.new()
+			var inner_y := glid.position.y   # (the rim, where the lid sits)
+			dm.size = Vector3(box.size.x * 0.72, inner_y * 0.62, box.size.z * 0.62)
+			deck.mesh = dm
+			deck.material_override = backs
+			deck.position = Vector3(box.get_center().x, inner_y * 0.62 * 0.5 + inner_y * 0.18, box.get_center().z)
+			inst.add_child(deck)
 	else:
 		var grain := NoiseTexture2D.new()
 		grain.width = 64
@@ -1150,6 +1171,18 @@ static func _card_box() -> Node3D:
 	return n
 
 
+## `node`'s transform in `root`'s space, walking up its parents (before
+## either is in the tree).
+static func _local_to(root: Node3D, node: Node3D) -> Transform3D:
+	var t := Transform3D.IDENTITY
+	var cur: Node = node
+	while cur != null and cur != root:
+		if cur is Node3D:
+			t = (cur as Node3D).transform * t
+		cur = cur.get_parent()
+	return t
+
+
 ## The way a figure's body faces (its turn about the upright), as carry() turns what it holds.
 static func _yaw_of(f: Figure3D) -> float:
 	return f._yaw
@@ -1160,6 +1193,8 @@ static func open_box_lid(w: World, box: Node3D, open := true, secs := 0.45) -> v
 	if box == null or not is_instance_valid(box):
 		return
 	var lid := box.get_node_or_null("Lid") as Node3D
+	if lid == null:
+		lid = box.find_child("Lid", true, false) as Node3D   # (Gary's model: inside it)
 	if lid == null:
 		return
 	var tw := w.create_tween()

@@ -150,10 +150,10 @@ no,area,speaker,id,words,file,scene,note
 0149,ashford,bram,d2444625,Close your fist. Don't look at it. Hide it. Now.,assets/audio/vo/ashford/bram/d2444625.ogg,(,
 0150,ashford,hob,301a2d70,Lost half the barley. Found nine cards in the cabbages. Can't tell if that's a good trade.,assets/audio/vo/ashford/hob/301a2d70.ogg,Herald 3d,
 0151,ashford,bram,e6ff291c,A Pale Herald. Morrowen's own. Head down. Hand in your pocket.,assets/audio/vo/ashford/bram/e6ff291c.ogg,Herald 3d,
-0152,ashford,herald,herald_21,"The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven Dominion Seats, subject to open challenge. Let the blood of the contenders be counted.",assets/audio/vo/herald_21.ogg,Herald 3d,"to record, as herald_21.wav"
+0152,ashford,herald,herald_21,"The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven Dominion Seats, subject to open challenge. Let the blood of the contenders be counted.",assets/audio/vo/herald_21.ogg,Herald 3d,"recorded 27 October"
 0153,ashford,herald,herald_03,"Solhaven, for Solmaris: Ser Aldric Vane.",assets/audio/vo/herald_03.ogg,Herald 3d,recorded already: herald_03
 0154,ashford,herald,herald_09,"Glyphmere, for Aldrith: Magister Tobias Crane.",assets/audio/vo/herald_09.ogg,Herald 3d,recorded already: herald_09
-0155,ashford,herald,herald_22,"The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn.",assets/audio/vo/herald_22.ogg,Herald 3d,"to record, as herald_22.wav"
+0155,ashford,herald,herald_22,"The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn.",assets/audio/vo/herald_22.ogg,Herald 3d,"recorded 27 October"
 0156,ashford,narrator,5c3850aa,"[i](You are the Unsworn: bound to no god, +1 to every attribute. See Hero in the menu.)[/i]",assets/audio/vo/ashford/narrator/5c3850aa.ogg,Dawn hub,
 0157,ashford,bram,4d262c67,The Covenant's shadow. The Pale Herald. It's the thing the gods send to enforce the rules they wrote for themselves.,assets/audio/vo/ashford/bram/4d262c67.ogg,(,
 0158,ashford,bram,a97c0b5c,"It doesn't judge, and it doesn't fight. It just records who dies, who owes what, and who holds a Champion's mark.",assets/audio/vo/ashford/bram/a97c0b5c.ogg,(,

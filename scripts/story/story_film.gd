@@ -544,6 +544,13 @@ func _say(ln: Dictionary) -> void:
 	# its recording: named ("vo", the Herald's), or by the words' id (VoiceLines)
 	var path := VoiceLines.file_for(who, text, String(ln.get("vo", "")))
 	if path != "":
+		# one voice at a time: a line that comes while the last is still being
+		# said waits for it, and its words with it (27 October: the Herald's
+		# herald_21 runs a second past its shot, and herald_03 cut its end off)
+		while _voice.playing and is_inside_tree():
+			await get_tree().process_frame
+		if not is_inside_tree():
+			return
 		_voice.stream = load(path)
 		_voice.play()
 		if hold < 0.0:

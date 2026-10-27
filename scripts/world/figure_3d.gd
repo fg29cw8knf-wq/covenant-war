@@ -87,6 +87,11 @@ const OWN_GAIT := {
 	"elder": {"walk": 1.66, "run": 4.20},
 	"child_b": {"walk": 1.15, "run": 2.90},
 	"child_c": {"walk": 0.70, "run": 1.77},
+	# Gary's 27 October three: Corin's mam, Huntmaster Krell and the refugee
+	# woman (the travel-worn woman), each on her own 21 clips
+	"corin_mam": {"walk": 1.70, "run": 4.30},
+	"krell": {"walk": 1.56, "run": 3.95},
+	"refugee": {"walk": 1.58, "run": 4.00},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884

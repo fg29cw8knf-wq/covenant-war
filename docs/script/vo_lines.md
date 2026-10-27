@@ -279,10 +279,10 @@ Every line the game speaks, in the order it's played: 542 lines, 4 of them recor
 |---|---|---|---|
 | 0150 | Hob | Lost half the barley. Found nine cards in the cabbages. Can't tell if that's a good trade. *(said in 2 places: one recording)* | `301a2d70` |
 | 0151 | Bram | A Pale Herald. Morrowen's own. Head down. Hand in your pocket. *(said in 2 places: one recording)* | `e6ff291c` |
-| 0152 | The Pale Herald | The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven Dominion Seats, subject to open challenge. Let the blood of the contenders be counted. *(to record, as herald_21.wav)* *(said in 2 places: one recording)* | `herald_21` |
+| 0152 | The Pale Herald | The Age is turned. The Turning year begins. I am the witness. I record the current holders of the seven Dominion Seats, subject to open challenge. Let the blood of the contenders be counted. *(recorded 27 October)* *(said in 2 places: one recording)* | `herald_21` |
 | 0153 | The Pale Herald | Solhaven, for Solmaris: Ser Aldric Vane. *(recorded already: herald_03)* *(said in 2 places: one recording)* | `herald_03` |
 | 0154 | The Pale Herald | Glyphmere, for Aldrith: Magister Tobias Crane. *(recorded already: herald_09)* *(said in 2 places: one recording)* | `herald_09` |
-| 0155 | The Pale Herald | The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn. *(to record, as herald_22.wav)* *(said in 2 places: one recording)* | `herald_22` |
+| 0155 | The Pale Herald | The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn. *(recorded 27 October)* *(said in 2 places: one recording)* | `herald_22` |
 
 ### Dawn hub
 

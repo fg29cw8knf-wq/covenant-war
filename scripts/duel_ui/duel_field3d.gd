@@ -929,7 +929,7 @@ func _tint_model(s: Slot, m: Color) -> void:
 const CLIP_ALIASES := {
 	"idle": ["idle", "breathe", "breathing"],
 	"attack": ["attack", "bite", "pounce", "strike", "lunge"],
-	"hit": ["hit", "hurt", "damage", "recoil", "stagger"],
+	"hit": ["hit", "hit_react", "hurt", "damage", "recoil", "stagger"],
 	"ko": ["ko", "defeat", "death", "die", "collapse", "faint"],
 	"summon": ["summon", "spawn", "appear", "rise", "enter"],
 	"victory": ["victory", "win", "cheer", "celebrate"],

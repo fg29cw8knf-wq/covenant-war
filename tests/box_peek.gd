@@ -46,7 +46,7 @@ func _run() -> void:
 		cam.position = v[1]
 		cam.look_at(Vector3.ZERO)
 		await _shot("shut_" + v[0])
-	var lid := box.get_node_or_null("Lid") as Node3D
+	var lid := box.find_child("Lid", true, false) as Node3D   # (Gary's model: inside it)
 	if lid != null:
 		lid.rotation.x = deg_to_rad(-105.0)
 	for v in views:

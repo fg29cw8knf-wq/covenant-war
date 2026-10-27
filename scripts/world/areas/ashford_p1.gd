@@ -52,7 +52,10 @@ const DANCE := Vector3(-1.4, 0, -3.7)
 const DRUM := Vector3(-9.8, 0, -1.35)
 const KIDS := [["p1_kid_a", "child_b", Vector3(-7.5, 0, -3.3)], ["p1_kid_b", "girl", Vector3(-9.4, 0, -3.5)],
 	["p1_kid_c", "child", Vector3(-7.4, 0, -1.4)]]
-const DANCERS := [["p1_dance_a", "farmer"], ["p1_dance_b", "refugee"], ["p1_dance_c", "merchant"], ["p1_dance_d", "courtier"]]
+## (27 October: the fourth was a courtier cut-out, a Solhaven look and the
+## last flat figure at the dance; the trader's model dances instead, and the
+## refugee look is Gary's travel-worn woman now)
+const DANCERS := [["p1_dance_a", "farmer"], ["p1_dance_b", "refugee"], ["p1_dance_c", "merchant"], ["p1_dance_d", "trader"]]
 
 
 static func village(w: World) -> AshfordVillage:
