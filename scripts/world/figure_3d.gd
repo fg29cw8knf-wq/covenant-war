@@ -337,6 +337,167 @@ func resume(from := -1.0, speed := 1.0) -> void:
 		release(0.3)
 
 
+## Plays `clip` once through to its end and holds its last pose, with its
+## root motion taken off the body and given to them as a whole: the Hips'
+## travel along the ground moves the node they stand in, and the way the
+## Hips turn about the upright turns them, so when the clip lets go they're
+## standing where and the way it ended instead of snapping back to the spot.
+## `mirror` plays it left for right (getting out of a bed on the other side).
+## `extra` (seconds into the clip -> a world offset) moves them besides: up
+## onto a bed higher than the one the clip was made on, along it to the edge.
+## Made for Hob's get_out_of_bed on Player A (27 October, Gary: getting out
+## of bed looked weird, with the pose-built rise).
+func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(), blend := 0.3) -> void:
+	if not _ensure(clip):
+		return
+	var nm := "rooted_%s%s" % [clip, "_m" if mirror else ""]
+	if not anim.has_animation(nm):
+		var a := (anim.get_animation(clip) as Animation).duplicate(true) as Animation
+		a.loop_mode = Animation.LOOP_NONE
+		if mirror:
+			for t in a.get_track_count():
+				var p := a.track_get_path(t)
+				var bone := String(p.get_concatenated_subnames())
+				if bone == "":
+					continue
+				var other := bone
+				if bone.begins_with("Left"):
+					other = "Right" + bone.trim_prefix("Left")
+				elif bone.begins_with("Right"):
+					other = "Left" + bone.trim_prefix("Right")
+				a.track_set_path(t, NodePath(String(p.get_concatenated_names()) + ":" + other))
+				for k in a.track_get_key_count(t):
+					match a.track_get_type(t):
+						Animation.TYPE_ROTATION_3D:
+							var q: Quaternion = a.track_get_key_value(t, k)
+							a.track_set_key_value(t, k, Quaternion(q.x, -q.y, -q.z, q.w))
+						Animation.TYPE_POSITION_3D:
+							var v: Vector3 = a.track_get_key_value(t, k)
+							a.track_set_key_value(t, k, Vector3(-v.x, v.y, v.z))
+		# the Hips' ground travel and turn, into lists, and out of the clip
+		var rt := PackedFloat32Array()
+		var rd := PackedVector3Array()
+		var yt := PackedFloat32Array()
+		var yv := PackedFloat32Array()
+		for t in a.get_track_count():
+			if String(a.track_get_path(t).get_concatenated_subnames()) != "Hips":
+				continue
+			match a.track_get_type(t):
+				Animation.TYPE_POSITION_3D:
+					var v0: Vector3 = a.track_get_key_value(t, 0)
+					for k in a.track_get_key_count(t):
+						var v: Vector3 = a.track_get_key_value(t, k)
+						rt.append(a.track_get_key_time(t, k))
+						rd.append(Vector3(v.x - v0.x, 0.0, v.z - v0.z))
+						a.track_set_key_value(t, k, Vector3(v0.x, v.y, v0.z))
+				Animation.TYPE_ROTATION_3D:
+					var last := 0.0
+					for k in a.track_get_key_count(t):
+						var q: Quaternion = a.track_get_key_value(t, k)
+						# the turn about the upright, read off the line across the
+						# hips (level whether they lie, sit or stand)
+						var side := q * Vector3.RIGHT
+						var th := atan2(-side.z, side.x)
+						th = last + wrapf(th - last, -PI, PI)   # (no jumps of a whole turn)
+						last = th
+						yt.append(a.track_get_key_time(t, k))
+						yv.append(th)
+						a.track_set_key_value(t, k, Quaternion(Vector3.UP, -th) * q)
+		a.set_meta("root_t", rt)
+		a.set_meta("root_d", rd)
+		a.set_meta("yaw_t", yt)
+		a.set_meta("yaw_v", yv)
+		if not anim.has_animation_library(""):
+			anim.add_animation_library("", AnimationLibrary.new())
+		anim.get_animation_library("").add_animation(nm, a)
+	seat = -1.0
+	_seat_pose = ""
+	_action = nm
+	_held = true
+	var an := anim.get_animation(nm)
+	var mover: Node3D = get_parent() as Node3D if get_parent() is Node3D else self
+	var start := mover.global_position
+	var yaw0 := _yaw
+	var rt: PackedFloat32Array = an.get_meta("root_t")
+	var rd: PackedVector3Array = an.get_meta("root_d")
+	var yt: PackedFloat32Array = an.get_meta("yaw_t")
+	var yv: PackedFloat32Array = an.get_meta("yaw_v")
+	var at := func(t: float) -> void:
+		var d := Vector3.ZERO
+		if rt.size() > 0:
+			var i := clampi(rt.bsearch(t), 1, maxi(1, rt.size() - 1))
+			var u := clampf((t - rt[i - 1]) / maxf(rt[i] - rt[i - 1], 0.0001), 0.0, 1.0) if rt.size() > 1 else 0.0
+			d = rd[i - 1].lerp(rd[mini(i, rd.size() - 1)], u)
+		var th := 0.0
+		if yt.size() > 0:
+			var j := clampi(yt.bsearch(t), 1, maxi(1, yt.size() - 1))
+			var w := clampf((t - yt[j - 1]) / maxf(yt[j] - yt[j - 1], 0.0001), 0.0, 1.0) if yt.size() > 1 else 0.0
+			th = lerpf(yv[j - 1], yv[mini(j, yv.size() - 1)], w)
+		_yaw = yaw0 + th
+		_want_yaw = _yaw
+		var off := Basis(Vector3.UP, yaw0) * d
+		if extra.is_valid():
+			off += extra.call(t)
+		mover.global_position = start + off
+	_play(nm, blend, speed)
+	var t := 0.0
+	while _action == nm and anim.current_animation == nm and t < an.length - 0.001:
+		at.call(t)
+		await get_tree().process_frame
+		if anim.current_animation == nm:
+			t = anim.current_animation_position
+	if _action == nm:
+		at.call(an.length)
+
+
+## Beaten: the head drops, the back rounds and the shoulders fall forward,
+## eased into over `blend` seconds and held (over their idle, so they still
+## breathe) until release(). `amount` 1 is a hard loss. For Corin after the
+## Lantern Duel (27 October, Gary: with the recoil and the near-standing
+## `defeat` clip he looked "more scared than defeated").
+const SLUMP := {"Spine": Vector3(4, 0, 0), "Spine1": Vector3(6, 0, 0), "Spine2": Vector3(7, 0, 0),
+	"Neck": Vector3(9, 0, 0), "Head": Vector3(19, 0, 0),
+	"LeftShoulder": Vector3(0, -7, -6), "RightShoulder": Vector3(0, 7, 6)}
+
+func slump(amount := 1.0, blend := 1.0) -> void:
+	if anim == null or not anim.has_animation("idle"):
+		return
+	var nm := "slump_%d" % roundi(amount * 100.0)
+	if not anim.has_animation(nm):
+		var a := (anim.get_animation("idle") as Animation).duplicate(true) as Animation
+		var prefix := ""
+		var done := {}
+		for t in a.get_track_count():
+			var bone := String(a.track_get_path(t).get_concatenated_subnames())
+			if bone == "":
+				continue
+			prefix = String(a.track_get_path(t).get_concatenated_names())
+			if a.track_get_type(t) != Animation.TYPE_ROTATION_3D or not SLUMP.has(bone):
+				continue
+			var e: Vector3 = SLUMP[bone] * amount
+			var extra := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))
+			for k in a.track_get_key_count(t):
+				a.track_set_key_value(t, k, extra * (a.track_get_key_value(t, k) as Quaternion))
+			done[bone] = true
+		# a bone the idle doesn't move: a track of its own, at rest plus the slump
+		for bone: String in SLUMP:
+			if done.has(bone) or _skel == null or _skel.find_bone(bone) < 0 or prefix == "":
+				continue
+			var e: Vector3 = SLUMP[bone] * amount
+			var t := a.add_track(Animation.TYPE_ROTATION_3D)
+			a.track_set_path(t, NodePath(prefix + ":" + bone))
+			var q := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z))) * _skel.get_bone_rest(_skel.find_bone(bone)).basis.get_rotation_quaternion()
+			a.rotation_track_insert_key(t, 0.0, q)
+			a.rotation_track_insert_key(t, a.length, q)
+		a.loop_mode = Animation.LOOP_LINEAR
+		if not anim.has_animation_library(""):
+			anim.add_animation_library("", AnimationLibrary.new())
+		anim.get_animation_library("").add_animation(nm, a)
+	_action = nm
+	_held = true
+	_play(nm, blend)
+
+
 ## Back to standing, walking or talking.
 func release(blend := 0.3) -> void:
 	_action = ""

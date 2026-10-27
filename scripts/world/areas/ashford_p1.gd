@@ -1261,6 +1261,7 @@ static func _attic(w: World) -> void:
 	var side: Vector3 = a.bed_side
 	if pf is Figure3D:
 		var fig := pf as Figure3D
+		var rise_clip := fig.anim != null and fig._ensure("get_out_of_bed")   # (borrowed from Player A by the other looks)
 		# his right hand finds the blanket's hem beside him and throws it
 		# back across him to the wall, the cloth following the hand
 		# (BlanketThrow); then the hand goes down on the mattress and he
@@ -1282,30 +1283,24 @@ static func _attic(w: World) -> void:
 				hand.global_position = corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.22, 0), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await sweep.finished
 			bt.let_go()
-			var down := w.create_tween()
-			down.tween_property(hand, "global_position", on_mattress, 0.3).set_trans(Tween.TRANS_SINE)
-			await down.finished
-		else:
+			if not rise_clip:
+				var down := w.create_tween()
+				down.tween_property(hand, "global_position", on_mattress, 0.3).set_trans(Tween.TRANS_SINE)
+				await down.finished
+		elif not rise_clip:
 			hand.global_position = on_mattress
 			fig.reach(null, hand, 0.35)
 			await Cine.wait(w, 0.25)
-		fig.sit_long(a.lie_top, 1.0)
-		await Cine.wait(w, 1.05)
-		# sat up: a breath, then he slides to the edge and turns to face it,
-		# his legs still out along the mattress (they swing down only once
-		# they're over the edge: nothing goes through the bed), the hand
-		# coming off the mattress as he does
-		await Cine.wait(w, 0.2)
-		await fig.shift_seat(a.edge_at, Vector3.BACK, 0.8, 0.05)
-		fig.sit(a.edge_top, 0.6)
-		fig.let_go(0.6)
-		await Cine.wait(w, 0.5)
-		# a moment on the edge, then up and away from it
-		await Cine.wait(w, 0.15)
-		fig.stand(0.7)
-		var tw := w.create_tween()
-		tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		await tw.finished
+		if rise_clip:
+			await _rise_from_bed(w, fig, a)
+			if is_instance_valid(hand):
+				hand.queue_free()
+			# a step on from the bed, to where he turns to the window
+			var step := w.player.global_position.lerp(side, 0.5)
+			step.y = (a.bed_side as Vector3).y
+			await Cine.path(w, "player", [step], 0.6)
+		if not rise_clip:
+			await _rise_by_poses(w, fig, a, side)
 		if is_instance_valid(hand):
 			hand.queue_free()
 	else:
@@ -1337,6 +1332,62 @@ static func _attic(w: World) -> void:
 	await _at_the_glass(w, a)
 
 
+
+
+## Up out of the attic bed the way it was done before 27 October, built
+## from poses (sat up, slid to the edge, sat on it, stood): for a model
+## without the get_out_of_bed clip.
+static func _rise_by_poses(w: World, fig: Figure3D, a: Dictionary, side: Vector3) -> void:
+	fig.sit_long(a.lie_top, 1.0)
+	await Cine.wait(w, 1.05)
+	# sat up: a breath, then he slides to the edge and turns to face it,
+	# his legs still out along the mattress (they swing down only once
+	# they're over the edge: nothing goes through the bed), the hand
+	# coming off the mattress as he does
+	await Cine.wait(w, 0.2)
+	await fig.shift_seat(a.edge_at, Vector3.BACK, 0.8, 0.05)
+	fig.sit(a.edge_top, 0.6)
+	fig.let_go(0.6)
+	await Cine.wait(w, 0.5)
+	# a moment on the edge, then up and away from it
+	await Cine.wait(w, 0.15)
+	fig.stand(0.7)
+	var tw := w.create_tween()
+	tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await tw.finished
+
+
+## Up out of the attic bed with the model's own get_out_of_bed (Hob's, the
+## Tripo3D library's: lying on his back, he sits up, swings his legs over
+## the side, sits a breath on the edge and stands up off it), mirrored so
+## it's the open side of the bed, not the wall's (27 October, Gary: getting
+## out of bed looked weird when it was built from poses). The clip was made
+## on a lower bed with the sleeper nearer its edge, so he's lifted onto this
+## mattress while he lies and sits up, slid to its edge as his legs come
+## round, and set down on the floor as he stands.
+static func _rise_from_bed(w: World, fig: Figure3D, a: Dictionary) -> void:
+	var clip: Animation = fig.anim.get_animation("get_out_of_bed")
+	var hips_track := -1
+	for t in clip.get_track_count():
+		if clip.track_get_type(t) == Animation.TYPE_POSITION_3D and String(clip.track_get_path(t).get_concatenated_subnames()) == "Hips":
+			hips_track = t
+	var pad := Figure3D.SEAT_PAD * fig.stature()
+	var lie_off := 0.0
+	var edge_off := 0.0
+	if hips_track >= 0:
+		lie_off = (float(a.lie_top) + pad) - clip.position_track_interpolate(hips_track, 0.0).y
+		edge_off = (float(a.edge_top) + pad) - clip.position_track_interpolate(hips_track, 2.8).y
+	fig.let_go(0.3)   # (the hand that threw the blanket back)
+	var from: Vector3 = w.player.global_position
+	var to_edge: Vector3 = (a.edge_at as Vector3) - from
+	to_edge.y = 0.0
+	var extra := func(t: float) -> Vector3:
+		var slide := smoothstep(1.3, 2.5, t)
+		var y := lerpf(lie_off, edge_off, slide)
+		y = lerpf(y, 0.0, smoothstep(3.1, 4.0, t))
+		return to_edge * slide + Vector3(0, y, 0)
+	await fig.play_rooted("get_out_of_bed", true, 1.15, extra, 0.35)
+	fig.release(0.4)
 ## Master Script v7 (with Gary's 24 October change to Q0): at the washbasin
 ## he wipes the frost off the oval glass with his palm and sees the ash-grey
 ## mark on his collarbone; the frost creeps back and he writes his name in it
@@ -1349,9 +1400,21 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	var fog_mat: StandardMaterial3D = a.fog_mat
 	var writing: Label3D = a.writing
 	var glass_at: Vector3 = a.mirror
-	# over his shoulder, the fogged oval in front of him
-	var over := w.player.global_position + (w.player.global_position - glass_at).normalized() * 0.55 + Vector3(0.12, 1.62, 0.22)
-	Cine.move(w, over, glass_at + Vector3(0, 0.02, 0), 0.7, 38.0)
+	# the glass holds the room the other way round from here on (until 27
+	# October it was a grey disc: wiped, it showed nothing of him)
+	var reflection: MirrorGlass = null
+	if a.get("mirror_node") is Node3D:
+		reflection = MirrorGlass.start(w, a.mirror_node, Vector3(-0.036, 0, 0), 0.27, 0.27 * 1.32)
+	# over his shoulder, the fogged oval in front of him: far enough back that
+	# the camera's near edge doesn't cut into his head (Gary, 27 October: "an
+	# outline of the body" when he wiped the glass: the camera was half in his
+	# hair), and off to the side so the glass isn't behind him
+	var away_from := w.player.global_position - glass_at
+	away_from.y = 0.0
+	away_from = away_from.normalized()
+	var aside := Vector3.UP.cross(away_from).normalized()
+	var over := w.player.global_position + away_from * 0.7 + aside * 0.55 + Vector3(0, 1.8, 0)
+	Cine.move(w, over, glass_at + Vector3(0, -0.02, 0), 0.7, 40.0)
 	await Cine.wait(w, 0.6)
 	# a bare palm across the glass, side to side, and the grey clears behind it
 	var hand := Node3D.new()
@@ -1377,17 +1440,16 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	# out as a wide shot up his chin: Gary, "the camera angle goes weird");
 	# the picture is masked to the oval, so it reads as his reflection.
 	var face := Cine.head(w, "player") - Vector3(0, 0.08, 0)
-	var in_glass := glass_at + (face - glass_at).normalized() * 0.1
-	in_glass.y = glass_at.y + 0.1
 	mirror_mask(w, true)
-	Cine.shot(w, in_glass, face, 44.0)
+	_glass_shot(w, glass_at, face)
 	SealMark.show_on(w, true)
 	await Cine.wait(w, 1.6)
 	# the frost already creeping back; without thinking he writes his name in it
 	var back := w.create_tween()
 	back.tween_method(func(k: float) -> void: fog_mat.albedo_color.a = k, 0.12, 0.6, 1.6)
 	mirror_mask(w, false)
-	Cine.shot(w, over, glass_at, 36.0)
+	_glass_shot_done(w)
+	Cine.shot(w, over, glass_at + Vector3(0, -0.02, 0), 40.0)
 	await Cine.wait(w, 0.9)
 	hand.global_position = glass_at + toward + Vector3(0, 0.05, 0.1)
 	if pf is Figure3D:
@@ -1409,14 +1471,13 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	# the questions he asks the glass (his reflection, in the oval again);
 	# stepping away moves on
 	var head := Cine.head(w, "player") - Vector3(0, 0.08, 0)
-	var in_glass2 := glass_at + (head - glass_at).normalized() * 0.1
-	in_glass2.y = glass_at.y + 0.1
 	mirror_mask(w, true)
-	Cine.shot(w, in_glass2, head, 44.0)
+	_glass_shot(w, glass_at, head)
 	await w.run_steps(REFLECTION, null)
 	w.hud.dialogue.close()
 	SealMark.show_on(w, false)
 	mirror_mask(w, false)
+	_glass_shot_done(w)
 	# a step back from the glass, and Bram's voice up through the floorboards
 	var away := w.player.global_position + (w.player.global_position - glass_at).normalized() * 0.5
 	away.y = w.player.global_position.y
@@ -1425,9 +1486,31 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	await Cine.wait(w, 0.6)
 	Cine.look(w, "player", a.hatch)
 	await w.run_steps(BRAM_CALLS, null)
+	if reflection != null and is_instance_valid(reflection):
+		reflection.stop()
 	w.hud.dialogue.close()
 	await Cine.wait(w, 0.3)
 	await Cine.fade(w, 1.0, 0.7)
+
+
+## His face as the glass shows it, framed by the oval mask: the camera on
+## the far side of the glass, about a metre from him with a long lens, its
+## near edge just past the glass and the wall behind it (27 October, Gary:
+## the face looked deformed; the camera was a hand's width from his face
+## with a wide lens, his nose cut off by its near edge, and lit from below).
+static func _glass_shot(w: World, glass_at: Vector3, face: Vector3) -> void:
+	var to_glass := glass_at - face
+	to_glass.y = 0.0
+	var dist := to_glass.length()
+	var dir := to_glass.normalized()
+	var at := face + dir * 1.15 + Vector3(0, 0.03, 0)
+	Cine.shot(w, at, face, 27.0)
+	w.cam.near = maxf(0.05, 1.15 - dist + 0.06)
+
+
+## The camera's near edge back where the world keeps it.
+static func _glass_shot_done(w: World) -> void:
+	w.cam.near = 0.3
 
 
 ## The mirror's oval over the picture: dark wood outside a soft-edged oval
@@ -1438,7 +1521,12 @@ static func mirror_mask(w: World, on: bool) -> void:
 	var layer: CanvasLayer = w.get_meta("mirror_mask") if w.has_meta("mirror_mask") else null
 	if not on:
 		if layer != null and is_instance_valid(layer):
-			var r: ColorRect = layer.get_child(0)
+			# the picture the right way round again at once (the cut back to
+			# the room comes with this), the frame fading off it
+			var flip: Node = layer.get_node_or_null("Flip")
+			if flip != null:
+				flip.queue_free()
+			var r: ColorRect = layer.get_node("Frame")
 			var tw := w.create_tween()
 			tw.tween_property(r, "modulate:a", 0.0, 0.3)
 			tw.tween_callback(layer.queue_free)
@@ -1450,7 +1538,27 @@ static func mirror_mask(w: World, on: bool) -> void:
 	layer.name = "MirrorMask"
 	layer.layer = 9
 	w.add_child(layer)
+	var aspect := maxf(0.5, float(w.get_viewport().get_visible_rect().size.x) / maxf(1.0, w.get_viewport().get_visible_rect().size.y))
+	# the picture turned left for right, as a reflection is (27 October: the
+	# glass itself shows the room mirrored now, so its close-up must too)
+	var flip := ColorRect.new()
+	flip.name = "Flip"
+	flip.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	flip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var fs := Shader.new()
+	fs.code = """
+shader_type canvas_item;
+uniform sampler2D screen_tex : hint_screen_texture, filter_linear;
+void fragment() {
+	COLOR = vec4(texture(screen_tex, vec2(1.0 - SCREEN_UV.x, SCREEN_UV.y)).rgb, 1.0);
+}
+"""
+	var fm := ShaderMaterial.new()
+	fm.shader = fs
+	flip.material = fm
+	layer.add_child(flip)
 	var r := ColorRect.new()
+	r.name = "Frame"
 	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	r.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()
@@ -1471,7 +1579,7 @@ void fragment() {
 """
 	var m := ShaderMaterial.new()
 	m.shader = sh
-	m.set_shader_parameter("aspect", maxf(0.5, float(w.get_viewport().get_visible_rect().size.x) / maxf(1.0, w.get_viewport().get_visible_rect().size.y)))
+	m.set_shader_parameter("aspect", aspect)
 	r.material = m
 	layer.add_child(r)
 	r.modulate.a = 0.0
