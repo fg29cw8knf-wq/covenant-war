@@ -651,12 +651,12 @@ const TAM_DECK := [
 	"river_hound", "essence_flask", "healing_draught", "essence_flask", "travellers_pack", "essence_flask",
 	"healing_draught", "bulwark", "essence_flask", "healing_draught", "travellers_pack", "essence_flask",
 ]
-## Nell's: one patient Totem and two Wards, face down till they bite (until
-## 27 October two Totems and four Wards, against the player's one Totem: a
-## new player never won; now about half the time).
+## Nell's: one patient Totem and three Wards, face down till they bite
+## (until 27 October two Totems and four Wards, against the player's one
+## Totem: a new player never won; now about half the time).
 const NELL_DECK := [
 	"shellguard", "iron_bastion", "essence_flask", "healing_draught", "essence_flask", "ambush_snare",
-	"essence_flask", "healing_draught", "essence_flask", "travellers_pack", "healing_draught", "essence_flask",
+	"essence_flask", "healing_draught", "iron_bastion", "travellers_pack", "healing_draught", "essence_flask",
 ]
 ## The friendly games (Gary, 24 October): no experience, no card, can be lost,
 ## and played again as often as the player likes until the sun goes down.
