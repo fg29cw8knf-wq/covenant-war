@@ -392,6 +392,7 @@ func _make_slot(side: int, i: int) -> Slot:
 	s.add_child(s.sprite)
 	s.lamp = OmniLight3D.new()
 	s.lamp.light_energy = 0.0
+	s.lamp.visible = false
 	s.lamp.omni_range = 3.2
 	s.lamp.omni_attenuation = 1.6
 	s.lamp.position = Vector3(0, 1.2, 0.6)
@@ -558,6 +559,7 @@ func sync(v) -> void:
 			s.sprite.visible = false
 			s.shadow.visible = false
 			s.lamp.light_energy = 0.0
+			s.lamp.visible = false
 		_ring_state(s, v.highlight, Color(0.7, 0.6, 1.0), 0.35 * v.fade)
 		return
 	if id != s.card_id:
@@ -571,6 +573,7 @@ func sync(v) -> void:
 			s.sprite.visible = false
 			s.shadow.visible = false
 			s.lamp.light_energy = 0.0
+			s.lamp.visible = false
 		else:
 			s.card_face.veiled = false
 			s.card_face.card_id = id
@@ -644,6 +647,9 @@ func sync(v) -> void:
 		_tint_model(s, m)
 		_drive_anim(s, v)
 	s.lamp.light_energy = (0.55 + 0.1 * sin(_t * 3.0 + v.slot)) * v.fade + v.flash * 3.0
+	# (an empty slot's lamp off altogether: every light on the Circle costs
+	# the phone another pass over the floor, lit or not; 27 October)
+	s.lamp.visible = s.lamp.light_energy > 0.01
 	s.lamp.light_color = col if v.flash <= 0.0 else col.lerp(v.flash_color, v.flash)
 	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade)
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
@@ -653,7 +659,7 @@ func sync(v) -> void:
 ## player's are turned to face across the board at the rival, each with a
 ## little angle so they aren't dead square to the camera.
 static func home_yaw(s: Slot) -> float:
-	return PI * 0.76 if s.mine else -PI * 0.27
+	return PI * 0.95 if s.mine else -PI * 0.05
 
 
 ## Turns a slot's model to face a point on the field for `hold` seconds
@@ -902,19 +908,17 @@ func _tint_model(s: Slot, m: Color) -> void:
 					mesh.set_surface_override_material(i, null)
 				continue
 			var ov: BaseMaterial3D = mesh.get_surface_override_material(i)
-			# (a tinted stand-in's solid surfaces go plain in its colour; its light
-			# surfaces, fire and mist, keep their texture and take the colour)
-			var solid := tinted and base.blend_mode == BaseMaterial3D.BLEND_MODE_MIX and base.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED
+			# (a stand-in keeps its own painted look, washed a little towards
+			# its Totem's colour: until 27 October its solid surfaces went
+			# plain in that colour, and Tam's River Hound, a Shieldhound in
+			# blue, stood on the field as a glowing blue lump; Gary: "blue
+			# for some reason")
 			if ov == null or ov == base:
 				ov = base.duplicate()
-				if solid:
-					ov.albedo_texture = null
 				mesh.set_surface_override_material(i, ov)
 			var col := base.albedo_color
-			if solid:
-				col = Color(tint, base.albedo_color.a)
-			elif tinted:
-				col = base.albedo_color * tint
+			if tinted:
+				col = base.albedo_color * DuelArt.soft_tint(tint)
 			ov.albedo_color = col * Color(dim, dim, dim, 1.0)
 			ov.emission_enabled = true
 			ov.emission = Color(m.r, m.g, m.b).lerp(base.emission if base.emission_enabled else Color.BLACK, 0.0) * 0.5 if flash > 0.001 else (base.emission if base.emission_enabled else Color.BLACK)

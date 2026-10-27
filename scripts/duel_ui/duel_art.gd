@@ -52,7 +52,13 @@ static func creature_or_stand_in(id: String) -> Texture2D:
 static func stand_in_tint(id: String) -> Color:
 	if creature(id) != null or not DuelCards.CARDS.has(id) or not DuelCards.CARDS[id].has("stand_in_tint"):
 		return Color.WHITE
-	return Color(String(DuelCards.CARDS[id].stand_in_tint))
+	return soft_tint(Color(String(DuelCards.CARDS[id].stand_in_tint)))
+
+
+## A stand-in's colour as it's laid over the stand-in's own paint: a wash,
+## not a dye (27 October: the full colour made Tam's River Hound a blue lump).
+static func soft_tint(c: Color) -> Color:
+	return Color(c, 1.0).lerp(Color.WHITE, 0.55)
 
 
 static func summon(id: String) -> Texture2D:

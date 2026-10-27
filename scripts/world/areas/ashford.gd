@@ -641,24 +641,29 @@ static func _corin_evening() -> Array:
 
 # ================================================================ duels ===
 
-## Tam's deck (twelve Sparks): his River Hound first, a Shellguard behind
-## her, and the Rites any miller keeps. Dealt in this order, so she's always
-## in his opening hand.
+## Tam's deck (twelve Sparks): his River Hound, the only Totem he keeps,
+## and the Rites any miller keeps. Dealt in this order, so she's always in
+## his opening hand. (27 October, Gary: "is Tam's battle easy enough to win?
+## The player only had one Totem and Tam has more than one": his Shellguard
+## is gone, so it's one Totem against one, and he plays her well; a new
+## player's plain play wins about four games in five, tests/friendly_sim.)
 const TAM_DECK := [
-	"river_hound", "essence_flask", "healing_draught", "essence_flask", "shellguard", "essence_flask",
+	"river_hound", "essence_flask", "healing_draught", "essence_flask", "travellers_pack", "essence_flask",
 	"healing_draught", "bulwark", "essence_flask", "healing_draught", "travellers_pack", "essence_flask",
 ]
-## Nell's: two patient Totems and four Wards, face down till they bite.
+## Nell's: one patient Totem and two Wards, face down till they bite (until
+## 27 October two Totems and four Wards, against the player's one Totem: a
+## new player never won; now about half the time).
 const NELL_DECK := [
-	"shellguard", "iron_bastion", "essence_flask", "ambush_snare", "mossling", "essence_flask",
-	"healing_draught", "iron_bastion", "essence_flask", "vengeful_spirit", "healing_draught", "essence_flask",
+	"shellguard", "iron_bastion", "essence_flask", "healing_draught", "essence_flask", "ambush_snare",
+	"essence_flask", "healing_draught", "essence_flask", "travellers_pack", "healing_draught", "essence_flask",
 ]
 ## The friendly games (Gary, 24 October): no experience, no card, can be lost,
 ## and played again as often as the player likes until the sun goes down.
 const FRIENDLY := {
-	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.35,
+	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75,
 		"bark_on": {"rival_first_fate": "Come on, girl. Bite.", "rival_ko_own": "Steady, girl. Back you come."}},
-	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.45,
+	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3,
 		# Bram isn't at her bench to explain a Ward, so she does
 		"bark_on": {"rival_ward_springs": "That's a Ward, love. Face down till it bites."}},
 }
@@ -973,13 +978,26 @@ const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 
 ## Gary's model takes its place when it exists (assets/models/ashford/
 ## card_box.glb, 12 cm tall, its origin at the middle of its base).
 const CARD_BOX_MODEL := "res://assets/models/ashford/card_box.glb"
-const CARD_BOX_SIZE := Vector3(0.11, 0.12, 0.06)
+## The worn deck box (Bram's, from his Shard days): a small oak case with a
+## lid, brass at its corners and a clasp, the old sigil worked into the lid.
+## Width, height and depth (m), held upright, lid up.
+const CARD_BOX_SIZE := Vector3(0.13, 0.09, 0.08)
 ## Where it's held: in front of the chest, in the figure's own frame.
 const BOX_HOLD := Vector3(0.0, 1.02, 0.27)
+const BOX_LID := 0.024   # the lid's own height, of CARD_BOX_SIZE.y
 
 
+## The card box: Gary's model when card_box.glb exists, else drawn (27
+## October, Gary: the box "still looks not very good when he hands it to
+## you": it was a plain brown block with a gold band; now an oak case with a
+## lid on hinges that opens when the deck comes out, brass corners and clasp,
+## and the sigil on the lid). Its origin is its middle; "L" and "R" are where
+## the hands take it, "Lid" the lid's hinge (AshfordP1 opens it).
 static func _card_box() -> Node3D:
 	var n := Node3D.new()
+	var W := CARD_BOX_SIZE.x
+	var H := CARD_BOX_SIZE.y
+	var D := CARD_BOX_SIZE.z
 	if ResourceLoader.exists(CARD_BOX_MODEL):
 		var inst: Node3D = (load(CARD_BOX_MODEL) as PackedScene).instantiate()
 		n.add_child(inst)
@@ -990,45 +1008,124 @@ static func _card_box() -> Node3D:
 			box = b if first else box.merge(b)
 			first = false
 		if not first and box.size.y > 0.001:
-			inst.scale = Vector3.ONE * (CARD_BOX_SIZE.y / box.size.y)
+			inst.scale = Vector3.ONE * (H / box.size.y)
 			inst.position = -box.get_center() * inst.scale.x
 	else:
-		var mi := MeshInstance3D.new()
-		var bm := BoxMesh.new()
-		bm.size = CARD_BOX_SIZE
-		mi.mesh = bm
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(0.32, 0.18, 0.09)
-		m.roughness = 0.75
-		mi.material_override = m
-		n.add_child(mi)
-		var trim := MeshInstance3D.new()
-		var tb := BoxMesh.new()
-		tb.size = Vector3(CARD_BOX_SIZE.x + 0.004, 0.014, CARD_BOX_SIZE.z + 0.004)
-		trim.mesh = tb
-		var tm := StandardMaterial3D.new()
-		tm.albedo_color = Color(0.75, 0.58, 0.25)
-		tm.metallic = 0.8
-		tm.roughness = 0.35
-		trim.material_override = tm
-		trim.position.y = CARD_BOX_SIZE.y * 0.32
-		n.add_child(trim)
-		for corner in [Vector3(-1, 1, -1), Vector3(1, 1, -1), Vector3(-1, 1, 1), Vector3(1, 1, 1), Vector3(-1, 0, -1), Vector3(1, 0, -1), Vector3(-1, 0, 1), Vector3(1, 0, 1)]:
-			var cm := MeshInstance3D.new()
-			var cb := BoxMesh.new()
-			cb.size = Vector3(0.014, 0.014, 0.014)
-			cm.mesh = cb
-			cm.material_override = tm
-			cm.position = Vector3(corner.x * CARD_BOX_SIZE.x * 0.5, corner.y * (CARD_BOX_SIZE.y - 0.012), corner.z * CARD_BOX_SIZE.z * 0.5)
-			n.add_child(cm)
-	# the hands take it by its sides, fingers under
+		var grain := NoiseTexture2D.new()
+		grain.width = 64
+		grain.height = 64
+		var nz := FastNoiseLite.new()
+		nz.frequency = 0.035
+		nz.fractal_octaves = 3
+		grain.noise = nz
+		var oak := StandardMaterial3D.new()
+		oak.albedo_color = Color(0.46, 0.29, 0.16)
+		oak.albedo_texture = grain
+		oak.uv1_scale = Vector3(0.6, 4.0, 1.0)   # (the grain long, along the box)
+		oak.roughness = 0.62
+		var oak_dark := oak.duplicate() as StandardMaterial3D
+		oak_dark.albedo_color = Color(0.36, 0.22, 0.12)
+		var brass := StandardMaterial3D.new()
+		brass.albedo_color = Color(0.78, 0.6, 0.28)
+		brass.metallic = 0.85
+		brass.roughness = 0.32
+		var sigil := StandardMaterial3D.new()
+		sigil.albedo_color = Color(0.95, 0.78, 0.4)
+		sigil.metallic = 0.6
+		sigil.roughness = 0.3
+		sigil.emission_enabled = true
+		sigil.emission = Color(1.0, 0.72, 0.3)
+		sigil.emission_energy_multiplier = 0.35
+		var part := func(parent: Node3D, size: Vector3, at: Vector3, mat: Material, rot := Vector3.ZERO) -> MeshInstance3D:
+			var mi := MeshInstance3D.new()
+			var bm := BoxMesh.new()
+			bm.size = size
+			mi.mesh = bm
+			mi.material_override = mat
+			mi.position = at
+			mi.rotation = rot
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			parent.add_child(mi)
+			return mi
+		var body_h := H - BOX_LID
+		# the case: four sides and a floor round a dark inside, the deck in it
+		var top := -H * 0.5 + body_h
+		var t := 0.008   # the oak's thickness
+		part.call(n, Vector3(W, t, D), Vector3(0, -H * 0.5 + t * 0.5, 0), oak)
+		for sz in [-1.0, 1.0]:
+			part.call(n, Vector3(W, body_h, t), Vector3(0, -H * 0.5 + body_h * 0.5, sz * (D - t) * 0.5), oak)
+		for sx in [-1.0, 1.0]:
+			part.call(n, Vector3(t, body_h, D - t * 2.0), Vector3(sx * (W - t) * 0.5, -H * 0.5 + body_h * 0.5, 0), oak)
+		var inside := StandardMaterial3D.new()
+		inside.albedo_color = Color(0.12, 0.07, 0.05)
+		part.call(n, Vector3(W - t * 2.0, 0.002, D - t * 2.0), Vector3(0, -H * 0.5 + t + 0.001, 0), inside)
+		# the deck in it, card backs up (the Spark deck's deep blue)
+		var backs := StandardMaterial3D.new()
+		backs.albedo_color = Color(0.12, 0.16, 0.34)
+		backs.roughness = 0.5
+		part.call(n, Vector3(W - t * 2.0 - 0.02, body_h - t - 0.012, D - t * 2.0 - 0.012), Vector3(0, -H * 0.5 + t + (body_h - t - 0.012) * 0.5, 0), backs)
+		# brass round the case's rim and up its four corners
+		for sx in [-1.0, 1.0]:
+			for sz in [-1.0, 1.0]:
+				part.call(n, Vector3(0.007, body_h + 0.002, 0.007), Vector3(sx * (W * 0.5 - 0.002), -H * 0.5 + body_h * 0.5, sz * (D * 0.5 - 0.002)), brass)
+		for sz in [-1.0, 1.0]:
+			part.call(n, Vector3(W + 0.002, 0.005, 0.004), Vector3(0, top - 0.0025, sz * (D * 0.5 - 0.001)), brass)
+		for sx in [-1.0, 1.0]:
+			part.call(n, Vector3(0.004, 0.005, D + 0.002), Vector3(sx * (W * 0.5 - 0.001), top - 0.0025, 0), brass)
+		# the clasp on its front (the side away from whoever holds it)
+		part.call(n, Vector3(0.022, 0.03, 0.005), Vector3(0, -H * 0.5 + body_h - 0.006, D * 0.5 + 0.003), brass)
+		# the lid, on hinges along its back edge
+		var lid := Node3D.new()
+		lid.name = "Lid"
+		lid.position = Vector3(0, -H * 0.5 + body_h, -D * 0.5)
+		n.add_child(lid)
+		part.call(lid, Vector3(W + 0.006, BOX_LID, D + 0.006), Vector3(0, BOX_LID * 0.5, D * 0.5), oak_dark)
+		for sz in [-1.0, 1.0]:
+			part.call(lid, Vector3(W + 0.008, 0.005, 0.004), Vector3(0, 0.0025, D * 0.5 + sz * (D * 0.5 + 0.002)), brass)
+		for sx in [-1.0, 1.0]:
+			part.call(lid, Vector3(0.004, 0.005, D + 0.008), Vector3(sx * (W * 0.5 + 0.002), 0.0025, D * 0.5), brass)
+		for sx in [-1.0, 1.0]:
+			part.call(lid, Vector3(0.022, 0.012, 0.006), Vector3(sx * W * 0.3, 0.004, -0.002), brass)
+		# the sigil worked into the lid: a ring, and a four-pointed star in it
+		var ring := MeshInstance3D.new()
+		var tm := TorusMesh.new()
+		tm.inner_radius = 0.019
+		tm.outer_radius = 0.023
+		tm.rings = 24
+		tm.ring_segments = 6
+		ring.mesh = tm
+		ring.material_override = sigil
+		ring.scale = Vector3(1, 0.25, 1)
+		ring.position = Vector3(0, BOX_LID + 0.0005, D * 0.5)
+		lid.add_child(ring)
+		for a in [0.0, PI * 0.5]:
+			part.call(lid, Vector3(0.036, 0.0015, 0.005), Vector3(0, BOX_LID + 0.0008, D * 0.5), sigil, Vector3(0, a + PI * 0.25, 0))
+		part.call(lid, Vector3(0.01, 0.002, 0.01), Vector3(0, BOX_LID + 0.001, D * 0.5), sigil, Vector3(0, PI * 0.25, 0))
+	# the hands take it by its sides, a little under halfway up
 	for side in [["L", 1.0], ["R", -1.0]]:
 		var h := Node3D.new()
 		h.name = side[0]
-		h.position = Vector3(float(side[1]) * (CARD_BOX_SIZE.x * 0.5 + 0.02), CARD_BOX_SIZE.y * 0.45, 0.0)
+		h.position = Vector3(float(side[1]) * (W * 0.5 + 0.02), -H * 0.1, 0.0)
 		n.add_child(h)
 	n.set_meta("card_box", true)
 	return n
+
+
+## The way a figure's body faces (its turn about the upright), as carry() turns what it holds.
+static func _yaw_of(f: Figure3D) -> float:
+	return f._yaw
+
+
+## Opens (or shuts) the card box's lid on its hinges over `secs`.
+static func open_box_lid(w: World, box: Node3D, open := true, secs := 0.45) -> void:
+	if box == null or not is_instance_valid(box):
+		return
+	var lid := box.get_node_or_null("Lid") as Node3D
+	if lid == null:
+		return
+	var tw := w.create_tween()
+	tw.tween_property(lid, "rotation:x", deg_to_rad(-105.0) if open else 0.0, secs).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await tw.finished
 
 
 ## The card box in someone's two hands, in front of their chest (it used to
@@ -1257,7 +1354,16 @@ static func _box_out_scene(w: World) -> void:
 			(f as Figure3D).let_go(0.25)
 		await Cine.wait(w, 0.3)
 	if AshfordP1.meta(w, "box_bram") == null:
-		_hold_box(w, "bram", _card_box())
+		# out of his apron pocket at his hip and up into both hands (it used
+		# to appear in them from nowhere)
+		var box := _hold_box(w, "bram", _card_box())
+		if box != null and Cine.fig(w, "bram") is Figure3D:
+			box.position = BOX_HOLD + Vector3(0.14, -0.3, -0.12)
+			box.rotation = Vector3(0, 0, 0.5)
+			var up := w.create_tween().set_parallel(true)
+			up.tween_property(box, "position", BOX_HOLD, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			up.tween_property(box, "rotation", Vector3.ZERO, 0.55).set_trans(Tween.TRANS_SINE)
+			await up.finished
 	await _box_out(w, "bram", true, 0.5)
 	await Cine.wait(w, 0.2)
 
@@ -1281,17 +1387,25 @@ static func _first_deck(w: World) -> void:
 		if f is Figure3D:
 			(f as Figure3D).let_go(0.3)
 		w.remove_meta("box_bram")
-		var from := box.global_position
-		var to := me.to_world(BOX_HOLD)
+		# from his hands to theirs along a little rise, turning as it goes so
+		# it ends square in their hands, the clasp away from them (until 27
+		# October it slid across in a straight line and spun round at the end)
+		var from := box.global_transform
+		var to := Transform3D(me.global_transform.basis.orthonormalized() * Basis(Vector3.UP, _yaw_of(me)), me.to_world(BOX_HOLD))
+		var qa := from.basis.orthonormalized().get_rotation_quaternion()
+		var qb := to.basis.get_rotation_quaternion()
 		var give := w.create_tween()
 		give.tween_method(func(u: float) -> void:
 			if is_instance_valid(box):
-				box.global_position = from.lerp(to, u), 0.0, 1.0, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				box.global_transform = Transform3D(Basis(qa.slerp(qb, u)), from.origin.lerp(to.origin, u) + Vector3(0, sin(u * PI) * 0.06, 0)), 0.0, 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await give.finished
 		me.carry(box, BOX_HOLD)
 		box.rotation = Vector3.ZERO
 		me.reach(box.get_node("L"), box.get_node("R"), 0.2)
 		w.set_meta("box_player", box)
+		# the lid up, and the deck comes out of it
+		await Cine.wait(w, 0.3)
+		await open_box_lid(w, box, true, 0.45)
 	else:
 		_drop_box(w, "bram")
 		box = _hold_box(w, "player", _card_box())

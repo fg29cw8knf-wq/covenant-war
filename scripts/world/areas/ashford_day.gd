@@ -13,13 +13,20 @@ extends RefCounted
 ## "ash_evening" (the festival evening), "ash_lantern_duel" (midnight has
 ## begun; the old name, kept so saves and the Ledger still read it).
 
-## The mouth of the lane down to Tam's mill: the track north-east off the
-## ring road, between the cottages (AshfordVillage.build_paths). Walking into
-## it takes the player down to the mill (MillSet).
-const LANE := Vector3(7.6, 0, -17.9)
-const LANE_R := 1.9
-## Where they come back out onto the green, a few steps back up the track.
-const LANE_BACK := Vector3(6.4, 0, -15.6)
+## The lane down to Tam's mill: off the ring road on the green's east side,
+## out through the gap between the two cottages there, and up to a field
+## gate at the edge of the village, where it runs on north-east over the
+## fields (AshfordVillage.build_paths, lane_gate). Walking through the gate
+## takes the player down to the mill (MillSet). (27 October, Gary: "it
+## doesn't make sense where you go to get to Tam's, as it's right next to
+## houses": the way down was a glowing spot by a cottage wall, a step off the
+## green, where the old track ran in under two cottages' roofs.)
+const LANE_MOUTH := Vector3(14.8, 0, -10.6)   # where it leaves the ring road
+const LANE := Vector3(22.0, 0, -17.2)         # the gate
+const LANE_R := 1.5
+const LANE_DIR := Vector3(0.51, 0, -0.86)     # on through the gate, towards the mill
+## Where they come back in from the mill: inside the gate, facing the green.
+const LANE_BACK := Vector3(19.6, 0, -13.6)
 ## Where people stand, by the time of day (the rest stay put all day).
 const CORIN_MORNING := Vector3(-8.6, 0, -2.4)
 ## "Over by the merchant carts": by the blue stall and its stacked crates.
@@ -146,8 +153,29 @@ static func _to_spot(w: World, id: String) -> void:
 		AshfordP1.put(w, id, at, Vector3.ZERO)
 
 
-## The signpost at the lane's mouth, glowing while there's someone to see
-## down there (Tam, until he's been seen; Corin, in the evening).
+## Someone still to see down at the mill (Tam, until he's been seen; Corin,
+## in the evening, until he has).
+static func lane_wanted() -> bool:
+	return (phase() == "afternoon" and not Game.flag("ash_tam")) or (phase() == "evening" and not Game.flag("corin_pond"))
+
+
+## Back at the gate with nobody new to see: down to the mill again, or not.
+static func _lane_go_again(w: World) -> bool:
+	w._move_target = null
+	Game.set_flag("lane_go", false)
+	await w.run_steps([
+		{"say": "[i](The lane runs on down to Tam's mill.)[/i]"},
+		{"choice": ["Go down to the mill.", "Stay in the village."], "then": [[{"set": "lane_go"}], []]},
+	], null)
+	if is_instance_valid(w) and w.hud != null:
+		w.hud.dialogue.close()
+	var go := bool(Game.flag("lane_go", false))
+	Game.set_flag("lane_go", false)
+	return go
+
+
+## The signpost at the lane's mouth, and the glow at its gate while there's
+## someone to see down there.
 static func lane_sign(w: World) -> void:
 	var v := village(w)
 	var sign: Node3D = AshfordP1.meta(v, "lane_sign")
@@ -155,22 +183,24 @@ static func lane_sign(w: World) -> void:
 		sign = Node3D.new()
 		sign.name = "MillLaneSign"
 		v.get_meta("p1_root").add_child(sign)
-		var at := LANE + Vector3(1.4, 0, 0.6)
+		# at the lane's mouth, beside it, its board to the green
+		var at := LANE_MOUTH + Vector3(LANE_DIR.z, 0, -LANE_DIR.x) * -1.15
 		at.y = v.height(at.x, at.z)
 		sign.position = at
-		sign.rotation.y = -0.55
+		sign.rotation.y = atan2(-at.x, -at.z) - 0.35
 		v.box(sign, Vector3(0.1, 1.5, 0.1), Vector3(0, 0.75, 0), v.mats.beam_v)
 		v.box(sign, Vector3(0.75, 0.22, 0.04), Vector3(-0.3, 1.32, 0.05), v.mats.wood_h, Vector3(0, 0, 0.06))
 		var label := Label3D.new()
-		label.text = "MILL"
-		label.font_size = 40
-		label.pixel_size = 0.004
+		label.text = "TO THE MILL"
+		label.font_size = 34
+		label.pixel_size = 0.0034
 		label.modulate = Color(0.16, 0.11, 0.07)
 		label.outline_size = 0
 		label.position = Vector3(-0.32, 1.32, 0.075)
 		sign.add_child(label)
 		v.set_meta("lane_sign", sign)
-	var want: bool = (phase() == "afternoon" and not Game.flag("ash_tam")) or (phase() == "evening" and not Game.flag("corin_pond"))
+		lane_gate(v)
+	var want := lane_wanted()
 	var glow: Node3D = AshfordP1.meta(v, "lane_glow")
 	if want and glow == null:
 		var mark := Node3D.new()
@@ -189,6 +219,46 @@ static func lane_sign(w: World) -> void:
 			(mk as Node).queue_free()
 		v.remove_meta("lane_glow")
 		v.remove_meta("lane_mark")
+
+
+## The field gate where the lane leaves the village: two posts, the
+## five-barred gate swung open against the field side, and a run of
+## post-and-rail either side.
+static func lane_gate(v: AshfordVillage) -> void:
+	if AshfordP1.meta(v, "lane_gate") != null:
+		return
+	var g := Node3D.new()
+	g.name = "MillLaneGate"
+	v.get_meta("p1_root").add_child(g)
+	var at := LANE
+	at.y = v.height(at.x, at.z)
+	g.position = at
+	g.rotation.y = atan2(LANE_DIR.x, LANE_DIR.z)   # local +Z up the lane
+	var wood: Material = v.mats.beam_v
+	var rail: Material = v.mats.wood_h
+	for sx in [-1.2, 1.2]:
+		v.box(g, Vector3(0.16, 1.35, 0.16), Vector3(sx, 0.67, 0), wood)
+	# the gate, open: hinged on the left post, swung back along the lane
+	var gate := Node3D.new()
+	g.add_child(gate)
+	gate.position = Vector3(-1.12, 0, 0)
+	gate.rotation.y = deg_to_rad(-100.0)
+	for k in 5:
+		v.box(gate, Vector3(2.1, 0.07, 0.05), Vector3(1.08, 0.3 + k * 0.2, 0), rail)
+	v.box(gate, Vector3(0.09, 1.0, 0.07), Vector3(0.05, 0.62, 0), rail)
+	v.box(gate, Vector3(0.09, 1.0, 0.07), Vector3(2.1, 0.62, 0), rail)
+	v.box(gate, Vector3(2.3, 0.06, 0.05), Vector3(1.08, 0.7, 0), rail, Vector3(0, 0, 0.42))
+	# a run of post and rail either side of it
+	for run in [[Vector3(-1.2, 0, 0), Vector3(-3.4, 0, -0.2)], [Vector3(1.2, 0, 0), Vector3(3.4, 0, -0.2)]]:
+		var a: Vector3 = run[0]
+		var b: Vector3 = run[1]
+		var mid := (a + b) * 0.5
+		var L := a.distance_to(b)
+		var yaw := atan2(-(b.z - a.z), b.x - a.x)
+		v.box(g, Vector3(0.14, 1.1, 0.14), b + Vector3(0, 0.55, 0), wood)
+		for h in [0.45, 0.85]:
+			v.box(g, Vector3(L, 0.08, 0.06), mid + Vector3(0, h, 0), rail, Vector3(0, yaw, 0))
+	v.set_meta("lane_gate", g)
 
 
 # ============================================================= watching ===
@@ -216,8 +286,18 @@ static func watch(w: World) -> void:
 			if not Game.flag("corin_met") and w._npc_by_id("corin") != null:
 				w._talk(w._npc_by_id("corin"))
 			continue
-		if _flat(p, LANE) < LANE_R:
-			await to_mill(w)
+		# the gate: once through it they're on their way down; back from the
+		# mill they must walk off from it before it can take them again, and
+		# with nobody new to see down there it asks first (27 October, Gary:
+		# walking towards the houses after Tam's talk played it all again)
+		var at_gate := _flat(p, LANE) < LANE_R
+		if not at_gate:
+			if _flat(p, LANE) > LANE_R + 1.2:
+				w.set_meta("lane_armed", true)
+		elif w.get_meta("lane_armed", true):
+			w.set_meta("lane_armed", false)
+			if lane_wanted() or await _lane_go_again(w):
+				await to_mill(w)
 			continue
 		if ph == "afternoon":
 			# the jobs done: the sun goes down when they find Bram (his talk)
@@ -238,8 +318,9 @@ static func watch(w: World) -> void:
 
 ## The cheer from the green (the children's: it's the winner they cheer);
 ## Corin can't believe it, then takes it badly (25 October, Gary: he was
-## cheering his own loss; now a jolt of surprise, then his defeat pose, held
-## while he yields, and off it comes as he walks away).
+## cheering his own loss; 27 October: the jolt of surprise looked scared, so
+## now he just sags, beaten, held while he yields, and off it comes as he
+## walks away).
 static func after_lantern(w: World) -> void:
 	w.cine = true
 	for k in AshfordP1.KIDS:
@@ -247,10 +328,12 @@ static func after_lantern(w: World) -> void:
 	AshfordP1.two_shot(w, "player", "corin", 3.4, 1.5, 36.0)
 	var cf = Cine.fig(w, "corin")
 	if cf is Figure3D:
-		(cf as Figure3D).act("hit_react", 1.0, 0.15)
-		await Cine.wait(w, 0.9)
-		(cf as Figure3D).hold("defeat", 1.0, 0.3)
-		await Cine.wait(w, 0.6)
+		# (27 October, Gary: the recoil read as "more scared than defeated":
+		# a beat of disbelief, then he sags, head down, shoulders gone,
+		# held while he yields, and off as he walks away)
+		await Cine.wait(w, 0.45)
+		(cf as Figure3D).slump(0.85, 1.4)
+		await Cine.wait(w, 1.2)
 	else:
 		await Cine.wait(w, 1.2)
 	Cine.look(w, "corin", w.player.global_position)
@@ -326,7 +409,12 @@ static func to_mill(w: World) -> void:
 	w._talk_target = null
 	w.hud.set_controls_visible(false)
 	coach(w).light("")
-	await Cine.fade(w, 1.0, 0.6)
+	# on through the gate and away up the lane as the picture goes
+	if _flat(w.player.global_position, LANE) < LANE_R + 0.5:
+		Cine.path(w, "player", [LANE + LANE_DIR * 3.0], 1.3)
+		await Cine.fade(w, 1.0, 0.9)
+	else:
+		await Cine.fade(w, 1.0, 0.6)
 	MillSet.enter(w)
 	MillSet.lamps(v, evening)
 	var arrive: Vector3 = m.arrive
@@ -400,7 +488,8 @@ static func _mill_two_shot(w: World, who: String) -> void:
 ## The player back on the green at the top of the lane, the game's camera
 ## behind them again (behind the black).
 static func back_on_green(w: World) -> void:
-	AshfordP1.put(w, "player", LANE_BACK, Vector3.ZERO)
+	AshfordP1.put(w, "player", LANE_BACK, LANE_MOUTH)
+	w.set_meta("lane_armed", false)   # (they walk off from the gate before it takes them again)
 	var pf = w.player_doll
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.0)

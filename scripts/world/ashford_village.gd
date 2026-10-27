@@ -284,8 +284,12 @@ func build_paths() -> void:
 	var pts := [Vector2(-125, 30), Vector2(-70, 24), Vector2(-35, 17), Vector2(-14, 14.5), Vector2(14, 14.5), Vector2(40, 12), Vector2(80, 2), Vector2(125, -10)]
 	for i in pts.size() - 1:
 		segs.append([pts[i], pts[i + 1], 2.2])
-	# track north up to the mill
-	var mill := [Vector2(6, -15), Vector2(18, -35), Vector2(38, -58), Vector2(55, -78)]
+	# the lane to the mill: off the ring road on the east side, out through
+	# the gap between the two cottages there, up to the field gate
+	# (AshfordDay.LANE) and away north-east over the fields, through the gap
+	# in the wall (27 October: it left the green to the north, in under two
+	# cottages' roofs, Gary: "it doesn't make sense")
+	var mill := [Vector2(13.0, -9.4), Vector2(16.0, -11.4), Vector2(18.6, -13.2), Vector2(20.8, -15.3), Vector2(22.6, -18.0), Vector2(25.0, -27.0), Vector2(24.0, -41.9), Vector2(38, -58), Vector2(55, -78)]
 	for i in mill.size() - 1:
 		segs.append([mill[i], mill[i + 1], 1.4])
 	# the green's own worn paths to the lantern and the well

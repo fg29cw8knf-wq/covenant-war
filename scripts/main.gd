@@ -234,10 +234,17 @@ func _on_story_next(what: String) -> void:
 ## Plays a duel on top of whatever is showing; returns true if the player won.
 func run_duel(spec: Dictionary) -> bool:
 	var hidden_world := _world
+	var world_mode := Node.PROCESS_MODE_INHERIT
 	if hidden_world != null:
 		hidden_world.visible = false
 		if hidden_world.hud != null:
 			hidden_world.hud.visible = false
+		# the place stops still under the duel, not only out of sight: until
+		# 27 October Ashford's whole festival (every villager's animation, the
+		# lanterns, the grass, the scripts) carried on behind the first duel,
+		# and on the phone it ran slow and kept freezing (Gary)
+		world_mode = hidden_world.process_mode
+		hidden_world.process_mode = Node.PROCESS_MODE_DISABLED
 	var layer := CanvasLayer.new()
 	layer.layer = 20
 	add_child(layer)
@@ -262,6 +269,7 @@ func run_duel(spec: Dictionary) -> bool:
 		won = await screen.finished
 	layer.queue_free()
 	if hidden_world != null and is_instance_valid(hidden_world):
+		hidden_world.process_mode = world_mode
 		hidden_world.visible = true
 		if hidden_world.hud != null:
 			hidden_world.hud.visible = true

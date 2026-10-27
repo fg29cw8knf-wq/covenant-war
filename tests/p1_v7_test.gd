@@ -162,7 +162,7 @@ func _run() -> void:
 
 ## Walks the player into the lane's mouth and waits until they're at the mill.
 func _to_mill() -> void:
-	_teleport(AshfordDay.LANE + Vector3(-2.6, 0, 2.4))
+	_teleport(AshfordDay.LANE_MOUTH)
 	await _secs(0.3)
 	_goal = func() -> Vector3: return AshfordDay.LANE
 	await _until(func() -> bool: return AshfordDay.at_mill(world.player.global_position), 40.0, "the lane to the mill")
