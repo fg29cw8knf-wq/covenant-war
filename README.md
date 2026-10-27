@@ -79,6 +79,16 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolu
 
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
 
+**Since 27 October the turn's phases are off** (`DuelRules.phases`, false;
+Gary: "I don't like the different stages of the fight, let's go back to how
+we used to have it"): the whole turn is one free Main, calls, Rites, Wards,
+Stances, Shifts and attacks in any order, the big button says END TURN all
+turn, no band is built, and the start-of-turn and end-of-turn work happens
+as before. Everything else from Phases A to E stays (Stances, answers and
+chains, the Oaths Gary likes, and the rest). The Duel Lab's "Turn phases"
+row turns them back on; `tests/phase_test.gd` checks the phase rules with
+them on and the rest both ways. What follows describes them on.
+
 Gary (23 October): "I want all of those added to the duels ... more like
 Yu-Gi-Oh", built in phases A to E, each merged as it passes. Phase A is the
 shape of a turn and answering on the rival's turn.
@@ -339,9 +349,12 @@ shape of a turn and answering on the rival's turn.
 - **Six new Totems** for the three new ways: Dawnling, Hallowed Hound
   (Loyal), Rimecub, Runeowl, Starling, Duskstalker. Until Gary's paintings
   and models come they're drawn as another creature in their own element's
-  colour (`"stand_in"`, `"stand_in_tint"`: on the 3D field its solid
-  surfaces go plain in that colour, `DuelField3D._tint_model`; the flat
-  field's cut-out is tinted, `DuelArt.stand_in_tint`).
+  colour (`"stand_in"`, `"stand_in_tint"`: on the 3D field the stand-in
+  keeps its own paint, washed a little towards that colour,
+  `DuelField3D._tint_model`, `DuelArt.soft_tint`; the flat field's cut-out
+  takes the same wash. Until 27 October its solid surfaces went plain in the
+  colour, and Tam's River Hound, a Shieldhound stand-in, stood on the field
+  as a glowing blue lump: Gary, "blue for some reason").
 - **No new starter decks.** The seven ways have sample decks
   (`DuelArchetypes.DECKS`: the four starters with their way's three cards,
   and a deck for each new way) in the Duel Lab's deck list and for the
@@ -564,7 +577,7 @@ the Mac; Android keeps the Mobile renderer) and ASTC textures, and Gary's
 opening film at 4K 60 fps through the phone's own player (the native video
 player, below).
 
-Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, `BattleScreen`) are only what `Main.run_duel` falls back to for a spec without decks.
+Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, `BattleScreen`) are only what `Main.run_duel` falls back to for a spec without decks. While a duel is on, the place it was started from is hidden and stopped still (`Main.run_duel` sets the world's `process_mode` to disabled and puts it back after): until 27 October Ashford's whole festival kept running under the first duel, every villager's animation and every script, and on the phone it ran slow and kept freezing (Gary). An empty slot's lamp on the Circle is switched off, not just turned down to nothing (each light costs the phone another pass over the floor).
 
 ## Story mode
 
@@ -591,6 +604,16 @@ v7 wins; the parts it changed:
   tucked into his vest (`COAT_LETTER`: inside its right panel, the top
   corner showing; `tests/corin_props_shot.tscn -- <dir>` takes stills of
   both), where they had sat on his hand bones and stuck out of his arms.
+  Since 27 October (Gary: wiping the glass showed "an outline of the body"
+  and his face looked deformed) the glass holds a live reflection
+  (`MirrorGlass`: a second camera on the far side of the glass, cut to its
+  edges, drawn on a sheet over it; only while he's at it), the
+  over-the-shoulder shot stands back off his head and to one side (the
+  camera's near edge had cut into his hair), and the close-up in the oval is
+  taken from about a metre away on the far side of the glass with a long lens
+  and turned left for right (`AshfordP1._glass_shot`; the mask's `Flip`). It
+  had been a hand's width from his face with a wide lens, his nose cut off.
+  `tests/mirror_shot.tscn -- <dir>` takes stills of the shots.
 - **The Lantern Duel first** (Gary): Corin comes over the moment the crate's
   down; his hub; "I would, but I don't have a deck."; Bram's hand on the
   shoulder, "You do now.", the box held out with Gary's "I've always told
@@ -602,12 +625,24 @@ v7 wins; the parts it changed:
   stakes before the roll ("This one's a friendly: nothing to win or lose but
   your pride"), and the turn's six steps are taught in four short lines with
   the phase band lit (`DuelScreen.fx_phase`, lesson ids `phases`..`phases_4`,
-  focus `band`) in place of one long one. After the duel Corin flinches
-  (`hit_react`) and holds his `defeat` pose while he yields, instead of
-  cheering his own loss (`AshfordDay.after_lantern`).
+  focus `band`) in place of one long one (they only play with the turn's
+  phases on, which they aren't since 27 October). After the duel Corin sags,
+  beaten, head down and shoulders gone (`Figure3D.slump`, held while he
+  yields; `tests/slump_peek.gd` takes stills), instead of cheering his own
+  loss (`AshfordDay.after_lantern`; 27 October: the flinch and the
+  near-standing `defeat` clip that replaced the cheer looked "more scared
+  than defeated").
 - **The afternoon** (`ashford_day.gd`, `AshfordDay`): Tam at his watermill
-  down the lane (`MillSet`, a set of its own at x 700, reached by the lane's
-  sign north-east of the green; since the evening of 25 October Gary's own
+  down the lane (`MillSet`, a set of its own at x 700, reached by the lane
+  off the green's east side, out between two cottages to a field gate where
+  the village ends: `AshfordDay.LANE_MOUTH`, `LANE`, `lane_gate`; since 27
+  October, when Gary said the way there "doesn't make sense ... it's right
+  next to houses": it was a glowing spot by a cottage wall with the old
+  track running in under two roofs; back from the mill the gate won't take
+  you again until you've walked off from it, and with nobody new to see down
+  there it asks first, `_lane_go_again`, where walking back towards the
+  houses had replayed Tam's scene; `tests/lane_shot.tscn -- <dir>` takes
+  stills and a plan of it; since the evening of 25 October Gary's own
   mill house and waterwheel, `assets/models/ashford/watermill.glb` and
   `waterwheel.glb`, the house on a stone footing so the axle hole in its
   east wall meets the wheel's axle, its windows lit in the evening;
@@ -795,10 +830,22 @@ skeleton stood turned 90 degrees to the mesh, so every clip mangled him):
 from his 17 October model's, with fresh bone-distance weights, and
 `rig_character.py` then gave him every clip of the model he replaced (the
 AssetFurnace 21, the game's and Bram's lift) and a `get_out_of_bed` clip
-fitted from Hob's new model (not yet played in the attic: `AshfordP1._attic`
-still throws the blanket its own way). Bram was remade the same way the same
-day (Gary's `Bram_new_model.glb`, a Tripo3D model with no skin weights at
-all), with his 20 October model's clips. From 17 to 25 October look A was
+fitted from Hob's new model (played in the attic since 27 October). Bram was
+remade the same way the same day (Gary's `Bram_new_model.glb`, a Tripo3D
+model with no skin weights at all), with his 20 October model's clips. The
+bone-distance weights deformed them both (Gary, 27 October: the main
+character "looks deformed", his face in the mirror and the text box; Bram's
+"arm is passing through his body"), so both now carry weights copied from
+the models they replaced (`tools/reweight.py CUR.glb REF.glb OUT.glb
+--refit-joints`: each vertex takes the weights of the nearest flesh of the
+old model's same bone, and the joints are fitted again from them; the old
+models are in git, `9ee55f7~1`), Bram's apron is freed from his arms
+(`tools/free_arms.py MODEL.glb "0.263,0.15,0.092:0.16"`, the leather's
+colour, as `rig_character.py --free-of-arms` does: it had flapped after his
+hands), and his eyes, which the model has painted shut, are painted open
+(`tools/paint_eyes.py`, drawn front-on and projected into the texture; a
+remade Bram with his eyes open is the real fix). Their portraits are
+re-rendered. From 17 to 25 October look A was
 his AssetFurnace master with 21 motion-captured clips. `tools/rig_character.py` turns a rigged
 AssetFurnace model into a game character: the shared skeleton's bone names
 (AssetFurnace numbers them), every bone's rest square to the world, a set
@@ -907,7 +954,7 @@ Thornwood (`scripts/world/areas/thornwood.gd` on `scripts/world/thornwood_set.gd
 the riverbank, the campfire (Bram's four decks on a log, tap a box to see it and
 again to choose, `scripts/world/deck_boxes.gd`, then his walk round the deck
 screen, `PackTour.CAMP_DECK`, which since 23 October also explains the two bars under a card, Resonance towards a second copy and Attunement towards its Ascension, and what a spare copy is for), Bram's duel by the fire straight after it (23 October, Gary: "he should do a duel with you and teach you more"; the practice round, moved from the second morning and no longer offered: he puts the other three boxes away and keeps out the deck that shows the player's its weakness by the element chart, `Prologue.BRAM_PICKS`, says why, and plays it at `Prologue.BRAM_STRENGTH`; it can be lost and the night goes on either way; closed mid-duel the game comes straight back into it, `practice_on`; the second gated lesson duel, `spec.lessons`, teaching once each the tiers, Rites, Shift and the Fate bands as well as conditions, Wards, Guardians, Gifts, Summons and Ascension; `tests/fire_sim.tscn` plays a learner against him for balance), the second morning (one caption and one line until the walk out of the Thornwood is staged: its words are in `docs/script/v3_prologue_films.md` for Gary to read first), Dask's
-road duel and dawn over Solhaven. A staged walk (`Cine.path`, `Cine.walk`) goes round whatever solid and small stands in its straight line (23 October: the player and Bram walked straight through Nell's bench on the way to the Lantern, and Tilly ran through it after the duel): the set's static bodies (every `solid_box` and `solid_round`: the bench, the well, a stool, a barrel, the Lantern's foot, a cart; not houses, walls or fences, and never people) are read as circles on the ground (`Cine.blockers`, cached a second at a time), and a leg that crosses one is replaced by the shortest way through the points round each thing in the way over legs that cross nothing (`Cine.route`; the bench against the well is passed by the bench's far end, not squeezed between). A walk that starts or ends on a thing (sitting down on the bench, standing up from it) ignores it. Bram following the player on foot slides round them too (`AshfordP1._round_props`). `godot --headless res://tests/route_test.tscn` checks walks across the green. Since the afternoon of 23 October a walk named for its walker (every `Cine.path`) goes round the people standing about as well (`Cine.people`: the player, the villagers and the extras, a body's width each; a walk still ends on its mark whoever stands beside it; the way to each point is found as that leg starts), Bram leaves for the Lantern a beat after the player and swings wide on his own side (Gary: "Bram walks straight through the player"), and Bram following the player on foot steps back when walked into (`AshfordP1.FOLLOW_SPACE`). **Every line waits for a tap** (Gary, 23 October: "all text you need to have to click"): a subtitle and a narration line stay up until E, Space, Enter, a pad's A or a tap (`CineOverlay.auto` is false; the "TAP ▸" hint after a moment, in words since 25 October: a lone arrow wasn't understood); only a line with a voice recording playing (`Cine.say(..., hold, timed)`: the Herald's, Solmaris's, Morne's, `films.gd _voice`) and a story film's subtitles and cards over its picture keep their timing, and a tap skips those. **A title card** ("Ashford / The last night of the Age.", "Dawn") is the exception since 25 October (Gary: it "stays on till you click but nobody would know they are supposed to click"): it holds its seconds once it's faded in, then goes on by itself, and a tap goes on sooner (`CineOverlay.caption`). Every test that plays through lines taps them (`ov._waiting` then `ov._next.emit()`, as the film tests do). **Getting out of bed** (`AshfordP1._attic`; since 25 October about seven seconds from the fade-up to standing, where it was twelve: Gary, "a little bit faster"): the sleeper's right hand takes the blanket's hem and throws it back across him to the wall, the cloth following the hand (`BlanketThrow`: the blanket keeps its grid of points, the near edge moving first and the far edge last, the corner on the hand), then pushes up on the mattress; he slides to the bed's edge with his legs still out along the mattress and swings them down only once he's over the edge (`Figure3D.shift_seat` then `sit`), so nothing goes through the bed; `tests/bed_check.tscn` takes its stills. The real fix is a clip from Gary (lying, sits up, legs over, sits, stands). **Bram's card box** is held in both hands in front of his chest and passed into the player's (`Ashford._hold_box`, `_box_out`, `_card_box`: Gary's `assets/models/ashford/card_box.glb` takes the built one's place when it exists). Since 25 October the hand-over is its own beat (Gary): Bram says "You do now.", his hand comes off the player's shoulder and the box comes out held in both hands (scene `box_out`), he says Gary's line ("I've always told you, when you were ready, I'd let you start using cards..."), the player reaches out and takes it and the Spark deck fans out (scene `first_deck`), and only then "You've seen enough duels to know how it works..." and his offer to coach. A box given to someone already holding one replaces it (`_clear_boxes`; until then the first stayed floating at his chest while he handed over another: "it duplicates"). **The Sigilfall's falls** ease in over a longer blend (`act("fall", 1.0, 0.4)`, Tam's `death` 0.35), and a camera shake comes in over a few frames rather than in the frame it's asked for (`World.shake`), so a strike's burst, flash and fall no longer land in one frame. **Tilly's gift** crosses on an eased arc with the player's hands coming up to meet it, and the deck reveal has a soft breathing glow behind it instead of turning rays. **Corin's back** had a patch of triangles mapped onto the shirt and the skin of the atlas, seen as a hole from behind: `tools/mend_winding.py` turns a model's inside-out triangles round (every character had some; `rig_character.py` runs it on each new rig) and `tools/mend_corin_back.py` maps that patch onto the vest; a faint mark remains until his model is remade. **A film's look** (23 October, Gary: the cutscenes "don't look very good yet"; the first of the look pass, and the parts that run on every renderer): every shot a film takes (`Cine.shot`, `move`, `drift`) sets a soft warm key light beside the camera on whoever it looks at (`Cine.light_shot`, `FILL_NIGHT` 0.55 in Ashford's nights, `FILL_DAY` 0.25 elsewhere), so faces read in the dark instead of flattening into the moonlight; a close shot (fov 40 or tighter) gets depth of field focused on its subject, on a phone too (the walkable world leaves it off there for its frame rate); the movie bars bring a vignette with them (`CineOverlay.VIGNETTE`); both go when the film ends (`Cine.end_light`). The sky's tear at the Sigilfall opens into a rift as it tears (`tear_open` widens the crack and spills its colours below it, `sky.gdshader`), and the rift lights the village from above as it opens (`tear_light`). The stand-in cut-outs (`PaperDoll`, the children, Ned, the elder, the refugee until their models come) are lit by the scene like the figures beside them (`shaded`) and have lost their white sticker border. What's still to do for these two films is the look pass proper (baked lighting, normal and roughness maps, animation blending) and, above all, Gary's models for the children, Ned, the elder and the refugee woman, who are cartoon stand-ins in a painted scene. Films are staged with `scripts/world/cine.gd` (shots, walks, spawns, reveals,
+road duel and dawn over Solhaven. A staged walk (`Cine.path`, `Cine.walk`) goes round whatever solid and small stands in its straight line (23 October: the player and Bram walked straight through Nell's bench on the way to the Lantern, and Tilly ran through it after the duel): the set's static bodies (every `solid_box` and `solid_round`: the bench, the well, a stool, a barrel, the Lantern's foot, a cart; not houses, walls or fences, and never people) are read as circles on the ground (`Cine.blockers`, cached a second at a time), and a leg that crosses one is replaced by the shortest way through the points round each thing in the way over legs that cross nothing (`Cine.route`; the bench against the well is passed by the bench's far end, not squeezed between). A walk that starts or ends on a thing (sitting down on the bench, standing up from it) ignores it. Bram following the player on foot slides round them too (`AshfordP1._round_props`). `godot --headless res://tests/route_test.tscn` checks walks across the green. Since the afternoon of 23 October a walk named for its walker (every `Cine.path`) goes round the people standing about as well (`Cine.people`: the player, the villagers and the extras, a body's width each; a walk still ends on its mark whoever stands beside it; the way to each point is found as that leg starts), Bram leaves for the Lantern a beat after the player and swings wide on his own side (Gary: "Bram walks straight through the player"), and Bram following the player on foot steps back when walked into (`AshfordP1.FOLLOW_SPACE`). **Every line waits for a tap** (Gary, 23 October: "all text you need to have to click"): a subtitle and a narration line stay up until E, Space, Enter, a pad's A or a tap (`CineOverlay.auto` is false; the "TAP ▸" hint after a moment, in words since 25 October: a lone arrow wasn't understood); only a line with a voice recording playing (`Cine.say(..., hold, timed)`: the Herald's, Solmaris's, Morne's, `films.gd _voice`) and a story film's subtitles and cards over its picture keep their timing, and a tap skips those. **A title card** ("Ashford / The last night of the Age.", "Dawn") is the exception since 25 October (Gary: it "stays on till you click but nobody would know they are supposed to click"): it holds its seconds once it's faded in, then goes on by itself, and a tap goes on sooner (`CineOverlay.caption`). Every test that plays through lines taps them (`ov._waiting` then `ov._next.emit()`, as the film tests do). **Getting out of bed** (`AshfordP1._attic`; since 25 October about seven seconds from the fade-up to standing, where it was twelve: Gary, "a little bit faster"): the sleeper's right hand takes the blanket's hem and throws it back across him to the wall, the cloth following the hand (`BlanketThrow`: the blanket keeps its grid of points, the near edge moving first and the far edge last, the corner on the hand), then pushes up on the mattress; he slides to the bed's edge with his legs still out along the mattress and swings them down only once he's over the edge (`Figure3D.shift_seat` then `sit`), so nothing goes through the bed; `tests/bed_check.tscn` takes its stills. Since 27 October (Gary: "weird getting out of bed") he gets up with the real clip instead, Hob's `get_out_of_bed` (lying, sits up, legs over the side, sits, stands), mirrored so it's the open side of the bed, its root motion given to the body that carries him so he ends where it ends (`Figure3D.play_rooted`, `AshfordP1._rise_from_bed`: lifted onto this taller bed while he lies, slid to its edge as his legs come round); the pose-built rise is kept for a model without the clip (`_rise_by_poses`). Player A's copy of the clip had its root motion 7.6 times too big (he lay three metres under the attic): `tools/fix_clip_root.py` takes it from the clip's own source. **Bram's card box** is held in both hands in front of his chest and passed into the player's (`Ashford._hold_box`, `_box_out`, `_card_box`: Gary's `assets/models/ashford/card_box.glb` takes the built one's place when it exists). Since 27 October (Gary: it "still looks not very good when he hands it to you") the built one is a small oak case with brass at its rim and corners, a clasp, the sigil on its lid and the Spark deck inside (`tests/box_peek.gd` takes stills); it comes up out of his apron pocket into his hands, crosses to the player's on a little rise turning as it goes (it slid across and spun round at the end), and its lid opens (`open_box_lid`) before the deck fans out. Since 25 October the hand-over is its own beat (Gary): Bram says "You do now.", his hand comes off the player's shoulder and the box comes out held in both hands (scene `box_out`), he says Gary's line ("I've always told you, when you were ready, I'd let you start using cards..."), the player reaches out and takes it and the Spark deck fans out (scene `first_deck`), and only then "You've seen enough duels to know how it works..." and his offer to coach. A box given to someone already holding one replaces it (`_clear_boxes`; until then the first stayed floating at his chest while he handed over another: "it duplicates"). **The Sigilfall's falls** ease in over a longer blend (`act("fall", 1.0, 0.4)`, Tam's `death` 0.35), and a camera shake comes in over a few frames rather than in the frame it's asked for (`World.shake`), so a strike's burst, flash and fall no longer land in one frame. **Tilly's gift** crosses on an eased arc with the player's hands coming up to meet it, and the deck reveal has a soft breathing glow behind it instead of turning rays. **Corin's back** had a patch of triangles mapped onto the shirt and the skin of the atlas, seen as a hole from behind: `tools/mend_winding.py` turns a model's inside-out triangles round (every character had some; `rig_character.py` runs it on each new rig) and `tools/mend_corin_back.py` maps that patch onto the vest; a faint mark remains until his model is remade. **A film's look** (23 October, Gary: the cutscenes "don't look very good yet"; the first of the look pass, and the parts that run on every renderer): every shot a film takes (`Cine.shot`, `move`, `drift`) sets a soft warm key light beside the camera on whoever it looks at (`Cine.light_shot`, `FILL_NIGHT` 0.55 in Ashford's nights, `FILL_DAY` 0.25 elsewhere), so faces read in the dark instead of flattening into the moonlight; a close shot (fov 40 or tighter) gets depth of field focused on its subject, on a phone too (the walkable world leaves it off there for its frame rate); the movie bars bring a vignette with them (`CineOverlay.VIGNETTE`); both go when the film ends (`Cine.end_light`). The sky's tear at the Sigilfall opens into a rift as it tears (`tear_open` widens the crack and spills its colours below it, `sky.gdshader`), and the rift lights the village from above as it opens (`tear_light`). The stand-in cut-outs (`PaperDoll`, the children, Ned, the elder, the refugee until their models come) are lit by the scene like the figures beside them (`shaded`) and have lost their white sticker border. What's still to do for these two films is the look pass proper (baked lighting, normal and roughness maps, animation blending) and, above all, Gary's models for the children, Ned, the elder and the refugee woman, who are cartoon stand-ins in a painted scene. Films are staged with `scripts/world/cine.gd` (shots, walks, spawns, reveals,
 and `Cine.ask` for a film's questions that can all be asked, as a
 conversation's `{"ask": ...}` step can) and `scripts/world/cine_overlay.gd` (letterbox,
 subtitles, choices, the name prompt). The Herald's voice plays from
