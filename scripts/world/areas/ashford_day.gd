@@ -25,8 +25,10 @@ const LANE_MOUTH := Vector3(14.8, 0, -10.6)   # where it leaves the ring road
 const LANE := Vector3(22.0, 0, -17.2)         # the gate
 const LANE_R := 1.5
 const LANE_DIR := Vector3(0.51, 0, -0.86)     # on through the gate, towards the mill
-## Where they come back in from the mill: inside the gate, facing the green.
-const LANE_BACK := Vector3(19.6, 0, -13.6)
+## Where they come back in from the mill: at the top of the lane by the
+## green, facing it (further up, between the cottages, the game's camera
+## behind them looked down through a cottage's thatch and lost them).
+const LANE_BACK := Vector3(15.2, 0, -11.0)
 ## Where people stand, by the time of day (the rest stay put all day).
 const CORIN_MORNING := Vector3(-8.6, 0, -2.4)
 ## "Over by the merchant carts": by the blue stall and its stacked crates.
@@ -488,7 +490,7 @@ static func _mill_two_shot(w: World, who: String) -> void:
 ## The player back on the green at the top of the lane, the game's camera
 ## behind them again (behind the black).
 static func back_on_green(w: World) -> void:
-	AshfordP1.put(w, "player", LANE_BACK, LANE_MOUTH)
+	AshfordP1.put(w, "player", LANE_BACK, Vector3.ZERO)
 	w.set_meta("lane_armed", false)   # (they walk off from the gate before it takes them again)
 	var pf = w.player_doll
 	if pf is Figure3D:

@@ -44,6 +44,10 @@ func _ready() -> void:
 		Cine.shot(world, vw[1], vw[2], vw[3])
 		await _frames(8)
 		await _shot(vw[0])
+	# back from the mill: where the player comes in, as the game's camera sees it
+	AshfordDay.back_on_green(world)
+	await _frames(12)
+	await _shot("back_on_green")
 	# a plan of the lane, square from above: 24 m across, centred on (12, -19),
 	# north up (for marking where things stand: x right, z up the picture)
 	var plan := Camera3D.new()
