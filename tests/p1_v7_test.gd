@@ -19,7 +19,15 @@ extends Node
 ## kept (much faster); read: frames each line stays up (6 by default);
 ## stop=<words>: stop (and pass) once the step whose wait is described by
 ## those words is reached, e.g. stop=street for the attic and the taproom
-## only (25 October: a look at the opening without the half hour).
+## only (25 October: a look at the opening without the half hour);
+## every=<n>: a still every n frames as well (with keys, those frames are
+## drawn), for watching a staged moment move.
+##
+## Every frame it also checks that nobody standing walks through something
+## solid and small (Nell's bench, the well, Bram's stool, a barrel: the set's
+## solid boxes and rounds, as Cine.blockers reads them, by their real shape):
+## a body's middle inside one, a hand's width in from its edge, is a problem
+## (Gary, 28 October: "Bram outside walks through the bench again").
 
 const NAME := "Rowan"
 
@@ -40,6 +48,13 @@ var _uses := {}
 var _goal := Callable()    # where the player is walking to now (returns a Vector3)
 var _tap_t := 0.0
 var _stop_at := ""         # stop=<words>: finish when this wait is reached
+var _every := 0           # every=<n>: a still every n frames too
+var _solids: Array = []   # [Transform3D, half size (x, z) or radius in x]
+var _solids_at := -99.0
+var _through := {}        # who:thing -> reported
+var _last_at := {}        # who -> where they were last frame
+var _seated_at := {}      # who -> the last frame they were sitting
+var _pending: Array = []  # [frame, who, problem]: inside something, unless they sit on it
 
 
 func _ready() -> void:
@@ -57,6 +72,8 @@ func _ready() -> void:
 			read = int(s.substr(5))
 		elif s.begins_with("stop="):
 			_stop_at = s.substr(5)
+		elif s.begins_with("every="):
+			_every = int(s.substr(6))
 	if _keys:
 		RenderingServer.render_loop_enabled = false
 	Game.new_game("Sprout", "")
@@ -213,6 +230,9 @@ func _process(delta: float) -> void:
 	_frame += 1
 	if world == null or hud == null or _done:
 		return
+	_check_through()
+	if _every > 0 and _frame % _every == 0:
+		_shot("f")
 	var dlg := hud.dialogue
 	var ov := Cine.overlay(world)
 	# the name prompt: write it in the frost
@@ -275,6 +295,89 @@ func _process(delta: float) -> void:
 		var g: Vector3 = _goal.call()
 		if not world.cam.is_position_behind(g):
 			hud.tapped.emit(world.cam.unproject_position(g))
+
+
+## The solid small things on the set, by their real shape (refreshed now and
+## then: a part's set changes between parts).
+func _read_solids() -> void:
+	var now := Time.get_ticks_msec() * 0.001
+	if now - _solids_at < 1.0:
+		return
+	_solids_at = now
+	_solids.clear()
+	for b in Cine.blockers(world):
+		pass   # (warms Cine's own cache: the same things it walks round)
+	for n in world.find_children("*", "StaticBody3D", true, false):
+		var sb := n as StaticBody3D
+		if sb.has_meta("npc") or sb.has_meta("beast") or not sb.is_visible_in_tree():
+			continue
+		for c in sb.get_children():
+			var cs := c as CollisionShape3D
+			if cs == null or cs.shape == null or cs.disabled:
+				continue
+			var gt := cs.global_transform
+			var g := Cine.ground(world, gt.origin)
+			if cs.shape is BoxShape3D:
+				var sz: Vector3 = (cs.shape as BoxShape3D).size * gt.basis.get_scale()
+				var long := maxf(sz.x, sz.z)
+				if long > 2.5 or gt.origin.y - sz.y * 0.5 > g + 1.2 or gt.origin.y + sz.y * 0.5 < g + 0.25:
+					continue   # (walls and fences, things overhead or underfoot)
+				_solids.append([gt.orthonormalized(), Vector2(sz.x, sz.z) * 0.5, "a solid %.1f x %.1f m at (%.1f, %.1f)" % [sz.x, sz.z, gt.origin.x, gt.origin.z]])
+			elif cs.shape is CylinderShape3D:
+				var r := (cs.shape as CylinderShape3D).radius * maxf(gt.basis.get_scale().x, gt.basis.get_scale().z)
+				if r > 2.2:
+					continue
+				_solids.append([gt.orthonormalized(), Vector2(r, -1.0), "a solid round %.1f m across at (%.1f, %.1f)" % [r * 2.0, gt.origin.x, gt.origin.z]])
+
+
+func _check_through() -> void:
+	_read_solids()
+	var who := {"player": world.player}
+	for n in world.npcs:
+		who[String(n.def.id)] = n.body
+	var ex: Dictionary = world.get_meta("extras", {}) if world.has_meta("extras") else {}
+	for id in ex:
+		if ex[id].body is Node3D:
+			who[String(id)] = ex[id].body
+	for id in who:
+		var b = who[id]
+		if not (b is Node3D) or not is_instance_valid(b) or not (b as Node3D).is_visible_in_tree():
+			continue
+		var f = Cine.fig(world, String(id))
+		if f is Figure3D and (f as Figure3D).seat >= 0.0:
+			_seated_at[id] = _frame
+			continue   # (sitting on it)
+		if _frame - int(_seated_at.get(id, -999)) < 40:
+			continue   # (just stood up off it, stepping clear)
+		var p: Vector3 = (b as Node3D).global_position
+		# (on the move: someone put down beside a thing is staging, not
+		# walking through it)
+		var was: Vector3 = _last_at.get(id, p)
+		_last_at[id] = p
+		if Vector2(p.x - was.x, p.z - was.z).length() < 0.002:
+			continue
+		for s in _solids:
+			var t: Transform3D = s[0]
+			var hs: Vector2 = s[1]
+			var l := t.affine_inverse() * p
+			var inside := false
+			if hs.y < 0.0:
+				inside = Vector2(l.x, l.z).length() < hs.x - 0.1
+			else:
+				inside = absf(l.x) < hs.x - 0.1 and absf(l.z) < hs.y - 0.1
+			if inside:
+				var key := "%s:%s" % [id, s[2]]
+				if not _through.has(key):
+					_through[key] = true
+					# (reported once it's plain they weren't sitting down on it)
+					_pending.append([_frame, String(id), "%s walked through %s at (%.1f, %.1f) (line: %s)" % [id, s[2], p.x, p.z, _last_line.left(60)]])
+					_shot("through_" + String(id))
+	for pd in _pending.duplicate():
+		if _frame - int(pd[0]) < 40:
+			continue
+		_pending.erase(pd)
+		if int(_seated_at.get(pd[1], -999)) < int(pd[0]):
+			_expect(false, String(pd[2]))
 
 
 func _type_name(le: LineEdit) -> void:

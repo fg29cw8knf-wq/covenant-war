@@ -632,7 +632,27 @@ func model_house(id: String, pos: Vector3, seed_i: int, burning: bool) -> bool:
 		# ignite_roof() reads these as length, depth, wall height and roof rise
 		set_meta("burning_dims", [L, D, top * 0.5, top * 0.33 - 0.25])
 	houses.append({"id": id, "root": root, "L": L, "D": D, "top": top, "inn": id == "inn"})
+	if id == "inn":
+		_inn_front_solids(root)
 	return true
+
+
+## What stands along the inn's front, part of Gary's model (one mesh): the
+## bench under the bay window and the stack of crates and barrels by the
+## door, in the model's own x/z (door at x -0.53 on its front, z 3.555),
+## centre and size. Each is made solid on its own (28 October, Gary: "Bram
+## outside walks through the bench again"): the inn's own box takes in its
+## whole front, and a box that big isn't one a walk goes round, so Bram
+## following the player out of the door cut through the bench.
+const INN_FRONT_PROPS := [[Vector2(4.2, 3.11), Vector2(2.05, 0.75)], [Vector2(-4.1, 3.13), Vector2(2.25, 0.8)]]
+
+
+func _inn_front_solids(root: Node3D) -> void:
+	for p in INN_FRONT_PROPS:
+		var c: Vector2 = p[0]
+		var sz: Vector2 = p[1]
+		var at := root.to_global(Vector3(c.x, 0.0, c.y))
+		solid_box(Vector3(at.x, 1.5, at.z), Vector3(sz.x, 3.0, sz.y), root.rotation.y)
 
 func house(pos: Vector3, L: float, D: float, H: float, style: int, door: String, seed_i: int, burning: bool, inn := false) -> void:
 	var root := Node3D.new()

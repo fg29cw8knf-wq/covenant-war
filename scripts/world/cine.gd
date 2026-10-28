@@ -487,6 +487,25 @@ static func blockers(w: World) -> Array:
 				r = Vector2(sz.x, sz.z).length() * 0.5
 				top = gt.origin.y + sz.y * 0.5
 				bottom = gt.origin.y - sz.y * 0.5
+				# a long thing (a bench, a cart) is a row of smaller circles
+				# along it, not one round its whole length: someone standing
+				# a stride off a bench's end was inside its one circle, and a
+				# walk from there went straight through it, as a walk
+				# standing up off it does (28 October, Gary: "Bram outside
+				# walks through the bench again")
+				if long > thin * 1.6 and thin > 0.05:
+					var k := mini(int(ceil(long / thin)), 6)
+					var axis: Vector3 = (gt.basis.x if sz.x >= sz.z else gt.basis.z).normalized()
+					var rr := Vector2(long / (2.0 * k), thin * 0.5).length()
+					var g2 := ground(w, gt.origin)
+					if absf(gt.origin.y - g2) > 5.0:
+						g2 = bottom
+					if bottom > g2 + 1.2 or top < g2 + 0.25 or rr < 0.1:
+						continue
+					for i in k:
+						var cc := gt.origin + axis * (long * ((float(i) + 0.5) / k - 0.5))
+						out.append([Vector2(cc.x, cc.z), rr])
+					continue
 			elif cs.shape is CylinderShape3D:
 				var cy := cs.shape as CylinderShape3D
 				r = cy.radius * maxf(gt.basis.get_scale().x, gt.basis.get_scale().z)

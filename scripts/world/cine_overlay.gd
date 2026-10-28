@@ -278,14 +278,25 @@ var _chart: Control = null
 func dream_sky(secs := 5.2) -> void:
 	var see := 2.0
 	var hold := 0.7
-	var fade := maxf(secs - see - hold, 0.5)
+	dream_begin()
+	await get_tree().create_timer(see).timeout
+	await dream_whiten(maxf(secs - see - hold, 0.5), hold)
+
+
+## The dream's sky, up and turning slowly, until dream_whiten() (28 October:
+## so Morrowen's line can be spoken over it, as long as it takes; Gary, "the
+## speech at the beginning of the game happen while we see the sky and it
+## turning white"). Subtitles stay above it.
+func dream_begin() -> void:
+	if _dream != null and is_instance_valid(_dream):
+		return
 	var sky := ColorRect.new()
 	sky.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	sky.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var sh := Shader.new()
 	sh.code = """shader_type canvas_item;
 uniform float t = 0.0;      // seconds into the dream
-uniform float see = 2.0;    // the sky on its own this long
+uniform float white_at = 100000.0;  // when the white starts coming over it (s)
 uniform float fade = 2.5;   // then white comes over it in this long
 uniform float aspect = 1.78;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -334,26 +345,56 @@ void fragment() {
 	float bars = max(smoothstep(0.045, 0.02, abs(uv.x - 0.5)), smoothstep(0.045, 0.02, abs(uv.y - 0.5)));
 	vec3 wood = vec3(0.09, 0.06, 0.04);
 	col = mix(col, wood, max(frame, bars * 0.95));
-	// the white: once the sky's been seen, it comes evenly over all of it
-	float white = smoothstep(0.0, 1.0, clamp((t - see) / fade, 0.0, 1.0));
+	// the white: once it starts, it comes evenly over all of it
+	float white = smoothstep(0.0, 1.0, clamp((t - white_at) / fade, 0.0, 1.0));
 	col = mix(col, vec3(1.0), white);
 	COLOR = vec4(col, 1.0);
 }"""
 	var sm := ShaderMaterial.new()
 	sm.shader = sh
-	sm.set_shader_parameter("see", see)
-	sm.set_shader_parameter("fade", fade)
-	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)) if sky.size.y > 1.0 else 1.78)
+	sm.set_shader_parameter("aspect", 1.78)
 	sky.material = sm
 	_root.add_child(sky)
 	_root.move_child(sky, _black.get_index() + 1)
+	_dream = sky
+	_dream_end = -1.0
+	_dream_t = 0.0
+	_dream_tick(sky, sm)
+
+
+var _dream: ColorRect = null
+var _dream_t := 0.0        # seconds into the dream
+var _dream_end := -1.0     # when the white is full and held (dream seconds); -1 until it starts
+
+
+func _dream_tick(sky: ColorRect, sm: ShaderMaterial) -> void:
 	await get_tree().process_frame
-	sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / maxf(1.0, sky.size.y)))
-	var tw := create_tween()
-	tw.tween_method(func(k: float) -> void: sm.set_shader_parameter("t", k), 0.0, see + fade + hold, see + fade + hold)
-	await tw.finished
-	sky.queue_free()
-	_black.modulate.a = 1.0
+	while is_instance_valid(sky) and sky == _dream:
+		if sky.size.y > 1.0:
+			sm.set_shader_parameter("aspect", maxf(0.5, sky.size.x / sky.size.y))
+		_dream_t += get_process_delta_time()
+		sm.set_shader_parameter("t", _dream_t)
+		if _dream_end >= 0.0 and _dream_t >= _dream_end:
+			_black.modulate.a = 1.0
+			_dream = null
+			sky.queue_free()
+			return
+		await get_tree().process_frame
+
+
+## White comes evenly over the dream's sky in `fade` seconds, holds `hold`,
+## then it's black (the cut on the drum). Returns when that's done; asked
+## again while it's under way, it just waits for it.
+func dream_whiten(fade := 2.5, hold := 0.7) -> void:
+	if _dream == null or not is_instance_valid(_dream):
+		return
+	if _dream_end < 0.0:
+		var sm := _dream.material as ShaderMaterial
+		sm.set_shader_parameter("white_at", _dream_t)
+		sm.set_shader_parameter("fade", maxf(fade, 0.05))
+		_dream_end = _dream_t + fade + hold
+	while _dream != null and is_instance_valid(_dream):
+		await get_tree().process_frame
 
 
 ## Fades to black (1) or back (0).

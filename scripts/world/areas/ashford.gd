@@ -1050,9 +1050,19 @@ const CARD_BOX_MODEL := "res://assets/models/ashford/card_box.glb"
 ## The worn deck box (Bram's, from his Shard days): a small oak case with a
 ## lid, brass at its corners and a clasp, the old sigil worked into the lid.
 ## Width, height and depth (m), held upright, lid up.
-const CARD_BOX_SIZE := Vector3(0.13, 0.09, 0.08)
-## Where it's held: in front of the chest, in the figure's own frame.
+const CARD_BOX_SIZE := Vector3(0.16, 0.11, 0.095)
+## Where it's held: in front of the chest, in the figure's own frame (a
+## cut-out's, and the fallback; a 3D figure holds it at its own
+## Figure3D.hold_point(), within its arms' reach: _box_hold).
 const BOX_HOLD := Vector3(0.0, 1.02, 0.27)
+## How far it's held out to be taken: a little forward and up of the hold.
+const BOX_OUT := Vector3(0.0, 0.03, 0.05)
+## How far apart the giver and the taker stand when it changes hands (m,
+## between their middles): near enough that it's held out within one man's
+## reach and taken within the other's (until 28 October Bram stood 1.5 m
+## off, held it out at arm's length, and the player's arms stretched for it:
+## "the player's hand is deformed when he reached to take it").
+const BOX_GIVE_GAP := 0.64
 const BOX_LID := 0.024   # the lid's own height, of CARD_BOX_SIZE.y
 
 
@@ -1243,7 +1253,7 @@ static func _hold_box(w: World, who: String, box: Node3D) -> Node3D:
 	var f = Cine.fig(w, who)
 	if f is Figure3D:
 		var fig := f as Figure3D
-		fig.carry(box, BOX_HOLD)
+		fig.carry(box, _box_hold(fig))
 		fig.reach(box.get_node("L"), box.get_node("R"), 0.35)
 		w.set_meta("box_" + who, box)
 		return box
@@ -1255,13 +1265,21 @@ static func _hold_box(w: World, who: String, box: Node3D) -> Node3D:
 	return box
 
 
+## Where someone holds the card box, in their own frame: within their arms'
+## reach (Figure3D.hold_point), or BOX_HOLD for a cut-out.
+static func _box_hold(f) -> Vector3:
+	if f is Figure3D:
+		return (f as Figure3D).hold_point()
+	return BOX_HOLD
+
+
 ## Holds the box out towards someone (the hands go with it); `back` brings it in.
 static func _box_out(w: World, who: String, out := true, secs := 0.5) -> void:
 	var box = w.get_meta("box_" + who, null)
 	if box == null or not is_instance_valid(box):
 		return
 	var tw := w.create_tween()
-	tw.tween_property(box, "position", BOX_HOLD + (Vector3(0, 0.04, 0.2) if out else Vector3.ZERO), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(box, "position", _box_hold(Cine.fig(w, who)) + (BOX_OUT if out else Vector3.ZERO), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
 
 
@@ -1319,7 +1337,12 @@ const BRAM_HANG_BACK := 2.6
 const LANTERN_CLEAR := 2.3
 
 
-## Where Bram ends up: beside the player, on his side of them, facing Corin.
+## Where Bram ends up: beside the player, on his side of them, facing Corin,
+## near enough to put a hand on their shoulder (until 28 October he stood
+## 1.5 m off and his arm stretched across the gap).
+const BRAM_BESIDE := 0.8
+
+
 static func _bram_stop(w: World) -> Vector3:
 	var p := w.player.global_position
 	var c := Cine.body(w, "corin").global_position
@@ -1329,7 +1352,7 @@ static func _bram_stop(w: World) -> Vector3:
 	var perp := d.cross(Vector3.UP).normalized()
 	if perp.dot(Cine.body(w, "bram").global_position - p) < 0.0:
 		perp = -perp
-	return p + perp * 1.5 + d * 0.4
+	return p + perp * BRAM_BESIDE + d * 0.15
 
 
 ## The way from one spot to another round the Great Lantern (straight when
@@ -1417,16 +1440,21 @@ static func _bram_comes(w: World) -> void:
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
 	await Cine.path(w, "bram", _round_lantern(w, bram.global_position, stop), BRAM_PACE)
-	Cine.look(w, "bram", p)
-	Cine.look(w, "player", stop)
+	# beside them, facing Corin as they do, so his near hand finds their
+	# near shoulder (28 October: he turned to face them from 1.5 m away and
+	# his arm stretched out at nothing; they turn to each other for the box)
+	Cine.look(w, "bram", c)
+	Cine.look(w, "player", c)
 	await Cine.wait(w, 0.15)
 	# v7: "A heavy hand lands on the protagonist's shoulder." (the hand
 	# nearer them; it comes off when he holds the box out)
 	var bf = Cine.fig(w, "bram")
 	if bf is Figure3D:
-		var sh := _shoulder_point(w, "player")
+		var sh := _shoulder_point(w, "player", bram.global_position)
 		w.set_meta("bram_shoulder", sh)
-		var right: Vector3 = (bf as Figure3D).facing().cross(Vector3.UP)
+		var ahead := c - bram.global_position
+		ahead.y = 0.0
+		var right: Vector3 = ahead.normalized().cross(Vector3.UP)
 		_drop_box(w, "bram")
 		if right.dot(sh.global_position - bram.global_position) > 0.0:
 			(bf as Figure3D).reach(null, sh, 0.35)
@@ -1457,15 +1485,21 @@ static func _box_out_scene(w: World) -> void:
 		if f is Figure3D:
 			(f as Figure3D).let_go(0.25)
 		await Cine.wait(w, 0.3)
+	# the two turn to each other for it
+	var bram_body := Cine.body(w, "bram")
+	if bram_body != null:
+		Cine.look(w, "bram", w.player.global_position)
+		Cine.look(w, "player", bram_body.global_position)
 	if AshfordP1.meta(w, "box_bram") == null:
 		# out of his apron pocket at his hip and up into both hands (it used
 		# to appear in them from nowhere)
 		var box := _hold_box(w, "bram", _card_box())
 		if box != null and Cine.fig(w, "bram") is Figure3D:
-			box.position = BOX_HOLD + Vector3(0.14, -0.3, -0.12)
+			var hold := _box_hold(Cine.fig(w, "bram"))
+			box.position = hold + Vector3(0.14, -0.3, -0.12)
 			box.rotation = Vector3(0, 0, 0.5)
 			var up := w.create_tween().set_parallel(true)
-			up.tween_property(box, "position", BOX_HOLD, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			up.tween_property(box, "position", hold, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			up.tween_property(box, "rotation", Vector3.ZERO, 0.55).set_trans(Tween.TRANS_SINE)
 			await up.finished
 	await _box_out(w, "bram", true, 0.5)
@@ -1485,6 +1519,9 @@ static func _first_deck(w: World) -> void:
 	var box: Node3D = w.get_meta("box_bram", null)
 	if box != null and is_instance_valid(box) and pf is Figure3D:
 		var me := pf as Figure3D
+		# a step in towards him, so the box he holds out is within their
+		# reach, hands coming up as they go
+		await _step_to_take(w, "player", "bram")
 		# (facing him, their left hand takes the side on his right)
 		me.reach(box.get_node("R"), box.get_node("L"), 0.4)
 		await Cine.wait(w, 0.45)
@@ -1495,7 +1532,7 @@ static func _first_deck(w: World) -> void:
 		# it ends square in their hands, the clasp away from them (until 27
 		# October it slid across in a straight line and spun round at the end)
 		var from := box.global_transform
-		var to := Transform3D(me.global_transform.basis.orthonormalized() * Basis(Vector3.UP, _yaw_of(me)), me.to_world(BOX_HOLD))
+		var to := Transform3D(me.global_transform.basis.orthonormalized() * Basis(Vector3.UP, _yaw_of(me)), me.to_world(_box_hold(me)))
 		var qa := from.basis.orthonormalized().get_rotation_quaternion()
 		var qb := to.basis.get_rotation_quaternion()
 		var give := w.create_tween()
@@ -1503,7 +1540,7 @@ static func _first_deck(w: World) -> void:
 			if is_instance_valid(box):
 				box.global_transform = Transform3D(Basis(qa.slerp(qb, u)), from.origin.lerp(to.origin, u) + Vector3(0, sin(u * PI) * 0.06, 0)), 0.0, 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await give.finished
-		me.carry(box, BOX_HOLD)
+		me.carry(box, _box_hold(me))
 		box.rotation = Vector3.ZERO
 		me.reach(box.get_node("L"), box.get_node("R"), 0.2)
 		w.set_meta("box_player", box)
@@ -1522,6 +1559,23 @@ static func _first_deck(w: World) -> void:
 		(pf as Figure3D).release()
 	_drop_box(w, "player")
 	await Cine.wait(w, 0.3)
+
+
+## `who` steps in towards `to` (facing them) until they stand BOX_GIVE_GAP
+## apart, if they're further off than that: someone taking a thing from
+## another's hands comes near enough to reach it.
+static func _step_to_take(w: World, who: String, to: String) -> void:
+	var a := Cine.body(w, who)
+	var b := Cine.body(w, to)
+	if a == null or b == null:
+		return
+	var d := b.global_position - a.global_position
+	d.y = 0.0
+	var dist := d.length()
+	if dist > BOX_GIVE_GAP + 0.04:
+		var at := a.global_position + d.normalized() * (dist - BOX_GIVE_GAP)
+		await Cine.path(w, who, [at], 0.9)
+	Cine.look(w, who, b.global_position)
 
 
 ## The Spark deck becomes the player's (Deck and Codex stay shut: see _first_deck).
@@ -2912,16 +2966,24 @@ static func _stand(w: World, who: String, secs := 0.6) -> void:
 
 ## A point on top of someone's right shoulder that stays there as they move
 ## and kneel (for a hand to rest on). _free_tracker() lets it go.
-static func _shoulder_point(w: World, who: String) -> Node3D:
+static func _shoulder_point(w: World, who: String, from := Vector3.INF) -> Node3D:
 	var n := Node3D.new()
 	w.add_child(n)
 	var f = Cine.fig(w, who)
 	var b := Cine.body(w, who)
+	# (the shoulder nearer whoever reaches for it, from `from`: Bram beside
+	# the player on their left reached across them for the right one)
+	var bone := "RightArm"
+	if f is Figure3D and from != Vector3.INF:
+		var fl := (f as Figure3D).bone_pos("LeftArm")
+		var fr := (f as Figure3D).bone_pos("RightArm")
+		if Vector2(fl.x - from.x, fl.z - from.z).length() < Vector2(fr.x - from.x, fr.z - from.z).length():
+			bone = "LeftArm"
 	var track := func() -> void:
 		while is_instance_valid(n) and is_instance_valid(b):
 			if f is Figure3D:
 				var fwd: Vector3 = (f as Figure3D).facing()
-				n.global_position = (f as Figure3D).bone_pos("RightArm") + Vector3(0, 0.07, 0) - fwd * 0.02
+				n.global_position = (f as Figure3D).bone_pos(bone) + Vector3(0, 0.07, 0) - fwd * 0.02
 			else:
 				n.global_position = b.global_position + Vector3(0, 1.45, 0)
 			await w.get_tree().process_frame

@@ -137,6 +137,8 @@ var _hand_glow: Node3D
 var _skel: Skeleton3D
 var _hips := ADULT_HIPS  # their hip height standing (m)
 var _top := 1.6          # their head bone standing (m), for the marker over it
+var _shoulder := 1.4     # their shoulder joints' height standing (m)
+var _arm := 0.5          # shoulder to wrist, the arm straight (m)
 var _ik := {}            # "left"/"right": the TwoBoneIK3D holding that hand
 var _pose_n := 0
 
@@ -206,6 +208,14 @@ func _ready() -> void:
 		var hd := _skel.find_bone("Head")
 		if hd >= 0:
 			_top = _skel.get_bone_global_rest(hd).origin.y
+		var sa := _skel.find_bone("LeftArm")
+		var fa := _skel.find_bone("LeftForeArm")
+		var ha := _skel.find_bone("LeftHand")
+		if sa >= 0 and fa >= 0 and ha >= 0:
+			var a := _skel.get_bone_global_rest(sa).origin
+			var e := _skel.get_bone_global_rest(fa).origin
+			_shoulder = a.y
+			_arm = a.distance_to(e) + e.distance_to(_skel.get_bone_global_rest(ha).origin)
 	anim = model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if anim != null:
 		# bones a clip doesn't move go back to standing: without this, a
@@ -894,6 +904,22 @@ func carry(node: Node3D, at: Vector3) -> Node3D:
 		_pivot.add_child(node)
 	node.position = at
 	return node
+
+
+## Where something small is held in both hands in front of them (a card
+## box, a card), in their own frame: a little under the shoulders and a
+## forearm's length ahead, so the elbows stay bent whoever holds it. Fixed
+## heights from the feet don't do: Bram's arms are short for his height, and
+## the box held at a grown-up's waist hung a hand's length beyond his
+## reach (Gary, 28 October: "Bram's card box is just floating, it's not in
+## his hands"). `ahead` and `below` are fractions of the arm's length.
+func hold_point(ahead := 0.45, below := 0.55) -> Vector3:
+	return Vector3(0.0, _shoulder - _arm * below, _arm * ahead)
+
+
+## How far their hands reach from the shoulder (m), the arm straight.
+func arm_reach() -> float:
+	return _arm
 
 
 ## Their own frame turned into the world: a point `at` (x to their left, y

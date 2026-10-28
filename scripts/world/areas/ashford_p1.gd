@@ -1094,9 +1094,11 @@ static func follow(w: World, who: String, keep: float, on: Array) -> void:
 # ============================================================ the opening ===
 # Master Script v3, P1 · The attic and the taproom. The lines, word for word.
 
+## Morrowen's line, spoken over the dream of the white sky (28 October, Gary:
+## "the speech at the beginning of the game happen while we see the sky and
+## it turning white"; until then it was spoken once he'd got out of bed).
+## His recording, morrowen_attic (v7's one new line for her).
 const ATTIC := [
-	# Gary records it as morrowen_attic.wav (his opening's fifteen lines and
-	# the four for a lost duel are his already; this is v7's one new line)
 	{"who": "morrowen", "say": "Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.", "vo": "morrowen_attic"},
 ]
 ## At the glass, once the name's written in the frost (v7, Q0; Gary, 24
@@ -1167,11 +1169,19 @@ const HUNG := [
 	{"who": "bram", "say": "Go on."},
 ]
 
-## How long the dream of the white sky plays before the player wakes (s):
-## about 2 s of the night sky through the attic window, an even fade to
-## white over about 2.5 s, and a beat of white (CineOverlay.dream_sky);
-## 0 goes straight from the caption to the attic.
+## How long the dream of the white sky plays before the player wakes (s),
+## with nothing spoken over it: about 2 s of the night sky through the attic
+## window, an even fade to white over about 2.5 s, and a beat of white
+## (CineOverlay.dream_sky); 0 goes straight from the caption to the attic.
+## Since 28 October Morrowen speaks over it (_dream), and it lasts as long
+## as her line: the sky a moment on its own (DREAM_LEAD), her words over
+## the stars, the white coming over it through her last few words
+## (DREAM_WHITE) so it's full as she finishes, then the beat of white
+## (DREAM_HOLD) and black on the drum.
 const DREAM_SECS := 5.2
+const DREAM_LEAD := 1.2
+const DREAM_WHITE := 2.6
+const DREAM_HOLD := 0.8
 ## How near the Great Lantern counts as "at the green" (m).
 const GREEN_R := 6.5
 ## Where the player puts the crate down: the Lantern's south side, clear of
@@ -1248,9 +1258,10 @@ static func _attic(w: World) -> void:
 	Cine.shot(w, root.to_global(Vector3(2.45, 1.6, 1.3)), a.bed + Vector3(0.2, 0.15, 0.0), 46.0)
 	await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
 	# the dream they're about to tell Bram about: the night sky from the
-	# bed, and the white light that takes it; cut to black on the drum
+	# bed, Morrowen's words over it, and the white light that takes it; cut
+	# to black on the drum
 	if DREAM_SECS > 0.0:
-		await ov.dream_sky(DREAM_SECS)
+		await _dream(w, ov)
 	# (25 October, Gary: getting out of bed "a little bit faster": the whole
 	# rise, from the fade-up to standing, is about seven seconds now where
 	# it was twelve; each movement is the same, just brisker)
@@ -1312,9 +1323,6 @@ static func _attic(w: World) -> void:
 		await tw.finished
 	Cine.look(w, "player", a.window)
 	await Cine.wait(w, 0.4)
-	# Morrowen, over the frosty morning (v7)
-	await w.run_steps(ATTIC, null)
-	w.hud.dialogue.close()
 	# the first lesson: walking, to the washbasin, on their own feet
 	controls_on(w)
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
@@ -1340,6 +1348,31 @@ static func _attic(w: World) -> void:
 ## Up out of the attic bed the way it was done before 27 October, built
 ## from poses (sat up, slid to the edge, sat on it, stood): for a model
 ## without the get_out_of_bed clip.
+## The dream with Morrowen speaking over it: the night sky through the attic
+## window comes up, she speaks (her recording, her words as a subtitle over
+## the stars), and the white starts coming over the sky DREAM_WHITE seconds
+## before she finishes, so it's full white as her last words end; a beat of
+## white, then black. A tap skips her line as any voiced line, and the white
+## comes at once. Without her recording (on the web, before the voices pack
+## is in) the line waits for a tap like any other, the sky holding under it.
+static func _dream(w: World, ov: CineOverlay) -> void:
+	ov.dream_begin()
+	await Cine.wait(w, DREAM_LEAD)
+	if not is_instance_valid(w) or not w.is_inside_tree():
+		return
+	var line: Dictionary = ATTIC[0]
+	var secs := VoiceLines.play(w, String(line.who), String(line.say), String(line.get("vo", "")))
+	if secs > 0.0:
+		var start := maxf(secs - VoiceLines.TAIL - DREAM_WHITE, 0.5)
+		w.get_tree().create_timer(start, false).timeout.connect(func() -> void:
+			if is_instance_valid(ov):
+				ov.dream_whiten(DREAM_WHITE, DREAM_HOLD))
+	await ov.say(w._speaker(String(line.who)), w._fmt(String(line.say)), secs, secs > 0.0)
+	if secs > 0.0:
+		VoiceLines.stop(w)
+	await ov.dream_whiten(DREAM_WHITE if secs <= 0.0 else 1.4, DREAM_HOLD)
+
+
 static func _rise_by_poses(w: World, fig: Figure3D, a: Dictionary, side: Vector3) -> void:
 	fig.sit_long(a.lie_top, 1.0)
 	await Cine.wait(w, 1.05)
@@ -1734,7 +1767,19 @@ static func _taproom(w: World) -> void:
 
 ## Bram's rag going over the counter in slow circles until `state[0]` goes
 ## false (v7: "rubbing a rag over an oak surface that doesn't need cleaning").
-static func _wipe(w: World, root: Node3D, state: Array) -> void:
+## His right hand, in front of his right shoulder on the near part of the
+## counter top (WIPE_AT, in his own frame: x to his left, y up, z ahead), the
+## circles small: until 28 October it worked half a metre ahead of him and
+## well to his left, out of the right arm's reach, so the arm ran across his
+## chest, twisted, and the hand fell short through the counter's edge (Gary:
+## "Bram's arm twists in a weird way and still passes through his body and
+## his hand passed through the bar"). WIPE_AT's height is the palm's, a
+## little over the oak (its top is at 1.13) so the fingers lie on it rather
+## than in it.
+const WIPE_AT := Vector3(-0.21, 1.18, 0.4)
+
+
+static func _wipe(w: World, _root: Node3D, state: Array) -> void:
 	var f = Cine.fig(w, "bram")
 	if not (f is Figure3D):
 		return
@@ -1742,13 +1787,12 @@ static func _wipe(w: World, root: Node3D, state: Array) -> void:
 	var hand := Node3D.new()
 	hand.name = "RagHand"
 	w.add_child(hand)
-	var at := root.to_global(Vector3(InnRooms.BAR_X - 0.1, 1.14, -0.25))
-	hand.global_position = at
+	hand.global_position = fig.to_world(WIPE_AT)
 	fig.reach(null, hand, 0.5)
 	var t := 0.0
-	while state[0] and is_instance_valid(w) and is_instance_valid(hand):
+	while state[0] and is_instance_valid(w) and is_instance_valid(hand) and is_instance_valid(fig):
 		t += w.get_process_delta_time()
-		hand.global_position = at + Vector3(0.06 * sin(t * 2.1), 0.0, 0.16 * cos(t * 2.1) + 0.08 * sin(t * 0.5))
+		hand.global_position = fig.to_world(WIPE_AT + Vector3(0.07 * cos(t * 2.1) + 0.02 * sin(t * 0.5), 0.0, 0.035 * sin(t * 2.1)))
 		await w.get_tree().process_frame
 	if is_instance_valid(fig):
 		fig.let_go(0.4)
