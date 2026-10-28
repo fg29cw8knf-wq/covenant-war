@@ -52,7 +52,7 @@ godot -- --lab
 | --- | --- |
 | `scripts/duel/` | The rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`), the computer duellist (`duel_ai.gd`), the 24 conditions and 6 boons (`duel_conditions.gd`), the Kingdom Laws and Blessings (`duel_laws.gd`), and Resonance, Rank and Attunement (`duel_rewards.gd`). No graphics code. |
 | `scripts/duel_ui/` | The Duel Lab set-up screen, the duel screen, card faces and the pieces they're built from. |
-| `assets/models/creatures/` | The Totems' 3D models, `<card id>.glb` with `<card id>_atlas.png` beside it (`assets/models/PUT_MODELS_HERE.txt`). A Tripo3D creature (one material, 4K base colour, roughness-metal and normal maps embedded) is readied with `python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb --glow`: the atlas out at 2048, the other maps dropped, and with `--glow` the fire-coloured parts of the atlas as an emission map (`<id>_glow.png`), so a Cinderpup's flames shine through the bloom. Cinderpup is Gary's 26 October Tripo3D model, with its seven clips (idle, spawn, attack, hit, defeat, victory, run); under the duel's warm lights its orange coat reads red. Brookfin is his 27 October one (the blue fish-dragon with the pale belly and fins, an 89-joint rig with eleven clips: idle, walk, run, swim, attack, hit_react, defeat, victory, spawn, tail_swish, rest; `hit_react` is read as its hit, `DuelField3D.CLIP_ALIASES`); `tests/totem_peek.tscn -- <dir> <yours> <theirs>` stands chosen Totems on the field for a look. River Hound is still the Shieldhound stand-in until hers comes. |
+| `assets/models/creatures/` | The Totems' 3D models, `<card id>.glb` with `<card id>_atlas.png` beside it (`assets/models/PUT_MODELS_HERE.txt`). A Tripo3D creature (one material, 4K base colour, roughness-metal and normal maps embedded) is readied with `python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb --glow`: the atlas out at 2048, the other maps dropped, and with `--glow` the fire-coloured parts of the atlas as an emission map (`<id>_glow.png`), so a Cinderpup's flames shine through the bloom. Cinderpup is Gary's 26 October Tripo3D model, with its seven clips (idle, spawn, attack, hit, defeat, victory, run); under the duel's warm lights its orange coat reads red. Brookfin is his 27 October one (the blue fish-dragon with the pale belly and fins, an 89-joint rig with eleven clips: idle, walk, run, swim, attack, hit_react, defeat, victory, spawn, tail_swish, rest; `hit_react` is read as its hit, `DuelField3D.CLIP_ALIASES`); `tests/totem_peek.tscn -- <dir> <yours> <theirs>` stands chosen Totems on the field for a look. River Hound is Gary's 28 October model (the lean water hound with the white foam ruff, the same eleven clips as Brookfin), in Tam's friendly game, his Reckoning duel and any deck that has her; until then she was a Shieldhound washed blue. |
 
 ```sh
 godot --headless --script res://tests/duel_sim.gd -- 2000            # balance: every deck vs every deck
@@ -425,7 +425,8 @@ shape of a turn and answering on the rival's turn.
   `DuelField3D._tint_model`, `DuelArt.soft_tint`; the flat field's cut-out
   takes the same wash. Until 27 October its solid surfaces went plain in the
   colour, and Tam's River Hound, a Shieldhound stand-in, stood on the field
-  as a glowing blue lump: Gary, "blue for some reason").
+  as a glowing blue lump: Gary, "blue for some reason"; since 28 October
+  she's Gary's own model).
 - **No new starter decks.** The seven ways have sample decks
   (`DuelArchetypes.DECKS`: the four starters with their way's three cards,
   and a deck for each new way) in the Duel Lab's deck list and for the
