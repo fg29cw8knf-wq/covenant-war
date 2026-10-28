@@ -784,6 +784,87 @@ class KeepTargets:
 			fig._keep_targets()
 
 
+## A hand turned to face its palm one way (palm()), after the arms are
+## solved: the IK puts the hand where it's wanted but leaves it turned as
+## the clip has it, so Bram's rag hand on the counter was palm up from his
+## talking clip. Runs after every reach (the hands' IK is moved before it).
+class HandTurn:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		if is_instance_valid(fig):
+			fig._turn_hands()
+
+
+var _palms := {}   # "left"/"right": [palm direction (world), influence]
+
+
+## Turns a hand so its palm faces `dir` (a world direction: Vector3.DOWN for
+## a hand flat on a counter), the fingers pointing on the way the forearm
+## goes, blended in over `secs`; Vector3.ZERO gives the hand back to the clip.
+func palm(side: String, dir: Vector3, secs := 0.3) -> void:
+	if _skel == null:
+		return
+	if not _skel.has_node("HandTurn"):
+		var ht := HandTurn.new()
+		ht.name = "HandTurn"
+		ht.fig = self
+		_skel.add_child(ht)
+	_skel.move_child(_skel.get_node("HandTurn"), -1)
+	var cur: Array = _palms.get(side, [dir, 0.0])
+	if dir != Vector3.ZERO:
+		cur[0] = dir.normalized()
+	_palms[side] = cur
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:
+		if _palms.has(side):
+			_palms[side][1] = k, float(cur[1]), 1.0 if dir != Vector3.ZERO else 0.0, maxf(secs, 0.01))
+	if dir == Vector3.ZERO:
+		tw.tween_callback(func() -> void: _palms.erase(side))
+
+
+func _turn_hands() -> void:
+	for side in _palms:
+		var pd: Vector3 = _palms[side][0]
+		var k: float = _palms[side][1]
+		if k <= 0.001:
+			continue
+		var pre := "Left" if side == "left" else "Right"
+		var h := _skel.find_bone(pre + "Hand")
+		var m := _skel.find_bone(pre + "HandMiddle1")
+		var i := _skel.find_bone(pre + "HandIndex1")
+		var p := _skel.find_bone(pre + "HandPinky1")
+		if p < 0:
+			p = _skel.find_bone(pre + "HandRing1")
+		if h < 0 or m < 0 or i < 0 or p < 0:
+			continue
+		# the hand's own frame as it was made (every rest is square to the
+		# world): the fingers' way, and the palm's (index to pinky across)
+		var r0 := _skel.get_bone_global_rest(h).origin
+		var f_b := (_skel.get_bone_global_rest(m).origin - r0).normalized()
+		var across := _skel.get_bone_global_rest(i).origin - _skel.get_bone_global_rest(p).origin
+		var p_b := across.cross(f_b) if side == "right" else f_b.cross(across)
+		p_b = (p_b - f_b * p_b.dot(f_b)).normalized()
+		var gp := _skel.get_bone_global_pose(h)
+		var f_now := (gp.basis * f_b).normalized()
+		# wanted, in the skeleton's frame: the palm as asked, the fingers on
+		# along the forearm, laid flat across the palm's way
+		var to_sk := _skel.global_transform.basis.inverse()
+		var p_t := (to_sk * pd).normalized()
+		var f_t := f_now - p_t * f_now.dot(p_t)
+		if f_t.length() < 0.05:
+			continue
+		f_t = f_t.normalized()
+		var mb := Basis(f_b, p_b, f_b.cross(p_b)).orthonormalized()
+		var mt := Basis(f_t, p_t, f_t.cross(p_t)).orthonormalized()
+		var want := (mt * mb.transposed()).orthonormalized()
+		var q := gp.basis.orthonormalized().get_rotation_quaternion().slerp(want.get_rotation_quaternion(), clampf(k, 0.0, 1.0))
+		var par := _skel.get_bone_parent(h)
+		var pb := _skel.get_bone_global_pose(par).basis.orthonormalized() if par >= 0 else Basis()
+		_skel.set_bone_pose_rotation(h, (pb.inverse() * Basis(q)).get_rotation_quaternion())
+
+
 func _keep_targets() -> void:
 	for side in _ik:
 		var ik = _ik[side]
@@ -979,6 +1060,8 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 		ik.set_end_bone_length(0, 0.075 * _hips / ADULT_HIPS)
 		ik.influence = 0.0
 		_skel.add_child(ik)
+		if _skel.has_node("HandTurn"):
+			_skel.move_child(_skel.get_node("HandTurn"), -1)   # (after the hands)
 		# the elbow bends towards this: out to their side, down and back
 		var pole := Node3D.new()
 		pole.name = pre + "Elbow"

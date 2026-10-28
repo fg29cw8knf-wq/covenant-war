@@ -913,7 +913,10 @@ shoulder on its near edge, `AshfordP1.WIPE_AT` in his own frame; until 28
 October it worked half a metre ahead and well to his left, out of the right
 arm's reach, so the arm ran across his chest, twisted, and the hand went
 through the counter: "his arm twists in a weird way ... and his hand passed
-through the bar")
+through the bar"), his hand turned flat on the oak (`Figure3D.palm(side,
+dir)`: a `HandTurn` modifier after the arms' IK turns the hand so its palm
+faces `dir`, the fingers on along the forearm; the IK alone leaves the hand
+turned as the clip has it, and his talking clip held it palm up)
 (seen from the player's side of the room, so every lantern is seen taken
 from the pile: 23 October), the shelves behind the bar bare; he hands
 the crate over, the player carries it out of the inn and across to the green

@@ -1789,6 +1789,7 @@ static func _wipe(w: World, _root: Node3D, state: Array) -> void:
 	w.add_child(hand)
 	hand.global_position = fig.to_world(WIPE_AT)
 	fig.reach(null, hand, 0.5)
+	fig.palm("right", Vector3.DOWN, 0.5)   # (flat on the oak, as a hand with a rag is)
 	var t := 0.0
 	while state[0] and is_instance_valid(w) and is_instance_valid(hand) and is_instance_valid(fig):
 		t += w.get_process_delta_time()
@@ -1796,6 +1797,7 @@ static func _wipe(w: World, _root: Node3D, state: Array) -> void:
 		await w.get_tree().process_frame
 	if is_instance_valid(fig):
 		fig.let_go(0.4)
+		fig.palm("right", Vector3.ZERO, 0.4)
 	if is_instance_valid(hand):
 		hand.queue_free()
 

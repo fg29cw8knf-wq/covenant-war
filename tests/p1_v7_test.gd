@@ -54,6 +54,7 @@ var _solids_at := -99.0
 var _through := {}        # who:thing -> reported
 var _last_at := {}        # who -> where they were last frame
 var _seated_at := {}      # who -> the last frame they were sitting
+var _seat_spot := {}      # who -> where they last sat
 var _pending: Array = []  # [frame, who, problem]: inside something, unless they sit on it
 
 
@@ -346,6 +347,7 @@ func _check_through() -> void:
 		var f = Cine.fig(world, String(id))
 		if f is Figure3D and (f as Figure3D).seat >= 0.0:
 			_seated_at[id] = _frame
+			_seat_spot[id] = (b as Node3D).global_position
 			continue   # (sitting on it)
 		if _frame - int(_seated_at.get(id, -999)) < 40:
 			continue   # (just stood up off it, stepping clear)
@@ -360,6 +362,11 @@ func _check_through() -> void:
 			var t: Transform3D = s[0]
 			var hs: Vector2 = s[1]
 			var l := t.affine_inverse() * p
+			# (the seat they sit on: getting on and off it isn't walking through it)
+			if _seat_spot.has(id):
+				var sl := t.affine_inverse() * (_seat_spot[id] as Vector3)
+				if absf(sl.x) < hs.x + 0.1 and (hs.y < 0.0 or absf(sl.z) < hs.y + 0.1):
+					continue
 			var inside := false
 			if hs.y < 0.0:
 				inside = Vector2(l.x, l.z).length() < hs.x - 0.1
