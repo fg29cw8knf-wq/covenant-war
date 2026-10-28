@@ -20,7 +20,7 @@ static func basics() -> bool:
 
 
 static func known(id: String) -> bool:
-	return Game.learned(id)
+	return Game.learned(id) or Game.learned("seen:" + id)   # (seen in a duel without a teacher, 28 October)
 
 
 static func any_known(ids: Array) -> bool:
@@ -173,8 +173,81 @@ static func sections() -> Array:
 			"Some cards belong to a way of playing, and only work while a Totem of that way stands on your field. Every deck leans to a way; play to it and its cards play for you.",
 		]})
 	if known("bond"):
+		var pairs := []
+		for b in DuelCards.BONDS:
+			if DuelCards.CARDS.has(b.a) and DuelCards.CARDS.has(b.b):
+				pairs.append("%s and %s: %s." % [DuelCards.CARDS[b.a].name, DuelCards.CARDS[b.b].name, b.name])
 		out.append({"title": "Bonds", "body": [
-			"Some Totems know each other. While both stand, they share a move, or something more. Keep the pair together.",
+			"Some Totems know each other. While both stand on your side, they share a move, or something more: the BOND tag shows on their plaques. Keep the pair together.",
+			{"bullets": pairs},
+		]})
+	# 28 October (Gary: "add synergy to the card game... lets add it all")
+	if any_known(["family", "side", "beside"]):
+		out.append({"title": "Working together", "body": [
+			"A deck isn't a pile of strong cards: it's cards that make each other stronger. The Totems on a side help each other in three ways: by family, by standing side by side, and by bond. The tags on a Totem's plaque say what it has from the others right now.",
+		]})
+	if known("family"):
+		var fams := []
+		for fid in DuelSynergy.FAMILIES:
+			var fd: Dictionary = DuelSynergy.FAMILIES[fid]
+			var names := DuelSynergy.members(fid).map(func(m): return String(DuelCards.CARDS[m].name))
+			fams.append("%s (%s): with another of its family on your side, %s. %s." % [String(fd.plural).to_upper(), fd.trait, String(fd.text), ", ".join(names)])
+		out.append({"title": "Families", "body": [
+			"Every creature belongs to a kind, whatever its element: a Hound is a Hound, made of fire or of river water. With another of its family on your side, each has its family's Kinship. The family is printed on the card, after BASIC TOTEM.",
+			{"bullets": fams},
+			"Pack Howl and Call of Kin are Rites for families: one makes your Hounds hit harder for a turn, the other finds a Totem of a family you already have out.",
+		]})
+	if any_known(["side", "beside"]):
+		out.append({"title": "Side by side", "body": [
+			"Your three slots are a line, and neighbours matter. Two Totems of the same element in slots next to each other each deal %d more. The middle slot has two neighbours; the ends have one." % DuelSynergy.SIDE_BONUS,
+			{"bullets": [
+				"SHELTER: the Totems beside it take %d less from every attack (Shellguard, Gilded Sentinel)." % DuelSynergy.SHELTER,
+				"RALLY: the Totems beside it deal %d more (Emberwisp, Dawnling, Shieldhound)." % DuelSynergy.RALLY,
+				"TEND: at your Dawn, the Totems beside it heal %d (Lantern Moth, Bloomsprite)." % DuelSynergy.TEND,
+			]},
+			"Shifting a Totem costs Essence, but putting the right two together can be worth it.",
+		]})
+	if known("reaction"):
+		var rx := []
+		for r in DuelSynergy.REACTIONS:
+			rx.append("%s: %s" % [String(r.name).to_upper(), r.text])
+		out.append({"title": "Reactions", "body": [
+			"A condition isn't only harm. Hit a Totem that carries one with the right element and the two react: more damage, and something new left behind. Set one up with one Totem, and set it off with the next.",
+			{"bullets": rx},
+			"While you aim, the chip over a target names the reaction your blow would set off.",
+		]})
+	if any_known(["chain", "combo"]):
+		out.append({"title": "Chains and Combos", "body": [
+			"Every card you play in a turn adds to your chain: a Totem called, a Rite cast, a Ward set, an Ascension, a Summon, a Relic. The turn line at the top counts it.",
+			{"bullets": [
+				"The third card you play in a turn costs %d less Essence. Play the cheap ones first and the dear one third." % DuelSynergy.CHAIN_DISCOUNT,
+				"A COMBO card does more when it's the third card of the turn or later: a Combo Totem comes in Empowered, a Combo Rite deals or gives %d more." % DuelSynergy.COMBO_BONUS,
+			]},
+			"Answers played on your rival's turn don't count: a chain is your own turn's work.",
+		]})
+	if any_known(["graced", "shunned", "ground"]):
+		var grounds := []
+		for a in DuelSynergy.ARENA_GOD:
+			grounds.append("%s: %s's ground." % [String(a).capitalize(), DuelSynergy.god_name(DuelSynergy.ARENA_GOD[a])])
+		var rivals := []
+		var seen := {}
+		for g in DuelSynergy.RIVALS:
+			if seen.has(g):
+				continue
+			seen[g] = true
+			seen[DuelSynergy.RIVALS[g]] = true
+			rivals.append("%s and %s." % [DuelSynergy.god_name(g), DuelSynergy.god_name(DuelSynergy.RIVALS[g])])
+		out.append({"title": "The gods' grace", "body": [
+			"Every card answers to a god: its name is printed at the foot of the card. Most follow their element's god; a few belong to gods you won't find in a temple, like Ellowen the Lantern Keeper, whose festival Ashford keeps, and Orrun the Stone Warden.",
+			{"bullets": [
+				"GRACED: on its god's ground, or when its god is Pleased with you. A Graced Totem hits %d harder; any other Graced card costs %d less." % [DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST],
+				"SHUNNED: on the ground of its god's rival, or when its god is Displeased with you. A Shunned Totem hits %d less; any other Shunned card costs %d more." % [DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST],
+				"Both at once cancel out. The ribbon on a card in your hand, and the tag on a Totem's plaque, show which it is.",
+			]},
+			"Whose ground a duel is on is written in the corner under the turn. A duel under a god's Law is on that god's ground.",
+			{"bullets": grounds},
+			"How each god feels about you comes from what you've done: the menu's Standing page shows it. Swear to a god and it's Pleased with you from then on. The rivals:",
+			{"bullets": rivals},
 		]})
 	# the 27 October additions (Gary: "add all the go battles")
 	if bool(Game.flag("told_skills")) or known("skills"):

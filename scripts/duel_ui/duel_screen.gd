@@ -595,6 +595,11 @@ func _start() -> void:
 	game.totem_floor = spec.get("totem_floor", [0, 0])
 	if (not lesson.is_empty() or spec.get("lessons", false)) and not ai_flags[me]:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
+	elif not (spec.get("teach", []) as Array).is_empty() and not ai_flags[me]:
+		# a duel that teaches only some things (28 October: Tam's chains, Nell's
+		# gods), in its own teacher's words (spec.teach, teacher, teach_lines)
+		tutor = DuelTutor.new().setup(self, {"only": spec.teach, "who": String(spec.get("teacher", "Bram")),
+			"look": String(spec.get("teacher_look", "")), "lines": spec.get("teach_lines", {})}, String(spec.get("lesson_group", "Lessons")))
 	game.law = String(spec.get("law", ""))
 	game.story_rules = spec.get("story_rules", {})
 	# the Circle's own rule (Phase D); a story duel's own rule stands in its place
@@ -607,7 +612,7 @@ func _start() -> void:
 	# (spec.skills for both, else the player's chosen one and spec.rival_skill),
 	# the comeback card and the Circle's events. None of them in a lesson, on
 	# a set board (a puzzle, the Trial) or where the spec says no.
-	var plain := tutor != null or spec.has("tutorial") or not game.puzzle.is_empty() or bool(spec.get("trial", false))
+	var plain := (tutor != null and (spec.get("teach", []) as Array).is_empty()) or spec.has("tutorial") or not game.puzzle.is_empty() or bool(spec.get("trial", false))
 	var sk: Array = ["", ""]
 	if spec.has("skills"):
 		sk = (spec.skills as Array).duplicate()
@@ -620,6 +625,21 @@ func _start() -> void:
 		game.comeback = false
 	if plain or bool(spec.get("no_arena_events", false)):
 		game.arena_events = false
+	# 28 October (Gary: "add synergy... lets add it all"; "all cards linked to
+	# a god"): the ways cards work together. None in the Lantern lesson; only
+	# the ones a spec names (spec.synergy); a set board says for itself
+	# (puzzle.synergy). The ground's god, and how the gods feel about the player.
+	if spec.has("synergy"):
+		for k in game.synergy:
+			game.synergy[k] = (spec.synergy as Array).has(k)
+	elif spec.has("tutorial"):
+		for k in game.synergy:
+			game.synergy[k] = false
+	game.place_god = String(spec.get("place_god", DuelSynergy.place_god(game.law, _arena_name)))
+	if not ai_flags[me] or bool(spec.get("story", false)):
+		game.god_standing[me] = _player_standing()
+	if spec.has("rival_standing"):
+		game.god_standing[rival] = (spec.rival_standing as Dictionary).duplicate()
 	game.presenter = self
 	if field != null:
 		# every model this duel could call, loaded and drawn once now, so
@@ -686,6 +706,7 @@ func _refresh() -> void:
 		var p: DuelPlayer = game.players[side]
 		for v in views[side]:
 			v.set_totem(p.slots[v.slot])
+			v.tags = _synergy_tags(v.totem)
 		panels[side].active = game.current == side and not game.over
 		panels[side].skill = DuelSkills.skill_name(game.skill_of(side))
 		panels[side].skill_used = game.skill_used(side)
@@ -703,6 +724,11 @@ func _refresh() -> void:
 	var whose := "Your turn" if game.current == me and not _watching() else "%s turn" % _whose(cur.player_name)
 	if game.turn > 0:
 		turn_label.text = "TURN %d  ·  %s" % [game.turn, whose]
+		# the chain (28 October): how many cards this turn, and the cheaper third
+		if game.synergy.chain and cur.cards_played > 0:
+			turn_label.text += "  ·  CHAIN %d" % cur.cards_played
+			if cur.cards_played == DuelSynergy.CHAIN_AT - 1:
+				turn_label.text += ": NEXT CARD -%d" % DuelSynergy.CHAIN_DISCOUNT
 	arena_label.text = _arena_line()
 	if speed_btn != null:
 		speed_btn.text = _speed_text()
@@ -815,6 +841,7 @@ func _layout_hand() -> void:
 			tw.tween_property(hv, "scale", Vector2(sc, sc), 0.24 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 		hv.attrs = p.attributes()
 		hv.cost_shown = _card_cost(hv.card)
+		hv.grace = game.grace_of(me, hv.card.id)
 		hv.state = _hand_state(hv.card)
 		if _watching():
 			hv.state = "normal"
@@ -904,7 +931,10 @@ func _card_cost(c: DuelCard) -> int:
 		return game.call_cost(me, c)
 	if c.is_summon():
 		return game.summon_cost(me, c)
-	return c.cost()
+	# (28 October) what it costs now: a Law, the gods' grace, the chain
+	if c.is_rite():
+		return game.rite_cost(me, c)
+	return game.card_cost(me, c)
 
 
 func _hand_state(c: DuelCard) -> String:
@@ -1300,7 +1330,7 @@ func _on_hand_tapped(hv) -> void:
 	if tutor != null and tutor.gating() and mode == "main" and (sel_card == c or not tutor.allows("card", c)):
 		tutor.nudge()
 		return
-	_show_detail(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c)})
+	_show_detail(c.id, {"attrs": game.players[me].attributes(), "cost": _card_cost(c), "grace": game.grace_of(me, c.id)})
 	if mode != "main":
 		return
 	if tutor != null:
@@ -1672,6 +1702,11 @@ func _preview_targets(t: DuelTotem, i: int) -> void:
 		var pv := game.preview_attack(me, t, i, tg)
 		if int(pv.hi) <= 0 and not bool(pv.fate):
 			continue
+		# (28 October) the reaction this blow would set off, named on the chip
+		if tg is DuelTotem and game.synergy.react:
+			var rx := DuelSynergy.reaction_for(tg, t.element())
+			if not rx.is_empty():
+				pv["reaction"] = String(rx.name)
 		_previews["life" if is_life else tg] = pv
 
 
@@ -1680,6 +1715,8 @@ func preview_words(pv: Dictionary) -> Array:
 	var dmg := ("-%d" % int(pv.hi)) if int(pv.lo) == int(pv.hi) else ("-%d to -%d" % [int(pv.lo), int(pv.hi)])
 	if bool(spec.get("preview_plain", false)):
 		return [dmg, Color.WHITE]   # (a riddle: working out what wins is the point)
+	if pv.has("reaction"):
+		dmg += "  ·  %s" % String(pv.reaction).to_upper()
 	if bool(pv.lethal):
 		return ["%s  ·  WINS" % dmg, Color("ffd36b")]
 	if float(pv.lethal_chance) > 0.0:
@@ -2157,6 +2194,7 @@ func fx_turn(pi: int) -> void:
 			tutor.begin_turn()
 		if _my_turns == 0:
 			_coach("start")
+		await _ground_lesson()
 
 
 ## The turn moves into a phase (Phase A): the band, and a word for the player's own Clash.
@@ -2236,6 +2274,219 @@ func fx_bond(t: DuelTotem, partner: DuelTotem) -> void:
 	_toast("Bonded: %s" % String(t.bond.get("name", "")))
 	if tutor != null and t.owner == me:
 		tutor.lesson("bond", "Those two know each other. Some Totems fight better side by side: while both stand, they share a move, or something more. Keep the pair together.", "Bonds", "")
+	_seen("bond", "Bonds", "Some Totems know each other: while both stand, they share a move, or something more.")
+
+
+# ======================================================== synergy (28 October) ===
+# DuelGame's hooks for the ways cards work together (DuelSynergy): each shows
+# itself on the field, says what it did, and is taught the first time.
+
+## The player's standing with every god (Standing: story choices, the patron).
+func _player_standing() -> Dictionary:
+	var out := {}
+	for g in Lore.GODS.keys() + DuelSynergy.LESSER_GODS.keys():
+		var v := Standing.value(String(g))
+		if v != 0:
+			out[g] = v
+	return out
+
+
+## Whose ground the duel is on (28 October): said once, the first time the
+## player has a turn on a god's ground with someone there to say it.
+func _ground_lesson() -> void:
+	if game == null or not game.synergy.grace or _watching():
+		return
+	var gg := game.ground_god()
+	if not DuelSynergy.is_god(gg):
+		return
+	var rv := DuelSynergy.rival_of(gg)
+	var line := "This Circle is %s's ground. Every card answers to a god: its name's at the foot of the card. %s's cards are Graced here%s. A Graced Totem hits %d harder; any other Graced card costs %d less. The corner says whose ground it is." % [
+		DuelSynergy.god_name(gg), DuelSynergy.god_name(gg),
+		(", and %s's, her rival's, Shunned" % DuelSynergy.god_name(rv)).replace("her rival", "the rival") if rv != "" else "",
+		DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST]
+	_seen("ground", "The gods' grace", line)
+	if tutor != null:
+		await tutor.lesson("ground", line, "The gods' grace", "")
+
+
+## Two or more of a family on one side, for the first time this duel.
+func fx_kin(pi: int, family: String, totems: Array) -> void:
+	var d: Dictionary = DuelSynergy.FAMILIES[family]
+	var col := Color("ffd36b")
+	for k in range(1, totems.size()):
+		DuelFX.lightning(fx_layer, _center(_view(totems[k - 1])), _center(_view(totems[k])), col, 0.5, 5.0)
+	_toast("%s together: %s" % [String(d.plural), String(d.trait)])
+	story_bark("my_kin" if pi == me else "rival_kin")
+	var line := "%s together. %s look out for their own: %s, %s. A family runs across elements: a Hound is a Hound, fire or water. Tap a Totem to see its family." % [
+		String(d.plural), String(d.plural), String(d.trait), String(d.text)]
+	_seen("family", "Families", line)
+	if tutor != null and pi == me:
+		tutor.lesson("family", line, "Families", "")
+
+
+## Two Totems of one element side by side, for the first time.
+func fx_side(a: DuelTotem, b: DuelTotem) -> void:
+	var col := DuelFX.light(a.element())
+	DuelFX.lightning(fx_layer, _center(_view(a)), _center(_view(b)), col, 0.45, 5.0)
+	_toast("Side by Side: +%d each" % DuelSynergy.SIDE_BONUS)
+	var line := "Two %s Totems side by side. Same element, next to each other, and each hits %d harder. Where they stand matters: Shift them together if you can." % [
+		Lore.element_name(a.element()), DuelSynergy.SIDE_BONUS]
+	_seen("side", "Side by side", line)
+	if tutor != null and a.owner == me:
+		tutor.lesson("side", line, "Side by side", "")
+
+
+## What added up on a blow (or a Dawn's healing), floated over who it helped.
+func fx_synergy(att: DuelTotem, defn, parts: Array) -> void:
+	var down := 0.0
+	for part in parts:
+		var amt := int(part.amount)
+		var kind := String(part.kind)
+		if kind == "reaction":
+			continue   # (a reaction has its own banner, fx_reaction)
+		# (Hardened and Shelter help the one being hit; the rest, the attacker)
+		var helped: DuelTotem = defn if amt < 0 and kind in ["kin", "shelter"] and defn is DuelTotem else att
+		var col := Color("9fe8c0") if kind in ["heal", "tend"] else (Color("ffd36b") if amt > 0 else Color("b9a4ff"))
+		var word := ("+%d %s" % [amt, part.name]) if amt > 0 else ("%d %s" % [amt, part.name])
+		if kind == "grace":
+			col = Color("ffe9a8") if amt > 0 else Color("a87bd8")
+		# over the Totem it helped, one under another (they drift up as they go)
+		DuelViews.float_text(fx_layer, _center(_view(helped)) + Vector2(0, -80 + down), word, col, 26, 1.3)
+		down += 30.0
+		await _synergy_lesson(kind, String(part.name), att, defn, helped)
+	await pause(0.25)
+
+
+## The first time each kind of help is seen: Bram (or whoever teaches here) says what it is.
+func _synergy_lesson(kind: String, what: String, att: DuelTotem, defn, helped: DuelTotem) -> void:
+	var line := ""
+	var id := ""
+	match kind:
+		"rally", "shelter", "tend":
+			id = "beside"
+			var helper := ""
+			for o in game.neighbours(att if kind != "shelter" else defn):
+				if o.has_keyword(kind):
+					helper = o.card_name()
+			line = "%s helps whoever stands beside it. %s: %s Put your best fighter next to it." % [helper if helper != "" else "That one",
+				DuelCards.KEYWORDS[kind].name, DuelCards.KEYWORDS[kind].text]
+			_seen("beside", "Side by side", "Shelter, Rally and Tend Totems help the Totems standing beside them.")
+		"grace":
+			var g := game.grace_of(att.owner, att.id())
+			id = "graced" if g > 0 else "shunned"
+			line = _grace_line(att.owner, att.id(), g)
+			_seen(id, "The gods' grace", line)
+		"kin", "heal":
+			var fam := DuelSynergy.family_of(helped.id())
+			if fam != "":
+				id = "family"
+				line = "%s: that's %s (Kinship). %s look out for their own: %s." % [what, DuelSynergy.family_plural(fam), DuelSynergy.family_plural(fam), String(DuelSynergy.FAMILIES[fam].text)]
+				_seen("family", "Families", line)
+	if id == "" or tutor == null or helped == null or helped.owner != me:
+		return
+	await tutor.lesson(id, line, String({"beside": "Side by side", "graced": "The gods' grace", "shunned": "The gods' grace"}.get(id, "Families")), "")
+
+
+## The words for a Graced or Shunned card.
+func _grace_line(pi: int, id: String, g: int) -> String:
+	var god := DuelSynergy.god_of(id)
+	var why := game.grace_why(pi, id)
+	var nm := String(DuelCards.CARDS[id].name)
+	if g > 0:
+		return "%s is Graced: %s. Every card answers to a god. Where that god rules, or when it's Pleased with you, its cards are stronger: a Totem hits %d harder, any other card costs %d less." % [
+			nm, why if why != "" else DuelSynergy.god_name(god), DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST]
+	return "%s is Shunned: %s. Where a card's god's rival rules, or when its god is Displeased with you, it's weaker: a Totem hits %d less, any other card costs %d more. Mind where you fight, and who you've crossed." % [
+		nm, why if why != "" else DuelSynergy.god_name(god), DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST]
+
+
+## A reaction: its name across the Circle in its colour, the hit Totem flaring.
+func fx_reaction(t: DuelTotem, r: Dictionary) -> void:
+	var col := Color(String(r.get("color", "ffd36b")))
+	sfx.play("cast_mystic")
+	var at := _center(_view(t))
+	DuelFX.flash(fx_layer, at, col, 170.0, 0.4)
+	DuelFX.burst(fx_layer, at, col, 30, 380.0)
+	if field != null:
+		field.flash_light(_body3(t) + Vector3(0, 1.2, 0), col, 5.0, 0.6, 6.0)
+	var by := 1 - t.owner
+	await _banner(String(r.name).to_upper() + "!", col, 0.55, 58, "", String(r.text))
+	story_bark("my_reaction" if by == me else "rival_reaction")
+	var line := "%s! %s Conditions aren't only harm: hit one with the right element and it turns into something else. How to Duel has every one." % [r.name, r.text]
+	_seen("reaction", "Reactions", line)
+	if tutor != null:
+		await tutor.lesson("reaction", line, "Reactions", "")
+
+
+## The chain: the cards a duellist has played this turn.
+func fx_chain(pi: int, n: int) -> void:
+	_refresh()
+	if n == DuelSynergy.CHAIN_AT - 1:
+		if pi == me and not _watching():
+			_toast("Chain %d: your next card costs %d less" % [n, DuelSynergy.CHAIN_DISCOUNT])
+		var line := "That's two cards this turn. The third card you play in a turn costs %d less Essence. Line them up: the cheap ones first, the dear one third." % DuelSynergy.CHAIN_DISCOUNT
+		_seen("chain", "Chains and Combos", line)
+		if tutor != null and pi == me:
+			await tutor.lesson("chain", line, "Chains and Combos", "")
+	elif n == DuelSynergy.CHAIN_AT:
+		_toast("Chain %d!" % n)
+		story_bark("my_chain" if pi == me else "rival_chain")
+
+
+## A Combo card played third or later in a turn.
+func fx_combo(pi: int, card: DuelCard) -> void:
+	sfx.play("gift")
+	_toast("Combo: %s" % card.card_name())
+	var line := "%s is a Combo card. Played as the third card of your turn or later, it does more: %s" % [card.card_name(),
+		DuelSynergy.combo_text(card.def).trim_prefix("Combo: ")]
+	_seen("combo", "Chains and Combos", line)
+	if tutor != null and pi == me:
+		await tutor.lesson("combo", line, "Chains and Combos", "")
+
+
+## A Graced or Shunned card is played (said once a duel for each card).
+var _graced_said := {}
+
+func fx_grace(pi: int, card: DuelCard, g: int) -> void:
+	var key := "%d:%s" % [pi, card.id]
+	if _graced_said.has(key):
+		return
+	_graced_said[key] = true
+	var god := DuelSynergy.god_of(card.id)
+	var what := ""
+	if card.is_totem():
+		what = "hits %d %s" % [DuelSynergy.GRACE_DAMAGE, "harder" if g > 0 else "less"]
+	else:
+		what = "cost %d %s" % [DuelSynergy.GRACE_COST, "less" if g > 0 else "more"]
+	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 430), "%s by %s: %s" % ["Graced" if g > 0 else "Shunned", DuelSynergy.god_name(god), what],
+		Color("ffe9a8") if g > 0 else Color("a87bd8"), 30, 1.6)
+	story_bark(("my_" if pi == me else "rival_") + ("graced" if g > 0 else "shunned"))
+	var id := "graced" if g > 0 else "shunned"
+	var line := _grace_line(pi, card.id, g)
+	if pi == me:
+		_seen(id, "The gods' grace", line)
+		if tutor != null:
+			await tutor.lesson(id, line, "The gods' grace", "")
+
+
+## What a Totem has from the ways cards work together, for its plaque: its
+## family's Kinship when it's live, SIDE with a neighbour of its element,
+## GRACED or SHUNNED.
+func _synergy_tags(t: DuelTotem) -> Array:
+	var out := []
+	if t == null or game == null or t.face_down:
+		return out
+	var fam := DuelSynergy.family_of(t.id())
+	if fam != "" and game.kin_count(t) > 0:
+		out.append([String(DuelSynergy.FAMILIES[fam].trait).to_upper(), Color("3a2a08"), Color("ffd36b")])
+	if game.synergy.side:
+		for o in game.neighbours(t):
+			if o.element() == t.element():
+				out.append(["SIDE", Color("10283a"), DuelFX.light(t.element())])
+				break
+	var g := game.grace_of(t.owner, t.id())
+	if g != 0:
+		out.append(["GRACED" if g > 0 else "SHUNNED", Color("2a2208") if g > 0 else Color("1e1230"), Color("ffe9a8") if g > 0 else Color("c9a6f0")])
+	return out
 
 
 ## A Totem given up for a Tribute call: its light rises and goes.
@@ -2244,13 +2495,18 @@ func _arena_line() -> String:
 	if game == null:
 		return ""
 	var a := game.arena_now()
+	# (28 October) whose ground it is: that god's cards are Graced, its rival's Shunned
+	var gg := game.ground_god() if game.synergy.grace else ""
+	var ground := ("%s's ground" % DuelSynergy.god_name(gg)) if DuelSynergy.is_god(gg) else ""
 	if a == "":
-		return ""
+		return ground.to_upper()
 	var nm := a.to_upper()
 	if not game.terrain.is_empty():
 		var left := int(game.terrain.left)
 		nm += "  ·  %d TURN%s LEFT" % [left, "" if left == 1 else "S"]
 	var line := "%s\n%s" % [nm, game.arena_rule_text()]
+	if ground != "":
+		line += "\n%s." % ground
 	# the Circle's next event, counted down (27 October)
 	var due := game.arena_event_in()
 	if due > 0 and due <= 3 and game.turn > 0:
@@ -2312,6 +2568,13 @@ func fx_skill(pi: int, id: String, line: String) -> void:
 func _learn(id: String, group: String, text: String) -> void:
 	if not _watching():
 		Game.learn(id, group, "", text)
+
+
+## Something the player has seen happen, for How to Duel's chapters (28
+## October): kept under "seen:<id>", so the lesson of that id is still
+## taught the first time a teacher is there to say it (DuelTutor.lesson).
+func _seen(id: String, group: String, text: String) -> void:
+	_learn("seen:" + id, group, text)
 
 
 ## Tapping a plate's skill ribbon: what the skill does.
@@ -3580,8 +3843,16 @@ func _move_label(pos: Vector2, text: String, col: Color) -> void:
 	tw.tween_callback(m.queue_free)
 
 
+var _toast_at := 0
+var _toast_n := 0
+
 func _toast(text: String) -> void:
-	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 470), text, UITheme.TEXT, 34, 1.6)
+	# (28 October) several at once (a bond, a family and a pair side by side
+	# can all form with one call) stack down instead of printing over each other
+	var now := Time.get_ticks_msec()
+	_toast_n = _toast_n + 1 if now - _toast_at < 900 else 0
+	_toast_at = now
+	DuelViews.float_text(fx_layer, Vector2(FIELD_CX, 470 + 44 * (_toast_n % 4)), text, UITheme.TEXT, 34, 1.6)
 
 
 ## Shows the tutorial line for this step (once), in a box at the top of the Circle.
@@ -3654,7 +3925,11 @@ func _bark() -> void:
 ## Ward goes off), "my_lethal" (you have enough on the board to finish them),
 ## "weakness_on_rival" (you hit one of theirs on its weakness), "rival_ko_own"
 ## (one of theirs is knocked out), "my_oath" (you swear an Oath, Phase D),
-## "my_oath_broken" and "rival_oath_broken" (an Oath breaks). Their line for
+## "my_oath_broken" and "rival_oath_broken" (an Oath breaks); and since 28
+## October the ways cards work together: "my_kin"/"rival_kin" (a family
+## together), "my_reaction"/"rival_reaction", "my_chain"/"rival_chain" (a
+## third card in a turn), "my_graced"/"rival_graced" and "my_shunned"/
+## "rival_shunned" (a Graced or Shunned card played). Their line for
 ## winning is spec.win_line (StoryLoss).
 var _barked := {}
 

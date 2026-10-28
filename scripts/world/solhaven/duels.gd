@@ -49,6 +49,10 @@ static func hale_spec() -> Dictionary:
 		"story_rules": {"hold_the_gate": 1},
 		"rule": HOLD_THE_GATE,
 		"bark_on": {
+			# 28 October (synergy)
+			"rival_kin": "Shoulder to shoulder. That's how a gate holds.",
+			"rival_graced": "The Sun keeps her own in Solhaven. You'll feel it.",
+			"my_shunned": "Shadow cards in the Sun's own city? They'll not burn bright here.",
 			"rival_guardian_hit": "Hold.",
 			"rival_gift": "Her mercy. Freely given, to them as kneel.",
 			"rival_guardian_ko": "Hm.",
@@ -80,6 +84,9 @@ static func wren_spec() -> Dictionary:
 		"story_rules": {"light_fingers": 1},
 		"rule": LIGHT_FINGERS,
 		"bark_on": {
+			# 28 October (synergy)
+			"rival_chain": "Quick hands, Unsworn. One, two, three, gone.",
+			"my_chain": "Oh, you've got rhythm. I like that.",
 			"rival_steals": "Let's see what you're hiding. I'll have that one.",
 			"rival_kos_mine": "Nice card. Shame about it.",
 			"my_lead": "You're getting better. Stop it.",
@@ -113,6 +120,10 @@ static func aldric_spec() -> Dictionary:
 		"rule": SUNSPIRE_MIRROR,
 		"mirror_text": "The great mirror swings on its chains and puts the sun on Aldric's side of the Circle. His Radiant cards cost one less for the rest of the duel.",
 		"bark_on": {
+			# 28 October (synergy)
+			"rival_graced": "Solmaris keeps her own, up here on the Sunspire.",
+			"my_shunned": "The Veiled Mother's cards, on the Sunspire? Bold.",
+			"rival_kin": "The Sun's hounds run together. They always have.",
 			"rival_guardian_hit": "Hold, Sentinel.",
 			"my_big_hit": "A good strike. Here's mine.",
 			"rival_summons": "I've never once had to wake you.",

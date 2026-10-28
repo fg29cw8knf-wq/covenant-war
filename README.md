@@ -148,6 +148,96 @@ a new player's plain play (82% before), Nell 50% (53%). `duel_sim -- 300`
 with a random skill each side: 0 invariant errors, 26.7 turns on average
 (25.6 before), first player 49%.
 
+### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
+
+Gary (28 October): "to add synergy to the card game how would i go about
+doing that", then of the five ideas sent back "i like all of that lets add it
+all just make sure we put the training throughout the game so the player
+fully understands the game", and "i also want all cards linked to a god it
+doesnt have to be one of the main 7 but that means each will work for or
+against depending where your battling and where standings are with
+different gods". The data and words are in `scripts/duel/duel_synergy.gd`
+(`DuelSynergy`); `DuelGame` applies them (its "synergy (28 October)"
+section). `DuelGame.synergy` says which are on in a duel: all, as
+`DuelRules.synergy` (the Lab's tuning list has it); none in the Lantern
+lesson (`spec.tutorial`) or on a set board unless it names the ones it's
+about (`puzzle.synergy`); `spec.synergy` names them for any other duel.
+
+- **Families** (`DuelSynergy.FAMILIES`, `FAMILY_OF`): seven kinds across the
+  elements, printed on the card after BASIC TOTEM. With another of its
+  family on its side, each has its family's Kinship: Hounds (Pack: 10 more
+  for each other Hound), Foxes (Trickery: +3 on Fate rolls), Cats (Prowl:
+  Swift), Winged (Flight: Life over the Totem opposite, never past a
+  Guardian), Scaled (Shed Skin: heals 10 a Dawn for each other), Shells
+  (Hardened: 10 less from every attack) and Stoneborn (Rockslide: the free
+  Strike 20 more). Two new Rites: Pack Howl (Hounds 20 more this turn; in
+  Dask's deck) and Call of Kin (search a Totem of a family you have out); both
+  in the Codex pool, both with stand-in paintings until Gary's.
+- **Side by side**: two Totems of one element in neighbouring slots each deal
+  10 more; Shelter (Shellguard, Gilded Sentinel: the Totems beside it take 10
+  less from attacks), Rally (Emberwisp, Dawnling, Shieldhound: 10 more) and
+  Tend (Lantern Moth, Bloomsprite: 10 at Dawn) are keywords
+  (`DuelCards.KEYWORDS`). The computer places Totems for it
+  (`DuelAI._beside_value`).
+- **Reactions** (`DuelSynergy.REACTIONS`): a hit of one element on a Totem
+  with a certain condition: Melt (Fire on Frozen: 20 more, Soaked), Shatter
+  (Earth or Metal on Frozen: double), Steam (Tide on Burned: 10 more,
+  Blinded), Flare (Fire on Poisoned: 20 more, the poison gone), Conduct
+  (Storm on Soaked: 20 to each Totem beside it), Freeze (Frost on Soaked:
+  Frozen), Overgrow (Verdant on Soaked: Rooted), Firestorm (Storm on Burned:
+  20 more, the Totems beside it Burn), Rend (Metal on Bleeding: 20 more),
+  Nightmare (Psychic on Asleep: 20 more, and it stays asleep). Attacks and
+  damaging Rites both react; the aiming chip names the reaction.
+- **Bonds**: four more (Flood, River Hound and Brookfin: 30 to every Totem
+  across and Soaked; Lantern Watch, Hallowed Hound and Lantern Moth; Rime
+  Runes, Rimecub and Runeowl; Night Sky, Starling and Duskstalker). A Totem
+  can be in more than one now (`DuelCards.bonds_of`; Brookfin's other is
+  Riverwall with Shellguard).
+- **Chains** (`DuelPlayer.cards_played`): every card played on your own turn
+  counts; the third costs 1 less (`DuelGame.chain_discount`), and a Combo card
+  played third or later does more (a Totem comes in Empowered; a Rite deals
+  or gives 20 more): Sparkkit, Mirewidow, Burrowmole, Runeowl, Firebrand,
+  Thunderclap, Jagged Shards, Siphon Rune, Rejuvenate, Bulwark, Forge Edge.
+  The turn line counts the chain.
+- **The gods** (`DuelSynergy.god_of`): every card answers to one, printed at
+  its foot: its element's god, or (`CARD_GOD`) Ysolde for the fire that
+  unveils and a god for each card of no element. Two lesser gods are new:
+  Ellowen, the Lantern Keeper (spirit; Ashford's Lantern Festival is hers)
+  and Orrun, the Stone Warden (earth). Each Circle is a god's ground
+  (`ARENA_GOD`: Ashford Ellowen's, Solhaven Solmaris's...; a Law's god's
+  ground under a Law; `spec.place_god` says otherwise, "-" for nobody's: the
+  Thornwood campfire and the road). A card is Graced on its god's ground or
+  when its god is Pleased with you (Standing 2 and up), Shunned on its god's
+  rival's ground (`RIVALS`) or when it's Displeased (-2 and down); both cancel.
+  A Graced Totem hits 10 harder, any other Graced card costs 1 less; Shunned,
+  10 less or 1 more. The player's standing comes from `Standing.value`
+  (`DuelScreen._player_standing`); a rival's from their patron. A ribbon on a
+  hand card and a tag on a plaque say which; the corner says whose ground.
+
+Where it's taught, each the first time it matters (`DuelTutor.lesson`, kept
+for How to Duel's new chapters: Working together, Families, Side by side,
+Reactions, Chains and Combos, The gods' grace; and its own riddle):
+
+| Where | What | How |
+| --- | --- | --- |
+| Tam's friendly game | chains, Combo | Tam says it as the player's second card goes down (`spec.teach`, `teach_lines`: a duel that teaches only some lessons, in its own teacher's words); a note after a win |
+| Nell's friendly game | whose ground, Graced | Nell at the first turn: Ashford's Circle is Ellowen's, and the Traveller's Pack is hers; a note after a win |
+| Bram's campfire, Dask on the road | families, side by side, Shelter/Rally/Tend, reactions | Bram, the first time each happens (`lessons`); Dask's pack and his steel (Pack Howl, Rend) bark it |
+| Hale at the gate | Shells, Shelter, Solmaris's ground | his Gate Watch stands shoulder to shoulder |
+| Wren | chains | "Quick hands" |
+| Ser Aldric | the gods | Solmaris keeps her own on the Sunspire |
+| Bram's Riddles | one each | The Pack, Side by Side, Steel Finds the Wound, Third Time, Old Friends, Whose Ground |
+
+Checked: `tests/synergy_test.gd` (every family, reaction, the chain and
+Combo, the gods' grace by ground and standing, the bonds, every card has a
+god), `puzzles_test` (all thirteen riddles), `duel_sim -- 1000`: 0
+invariant errors, first player 51%, the decks within a few points of where
+they were (Emberstorm 59%, Tidegrove 52-56%, Ironstone 41-44%, Veilwild 45%;
+before, 58/56/43/44), duels about four turns shorter; `--synergy=kin,side`
+turns only some on. `friendly_sim`: Tam 80% (82% before), Nell 54% (50%).
+`fire_sim` now sets the campfire up as the screen does.
+`tests/synergy_shot.tscn -- <dir>` takes stills.
+
 ### The turn, Stances and answers (Phase A of the deeper duel, 23 October)
 
 **Since 27 October the turn's phases are off** (`DuelRules.phases`, false;
@@ -1250,6 +1340,9 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolu
 godot --headless --import                                   # first time only
 godot --headless --script res://tests/sim.gd -- 2000        # every deck vs every deck
 godot --headless --script res://tests/sim.gd -- 900 emberstorm tidegrove ironstone
+godot --headless --script res://tests/duel_sim.gd -- 1000       # the v2 duel: decks, synergy by deck
+godot --headless --script res://tests/synergy_test.gd           # families, reactions, chains, the gods
+godot --headless --script res://tests/puzzles_test.gd           # every riddle's answer and a wrong try
 ```
 
 The summary line must report `0 invariant errors`.

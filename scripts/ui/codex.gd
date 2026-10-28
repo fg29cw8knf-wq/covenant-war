@@ -159,6 +159,15 @@ static func describe(id: String) -> String:
 	var cost_word := "Ascend cost" if DuelCards.is_ascension(id) else "Cost"
 	bits.append("%s %d Essence" % [cost_word, int(d.get("cost", 0))])
 	lines.append("[color=#%s]%s[/color]" % [dim, "  ·  ".join(bits)])
+	# its god (28 October: every card answers to one), and how that god feels about you
+	var god := DuelSynergy.god_of(id)
+	if god != "":
+		var rv := DuelSynergy.rival_of(god)
+		var gl := "Answers to [b]%s[/b], %s" % [DuelSynergy.god_name(god), DuelSynergy.god_title(god)]
+		gl += " (%s is %s with you)" % [DuelSynergy.god_name(god), Standing.level_name(god)] if Standing.value(god) != 0 else ""
+		gl += ". Graced on %s's ground, or when %s is Pleased with you%s." % [DuelSynergy.god_name(god), DuelSynergy.god_name(god),
+			("; Shunned on %s's" % DuelSynergy.god_name(rv)) if rv != "" else ""]
+		lines.append("[color=#%s]%s[/color]" % [dim, gl])
 	lines.append("")
 	lines.append("[i]%s[/i]" % pretty(String(d.get("art", ""))))
 	lines.append("")
@@ -181,9 +190,13 @@ static func describe(id: String) -> String:
 				var need := int(d.attuned.get("min", 99))
 				var state := "[color=#%s]active for you[/color]" % gold if mine >= need else "you have %d" % mine
 				lines.append("[color=#%s][b]Attuned[/b][/color] at %s (%s)." % [gold, at, state])
+			var fam := DuelSynergy.family_of(id)
+			if fam != "":
+				lines.append("[color=#%s][b]Family: %s[/b][/color]. %s" % [gold, DuelSynergy.family_name(fam), DuelSynergy.kinship_text(id)])
 			var bt := DuelCards.bond_text(id)
 			if bt != "":
-				lines.append("[color=#%s][b]Bond[/b][/color]: %s" % [gold, bt])
+				for one in bt.split("\n"):
+					lines.append("[color=#%s][b]Bond[/b][/color]: %s" % [gold, one])
 			var tl := Game.temper_of(id)
 			if tl > 0:
 				var marks := ["+20 Life", "the best Fate band on its first Fate move starts two lower", "a Tempered move (its strongest, +20, one more Essence)"]

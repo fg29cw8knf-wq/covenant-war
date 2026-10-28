@@ -6,8 +6,8 @@ extends SceneTree
 var fails := 0
 
 ## Each riddle's answer, and a wrong try, as steps: ["shift", from, to],
-## ["attack", from slot, move, "life" or their slot], ["rite", card id,
-## your slot / their slot ("foe:1") / null].
+## ["attack", from slot, move, "life", "none" or their slot], ["rite", card id,
+## your slot / their slot ("foe:1") / null], ["call", card id, slot].
 const LINES := {
 	"open_lane": {
 		"answer": [["shift", 0, 2], ["attack", 2, 1, "life"]],
@@ -36,6 +36,31 @@ const LINES := {
 	"last_light": {
 		"answer": [["rite", "rallying_light", null], ["attack", 0, 0, "life"], ["attack", 1, 0, "life"]],
 		"wrong": [["attack", 0, 0, "life"], ["attack", 1, 0, "life"]],
+	},
+	# 28 October: synergy
+	"the_pack": {
+		"answer": [["call", "river_hound", 1], ["attack", 0, 1, "life"]],
+		"wrong": [["call", "shieldhound", 1], ["attack", 0, 0, "life"]],
+	},
+	"side_by_side": {
+		"answer": [["shift", 0, 1], ["attack", 1, 0, "life"], ["attack", 2, 0, "life"]],
+		"wrong": [["attack", 2, 1, "life"], ["attack", 0, 0, "life"]],
+	},
+	"steel_finds_the_wound": {
+		"answer": [["rite", "jagged_shards", "foe:0"], ["attack", 0, 0, 0]],
+		"wrong": [["attack", 0, 0, 0], ["rite", "jagged_shards", "foe:0"]],
+	},
+	"third_time": {
+		"answer": [["rite", "essence_flask", null], ["rite", "war_paint", 0], ["rite", "forge_edge", 0], ["attack", 0, 1, "life"]],
+		"wrong": [["rite", "forge_edge", 0], ["rite", "essence_flask", null], ["rite", "war_paint", 0], ["attack", 0, 1, "life"]],
+	},
+	"old_friends": {
+		"answer": [["call", "brookfin", 1], ["attack", 0, 2, "none"]],
+		"wrong": [["attack", 0, 0, 0]],
+	},
+	"whose_ground": {
+		"answer": [["rite", "firebrand", "foe:0"], ["attack", 0, 0, "life"]],
+		"wrong": [["attack", 0, 1, 0]],
 	},
 }
 
@@ -71,8 +96,13 @@ class Steps:
 				var t = me.slots[int(st[1])]
 				if t == null:
 					return {}
-				var target = DuelGame.LIFE if st[3] is String and st[3] == "life" else foe.slots[int(st[3])]
+				var target = DuelGame.LIFE if st[3] is String and st[3] == "life" else (DuelGame.NONE if st[3] is String and st[3] == "none" else foe.slots[int(st[3])])
 				return {"type": "attack", "attacker": t, "move": int(st[2]), "target": target}
+			"call":
+				for c in me.hand:
+					if c.id == String(st[1]):
+						return {"type": "call", "card": c, "slot": int(st[2])}
+				return {}
 			"rite":
 				var card: DuelCard = null
 				for c in me.hand:

@@ -41,7 +41,9 @@ extends RefCounted
 ##   fx_tribute(totem, card), fx_echo(pi, card), fx_search(pi, cards), fx_revive(pi, card),
 ##   fx_relic(totem, card), fx_reveal(totem), fx_bond(totem, partner),
 ##   fx_terrain(arena, why), fx_arena_rule(pi, rule, text), fx_continuous(pi, card, gone),
-##   fx_favour(pi, full), fx_oath(pi, oath, state)
+##   fx_favour(pi, full), fx_oath(pi, oath, state),
+##   fx_kin(pi, family, totems), fx_side(a, b), fx_reaction(totem, reaction),
+##   fx_chain(pi, n), fx_combo(pi, card), fx_grace(pi, card, grace), fx_synergy(totem, what, amount)
 
 signal logged(text: String, who: int)
 signal state_changed
@@ -145,6 +147,16 @@ var rule_state := {}
 var skills: Array = ["", ""]
 var comeback := true
 var arena_events := true
+## The ways cards work together (28 October, DuelSynergy): which are on in
+## this duel (the Lantern lesson and a set board turn them off, as they do
+## skills; a riddle about one turns that one on); the god whose ground the
+## duel is on ("" = worked out from the Law or the arena, DuelSynergy.place_god);
+## and each side's standing with the gods ({god: -10..10}, from its profile).
+var synergy := {"kin": true, "side": true, "react": true, "chain": true, "grace": true}
+var place_god := ""
+var god_standing: Array = [{}, {}]
+var _kin_seen: Array = [{}, {}]    # families already announced together, per side
+var _side_seen := {}               # neighbour pairs already announced ("uid:uid")
 ## The Circle's events (27 October, Gary: "add all the go battles"): at the
 ## start of turn DuelRules.arena_event_first, then every arena_event_every
 ## turns, the Circle does something to both sides. Each is _arena_event().
@@ -170,6 +182,8 @@ func setup(decks: Array, names: Array, controllers: Array, profiles: Array = [],
 	players.clear()
 	comeback = DuelRules.comeback
 	arena_events = DuelRules.arena_events
+	for k in synergy:
+		synergy[k] = DuelRules.synergy
 	for i in 2:
 		var p := DuelPlayer.new(i, names[i])
 		var spec = decks[i]
@@ -185,6 +199,7 @@ func setup(decks: Array, names: Array, controllers: Array, profiles: Array = [],
 		else:
 			_shuffle(p.deck)
 		players.append(p)
+		god_standing[i] = DuelSynergy.standing_for(p.profile)
 
 
 func run() -> void:
@@ -265,6 +280,13 @@ func _setup_phase() -> void:
 ## hands; each side's Totems, hand, deck, Life and Essence are as written.
 func _setup_puzzle() -> void:
 	first_player = int(puzzle.get("first", 0))
+	# a set board is worked out to the point: none of the ways cards work
+	# together unless it names the ones it's about (a riddle on Side by Side)
+	var on: Array = puzzle.get("synergy", [])
+	for k in synergy:
+		synergy[k] = on.has(k)
+	if puzzle.has("place_god"):
+		place_god = String(puzzle.place_god)
 	for p in players:
 		var i: int = p.index
 		p.deck.clear()
@@ -332,6 +354,7 @@ func _take_turn() -> void:
 	p.shifts = 0
 	p.free_shift = false
 	p.totems_called = 0
+	p.cards_played = 0
 	p.wrath = false
 	p.fate_bonus = 0
 	p.guard_double = false
@@ -370,6 +393,9 @@ func _take_turn() -> void:
 		if over:
 			return
 	await _dawn_continuous(p)
+	if over:
+		return
+	await _dawn_synergy(p)
 	if over:
 		return
 	if DuelRules.phases:
@@ -869,6 +895,8 @@ func perform(pi: int, action: Dictionary) -> bool:
 			await _act_demigod(pi, action.get("target"))
 		"oath":
 			await _act_oath(pi, String(action.get("oath", "")))
+	if not over and CARD_ACTIONS.has(String(action.type)) and action.get("card") is DuelCard:
+		await _after_card(pi, action.card)
 	if not over:
 		await _favour_after(pi, action)
 	if not over:
@@ -954,7 +982,12 @@ func card_cost(pi: int, card: DuelCard) -> int:
 		return c + tax
 	var el := card.element()
 	var d := _rule_sunspire_mirror_discount(pi, card) + tax
-	if law == "" and d == 0:
+	# (28 October) a Graced card costs less, a Shunned one more (a Totem's
+	# grace is in its blows instead), and the third card of a turn is cheaper
+	if not card.is_totem():
+		d -= grace_of(pi, card.id) * DuelSynergy.GRACE_COST
+	var ch := chain_discount(pi)
+	if law == "" and d == 0 and ch == 0:
 		return c
 	match law:
 		"pyrrhane":
@@ -966,7 +999,7 @@ func card_cost(pi: int, card: DuelCard) -> int:
 		"hethrin":
 			if el == "metal": d -= 1
 			if card.is_ward(): d += 1
-	return maxi(1, c + d)
+	return maxi(0, maxi(1, c + d) - ch)
 
 
 ## True if this duellist is sworn to the god whose Law this duel follows.
@@ -1145,6 +1178,12 @@ func rite_problem(pi: int, card: DuelCard, target = null) -> String:
 					return "You need a Totem on the field to seek its kin."
 				if _kindred(pi).is_empty():
 					return "Your deck holds no Totem of your Totems' elements."
+			"seek_family":
+				if _family_kin(pi).is_empty():
+					return "Your deck holds no Totem of a family you have on the field."
+			"buff_family":
+				if not p.totems().any(func(ft): return DuelSynergy.family_of(ft.id()) == String(e.family)):
+					return "You have no %s on the field." % DuelSynergy.family_plural(String(e.family))
 			"discard_to_top":
 				if p.discard.is_empty():
 					return "Your discard is empty."
@@ -1334,7 +1373,7 @@ func ready_problem(pi: int, t) -> String:
 		return "%s is resting this turn." % t.card_name()
 	if turn == 1 and not bool(puzzle.get("attack_first", false)):
 		return "Nobody can attack on the first turn of the duel."
-	if t.called_turn == turn and not t.has_keyword("swift") \
+	if t.called_turn == turn and not t.has_keyword("swift") and not kin_active(t, "cat") \
 			and not (t.element() == "storm" and not standing(pi, "storm_swift").is_empty()):
 		return "%s was called this turn. It can attack next turn." % t.card_name()
 	if t.asleep:
@@ -1354,7 +1393,7 @@ func can_hit_life(pi: int, t: DuelTotem) -> bool:
 	var foe := opponent(pi)
 	if foe.has_guardian():
 		return false
-	if t.has_keyword("burrow"):
+	if t.has_keyword("burrow") or kin_active(t, "winged"):
 		return true
 	return foe.slots[t.slot] == null
 
@@ -1854,6 +1893,10 @@ func _act_call(pi: int, card: DuelCard, slot: int, tributes: Array = [], free :=
 	else:
 		_log("%s calls %s%s." % [p.player_name, card.card_name(), " without paying for it" if free else ""], pi)
 	await _fx("fx_call", [t])
+	if t.has_keyword("combo") and not free and combo_ready(pi, card):
+		t.add_boon("empowered", turn)
+		await _combo_shown(pi, card)
+		await _fx("fx_status", [t, "empowered"])
 	if t.has_keyword("channel"):
 		p.essence += 1
 		_log("%s channels 1 Essence." % t.card_name(), pi)
@@ -1975,16 +2018,31 @@ func _act_rite(pi: int, card: DuelCard, target) -> void:
 	var dmg := int(d.get("damage", 0))
 	var dealt := 0
 	var effects: Array = d.get("effects", [])
+	# Combo (28 October): as the third card or later this turn, more
+	if combo_ready(pi, card):
+		if dmg > 0:
+			dmg += DuelSynergy.COMBO_BONUS
+		else:
+			effects = effects.map(func(e): return e.merged({"amount": int(e.amount) + DuelSynergy.COMBO_BONUS}, true) if e.op in ["heal", "life", "buff", "shield"] else e)
+		await _combo_shown(pi, card)
 	if d.get("target", "none") == "all_foes":
 		for f in opponent(pi).totems():
 			if dmg > 0:
-				dealt += await _damage_totem(f, _scaled(dmg, f, card.element()), {"spill": true, "element": card.element()})
+				var amt := rite_amount(pi, card, f, dmg)
+				var rx := _reaction_on(f, card.element(), amt)
+				dealt += await _damage_totem(f, amt, {"spill": true, "element": card.element()})
+				if not rx.is_empty():
+					await _react_after(rx, f, pi)
 			for e in effects:
 				if e.op == "status":
 					await _apply_status(f, e.status, null, pi)
 		effects = effects.filter(func(e): return e.op != "status")
 	elif target is DuelTotem and dmg > 0:
-		dealt = await _damage_totem(target, _scaled(dmg, target, card.element()), {"spill": true, "element": card.element()})
+		var amt := rite_amount(pi, card, target, dmg)
+		var rx := _reaction_on(target, card.element(), amt)
+		dealt = await _damage_totem(target, amt, {"spill": true, "element": card.element()})
+		if not rx.is_empty():
+			await _react_after(rx, target, pi)
 	await _apply_effects(pi, null, target, effects, dealt, true)
 	if bool(d.get("continuous", false)):
 		await _stand_continuous(pi, card)
@@ -2303,7 +2361,7 @@ func _dawn_continuous(p: DuelPlayer) -> void:
 func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = []) -> int:
 	if base <= 0:
 		return 0
-	var amt := base + att.damage_bonus(i)
+	var amt := maxi(0, base + att.damage_bonus(i) + _synergy_bonus(att, i))
 	var ed := standing(att.owner, "element_damage")
 	if not ed.is_empty() and att.element() == String(ed.element):
 		amt += int(ed.amount)
@@ -2325,6 +2383,9 @@ func attack_amount(att: DuelTotem, i: int, base: int, defn, effects: Array = [])
 			if e.op == "bonus_if_status" and defn.conditions().has(e.status):
 				amt += int(e.amount)
 		amt = _scaled(amt, defn, att.element())
+		if synergy.react:
+			amt = DuelSynergy.react_amount(amt, DuelSynergy.reaction_for(defn, att.element()))
+		amt = maxi(0, amt - _synergy_guard(defn))
 	return amt
 
 
@@ -2447,7 +2508,7 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 	var base := int(mv.get("damage", 0))
 	var effects: Array = mv.get("effects", [])
 	if mv.has("fate"):
-		var band := await _fate_roll(pi, t.affinity(), mv.fate, "%s: %s" % [t.card_name(), mv.name])
+		var band := await _fate_roll(pi, t.affinity(), mv.fate, "%s: %s" % [t.card_name(), mv.name], t)
 		base = int(band.get("damage", 0))
 		effects = band.get("effects", [])
 		if base == 0 and band.get("text", "") == "Miss":
@@ -2464,6 +2525,7 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 			amt = _half(amt)
 		amt -= blunt
 		if amt > 0:
+			await _synergy_shown(t, i, null)
 			if res.blocked_life:
 				_log("The Ward blocks the hit on %s Life." % whose(foe.player_name, true), pi)
 			else:
@@ -2474,8 +2536,11 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 			if halved:
 				amt = _half(amt)
 			amt -= blunt
+			var rx := _reaction_on(f, t.element(), amt)
 			if amt > 0:
 				dealt += await _damage_totem(f, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
+			if not rx.is_empty():
+				await _react_after(rx, f, pi)
 			for e in effects:
 				if e.op == "status":
 					await _apply_status(f, e.status, t)
@@ -2485,8 +2550,12 @@ func _act_attack(pi: int, t: DuelTotem, i: int, target) -> void:
 		if halved:
 			amt = _half(amt)
 		amt -= blunt
+		var rx := _reaction_on(target, t.element(), amt)
 		if amt > 0:
+			await _synergy_shown(t, i, target)
 			dealt = await _damage_totem(target, amt, {"attacker": t, "spill": true, "pierce": pierce, "element": t.element()})
+			if not rx.is_empty():
+				await _react_after(rx, target, pi)
 			if target.has_keyword("thorns") and not t.is_knocked_out():
 				_log("%s is pricked by thorns." % t.card_name(), pi)
 				await _damage_totem(t, DuelRules.thorns_damage, {"source": "thorns", "attacker": target})
@@ -2961,6 +3030,23 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 				if target is DuelTotem:
 					target.buff += int(e.amount)
 					_log("%s deals %d more damage this turn." % [target.card_name(), e.amount], pi)
+			"buff_family":
+				# (Pack Howl, 28 October: every one of a family)
+				for ft in p.totems():
+					if DuelSynergy.family_of(ft.id()) == String(e.family):
+						ft.buff += int(e.amount)
+						_log("%s deals %d more damage this turn." % [ft.card_name(), e.amount], pi)
+			"seek_family":
+				var fopts := _family_kin(pi)
+				if not fopts.is_empty():
+					await _fx("fx_search", [pi, fopts])
+					var fpick: Array = await p.controller.choose_cards(self, pi, "Search your deck for a Totem of a family you have on the field.", fopts, 1, 1, {"reason": "search"})
+					var fc: DuelCard = fpick[0] if not fpick.is_empty() and fopts.has(fpick[0]) else fopts[0]
+					p.deck.erase(fc)
+					p.hand.append(fc)
+					_shuffle(p.deck)
+					_log("%s finds %s, and shuffles the deck." % [p.player_name, fc.card_name()], pi)
+					await _fx("fx_draw", [pi, [fc]])
 			"search_totem":
 				var options := []
 				var seen := {}
@@ -3789,9 +3875,9 @@ func _ward_applies(w: DuelCard, ctx: Dictionary) -> bool:
 # =================================================================== dice ===
 
 ## Rolls a d20 for a Fate move and returns the band it lands in.
-func _fate_roll(pi: int, affinity: String, bands: Array, label: String) -> Dictionary:
+func _fate_roll(pi: int, affinity: String, bands: Array, label: String, roller: DuelTotem = null) -> Dictionary:
 	var p: DuelPlayer = players[pi]
-	var mod := fate_mod(pi, affinity)
+	var mod := fate_mod(pi, affinity, roller)
 	var forced := false
 	var queued := false
 	var roll := 0
@@ -3845,9 +3931,11 @@ static func whose(player_name: String, mid_sentence := false) -> String:
 
 
 ## A duellist's Fate modifier for a card with this affinity.
-func fate_mod(pi: int, affinity: String) -> int:
+func fate_mod(pi: int, affinity: String, roller: DuelTotem = null) -> int:
 	var p: DuelPlayer = players[pi]
 	var m := DuelRules.fate_mod(p.attribute(affinity)) if affinity != "" else 0
+	if roller != null and kin_active(roller, "fox"):
+		m += DuelSynergy.TRICKERY_FATE   # (Foxes' Trickery)
 	if DuelRules.has_perk(p.attributes(), "insight"):
 		m += 1
 	if law == "aster":
@@ -3934,7 +4022,7 @@ func preview_attack(pi: int, t: DuelTotem, i: int, target) -> Dictionary:
 	var mv := t.move(i)
 	var outs: Array = []   # [base damage, effects, chance]
 	if mv.has("fate"):
-		var odds := band_odds(mv.fate, fate_mod(pi, t.affinity()))
+		var odds := band_odds(mv.fate, fate_mod(pi, t.affinity(), t))
 		for k in (mv.fate as Array).size():
 			if float(odds[k]) > 0.0:
 				var b: Dictionary = mv.fate[k]
@@ -4059,17 +4147,298 @@ func refresh_bonds() -> void:
 		for t in p.totems():
 			roots[String(t.stack[0].id)] = t
 		for t in p.totems():
-			var b := DuelCards.bond_of(String(t.stack[0].id))
-			var partner = roots.get(String(b.get("partner", "")), null) if not b.is_empty() else null
-			if partner != null and partner != t and not t.face_down and not partner.face_down:
-				if t.bond.is_empty():
+			# (28 October: a Totem can be in more than one bond; the first whose
+			# partner stands with it is the one it has)
+			var b := {}
+			var partner = null
+			for cand in DuelCards.bonds_of(String(t.stack[0].id)):
+				var pt = roots.get(String(cand.partner), null)
+				if pt != null and pt != t and not t.face_down and not pt.face_down:
+					b = cand
+					partner = pt
+					break
+			if partner != null:
+				if t.bond.is_empty() or String(t.bond.get("name", "")) != String(b.name):
 					t.bond = b
 					_log("%s and %s are bonded: %s." % [t.card_name(), partner.card_name(), String(b.name)], p.index)
-					if presenter != null and presenter.has_method("fx_bond"):
-						presenter.fx_bond(t, partner)   # (not awaited: a flourish)
+					if presenter != null and presenter.has_method("fx_bond") and String(partner.bond.get("name", "")) != String(b.name):
+						presenter.fx_bond(t, partner)   # (not awaited: a flourish; once a pair)
 			else:
 				t.bond = {}
+	_announce_synergy()
 
+
+
+# ================================================= synergy (28 October) ===
+# DuelSynergy has the data and the words; this is where it acts.
+
+## The actions that play a card (the chain counts them).
+const CARD_ACTIONS := ["call", "ascend", "rite", "ward", "summon", "relic"]
+
+
+## The god whose ground this duel is on ("" for none).
+func ground_god() -> String:
+	if place_god != "":
+		return place_god
+	return DuelSynergy.place_god(law, arena)
+
+
+## +1 Graced, -1 Shunned, 0 neither: what card `id` is for duellist `pi` here.
+func grace_of(pi: int, id: String) -> int:
+	if not synergy.grace or pi < 0 or pi > 1:
+		return 0
+	return DuelSynergy.grace(DuelSynergy.god_of(id), ground_god(), god_standing[pi])
+
+
+## Why it is ("Ellowen's ground"), for the screen.
+func grace_why(pi: int, id: String) -> String:
+	return DuelSynergy.grace_why(DuelSynergy.god_of(id), ground_god(), god_standing[pi],
+		"you" if (players[pi] as DuelPlayer).player_name == "You" or pi == 0 else (players[pi] as DuelPlayer).player_name)
+
+
+## The other face-up Totems of `t`'s family standing on its side.
+func kin_count(t: DuelTotem) -> int:
+	if not synergy.kin or t == null or t.face_down:
+		return 0
+	var f := DuelSynergy.family_of(t.id())
+	if f == "":
+		return 0
+	var n := 0
+	for o in players[t.owner].totems():
+		if o != t and not o.face_down and not o.is_knocked_out() and DuelSynergy.family_of(o.id()) == f:
+			n += 1
+	return n
+
+
+## True while `t` is of `family` and another of its family stands with it.
+func kin_active(t: DuelTotem, family: String) -> bool:
+	return t != null and DuelSynergy.family_of(t.id()) == family and kin_count(t) > 0
+
+
+## The face-up Totems standing beside `t` on its side.
+func neighbours(t: DuelTotem) -> Array:
+	var out := []
+	if t == null or t.face_down:
+		return out
+	var p: DuelPlayer = players[t.owner]
+	if not p.totems().has(t):
+		return out
+	for sl in DuelSynergy.beside(t.slot):
+		var o = p.slots[sl]
+		if o != null and not o.face_down and not o.is_knocked_out():
+			out.append(o)
+	return out
+
+
+## What changes a Totem's attack beyond its card, each part {name, amount,
+## kind}: its grace, its family, its neighbours, and (with a defender) the
+## reaction the hit sets off and what shelters the defender. attack_amount
+## adds them up; the screen shows them as the blow lands.
+func attack_parts(att: DuelTotem, i: int, defn = null) -> Array:
+	var out := []
+	if att == null:
+		return out
+	if synergy.grace:
+		var g := grace_of(att.owner, att.id())
+		if g != 0:
+			out.append({"name": "Graced" if g > 0 else "Shunned", "amount": g * DuelSynergy.GRACE_DAMAGE, "kind": "grace"})
+	if synergy.kin:
+		var f := DuelSynergy.family_of(att.id())
+		var n := kin_count(att)
+		if n > 0 and f == "hound":
+			out.append({"name": "Pack", "amount": DuelSynergy.PACK_BONUS * n, "kind": "kin"})
+		elif n > 0 and f == "stoneborn" and att.is_strike(i):
+			out.append({"name": "Rockslide", "amount": DuelSynergy.ROCKSLIDE, "kind": "kin"})
+	if synergy.side:
+		for o in neighbours(att):
+			if o.element() == att.element():
+				out.append({"name": "Side by Side", "amount": DuelSynergy.SIDE_BONUS, "kind": "side"})
+			if o.has_keyword("rally"):
+				out.append({"name": "Rally", "amount": DuelSynergy.RALLY, "kind": "rally"})
+	if defn is DuelTotem:
+		if synergy.react:
+			var r := DuelSynergy.reaction_for(defn, att.element())
+			if not r.is_empty():
+				out.append({"name": String(r.name), "amount": 0, "kind": "reaction", "id": String(r.id)})
+		out.append_array(_guard_parts(defn))
+	return out
+
+
+## What shelters a defender from an attack (negative amounts).
+func _guard_parts(defn: DuelTotem) -> Array:
+	var out := []
+	if kin_active(defn, "shell"):
+		out.append({"name": "Hardened", "amount": -DuelSynergy.HARDENED, "kind": "kin"})
+	if synergy.side:
+		for o in neighbours(defn):
+			if o.has_keyword("shelter"):
+				out.append({"name": "Shelter", "amount": -DuelSynergy.SHELTER, "kind": "shelter"})
+	return out
+
+
+## The attacker's share of it (attack_amount adds it to the move's damage).
+func _synergy_bonus(att: DuelTotem, i: int) -> int:
+	var n := 0
+	for part in attack_parts(att, i):
+		n += int(part.amount)
+	return n
+
+
+## The defender's (attack_amount takes it off the blow).
+func _synergy_guard(defn: DuelTotem) -> int:
+	var n := 0
+	for part in _guard_parts(defn):
+		n -= int(part.amount)
+	return n
+
+
+## A Rite's damage on a Totem: weakness and conditions, then the reaction.
+func rite_amount(pi: int, card: DuelCard, target: DuelTotem, dmg: int) -> int:
+	var amt := _scaled(dmg, target, card.element())
+	if synergy.react:
+		amt = DuelSynergy.react_amount(amt, DuelSynergy.reaction_for(target, card.element()))
+	return amt
+
+
+## The reaction a hit of `amount` sets off on `t` ({} for none).
+func _reaction_on(t, element: String, amount: int) -> Dictionary:
+	if not synergy.react or amount <= 0 or not (t is DuelTotem):
+		return {}
+	return DuelSynergy.reaction_for(t, element)
+
+
+## After the hit: what the reaction leaves behind.
+func _react_after(r: Dictionary, t: DuelTotem, by: int) -> void:
+	players[by].stats.reactions += 1
+	_log("%s! %s" % [String(r.name), String(r.text)], by)
+	await _fx("fx_reaction", [t, r])
+	if players[t.owner].totems().has(t) and not t.is_knocked_out():
+		if r.has("then"):
+			t.remove_status(String(r.status))
+			await _apply_status(t, String(r.then), null, by)
+		elif bool(r.get("clear", false)) and t.has_status(String(r.status)):
+			t.remove_status(String(r.status))
+	if r.has("spread"):
+		for sl in DuelSynergy.beside(t.slot):
+			var o = players[t.owner].slots[sl]
+			if o != null and o != t and not o.is_knocked_out():
+				await _apply_status(o, String(r.spread), null, by)
+	if r.has("splash"):
+		for sl in DuelSynergy.beside(t.slot):
+			var o = players[t.owner].slots[sl]
+			if o != null and o != t and not o.is_knocked_out():
+				await _damage_totem(o, int(r.splash), {"source": "conduct", "element": String((r.elements as Array)[0])})
+
+
+## Shows (and counts) what added up on an attack, as it lands.
+func _synergy_shown(att: DuelTotem, i: int, defn) -> void:
+	var parts := attack_parts(att, i, defn).filter(func(x): return x.kind != "reaction")
+	if parts.is_empty():
+		return
+	players[att.owner].stats.synergy_hits += 1
+	await _fx("fx_synergy", [att, defn, parts])
+
+
+## The next card `pi` plays this turn is their third: it costs this much less.
+func chain_discount(pi: int) -> int:
+	if not synergy.chain or pi != current or phase == "setup" or over:
+		return 0
+	return DuelSynergy.CHAIN_DISCOUNT if (players[pi] as DuelPlayer).cards_played == DuelSynergy.CHAIN_AT - 1 else 0
+
+
+## A Combo card played now is the third card of the turn or later.
+func combo_ready(pi: int, card: DuelCard) -> bool:
+	return synergy.chain and pi == current and (card.def.get("keywords", []) as Array).has("combo") \
+		and (players[pi] as DuelPlayer).cards_played >= DuelSynergy.CHAIN_AT - 1
+
+
+func _combo_shown(pi: int, card: DuelCard) -> void:
+	players[pi].stats.combos += 1
+	_log("Combo: %s." % card.card_name(), pi)
+	await _fx("fx_combo", [pi, card])
+
+
+## A card has been played: the chain counts it, and a Graced or Shunned card
+## says so.
+func _after_card(pi: int, card: DuelCard) -> void:
+	var p: DuelPlayer = players[pi]
+	if pi == current:
+		p.cards_played += 1
+		if synergy.chain and p.cards_played == DuelSynergy.CHAIN_AT:
+			p.stats.chains += 1
+		if synergy.chain and p.cards_played >= DuelSynergy.CHAIN_AT - 1:
+			await _fx("fx_chain", [pi, p.cards_played])
+	var g := grace_of(pi, card.id)
+	if g != 0:
+		await _fx("fx_grace", [pi, card, g])
+
+
+## At a duellist's Dawn: Scaled Totems shed their skin, and Tend Totems
+## mend the Totems beside them.
+func _dawn_synergy(p: DuelPlayer) -> void:
+	for t in p.totems():
+		if over:
+			return
+		if t.is_knocked_out():
+			continue
+		var n := kin_count(t) if DuelSynergy.family_of(t.id()) == "scaled" else 0
+		if n > 0 and t.damage > 0:
+			_log("%s sheds its skin." % t.card_name(), p.index)
+			await _fx("fx_synergy", [t, null, [{"name": "Shed Skin", "amount": DuelSynergy.SHED_HEAL * n, "kind": "heal"}]])
+			await _heal(t, DuelSynergy.SHED_HEAL * n)
+		if synergy.side:
+			for o in neighbours(t):
+				if o.has_keyword("tend") and t.damage > 0 and not t.is_knocked_out():
+					_log("%s tends %s." % [o.card_name(), t.card_name()], p.index)
+					await _fx("fx_synergy", [t, null, [{"name": "Tend", "amount": DuelSynergy.TEND, "kind": "tend"}]])
+					await _heal(t, DuelSynergy.TEND)
+
+
+## Totem cards in `pi`'s deck of a family they have on the field (Call of Kin).
+func _family_kin(pi: int) -> Array:
+	var fams := {}
+	for t in players[pi].totems():
+		var f := DuelSynergy.family_of(t.id())
+		if f != "":
+			fams[f] = true
+	var out := []
+	for c in players[pi].deck:
+		if (c as DuelCard).is_totem() and fams.has(DuelSynergy.family_of(c.id)):
+			out.append(c)
+	return out
+
+
+## A family together on a side for the first time, two Totems of one element
+## side by side: announced once a duel (not awaited: a flourish, like a bond).
+func _announce_synergy() -> void:
+	if presenter == null or over:
+		return
+	for p in players:
+		if synergy.kin:
+			var fams := {}
+			for t in p.totems():
+				var f := DuelSynergy.family_of(t.id())
+				if f != "" and not t.face_down:
+					if not fams.has(f):
+						fams[f] = []
+					fams[f].append(t)
+			for f in fams:
+				if (fams[f] as Array).size() >= 2 and not (_kin_seen[p.index] as Dictionary).has(f):
+					_kin_seen[p.index][f] = true
+					_log("%s together: %s." % [DuelSynergy.family_plural(f), String(DuelSynergy.FAMILIES[f].trait)], p.index)
+					if presenter.has_method("fx_kin"):
+						presenter.fx_kin(p.index, f, fams[f])
+		if synergy.side:
+			for sl in [0, 1]:
+				var a = p.slots[sl]
+				var b = p.slots[sl + 1]
+				if a == null or b == null or a.face_down or b.face_down or a.element() != b.element():
+					continue
+				var key := "%d:%d" % [mini(a.uid, b.uid), maxi(a.uid, b.uid)]
+				if not _side_seen.has(key):
+					_side_seen[key] = true
+					if presenter.has_method("fx_side"):
+						presenter.fx_side(a, b)
 
 ## The total number of cards each duellist owns (for the tests).
 func card_totals() -> Array:

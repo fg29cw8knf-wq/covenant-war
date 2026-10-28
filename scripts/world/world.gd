@@ -877,6 +877,8 @@ func _during(scene_name: String, delay: float) -> void:
 func _check(cond: String) -> bool:
 	if cond.begins_with("standing:"):
 		return Standing.check(cond)
+	if cond.begins_with("learned:"):
+		return Game.learned(cond.trim_prefix("learned:"))   # (a duel lesson, DuelTutor.lesson)
 	if cond.begins_with("!"):
 		return not bool(Game.flag(cond.substr(1)))
 	return bool(Game.flag(cond))

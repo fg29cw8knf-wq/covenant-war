@@ -75,6 +75,9 @@ class TotemView:
 	var body_rect_3d := Rect2()  # where the 3D creature is on screen (set by the screen)
 	var shown_hp := -1.0
 	var lag_hp := -1.0
+	## What it has from the ways cards work together (28 October): [word, bg, fg]
+	## pills on its plaque (its family's Kinship, SIDE, GRACED or SHUNNED).
+	var tags: Array = []
 	var _t := 0.0
 	var _zone: ZoneLayer
 
@@ -313,6 +316,8 @@ class TotemView:
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "VEILED", Color("2a2140", 0.95 * f), Color("d9c8ff"), 14, 22) + 5
 		if not totem.bond.is_empty():
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "BOND", Color("3a2a08", 0.95 * f), UITheme.GOLD, 14, 22) + 5
+		for tg in tags:
+			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), String(tg[0]), Color(tg[1], 0.95 * f), tg[2], 14, 22) + 5
 		if totem.temper_level() > 0:
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "✦".repeat(totem.temper_level()), Color("3a2a08", 0.95 * f), Color("ffd98a"), 14, 22) + 5
 		if totem.relic != null:
@@ -432,6 +437,7 @@ class HandCard:
 	var card: DuelCard
 	var state := "normal"      # normal, playable, selected, unaffordable
 	var cost_shown := -1
+	var grace := 0             # +1 Graced, -1 Shunned (28 October: the gods)
 	var _t := 0.0
 	var attrs: Dictionary = {}
 
@@ -475,6 +481,8 @@ class HandCard:
 			opts["cost"] = cost_shown
 		opts["unaffordable"] = state == "unaffordable"
 		DuelCardFace.draw_card(self, r, card.id, opts)
+		if grace != 0:
+			DuelCardFace.grace_ribbon(self, r, grace)
 		if state == "unaffordable":
 			CardFace.box(self, r, 12, Color(0, 0, 0, 0.4))
 

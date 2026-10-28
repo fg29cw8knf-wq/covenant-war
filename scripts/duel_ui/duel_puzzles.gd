@@ -79,6 +79,64 @@ const PUZZLES := [
 		"board": [["pebblit", "dawnling", null], [null, null, null]],
 		"hand": ["rallying_light"], "deck": ["healing_draught"],
 	},
+	# 28 October (Gary: "add synergy... lets add it all", and teach it
+	# throughout): one riddle for each way cards work together. "synergy"
+	# names the ways that are on (the others are off, so the numbers are
+	# exact); "place" is whose ground the board is on.
+	{
+		"id": "the_pack", "title": "The Pack",
+		"riddle": "Sixty Life to take, an open lane, and a Blazehound. Inferno Rush hits for fifty. Hounds hunt better together.",
+		"hint": "Call a Hound beside it first. With another Hound on your side, a Hound deals 10 more.",
+		"lesson": "Totems of a family look out for their own. A Hound deals 10 more for every other Hound on your side, whatever its element.",
+		"life": [100, 60], "essence": 3, "synergy": ["kin"],
+		"board": [["blazehound", null, null], [null, null, null]],
+		"hand": ["river_hound", "shieldhound"],
+	},
+	{
+		"id": "side_by_side", "title": "Side by Side",
+		"riddle": "Sixty Life, two Fire Totems a slot apart, and one Essence. Neighbours matter.",
+		"hint": "Shift one of them into the middle. Two of an element side by side each deal 10 more, and the Emberwisp Rallies whoever stands beside it.",
+		"lesson": "Two Totems of one element in neighbouring slots each deal 10 more. Rally, Shelter and Tend Totems help whoever stands beside them. Where they stand is worth an Essence.",
+		"life": [100, 60], "essence": 1, "synergy": ["side"],
+		"board": [["emberwisp", null, "hearth_salamander"], [null, null, null]],
+		"hand": [],
+	},
+	{
+		"id": "steel_finds_the_wound", "title": "Steel Finds the Wound",
+		"riddle": "Ten Life, behind an Emberwisp with forty to it. One Jagged Shards, and your Brassback's Clank.",
+		"hint": "Wound it first. Metal on a Bleeding Totem is a reaction: Rend, 20 more.",
+		"lesson": "Set a condition with one card and set it off with the next. Metal on a Bleeding Totem Rends; Fire on Frozen Melts; Storm on Soaked Conducts. How to Duel has them all.",
+		"life": [100, 10], "essence": 1, "synergy": ["react"],
+		"board": [["brassback", null, null], ["emberwisp", null, null]],
+		"hand": ["jagged_shards"],
+	},
+	{
+		"id": "third_time", "title": "Third Time",
+		"riddle": "A hundred Life, one Essence, a Blazehound, and three cards. Which order?",
+		"hint": "The third card you play in a turn costs 1 less, and Forge Edge is a Combo card: played third, it gives 20 more. Then Inferno Rush.",
+		"lesson": "Every card you play in a turn adds to your chain. The third costs 1 less, and a Combo card played third or later does more. Cheap ones first, the best one third.",
+		"life": [100, 100], "essence": 1, "synergy": ["chain"],
+		"board": [["blazehound", null, null], [null, null, null]],
+		"hand": ["essence_flask", "war_paint", "forge_edge"],
+	},
+	{
+		"id": "old_friends", "title": "Old Friends",
+		"riddle": "Thirty Life behind three Emberwisps, your River Hound, a Brookfin in hand, and four Essence.",
+		"hint": "River Hound and Brookfin are bonded: together they share Flood, a blow on every Totem across. Fire is weak to Tide, and what's left over spills.",
+		"lesson": "Bonded Totems share a move, or something more, while both stand on your side. Call the partner and the bond is there that turn.",
+		"life": [100, 30], "essence": 4,
+		"board": [["river_hound", null, null], ["emberwisp", "emberwisp", "emberwisp"]],
+		"hand": ["brookfin"],
+	},
+	{
+		"id": "whose_ground", "title": "Whose Ground",
+		"riddle": "Pyrrhane's ground. Ten Life behind an Emberwisp, one Essence, and a Firebrand that costs two.",
+		"hint": "Firebrand is Pyrrhane's card, and this is Pyrrhane's ground: it's Graced, and costs 1 less. Clear the lane with it.",
+		"lesson": "Every card answers to a god. On its god's ground, or when its god is Pleased with you, it's Graced: a Totem hits 10 harder, any other card costs 1 less. On its god's rival's, Shunned.",
+		"life": [100, 10], "essence": 1, "synergy": ["grace"], "place": "pyrrhane",
+		"board": [["brassback", null, null], ["emberwisp", null, null]],
+		"hand": ["firebrand"],
+	},
 ]
 
 const RIVAL := "Bram's Riddle"
@@ -120,6 +178,8 @@ static func spec(i: int, player_name := "You") -> Dictionary:
 			"wards": [[], pz.get("wards", [])],
 			"no_gift": true,
 			"attack_first": true,   # (a riddle's one turn is the duel's first)
+			"synergy": pz.get("synergy", []),   # (28 October: the ways a riddle is about)
+			"place_god": String(pz.get("place", "-")),
 			"log": "Bram sets the board.",
 			"out_text": "Not this time. Bram sets the board again.",
 		},

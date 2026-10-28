@@ -18,6 +18,13 @@ func _ready() -> void:
 		for i in n:
 			var g := DuelGame.new()
 			g.setup(spec.decks, ["Sprout", "Bram"], [DuelAI.new(pa), DuelAI.new(bram_ai)], [Lore.new_profile("Sprout"), Lore.new_profile("Bram")], i)
+			# (28 October: as the screen sets a lesson duel up: its Circle and that
+			# Circle's god, no comeback card, no events, no skills)
+			if not "--bare" in OS.get_cmdline_user_args():
+				g.arena = String(spec.get("arena", ""))
+				g.place_god = String(spec.get("place_god", ""))
+				g.comeback = false
+				g.arena_events = false
 			await g.run()
 			turns.append(g.turn)
 			if g.winner == 0:

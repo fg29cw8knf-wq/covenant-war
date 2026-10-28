@@ -340,7 +340,11 @@ static func _tam_game() -> Array:
 				{"if": "told_loyal_hound", "then": [], "else": [
 					{"set": "told_loyal_hound"},
 					{"say": "[i](You've learned Tam's duel skill, Loyal Hound: the first time one of your Totems would be knocked out, it holds on. Choose your skill in the menu, under Deck.)[/i]"},
-				]}],
+				]},
+				{"if": "told_chain", "then": [], "else": [{"if": "learned:chain", "then": [
+					{"set": "told_chain"},
+					{"say": "[i](You've learned about chains: the third card you play in a turn costs 1 less, and a Combo card does more as the third card or later. It's in How to Duel, in the menu.)[/i]"},
+				], "else": []}]}],
 			"lose": [{"who": "tam", "say": "Forty years of mornings with that hound, Sprout. You'll get there."}]},
 	]
 
@@ -438,7 +442,11 @@ static func _nell_game() -> Array:
 				{"if": "told_old_wards", "then": [], "else": [
 					{"set": "told_old_wards"},
 					{"say": "[i](You've learned Nell's duel skill, Old Wards: your first Ward costs no Essence. Choose your skill in the menu, under Deck.)[/i]"},
-				]}],
+				]},
+				{"if": "told_ground", "then": [], "else": [{"if": "learned:ground", "then": [
+					{"set": "told_ground"},
+					{"say": "[i](You've learned about the gods' grace: every card answers to a god. On its god's ground, or when that god is Pleased with you, it's Graced; on its rival's, or when it's Displeased with you, Shunned. It's in How to Duel, in the menu.)[/i]"},
+				], "else": []}]}],
 			"lose": [{"who": "nell", "say": "There. Now you know what a long life's for."}]},
 		{"scene": "nell_stand"},
 	]
@@ -680,7 +688,15 @@ const NELL_DECK := [
 ## by beating them (DuelSkills.LEARNED_BY), and says more as it goes.
 const FRIENDLY := {
 	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75, "skill": "loyal_hound",
+		# 28 October (Gary: synergy, taught through the game): Tam teaches the
+		# chain, the miller's rhythm (DuelSynergy; the rest waits for Bram)
+		"teach": ["chain", "combo"], "teacher": "Tam", "teacher_look": "farmer",
+		"teach_lines": {
+			"chain": "Steady, Sprout. That's two cards this turn. The third comes cheaper: one Essence less. Every miller knows it. You don't haul one sack at a time; you get a rhythm going. Cheap ones first, the dear one third.",
+			"combo": "Now that one likes being third. A Combo card, that: played third or later in a turn, it does more. Bulwark holds stronger, a Firebrand burns hotter. Mind the order.",
+		},
 		"bark_on": {
+			"my_chain": "There's the rhythm. One, two, three.",
 			"rival_first_fate": "Come on, girl. Bite.",
 			"rival_ko_own": "Steady, girl. Back you come.",
 			"rival_skill": "Told you. She doesn't let go.",
@@ -693,7 +709,16 @@ const FRIENDLY := {
 			"rival_falls": "Ha! Good. That's good, Sprout.",
 		}},
 	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards",
+		# 28 October (Gary: "all cards linked to a god"): Nell, the oldest
+		# memory in the village, says whose ground the green is
+		"teach": ["ground", "graced", "shunned"], "teacher": "Old Nell", "teacher_look": "elder",
+		"teach_lines": {
+			"ground": "Before you start, love: whose ground this is. Ashford's Circle is Ellowen's, the Lantern Keeper's. It's her festival we're keeping. Every card answers to some god or other, it says which at the foot, and hers do better here: Graced, we say. A Traveller's Pack is hers. It'll cost you less tonight.",
+			"graced": "There, see? Graced. Ellowen's card, on Ellowen's ground. And it's not only the ground: a god that's pleased with you graces its cards wherever you are. One that's cross with you shuns them.",
+			"shunned": "Oh, that one's Shunned, love: its god's not best pleased, or this is its rival's ground. It'll do less than it says. You'll learn which gods quarrel.",
+		},
 		"bark_on": {
+			"rival_graced": "Hers, that one. The Lantern Keeper's. She looks after her own on festival night.",
 			# Bram isn't at her bench to explain a Ward, so she does
 			"rival_ward_springs": "That's a Ward, love. Face down till it bites.",
 			"rival_skill": "Old Wards, love. They don't cost what new ones do.",
@@ -777,6 +802,11 @@ static func _friendly_spec(id: String, me: String, arena: String) -> Dictionary:
 		"stacked": [true, true],
 		"rival_skill": String(f.get("skill", "")),
 		"bark_on": f.bark_on,
+		"teach": f.get("teach", []),
+		"teacher": String(f.get("teacher", "")),
+		"teacher_look": String(f.get("teacher_look", "")),
+		"teach_lines": f.get("teach_lines", {}),
+		"lesson_group": "Tam's game" if id == "tam_friendly" else "Nell's game",
 		"rewards": {"opponent": "village"},
 		"practice": true,
 		"practice_line": "A friendly game: no experience is won or lost.",

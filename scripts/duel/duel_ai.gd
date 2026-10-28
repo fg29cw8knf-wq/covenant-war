@@ -843,7 +843,7 @@ func _lethal_available(game: DuelGame, pi: int) -> bool:
 	return total >= foe.life
 
 
-func _best_slot(game: DuelGame, pi: int, _card: DuelCard) -> int:
+func _best_slot(game: DuelGame, pi: int, card: DuelCard) -> int:
 	var p: DuelPlayer = game.players[pi]
 	var foe: DuelPlayer = game.players[1 - pi]
 	var best: int = p.empty_slots()[0]
@@ -855,6 +855,7 @@ func _best_slot(game: DuelGame, pi: int, _card: DuelCard) -> int:
 			v += 10.0 + _threat(game, 1 - pi, opp) * 0.5   # block their path to my Life
 		elif not foe.has_guardian():
 			v += 6.0                                      # opens a path to their Life
+		v += _beside_value(game, pi, card, s)
 		if v > best_v:
 			best_v = v
 			best = s
@@ -878,14 +879,51 @@ func _call_score(game: DuelGame, pi: int, c: DuelCard, _slot: int) -> float:
 		v += 5.0
 	if p.totems().is_empty():
 		v += 40.0
-	# a bond waiting for it (Phase C)
-	var b := DuelCards.bond_of(c.id)
-	if not b.is_empty():
+	# a bond waiting for it (Phase C; since 28 October a Totem can have several)
+	var bonded := false
+	for b in DuelCards.bonds_of(c.id):
 		for t in p.totems():
 			if String(t.stack[0].id) == String(b.partner):
 				v += 14.0
+				bonded = true
 				break
+		if bonded:
+			break
+	# its family already on the field (28 October): Kinship
+	var fam := DuelSynergy.family_of(c.id)
+	if fam != "" and game.synergy.kin:
+		for t in p.totems():
+			if not t.face_down and DuelSynergy.family_of(t.id()) == fam:
+				v += 10.0
+				break
+	# Graced or Shunned here
+	v += game.grace_of(pi, c.id) * 8.0
+	if kw.has("combo") and game.combo_ready(pi, c):
+		v += 8.0
 	return v - game.call_cost(pi, c) * ESSENCE_VALUE * 0.5
+
+
+## What standing in slot `s` gives a Totem (28 October): a neighbour of its
+## element (Side by Side), a Rally, Shelter or Tend Totem beside it, or (for
+## a Totem that helps its neighbours) Totems to help.
+func _beside_value(game: DuelGame, pi: int, card: DuelCard, s: int) -> float:
+	if card == null or not game.synergy.side:
+		return 0.0
+	var p: DuelPlayer = game.players[pi]
+	var v := 0.0
+	var kw: Array = card.def.get("keywords", [])
+	for n in DuelSynergy.beside(s):
+		var o = p.slots[n]
+		if o == null or o.face_down:
+			continue
+		if o.element() == card.element():
+			v += 7.0
+		for k in ["rally", "shelter", "tend"]:
+			if o.has_keyword(k):
+				v += 4.0
+			if kw.has(k):
+				v += 4.0
+	return v
 
 
 ## What a veiled Totem's Reveal will do when it turns up (Phase C).
@@ -952,15 +990,17 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 	var d := c.def
 	var v := 0.0
 	var dmg := int(d.get("damage", 0))
+	if dmg > 0 and game.combo_ready(pi, c):
+		dmg += DuelSynergy.COMBO_BONUS   # (28 October: Combo)
 	if dmg > 0:
 		if d.get("target", "") == "all_foes":
 			for f in foe.totems():
-				var amt := game._scaled(dmg, f, c.element())
+				var amt := game.rite_amount(pi, c, f, dmg)
 				v += minf(amt, f.hp_left())
 				if amt >= f.hp_left() + f.shield:
 					v += _totem_value(game, 1 - pi, f)
 		elif target is DuelTotem:
-			var amt := game._scaled(dmg, target, c.element())
+			var amt := game.rite_amount(pi, c, target, dmg)
 			v += minf(amt, target.hp_left())
 			if amt >= target.hp_left() + target.shield:
 				v += _totem_value(game, 1 - pi, target)
@@ -1011,6 +1051,10 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 			"buff":
 				if target is DuelTotem and game.ready_problem(pi, target) == "":
 					v += float(e.amount) * 1.1
+			"buff_family":
+				for ft in p.totems():
+					if DuelSynergy.family_of(ft.id()) == String(e.family) and game.ready_problem(pi, ft) == "":
+						v += float(e.amount) * 1.1
 			"status":
 				if d.get("target", "") == "all_foes":
 					for f in foe.totems():
@@ -1037,6 +1081,8 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 				v += best
 			"seek_kindred":
 				v += 16.0 + (14.0 if p.hand_basics().is_empty() else 0.0)
+			"seek_family":
+				v += 18.0 + (14.0 if p.hand_basics().is_empty() else 0.0)
 			"discard_to_top":
 				var best := 0.0
 				for dc in p.discard:

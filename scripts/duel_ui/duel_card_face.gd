@@ -107,6 +107,26 @@ static func draw_card(ci: CanvasItem, rect: Rect2, id: String, opts: Dictionary 
 			_draw_summon(ci, o, s, id, d, opts)
 		_:
 			_draw_spell(ci, o, s, id, d, opts)
+	if int(opts.get("grace", 0)) != 0:
+		grace_ribbon(ci, rect, int(opts.grace))
+
+
+## A Graced or Shunned card (28 October: every card answers to a god): a
+## ribbon across its top edge, gold or violet.
+static func grace_ribbon(ci: CanvasItem, rect: Rect2, g: int) -> void:
+	var s := rect.size.x / W
+	var h := maxf(15.0, 30.0 * s)
+	var band := Rect2(rect.position + Vector2(rect.size.x * 0.16, -h * 0.4), Vector2(rect.size.x * 0.68, h))
+	var bg := Color("2a2208") if g > 0 else Color("1e1230")
+	var fg := Color("ffe9a8") if g > 0 else Color("c9a6f0")
+	CardFace.box(ci, band, h * 0.5, Color(bg, 0.96), fg, maxf(1.0, 2.0 * s))
+	CardFace.text_in(ci, f("bold"), band, "GRACED" if g > 0 else "SHUNNED", int(maxf(10.0, h * 0.58)), fg)
+
+
+## The god a card answers to, as printed on it.
+static func god_word(id: String) -> String:
+	var g := DuelSynergy.god_of(id)
+	return DuelSynergy.god_name(g).to_upper() if g != "" else ""
 
 
 static func _shell(ci: CanvasItem, o: Vector2, s: float, tier: int) -> void:
@@ -151,6 +171,9 @@ static func _draw_totem(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dic
 	var sub := "BASIC TOTEM"
 	if stage > 0:
 		sub = "%s · ASCENDS FROM %s" % [DuelCards.stage_name(stage).to_upper(), String(DuelCards.CARDS[d.ascends_from].name).to_upper()]
+	var fam := DuelSynergy.family_of(id)
+	if fam != "":
+		sub += " · %s" % DuelSynergy.family_name(fam).to_upper()
 	var ssz := CardFace.fit_size(f("bold"), sub, _fs(s, 7.5), 170 * s, 4)
 	CardFace.text(ci, f("bold"), _P(o, s, 51, 44), sub, ssz, Color(1, 1, 1, 0.8), HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 2))
 	CardFace.orb(ci, _P(o, s, 225, 26), 13 * s, el)
@@ -198,6 +221,10 @@ static func _draw_totem(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dic
 		wx += 13.0
 	if not weak.is_empty():
 		CardFace.text(ci, f("display_bold"), _P(o, s, wx - 4, 342), "×%s" % str(DuelRules.weakness_mult), _fs(s, 9), TEXT)
+	# its god (28 October), bottom right
+	var gw := god_word(id)
+	if gw != "":
+		CardFace.text(ci, f("bold"), _P(o, s, 110, 341), gw, _fs(s, 8), GOLD, HORIZONTAL_ALIGNMENT_RIGHT, 126 * s, _fs(s, 2))
 
 
 ## Draws the move list into the panel; returns nothing.
@@ -333,6 +360,9 @@ static func _draw_spell(ci: CanvasItem, o: Vector2, s: float, id: String, d: Dic
 	CardFace.box(ci, tag, 8 * s, accent)
 	CardFace.text_in(ci, f("bold"), tag, String(look[1]), _fs(s, 8.5), Color.WHITE)
 	CardFace.tier_gems(ci, _P(o, s, 19, 176), s, tier)
+	var gw := god_word(id)
+	if gw != "":
+		CardFace.text(ci, f("bold"), _P(o, s, 56, 180), gw, _fs(s, 8), GOLD, HORIZONTAL_ALIGNMENT_RIGHT, 118 * s, _fs(s, 2))
 	var panel := _R(o, s, 9, 193, 232, 148)
 	CardFace.box(ci, panel, 6 * s, PANEL)
 	ci.draw_line(_P(o, s, 14, 193.5), _P(o, s, 236, 193.5), Color(accent, 0.9), maxf(1.0, 1.5 * s))
@@ -370,6 +400,9 @@ static func _draw_summon(ci: CanvasItem, o: Vector2, s: float, id: String, d: Di
 	var nm: String = d.name
 	var nsz := CardFace.fit_size(f("display_bold"), nm, _fs(s, 17), 214 * s)
 	CardFace.text(ci, f("display_bold"), _P(o, s, 16, 60), nm, nsz, TEXT, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 3))
+	var gw := god_word(id)
+	if gw != "":
+		CardFace.text(ci, f("bold"), _P(o, s, 16, 76), gw, _fs(s, 8), GOLD, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 2))
 	var mv: Dictionary = d.move
 	CardFace.text(ci, f("display_bold"), _P(o, s, 16, 262), mv.name, _fs(s, 15), GOLD, HORIZONTAL_ALIGNMENT_LEFT, -1, _fs(s, 2))
 	var text := DuelCards.card_text(id)

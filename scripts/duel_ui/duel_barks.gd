@@ -11,7 +11,9 @@ extends RefCounted
 ## their Life), rival_life_third, my_lead, my_lethal (you have the win on
 ## the board), my_skill and rival_skill (a duel skill works), my_comeback
 ## and rival_comeback (Rallying Light), arena_event (the Circle joins in),
-## rival_falls (the finishing blow, as it lands).
+## rival_falls (the finishing blow, as it lands); and (28 October) the ways
+## cards work together: rival_kin, rival_reaction, my_reaction, rival_chain,
+## rival_graced.
 
 const GENERIC := {
 	"rival_first_fate": ["Come on.", "Let's see it.", "Roll kind."],
@@ -27,6 +29,12 @@ const GENERIC := {
 	"rival_comeback": ["Not yet. Not yet.", "I'm not finished."],
 	"arena_event": ["Listen to the Circle.", "Here it comes."],
 	"rival_falls": ["Well fought.", "...Well. That's that."],
+	# 28 October: the ways cards work together
+	"rival_kin": ["They fight better together.", "Family. You'll see."],
+	"rival_reaction": ["Did you see that coming?", "Set it up, set it off."],
+	"my_reaction": ["Hm. Nicely done.", "Where'd you learn that?"],
+	"rival_chain": ["And one more.", "Keep up."],
+	"rival_graced": ["The gods favour me here.", "My god's ground, this."],
 }
 
 

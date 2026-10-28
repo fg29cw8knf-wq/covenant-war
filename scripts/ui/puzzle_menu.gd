@@ -64,10 +64,21 @@ func _build() -> void:
 	var sub := UITheme.label("Bram sets the board. You have one turn to empty their Life. Each riddle teaches a trick.   %d of %d solved." % [n, DuelPuzzles.count()], 26, UITheme.TEXT_DIM)
 	sub.position = Vector2(84, 104)
 	stage.add_child(sub)
+	# (28 October: thirteen riddles now, more than a screen holds: they scroll)
+	var sc := ScrollContainer.new()
+	sc.position = Vector2(80, 150)
+	sc.size = Vector2(CARD.x * 2 + 40, 770)
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.scroll_deadzone = 14
+	stage.add_child(sc)
+	var inner := Control.new()
+	var rows := int(ceil(DuelPuzzles.count() / 2.0))
+	inner.custom_minimum_size = Vector2(CARD.x * 2 + 40, rows * (CARD.y + 16))
+	sc.add_child(inner)
 	for i in DuelPuzzles.count():
 		var pz := DuelPuzzles.get_puzzle(i)
-		var at := Vector2(80 + (i % 2) * (CARD.x + 40), 150 + (i / 2) * (CARD.y + 16))
-		stage.add_child(_card(i, pz, solved.has(String(pz.id)), at))
+		var at := Vector2((i % 2) * (CARD.x + 40), (i / 2) * (CARD.y + 16))
+		inner.add_child(_card(i, pz, solved.has(String(pz.id)), at))
 	var back := UITheme.button("Back", false, 260)
 	back.position = Vector2(80, 940)
 	back.pressed.connect(func() -> void: closed.emit())

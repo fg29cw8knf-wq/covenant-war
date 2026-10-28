@@ -155,10 +155,19 @@ func _rival_done() -> void:
 func lesson(id: String, text: String, p_group: String, p_focus: String = "", who: String = "Bram") -> void:
 	if Game.learned(id) or bool(data.get("quiet", false)):
 		return
+	# a duel that teaches only some things (28 October: Tam's chains, Nell's
+	# gods), in its own teacher's words; the rest wait for Bram
+	var only: Array = data.get("only", [])
+	if not only.is_empty() and not only.has(id):
+		return
+	if data.has("who"):
+		who = String(data.who)
 	text = first_time_line(id, text)
+	if (data.get("lines", {}) as Dictionary).has(id):
+		text = String(data.lines[id])
 	Game.learn(id, p_group, who, text)
 	await _rival_done()
-	await _explain({"say": text, "who": who, "focus": p_focus, "keep": false})
+	await _explain({"say": text, "who": who, "look": String(data.get("look", "")), "focus": p_focus, "keep": false})
 	_show_head()
 
 
@@ -393,7 +402,7 @@ func _show_box(step: Dictionary, footer: String) -> void:
 	who_label.text = who.to_upper()
 	text_label.text = String(step.get("say", ""))
 	foot_label.text = footer
-	var look := who.to_lower()
+	var look := String(step.get("look", "")) if String(step.get("look", "")) != "" else who.to_lower()
 	portrait.texture = DollArt.portrait(look) if DollArt.LOOKS.has(look) else null
 	portrait.visible = portrait.texture != null
 	var was := box.visible

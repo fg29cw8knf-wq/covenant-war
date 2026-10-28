@@ -69,7 +69,7 @@ const CARDS := {
 	"emberwisp": {
 		"kind": "totem", "name": "Emberwisp", "element": "fire", "tier": 1, "stage": 0, "cost": 1,
 		"reveal": {"op": "damage_across", "amount": 20},
-		"hp": 40, "affinity": "swiftness", "keywords": ["reveal", "swift"], "attuned": {"min": 5, "damage": 10},
+		"hp": 40, "affinity": "swiftness", "keywords": ["reveal", "swift", "rally"], "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Spark", "cost": 0, "damage": 10},
 			{"name": "Kindle", "cost": 1, "damage": 10, "target": "foe_totem",
@@ -99,7 +99,7 @@ const CARDS := {
 	# ================================================================== STORM
 	"sparkkit": {
 		"kind": "totem", "name": "Sparkkit", "element": "storm", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 50, "affinity": "swiftness", "attuned": {"min": 6, "damage": 10},
+		"hp": 50, "affinity": "swiftness", "keywords": ["combo"], "attuned": {"min": 6, "damage": 10},
 		"moves": [
 			{"name": "Zap", "cost": 0, "damage": 10},
 			{"name": "Crackle", "cost": 1, "damage": 0, "fate": [
@@ -174,7 +174,7 @@ const CARDS := {
 	},
 	"shellguard": {
 		"kind": "totem", "name": "Shellguard", "element": "tide", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 90, "affinity": "resolve", "keywords": ["guardian"],
+		"hp": 90, "affinity": "resolve", "keywords": ["guardian", "shelter"],
 		"moves": [
 			{"name": "Shell Slam", "cost": 0, "damage": 20},
 			{"name": "Withdraw", "cost": 1, "damage": 0, "target": "none",
@@ -185,7 +185,7 @@ const CARDS := {
 	# ================================================================= SPIRIT
 	"lantern_moth": {
 		"kind": "totem", "name": "Lantern Moth", "element": "spirit", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 40, "affinity": "insight", "keywords": ["channel"], "attuned": {"min": 5, "hp": 10},
+		"hp": 40, "affinity": "insight", "keywords": ["channel", "tend"], "attuned": {"min": 5, "hp": 10},
 		"moves": [
 			{"name": "Glimmer", "cost": 0, "damage": 10},
 			{"name": "Dazzle", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -219,7 +219,7 @@ const CARDS := {
 	"bloomsprite": {
 		"kind": "totem", "name": "Bloomsprite", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
 		"reveal": {"op": "heal_allies", "amount": 20},
-		"hp": 50, "affinity": "insight", "keywords": ["reveal", "channel"], "attuned": {"min": 5, "draw": 1},
+		"hp": 50, "affinity": "insight", "keywords": ["reveal", "channel", "tend"], "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Petal Mend", "cost": 0, "damage": 0, "target": "ally",
 				"effects": [{"op": "heal", "who": "target", "amount": 30}]},
@@ -261,7 +261,7 @@ const CARDS := {
 	"burrowmole": {
 		"kind": "totem", "name": "Burrowmole", "element": "earth", "tier": 1, "stage": 0, "cost": 2,
 		"reveal": {"op": "damage_across", "amount": 20},
-		"hp": 60, "affinity": "cunning", "keywords": ["reveal", "burrow"],
+		"hp": 60, "affinity": "cunning", "keywords": ["reveal", "burrow", "combo"],
 		"moves": [
 			{"name": "Dig Strike", "cost": 0, "damage": 20},
 			{"name": "Tunnel Ambush", "cost": 1, "damage": 0, "fate": [
@@ -303,7 +303,7 @@ const CARDS := {
 	},
 	"shieldhound": {
 		"kind": "totem", "name": "Shieldhound", "element": "metal", "tier": 1, "stage": 0, "cost": 2,
-		"keywords": ["loyal"],
+		"keywords": ["loyal", "rally"],
 		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Guard Bite", "cost": 0, "damage": 20},
@@ -313,7 +313,7 @@ const CARDS := {
 	},
 	"gilded_sentinel": {
 		"kind": "totem", "name": "Gilded Sentinel", "element": "metal", "tier": 3, "stage": 0, "cost": 4,
-		"hp": 130, "affinity": "presence", "keywords": ["guardian"], "attuned": {"min": 6, "damage": 20},
+		"hp": 130, "affinity": "presence", "keywords": ["guardian", "shelter"], "attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Gilded Blade", "cost": 0, "damage": 30},
 			{"name": "Judgement", "cost": 2, "damage": 70},
@@ -387,7 +387,7 @@ const CARDS := {
 	"mirewidow": {
 		"kind": "totem", "name": "Mirewidow", "element": "venom", "tier": 1, "stage": 0, "cost": 2,
 		"reveal": {"op": "status_across", "status": "poison"},
-		"hp": 70, "affinity": "cunning", "keywords": ["reveal", "thorns"],
+		"hp": 70, "affinity": "cunning", "keywords": ["reveal", "thorns", "combo"],
 		"moves": [
 			{"name": "Venom Bite", "cost": 0, "damage": 10, "target": "foe_totem",
 				"effects": [{"op": "status", "status": "poison"}]},
@@ -563,12 +563,12 @@ const CARDS := {
 	},
 	"firebrand": {
 		"kind": "rite", "name": "Firebrand", "element": "fire", "tier": 1, "cost": 2, "target": "foe_totem",
-		"damage": 40,
+		"damage": 40, "keywords": ["combo"],
 		"art": "a burning brand hurled through the air, trailing a comet-tail of sparks",
 	},
 	"thunderclap": {
 		"kind": "rite", "name": "Thunderclap", "element": "storm", "tier": 2, "cost": 3, "target": "all_foes",
-		"damage": 20, "effects": [{"op": "status", "status": "shocked"}],
+		"damage": 20, "keywords": ["combo"], "effects": [{"op": "status", "status": "shocked"}],
 		"art": "a single enormous lightning bolt striking the centre of a duelling circle, a ring of thunder rippling outward",
 	},
 	"tidal_surge": {
@@ -578,17 +578,17 @@ const CARDS := {
 	},
 	"rejuvenate": {
 		"kind": "rite", "name": "Rejuvenate", "element": "verdant", "tier": 1, "cost": 1, "target": "none",
-		"effects": [{"op": "life", "amount": 40}],
+		"effects": [{"op": "life", "amount": 40}], "keywords": ["combo"],
 		"art": "a cupped pair of hands holding a sprouting seedling that glows with soft green light",
 	},
 	"bulwark": {
 		"kind": "rite", "name": "Bulwark", "element": "earth", "tier": 1, "cost": 1, "target": "ally",
-		"effects": [{"op": "shield", "who": "target", "amount": 50}],
+		"effects": [{"op": "shield", "who": "target", "amount": 50}], "keywords": ["combo"],
 		"art": "a wall of stone slabs erupting from the ground in a protective half-ring, dust flying",
 	},
 	"forge_edge": {
 		"kind": "rite", "name": "Forge Edge", "element": "metal", "tier": 1, "cost": 1, "target": "ally",
-		"effects": [{"op": "buff", "amount": 20}],
+		"effects": [{"op": "buff", "amount": 20}], "keywords": ["combo"],
 		"art": "a glowing blade fresh from the anvil, sparks flying as a hammer strikes it",
 	},
 	"mind_fog": {
@@ -603,7 +603,7 @@ const CARDS := {
 	},
 	"siphon_rune": {
 		"kind": "rite", "name": "Siphon Rune", "element": "venom", "tier": 2, "cost": 2, "target": "foe_totem",
-		"damage": 30, "effects": [{"op": "drain"}],
+		"damage": 30, "keywords": ["combo"], "effects": [{"op": "drain"}],
 		"art": "a dark stone rune tile with a glowing violet symbol draining light into itself",
 	},
 	# ------------------------------------------ v2 condition and boon Rites ---
@@ -624,7 +624,7 @@ const CARDS := {
 	},
 	"jagged_shards": {
 		"kind": "rite", "name": "Jagged Shards", "element": "metal", "tier": 1, "cost": 1, "target": "foe_totem",
-		"damage": 20, "effects": [{"op": "status", "status": "bleed"}],
+		"damage": 20, "keywords": ["combo"], "effects": [{"op": "status", "status": "bleed"}],
 		"art": "a burst of razor-edged steel shards flying through the air, glinting red in firelight",
 	},
 	"drowning_rain": {
@@ -763,6 +763,17 @@ const CARDS := {
 		"effects": [{"op": "seek_kindred"}],
 		"art": "a fan of face-down cards spreading in the air, one glowing with the same colour as a creature standing below it",
 	},
+	# 28 October (synergy): the families' own Rites
+	"pack_howl": {
+		"kind": "rite", "name": "Pack Howl", "element": "any", "tier": 1, "cost": 1, "target": "none",
+		"effects": [{"op": "buff_family", "family": "hound", "amount": 20}],
+		"art": "three hounds of fire, steel and river water howling together at a lantern-lit sky, their breath mingling",
+	},
+	"call_of_kin": {
+		"kind": "rite", "name": "Call of Kin", "element": "any", "tier": 1, "cost": 1, "target": "none",
+		"effects": [{"op": "seek_family"}],
+		"art": "a lantern held up in a dark wood, and in its light the eyes of a whole family of creatures shining back",
+	},
 	"memory_thread": {
 		"kind": "rite", "name": "Memory Thread", "element": "psychic", "tier": 1, "cost": 0, "target": "none",
 		"effects": [{"op": "discard_to_top"}],
@@ -799,7 +810,7 @@ const CARDS := {
 	# (shown as a tinted stand-in until their paintings and models come)
 	"dawnling": {
 		"kind": "totem", "name": "Dawnling", "element": "radiant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 70, "affinity": "presence", "attuned": {"min": 5, "hp": 20}, "stand_in": "emberwisp", "stand_in_tint": "f2cf5b",
+		"hp": 70, "affinity": "presence", "keywords": ["rally"], "attuned": {"min": 5, "hp": 20}, "stand_in": "emberwisp", "stand_in_tint": "f2cf5b",
 		"moves": [
 			{"name": "Glint", "cost": 0, "damage": 10},
 			{"name": "Morning Ray", "cost": 1, "damage": 20, "effects": [{"op": "heal", "who": "allies", "amount": 10}]},
@@ -845,7 +856,7 @@ const CARDS := {
 	},
 	"runeowl": {
 		"kind": "totem", "name": "Runeowl", "element": "mystic", "tier": 2, "stage": 0, "cost": 2,
-		"hp": 90, "affinity": "intellect", "attuned": {"min": 5, "hp": 20}, "stand_in": "somnowl", "stand_in_tint": "5d63d9",
+		"hp": 90, "affinity": "intellect", "keywords": ["combo"], "attuned": {"min": 5, "hp": 20}, "stand_in": "somnowl", "stand_in_tint": "5d63d9",
 		"moves": [
 			{"name": "Rune Talon", "cost": 0, "damage": 20},
 			{"name": "Seal Sigil", "cost": 2, "damage": 30, "effects": [{"op": "status", "status": "silenced"}]},
@@ -1199,7 +1210,7 @@ const NPC_DECKS := {
 		"attributes": {"cunning": 1},
 		"cards": {"shieldhound": 3, "brassback": 3, "ironhide": 2, "burrowmole": 2, "pebblit": 3, "boulderox": 1,
 			"blightrat": 3, "plague_asp": 1,
-			"jagged_shards": 2, "hunters_mark": 1, "forge_edge": 1, "healing_draught": 1, "essence_flask": 1, "rune_break": 1,
+			"jagged_shards": 2, "hunters_mark": 1, "pack_howl": 1, "healing_draught": 1, "essence_flask": 1, "rune_break": 1,
 			"poison_trap": 2, "ambush_snare": 2, "iron_bastion": 1},
 	},
 	# Chapter 1, Solhaven (Master Script v3)
@@ -1257,25 +1268,52 @@ const BONDS := [
 		"move": {"name": "Fever Dream", "cost": 2, "damage": 20, "effects": [{"op": "status", "status": "sleep"}]}},
 	{"a": "somnowl", "b": "mirewidow", "name": "Night Weavers", "damage": 10},
 	{"a": "sunlance_seraph", "b": "sunmane_lion", "name": "Dawn Pride", "damage": 10},
+	# 28 October (synergy): Tam's River Hound and the Brookfin, and the newer Totems
+	{"a": "river_hound", "b": "brookfin", "name": "Flood",
+		"move": {"name": "Flood", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "soaked"}]}},
+	{"a": "hallowed_hound", "b": "lantern_moth", "name": "Lantern Watch", "hp": 20},
+	{"a": "rimecub", "b": "runeowl", "name": "Rime Runes",
+		"move": {"name": "Rime Runes", "cost": 2, "damage": 30, "effects": [{"op": "status", "status": "frozen"}]}},
+	{"a": "starling", "b": "duskstalker", "name": "Night Sky",
+		"move": {"name": "Night Sky", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "blinded"}]}},
 ]
 
 
 ## The bond a Basic Totem is in, as it applies to that Totem: {partner, name,
-## move | hp | damage}; {} for none.
+## move | hp | damage}; {} for none. (Its first: since 28 October a Totem can
+## be in more than one, bonds_of.)
 static func bond_of(root_id: String) -> Dictionary:
+	var all := bonds_of(root_id)
+	return all[0] if not all.is_empty() else {}
+
+
+## Every bond a Basic Totem is in, as bond_of gives one.
+static func bonds_of(root_id: String) -> Array:
+	var out := []
 	for b in BONDS:
 		if b.a == root_id or b.b == root_id:
-			var out: Dictionary = b.duplicate(true)
-			out["partner"] = b.b if b.a == root_id else b.a
-			out.erase("a")
-			out.erase("b")
-			return out
-	return {}
+			var one: Dictionary = b.duplicate(true)
+			one["partner"] = b.b if b.a == root_id else b.a
+			one.erase("a")
+			one.erase("b")
+			out.append(one)
+	return out
+
+
+## Every bond's words, one line each.
+static func bonds_text(root_id: String) -> String:
+	var lines := []
+	for b in bonds_of(root_id):
+		lines.append(_one_bond_text(root_id, b))
+	return "\n".join(lines)
 
 
 ## "+20 HP for both" / "a bond move: Wildfire Dash (2 Essence, 40 damage, Burned)".
 static func bond_text(root_id: String) -> String:
-	var b := bond_of(root_id)
+	return bonds_text(root_id)
+
+
+static func _one_bond_text(root_id: String, b: Dictionary) -> String:
 	if b.is_empty():
 		return ""
 	var with_name: String = CARDS[b.partner].name if CARDS.has(b.partner) else String(b.partner)
@@ -1321,11 +1359,18 @@ const KEYWORDS := {
 	"riposte": {"name": "Riposte", "text": "When it's hit and still standing, the attacker is Confused."},
 	"galvanise": {"name": "Galvanise", "text": "When it's hit and still standing, it becomes Empowered."},
 	"reveal": {"name": "Reveal", "text": "Called veiled, it does something when it's turned face up."},
+	# (28 October: what a Totem does for the Totems beside it, and the chain)
+	"shelter": {"name": "Shelter", "text": "The Totems beside it take 10 less from every attack."},
+	"rally": {"name": "Rally", "text": "The Totems beside it deal 10 more damage."},
+	"tend": {"name": "Tend", "text": "At your Dawn, the Totems beside it heal 10."},
+	"combo": {"name": "Combo", "text": "Does more as the third card or later you play in a turn."},
 }
 
 
 ## What a keyword does on this card (an Echo's own words).
 static func keyword_text(k: String, d: Dictionary) -> String:
+	if k == "combo":
+		return DuelSynergy.combo_text(d)
 	if k == "echo" and d.has("echo"):
 		return "Once a duel, when another of your Totems falls, from your discard: %s" % echo_text(d)
 	if k == "reveal" and d.has("reveal"):
@@ -1515,11 +1560,13 @@ static func effect_text(e: Dictionary) -> String:
 ## Rules text for a Rite, Ward or Summon.
 static func card_text(id: String) -> String:
 	var d: Dictionary = CARDS[id]
+	var combo := DuelSynergy.combo_text(d) if d.kind != "totem" else ""
+	var tail := (" " + combo) if combo != "" else ""   # (28 October: Combo)
 	if d.has("archetype"):
 		# (Phase E: a way's card works only with its Totems on the field)
-		return "%s, with %s of yours on the field. %s" % [DuelArchetypes.arch_name(d.archetype),
-			DuelArchetypes.need_text(d.archetype), _plain_text(id)]
-	return _plain_text(id)
+		return "%s, with %s of yours on the field. %s%s" % [DuelArchetypes.arch_name(d.archetype),
+			DuelArchetypes.need_text(d.archetype), _plain_text(id), tail]
+	return _plain_text(id) + tail
 
 
 static func _plain_text(id: String) -> String:
@@ -1626,6 +1673,8 @@ static func _rite_text(d: Dictionary) -> String:
 			"revive_field": parts.append("Call a Basic Totem of tier %d or lower from your discard into an empty slot, with half its HP" % int(e.get("max_tier", 2)))
 			"call_legend_free": parts.append("While your Life is lower than your opponent's, call a Legend Totem from your hand into an empty slot, free and without a Tribute")
 			"seek_kindred": parts.append("Search your deck for a Totem that shares an element with one of yours on the field")
+			"seek_family": parts.append("Search your deck for a Totem of a family you have on the field")
+			"buff_family": parts.append("Your %s deal %d more damage this turn" % [DuelSynergy.family_plural(String(e.family)), int(e.amount)])
 			"discard_to_top": parts.append("Put a card from your discard on top of your deck")
 			"relic_hunt": parts.append("Return a Relic from your discard to your hand")
 			"terrain": parts.append("The Circle becomes %s for %d turns (%s)" % [String(e.arena).capitalize(), DuelRules.terrain_turns,

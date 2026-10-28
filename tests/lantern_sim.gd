@@ -26,6 +26,9 @@ func _ready() -> void:
 		g.story_rules = spec.get("story_rules", {})
 		g.setup(spec.decks, ["Sprout", "Corin"], [DuelAI.new(pa), DuelAI.new(corin_ai)], [Lore.new_profile("Sprout"), Lore.new_profile("Corin")], i)
 		g.start_life = int(spec.life)
+		if spec.has("tutorial"):
+			for k in g.synergy:
+				g.synergy[k] = false   # (28 October: as the screen has it, none in the lesson)
 		if not raw:
 			g.first_forced = int(spec.get("first", -1))
 			g.life_floor = spec.get("life_floor", [0, 0])

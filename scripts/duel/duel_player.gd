@@ -23,6 +23,7 @@ var essence_max := 0
 # per turn
 var shifts := 0
 var totems_called := 0
+var cards_played := 0          # cards played this turn (the chain, 28 October)
 var wrath := false
 var free_shift := false
 
@@ -55,7 +56,8 @@ var played := {}              # card id -> times played this duel
 var stats := {"life_damage_dealt": 0, "kos": 0, "totems_called": 0, "rites": 0, "wards_sprung": 0,
 	"fate_rolls": 0, "essence_spent": 0, "summons": 0, "ascensions": 0, "answers": 0, "stances": 0,
 	"tributes": 0, "echoes": 0, "revivals": 0, "relics": 0, "veiled": 0, "bond_moves": 0,
-	"terrains": 0, "continuous": 0, "favour_fills": 0, "demigods": 0, "oaths": 0, "oaths_kept": 0, "oaths_broken": 0}
+	"terrains": 0, "continuous": 0, "favour_fills": 0, "demigods": 0, "oaths": 0, "oaths_kept": 0, "oaths_broken": 0,
+	"reactions": 0, "synergy_hits": 0, "combos": 0, "chains": 0}
 
 
 func _init(p_index: int, p_name: String) -> void:

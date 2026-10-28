@@ -9,6 +9,8 @@ extends SceneTree
 ##       godot --headless --script res://tests/duel_sim.gd -- 400 emberstorm ironstone
 ##       godot --headless --script res://tests/duel_sim.gd -- 700 --ways   # the seven ways' sample decks (Phase E)
 ##       ... --no-skills   # no duel skills (27 October: each side has a random one)
+##       ... --synergy=kin,side   # only these of the ways cards work together (28 October:
+##           kin, side, react, chain, grace; --synergy=none for none)
 
 const PATRONS := ["", "solmaris", "pyrrhane", "vaelith", "ixara", "nocthra", "oriel", "aldrith"]
 ## The Circle each duel is fought in (Phase D: each arena has its rule).
@@ -46,6 +48,7 @@ func _initialize() -> void:
 	var errors := 0
 	var life_left_total := 0
 	var stats_total := {}
+	var syn_by_deck := {}
 	var patron_wins := {}
 	var patron_played := {}
 	var patron_fills := {}   # Favour filled, by patron (Phase D)
@@ -63,6 +66,11 @@ func _initialize() -> void:
 		var game := DuelGame.new()
 		game.setup([a, b], ["P1", "P2"], [DuelAI.new(1.0, 500 + g), DuelAI.new(1.0, 900 + g)], profiles, 1000 + g)
 		game.arena = ARENAS[(g / 16) % ARENAS.size()]
+		for a2 in args:
+			if a2.begins_with("--synergy="):
+				var on: Array = Array(a2.trim_prefix("--synergy=").split(","))
+				for k in game.synergy:
+					game.synergy[k] = on.has(k)
 		if not "--no-skills" in args:
 			# (27 October: a duel skill each side, as the game gives them)
 			game.skills = [DuelSkills.random(rng), DuelSkills.random(rng)]
@@ -83,6 +91,13 @@ func _initialize() -> void:
 		for p in game.players:
 			for k in p.stats:
 				stats_total[k] = int(stats_total.get(k, 0)) + int(p.stats[k])
+			# (28 October) how much each deck gets from the ways cards work together
+			var dk: String = a if p.index == 0 else b
+			var ds: Dictionary = syn_by_deck.get(dk, {})
+			for k in ["synergy_hits", "reactions", "chains", "combos", "essence_spent", "totems_called", "rites"]:
+				ds[k] = int(ds.get(k, 0)) + int(p.stats.get(k, 0))
+			ds["n"] = int(ds.get("n", 0)) + 1
+			syn_by_deck[dk] = ds
 		if game.winner == 2 or game.winner < 0:
 			draws += 1
 			continue
@@ -147,6 +162,13 @@ func _initialize() -> void:
 	for k in stats_total:
 		per.append("%s %.1f" % [k, float(stats_total[k]) / (games * 2.0)])
 	print("per duellist per duel: ", ", ".join(per))
+	for dk in syn_by_deck:
+		var ds: Dictionary = syn_by_deck[dk]
+		var parts := []
+		for k in ds:
+			if k != "n":
+				parts.append("%s %.1f" % [k, float(ds[k]) / maxf(1.0, float(ds.n))])
+		print("  %-12s per duel: %s" % [dk, ", ".join(parts)])
 	quit(1 if errors > 0 or problems > 0 else 0)
 
 

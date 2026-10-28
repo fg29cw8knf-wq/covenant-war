@@ -94,6 +94,9 @@ static func practice_duel_spec(mine: String) -> Dictionary:
 		"ai": [false, true],
 		"difficulty": float(BRAM_STRENGTH.get(mine, 0.3)),
 		"arena": "tidegrove",
+		# (28 October) a shelter in the woods is no god's Circle: no card is
+		# Graced or Shunned for the ground (the Tidegrove look is only a look)
+		"place_god": "-",
 		"story": true,
 		"lessons": true,   # Bram explains each new thing once: tiers, Rites, Shift, Fate bands, conditions, Wards, Ascension
 		"rewards": {"opponent": "village"},
@@ -101,6 +104,9 @@ static func practice_duel_spec(mine: String) -> Dictionary:
 		"practice": true,
 		"practice_line": "Bram's lesson: no experience is won or lost.",
 		"bark_on": {
+			# 28 October (synergy): what he says when the ways cards work together show
+			"rival_kin": "Two of a kind, on my side. Watch what they do for each other.",
+			"rival_reaction": "Fire and water don't sit quietly together. Remember that.",
 			"rival_ward_springs": "I watched a Ward like that take a man's whole line, once. A pass above Glyphmere, snow to the knees. He never saw it. No. That's not a story for tonight. Again.",
 			"my_ascends": "I raised a Cinderpup once into something you'd not believe. Gave it to a girl in a town that was burning, so she'd have something to hold. Eat your bread.",
 		},
@@ -125,12 +131,16 @@ static func road_duel_spec() -> Dictionary:
 		"ai": [false, true],
 		"difficulty": 0.5,
 		"arena": "ironstone",
+		"place_god": "-",   # (28 October: a road, nobody's ground)
 		"story": true,
 		"retry": true,
 		"lessons": true,
 		"story_rules": {"run_to_ground": 1},
 		"rule": RUN_TO_GROUND,
 		"bark_on": {
+			"rival_kin": "My pack hunts together. Always has.",
+			"rival_reaction": "Steel finds the wound. Every time.",
+			"my_reaction": "Huh. Where'd a farm kid learn that?",
 			"rival_first_fate": "Come on. Come on.",
 			"rival_poisons": "Poison's slow. I can wait.",
 			"rival_ward_springs": "Didn't see the trap? Nobody does.",
