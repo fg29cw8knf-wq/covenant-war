@@ -469,7 +469,8 @@ static func afternoon(w: World) -> void:
 		to.y = v.height(to.x, to.z)
 		Cine.path(w, "tilly", AshfordP1.round_lantern(w, tb.global_position, to), 1.1)
 	lane_sign(w)
-	_set_objective(w, FESTIVAL)
+	_set_objective(w, FESTIVAL_TAM if lane_wanted() else FESTIVAL)
+	show_way(w)
 	await AshfordP1.home(w, 0.9)
 	AshfordP1.controls_on(w)
 	w.busy = false

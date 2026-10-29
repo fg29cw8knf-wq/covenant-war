@@ -126,7 +126,9 @@ func _run() -> void:
 	await _shot("afternoon")
 	_expect(Game.flag("first_deck"), "no first deck")
 	_expect("corin_lantern" in duels, "no Lantern Duel")
-	_expect(String(Game.flag("objective", "")) == AshfordDay.FESTIVAL, "the afternoon's objective is \"%s\"" % Game.flag("objective", ""))
+	# (29 October: it names Tam's mill until he's been seen, and the way is marked)
+	_expect(String(Game.flag("objective", "")) == AshfordDay.FESTIVAL_TAM, "the afternoon's objective is \"%s\"" % Game.flag("objective", ""))
+	_expect(world.hud.way.target != Vector3.INF, "the way to Tam's mill isn't shown")
 	for n in world.npcs:
 		_expect(not n.def.get("muted", false), "%s doesn't answer in the afternoon" % n.def.id)
 	# ---- down the lane to Tam's mill
