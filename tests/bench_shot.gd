@@ -65,7 +65,7 @@ func _ready() -> void:
 	await _secs(0.3)
 	await _shot("sat_together")
 	# and gets up again, seen from the side
-	Cine.shot(world, seat + side * 2.4 + fwd * 0.5 + Vector3(0, 0.8, 0), seat + fwd * 0.3 + Vector3(0, 0.55, 0), 36.0)
+	Cine.shot(world, seat - side * 2.4 + fwd * 0.5 + Vector3(0, 0.8, 0), seat + fwd * 0.3 + Vector3(0, 0.55, 0), 36.0)
 	await _secs(0.3)
 	_checking = true
 	var up := func() -> void: await AshfordP1.nell_stand(world)

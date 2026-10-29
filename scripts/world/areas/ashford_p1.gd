@@ -608,7 +608,7 @@ static func bench_seat(w: World, east := false) -> Vector3:
 	var bn: Node3D = meta(village(w), "p1_bench")
 	if bn == null:
 		return BENCH
-	return bn.to_global(Vector3(0.4 if east else -0.4, 0.0, 0.0))
+	return bn.to_global(Vector3(0.4 if east else -0.4, 0.0, BENCH_SIT_FWD))
 
 
 static func bench_facing(w: World) -> Vector3:
@@ -624,11 +624,25 @@ static func nell_sit(w: World) -> void:
 	var f = Cine.fig(w, "nell")
 	if f is Figure3D:
 		sit_down(w, "nell", bench_seat(w), bench_facing(w), BENCH_H, 0.0)
+		# her stick stood on the ground by her right knee, clear of the seat
+		var fwd := bench_facing(w)
+		var foot := bench_seat(w) + fwd * NELL_STICK.y + fwd.cross(Vector3.UP).normalized() * NELL_STICK.x
+		foot.y = Cine.ground(w, foot)
+		(f as Figure3D).plant_stick(foot, 0.0)
 	else:
 		# a cut-out can't sit: she stands at the bench's end
 		var bn: Node3D = meta(village(w), "p1_bench")
 		if bn != null:
 			Cine.place(w, "nell", bn.to_global(Vector3(-1.3, 0, 0.15)), bn.to_global(Vector3(-0.6, 0, 2.5)))
+
+
+## Where Nell's stick stands while she sits (m from the middle of her half
+## of the seat): to her right, and ahead of the seat's front edge.
+const NELL_STICK := Vector2(0.22, 0.3)
+## How far forward of the seat's middle line people sit on the bench (m):
+## a little forward, so Nell's shawl hangs clear of the backrest (it showed
+## through its boards from behind).
+const BENCH_SIT_FWD := 0.06
 
 
 ## The tops of Bram's stool and Nell's bench (m).

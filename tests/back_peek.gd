@@ -28,7 +28,7 @@ func _ready() -> void:
 	sun.rotation_degrees = Vector3(-35, 160, 0)
 	sun.light_energy = 1.3
 	add_child(sun)
-	var fig := Figure3D.new().setup(id)
+	var fig := Figure3D.new().setup(id) as Figure3D
 	add_child(fig)
 	await get_tree().process_frame
 	var cam := Camera3D.new()
@@ -49,7 +49,7 @@ func _ready() -> void:
 			fig.pose(c, 0.35, 0.0)
 		for k in 8:
 			await get_tree().process_frame
-		var hy := fig.bone_pos("Neck").y if fig.bone_pos("Neck").y > 0.5 else head
+		var hy: float = fig.bone_pos("Neck").y if fig.bone_pos("Neck").y > 0.5 else head
 		for vi in views.size():
 			var v: Vector3 = views[vi][1]
 			cam.global_position = Vector3(v.x, v.y - head + hy, v.z)

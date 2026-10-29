@@ -600,6 +600,8 @@ func stand(blend := 0.6) -> void:
 	_seat_pose = ""
 	_action = ""
 	_held = false
+	if not _stick.is_empty():
+		plant_stick(Vector3.INF, blend)
 	_play(_base(), blend)
 
 
@@ -706,6 +708,59 @@ func _seated_pose() -> Dictionary:
 ## (from the model's bind pose: Nell's carved stick). stick_foot() gives it
 ## where it is now.
 const STICKS := {"nell": Vector3(-0.0625, -0.8806, -0.0928)}
+
+
+## Their walking stick stood upright with its foot on `foot` (world), the
+## hand on its top (29 October, Gary: "Nells stick goes through the bench
+## before you sit with her": sat, her arm lay as her rest pose has it and
+## the stick, rigid in her hand, ran down through the seat). Each frame,
+## after the clip, the hand is turned so the stick hangs straight down from
+## it and the arm bends to put its foot there, eased in over `secs`.
+## Vector3.INF lets it go. (Standing up lets it go.)
+func plant_stick(foot: Vector3, secs := 0.4) -> void:
+	if foot == Vector3.INF:
+		if _stick.is_empty():
+			return
+		var tw0 := create_tween()
+		var from: float = _stick.k
+		tw0.tween_method(func(k: float) -> void:
+			if not _stick.is_empty():
+				_stick.k = k, from, 0.0, maxf(secs, 0.01))
+		tw0.tween_callback(func() -> void: _stick = {})
+		return
+	if not STICKS.has(_model_name):
+		return
+	_stick = {"foot": foot, "k": 0.0 if _stick.is_empty() else float(_stick.k)}
+	if _skel != null and not _skel.has_node("HandsOff"):
+		hands_off(_solids)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:
+		if not _stick.is_empty():
+			_stick.k = k, float(_stick.k), 1.0, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+
+
+var _stick := {}
+
+
+func _plant_stick() -> void:
+	if _stick.is_empty() or float(_stick.k) <= 0.001:
+		return
+	var h := _skel.find_bone("RightHand")
+	var local: Vector3 = STICKS.get(_model_name, Vector3.ZERO)
+	if h < 0 or local == Vector3.ZERO:
+		return
+	var k: float = _stick.k
+	var xb := _skel.global_transform.basis.orthonormalized()
+	var gp := _skel.get_bone_global_pose(h)
+	var hand_w := xb * gp.basis.orthonormalized()
+	var now := (hand_w * local).normalized()
+	var q := Quaternion.IDENTITY.slerp(Quaternion(now, Vector3.DOWN), k)
+	var want_w := Basis(q) * hand_w
+	var par := _skel.get_bone_parent(h)
+	var pb := _skel.get_bone_global_pose(par).basis.orthonormalized() if par >= 0 else Basis()
+	_skel.set_bone_pose_rotation(h, (pb.inverse() * (xb.inverse() * want_w)).orthonormalized().get_rotation_quaternion())
+	var foot_now := _skel.global_transform * (_skel.get_bone_global_pose(h) * local)
+	_move_wrist("Right", ((_stick.foot as Vector3) - foot_now) * k)
 
 
 ## Where the foot of their walking stick is now (world), or their right
@@ -1004,6 +1059,7 @@ func _hands_off(delta: float) -> void:
 		_push = {"left": Vector3.ZERO, "right": Vector3.ZERO}
 	else:
 		_keep_out_of_solids(delta)
+	_plant_stick()
 	_apply_grip()
 	_place_held()
 
