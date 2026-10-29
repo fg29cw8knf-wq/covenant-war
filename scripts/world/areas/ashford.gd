@@ -19,6 +19,12 @@ const SUBTITLE := "The Last Night of the Age"
 
 const BOUNDS := Rect2(-24.0, -24.0, 48.0, 44.0)
 const CAMERA_X_LIMIT := 13.0
+## Where the camera may follow the player past CAMERA_X_LIMIT (in x/z), and
+## which way it turns to look there (World._cam_yaw): the lane from the
+## green's east side up to the field gate (AshfordDay.LANE), looked along
+## from behind, between the cottages (from the south its roofs hid the
+## player).
+const CAMERA_REACH := [{"rect": Rect2(13.5, -20.5, 11.0, 10.8), "yaw": -0.5}]
 ## The village builds its own sky, moon, fog and lights.
 const CUSTOM_ENV := true
 ## New Game opens in the inn's attic (intro(): AshfordP1.opening).
@@ -607,6 +613,9 @@ static func _after_the_duel() -> Array:
 		{"who": "bram", "say": "Not bad, Sprout. You've remembered more of what I taught you than I expected."},
 		{"who": "bram", "say": "Now you've got a deck in your hands, you might find a few folk around the village willing to give you a friendly game."},
 		{"who": "bram", "say": "Tam's always up for a duel when the mill isn't keeping him busy. And don't underestimate old Nell. She's been playing cards since before I knew which end of a deck to hold."},
+		# 29 October (Gary: "It's not clear for players how to get to Tam's
+		# mill"): where the mill is, in Bram's words
+		{"who": "bram", "say": "Tam'll be down at the mill this time of day. Take the lane by the signpost, off the east side of the green, and on through the field gate. You can't miss the wheel."},
 		{"scene": "bram_smile"},
 		{"who": "bram", "say": "Go on, get some practice in. No harm in learning a few tricks before tonight's festivities."},
 		{"if": "coach_off", "then": [

@@ -45,6 +45,12 @@ const TAM_BREAD := Vector3(-3.4, 0, -7.0)
 const SUNSET_SECS := 7.5
 ## The Objective lines (v7).
 const FESTIVAL := "Explore Ashford and help prepare for the festival.\nOptional: challenge villagers to friendly card duels."
+## Until Tam's been seen (29 October, Gary: "It's not clear for players how
+## to get to Tam's mill"): where he is and the way there, and the way marked
+## on the screen (WorldHUD.set_way: the signpost at the lane's mouth, then
+## the field gate once they're in the lane).
+const FESTIVAL_TAM := "Explore Ashford and help prepare for the festival.\nFind Tam at his mill. (Follow the arrow, or the light: the lane by the signpost, east of the green.)\nOptional: challenge villagers to friendly card duels."
+const EVENING_CORIN := "Enjoy the festival. Meet Bram at the Great Lantern before midnight.\nCorin's gone off on his own, down by the mill race. (Follow the arrow, or the light: the lane by the signpost, east of the green.)"
 const SUN_GOING := "The sun's going down. Find Bram at the Great Lantern."
 const EVENING := "Enjoy the festival. Meet Bram at the Great Lantern before midnight."
 
@@ -132,9 +138,32 @@ static func stage(w: World) -> void:
 		festival_loaf(w)
 	lane_sign(w)
 	if ph == "afternoon":
-		_set_objective(w, SUN_GOING if jobs_done() else FESTIVAL)
+		_set_objective(w, SUN_GOING if jobs_done() else (FESTIVAL_TAM if lane_wanted() else FESTIVAL))
 	elif ph == "evening":
-		_set_objective(w, EVENING)
+		_set_objective(w, EVENING_CORIN if lane_wanted() else EVENING)
+	show_way(w)
+
+
+## The way to the mill on the screen while there's someone to see down there
+## and they're in the village: to the signpost at the lane's mouth, then
+## (once they're nearer the gate than the green) to the field gate.
+static func show_way(w: World) -> void:
+	if w == null or w.hud == null:
+		return
+	if not lane_wanted() or Game.flag("ash_lantern_duel"):
+		w.hud.set_way(null, null)
+		return
+	var v := village(w)
+	var p := w.player.global_position if w.player != null else Vector3.ZERO
+	if at_mill(p):
+		w.hud.set_way(null, null)
+		return
+	var mouth := LANE_MOUTH
+	mouth.y = v.height(mouth.x, mouth.z)
+	var gate := LANE
+	gate.y = v.height(gate.x, gate.z)
+	var in_lane := _flat(p, gate) < _flat(mouth, gate) + 0.5 or _flat(p, mouth) < 2.0
+	w.hud.set_way(w.cam, gate if in_lane else mouth, "Tam's mill" if phase() == "afternoon" else "Corin, at the mill race")
 
 
 static func _set_objective(w: World, text: String) -> void:
@@ -214,6 +243,9 @@ static func lane_sign(w: World) -> void:
 		mark.position = g
 		v.set_meta("lane_glow", AshfordP1.light_up(v, mark, Vector3.ZERO, 0.9))
 		v.set_meta("lane_mark", mark)
+		# and a soft pillar of light over the gate, seen over the roofs from
+		# the green (29 October, as Solhaven marks where the story goes next)
+		_beacon(mark)
 	elif not want and glow != null:
 		if is_instance_valid(glow):
 			glow.queue_free()
@@ -222,6 +254,47 @@ static func lane_sign(w: World) -> void:
 			(mk as Node).queue_free()
 		v.remove_meta("lane_glow")
 		v.remove_meta("lane_mark")
+
+
+## A soft pillar of light standing over `parent`, slowly turning and
+## breathing, so the place can be found from anywhere in the village.
+static func _beacon(parent: Node3D) -> void:
+	var b := Node3D.new()
+	b.name = "Beacon"
+	parent.add_child(b)
+	var glow := func(alpha: float, energy: float) -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.albedo_color = Color(1.0, 0.85, 0.45, alpha)
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.cull_mode = BaseMaterial3D.CULL_DISABLED
+		m.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		m.emission_enabled = true
+		m.emission = Color(1.0, 0.85, 0.45)
+		m.emission_energy_multiplier = energy
+		return m
+	var p := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.45
+	cm.bottom_radius = 0.85
+	cm.height = 10.0
+	cm.cap_top = false
+	cm.cap_bottom = false
+	p.mesh = cm
+	p.material_override = glow.call(0.16, 1.1)
+	p.position.y = 5.0
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	b.add_child(p)
+	var tw := b.create_tween().set_loops() if b.is_inside_tree() else null
+	if tw == null:
+		b.tree_entered.connect(func() -> void:
+			var t2 := b.create_tween().set_loops()
+			t2.tween_property(b, "scale", Vector3(0.82, 1.0, 0.82), 1.2).set_trans(Tween.TRANS_SINE)
+			t2.tween_property(b, "scale", Vector3.ONE, 1.2).set_trans(Tween.TRANS_SINE), CONNECT_ONE_SHOT)
+	else:
+		tw.tween_property(b, "scale", Vector3(0.82, 1.0, 0.82), 1.2).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(b, "scale", Vector3.ONE, 1.2).set_trans(Tween.TRANS_SINE)
 
 
 ## The field gate where the lane leaves the village: two posts, the
@@ -275,6 +348,13 @@ static func watch(w: World) -> void:
 	if w.has_meta("day_watch"):
 		return
 	w.set_meta("day_watch", true)
+	await _watching(w)
+	# (midnight, or the village left: the way to the mill goes)
+	if is_instance_valid(w) and w.hud != null:
+		w.hud.set_way(null, null)
+
+
+static func _watching(w: World) -> void:
 	while is_instance_valid(w) and w.is_inside_tree():
 		await w.get_tree().create_timer(0.15, false).timeout
 		if not is_instance_valid(w) or not w.is_inside_tree() or Game.flag("ash_lantern_duel"):
@@ -285,6 +365,8 @@ static func watch(w: World) -> void:
 			continue
 		var p := w.player.global_position
 		var ph := phase()
+		if ph != "morning":
+			show_way(w)
 		if ph == "morning":
 			if not Game.flag("corin_met") and w._npc_by_id("corin") != null:
 				w._talk(w._npc_by_id("corin"))

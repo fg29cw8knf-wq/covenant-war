@@ -34,6 +34,9 @@ var _hint: PanelContainer
 var _objective: Label
 var _objective_tw: Tween
 var _hint_text := ""       # the current first-steps hint; hidden while the controls are
+## The way to where the objective is (set_way): a marker over the place when
+## it's on screen, an arrow at the screen's edge pointing to it when not.
+var way: WayMarker
 
 
 func _ready() -> void:
@@ -146,6 +149,10 @@ func _ready() -> void:
 	_hint.add_child(hl)
 	_safe.add_child(_hint)
 	# the current objective, top left
+	way = WayMarker.new()
+	way.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	way.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(way)
 	_objective = UITheme.label("", 30, UITheme.GOLD, "bold", 10)
 	_objective.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	_objective.offset_left = 36
@@ -212,6 +219,7 @@ func set_controls_visible(v: bool) -> void:
 	if _objective_tw != null and _objective_tw.is_valid():
 		_objective_tw.kill()
 	_objective.modulate.a = 1.0 if v and _objective.text != "" else 0.0
+	way.shown = v
 
 
 ## The current task, shown top left while the player is free to move; "" clears it.
@@ -226,6 +234,20 @@ func set_objective(text: String) -> void:
 		return
 	_objective_tw = create_tween()
 	_objective_tw.tween_property(_objective, "modulate:a", 1.0 if text != "" else 0.0, 0.4)
+
+
+## The way to a place (29 October, Gary: "It's not clear for players how to
+## get to Tam's mill"): `at` in the world, seen through `cam`, called
+## `label`; null (or "" for the label) takes it away. Shown only while the
+## player is free to move.
+func set_way(cam: Camera3D, at: Variant, label := "") -> void:
+	if at == null or label == "":
+		way.target = Vector3.INF
+		way.queue_redraw()
+		return
+	way.cam = cam
+	way.target = at
+	way.label = label
 
 
 func show_area_title(title: String, subtitle: String) -> void:
@@ -609,3 +631,86 @@ class CardReveal:
 		CardFace.text(self, f, Vector2(0, r.position.y - 30), "NEW SIGIL", 52, Color(UITheme.GOLD, ease), HORIZONTAL_ALIGNMENT_CENTER, size.x, 10, Color(0, 0, 0, 0.9 * ease))
 		if _ready_to_close:
 			CardFace.text(self, CardFace.font("body"), Vector2(0, r.end.y + 56), "Tap to continue", 30, Color(1, 1, 1, 0.6 + 0.3 * sin(_t * 4.0)), HORIZONTAL_ALIGNMENT_CENTER, size.x)
+
+
+## The way to the objective's place (set_way): over the place itself, a gold
+## marker bobbing above it with its name and how far; when it's off the
+## screen (or behind the camera), a gold arrow at the edge, pointing the way
+## to turn, with the name beside it.
+class WayMarker:
+	extends Control
+	var cam: Camera3D
+	var target := Vector3.INF
+	var label := ""
+	var shown := true
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if target != Vector3.INF:
+			queue_redraw()
+
+	func _draw() -> void:
+		if not shown or target == Vector3.INF or cam == null or not is_instance_valid(cam) or not cam.is_inside_tree():
+			return
+		var k := SafeArea.ui_scale()
+		var vp := get_viewport_rect().size
+		var over := target + Vector3(0, 2.3, 0)
+		var behind := cam.is_position_behind(over)
+		var sp := cam.unproject_position(over)
+		var dist := cam.global_position.distance_to(target)
+		var gold := Color(1.0, 0.82, 0.38)
+		var dark := Color(0.06, 0.04, 0.02, 0.75)
+		var font := CardFace.font("bold")
+		var fs := roundi(34 * k)
+		var margin := 110.0 * k
+		# (clear of the objective at the top and the hints and buttons at the
+		# foot and the right)
+		var inner := Rect2(Vector2(margin, margin * 2.4), vp - Vector2(margin * 2.6, margin * 4.2))
+		if not behind and inner.has_point(sp):
+			# over the place: a diamond bobbing, its name and how far under it
+			var bob := sin(_t * 3.0) * 8.0 * k
+			var c := sp + Vector2(0, bob)
+			var r := 34.0 * k
+			var pts := PackedVector2Array([c + Vector2(0, -r), c + Vector2(r * 0.7, 0), c + Vector2(0, r), c + Vector2(-r * 0.7, 0)])
+			draw_colored_polygon(pts, dark)
+			var pin := PackedVector2Array([c + Vector2(0, -r * 0.7), c + Vector2(r * 0.48, 0), c + Vector2(0, r * 0.7), c + Vector2(-r * 0.48, 0)])
+			draw_colored_polygon(pin, gold)
+			draw_line(c + Vector2(0, r), sp + Vector2(0, r + 26.0 * k), Color(gold, 0.6), 2.0 * k)
+			var words := "%s  ·  %d m" % [label, roundi(dist)]
+			var ts := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+			var at := c + Vector2(-ts.x * 0.5, -r - 14.0 * k)
+			draw_rect(Rect2(at + Vector2(-10 * k, -ts.y + 4 * k), Vector2(ts.x + 20 * k, ts.y + 6 * k)), dark)
+			draw_string(font, at, words, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, gold)
+			return
+		# off the screen: an arrow at its edge, the way to turn
+		var mid := vp * 0.5
+		var d := sp - mid
+		if behind:
+			d = -d
+			if d.length() < 1.0:
+				d = Vector2(0, 1)
+		d = d.normalized()
+		# where the line from the middle along d meets the inner rect
+		var tx := INF
+		var ty := INF
+		if absf(d.x) > 0.001:
+			tx = ((inner.end.x if d.x > 0 else inner.position.x) - mid.x) / d.x
+		if absf(d.y) > 0.001:
+			ty = ((inner.end.y if d.y > 0 else inner.position.y) - mid.y) / d.y
+		var p := mid + d * minf(tx, ty)
+		var pulse := 1.0 + 0.12 * sin(_t * 4.0)
+		var r2 := 56.0 * k * pulse
+		draw_circle(p, r2 * 1.35, Color(gold, 0.16 + 0.08 * sin(_t * 4.0)))
+		var perp := Vector2(-d.y, d.x)
+		var tip := p + d * r2
+		var tri := PackedVector2Array([tip, p - d * r2 * 0.6 + perp * r2 * 0.8, p - d * r2 * 0.25, p - d * r2 * 0.6 - perp * r2 * 0.8])
+		draw_colored_polygon(PackedVector2Array([tip + d * 4 * k, p - d * r2 * 0.75 + perp * r2, p - d * r2 * 0.3, p - d * r2 * 0.75 - perp * r2]), dark)
+		draw_colored_polygon(tri, gold)
+		var words2 := "%s  ·  %d m" % [label, roundi(dist)]
+		var ts2 := font.get_string_size(words2, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+		var lp := p - d * (r2 + 22.0 * k) - Vector2(ts2.x * 0.5, -ts2.y * 0.35)
+		lp.x = clampf(lp.x, 12.0 * k, vp.x - ts2.x - 12.0 * k)
+		lp.y = clampf(lp.y, ts2.y + 12.0 * k, vp.y - 12.0 * k)
+		draw_rect(Rect2(lp + Vector2(-10 * k, -ts2.y + 4 * k), Vector2(ts2.x + 20 * k, ts2.y + 6 * k)), dark)
+		draw_string(font, lp, words2, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, gold)

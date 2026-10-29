@@ -374,14 +374,42 @@ func _build_camera() -> void:
 func _cam_focus_target() -> Vector3:
 	var p := player.global_position
 	var b: Rect2 = area.BOUNDS
-	return Vector3(clampf(p.x, -area.CAMERA_X_LIMIT, area.CAMERA_X_LIMIT), 0.0,
+	var lim: float = area.CAMERA_X_LIMIT
+	# an area can let the camera follow further in places (Ashford's lane to
+	# the mill, 29 October: the camera stopped at the green's edge and the
+	# player walked off the screen and behind a cottage going up it)
+	if area.get_script_constant_map().has("CAMERA_REACH"):
+		for r in area.CAMERA_REACH:
+			var rect: Rect2 = r.rect
+			if rect.has_point(Vector2(p.x, p.z)):
+				lim = maxf(lim, absf(p.x))
+				b = b.merge(Rect2(rect.position - Vector2(0, 5.0), rect.size + Vector2(0, 9.0)))
+	return Vector3(clampf(p.x, -lim, lim), 0.0,
 		clampf(p.z, b.position.y + 5.0, b.end.y - 4.0))
 
 
 ## The camera's place behind the player at the zoom the player chose, before
-## anything in the way is allowed for.
+## anything in the way is allowed for (turned by _cam_yaw).
 func _cam_offset(z: float = -1.0) -> Vector3:
-	return CAM_LOOK + (CAM_OFFSET - CAM_LOOK) / (z if z > 0.0 else zoom_setting())
+	return CAM_LOOK + Basis(Vector3.UP, _cam_yaw) * ((CAM_OFFSET - CAM_LOOK) / (z if z > 0.0 else zoom_setting()))
+
+
+## How far the follow camera is turned from looking north (radians), eased
+## towards what the area wants where the player is (CAMERA_REACH's `yaw`: up
+## Ashford's lane to the mill it turns to look along the lane, between the
+## cottages, rather than across their roofs). Walking with the pad or the
+## keys turns with it, so up is always into the screen.
+var _cam_yaw := 0.0
+
+
+func _cam_yaw_target() -> float:
+	if area == null or player == null or not area.get_script_constant_map().has("CAMERA_REACH"):
+		return 0.0
+	var p := player.global_position
+	for r in area.CAMERA_REACH:
+		if (r.rect as Rect2).has_point(Vector2(p.x, p.z)):
+			return float(r.get("yaw", 0.0))
+	return 0.0
 
 
 ## Puts the camera behind the player, at the zoom eased so far, and in front of
@@ -515,7 +543,7 @@ func _move(delta: float) -> void:
 		if v.length() > 0.15:
 			_move_target = null
 			_talk_target = null
-			dir = Vector3(v.x, 0, v.y)
+			dir = Basis(Vector3.UP, _cam_yaw) * Vector3(v.x, 0, v.y)
 			if dir.length() > 1.0:
 				dir = dir.normalized()
 		elif _move_target != null:
@@ -591,6 +619,7 @@ func _process(delta: float) -> void:
 		return   # a film has the camera; the player's zoom waits for it to end
 	_focus = _focus.lerp(_cam_focus_target(), minf(1.0, delta * 5.0))
 	_zoom = lerpf(_zoom, zoom_setting(), minf(1.0, delta * 8.0))
+	_cam_yaw = lerp_angle(_cam_yaw, _cam_yaw_target(), minf(1.0, delta * 1.6))
 	_place_camera(delta)
 
 
