@@ -245,8 +245,10 @@ func _preview() -> void:
 	_check(not nip.ko and float(nip.ko_chance) == 0.0, "Nip doesn't knock Brookfin out")
 	var bite := g.preview_attack(0, pup, 1, fin)
 	_check(int(bite.lo) == 0 and int(bite.hi) >= 70 and bite.fate, "a Fate move: a range (%s)" % bite)
+	fin.damage = fin.max_hp() - 60   # (29 October: Brookfin has 90 now; with 60 left the best roll knocks it out)
+	bite = g.preview_attack(0, pup, 1, fin)
 	_check(float(bite.ko_chance) > 0.0 and float(bite.ko_chance) < 1.0, "it might knock it out (%.2f)" % float(bite.ko_chance))
-	fin.damage = 65
+	fin.damage = fin.max_hp() - 5
 	var fin_ko := g.preview_attack(0, pup, 0, fin)
 	_check(fin_ko.ko, "a sure knockout says so")
 	g.players[1].life = 20

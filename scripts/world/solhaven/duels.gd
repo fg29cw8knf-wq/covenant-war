@@ -161,7 +161,7 @@ const TRIALS := {
 		"mirrors": ["brassback", "brassback", "brassback"],
 	},
 	"tidegrove": {
-		"summon": "thalassa", "decoy": "vengeful_spirit", "life": 240,
+		"summon": "thalassa", "decoy": "vengeful_spirit", "life": 260,
 		"mine": [["brookfin", "riptide_serpent"], null, ["mossling", "thornwarden"]],
 		"mirrors": ["pebblit", "brassback", "pebblit"],
 	},
@@ -171,7 +171,7 @@ const TRIALS := {
 		"mirrors": [null, "gilded_sentinel", null],
 	},
 	"veilwild": {
-		"summon": "somnara", "decoy": "poison_trap", "life": 140,
+		"summon": "somnara", "decoy": "poison_trap", "life": 110,
 		"mine": [["dreamfox", "veilfox"], null, "thought_eater"],
 		"mirrors": ["brassback", "blightrat", "brassback"],
 	},

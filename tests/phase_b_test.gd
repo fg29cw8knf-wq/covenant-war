@@ -166,7 +166,7 @@ func _rites() -> void:
 	for t in g.players[0].totems():
 		if t.id() == "emberwisp":
 			w = t
-	_check(w != null and w.hp_left() == w.max_hp() / 2, "Rekindle: the wisp stands again at half (%s)" % [w])
+	_check(w != null and w.hp_left() == maxi(10, int(round(w.max_hp() * 0.5 / 10.0)) * 10), "Rekindle: the wisp stands again at half, to the nearest 10 (%s)" % [w])
 	# the Rite of Ashes needs three of one element
 	var ashes := _card("rite_of_ashes", 0)
 	g.players[0].hand.append(ashes)

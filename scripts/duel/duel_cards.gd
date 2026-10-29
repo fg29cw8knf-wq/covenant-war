@@ -45,7 +45,7 @@ const CARDS := {
 	"cinderpup": {
 		"kind": "totem", "name": "Cinderpup", "element": "fire", "tier": 1, "stage": 0, "cost": 1,
 		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "damage_attacker", "amount": 10},
-		"hp": 50, "affinity": "might", "attuned": {"min": 5, "damage": 10},
+		"hp": 70, "affinity": "might", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Nip", "cost": 0, "damage": 10},
 			{"name": "Reckless Bite", "cost": 1, "damage": 0, "fate": [
@@ -58,7 +58,7 @@ const CARDS := {
 	},
 	"blazehound": {
 		"kind": "totem", "name": "Blazehound", "element": "fire", "tier": 2, "stage": 1,
-		"ascends_from": "cinderpup", "cost": 2, "hp": 90, "affinity": "might",
+		"ascends_from": "cinderpup", "cost": 2, "hp": 120, "affinity": "might",
 		"attuned": {"min": 5, "damage": 10}, "keywords": ["harvest"],
 		"moves": [
 			{"name": "Flame Fang", "cost": 0, "damage": 30},
@@ -69,7 +69,7 @@ const CARDS := {
 	"emberwisp": {
 		"kind": "totem", "name": "Emberwisp", "element": "fire", "tier": 1, "stage": 0, "cost": 1,
 		"reveal": {"op": "damage_across", "amount": 20},
-		"hp": 40, "affinity": "swiftness", "keywords": ["reveal", "swift", "rally"], "attuned": {"min": 5, "damage": 10},
+		"hp": 50, "affinity": "swiftness", "keywords": ["reveal", "swift", "rally"], "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Spark", "cost": 0, "damage": 10},
 			{"name": "Kindle", "cost": 1, "damage": 10, "target": "foe_totem",
@@ -79,7 +79,7 @@ const CARDS := {
 	},
 	"hearth_salamander": {
 		"kind": "totem", "name": "Hearth Salamander", "element": "fire", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 60, "affinity": "presence", "keywords": ["channel", "rekindle"], "attuned": {"min": 5, "hp": 20},
+		"hp": 80, "affinity": "presence", "keywords": ["channel", "rekindle"], "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Tail Whip", "cost": 0, "damage": 20},
 			{"name": "Fire Spit", "cost": 1, "damage": 30},
@@ -88,7 +88,7 @@ const CARDS := {
 	},
 	"ashen_drake": {
 		"kind": "totem", "name": "Ashen Drake", "element": "fire", "tier": 3, "stage": 0, "cost": 4,
-		"hp": 110, "affinity": "might", "attuned": {"min": 6, "damage": 20},
+		"hp": 140, "affinity": "might", "attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Scorch", "cost": 0, "damage": 30},
 			{"name": "Scorch Breath", "cost": 2, "damage": 70},
@@ -99,7 +99,7 @@ const CARDS := {
 	# ================================================================== STORM
 	"sparkkit": {
 		"kind": "totem", "name": "Sparkkit", "element": "storm", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 50, "affinity": "swiftness", "keywords": ["combo"], "attuned": {"min": 6, "damage": 10},
+		"hp": 70, "affinity": "swiftness", "keywords": ["combo"], "attuned": {"min": 6, "damage": 10},
 		"moves": [
 			{"name": "Zap", "cost": 0, "damage": 10},
 			{"name": "Crackle", "cost": 1, "damage": 0, "fate": [
@@ -112,7 +112,7 @@ const CARDS := {
 	},
 	"voltlynx": {
 		"kind": "totem", "name": "Voltlynx", "element": "storm", "tier": 2, "stage": 1,
-		"ascends_from": "sparkkit", "cost": 2, "hp": 90, "affinity": "swiftness", "keywords": ["swift"],
+		"ascends_from": "sparkkit", "cost": 2, "hp": 120, "affinity": "swiftness", "keywords": ["swift"],
 		"moves": [
 			{"name": "Thunder Claw", "cost": 0, "damage": 30},
 			{"name": "Chain Lightning", "cost": 2, "damage": 30, "target": "foe_totem",
@@ -122,7 +122,7 @@ const CARDS := {
 	},
 	"thunder_ram": {
 		"kind": "totem", "name": "Thunder Ram", "element": "storm", "tier": 2, "stage": 0, "cost": 3,
-		"hp": 80, "affinity": "might", "keywords": ["swift"],
+		"hp": 100, "affinity": "might", "keywords": ["swift"],
 		"moves": [
 			{"name": "Headbutt", "cost": 0, "damage": 20},
 			{"name": "Thunder Charge", "cost": 2, "damage": 60, "effects": [{"op": "self_damage", "amount": 20}]},
@@ -132,7 +132,7 @@ const CARDS := {
 	"stormcaller": {
 		"kind": "totem", "name": "Stormcaller Heron", "element": "storm", "tier": 3, "stage": 0, "cost": 4,
 		"keywords": ["galvanise"],
-		"hp": 100, "affinity": "intellect", "attuned": {"min": 6, "cost": 1},
+		"hp": 130, "affinity": "intellect", "attuned": {"min": 6, "cost": 1},
 		"moves": [
 			{"name": "Gale Bolt", "cost": 0, "damage": 20},
 			{"name": "Thunderhead", "cost": 2, "damage": 0, "fate": [
@@ -147,7 +147,7 @@ const CARDS := {
 	"brookfin": {
 		"kind": "totem", "name": "Brookfin", "element": "tide", "tier": 1, "stage": 0, "cost": 1,
 		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "heal_weakest", "amount": 20},
-		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
+		"hp": 90, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Splash", "cost": 0, "damage": 10},
 			{"name": "Undertow", "cost": 1, "damage": 30, "effects": [{"op": "heal", "who": "self", "amount": 10}]},
@@ -156,7 +156,7 @@ const CARDS := {
 	},
 	"riptide_serpent": {
 		"kind": "totem", "name": "Riptide Serpent", "element": "tide", "tier": 2, "stage": 1,
-		"ascends_from": "brookfin", "cost": 2, "hp": 110, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
+		"ascends_from": "brookfin", "cost": 2, "hp": 140, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Water Lash", "cost": 0, "damage": 30},
 			{"name": "Riptide", "cost": 2, "damage": 60, "effects": [{"op": "heal", "who": "self", "amount": 20}]},
@@ -165,7 +165,7 @@ const CARDS := {
 	},
 	"deepmaw": {
 		"kind": "totem", "name": "Deepmaw Leviathan", "element": "tide", "tier": 3, "stage": 2,
-		"ascends_from": "riptide_serpent", "cost": 3, "hp": 170, "affinity": "resolve", "attuned": {"min": 6, "hp": 30},
+		"ascends_from": "riptide_serpent", "cost": 3, "hp": 220, "affinity": "resolve", "attuned": {"min": 6, "hp": 30},
 		"moves": [
 			{"name": "Crushing Tide", "cost": 0, "damage": 40},
 			{"name": "Maelstrom", "cost": 3, "damage": 90},
@@ -174,7 +174,7 @@ const CARDS := {
 	},
 	"shellguard": {
 		"kind": "totem", "name": "Shellguard", "element": "tide", "tier": 1, "stage": 0, "cost": 2,
-		"hp": 90, "affinity": "resolve", "keywords": ["guardian", "shelter"],
+		"hp": 120, "affinity": "resolve", "keywords": ["guardian", "shelter"],
 		"moves": [
 			{"name": "Shell Slam", "cost": 0, "damage": 20},
 			{"name": "Withdraw", "cost": 1, "damage": 0, "target": "none",
@@ -185,7 +185,7 @@ const CARDS := {
 	# ================================================================= SPIRIT
 	"lantern_moth": {
 		"kind": "totem", "name": "Lantern Moth", "element": "spirit", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 40, "affinity": "insight", "keywords": ["channel", "tend"], "attuned": {"min": 5, "hp": 10},
+		"hp": 50, "affinity": "insight", "keywords": ["channel", "tend"], "attuned": {"min": 5, "hp": 10},
 		"moves": [
 			{"name": "Glimmer", "cost": 0, "damage": 10},
 			{"name": "Dazzle", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -197,7 +197,7 @@ const CARDS := {
 	# ================================================================ VERDANT
 	"mossling": {
 		"kind": "totem", "name": "Mossling", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
+		"hp": 90, "affinity": "resolve", "attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Sap", "cost": 0, "damage": 10, "effects": [{"op": "heal", "who": "self", "amount": 10}]},
 			{"name": "Vine Snare", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -208,7 +208,7 @@ const CARDS := {
 	},
 	"thornwarden": {
 		"kind": "totem", "name": "Thornwarden", "element": "verdant", "tier": 2, "stage": 1,
-		"ascends_from": "mossling", "cost": 2, "hp": 110, "affinity": "resolve", "keywords": ["thorns"],
+		"ascends_from": "mossling", "cost": 2, "hp": 140, "affinity": "resolve", "keywords": ["thorns"],
 		"attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Barbed Lash", "cost": 0, "damage": 20, "effects": [{"op": "status", "status": "poison"}]},
@@ -219,7 +219,7 @@ const CARDS := {
 	"bloomsprite": {
 		"kind": "totem", "name": "Bloomsprite", "element": "verdant", "tier": 1, "stage": 0, "cost": 1,
 		"reveal": {"op": "heal_allies", "amount": 20},
-		"hp": 50, "affinity": "insight", "keywords": ["reveal", "channel", "tend"], "attuned": {"min": 5, "draw": 1},
+		"hp": 70, "affinity": "insight", "keywords": ["reveal", "channel", "tend"], "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Petal Mend", "cost": 0, "damage": 0, "target": "ally",
 				"effects": [{"op": "heal", "who": "target", "amount": 30}]},
@@ -231,7 +231,7 @@ const CARDS := {
 	},
 	"elderbark": {
 		"kind": "totem", "name": "Elderbark", "element": "verdant", "tier": 3, "stage": 0, "cost": 5,
-		"hp": 150, "affinity": "resolve", "keywords": ["guardian"], "attuned": {"min": 6, "hp": 30},
+		"hp": 200, "affinity": "resolve", "keywords": ["guardian"], "attuned": {"min": 6, "hp": 30},
 		"moves": [
 			{"name": "Root Slam", "cost": 0, "damage": 30},
 			{"name": "Ancient Grasp", "cost": 3, "damage": 70, "effects": [{"op": "status", "status": "stun"}]},
@@ -242,7 +242,7 @@ const CARDS := {
 	"pebblit": {
 		"kind": "totem", "name": "Pebblit", "element": "earth", "tier": 1, "stage": 0, "cost": 1,
 		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "essence_next", "amount": 1},
-		"hp": 60, "affinity": "might", "attuned": {"min": 5, "damage": 10},
+		"hp": 80, "affinity": "might", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Pebble Toss", "cost": 0, "damage": 10},
 			{"name": "Rock Smash", "cost": 1, "damage": 30},
@@ -251,7 +251,7 @@ const CARDS := {
 	},
 	"boulderox": {
 		"kind": "totem", "name": "Boulderox", "element": "earth", "tier": 2, "stage": 1,
-		"ascends_from": "pebblit", "cost": 2, "hp": 120, "affinity": "might", "attuned": {"min": 5, "damage": 10},
+		"ascends_from": "pebblit", "cost": 2, "hp": 160, "affinity": "might", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Horn Ram", "cost": 0, "damage": 30},
 			{"name": "Landslide", "cost": 3, "damage": 80},
@@ -261,7 +261,7 @@ const CARDS := {
 	"burrowmole": {
 		"kind": "totem", "name": "Burrowmole", "element": "earth", "tier": 1, "stage": 0, "cost": 2,
 		"reveal": {"op": "damage_across", "amount": 20},
-		"hp": 60, "affinity": "cunning", "keywords": ["reveal", "burrow", "combo"],
+		"hp": 80, "affinity": "cunning", "keywords": ["reveal", "burrow", "combo"],
 		"moves": [
 			{"name": "Dig Strike", "cost": 0, "damage": 20},
 			{"name": "Tunnel Ambush", "cost": 1, "damage": 0, "fate": [
@@ -274,7 +274,7 @@ const CARDS := {
 	},
 	"quarry_golem": {
 		"kind": "totem", "name": "Quarry Golem", "element": "earth", "tier": 3, "stage": 0, "cost": 5,
-		"hp": 160, "affinity": "might", "keywords": ["guardian"], "attuned": {"min": 6, "damage": 20},
+		"hp": 210, "affinity": "might", "keywords": ["guardian"], "attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Slam", "cost": 0, "damage": 30},
 			{"name": "Rockfall", "cost": 3, "damage": 90},
@@ -284,7 +284,7 @@ const CARDS := {
 	# ================================================================== METAL
 	"brassback": {
 		"kind": "totem", "name": "Brassback", "element": "metal", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 60, "affinity": "resolve", "keywords": ["guardian"],
+		"hp": 80, "affinity": "resolve", "keywords": ["guardian"],
 		"moves": [
 			{"name": "Clank", "cost": 0, "damage": 10},
 			{"name": "Horn Bash", "cost": 1, "damage": 30},
@@ -293,7 +293,7 @@ const CARDS := {
 	},
 	"ironhide": {
 		"kind": "totem", "name": "Ironhide Warbeetle", "element": "metal", "tier": 2, "stage": 1,
-		"ascends_from": "brassback", "cost": 2, "hp": 120, "affinity": "resolve", "keywords": ["guardian"],
+		"ascends_from": "brassback", "cost": 2, "hp": 160, "affinity": "resolve", "keywords": ["guardian"],
 		"attuned": {"min": 5, "hp": 20},
 		"moves": [
 			{"name": "Iron Tackle", "cost": 0, "damage": 30},
@@ -304,7 +304,7 @@ const CARDS := {
 	"shieldhound": {
 		"kind": "totem", "name": "Shieldhound", "element": "metal", "tier": 1, "stage": 0, "cost": 2,
 		"keywords": ["loyal", "rally"],
-		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "damage": 10},
+		"hp": 100, "affinity": "resolve", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Guard Bite", "cost": 0, "damage": 20},
 			{"name": "Shield Bash", "cost": 1, "damage": 30, "effects": [{"op": "status", "status": "bleed"}]},
@@ -313,7 +313,7 @@ const CARDS := {
 	},
 	"gilded_sentinel": {
 		"kind": "totem", "name": "Gilded Sentinel", "element": "metal", "tier": 3, "stage": 0, "cost": 4,
-		"hp": 130, "affinity": "presence", "keywords": ["guardian", "shelter"], "attuned": {"min": 6, "damage": 20},
+		"hp": 170, "affinity": "presence", "keywords": ["guardian", "shelter"], "attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Gilded Blade", "cost": 0, "damage": 30},
 			{"name": "Judgement", "cost": 2, "damage": 70},
@@ -324,7 +324,7 @@ const CARDS := {
 	"dreamfox": {
 		"kind": "totem", "name": "Dreamfox", "element": "psychic", "tier": 1, "stage": 0, "cost": 1,
 		"keywords": ["reveal"], "reveal": {"op": "status_across", "status": "sleep"},
-		"hp": 70, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
+		"hp": 90, "affinity": "insight", "attuned": {"min": 5, "draw": 1},
 		"moves": [
 			{"name": "Psy Nip", "cost": 0, "damage": 10},
 			{"name": "Hypnotic Gaze", "cost": 1, "damage": 0, "target": "foe_totem", "fate": [
@@ -337,7 +337,7 @@ const CARDS := {
 	"veilfox": {
 		"kind": "totem", "name": "Veilfox", "element": "psychic", "tier": 2, "stage": 1,
 		"keywords": ["riposte"],
-		"ascends_from": "dreamfox", "cost": 2, "hp": 110, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
+		"ascends_from": "dreamfox", "cost": 2, "hp": 140, "affinity": "insight", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Mind Lash", "cost": 0, "damage": 30},
 			{"name": "Mirage", "cost": 2, "damage": 40, "effects": [{"op": "status", "status": "confused"}]},
@@ -347,7 +347,7 @@ const CARDS := {
 	"somnowl": {
 		"kind": "totem", "name": "Somnowl", "element": "psychic", "tier": 1, "stage": 0, "cost": 2,
 		"reveal": {"op": "draw", "count": 1},
-		"hp": 80, "affinity": "insight", "keywords": ["reveal", "channel"],
+		"hp": 100, "affinity": "insight", "keywords": ["reveal", "channel"],
 		"moves": [
 			{"name": "Hoot", "cost": 0, "damage": 20},
 			{"name": "Night Screech", "cost": 2, "damage": 20, "target": "all_foes"},
@@ -356,7 +356,7 @@ const CARDS := {
 	},
 	"thought_eater": {
 		"kind": "totem", "name": "Thought Eater", "element": "psychic", "tier": 3, "stage": 0, "cost": 4,
-		"hp": 120, "affinity": "intellect", "attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
+		"hp": 160, "affinity": "intellect", "attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
 		"moves": [
 			{"name": "Mind Rend", "cost": 0, "damage": 30},
 			{"name": "Devour Thought", "cost": 2, "damage": 60, "effects": [{"op": "discard_random", "count": 1}]},
@@ -367,7 +367,7 @@ const CARDS := {
 	"blightrat": {
 		"kind": "totem", "name": "Blightrat", "element": "venom", "tier": 1, "stage": 0, "cost": 1,
 		"keywords": ["echo"], "echo": {"when": "ally_falls", "op": "status_attacker", "status": "poison"},
-		"hp": 70, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
+		"hp": 90, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Gnaw", "cost": 0, "damage": 10},
 			{"name": "Plague Bite", "cost": 1, "damage": 20, "effects": [{"op": "status", "status": "poison"}]},
@@ -376,7 +376,7 @@ const CARDS := {
 	},
 	"plague_asp": {
 		"kind": "totem", "name": "Plague Asp", "element": "venom", "tier": 2, "stage": 1,
-		"ascends_from": "blightrat", "cost": 2, "hp": 100, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
+		"ascends_from": "blightrat", "cost": 2, "hp": 130, "affinity": "cunning", "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Fang", "cost": 0, "damage": 30},
 			{"name": "Venom Surge", "cost": 2, "damage": 40, "target": "foe_totem",
@@ -387,7 +387,7 @@ const CARDS := {
 	"mirewidow": {
 		"kind": "totem", "name": "Mirewidow", "element": "venom", "tier": 1, "stage": 0, "cost": 2,
 		"reveal": {"op": "status_across", "status": "poison"},
-		"hp": 70, "affinity": "cunning", "keywords": ["reveal", "thorns", "combo"],
+		"hp": 90, "affinity": "cunning", "keywords": ["reveal", "thorns", "combo"],
 		"moves": [
 			{"name": "Venom Bite", "cost": 0, "damage": 10, "target": "foe_totem",
 				"effects": [{"op": "status", "status": "poison"}]},
@@ -403,7 +403,7 @@ const CARDS := {
 	# the Sunspire). Paintings to come: cards/<id>.png, creatures/<id>.png.
 	"sunlance_seraph": {
 		"kind": "totem", "name": "Sunlance Seraph", "element": "radiant", "tier": 5, "stage": 0, "cost": 5,
-		"hp": 150, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 6, "damage": 20},
+		"hp": 200, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Sunlance", "cost": 0, "damage": 30},
 			{"name": "Dawnbreak Lance", "cost": 3, "damage": 80, "effects": [{"op": "pierce"}]},
@@ -412,7 +412,7 @@ const CARDS := {
 	},
 	"sunmane_lion": {
 		"kind": "totem", "name": "Sunmane Lion", "element": "radiant", "tier": 4, "stage": 0, "cost": 3,
-		"hp": 100, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 5, "damage": 10},
+		"hp": 130, "affinity": "presence", "keywords": ["swift"], "attuned": {"min": 5, "damage": 10},
 		"moves": [
 			{"name": "Pounce", "cost": 0, "damage": 30},
 			{"name": "Mane of Dawn", "cost": 2, "damage": 50, "effects": [{"op": "boon", "who": "self", "boon": "blessed"}]},
@@ -423,41 +423,41 @@ const CARDS := {
 	"dawnmane": {
 		"kind": "summon", "name": "Dawnmane, the Sun Lion", "element": "radiant", "tier": 6, "cost": 7,
 		"affinity": "presence",
-		"move": {"name": "Dawn's Roar", "damage": 50, "target": "all_foes",
+		"move": {"name": "Dawn's Roar", "damage": 70, "target": "all_foes",
 			"effects": [{"op": "boon", "who": "allies", "boon": "blessed"}]},
 		"art": "a colossal lion of blazing dawn light leaping down from the sun, its mane a corona, roaring over a white city of gold domes",
 	},
 	"pyraxis": {
 		"kind": "summon", "name": "Pyraxis, Heart of the Pyre", "element": "fire", "tier": 6, "cost": 7,
 		"affinity": "might",
-		"move": {"name": "Sunfall", "damage": 40, "target": "all_foes",
+		"move": {"name": "Sunfall", "damage": 60, "target": "all_foes",
 			"effects": [{"op": "status", "status": "burn"}]},
 		"art": "a colossal phoenix-dragon demigod of white-hot flame descending from a burning sky, wings spanning the horizon, molten feathers raining down",
 	},
 	"thalassa": {
 		"kind": "summon", "name": "Thalassa, the Deep Mother", "element": "tide", "tier": 6, "cost": 7,
 		"affinity": "resolve",
-		"move": {"name": "Tidal Embrace", "damage": 50, "target": "all_foes",
+		"move": {"name": "Tidal Embrace", "damage": 70, "target": "all_foes",
 			"effects": [{"op": "heal", "who": "allies", "amount": 60}, {"op": "life", "amount": 40}]},
 		"art": "a vast serene sea goddess rising from the ocean, hair of rolling waves, a crown of coral and pearls, arms cradling a whirlpool",
 	},
 	"grondmaw": {
 		"kind": "summon", "name": "Grondmaw, the Mountain's Heart", "element": "earth", "tier": 6, "cost": 6,
 		"affinity": "might",
-		"move": {"name": "Worldbreaker", "damage": 140, "target": "foe_totem", "effects": [{"op": "pierce"}, {"op": "stun_others"}]},
+		"move": {"name": "Worldbreaker", "damage": 180, "target": "foe_totem", "effects": [{"op": "pierce"}, {"op": "stun_others"}]},
 		"art": "a titanic stone giant tearing itself free of a mountain range, glowing magma heart visible through cracked ribs, fists like boulders",
 	},
 	"somnara": {
 		"kind": "summon", "name": "Somnyx, the Dreaming Veil", "element": "psychic", "tier": 6, "cost": 6,
 		"affinity": "insight",
-		"move": {"name": "Endless Dream", "damage": 30, "target": "all_foes",
+		"move": {"name": "Endless Dream", "damage": 40, "target": "all_foes",
 			"effects": [{"op": "status", "status": "sleep"}]},
 		"art": "an ethereal moth-winged demigoddess veiled in drifting starlit silk, her closed eyes glowing, the world below falling into a dream",
 	},
 	# ====================================== SECOND-STAGE ASCENSIONS (Phase C)
 	"infernal_warg": {
 		"kind": "totem", "name": "Infernal Warg", "element": "fire", "tier": 3, "stage": 2,
-		"ascends_from": "blazehound", "cost": 3, "hp": 150, "affinity": "might", "stand_in": "blazehound",
+		"ascends_from": "blazehound", "cost": 3, "hp": 200, "affinity": "might", "stand_in": "blazehound",
 		"attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
 		"moves": [
 			{"name": "Searing Maw", "cost": 0, "damage": 40},
@@ -467,7 +467,7 @@ const CARDS := {
 	},
 	"tempest_lynx": {
 		"kind": "totem", "name": "Tempest Lynx", "element": "storm", "tier": 3, "stage": 2,
-		"ascends_from": "voltlynx", "cost": 3, "hp": 130, "affinity": "swiftness", "stand_in": "voltlynx", "keywords": ["swift"],
+		"ascends_from": "voltlynx", "cost": 3, "hp": 170, "affinity": "swiftness", "stand_in": "voltlynx", "keywords": ["swift"],
 		"moves": [
 			{"name": "Arc Claw", "cost": 0, "damage": 40},
 			{"name": "Storm Front", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "shocked"}]},
@@ -476,7 +476,7 @@ const CARDS := {
 	},
 	"briar_colossus": {
 		"kind": "totem", "name": "Briar Colossus", "element": "verdant", "tier": 3, "stage": 2,
-		"ascends_from": "thornwarden", "cost": 3, "hp": 170, "affinity": "resolve", "stand_in": "thornwarden", "keywords": ["thorns"],
+		"ascends_from": "thornwarden", "cost": 3, "hp": 220, "affinity": "resolve", "stand_in": "thornwarden", "keywords": ["thorns"],
 		"moves": [
 			{"name": "Bramble Slam", "cost": 0, "damage": 30, "effects": [{"op": "status", "status": "poison"}]},
 			{"name": "Overgrowth", "cost": 3, "damage": 60, "effects": [{"op": "heal", "who": "self", "amount": 30}]},
@@ -485,7 +485,7 @@ const CARDS := {
 	},
 	"cragmaul": {
 		"kind": "totem", "name": "Cragmaul", "element": "earth", "tier": 3, "stage": 2,
-		"ascends_from": "boulderox", "cost": 3, "hp": 180, "affinity": "might", "stand_in": "boulderox",
+		"ascends_from": "boulderox", "cost": 3, "hp": 230, "affinity": "might", "stand_in": "boulderox",
 		"attuned": {"min": 6, "damage": 20},
 		"moves": [
 			{"name": "Rockfall", "cost": 0, "damage": 40},
@@ -495,7 +495,7 @@ const CARDS := {
 	},
 	"ironclad_behemoth": {
 		"kind": "totem", "name": "Ironclad Behemoth", "element": "metal", "tier": 3, "stage": 2,
-		"ascends_from": "ironhide", "cost": 3, "hp": 190, "affinity": "resolve", "stand_in": "ironhide", "keywords": ["guardian"],
+		"ascends_from": "ironhide", "cost": 3, "hp": 250, "affinity": "resolve", "stand_in": "ironhide", "keywords": ["guardian"],
 		"moves": [
 			{"name": "Shell Ram", "cost": 0, "damage": 30},
 			{"name": "Forged Bulwark", "cost": 2, "damage": 40, "effects": [{"op": "shield", "who": "self", "amount": 60}]},
@@ -504,7 +504,7 @@ const CARDS := {
 	},
 	"ninefold_fox": {
 		"kind": "totem", "name": "Ninefold Fox", "element": "psychic", "tier": 3, "stage": 2,
-		"ascends_from": "veilfox", "cost": 3, "hp": 130, "affinity": "insight", "stand_in": "veilfox", "keywords": ["riposte"],
+		"ascends_from": "veilfox", "cost": 3, "hp": 170, "affinity": "insight", "stand_in": "veilfox", "keywords": ["riposte"],
 		"moves": [
 			{"name": "Mirage Bite", "cost": 0, "damage": 40},
 			{"name": "Ninefold Illusion", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "confused"}]},
@@ -513,7 +513,7 @@ const CARDS := {
 	},
 	"blight_wyrm": {
 		"kind": "totem", "name": "Blight Wyrm", "element": "venom", "tier": 3, "stage": 2,
-		"ascends_from": "plague_asp", "cost": 3, "hp": 150, "affinity": "cunning", "stand_in": "plague_asp",
+		"ascends_from": "plague_asp", "cost": 3, "hp": 200, "affinity": "cunning", "stand_in": "plague_asp",
 		"moves": [
 			{"name": "Venom Coil", "cost": 0, "damage": 30, "effects": [{"op": "status", "status": "poison"}]},
 			{"name": "Plague Breath", "cost": 3, "damage": 40, "target": "all_foes", "effects": [{"op": "status", "status": "poison"}]},
@@ -810,7 +810,7 @@ const CARDS := {
 	# (shown as a tinted stand-in until their paintings and models come)
 	"dawnling": {
 		"kind": "totem", "name": "Dawnling", "element": "radiant", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 70, "affinity": "presence", "keywords": ["rally"], "attuned": {"min": 5, "hp": 20}, "stand_in": "emberwisp", "stand_in_tint": "f2cf5b",
+		"hp": 90, "affinity": "presence", "keywords": ["rally"], "attuned": {"min": 5, "hp": 20}, "stand_in": "emberwisp", "stand_in_tint": "f2cf5b",
 		"moves": [
 			{"name": "Glint", "cost": 0, "damage": 10},
 			{"name": "Morning Ray", "cost": 1, "damage": 20, "effects": [{"op": "heal", "who": "allies", "amount": 10}]},
@@ -822,7 +822,7 @@ const CARDS := {
 		# morning; the player meets her in his friendly game, and sees her
 		# torn apart by Krell's shadow hound that night
 		"kind": "totem", "name": "River Hound", "element": "tide", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 80, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "4a9fd8",
+		"hp": 100, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "4a9fd8",
 		"keywords": ["loyal"],
 		"moves": [
 			{"name": "Snap", "cost": 0, "damage": 10},
@@ -835,7 +835,7 @@ const CARDS := {
 	},
 	"hallowed_hound": {
 		"kind": "totem", "name": "Hallowed Hound", "element": "spirit", "tier": 2, "stage": 0, "cost": 2,
-		"hp": 100, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "5fc4b2",
+		"hp": 130, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "shieldhound", "stand_in_tint": "5fc4b2",
 		"keywords": ["loyal"],
 		"moves": [
 			{"name": "Spirit Bite", "cost": 0, "damage": 20},
@@ -845,7 +845,7 @@ const CARDS := {
 	},
 	"rimecub": {
 		"kind": "totem", "name": "Rimecub", "element": "frost", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 70, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "cinderpup", "stand_in_tint": "7cc8f0",
+		"hp": 90, "affinity": "resolve", "attuned": {"min": 5, "hp": 20}, "stand_in": "cinderpup", "stand_in_tint": "7cc8f0",
 		"moves": [
 			{"name": "Frost Nip", "cost": 0, "damage": 10},
 			{"name": "Chill Breath", "cost": 1, "damage": 0, "fate": [
@@ -856,7 +856,7 @@ const CARDS := {
 	},
 	"runeowl": {
 		"kind": "totem", "name": "Runeowl", "element": "mystic", "tier": 2, "stage": 0, "cost": 2,
-		"hp": 90, "affinity": "intellect", "keywords": ["combo"], "attuned": {"min": 5, "hp": 20}, "stand_in": "somnowl", "stand_in_tint": "5d63d9",
+		"hp": 120, "affinity": "intellect", "keywords": ["combo"], "attuned": {"min": 5, "hp": 20}, "stand_in": "somnowl", "stand_in_tint": "5d63d9",
 		"moves": [
 			{"name": "Rune Talon", "cost": 0, "damage": 20},
 			{"name": "Seal Sigil", "cost": 2, "damage": 30, "effects": [{"op": "status", "status": "silenced"}]},
@@ -865,7 +865,7 @@ const CARDS := {
 	},
 	"starling": {
 		"kind": "totem", "name": "Starling", "element": "astral", "tier": 1, "stage": 0, "cost": 1,
-		"hp": 70, "affinity": "insight", "attuned": {"min": 5, "hp": 20}, "stand_in": "sparkkit", "stand_in_tint": "3f5fd6",
+		"hp": 90, "affinity": "insight", "attuned": {"min": 5, "hp": 20}, "stand_in": "sparkkit", "stand_in_tint": "3f5fd6",
 		"moves": [
 			{"name": "Twinkle", "cost": 0, "damage": 10},
 			{"name": "Falling Star", "cost": 1, "damage": 0, "fate": [
@@ -877,7 +877,7 @@ const CARDS := {
 	},
 	"duskstalker": {
 		"kind": "totem", "name": "Duskstalker", "element": "umbral", "tier": 2, "stage": 0, "cost": 2,
-		"hp": 100, "affinity": "cunning", "attuned": {"min": 5, "hp": 20}, "stand_in": "veilfox", "stand_in_tint": "6a4c9c",
+		"hp": 130, "affinity": "cunning", "attuned": {"min": 5, "hp": 20}, "stand_in": "veilfox", "stand_in_tint": "6a4c9c",
 		"moves": [
 			{"name": "Shade Claw", "cost": 0, "damage": 20},
 			{"name": "Night Pounce", "cost": 2, "damage": 50, "effects": [{"op": "pierce"}]},
@@ -1270,7 +1270,7 @@ const BONDS := [
 	{"a": "sunlance_seraph", "b": "sunmane_lion", "name": "Dawn Pride", "damage": 10},
 	# 28 October (synergy): Tam's River Hound and the Brookfin, and the newer Totems
 	{"a": "river_hound", "b": "brookfin", "name": "Flood",
-		"move": {"name": "Flood", "cost": 3, "damage": 30, "target": "all_foes", "effects": [{"op": "status", "status": "soaked"}]}},
+		"move": {"name": "Flood", "cost": 3, "damage": 40, "target": "all_foes", "effects": [{"op": "status", "status": "soaked"}]}},
 	{"a": "hallowed_hound", "b": "lantern_moth", "name": "Lantern Watch", "hp": 20},
 	{"a": "rimecub", "b": "runeowl", "name": "Rime Runes",
 		"move": {"name": "Rime Runes", "cost": 2, "damage": 30, "effects": [{"op": "status", "status": "frozen"}]}},

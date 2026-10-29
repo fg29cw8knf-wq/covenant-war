@@ -9,6 +9,7 @@ extends SceneTree
 ##       godot --headless --script res://tests/duel_sim.gd -- 400 emberstorm ironstone
 ##       godot --headless --script res://tests/duel_sim.gd -- 700 --ways   # the seven ways' sample decks (Phase E)
 ##       ... --no-skills   # no duel skills (27 October: each side has a random one)
+##       ... --life-base=300   # every duellist's base Life (29 October: 250)
 ##       ... --synergy=kin,side   # only these of the ways cards work together (28 October:
 ##           kin, side, react, chain, grace; --synergy=none for none)
 
@@ -22,6 +23,10 @@ func _initialize() -> void:
 	var games := 400
 	if args.size() > 0:
 		games = int(args[0])
+	for a0 in args:
+		if a0.begins_with("--life-base="):
+			DuelRules.life_base = int(a0.trim_prefix("--life-base="))
+
 	var decks: Array = []
 	var named: Array = Array(args.slice(1)).filter(func(x): return not x.begins_with("--"))
 	if named.size() > 1:

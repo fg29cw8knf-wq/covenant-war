@@ -730,7 +730,7 @@ const FRIENDLY := {
 			"rival_falls": "There. Well played, love.",
 		}},
 }
-const FRIENDLY_LIFE := 40
+const FRIENDLY_LIFE := 60
 
 
 ## The duel spec World hands to Main for the Lantern Duel and the friendly games.

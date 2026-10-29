@@ -148,6 +148,41 @@ a new player's plain play (82% before), Nell 50% (53%). `duel_sim -- 300`
 with a random skill each side: 0 invariant errors, 26.7 turns on average
 (25.6 before), first player 49%.
 
+### Longer duels (29 October)
+
+Gary (29 October): "lets up the health points of characters and maybe the
+totem cards so that battles last a little longer". Every duellist's Life is
+100 more (`DuelRules.life_base` 250, was 150: about 425 for a starting
+duellist, was 325); every Totem's HP is 30% more, to the nearest 10, in the
+card list itself, so every card face and the Codex show it (40 became 50,
+50 70, 60 80, 70 90, 80 100, 90 120, 100 130, 120 160, 130 170, 150 200);
+the five Summons' blows 30% more too, so the biggest cards still do what
+they're for (Sunfall 60, Tidal Embrace 70, Worldbreaker 180, Endless Dream
+40, Dawn's Roar 70), and Flood 40. The friendly games are fought at 60 Life
+(was 40); the Lantern Duel stays at 25 (it's the lesson, and plays as before:
+Splash and Undertow still finish Corin's pup, now 70). Tried in
+`duel_sim -- 600` before choosing (`--life-base=` sets it for a run):
+
+| Life base | Totem HP | Average duel |
+| --- | --- | --- |
+| 150 | as it was | 21.5 turns |
+| 200 | as it was | 22.7 |
+| 150 | +25% | 23.5 |
+| 250 | +30% (chosen) | 26.3 |
+| 300 | +30% | 27.4 |
+| 250 | +50% | 28.2 |
+
+With the change, `duel_sim -- 1000`: 26.1 turns on average (21.5 before), 0
+invariant errors, first player 51%, Emberstorm 58%, Tidegrove 53%,
+Ironstone 40%, Veilwild 50%. `friendly_sim`: Tam 76%, Nell 52%, 8 turns
+(was 6). `lantern_sim`: won every time, 6 turns. The riddles and the Trial
+of Light are set boards, so their numbers were worked again: The Guardian
+First (Ten Life, three Essence), Where It's Weak (a Bloomsprite where the
+Mossling was), Steel Finds the Wound and Whose Ground (Twenty Life, two
+Essence, Horn Bash after), Old Friends (Flood 40); the Trial's Tidegrove
+mirrors 260 Life (was 240) and Veilwild's 110 (was 140); `puzzles_test` and
+`trial_puzzle_test` play them.
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about
@@ -188,7 +223,7 @@ about (`puzzle.synergy`); `spec.synergy` names them for any other duel.
   20 more, the Totems beside it Burn), Rend (Metal on Bleeding: 20 more),
   Nightmare (Psychic on Asleep: 20 more, and it stays asleep). Attacks and
   damaging Rites both react; the aiming chip names the reaction.
-- **Bonds**: four more (Flood, River Hound and Brookfin: 30 to every Totem
+- **Bonds**: four more (Flood, River Hound and Brookfin: 40 to every Totem
   across and Soaked; Lantern Watch, Hallowed Hound and Lantern Moth; Rime
   Runes, Rimecub and Runeowl; Night Sky, Starling and Duskstalker). A Totem
   can be in more than one now (`DuelCards.bonds_of`; Brookfin's other is

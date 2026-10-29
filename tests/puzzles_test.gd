@@ -18,7 +18,7 @@ const LINES := {
 		"wrong": [["attack", 0, 0, 0]],
 	},
 	"guardian_first": {
-		"answer": [["attack", 1, 0, 1], ["attack", 0, 1, 1], ["attack", 2, 1, "life"]],
+		"answer": [["attack", 1, 1, 1], ["attack", 0, 1, 1], ["attack", 2, 0, "life"]],
 		"wrong": [["attack", 0, 0, 1], ["attack", 1, 1, 1], ["attack", 2, 0, "life"]],
 	},
 	"where_its_weak": {
@@ -47,8 +47,8 @@ const LINES := {
 		"wrong": [["attack", 2, 1, "life"], ["attack", 0, 0, "life"]],
 	},
 	"steel_finds_the_wound": {
-		"answer": [["rite", "jagged_shards", "foe:0"], ["attack", 0, 0, 0]],
-		"wrong": [["attack", 0, 0, 0], ["rite", "jagged_shards", "foe:0"]],
+		"answer": [["rite", "jagged_shards", "foe:0"], ["attack", 0, 1, 0]],
+		"wrong": [["attack", 0, 1, 0], ["rite", "jagged_shards", "foe:0"]],
 	},
 	"third_time": {
 		"answer": [["rite", "essence_flask", null], ["rite", "war_paint", 0], ["rite", "forge_edge", 0], ["attack", 0, 1, "life"]],
@@ -59,8 +59,8 @@ const LINES := {
 		"wrong": [["attack", 0, 0, 0]],
 	},
 	"whose_ground": {
-		"answer": [["rite", "firebrand", "foe:0"], ["attack", 0, 0, "life"]],
-		"wrong": [["attack", 0, 1, 0]],
+		"answer": [["rite", "firebrand", "foe:0"], ["attack", 0, 1, 0]],
+		"wrong": [["rite", "firebrand", "foe:0"], ["attack", 0, 0, 0]],
 	},
 }
 

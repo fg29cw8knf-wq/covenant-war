@@ -14,7 +14,7 @@ static var second_player_bonus_cards := 1
 static var hand_limit := 10
 
 # --- Life ----------------------------------------------------------------------
-static var life_base := 150
+static var life_base := 250
 static var life_per_attribute := 5    # for every attribute point
 static var guard_min_hit := 10        # Guard never reduces a hit below this
 static var fatigue := 30              # Life lost for drawing from an empty deck
