@@ -42,6 +42,8 @@ func _run() -> void:
 	var model: Node3D
 	var p := path if path != "" else "res://assets/models/characters/%s.glb" % id
 	model = (load(p) as PackedScene).instantiate()
+	if path == "":
+		Figure3D.dress_normal_map(model, id)
 	stage.add_child(model)
 	var sk := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	var ap := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
@@ -51,8 +53,13 @@ func _run() -> void:
 		ap.pause()
 	for i in 4:
 		await process_frame
-	var hb := sk.find_bone("Head")
-	var head := sk.global_transform * sk.get_bone_global_pose(hb).origin
+	var hb := sk.find_bone("Head") if sk != null else -1
+	if sk != null and hb < 0:
+		for i in sk.get_bone_count():
+			if sk.get_bone_name(i).ends_with("Head"):
+				hb = i
+	# (a model with no skeleton: where Player A's head bone stands)
+	var head := sk.global_transform * sk.get_bone_global_pose(hb).origin if sk != null else Vector3(0.0101, 1.5063, -0.038)
 	var face := head + Vector3(0, 0.07, 0.05)
 	var cam := Camera3D.new()
 	cam.fov = 22.0

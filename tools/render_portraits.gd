@@ -69,6 +69,7 @@ func _render(id: String) -> void:
 		push_warning("no model for " + id)
 		return
 	var model: Node3D = load(path).instantiate()
+	Figure3D.dress_normal_map(model, String(MODELS.get(id, id)))
 	add_child(model)
 	var ap := model.find_child("AnimationPlayer", true, false) as AnimationPlayer
 	if ap != null:

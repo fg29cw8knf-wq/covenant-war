@@ -47,6 +47,7 @@ func _run() -> void:
 		var path := String(id) if String(id).ends_with(".glb") else "res://assets/models/characters/%s.glb" % id
 		var tag := String(id).get_file().get_basename()
 		var p: Node3D = (load(path) as PackedScene).instantiate()
+		Figure3D.dress_normal_map(p, tag)
 		stage.add_child(p)
 		var sk := p.find_child("Skeleton3D", true, false) as Skeleton3D
 		var hy := sk.get_bone_global_rest(sk.find_bone("Head")).origin.y + 0.05

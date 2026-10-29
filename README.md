@@ -1048,19 +1048,29 @@ v7 wins; the parts it changed:
   at its rim, blending to the other shoulder blade's, mirrored, at its
   middle. `tests/back_peek.tscn -- <out.png> <id> [clips]` takes a character
   from behind, three-quarters and above in clips.
-- **Player A's nose** ("face still look weird around the nose area"): the
-  model's mesh is Gary's as he made it (the same points since 26 October;
-  the face is 99% on the Head bone, so no clip bends it), but its colours
-  are his 4K texture cut to 2048, and his model's normal map (the fine shape
-  painted into the light: the nostrils, the bridge) was left out when he was
-  rigged (`rig_character.py` drops normal maps unless `--normal-map`: the
-  AssetFurnace ones split faces in two). The atlas also has a smeared orange
-  strip down the right side of the nose. `tools/heal_face.py` (painting over
-  the strip from the front) was tried on 29 October and taken back the same
-  afternoon (Gary: put the head back as it was before it was edited): the
-  atlas is the 26 October one again (`9ee55f7`). The fix is his original
-  file (`New_Player_A_Master_22_Animations.glb`): its full texture and its
-  normal map on the head.
+- **Player A's nose** ("face still look weird around the nose area"; then,
+  29 October 17:06, "take the original of that model and put the old head
+  on it"): his mesh, UVs and colours were Gary's own all along (the same
+  points as his "New Player a.glb", 25 October; the atlas is his colour map
+  at 2048); what was missing was its **normal map**, the fine shape painted
+  into the light (the bridge and nostrils, the eyelids, the folds in his
+  shirt), which `rig_character.py` leaves out. Put back on the rigged model
+  with StandardMaterial3D it lit him in patches: on the Compatibility
+  renderer (the phone link) Godot 4.7's skinning pass decodes a rigged
+  mesh's tangents the other way from how it encoded them, so each island of
+  the atlas was lit from a different side (the unskinned mesh was fine; the
+  same tangents written into the file came out the same). So a model with
+  `<model>_normal.png` beside it wears `assets/shaders/character_nm.gdshader`
+  (`Figure3D.dress_normal_map`, also in the portraits): his own colour and
+  metal-roughness, and the normal map read through a frame worked out per
+  pixel from the screen derivatives of the surface and its UVs (signed by
+  the UVs' winding, so the same on GL and on Vulkan/Metal), needing no
+  tangents. `tests/nm_check.gd` measures it against StandardMaterial3D on the
+  unskinned mesh (a mean difference of 5 in 255, the rigged model the same).
+  `tools/add_normal_map.py MODEL.glb <maker's.glb|normal.png>` puts a normal
+  map beside a model; `player_a_normal.png` is his, at its own 2048. His
+  portrait is re-rendered. (`tools/heal_face.py`, painting over the nose
+  from the front, was tried that morning and taken back the same afternoon.)
 - **Nell's stick** ("goes through the bench before you sit with her"): sat,
   her stick stands on the ground by her right knee, clear of the seat
   (`Figure3D.plant_stick(foot)`: the hand turned so the stick hangs straight

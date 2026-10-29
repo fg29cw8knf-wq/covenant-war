@@ -160,6 +160,40 @@ static func make(look: String, id := "") -> PaperDoll:
 	return PaperDoll.new().setup(look)
 
 
+## A model with its own normal map beside it (<model>_normal.png: the fine
+## shape Gary's model was made with, its nostrils, eyelids and folds) wears
+## it through assets/shaders/character_nm.gdshader in place of the model's
+## StandardMaterial3D (its colour and metal-roughness textures kept). The
+## shader works out the normal map's frame per pixel: on the Compatibility
+## renderer (the phone link) a rigged model's tangents come out of Godot's
+## skinning mangled, and StandardMaterial3D's normal map lit him in patches
+## (29 October: Player A's head as Gary made it).
+static var _nm_mats := {}
+
+
+static func dress_normal_map(m: Node3D, model_name: String) -> void:
+	var npath := DIR + model_name + "_normal.png"
+	if not ResourceLoader.exists(npath):
+		return
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		for si in mi.mesh.get_surface_count():
+			var src := mi.get_active_material(si)
+			if not (src is StandardMaterial3D):
+				continue
+			var key := "%s:%d" % [model_name, src.get_instance_id()]
+			if not _nm_mats.has(key):
+				var std := src as StandardMaterial3D
+				var sm := ShaderMaterial.new()
+				sm.shader = load("res://assets/shaders/character_nm.gdshader")
+				sm.set_shader_parameter("albedo_tex", std.albedo_texture)
+				sm.set_shader_parameter("mr_tex", std.roughness_texture if std.roughness_texture != null else std.metallic_texture)
+				sm.set_shader_parameter("normal_tex", load(npath))
+				sm.set_shader_parameter("metallic_k", std.metallic)
+				sm.set_shader_parameter("roughness_k", std.roughness)
+				_nm_mats[key] = sm
+			mi.set_surface_override_material(si, _nm_mats[key])
+
+
 ## The model file (without .glb) that plays a look or id. The player's is
 ## Player A (Master Script v7: one hero, so the films can be made round him;
 ## DollArt.player_look() says "a" whatever an older save's "look" flag holds).
@@ -193,6 +227,7 @@ func _ready() -> void:
 	_model_name = model_file(char_id)
 	var path := DIR + _model_name + ".glb"
 	model = (load(path) as PackedScene).instantiate()
+	dress_normal_map(model, _model_name)
 	_pivot.add_child(model)
 	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
