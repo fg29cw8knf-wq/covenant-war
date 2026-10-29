@@ -701,6 +701,39 @@ func _seated_pose() -> Dictionary:
 	return {"pos": pos, "rot": rot}
 
 
+## A walking stick that's part of a model, bound to the right hand alone
+## (tools/stick_weights.py): where its foot is in that hand bone's own frame
+## (from the model's bind pose: Nell's carved stick). stick_foot() gives it
+## where it is now.
+const STICKS := {"nell": Vector3(-0.0625, -0.8806, -0.0928)}
+
+
+## Where the foot of their walking stick is now (world), or their right
+## hand's place if they have none.
+func stick_foot() -> Vector3:
+	var h := _skel.find_bone("RightHand") if _skel != null else -1
+	if h < 0:
+		return global_position
+	var gp := _skel.global_transform * _skel.get_bone_global_pose(h)
+	return gp * STICKS.get(_model_name, Vector3.ZERO)
+
+
+## How far in front of the seat their feet are, sitting on its edge (m):
+## the thigh along the seat, the shins down from the knees, a little
+## forward. Standing up, that's where they stand.
+func seat_feet_ahead() -> float:
+	if _skel == null:
+		return 0.42 * stature()
+	var up := _skel.find_bone("LeftUpLeg")
+	var kn := _skel.find_bone("LeftLeg")
+	var ft := _skel.find_bone("LeftFoot")
+	if up < 0 or kn < 0 or ft < 0:
+		return 0.42 * stature()
+	var thigh := _skel.get_bone_global_rest(up).origin.distance_to(_skel.get_bone_global_rest(kn).origin)
+	var shin := _skel.get_bone_global_rest(kn).origin.distance_to(_skel.get_bone_global_rest(ft).origin)
+	return (thigh * 0.95 + shin * sin(deg_to_rad(8.0))) * _skel.global_transform.basis.get_scale().y
+
+
 ## A light in the character's hand (the blank card, a taper, the mark).
 ## Pass null to take it away. Returns the node so it can be animated.
 func hand_light(node: Node3D, right := true) -> Node3D:
@@ -803,7 +836,13 @@ var _palms := {}   # "left"/"right": [palm direction (world), influence]
 ## Turns a hand so its palm faces `dir` (a world direction: Vector3.DOWN for
 ## a hand flat on a counter), the fingers pointing on the way the forearm
 ## goes, blended in over `secs`; Vector3.ZERO gives the hand back to the clip.
-func palm(side: String, dir: Vector3, secs := 0.3) -> void:
+## `own_frame`: `dir` is in their own frame (x to their left, y up, z ahead)
+## and turns as they turn (a palm facing in to hold a box from its side).
+## `flat` (0..1) straightens the fingers too (towards their rest, which is straight), so a
+## hand laid on a counter lies flat on it instead of curling over its edge
+## (29 October, Gary: Bram "isn't rubbing the counter, he is waving his hand
+## above it").
+func palm(side: String, dir: Vector3, secs := 0.3, flat := 0.0, own_frame := false) -> void:
 	if _skel == null:
 		return
 	if not _skel.has_node("HandTurn"):
@@ -812,9 +851,15 @@ func palm(side: String, dir: Vector3, secs := 0.3) -> void:
 		ht.fig = self
 		_skel.add_child(ht)
 	_skel.move_child(_skel.get_node("HandTurn"), -1)
-	var cur: Array = _palms.get(side, [dir, 0.0])
+	if _skel.has_node("HandsOff"):
+		_skel.move_child(_skel.get_node("HandsOff"), -1)   # (solids come last)
+	var cur: Array = _palms.get(side, [dir, 0.0, flat, own_frame])
+	while cur.size() < 4:
+		cur.append(0.0 if cur.size() == 2 else false)
 	if dir != Vector3.ZERO:
 		cur[0] = dir.normalized()
+		cur[2] = flat
+		cur[3] = own_frame
 	_palms[side] = cur
 	var tw := create_tween()
 	tw.tween_method(func(k: float) -> void:
@@ -828,6 +873,8 @@ func _turn_hands() -> void:
 	for side in _palms:
 		var pd: Vector3 = _palms[side][0]
 		var k: float = _palms[side][1]
+		if (_palms[side] as Array).size() > 3 and bool(_palms[side][3]):
+			pd = (global_transform.basis * (Basis(Vector3.UP, _yaw) * pd)).normalized()
 		if k <= 0.001:
 			continue
 		var pre := "Left" if side == "left" else "Right"
@@ -863,6 +910,381 @@ func _turn_hands() -> void:
 		var par := _skel.get_bone_parent(h)
 		var pb := _skel.get_bone_global_pose(par).basis.orthonormalized() if par >= 0 else Basis()
 		_skel.set_bone_pose_rotation(h, (pb.inverse() * Basis(q)).get_rotation_quaternion())
+		# a flat hand: the fingers back to their rest, straight (the thumb too,
+		# a little, so it lies along the side of the hand)
+		var flat: float = float(_palms[side][2]) if (_palms[side] as Array).size() > 2 else 0.0
+		if flat > 0.0:
+			for fn in ["Index", "Middle", "Ring", "Pinky", "Thumb"]:
+				for j in [1, 2, 3]:
+					var fb := _skel.find_bone(pre + "Hand" + fn + str(j))
+					if fb < 0:
+						continue
+					var rr := _skel.get_bone_rest(fb).basis.get_rotation_quaternion()
+					var cr := _skel.get_bone_pose_rotation(fb)
+					_skel.set_bone_pose_rotation(fb, cr.slerp(rr, clampf(k * flat * (0.6 if fn == "Thumb" else 1.0), 0.0, 1.0)))
+
+
+## Things their hands can't go into (29 October, Gary: when Bram talks
+## behind the bar "his hands are still going onto the wood of the bar, need
+## to make that a solid object"): boxes in the world (AABBs, square to the
+## world). Each frame, after the clip, the hands' reaches and their turning,
+## a hand (the wrist, the middle of the hand and the fingertips) found inside
+## one is moved out of it the shortest way (up onto its top, or back out of
+## a side), the arm bending to put it there and the hand keeping its turn,
+## so a gesture that would have gone into the counter stops on it. Eased in
+## and out over a few frames, so nothing jumps. [] takes them away.
+func hands_off(boxes: Array) -> void:
+	_solids = boxes.duplicate()
+	if _skel == null:
+		return
+	if not _skel.has_node("HandsOff"):
+		var ho := HandsOff.new()
+		ho.name = "HandsOff"
+		ho.fig = self
+		_skel.add_child(ho)
+	_skel.move_child(_skel.get_node("HandsOff"), -1)
+
+
+var _solids: Array = []
+var _push := {"left": Vector3.ZERO, "right": Vector3.ZERO}
+## How far a hand's skin stands off its bones (m): what's kept clear of a solid.
+const SKIN := 0.025
+
+
+class HandsOff:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+
+	func _process_modification_with_delta(delta: float) -> void:
+		if is_instance_valid(fig):
+			fig._hands_off(delta)
+
+
+## A palm held down at a height (world y): the wrist is moved, after
+## everything else, so the middle of the palm is there (Bram's on the rag's
+## wad: the reach alone left it a hand's depth over it once the hand was
+## turned palm down). NAN lets it go.
+func press(side: String, y: float) -> void:
+	if is_nan(y):
+		_press.erase(side)
+	else:
+		_press[side] = y
+	if not is_nan(y) and _skel != null and not _skel.has_node("HandsOff"):
+		hands_off(_solids)
+
+
+var _press := {}
+## Where the middle of each palm was, as last drawn (world).
+var palm_seen := {}
+
+
+func _palm_point(pre: String) -> Vector3:
+	var xf := _skel.global_transform
+	var h := _skel.find_bone(pre + "Hand")
+	var w := xf * _skel.get_bone_global_pose(h).origin
+	var m := _skel.find_bone(pre + "HandMiddle1")
+	if m < 0:
+		return w
+	return (w + xf * _skel.get_bone_global_pose(m).origin) * 0.5
+
+
+func _hands_off(delta: float) -> void:
+	for side in _press:
+		var pre := "Left" if side == "left" else "Right"
+		if _skel.find_bone(pre + "Hand") < 0:
+			continue
+		var dy: float = float(_press[side]) - _palm_point(pre).y
+		if absf(dy) > 0.002:
+			_move_wrist(pre, Vector3(0, dy, 0))
+	for side in ["left", "right"]:
+		var pre := "Left" if side == "left" else "Right"
+		if _skel.find_bone(pre + "Hand") >= 0:
+			palm_seen[side] = _palm_point(pre)
+	if _solids.is_empty():
+		_push = {"left": Vector3.ZERO, "right": Vector3.ZERO}
+	else:
+		_keep_out_of_solids(delta)
+	_apply_grip()
+	_place_held()
+
+
+func _keep_out_of_solids(delta: float) -> void:
+	var xf := _skel.global_transform
+	for side in ["left", "right"]:
+		var pre := "Left" if side == "left" else "Right"
+		var h := _skel.find_bone(pre + "Hand")
+		var fa := _skel.find_bone(pre + "ForeArm")
+		if h < 0 or fa < 0:
+			continue
+		var w := xf * _skel.get_bone_global_pose(h).origin
+		var e := xf * _skel.get_bone_global_pose(fa).origin
+		var pts := [w]
+		var tip := -1
+		for fn in ["HandMiddle3", "HandMiddle2", "HandMiddle1", "HandIndex3", "HandIndex1"]:
+			tip = _skel.find_bone(pre + fn)
+			if tip >= 0:
+				break
+		if tip >= 0:
+			var tp := xf * _skel.get_bone_global_pose(tip).origin
+			var par := _skel.get_bone_parent(tip)
+			var pp := xf * _skel.get_bone_global_pose(par).origin
+			tp += (tp - pp).normalized() * 0.02 * stature()   # (past the last joint: the fingertip)
+			pts.append(tp)
+			pts.append((w + tp) * 0.5)
+			# and every knuckle (a curled hand's lowest point is one of them)
+			for fn in ["HandIndex1", "HandIndex2", "HandMiddle1", "HandMiddle2", "HandMiddle3", "HandRing1", "HandPinky1", "HandPinky2", "HandThumb2", "HandThumb3"]:
+				var fb := _skel.find_bone(pre + fn)
+				if fb >= 0:
+					pts.append(xf * _skel.get_bone_global_pose(fb).origin)
+		else:
+			var hd := (w - e).normalized()
+			pts.append(w + hd * 0.16 * stature())
+			pts.append(w + hd * 0.08 * stature())
+		if _press.has(side):
+			# a palm held down on something (a rag on the counter): only its
+			# wrist and palm are kept out, a little closer; its curled
+			# fingers are round what it holds
+			pts = [w, _palm_point(pre)]
+		var need := Vector3.ZERO
+		for b in _solids:
+			var box: AABB = (b as AABB).grow(SKIN * (0.6 if _press.has(side) else 1.0))
+			var inside := false
+			for p in pts:
+				if box.has_point(p):
+					inside = true
+					break
+			if not inside:
+				continue
+			# the way out: up onto the top when the wrist is up at its top (a
+			# hand coming down on the counter stops on it), else out of the
+			# nearest side (a hand hanging beside it); one way for all three
+			# points, so it never ends up between two ways and still in it
+			var ways := [Vector3.UP] if w.y > box.end.y - 0.12 else [Vector3.RIGHT, Vector3.LEFT, Vector3.BACK, Vector3.FORWARD]
+			var best := Vector3.ZERO
+			var best_len := INF
+			for d in ways:
+				var face: float = (box.end if (d.x + d.y + d.z) > 0.0 else box.position).dot(d.abs()) * (d.x + d.y + d.z)
+				var push := 0.0
+				for p in pts:
+					if box.has_point(p):
+						push = maxf(push, face - (p as Vector3).dot(d))
+				if push < best_len:
+					best_len = push
+					best = d * push
+			if best.length() > need.length():
+				need = best
+		var cur: Vector3 = _push[side]
+		# in quickly (a frame or two), out more gently; a new way out at once
+		if need.length() > 0.001 and cur.length() > 0.001 and need.normalized().dot(cur.normalized()) < 0.9:
+			cur = need
+		var rate := 30.0 if need.length() > cur.length() else 8.0
+		cur = cur.lerp(need, 1.0 - exp(-delta * rate)) if delta > 0.0 else need
+		if need.length() - cur.length() > 0.012:
+			cur = need   # (never left more than a finger's width in it)
+		_push[side] = cur
+		if cur.length() > 0.001:
+			_move_wrist(pre, cur)
+			palm_seen[side] = _palm_point(pre)
+
+
+# ------------------------------------------------------------- held things ---
+
+## Something held for real (29 October, Gary: Bram's card box "is still not
+## in brams hand is floating between them can't you add mechanics so it
+## actually fixes it"): every frame, once the hands are where they end up
+## (the clip, the reaches, the turns, the solids), the thing is put where
+## the hands are, so it can't be anywhere but in them:
+##   "palm":    resting on one hand's palm (`side`), its up the way the palm
+##              faces, `lift` over the palm's skin (half its height), its
+##              front the way they face, turned `turn` about its up;
+##   "between": between the two palms, its x from the right palm to the
+##              left, its up the world's, `lift` up from their middle.
+## Until 29 October a held thing was put at a point in front of them and
+## the hands reached for it, and where an arm fell short of the point it
+## hung in the air. detach() lets it go where it is.
+## `gap` (between): how far apart the palms are kept, its width (the arms
+## are bent to put each palm on its side, whatever the reach left them).
+func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0) -> void:
+	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap}
+	if _skel != null and not _skel.has_node("HandsOff"):
+		hands_off(_solids)
+
+
+func detach(node: Node3D = null) -> void:
+	if node == null or (_in_hands.has("node") and _in_hands.node == node):
+		_in_hands = {}
+
+
+## What they hold for real (attach()), or null.
+func holding() -> Node3D:
+	if _in_hands.has("node") and is_instance_valid(_in_hands.node):
+		return _in_hands.node
+	return null
+
+
+var _in_hands := {}
+## Hands on the two sides of something they don't hold yet (grip()).
+var _grip := {}
+
+
+## Puts their palms on the two sides of `node` (its x axis, `gap` apart),
+## without moving it, eased in over `secs`: taking a box someone else still
+## holds, the hands land on it rather than about it. null lets go.
+func grip(node: Node3D, gap := 0.0, secs := 0.3) -> void:
+	if node == null:
+		_grip = {}
+		return
+	_grip = {"node": node, "gap": gap, "k": 0.0}
+	if _skel != null and not _skel.has_node("HandsOff"):
+		hands_off(_solids)
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void:
+		if not _grip.is_empty():
+			_grip.k = k, 0.0, 1.0, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+
+
+func _apply_grip() -> void:
+	if _grip.is_empty():
+		return
+	var n = _grip.node
+	if not is_instance_valid(n) or not (n as Node3D).is_inside_tree():
+		_grip = {}
+		return
+	var xf := (n as Node3D).global_transform
+	var half: float = float(_grip.gap) * 0.5
+	var k: float = _grip.k
+	# (their left hand to the side on their left)
+	var a := xf * Vector3(half, 0, 0)
+	var b := xf * Vector3(-half, 0, 0)
+	var l := palm_frame("left").origin
+	if l.distance_to(a) > l.distance_to(b):
+		var t := a
+		a = b
+		b = t
+	_move_wrist("Left", (a - l) * k)
+	_move_wrist("Right", (b - palm_frame("right").origin) * k)
+## How the held thing was last put (the tests read it: the skeleton's poses
+## are put back once it's drawn, so the hands can't be read afterwards).
+var last_hold := {}
+
+
+func _place_held() -> void:
+	if _in_hands.is_empty():
+		return
+	var n = _in_hands.node
+	if not is_instance_valid(n) or not (n as Node3D).is_inside_tree():
+		_in_hands = {}
+		return
+	var node := n as Node3D
+	var lift: float = _in_hands.lift
+	if String(_in_hands.mode) == "between":
+		var l := palm_frame("left")
+		var r := palm_frame("right")
+		var x := l.origin - r.origin
+		if x.length() < 0.01:
+			return
+		var gap: float = float(_in_hands.get("gap", 0.0))
+		if gap > 0.0:
+			# each palm onto its side of it: the arms bend to put them there
+			var mid := (l.origin + r.origin) * 0.5
+			var xn := x.normalized()
+			_move_wrist("Left", mid + xn * gap * 0.5 - l.origin)
+			_move_wrist("Right", mid - xn * gap * 0.5 - r.origin)
+			l = palm_frame("left")
+			r = palm_frame("right")
+			x = l.origin - r.origin
+		last_hold = {"apart": x.length(), "left": l.origin, "right": r.origin}
+		x = x.normalized()
+		var up := (Vector3.UP - x * Vector3.UP.dot(x)).normalized()
+		node.global_transform = Transform3D(Basis(x, up, x.cross(up)).orthonormalized(), (l.origin + r.origin) * 0.5 + up * lift)
+	else:
+		# on the palm, its up the palm's way out, its front the way they
+		# face (not the fingers': they point in across the body), turned
+		var f := palm_frame(String(_in_hands.side))
+		var up := f.basis.y
+		var ahead := global_transform.basis * (Basis(Vector3.UP, _yaw) * Vector3.BACK)
+		var z := ahead - up * ahead.dot(up)
+		if z.length() < 0.05:
+			z = f.basis.z
+		z = z.normalized()
+		var b := Basis(up.cross(z), up, z) * Basis(Vector3.UP, float(_in_hands.turn))
+		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift)
+		last_hold = {"palm": f.origin, "up": up}
+
+
+## A palm, as drawn this frame (world): its origin on the palm's skin at its
+## middle, its y the way the palm faces, its z the way the fingers point,
+## its x across the hand. A hand without finger bones gives the hand bone's
+## own turn, from a little past the wrist.
+func palm_frame(side: String) -> Transform3D:
+	var pre := "Left" if side == "left" else "Right"
+	var xf := _skel.global_transform
+	var h := _skel.find_bone(pre + "Hand")
+	if h < 0:
+		return Transform3D(global_transform.basis, global_position + Vector3(0, 1.0, 0))
+	var gp := _skel.get_bone_global_pose(h)
+	var m := _skel.find_bone(pre + "HandMiddle1")
+	var i := _skel.find_bone(pre + "HandIndex1")
+	var p := _skel.find_bone(pre + "HandPinky1")
+	if p < 0:
+		p = _skel.find_bone(pre + "HandRing1")
+	if m < 0 or i < 0 or p < 0:
+		var fb := (gp.basis * Vector3.DOWN)
+		var o := xf * (gp.origin + fb * 0.06 * stature())
+		return Transform3D((xf.basis * gp.basis).orthonormalized(), o)
+	var r0 := _skel.get_bone_global_rest(h).origin
+	var f_b := _skel.get_bone_global_rest(m).origin - r0
+	var plen := f_b.length()
+	f_b = f_b.normalized()
+	var across := _skel.get_bone_global_rest(i).origin - _skel.get_bone_global_rest(p).origin
+	var p_b := across.cross(f_b) if side == "right" else f_b.cross(across)
+	p_b = (p_b - f_b * p_b.dot(f_b)).normalized()
+	var fw := (xf.basis * (gp.basis * f_b)).normalized()
+	var nw := (xf.basis * (gp.basis * p_b)).normalized()
+	nw = (nw - fw * nw.dot(fw)).normalized()
+	var o := xf * (gp.origin + gp.basis * (f_b * plen * 0.6)) + nw * SKIN * 0.6 * stature()
+	return Transform3D(Basis(nw.cross(fw), nw, fw).orthonormalized(), o)
+
+
+## Moves a hand by `by` (world) with its arm: the upper arm and forearm turn
+## (two-bone, the elbow kept bending the way it was), the hand keeps its turn.
+func _move_wrist(pre: String, by: Vector3) -> void:
+	var a := _skel.find_bone(pre + "Arm")
+	var f := _skel.find_bone(pre + "ForeArm")
+	var h := _skel.find_bone(pre + "Hand")
+	if a < 0 or f < 0 or h < 0:
+		return
+	var d := _skel.global_transform.basis.inverse() * by
+	var ga := _skel.get_bone_global_pose(a)
+	var gf := _skel.get_bone_global_pose(f)
+	var gh := _skel.get_bone_global_pose(h)
+	var S := ga.origin
+	var E := gf.origin
+	var W := gh.origin
+	var l1 := S.distance_to(E)
+	var l2 := E.distance_to(W)
+	var T := W + d
+	var st := T - S
+	if st.length() < 0.001 or l1 < 0.001 or l2 < 0.001:
+		return
+	var dist := clampf(st.length(), absf(l1 - l2) + 0.001, l1 + l2 - 0.001)
+	var dir := st.normalized()
+	var bend := (E - S) - dir * (E - S).dot(dir)
+	if bend.length() < 0.0001:
+		bend = Vector3.DOWN - dir * Vector3.DOWN.dot(dir)
+	bend = bend.normalized()
+	var x := (l1 * l1 - l2 * l2 + dist * dist) / (2.0 * dist)
+	var E2 := S + dir * x + bend * sqrt(maxf(0.0, l1 * l1 - x * x))
+	var q1 := Quaternion((E - S).normalized(), (E2 - S).normalized())
+	var W1 := S + q1 * (W - S)
+	var q2 := Quaternion((W1 - E2).normalized(), (S + dir * dist - E2).normalized())
+	var ba := Basis(q1) * ga.basis.orthonormalized()
+	var bf := Basis(q2) * Basis(q1) * gf.basis.orthonormalized()
+	var pa := _skel.get_bone_parent(a)
+	var bp := _skel.get_bone_global_pose(pa).basis.orthonormalized() if pa >= 0 else Basis()
+	_skel.set_bone_pose_rotation(a, (bp.inverse() * ba).orthonormalized().get_rotation_quaternion())
+	_skel.set_bone_pose_rotation(f, (ba.inverse() * bf).orthonormalized().get_rotation_quaternion())
+	_skel.set_bone_pose_rotation(h, (bf.inverse() * gh.basis.orthonormalized()).orthonormalized().get_rotation_quaternion())
 
 
 func _keep_targets() -> void:
@@ -1062,6 +1484,8 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 		_skel.add_child(ik)
 		if _skel.has_node("HandTurn"):
 			_skel.move_child(_skel.get_node("HandTurn"), -1)   # (after the hands)
+		if _skel.has_node("HandsOff"):
+			_skel.move_child(_skel.get_node("HandsOff"), -1)   # (and solids after that)
 		# the elbow bends towards this: out to their side, down and back
 		var pole := Node3D.new()
 		pole.name = pre + "Elbow"

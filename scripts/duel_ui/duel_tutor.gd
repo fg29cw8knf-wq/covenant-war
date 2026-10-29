@@ -403,7 +403,11 @@ func _show_box(step: Dictionary, footer: String) -> void:
 	text_label.text = String(step.get("say", ""))
 	foot_label.text = footer
 	var look := String(step.get("look", "")) if String(step.get("look", "")) != "" else who.to_lower()
-	portrait.texture = DollArt.portrait(look) if DollArt.LOOKS.has(look) else null
+	# 29 October (Gary: Nell's "image ... is different then her model"): a
+	# teacher with a portrait rendered from their own model shows that, not
+	# the stand-in look (Nell's "elder" is Old Maren's face, Tam's "farmer"
+	# the crowd's farmer)
+	portrait.texture = DollArt.portrait(look) if (DollArt.has_portrait(look) or DollArt.LOOKS.has(look)) else null
 	portrait.visible = portrait.texture != null
 	var was := box.visible
 	box.visible = true

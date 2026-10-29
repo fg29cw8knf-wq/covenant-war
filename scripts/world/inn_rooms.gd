@@ -24,7 +24,9 @@ const BAR_X := -3.25
 const BAR_Z0 := -2.4
 const BAR_Z1 := 1.8
 const BAR_FLAP_Z := 1.05
-const BAR_BEHIND := Vector3(-3.92, 0.0, -0.1)
+## (29 October: a step nearer the counter than it was, -3.92, so he can
+## reach well onto it with the rag without his arm stretched straight)
+const BAR_BEHIND := Vector3(-3.84, 0.0, -0.1)
 
 
 ## The taproom: plaster and black beams, a long bar, the hearth, a table with a
@@ -727,11 +729,18 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	v.box(root, Vector3(W, 0.2, D), Vector3(0, -0.1, 0), v.mats.wood_h)
 	v.box(root, Vector3(W, 0.2, D), Vector3(0, H + 0.1, 0), v.mats.beam)
 	v.box(root, Vector3(W, H, 0.3), Vector3(0, H * 0.5, D * 0.5 + 0.15), wall)
-	for s in [-1.0, 1.0]:
-		v.box(root, Vector3(0.3, H, D), Vector3(s * (W * 0.5 + 0.15), H * 0.5, 0), wall)
-	# the north wall, round the doorway
+	v.box(root, Vector3(0.3, H, D), Vector3(W * 0.5 + 0.15, H * 0.5, 0), wall)
+	# the west wall behind the bar, round its window, and the north wall
+	# west of the door round its two (29 October, Gary: "need some windows
+	# on the room as you say about the shutters but there are no windows":
+	# Bram's first line is "Left the shutter unlatched again"); the west
+	# window's frame and shutters, and the rest, are _eve_windows
+	_wall_with_holes(v, root, wall, Vector3(-W * 0.5 - 0.15, 0, 0), Vector3(0, 0, 1), D, H, [[EVE_WEST_WINDOW.x, EVE_WEST_WINDOW.y, EVE_WEST_WINDOW.z]])
 	var left_w := W * 0.5 + dx - dw * 0.5
-	v.box(root, Vector3(left_w, H, 0.3), Vector3(-W * 0.5 + left_w * 0.5, H * 0.5, -D * 0.5 - 0.15), wall)
+	var holes := []
+	for c in EVE_NORTH_WINDOWS:
+		holes.append([(c as Vector3).x - (-W * 0.5 + left_w * 0.5), (c as Vector3).y, (c as Vector3).z])
+	_wall_with_holes(v, root, wall, Vector3(-W * 0.5 + left_w * 0.5, 0, -D * 0.5 - 0.15), Vector3(1, 0, 0), left_w, H, holes)
 	var right_w := W * 0.5 - dx - dw * 0.5
 	v.box(root, Vector3(right_w, H, 0.3), Vector3(W * 0.5 - right_w * 0.5, H * 0.5, -D * 0.5 - 0.15), wall)
 	v.box(root, Vector3(dw, H - dh, 0.3), Vector3(dx, dh + (H - dh) * 0.5, -D * 0.5 - 0.15), wall)
@@ -757,17 +766,18 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	var bar_len := BAR_FLAP_Z - BAR_Z0
 	var bar_mid := (BAR_Z0 + BAR_FLAP_Z) * 0.5
 	v.box(root, Vector3(0.7, 1.05, bar_len), Vector3(BAR_X, 0.525, bar_mid), v.mats.wood)
-	v.box(root, Vector3(0.85, 0.08, bar_len + 0.1), Vector3(BAR_X, 1.09, bar_mid - 0.05), v.mats.beam)
+	# its top in oak polished by forty years of elbows (29 October: it was
+	# the near-black of the beams, and read as a hole in the picture more
+	# than a counter)
+	v.box(root, Vector3(0.85, 0.08, bar_len + 0.1), Vector3(BAR_X, 1.09, bar_mid - 0.05), counter_oak(v))
 	# the flap: the counter top's last 0.7 m, hinged at the counter's end and
 	# raised upright (and a brass hook on the wall post it rests against)
-	v.box(root, Vector3(0.85, 0.7, 0.08), Vector3(BAR_X, 1.09 + 0.35, BAR_FLAP_Z + 0.04), v.mats.beam)
+	v.box(root, Vector3(0.85, 0.7, 0.08), Vector3(BAR_X, 1.09 + 0.35, BAR_FLAP_Z + 0.04), counter_oak(v))
 	v.box(root, Vector3(0.1, 0.03, 0.03), Vector3(BAR_X, 1.09 + 0.72, BAR_FLAP_Z + 0.08), v.mats.metal)
 	# the gap's far post, where the counter would have ended
 	v.box(root, Vector3(0.12, 1.05, 0.12), Vector3(BAR_X - 0.29, 0.525, BAR_Z1), v.mats.beam_v)
-	for y in [1.5, 2.1]:
-		v.box(root, Vector3(0.3, 0.05, 3.9), Vector3(-W * 0.5 + 0.18, y, -0.3), v.mats.wood_h)
-	for k in 8:
-		v.box(root, Vector3(0.04, 0.09, 0.03), Vector3(-W * 0.5 + 0.12, 2.0, -2.0 + k * 0.48), v.mats.metal)
+	_eve_dressing(v, root, W, D, H)
+	_eve_windows(v, root, W, D)
 	for p in [Vector3(-4.0, 0, -3.0), Vector3(-3.3, 0, -3.05)]:
 		var b := v.make_barrel()
 		b.position = p + Vector3(0, AshfordVillage.BARREL_HALF, 0)
@@ -819,6 +829,13 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		"walk": Rect2(BAR_X + 0.75, -D * 0.5 + 0.35, 3.6 - (BAR_X + 0.75), D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
 			[Vector2(t.x + 1.15, t.z + 0.55), 0.42]],
 		"keep_out": [Rect2(-3.95, D * 0.5 - 1.38, 4.3, 1.6)],
+		# the counter as a solid for hands (Figure3D.hands_off; 29 October,
+		# Gary: Bram's hands went "onto the wood of the bar"): its body and
+		# top, from the floor to the top's upper face (1.13), the raised flap
+		# standing on its end
+		"hand_solids": [AABB(root.to_global(Vector3(BAR_X - 0.425, 0.0, BAR_Z0 - 0.1)), Vector3(0.85, 1.13, bar_len + 0.1)),
+			AABB(root.to_global(Vector3(BAR_X - 0.425, 1.13, BAR_FLAP_Z)), Vector3(0.85, 0.7, 0.08))],
+		"bar_top": root.to_global(Vector3(BAR_X, 1.13, bar_mid)),
 		"stairs_zone": Rect2(-1.3, D * 0.5 - 1.95, 2.0, 1.2),
 		"floor_y": EVE_AT.y}
 	# the street through the doorway: the village itself, from the inn's door
@@ -827,6 +844,281 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	view_of(v, root, eye, eye + front.out * 10.0 + Vector3(0, -0.4, 0), Transform3D(Basis(), Vector3(dx, 1.25, -D * 0.5 - 1.6)), Vector2(3.4, 2.6))
 	v.set_meta("eve", out)
 	return out
+
+
+## The taproom's windows (29 October): one in the west wall behind the bar,
+## to the north of the shelves (x unused, its middle along the wall z, its
+## sill y... as [along, sill, width] it's x = middle along the wall, y =
+## sill height, z = width), and two in the north wall west of the door
+## (their middles along x, sills, widths). All 1.0 m of glass tall.
+const EVE_WEST_WINDOW := Vector3(-1.75, 1.15, 0.8)
+const EVE_NORTH_WINDOWS := [Vector3(-3.0, 1.05, 0.9), Vector3(-0.7, 1.05, 0.9)]
+const EVE_WINDOW_H := 1.0
+
+
+## A wall `length` long along `along` (a unit x or z), `h` tall, its middle
+## on the floor at `mid`, 0.3 thick, with window holes: each [middle along
+## the wall from its own middle, sill height, width], EVE_WINDOW_H tall.
+static func _wall_with_holes(v: AshfordVillage, root: Node3D, mat: Material, mid: Vector3, along: Vector3, length: float, h: float, holes: Array) -> void:
+	var size_of := func(a: float, y: float) -> Vector3:
+		return Vector3(a, y, 0.3) if along.x != 0.0 else Vector3(0.3, y, a)
+	var cuts := holes.duplicate()
+	cuts.sort_custom(func(p, q): return float(p[0]) < float(q[0]))
+	var at := -length * 0.5
+	for c in cuts:
+		var c0 := float(c[0]) - float(c[2]) * 0.5
+		var c1 := float(c[0]) + float(c[2]) * 0.5
+		var sill := float(c[1])
+		var top := sill + EVE_WINDOW_H
+		if c0 > at:
+			v.box(root, size_of.call(c0 - at, h), mid + along * (at + c0) * 0.5 + Vector3(0, h * 0.5, 0), mat)
+		v.box(root, size_of.call(c1 - c0, sill), mid + along * (c0 + c1) * 0.5 + Vector3(0, sill * 0.5, 0), mat)
+		v.box(root, size_of.call(c1 - c0, h - top), mid + along * (c0 + c1) * 0.5 + Vector3(0, (top + h) * 0.5, 0), mat)
+		at = c1
+	if length * 0.5 > at:
+		v.box(root, size_of.call(length * 0.5 - at, h), mid + along * (at + length * 0.5) * 0.5 + Vector3(0, h * 0.5, 0), mat)
+
+
+## The windows' glass, frames, sills and shutters, and the cold morning light
+## through them. The shutters are inside, two leaves to a window, folded back
+## against the wall, but for the one Bram means ("Left the shutter unlatched
+## again"): the north window over the barrels, its west leaf swung out into
+## the room and knocking a little in the draught.
+static func _eve_windows(v: AshfordVillage, root: Node3D, W: float, D: float) -> void:
+	# [the glass's middle, which way into the room, width, unlatched]
+	var wins := [[Vector3(-W * 0.5 - 0.15, EVE_WEST_WINDOW.y + EVE_WINDOW_H * 0.5, EVE_WEST_WINDOW.x), Vector3(1, 0, 0), EVE_WEST_WINDOW.z, false]]
+	var first := true
+	for c in EVE_NORTH_WINDOWS:
+		wins.append([Vector3((c as Vector3).x, (c as Vector3).y + EVE_WINDOW_H * 0.5, -D * 0.5 - 0.15), Vector3(0, 0, 1), (c as Vector3).z, first])
+		first = false
+	var n := 0
+	for wdef in wins:
+		var c: Vector3 = wdef[0]
+		var inw: Vector3 = wdef[1]
+		var ww: float = wdef[2]
+		var unl: bool = wdef[3]
+		var hh := EVE_WINDOW_H
+		var across := Vector3.UP.cross(inw)   # along the wall
+		var yaw := atan2(inw.x, inw.z)
+		var face := c + inw * 0.15   # the wall's inner face
+		# the glass, set back in the wall
+		var pane := MeshInstance3D.new()
+		var q := QuadMesh.new()
+		q.size = Vector2(ww, hh)
+		pane.mesh = q
+		var pm := ShaderMaterial.new()
+		pm.shader = load("res://assets/shaders/village/pane.gdshader")
+		pm.set_shader_parameter("seed", float(n) * 3.7)
+		pm.set_shader_parameter("panes", Vector2(ww / 0.3, hh / 0.3))
+		pane.material_override = pm
+		pane.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pane.transform = Transform3D(Basis(Vector3.UP, yaw), c - inw * 0.04)
+		root.add_child(pane)
+		# the frame round it on the inside, the mullion, the deep sill
+		var rot := Vector3(0, yaw, 0)
+		for sd in [-1.0, 1.0]:
+			v.box(root, Vector3(0.09, hh + 0.18, 0.08), face + across * sd * (ww * 0.5 + 0.045) + inw * 0.02, v.mats.beam_v, rot)
+		v.box(root, Vector3(ww + 0.36, 0.14, 0.1), face + Vector3(0, hh * 0.5 + 0.07, 0) + inw * 0.03, v.mats.beam, rot)
+		v.box(root, Vector3(ww + 0.3, 0.05, 0.36), face + Vector3(0, -hh * 0.5 - 0.025, 0) - inw * 0.1, v.mats.wood_h, rot)
+		v.box(root, Vector3(0.05, hh, 0.05), c - inw * 0.02, v.mats.beam, rot)
+		# the shutters: a leaf each side, hinged at the frame, iron strap
+		# hinges and a latch bar
+		for sd in [-1.0, 1.0]:
+			var hinge := Node3D.new()
+			hinge.position = face + across * sd * (ww * 0.5 + 0.1) + inw * 0.04
+			hinge.rotation.y = yaw
+			root.add_child(hinge)
+			var leaf := Node3D.new()
+			hinge.add_child(leaf)
+			v.box(leaf, Vector3(ww * 0.5, hh + 0.06, 0.035), Vector3(-sd * ww * 0.25, 0, 0), v.mats.door_natural)
+			for y in [-0.32, 0.32]:
+				v.box(leaf, Vector3(ww * 0.36, 0.04, 0.012), Vector3(-sd * ww * 0.17, y, 0.022), v.mats.metal)
+			# folded back flat against the wall, or swung out on its hinge
+			var open := deg_to_rad(168.0)
+			if unl and sd < 0.0:
+				open = deg_to_rad(64.0)
+				var sway := func() -> void:
+					var tw := leaf.create_tween().set_loops()
+					tw.tween_property(leaf, "rotation:y", sd * deg_to_rad(5.0), 2.3).set_trans(Tween.TRANS_SINE)
+					tw.tween_property(leaf, "rotation:y", sd * deg_to_rad(-1.5), 1.9).set_trans(Tween.TRANS_SINE)
+					tw.tween_interval(1.2)
+				if leaf.is_inside_tree():
+					sway.call()
+				else:
+					leaf.tree_entered.connect(sway, CONNECT_ONE_SHOT)
+			hinge.rotation.y = yaw + sd * open
+		# the day coming in: cold, from high outside, onto the floor
+		var sun := SpotLight3D.new()
+		sun.light_color = Color(0.84, 0.9, 1.0)
+		sun.light_energy = 2.2 if unl else 1.6
+		sun.spot_range = 7.5
+		sun.spot_angle = 26.0
+		sun.spot_attenuation = 0.8
+		sun.shadow_enabled = v.quality > 0
+		root.add_child(sun)
+		sun.position = c - inw * 1.2 + Vector3(0, 1.0, 0)
+		sun.look_at(root.to_global(c + inw * 2.6 + Vector3(0, -c.y, 0)), Vector3.UP)
+		n += 1
+
+
+## Polished oak for the counter's top: honey-brown, the grain along it.
+static func counter_oak(v: AshfordVillage) -> Material:
+	return v.shader_mat("wood", {"wood_a": Color(0.42, 0.26, 0.13), "wood_b": Color(0.27, 0.16, 0.08), "grain_axis": Vector3(0, 0, 1)})
+
+
+## The wall behind the bar, dressed (29 October, Gary: "behind him can we
+## add some ornaments on the wall so it doesn't look so plain"): two shelves
+## from the counter's flap end to the window, the good tankards out on the
+## green but the rest of a working inn on them (stoneware jugs, bottles,
+## pewter plates stood on edge, a crock, a candle, a folded paper lantern
+## for tonight), copper measures on the hooks under the top shelf, and over
+## them the inn's painted board, The Crooked Lantern, Bram's old round
+## shield with a short sword behind it from his years in the Shards, and a
+## string of dried hops along the beam.
+static func _eve_dressing(v: AshfordVillage, root: Node3D, W: float, _D: float, _H: float) -> void:
+	var wx := -W * 0.5   # the west wall's inner face
+	var z0 := -1.12      # the shelves' north end (the window's south side)
+	var z1 := 1.65
+	var zl := z1 - z0
+	for y in [1.5, 2.1]:
+		v.box(root, Vector3(0.3, 0.05, zl), Vector3(wx + 0.18, y, (z0 + z1) * 0.5), v.mats.wood_h)
+		for zz in [z0 + 0.12, (z0 + z1) * 0.5, z1 - 0.12]:
+			v.box(root, Vector3(0.05, 0.14, 0.04), Vector3(wx + 0.06, y - 0.09, zz), v.mats.beam_v, Vector3(0, 0, 0.6))
+	var stone := StandardMaterial3D.new()
+	stone.albedo_color = Color(0.74, 0.66, 0.52)
+	stone.roughness = 0.6
+	var stone_dk := StandardMaterial3D.new()
+	stone_dk.albedo_color = Color(0.42, 0.3, 0.2)
+	stone_dk.roughness = 0.5
+	var pewter := StandardMaterial3D.new()
+	pewter.albedo_color = Color(0.62, 0.62, 0.6)
+	pewter.metallic = 0.85
+	pewter.roughness = 0.38
+	var copper := StandardMaterial3D.new()
+	copper.albedo_color = Color(0.78, 0.42, 0.24)
+	copper.metallic = 0.9
+	copper.roughness = 0.32
+	var green_glass := StandardMaterial3D.new()
+	green_glass.albedo_color = Color(0.16, 0.3, 0.14, 0.82)
+	green_glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	green_glass.roughness = 0.12
+	green_glass.metallic_specular = 0.8
+	var brown_glass := green_glass.duplicate() as StandardMaterial3D
+	brown_glass.albedo_color = Color(0.36, 0.18, 0.07, 0.85)
+	var wax := StandardMaterial3D.new()
+	wax.albedo_color = Color(0.93, 0.88, 0.74)
+	wax.roughness = 0.7
+	var x := wx + 0.2
+	# the lower shelf (its top at 1.525)
+	var y1 := 1.525
+	var row1 := [["jug", 0.12], ["bottle_g", 0.16], ["bottle_b", 0.08], ["plate", 0.15], ["crock", 0.12], ["jug_s", 0.12],
+		["candle", 0.18], ["bottle_g", 0.1], ["bottle_g", 0.07], ["bottle_b", 0.1], ["plate", 0.14], ["jug", 0.15], ["crock", 0.14], ["bottle_b", 0.12]]
+	var row2 := [["plate", 0.1], ["plate", 0.07], ["jug_s", 0.16], ["lantern", 0.2], ["bottle_g", 0.2], ["jug", 0.16],
+		["plate", 0.14], ["plate", 0.07], ["crock", 0.16], ["bottle_b", 0.12], ["jug_s", 0.12]]
+	for r in [[row1, y1], [row2, 2.125]]:
+		var z := z1 - 0.1
+		for it in r[0]:
+			var kind: String = it[0]
+			z -= float(it[1])
+			if z < z0 + 0.08:
+				break
+			var p := Vector3(x, float(r[1]), z)
+			match kind:
+				"jug":
+					v.cyl(root, 0.045, 0.07, 0.17, p + Vector3(0, 0.085, 0), stone, 12)
+					v.cyl(root, 0.035, 0.045, 0.05, p + Vector3(0, 0.195, 0), stone, 12)
+					v.box(root, Vector3(0.015, 0.1, 0.02), p + Vector3(0.06, 0.12, 0), stone_dk)
+				"jug_s":
+					v.cyl(root, 0.035, 0.05, 0.12, p + Vector3(0, 0.06, 0), stone_dk, 12)
+					v.cyl(root, 0.025, 0.035, 0.04, p + Vector3(0, 0.14, 0), stone_dk, 12)
+				"bottle_g", "bottle_b":
+					var gm: Material = green_glass if kind == "bottle_g" else brown_glass
+					v.cyl(root, 0.035, 0.035, 0.18, p + Vector3(0, 0.09, 0), gm, 10)
+					v.cyl(root, 0.012, 0.03, 0.06, p + Vector3(0, 0.21, 0), gm, 8)
+					v.cyl(root, 0.014, 0.014, 0.025, p + Vector3(0, 0.25, 0), stone_dk, 6)
+				"plate":
+					# stood on edge, leant back against the wall
+					v.cyl(root, 0.11, 0.11, 0.012, p + Vector3(-0.08, 0.11, 0), pewter, 18, Vector3(0, 0, PI * 0.5 - 0.2))
+				"crock":
+					v.cyl(root, 0.06, 0.065, 0.13, p + Vector3(0, 0.065, 0), stone, 12)
+					v.cyl(root, 0.064, 0.064, 0.02, p + Vector3(0, 0.135, 0), stone_dk, 12)
+				"candle":
+					v.cyl(root, 0.045, 0.05, 0.015, p + Vector3(0, 0.008, 0), pewter, 12)
+					v.cyl(root, 0.016, 0.016, 0.11, p + Vector3(0, 0.07, 0), wax, 8)
+				"lantern":
+					# a paper lantern folded flat for tonight, its ribs showing
+					var paper := StandardMaterial3D.new()
+					paper.albedo_color = Color(0.93, 0.62, 0.3)
+					paper.roughness = 0.9
+					v.cyl(root, 0.08, 0.08, 0.07, p + Vector3(0, 0.035, 0), paper, 14)
+					for k in 3:
+						v.cyl(root, 0.082, 0.082, 0.006, p + Vector3(0, 0.012 + k * 0.024, 0), stone_dk, 14)
+	# copper measures on the hooks under the top shelf
+	for k in 6:
+		var hz := z0 + 0.25 + k * 0.45
+		v.box(root, Vector3(0.04, 0.09, 0.03), Vector3(wx + 0.12, 2.0, hz), v.mats.metal)
+		if k % 3 != 2:
+			var s := 0.75 + 0.12 * (k % 2)
+			v.cyl(root, 0.045 * s, 0.055 * s, 0.11 * s, Vector3(wx + 0.16, 1.88, hz), copper, 12)
+			v.box(root, Vector3(0.012, 0.07 * s, 0.02), Vector3(wx + 0.1, 1.9, hz), copper)
+	# over the shelves: the inn's board
+	var board_at := Vector3(wx + 0.05, 2.55, 0.25)
+	v.box(root, Vector3(0.05, 0.42, 1.25), board_at, v.mats.wood)
+	v.box(root, Vector3(0.06, 0.48, 0.05), board_at + Vector3(0.005, 0, 0.645), v.mats.beam)
+	v.box(root, Vector3(0.06, 0.48, 0.05), board_at + Vector3(0.005, 0, -0.645), v.mats.beam)
+	var name_lbl := Label3D.new()
+	name_lbl.text = "The Crooked Lantern"
+	name_lbl.font = load("res://assets/fonts/Cinzel-Bold.woff2")
+	name_lbl.font_size = 64
+	name_lbl.pixel_size = 0.0016
+	name_lbl.modulate = Color(0.88, 0.7, 0.36)
+	name_lbl.outline_size = 0
+	name_lbl.shaded = true
+	name_lbl.double_sided = false
+	name_lbl.position = board_at + Vector3(0.03, 0.04, 0)
+	name_lbl.rotation.y = PI * 0.5
+	root.add_child(name_lbl)
+	var est := Label3D.new()
+	est.text = "ASHFORD"
+	est.font = name_lbl.font
+	est.font_size = 40
+	est.pixel_size = 0.0016
+	est.modulate = Color(0.72, 0.56, 0.3)
+	est.shaded = true
+	est.double_sided = false
+	est.position = board_at + Vector3(0.03, -0.12, 0)
+	est.rotation.y = PI * 0.5
+	root.add_child(est)
+	# Bram's round shield from the Shards, a short sword behind it
+	var shield_at := Vector3(wx + 0.06, 2.5, 1.35)
+	var leather := StandardMaterial3D.new()
+	leather.albedo_color = Color(0.34, 0.2, 0.11)
+	leather.roughness = 0.75
+	v.box(root, Vector3(0.025, 0.05, 0.62), shield_at + Vector3(-0.02, 0.02, 0.0), v.mats.metal, Vector3(0.75, 0, 0))
+	v.box(root, Vector3(0.02, 0.09, 0.03), shield_at + Vector3(-0.02, -0.22, 0.22), v.mats.beam, Vector3(0.75, 0, 0))
+	v.cyl(root, 0.24, 0.24, 0.04, shield_at + Vector3(0.02, 0, 0), leather, 24, Vector3(0, 0, PI * 0.5))
+	v.cyl(root, 0.245, 0.245, 0.03, shield_at + Vector3(0.025, 0, 0), copper, 24, Vector3(0, 0, PI * 0.5))
+	v.cyl(root, 0.22, 0.22, 0.045, shield_at + Vector3(0.026, 0, 0), leather, 24, Vector3(0, 0, PI * 0.5))
+	v.cyl(root, 0.06, 0.07, 0.05, shield_at + Vector3(0.06, 0, 0), pewter, 14, Vector3(0, 0, PI * 0.5))
+	# dried hops along the beam over it all, swagged between nails
+	var hop := StandardMaterial3D.new()
+	hop.albedo_color = Color(0.62, 0.6, 0.34)
+	hop.roughness = 0.9
+	var leafm := StandardMaterial3D.new()
+	leafm.albedo_color = Color(0.36, 0.38, 0.2)
+	leafm.roughness = 0.9
+	var hz0 := z0 - 0.1
+	var hz1 := z1 + 0.05
+	var cones := 26
+	for k in cones:
+		var u := float(k) / (cones - 1)
+		var zz := lerpf(hz0, hz1, u)
+		var sag := 0.13 * sin(fmod(u * 3.0, 1.0) * PI)
+		var py := 2.88 - sag
+		var sz := 0.035 + 0.01 * sin(float(k) * 1.7)
+		v.cyl(root, sz * 0.4, sz, sz * 1.8, Vector3(wx + 0.09, py - 0.03, zz), hop, 7, Vector3(0.0, 0, PI))
+		if k % 2 == 0:
+			v.box(root, Vector3(0.012, 0.05, 0.07), Vector3(wx + 0.1, py + 0.01, zz + 0.03), leafm, Vector3(0.5, 0, 0.3))
 
 
 ## Lime plaster for the inside walls: warm off-white, faintly mottled.

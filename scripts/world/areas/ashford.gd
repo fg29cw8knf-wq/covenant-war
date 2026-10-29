@@ -690,7 +690,7 @@ const FRIENDLY := {
 	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75, "skill": "loyal_hound",
 		# 28 October (Gary: synergy, taught through the game): Tam teaches the
 		# chain, the miller's rhythm (DuelSynergy; the rest waits for Bram)
-		"teach": ["chain", "combo"], "teacher": "Tam", "teacher_look": "farmer",
+		"teach": ["chain", "combo"], "teacher": "Tam", "teacher_look": "tam",
 		"teach_lines": {
 			"chain": "Steady, Sprout. That's two cards this turn. The third comes cheaper: one Essence less. Every miller knows it. You don't haul one sack at a time; you get a rhythm going. Cheap ones first, the dear one third.",
 			"combo": "Now that one likes being third. A Combo card, that: played third or later in a turn, it does more. Bulwark holds stronger, a Firebrand burns hotter. Mind the order.",
@@ -711,7 +711,7 @@ const FRIENDLY := {
 	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards",
 		# 28 October (Gary: "all cards linked to a god"): Nell, the oldest
 		# memory in the village, says whose ground the green is
-		"teach": ["ground", "graced", "shunned"], "teacher": "Old Nell", "teacher_look": "elder",
+		"teach": ["ground", "graced", "shunned"], "teacher": "Old Nell", "teacher_look": "nell",
 		"teach_lines": {
 			"ground": "Before you start, love: whose ground this is. Ashford's Circle is Ellowen's, the Lantern Keeper's. It's her festival we're keeping. Every card answers to some god or other, it says which at the foot, and hers do better here: Graced, we say. A Traveller's Pack is hers. It'll cost you less tonight.",
 			"graced": "There, see? Graced. Ellowen's card, on Ellowen's ground. And it's not only the ground: a god that's pleased with you graces its cards wherever you are. One that's cross with you shuns them.",
@@ -1064,6 +1064,15 @@ const BOX_OUT := Vector3(0.0, 0.03, 0.05)
 ## "the player's hand is deformed when he reached to take it").
 const BOX_GIVE_GAP := 0.64
 const BOX_LID := 0.024   # the lid's own height, of CARD_BOX_SIZE.y
+## Where Bram's apron pocket is, in his own frame (the box comes out of it).
+const BOX_POCKET := Vector3(-0.15, 0.95, 0.16)
+
+
+## Where Bram's right hand holds the box out on its palm, in his own frame:
+## in front of his right side, a little under the shoulders, two thirds of
+## an arm ahead (`out`: further, to be taken).
+static func _present_point(f: Figure3D, out := false) -> Vector3:
+	return f.hold_point(0.74 if out else 0.6, 0.5) + Vector3(-0.08, 0.0, 0.0)
 
 
 ## The card box: Gary's model when card_box.glb exists, else drawn (27
@@ -1110,6 +1119,23 @@ static func _card_box() -> Node3D:
 			deck.material_override = backs
 			deck.position = Vector3(box.get_center().x, inner_y * 0.62 * 0.5 + inner_y * 0.18, box.get_center().z)
 			inst.add_child(deck)
+			# the top card's back, the game's own (29 October: the plain blue
+			# top caught the sun in the green and read as a white sheet)
+			backs.roughness = 0.85
+			if ResourceLoader.exists("res://assets/art/card_back.jpg"):
+				var top := MeshInstance3D.new()
+				top.name = "TopCard"
+				var qm := QuadMesh.new()
+				# the card lies with its long side along the box
+				qm.size = Vector2(minf(dm.size.z, dm.size.x * 0.714), minf(dm.size.x, dm.size.z * 1.4))
+				top.mesh = qm
+				var cm := StandardMaterial3D.new()
+				cm.albedo_texture = load("res://assets/art/card_back.jpg")
+				cm.roughness = 0.8
+				top.material_override = cm
+				top.rotation = Vector3(-PI * 0.5, PI * 0.5, 0)
+				top.position = deck.position + Vector3(0, dm.size.y * 0.5 + 0.0004 / maxf(inst.scale.x, 0.0001), 0)
+				inst.add_child(top)
 	else:
 		var grain := NoiseTexture2D.new()
 		grain.width = 64
@@ -1278,6 +1304,13 @@ static func _box_out(w: World, who: String, out := true, secs := 0.5) -> void:
 	var box = w.get_meta("box_" + who, null)
 	if box == null or not is_instance_valid(box):
 		return
+	var hand = w.get_meta("box_hand_" + who, null)
+	if hand != null and is_instance_valid(hand) and Cine.fig(w, who) is Figure3D:
+		# (on his palm: the hand goes out, and the box with it)
+		var ht := w.create_tween()
+		ht.tween_property(hand, "position", _present_point(Cine.fig(w, who), out), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await ht.finished
+		return
 	var tw := w.create_tween()
 	tw.tween_property(box, "position", _box_hold(Cine.fig(w, who)) + (BOX_OUT if out else Vector3.ZERO), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
@@ -1287,8 +1320,23 @@ static func _box_out(w: World, who: String, out := true, secs := 0.5) -> void:
 static func _drop_box(w: World, who: String) -> void:
 	var f = Cine.fig(w, who)
 	if f is Figure3D:
-		(f as Figure3D).let_go(0.3)
+		var fig := f as Figure3D
+		fig.detach()
+		fig.let_go(0.3)
+		fig.palm("left", Vector3.ZERO, 0.3)
+		fig.palm("right", Vector3.ZERO, 0.3)
+	_free_box_hand(w, who)
 	_clear_boxes(w, who)
+
+
+## The marks a figure's hands were following for the box, gone.
+static func _free_box_hand(w: World, who: String) -> void:
+	for k in ["box_hand_" + who, "box_grip_" + who]:
+		if w.has_meta(k):
+			var n = w.get_meta(k)
+			if n != null and is_instance_valid(n):
+				(n as Node).queue_free()
+			w.remove_meta(k)
 
 
 ## Every card box someone carries goes (the one on record, and any left
@@ -1377,7 +1425,7 @@ static func _round_lantern(w: World, from: Vector3, to: Vector3, depth := 0) -> 
 
 
 ## The moment Corin spots the player, Bram gets up off his stool by the
-## Lantern with a worn card box in his hand and heads over at a brisk walk,
+## Lantern, the worn card box in his apron pocket, and heads over at a brisk walk,
 ## round the Great Lantern, to stand just off the pair, listening. He's there
 ## to step in when Corin says "no deck".
 static func _bram_sets_off(w: World) -> void:
@@ -1390,7 +1438,8 @@ static func _bram_sets_off(w: World) -> void:
 	# paintings start loading now, so it opens without a stall
 	CardFace.warm_art(PLAYER_DECK + ["lantern_moth"])
 	await AshfordP1.bram_stand(w)
-	_hold_box(w, "bram", _card_box())
+	# (the box stays in his apron pocket until "You do now." (29 October):
+	# carried over in both hands it hung in front of him, not in them)
 	var from := bram.global_position
 	var back := from - stop
 	back.y = 0.0
@@ -1412,7 +1461,7 @@ static func _bram_goes_back(w: World) -> void:
 	await AshfordP1.bram_to_stool(w)
 
 
-## Bram steps in beside the player with a card box in his hand (he set off
+## Bram steps in beside the player, the card box in his apron pocket (he set off
 ## when the conversation started, so he's only a few steps away).
 static func _bram_comes(w: World) -> void:
 	var p := w.player.global_position
@@ -1436,7 +1485,6 @@ static func _bram_comes(w: World) -> void:
 	# a cut (a glide here swung half round them, through Corin and the drum)
 	Cine.shot(w, AshfordP1.clear_cam(w, [mid + side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0), mid - side * 5.6 + d * 2.2 + Vector3(0, 2.4, 0),
 		mid + side * 4.6 + d * 3.2 + Vector3(0, 3.4, 0), mid + d * 5.0 + Vector3(0, 3.2, 0)], look, ["player", "bram", "corin"]), look)
-	_hold_box(w, "bram", _card_box())
 	Cine.look(w, "corin", bram.global_position)
 	Cine.look(w, "player", bram.global_position)
 	await Cine.path(w, "bram", _round_lantern(w, bram.global_position, stop), BRAM_PACE)
@@ -1491,17 +1539,36 @@ static func _box_out_scene(w: World) -> void:
 		Cine.look(w, "bram", w.player.global_position)
 		Cine.look(w, "player", bram_body.global_position)
 	if AshfordP1.meta(w, "box_bram") == null:
-		# out of his apron pocket at his hip and up into both hands (it used
-		# to appear in them from nowhere)
-		var box := _hold_box(w, "bram", _card_box())
-		if box != null and Cine.fig(w, "bram") is Figure3D:
-			var hold := _box_hold(Cine.fig(w, "bram"))
-			box.position = hold + Vector3(0.14, -0.3, -0.12)
-			box.rotation = Vector3(0, 0, 0.5)
-			var up := w.create_tween().set_parallel(true)
-			up.tween_property(box, "position", hold, 0.55).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-			up.tween_property(box, "rotation", Vector3.ZERO, 0.55).set_trans(Tween.TRANS_SINE)
+		var bfig = Cine.fig(w, "bram")
+		if bfig is Figure3D:
+			# out of his apron pocket at his hip on the flat of his right
+			# hand, and up and out to the player on it (29 October, Gary: the
+			# box "is still not in brams hand is floating between them":
+			# it's on his palm now, put there by the hand itself every frame,
+			# Figure3D.attach, so it can't be anywhere else; its clasp to him,
+			# so it's the right way round in the player's hands)
+			var fig := bfig as Figure3D
+			_clear_boxes(w, "bram")
+			_free_box_hand(w, "bram")
+			var box := _card_box()
+			w.add_child(box)
+			w.set_meta("box_bram", box)
+			var hand := Node3D.new()
+			hand.name = "BoxHand"
+			fig.carry(hand, BOX_POCKET)
+			w.set_meta("box_hand_bram", hand)
+			fig.palm("right", Vector3.UP, 0.3)
+			fig.reach(null, hand, 0.35)
+			box.visible = false
+			await Cine.wait(w, 0.35)
+			fig.attach(box, "palm", "right", CARD_BOX_SIZE.y * 0.5 - 0.006, PI)
+			await w.get_tree().process_frame
+			box.visible = true
+			var up := w.create_tween()
+			up.tween_property(hand, "position", _present_point(fig), 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await up.finished
+		else:
+			_hold_box(w, "bram", _card_box())
 	await _box_out(w, "bram", true, 0.5)
 	await Cine.wait(w, 0.2)
 
@@ -1522,31 +1589,72 @@ static func _first_deck(w: World) -> void:
 		# a step in towards him, so the box he holds out is within their
 		# reach, hands coming up as they go
 		await _step_to_take(w, "player", "bram")
-		# (facing him, their left hand takes the side on his right)
-		me.reach(box.get_node("R"), box.get_node("L"), 0.4)
-		await Cine.wait(w, 0.45)
+		# both hands on its sides, palms in (he holds it turned round, its
+		# clasp to him, so its "L" side is on their left)
+		me.palm("left", Vector3.RIGHT * -1.0, 0.4, 0.0, true)
+		me.palm("right", Vector3.RIGHT, 0.4, 0.0, true)
+		me.reach(box.get_node("L"), box.get_node("R"), 0.45)
+		me.grip(box, CARD_BOX_SIZE.x, 0.5)
+		await Cine.wait(w, 0.55)
+		# and it's theirs: held between their palms (Figure3D.attach), his
+		# hand comes away from under it
+		me.grip(null)
+		me.attach(box, "between", "right", 0.0, 0.0, CARD_BOX_SIZE.x)
 		if f is Figure3D:
-			(f as Figure3D).let_go(0.3)
+			(f as Figure3D).detach(box)
+			(f as Figure3D).let_go(0.35)
+			(f as Figure3D).palm("right", Vector3.ZERO, 0.35)
+		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
-		# from his hands to theirs along a little rise, turning as it goes so
-		# it ends square in their hands, the clasp away from them (until 27
-		# October it slid across in a straight line and spun round at the end)
-		var from := box.global_transform
-		var to := Transform3D(me.global_transform.basis.orthonormalized() * Basis(Vector3.UP, _yaw_of(me)), me.to_world(_box_hold(me)))
-		var qa := from.basis.orthonormalized().get_rotation_quaternion()
-		var qb := to.basis.get_rotation_quaternion()
-		var give := w.create_tween()
-		give.tween_method(func(u: float) -> void:
-			if is_instance_valid(box):
-				box.global_transform = Transform3D(Basis(qa.slerp(qb, u)), from.origin.lerp(to.origin, u) + Vector3(0, sin(u * PI) * 0.06, 0)), 0.0, 1.0, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		await give.finished
-		me.carry(box, _box_hold(me))
-		box.rotation = Vector3.ZERO
-		me.reach(box.get_node("L"), box.get_node("R"), 0.2)
 		w.set_meta("box_player", box)
+		# in to them: their hands' marks go from the box's sides to where
+		# they hold a thing, and the box comes with the hands
+		var grip := Node3D.new()
+		grip.name = "BoxGrip"
+		me.carry(grip, Vector3.ZERO)
+		grip.global_position = box.global_position
+		grip.rotation = Vector3.ZERO
+		for sd in [["L", 1.0], ["R", -1.0]]:
+			var mk := Node3D.new()
+			mk.name = sd[0]
+			mk.position = Vector3(float(sd[1]) * (CARD_BOX_SIZE.x * 0.5 + 0.02), -CARD_BOX_SIZE.y * 0.1, 0.0)
+			grip.add_child(mk)
+		w.set_meta("box_grip_player", grip)
+		me.reach(grip.get_node("L"), grip.get_node("R"), 0.15)
+		var hold := me.hold_point(0.5, 0.62)
+		var bring := w.create_tween()
+		bring.tween_property(grip, "position", hold, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await bring.finished
+		# to open it (29 October, Gary: "his hands are in the way when he
+		# opens it"): the box down onto the flat of the left hand, the right
+		# hand to the front of the lid, lifting it as it swings up on its
+		# hinge, and a close shot from in front and above, looking into it
+		var under := Node3D.new()
+		under.name = "Under"
+		grip.add_child(under)
+		under.position = Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01)
+		me.palm("left", Vector3.UP, 0.35)
+		me.reach(under, grip.get_node("R"), 0.35)
+		await Cine.wait(w, 0.2)
+		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 - 0.006)
+		_into_box_shot(w, box)
+		var lid := box.get_node_or_null("Lid") as Node3D
+		if lid == null:
+			lid = box.find_child("Lid", true, false) as Node3D
+		var edge := Node3D.new()
+		edge.name = "LidEdge"
+		box.add_child(edge)
+		edge.position = Vector3(0.0, CARD_BOX_SIZE.y * 0.5 + 0.01, CARD_BOX_SIZE.z * 0.5)
+		if lid != null:
+			edge.reparent(lid, true)
+		me.palm("right", Vector3.DOWN, 0.3, 0.3)
+		me.reach(under, edge, 0.35)
+		await Cine.wait(w, 0.4)
 		# the lid up, and the deck comes out of it
-		await Cine.wait(w, 0.3)
-		await open_box_lid(w, box, true, 0.45)
+		await open_box_lid(w, box, true, 0.6)
+		me.reach(under, null, 0.35)
+		me.palm("right", Vector3.ZERO, 0.35)
+		await Cine.wait(w, 0.35)
 	else:
 		_drop_box(w, "bram")
 		box = _hold_box(w, "player", _card_box())
@@ -1559,6 +1667,26 @@ static func _first_deck(w: World) -> void:
 		(pf as Figure3D).release()
 	_drop_box(w, "player")
 	await Cine.wait(w, 0.3)
+
+
+## A close shot of the box in the player's hands as they open it: from
+## beside them, a little ahead and above it, looking down into it (the lid
+## opens towards them, so the deck shows), whichever side has nobody in
+## the way.
+static func _into_box_shot(w: World, box: Node3D) -> void:
+	var me = Cine.fig(w, "player")
+	if not (me is Figure3D) or not is_instance_valid(box):
+		return
+	var at := box.global_position
+	var fwd := (me as Figure3D).to_world(Vector3(0, 0, 1)) - (me as Figure3D).to_world(Vector3.ZERO)
+	fwd.y = 0.0
+	fwd = fwd.normalized()
+	var left := Vector3.UP.cross(fwd).normalized()
+	var look := at + Vector3(0, 0.02, 0)
+	# (Bram stands in front of them: the shot is from their left, the side
+	# the box sits on its hand, a little ahead and over it)
+	Cine.shot(w, AshfordP1.clear_cam(w, [at + left * 0.6 - fwd * 0.1 + Vector3(0, 0.62, 0), at + left * 0.62 + fwd * 0.2 + Vector3(0, 0.48, 0),
+		at - left * 0.62 + fwd * 0.05 + Vector3(0, 0.55, 0), at + left * 0.8 + fwd * 0.05 + Vector3(0, 0.7, 0)], look, ["player", "bram"]), look, 36.0)
 
 
 ## `who` steps in towards `to` (facing them) until they stand BOX_GIVE_GAP

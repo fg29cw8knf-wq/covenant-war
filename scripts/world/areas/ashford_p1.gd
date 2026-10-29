@@ -676,12 +676,26 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 	fig.sit(height, 0.0)
 
 
-## Up off a seat. (The player stays unbumpable until they've stepped
-## clear of it: see nell_stand.)
+## Up off a seat, onto their feet where their feet are: in front of it, the
+## body coming forward over them as they rise (29 October, Gary: "after
+## duel with Nell your legs go through the bench as you get up": they stood
+## up where they sat, hips over the seat, so the legs straightened up
+## through it). (The player stays unbumpable until they've stepped clear
+## of it: see nell_stand.)
 static func stand_up(w: World, who: String, blend := 0.4) -> void:
 	var f = Cine.fig(w, who)
+	var b := Cine.body(w, who)
 	if f is Figure3D:
-		(f as Figure3D).stand(blend)
+		var fig := f as Figure3D
+		var ahead := fig.seat_feet_ahead() if fig.seat >= 0.0 else 0.0
+		var from := b.global_position if b != null else Vector3.ZERO
+		var fwd := fig.facing()
+		fig.stand(blend)
+		if ahead > 0.0 and b != null:
+			var to := from + fwd * ahead
+			to.y = Cine.ground(w, to)
+			var tw := w.create_tween()
+			tw.tween_property(b, "global_position", to, blend).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await Cine.wait(w, blend)
 
 
@@ -1765,41 +1779,162 @@ static func _taproom(w: World) -> void:
 	door.rotation.y = 0.0
 
 
-## Bram's rag going over the counter in slow circles until `state[0]` goes
-## false (v7: "rubbing a rag over an oak surface that doesn't need cleaning").
-## His right hand, in front of his right shoulder on the near part of the
-## counter top (WIPE_AT, in his own frame: x to his left, y up, z ahead), the
-## circles small: until 28 October it worked half a metre ahead of him and
-## well to his left, out of the right arm's reach, so the arm ran across his
-## chest, twisted, and the hand fell short through the counter's edge (Gary:
+## Bram's rag going over the counter until `state[0]` goes false (v7:
+## "rubbing a rag over an oak surface that doesn't need cleaning"). His
+## right hand, in front of his right shoulder on the near part of the
+## counter top (WIPE_AT, in his own frame: x to his left, y up, z ahead):
+## until 28 October it worked half a metre ahead of him and well to his
+## left, out of the right arm's reach, so the arm ran across his chest,
+## twisted, and the hand fell short through the counter's edge (Gary:
 ## "Bram's arm twists in a weird way and still passes through his body and
-## his hand passed through the bar"). WIPE_AT's height is the palm's, a
-## little over the oak (its top is at 1.13) so the fingers lie on it rather
-## than in it.
-const WIPE_AT := Vector3(-0.21, 1.18, 0.4)
+## his hand passed through the bar"). Since 29 October (Gary: "Bram isn't
+## rubbing the counter he is waving his hand above it his hand needs to be
+## a bit lower and he needs a cloth in his hand") the hand is down on a rag
+## that lies on the counter and goes where the hand goes (_rag: a striped
+## linen cloth wadded up under the palm, its ends out flat on the oak), in
+## long strokes from side to side rather than little circles; the counter is solid to his hands
+## (Figure3D.hands_off, InnRooms.eve's hand_solids), so the other hand,
+## talking, stops on it too. WIPE_AT's height is the palm's on the rag's
+## wad (the counter's top is at 1.13, the wad RAG_WAD over it), the fingers
+## curled round it as a hand gripping a cloth.
+const WIPE_AT := Vector3(-0.2, 1.195, 0.3)
+## How high the rag's wad stands in the middle, under the palm (m).
+const RAG_WAD := 0.04
+## How high the middle of his palm is held over the oak (m): down in the
+## wad, the cloth gathered up into his hand.
+const RAG_PALM := 0.034
+## The stroke: how far to each side of WIPE_AT and how far in and out (m),
+## and how fast (radians a second).
+const WIPE_SWEEP := Vector2(0.1, 0.035)
+const WIPE_RATE := 2.0
 
 
-static func _wipe(w: World, _root: Node3D, state: Array) -> void:
+static func _wipe(w: World, root: Node3D, state: Array) -> void:
 	var f = Cine.fig(w, "bram")
 	if not (f is Figure3D):
 		return
 	var fig := f as Figure3D
+	var e := InnRooms.eve(village(w))
+	fig.hands_off(e.get("hand_solids", []))
+	var top: float = (e.bar_top as Vector3).y if e.has("bar_top") else root.global_position.y + 1.13
+	var rag: Node3D = e.get("rag", null)
+	if rag == null or not is_instance_valid(rag):
+		rag = _rag()
+		root.add_child(rag)
+		e["rag"] = rag
 	var hand := Node3D.new()
 	hand.name = "RagHand"
 	w.add_child(hand)
-	hand.global_position = fig.to_world(WIPE_AT)
+	var place := func(t: float) -> void:
+		var off := Vector3(WIPE_SWEEP.x * sin(t * WIPE_RATE), 0.0, WIPE_SWEEP.y * sin(t * WIPE_RATE * 2.0) + 0.01 * sin(t * 0.6))
+		var at := fig.to_world(WIPE_AT + off)
+		hand.global_position = at
+		# the rag's wad under the palm where it was last drawn (the reach
+		# and the press put it near `at`, not on it), turned the way the
+		# hand points, from the shoulder
+		var pal: Vector3 = fig.palm_seen.get("right", at)
+		if pal.distance_to(at) > 0.25:
+			pal = at   # (not drawn there yet)
+		var sh := fig.to_world(Vector3(-0.18, 0.0, -0.05))
+		var way := Vector3(pal.x - sh.x, 0.0, pal.z - sh.z)
+		way = way.normalized() if way.length() > 0.01 else fig.facing()
+		rag.global_position = Vector3(pal.x, top + 0.001, pal.z) + way * 0.015
+		rag.rotation = Vector3(0.0, atan2(way.x, way.z) + 0.12 * sin(t * WIPE_RATE), 0.0)
+	place.call(0.0)
 	fig.reach(null, hand, 0.5)
-	fig.palm("right", Vector3.DOWN, 0.5)   # (flat on the oak, as a hand with a rag is)
+	fig.palm("right", Vector3.DOWN, 0.5, 0.55)   # (palm down on the wad, the fingers half curled round it)
+	# the palm pressed onto the wad, eased down as the arm comes to it
+	var pressing := w.create_tween()
+	pressing.tween_method(func(k: float) -> void:
+		if is_instance_valid(fig):
+			fig.press("right", lerpf(fig.palm_seen.get("right", Vector3(0, top + 0.3, 0)).y, top + RAG_PALM, k)), 0.0, 1.0, 0.5)
 	var t := 0.0
 	while state[0] and is_instance_valid(w) and is_instance_valid(hand) and is_instance_valid(fig):
 		t += w.get_process_delta_time()
-		hand.global_position = fig.to_world(WIPE_AT + Vector3(0.07 * cos(t * 2.1) + 0.02 * sin(t * 0.5), 0.0, 0.035 * sin(t * 2.1)))
+		place.call(t)
 		await w.get_tree().process_frame
+	# the rag stays on the counter where he leaves it
 	if is_instance_valid(fig):
+		fig.press("right", NAN)
 		fig.let_go(0.4)
 		fig.palm("right", Vector3.ZERO, 0.4)
 	if is_instance_valid(hand):
 		hand.queue_free()
+
+
+## A bar rag: a cloth of worn linen with faded red stripes at its ends, a
+## tea towel's look so it reads as cloth at a glance (flat and pale it read as
+## a sheet of paper), about 34 by 26 cm: wadded up into a crumpled mound in
+## the middle where the hand grips it (4.5 cm), its ends lying out flat on
+## the counter in creases that run out from the mound.
+static func _rag() -> Node3D:
+	var n := Node3D.new()
+	n.name = "Rag"
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var nx := 26
+	var nz := 20
+	var sx := 0.34
+	var sz := 0.26
+	var hgt := func(u: float, v: float) -> float:
+		var x := (u - 0.5) * sx
+		var z := (v - 0.5) * sz
+		var r2 := pow(x / 0.085, 2.0) + pow(z / 0.07, 2.0)
+		var r := sqrt(r2)
+		# gathered up under the hand: a lumpy, rounded wad, not a peak
+		var mound := RAG_WAD * (1.0 - smoothstep(0.35, 1.15, r)) * (0.85 + 0.15 * sin(x * 60.0 - z * 35.0))
+		# crumpled: the mound lumpy, creases running out from it
+		var ang := atan2(z, x)
+		var crease := 0.006 * maxf(0.0, sin(ang * 7.0 + 1.3)) * exp(-r2 * 0.25) * clampf(r2, 0.0, 1.0)
+		var lumps := 0.008 * sin(x * 90.0 + z * 40.0) * sin(z * 75.0 - x * 20.0) * exp(-r2 * 0.6)
+		var edge := minf(minf(u, 1.0 - u), minf(v, 1.0 - v))
+		var ripple := 0.0025 * sin(x * 52.0 + z * 17.0) * clampf(edge * 8.0, 0.0, 1.0)
+		return 0.0015 + mound + crease + lumps + ripple
+	var pt := func(i: int, j: int) -> Vector3:
+		var u := float(i) / nx
+		var v := float(j) / nz
+		# drawn in towards the mound a little (the cloth is gathered into
+		# the hand), the ends ragged
+		var x := (u - 0.5) * sx
+		var z := (v - 0.5) * sz
+		var pull := 1.0 - 0.18 * exp(-(pow(x / 0.12, 2.0) + pow(z / 0.1, 2.0)))
+		var wob := 0.007 * sin(float(i) * 0.9 + float(j) * 1.3) * (1.0 if (i == 0 or i == nx or j == 0 or j == nz) else 0.0)
+		return Vector3(x * pull + wob, float(hgt.call(u, v)), z * pull + wob * 0.6)
+	for i in nx:
+		for j in nz:
+			var a: Vector3 = pt.call(i, j)
+			var b: Vector3 = pt.call(i + 1, j)
+			var c: Vector3 = pt.call(i + 1, j + 1)
+			var d: Vector3 = pt.call(i, j + 1)
+			var ua := Vector2(float(i) / nx, float(j) / nz)
+			var ub := Vector2(float(i + 1) / nx, float(j) / nz)
+			var uc := Vector2(float(i + 1) / nx, float(j + 1) / nz)
+			var ud := Vector2(float(i) / nx, float(j + 1) / nz)
+			for tri in [[a, ua, c, uc, b, ub], [a, ua, d, ud, c, uc]]:
+				st.set_uv(tri[1]); st.add_vertex(tri[0])
+				st.set_uv(tri[3]); st.add_vertex(tri[2])
+				st.set_uv(tri[5]); st.add_vertex(tri[4])
+	st.generate_normals()
+	var mi := MeshInstance3D.new()
+	mi.mesh = st.commit()
+	var img := Image.create(64, 64, false, Image.FORMAT_RGB8)
+	for yy in 64:
+		for xx in 64:
+			var u := xx / 63.0
+			# two faded red stripes towards each end, a coarse weave
+			var stripe := 1.0 if (absf(u - 0.12) < 0.035 or absf(u - 0.2) < 0.015 or absf(u - 0.88) < 0.035 or absf(u - 0.8) < 0.015) else 0.0
+			var weave := 0.94 + 0.06 * float((xx + yy) % 2) - 0.04 * float(xx % 3 == 0)
+			var base := Color(0.86, 0.82, 0.74) * weave
+			img.set_pixel(xx, yy, base.lerp(Color(0.62, 0.2, 0.16), stripe * 0.85))
+	img.generate_mipmaps()
+	var m := StandardMaterial3D.new()
+	m.albedo_texture = ImageTexture.create_from_image(img)
+	m.roughness = 1.0
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	mi.material_override = m
+	n.add_child(mi)
+	return n
 
 
 ## The player lifts the crate from the corner into both arms.
@@ -2649,9 +2784,11 @@ static func nell_watches(w: World) -> void:
 ## The player gets up off the bench.
 static func nell_stand(w: World) -> void:
 	var fwd := bench_facing(w)
-	await stand_up(w, "player", 0.4)
+	await stand_up(w, "player", 0.6)
 	var tw := w.create_tween()
-	tw.tween_property(w.player, "global_position", bench_seat(w, true) + fwd * 0.75, 0.5).set_trans(Tween.TRANS_SINE)
+	var off := bench_seat(w, true) + fwd * 0.85
+	off.y = Cine.ground(w, off)
+	tw.tween_property(w.player, "global_position", off, 0.45).set_trans(Tween.TRANS_SINE)
 	await tw.finished
 	_solid(w, true)
 	await home(w, 0.8)

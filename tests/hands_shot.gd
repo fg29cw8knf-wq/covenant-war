@@ -82,15 +82,79 @@ func _wipe() -> void:
 	var state := [true]
 	AshfordP1._wipe(world, root, state)
 	var bf := Cine.fig(world, "bram") as Figure3D
-	for i in 12:
+	# he talks as he wipes, as the taproom's lines have him (29 October,
+	# Gary: "when he is talking to player his hands are still going onto the
+	# wood of the bar"), the second half of the stills
+	_watch_solids(bf, e.get("hand_solids", []), float((e.bar_top as Vector3).y))
+	for i in 16:
+		if i == 6:
+			bf.talking = true
 		await _secs(0.35)
-		# from in front of him and to his right, over the counter
-		close_cam.global_position = bf.to_world(Vector3(-0.75, 1.55, 1.25))
-		close_cam.look_at(bf.to_world(Vector3(-0.12, 1.2, 0.25)))
+		# from in front of him and to his right, over the counter; every
+		# third from level with the counter top along it, to see the hand on it
+		if i % 3 == 2:
+			close_cam.global_position = bf.to_world(Vector3(-1.1, 1.2, 0.4))
+			close_cam.look_at(bf.to_world(Vector3(-0.15, 1.17, 0.38)))
+		else:
+			close_cam.global_position = bf.to_world(Vector3(-0.75, 1.55, 1.25))
+			close_cam.look_at(bf.to_world(Vector3(-0.12, 1.2, 0.25)))
 		await _shot("wipe_%02d" % i)
 		_check_hands("bram", "wipe")
+	# and with the rag put down, talking with both hands (the hub's answers)
 	state[0] = false
+	for i in 8:
+		await _secs(0.4)
+		close_cam.global_position = bf.to_world(Vector3(0.1, 1.5, 1.6))
+		close_cam.look_at(bf.to_world(Vector3(0.0, 1.15, 0.3)))
+		await _shot("talk_%02d" % i)
+	bf.talking = false
 	await _secs(0.6)
+	print("  hands in the counter: %d frames of %d (deepest %.1f cm); the wiping palm over the oak by %.1f..%.1f cm" % [_in_solid, _frames_seen, _deepest * 100.0, _wipe_lo * 100.0, _wipe_hi * 100.0])
+	if _in_solid > 0:
+		problems.append("a hand went %.1f cm into the counter in %d frames" % [_deepest * 100.0, _in_solid])
+	if _wipe_hi > 0.06:
+		problems.append("the wiping hand rose %.1f cm off the counter" % (_wipe_hi * 100.0))
+
+
+var _in_solid := 0
+var _frames_seen := 0
+var _deepest := 0.0
+var _wipe_lo := INF
+var _wipe_hi := -INF
+
+
+## Every frame, as the skeleton is drawn: is any hand's skin in a solid, and
+## how high is the wiping hand's palm (Middle1) over the counter's top?
+func _watch_solids(fig: Figure3D, solids: Array, top: float) -> void:
+	var sk: Skeleton3D = fig._skel
+	sk.skeleton_updated.connect(func() -> void:
+		_frames_seen += 1
+		var hit := false
+		for side in ["Left", "Right"]:
+			# (a palm held down on the rag: its wrist and palm only, as
+			# Figure3D keeps them; Bram's finger bones sit below his fingers'
+			# skin, so they read as in the oak when the fingers lie on it)
+			var bones := ["Hand"] if fig._press.has(side.to_lower()) else ["Hand", "HandMiddle1", "HandMiddle2", "HandMiddle3"]
+			for bn in bones:
+				var b := sk.find_bone(side + bn)
+				if b < 0:
+					continue
+				var p := sk.global_transform * sk.get_bone_global_pose(b).origin
+				for box in solids:
+					var bx: AABB = (box as AABB).grow(0.012)   # (bones a centimetre and more inside the skin)
+					if bx.has_point(p):
+						if OS.get_cmdline_user_args().has("debug"):
+							print("    in the counter: %s%s at %s (box %s), push %s" % [side, bn, p, bx, fig._push])
+						hit = true
+						_deepest = maxf(_deepest, minf(bx.end.y - p.y, minf(p.x - bx.position.x, bx.end.x - p.x)))
+		if hit:
+			_in_solid += 1
+		var rk = fig._ik.get("right")
+		if _frames_seen > 15 and fig._press.has("right") and rk != null and is_instance_valid(rk) and (rk as TwoBoneIK3D).active and (rk as TwoBoneIK3D).influence > 0.99:
+			if fig.palm_seen.has("right"):
+				var py: float = (fig.palm_seen.right as Vector3).y - top
+				_wipe_lo = minf(_wipe_lo, py)
+				_wipe_hi = maxf(_wipe_hi, py))
 
 
 func _box() -> void:
@@ -122,6 +186,18 @@ func _box() -> void:
 			var gap := Cine.body(world, "player").global_position.distance_to(Cine.body(world, "bram").global_position)
 			print("  box %02d: %.2f m between them%s" % [i, gap, "" if not world.has_meta("bram_stop") else ", his mark %.2f m from the player" % (world.get_meta("bram_stop") as Vector3).distance_to(Cine.body(world, "player").global_position)])
 			await _shot("box_%02d" % i)
+			# a box held for real is between the palms, or on one (29 October)
+			var pfig := Cine.fig(world, "player") as Figure3D
+			var held: Node3D = pfig.holding() if pfig != null else null
+			if held != null and pfig.last_hold.has("apart"):
+				var pgap: float = pfig.last_hold.apart
+				print("  box %02d: between the player's palms, %.1f cm apart (the box %.1f cm wide)" % [i, pgap * 100.0, Ashford.CARD_BOX_SIZE.x * 100.0])
+				if pgap < Ashford.CARD_BOX_SIZE.x - 0.01 or pgap > Ashford.CARD_BOX_SIZE.x + 0.06:
+					var msg := "the player's palms are %.0f cm apart round a %.0f cm box" % [pgap * 100.0, Ashford.CARD_BOX_SIZE.x * 100.0]
+					if not problems.has(msg):
+						problems.append(msg)
+			elif held != null and pfig.last_hold.has("palm"):
+				print("  box %02d: on the player's palm" % i)
 			_check_hands("bram", "box %02d" % i)
 			_check_hands("player", "box %02d" % i)
 			i += 1
@@ -147,11 +223,25 @@ func _box() -> void:
 	await _secs(0.3)
 
 
-## The close camera beside the two of them, square on to the line between them, at hand height.
+## The close camera beside the two of them, square on to the line between them, at hand height
+## (on the card box, wherever it is, once it's out: 29 October).
 func _aim_close() -> void:
 	var p := Cine.body(world, "player").global_position
 	var b := Cine.body(world, "bram").global_position
 	var mid := (p + b) * 0.5 + Vector3(0, 1.1, 0)
+	for k in ["box_bram", "box_player"]:
+		var bx = world.get_meta(k, null)
+		if bx != null and is_instance_valid(bx) and (bx as Node3D).is_inside_tree():
+			var d0 := b - p
+			d0.y = 0.0
+			var sd := d0.normalized().cross(Vector3.UP)
+			if sd.dot(world.cam.global_position - mid) < 0.0:
+				sd = -sd
+			var at := (bx as Node3D).global_position
+			close_cam.global_position = at + sd * 1.25 + Vector3(0, 0.25, 0)
+			close_cam.look_at(at)
+			close_cam.fov = 34.0
+			return
 	var d := b - p
 	d.y = 0.0
 	var side := d.normalized().cross(Vector3.UP)
