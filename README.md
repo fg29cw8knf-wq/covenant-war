@@ -886,6 +886,107 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 29 October notes on the opening
+
+- **Bram wiping the counter** ("he is waving his hand above it ... he needs a
+  cloth in his hand"): a striped linen rag lies on the oak under his palm and
+  goes where his hand goes (`AshfordP1._rag`, `_wipe`), long strokes from side
+  to side; his palm is held down in the cloth's wad (`Figure3D.press`, after
+  everything else: the reach alone left the turned hand a hand's depth over
+  it), the fingers half curled round it (`Figure3D.palm(..., flat)`). He
+  stands a step nearer the counter (`InnRooms.BAR_BEHIND`).
+- **The counter is solid to hands** ("when he is talking to player his hands
+  are still going onto the wood of the bar"): `Figure3D.hands_off(boxes)`, a
+  modifier after the clip, the reaches and the hand turns: a hand (wrist,
+  palm, every knuckle and the fingertips) found inside a box is moved out of
+  it the shortest way (up onto the top when the wrist is at its height, else
+  out of a side), the arm bending to put it there (`_move_wrist`, two bones).
+  `InnRooms.eve()` gives the counter and its raised flap as `hand_solids`.
+- **The taproom's walls**: windows at last (Bram's first line is about the
+  shutter): one in the west wall behind the bar, two in the north wall west
+  of the door, leaded diamond panes of old glass with the frosty morning
+  behind them (`assets/shaders/village/pane.gdshader`), frames, deep sills,
+  shutters folded back inside, and the one he means swung half open and
+  knocking in the draught; cold daylight through each onto the floor
+  (`InnRooms._eve_windows`, the walls round them `_wall_with_holes`). Behind
+  the bar (`_eve_dressing`): two shelves of stoneware jugs, green and brown
+  bottles, pewter plates on edge, crocks, a candle and a paper lantern folded
+  for tonight; copper measures on the hooks; the inn's painted board, The
+  Crooked Lantern; Bram's round shield from the Shards with a short sword
+  behind it; dried hops along the beam. The counter's top and flap are
+  polished honey oak (`InnRooms.counter_oak`), not the beams' near-black.
+- **Bram's card box, in his hand for real** ("can't you add mechanics so it
+  actually fixes it"): `Figure3D.attach(node, "palm"|"between", ...)` puts a
+  held thing where the hands are, every frame, after the hands are solved:
+  on one palm (its up the palm's way out, its front the way they face), or
+  between both palms (`gap`: the arms bend to put each palm on its side). It
+  can't hang in the air: it's where the hand is. `Figure3D.grip(node, gap)`
+  puts the palms on a thing's two sides without moving it (taking it from
+  someone). `palm_frame(side)` is a palm's place and turn as drawn. Bram no
+  longer carries it over: it comes out of his apron pocket on "You do now."
+  on the flat of his right hand and goes out to the player on it; their
+  hands come to its sides and it's theirs, between their palms; then
+  ("his hands are in the way when he opens it") it's set on the flat of
+  their left hand, the right goes to the front of the lid and lifts it as it
+  swings up, and the shot cuts to a close one from beside and above, looking
+  into it (`Ashford._into_box_shot`). The deck in Gary's box shows the card
+  back on its top card. `tests/hands_shot.tscn -- <dir> box` checks the palms
+  are the box's width apart while it's between them.
+- **Corin's back** ("still a hole in the back of Corin at the top when he
+  turns around"): a pit in the model at his left shoulder blade, 23 cm deep
+  through his body (the 23 October fixes only recoloured it).
+  `tools/patch_hole.py MODEL --at X,Y --radius R --mirror --bake` lays a patch
+  of new triangles over it on the back's own surface (its depth filled in
+  smoothly from round it), skinned like the back round it, with its own
+  little texture (`corin_patch.png`, `corin_patch_mr.png`): the vest as it is
+  at its rim, blending to the other shoulder blade's, mirrored, at its
+  middle. `tests/back_peek.tscn -- <out.png> <id> [clips]` takes a character
+  from behind, three-quarters and above in clips.
+- **Player A's nose** ("face still look weird around the nose area"): the
+  model is fine; its Tripo3D atlas cuts the face into a hundred islands, and
+  down the right side of the nose one was a smeared orange strip from the
+  eye to the nostril with hard edges, with hard seams beside the bridge.
+  `tools/heal_face.py MODEL --window ... --patch "x,y;..." --seams ...`
+  renders the face flat from the front, fills the strip smoothly from the
+  skin round it with the cheek's grain over it, inpaints the hard island
+  edges below the eyes, and writes the change back into the atlas texel by
+  texel (and into the gutter round each island, or the old colour shows as a
+  hairline down every seam). His portrait is re-rendered. `tests/face_close.gd
+  -- <out.png> <id> [clip] [glb]` takes a face close from six sides.
+- **Nell's stick** ("goes through the bench before you sit with her"): sat,
+  her stick stands on the ground by her right knee, clear of the seat
+  (`Figure3D.plant_stick(foot)`: the hand turned so the stick hangs straight
+  from it and the arm bent to put its foot there; `STICKS` has where its foot
+  is in her hand's frame); standing lets it go. People sit a few cm forward
+  on her bench (`AshfordP1.BENCH_SIT_FWD`: her shawl showed through its back).
+- **Getting up off the bench** ("your legs go through the bench as you get
+  up"): `AshfordP1.stand_up` brings them up onto their feet where their feet
+  were, in front of the seat (`Figure3D.seat_feet_ahead`), the body coming
+  forward as they rise; it had straightened the legs up through the seat.
+  `tests/bench_shot.tscn -- <dir>` stages Nell and the player on it, and
+  checks the player's shins and feet and Nell's stick against it every frame.
+- **Nell's face in her duel** ("the image for her is different then her
+  model"): the friendly duels named their teacher's stand-in look (Nell's
+  `elder` is Old Maren's face, Tam's `farmer` the crowd's); now `nell` and
+  `tam`, the portraits rendered from their own models (`DuelTutor._show_box`
+  takes a rendered portrait first).
+- **The way to Tam's mill** ("It's not clear for players how to get to
+  Tam's mill"): Bram says where it is after the Lantern Duel ("Take the lane
+  by the signpost, off the east side of the green, and on through the field
+  gate"); the objective names it until Tam's been seen (`FESTIVAL_TAM`;
+  `EVENING_CORIN` for Corin by the race in the evening); an arrow on the
+  screen points the way, at the screen's edge when it's off it and over the
+  place when it's on it, with how far (`WorldHUD.set_way`, `WayMarker`; to
+  the signpost from the green, to the gate once they're in the lane:
+  `AshfordDay.show_way`); a soft pillar of light stands over the gate
+  (`AshfordDay._beacon`). Above all, the camera now follows them up the lane:
+  it stopped at the green's edge (`CAMERA_X_LIMIT`) and they walked off the
+  screen behind a cottage. `Ashford.CAMERA_REACH` lets it follow there and
+  turns it to look along the lane between the cottages
+  (`World._cam_yaw`, eased; the pad and the keys turn with it, so up is
+  always into the screen). `tests/way_shot.tscn -- <dir> [phone]` checks the
+  way and takes stills from the game's camera with the HUD up.
+
 `tests/p1_v7_test.tscn` plays P1 New Game to midnight as a player would (taps,
 answers, the name, both friendly games, the sunset, the evening; `stop=<words>`
 stops once the wait those words describe is reached, e.g. `stop="the street"`
