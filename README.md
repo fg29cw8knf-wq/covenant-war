@@ -183,6 +183,112 @@ Essence, Horn Bash after), Old Friends (Flood 40); the Trial's Tidegrove
 mirrors 260 Life (was 240) and Veilwild's 110 (was 140); `puzzles_test` and
 `trial_puzzle_test` play them.
 
+### Gary's 29 October duel notes
+
+Gary's five notes on the card battle (29 October), and what each became.
+
+- **"animations added to each card or attacks effect"**: every blow and
+  every card played has its own look on the 3D field, by its element and the
+  kind of move it is. One table says which (`DuelFXStyle`,
+  `scripts/duel_ui/duel_fx_style.gd`): each element's colours, how its blow
+  travels, how it lands and its gem colour; the kind of move read from its
+  name (a Scorch or a Pollen Spit is a breath, a Glint or a Lance a beam, a
+  Rockfall or a Thunderhead comes from above, a Riptide a wave, a Howl or a
+  Gaze rings out, a Water Lash lashes, the rest are blows); a few moves set
+  by hand (`OVERRIDES`, "card id:move": the Ashen Drake's third move is a
+  meteor, Stormcaller's first an arc); the Rites by what they do, the Wards
+  set and springing, answers, Relics and the cards' own arrivals
+  (`RITE_OPS`, `WARD_OPS`, `ANSWER_OPS`, `CARD_MOTIF`). Change a line there
+  and the duel follows. The pieces are built in `DuelStrikeFX`
+  (`scripts/duel_ui/duel_strike_fx.gd`): a fireball with a flame trail, a
+  water jet, a wave, a fissure of stone spikes, an arc of lightning and a
+  bolt from above, frost and venom breath, whirling leaves and a vine lash,
+  spinning blades and a beam of metal light, a venom glob, psychic rings, a
+  rune circle, spirit and dawn beams, shadow wisps and falling stars; each
+  lands its own way (a burst of embers, a splash, stone chips, a crackle,
+  frost shards, leaves, sparks), with a hit flash and a shake. A Rite is
+  cast from a circle of runes on its caster's side; a Ward set is a circle
+  of runes sinking into its owner's ground, and one springing flashes violet
+  and then does its work where it does it (a shield round the Totem it
+  guards, its blow on the attacker, a seal on the Rite it stops); Guard
+  throws up a dome of light, Rest a gentle mending; a condition or boon
+  rings the Totem in its colour. It's all CPU particles with shared
+  materials, glows drawn as quads with their own material (a Sprite3D glow
+  next to a particle trail vanished under Compatibility, the web build's
+  renderer), at most two lights a blow, and every shader drawn once under
+  the floor as the duel opens (`DuelField3D.warm_fx`), so the first blow
+  doesn't stutter on a phone. The flat field (Options, "3D duel field" off)
+  keeps its old effects.
+- **"When a card dies ... turn to dust or diamonds rather then just fall
+  over"**: a Totem knocked out stops still, turns to glass from its feet
+  up, cracks with light, and bursts into diamonds of its element's gem
+  colour that tumble, bounce on the ground and fade into sparkling dust; its
+  plaque fades and the slot is empty (`DuelCrystal`,
+  `scripts/duel_ui/duel_crystal.gd`; `DuelField3D.crystal_death`, about 1.5
+  s at 1x). A 3D model gets a crystal coat over its own materials, a painted
+  cut-out a glass shader of its own, and the flat field its card going to
+  glass and shattering (`DuelCrystal.shatter_2d`). No blood. A Totem swept
+  back to the hand (a bounce, Undertow) doesn't shatter: it shrinks back
+  into its card, BACK TO HAND.
+- **"if a person clicks on the card preview ... it makes it much bigger
+  till you click off it"**: a tap on the card panel on the right (it has a
+  magnifier on its corner now) opens the card out in the middle of the
+  screen, as tall as the screen allows, with everything behind dimmed and
+  its words written out beside it (under it on a screen taller than wide),
+  sized to be read on a phone (`DuelScreen.CardZoom`). A tap anywhere, Esc,
+  B, E, Space or Enter closes it, and that tap does nothing else: it isn't
+  a tap on the board, so whatever the player had picked up stays picked
+  up. It won't open while a line of Bram's lesson is waiting to be read,
+  and a line coming up closes it.
+- **"In the how to duel some of the text goes out of the text box"**: the
+  element chart's HURT BY column was set at two thirds of a fixed width,
+  and Tide, Verdant and Venom (each hurt by three) ran past the chart's
+  right edge. The chart's columns are now as wide as the words in them
+  (`ElementChart`), on the How to Duel page and at Bram's campfire.
+  `tests/manual_shot.tscn` opens How to Duel with every chapter there is
+  (45), takes a still of each screenful and checks that no line, page or
+  chart row runs out of its box.
+- **"The text in the battles goes by very quickly not enough to read what it
+  says needs to be a fraction longer"**: one setting, **Reading time**
+  (`DuelReading`, `scripts/duel_ui/duel_reading.gd`; Options and the duel's
+  own Menu; setting `duel_reading`). **Normal**, the new default: every
+  timed word in a duel stays up 1.6 times as long as it did, and never less
+  than 0.9 s and 0.3 s a word (at most 5 s). **Slow**: 2.2 times, 1.3 s and
+  0.42 s a word (at most 7.5 s). It covers the banners, a move's name, the
+  damage and condition words, the toasts, the rival's barks, a Fate roll, a
+  Rite or Ward held up in the middle (the rival's by its words; your own a
+  little longer than before), the answers and notes. The pure animation
+  waits (a lunge, a card flying) are as they were. A faster battle speed
+  still shortens the words, but only by the square root of the speed, so
+  they can be read even at 4x; the tests' 20x autoplay keeps the old holds.
+  The turn banner counts only its title ("YOUR TURN"), not the line under it.
+
+```sh
+# the stills (attacks of every element mid-flight and landing, each kind of move, the rival's blows,
+# Rites, Wards, an answer, a Relic, a stance, conditions, the knockout at four moments for a model and
+# a cut-out, the card opened out, the reading times):
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
+    res://tests/duel_notes_shot.tscn -- <dir> [attacks] [cards] [ko] [zoom] [reading]
+# a blow frame by frame (a still every twentieth of a second), to time an effect:
+#   ... duel_notes_shot.tscn -- <dir> flight=astral_fall,fire_meteor,r_tide_jet
+# the card opened out on a phone (each way up):
+xvfb-run -a -s "-screen 0 1280x900x24" godot --rendering-driver opengl3 --resolution 390x844 --fixed-fps 30 \
+    res://tests/duel_notes_shot.tscn -- <dir> zoom
+# How to Duel at a screen size (390x844, 844x390, 1280x720, 1920x1080; ui=1.3 for the Largest text size):
+xvfb-run -a -s "-screen 0 2000x1200x24" godot --rendering-driver opengl3 --resolution 844x390 \
+    res://tests/manual_shot.tscn -- <dir> [ui=1.3]
+```
+
+`--fixed-fps 30` makes every frame a thirtieth of a second of the duel
+however slowly it's drawn, and `duel_notes_shot` draws nothing between its
+stills, so each is caught at its moment even on a slow software renderer.
+Tests with the changes: `load_all` 0 failed; `duel_sim -- 300` 0 invariant
+errors, 26.1 turns on average, first player 53%; `duel_monkey -- 4` and
+`-- 4 --3d` no script errors; `skills_test` and `synergy_test` pass;
+`lantern_sim -- 0.3 0.25 100` won every time, 6 turns; `lantern_tutorial_test`
+won, no problems; `manual_shot` ok at 390x844, 844x390, 1280x720 and
+1920x1080, and at the Largest text size (`ui=1.3`) at the first three.
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about

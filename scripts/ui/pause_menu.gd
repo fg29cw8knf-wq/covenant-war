@@ -963,6 +963,30 @@ func _options() -> Control:
 		speed_btns.append(sb)
 		speeds.add_child(sb)
 	v.add_child(speeds)
+	# how long the words in a duel stay up (29 October, Gary: "The text in the
+	# battles goes by very quickly"; DuelReading): Normal is the new, longer default
+	var reading := HBoxContainer.new()
+	reading.add_theme_constant_override("separation", 24)
+	var rdl := UITheme.label("Reading time", 30, UITheme.TEXT, "bold")
+	rdl.custom_minimum_size = Vector2(300, 0)
+	reading.add_child(rdl)
+	var reading_btns := []
+	for k in DuelReading.ORDER:
+		var rb := UITheme.button(String(DuelReading.LEVELS[k].name), false, 200)
+		rb.toggle_mode = true
+		rb.button_pressed = DuelReading.key() == k
+		rb.custom_minimum_size = Vector2(200, 64)
+		rb.add_theme_font_size_override("font_size", 26)
+		rb.pressed.connect(func() -> void:
+			DuelReading.set_level(String(k))
+			for o in reading_btns:
+				(o as Button).button_pressed = o == rb)
+		reading_btns.append(rb)
+		reading.add_child(rb)
+	var rdn := UITheme.label("how long the words in a duel stay up", 22, UITheme.TEXT_DIM)
+	rdn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reading.add_child(rdn)
+	v.add_child(reading)
 	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
 		Game.settings["duel_3d"] = on))
 	if Gfx.is_phone():

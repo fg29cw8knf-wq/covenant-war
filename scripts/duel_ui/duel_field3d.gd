@@ -73,6 +73,14 @@ class Slot:
 	var stance := "strike"         # its Totem's stance (Phase A): a held pose when the model has no clip for it
 	var pose := Vector3(1, 1, 0)   # the pose it's at: width, height, lean
 	var stance_clip := false       # the model plays a guard / rest clip of its own
+	# its knockout (29 October): turning to crystal, cracking, shattered (crystal_death)
+	var dying := false
+	var shattered := false
+	var crystal := 0.0             # 0-1: how far the glass has climbed it
+	var crack := 0.0               # 0-1: the cracks, and the light inside
+	var crystal_tint := Color(0.8, 0.93, 1.0)
+	var crystal_mat: ShaderMaterial = null
+	var trail: CPUParticles3D = null   # its element trailing off it as it lunges
 
 
 func _init() -> void:
@@ -568,6 +576,7 @@ func sync(v) -> void:
 			s.model.queue_free()
 			s.model = null
 			s.anim = null
+		_reset_death(s)
 		if id == "":
 			s.card.visible = false
 			s.sprite.visible = false
@@ -605,23 +614,36 @@ func sync(v) -> void:
 	var sy := 1.0 + 0.014 * breathe
 	if t.asleep:
 		sy = 1.0 + 0.02 * sin(_t * 1.1)
+	if s.dying:
+		sx = 1.0   # (stopped still as the crystal takes it)
+		sy = 1.0
 	s.sprite.scale = Vector3(sx * v.pop, sy * v.pop, 1.0)
 	s.sprite.flip_h = not s.mine
 	var pxu := px_per_unit(v.side, v.slot)
 	var off := Vector3(v.offset.x / pxu, 0, v.offset.y / pxu)
+	if s.dying and s.crack > 0.0 and not s.shattered:
+		# (it shudders as it cracks)
+		off += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.035 * s.crack
 	var hover := 0.0
 	if s.fly:
-		hover = 0.35 + sin(_t * 1.8 + v.slot) * 0.08
+		hover = 0.35 + (sin(_t * 1.8 + v.slot) * 0.08 if not s.dying else 0.0)
 	s.sprite.position = Vector3(off.x, 0.06 + hover, off.z)
 	s.shadow.position = Vector3(off.x, 0.06, off.z)
 	s.shadow.scale = Vector3(s.creature_h * 0.55, s.creature_h * 0.55, 1.0) * v.pop
+	if s.trail != null and is_instance_valid(s.trail):
+		s.trail.position = Vector3(off.x, 0.06 + hover + s.creature_h * 0.45, off.z)
 	var m := Color(1, 1, 1, v.fade)
 	if v.highlight == "dim":
 		m = Color(0.55, 0.55, 0.6, v.fade)
 	if v.flash > 0.0:
 		var fc: Color = v.flash_color
 		m = m.lerp(Color(fc.r * 2.5, fc.g * 2.5, fc.b * 2.5, v.fade), clampf(v.flash * 0.75, 0.0, 1.0))
+	if s.crystal_mat != null:
+		m = Color(1, 1, 1, 1)   # (the glass is drawn by its own shader now)
 	s.sprite.modulate = m
+	if s.dying:
+		s.sprite.visible = s.sprite.texture != null and s.model == null and not s.shattered
+		s.shadow.visible = not s.shattered
 	if s.model != null:
 		var k: float = s.creature_h * 1.05 / maxf(0.01, s.model_h) * v.pop
 		# the stance pose: braced lower and leaning for Guard, settled down for Rest
@@ -643,10 +665,18 @@ func sync(v) -> void:
 		s.yaw = lerp_angle(s.yaw, s.yaw_target, 1.0 - pow(0.001, get_process_delta_time()))
 		s.model.rotation.y = s.yaw
 		s.model.position = Vector3(off.x, 0.06 + hover - s.model_floor * k, off.z)
-		s.model.visible = v.fade > 0.02
+		s.model.visible = v.fade > 0.02 and not s.shattered
 		_tint_model(s, m)
 		_drive_anim(s, v)
 	s.lamp.light_energy = (0.55 + 0.1 * sin(_t * 3.0 + v.slot)) * v.fade + v.flash * 3.0
+	if s.dying:
+		# a cold light in it as it turns to glass, brighter as it cracks; out when it bursts
+		s.lamp.light_energy = 0.0 if s.shattered else 0.6 + s.crystal * 0.6 + s.crack * 1.6
+		s.lamp.light_color = s.crystal_tint
+		s.lamp.visible = s.lamp.light_energy > 0.01
+		s.glow_mat.albedo_color = Color(s.crystal_tint, 0.2 * (1.0 - float(s.shattered)))
+		_ring_state(s, v.highlight, s.crystal_tint, 0.85 * v.fade)
+		return
 	# (an empty slot's lamp off altogether: every light on the Circle costs
 	# the phone another pass over the floor, lit or not; 27 October)
 	s.lamp.visible = s.lamp.light_energy > 0.01
@@ -740,6 +770,9 @@ func warm_models(ids: Array) -> void:
 			var inst := scene.instantiate()
 			if inst is Node3D:
 				_dress_model(inst)
+				# (29 October) its crystal sheen and glossy glass drawn once
+				# too, so its knockout doesn't stop to compile them
+				_warm_crystal(inst)
 				# small, so a big one (Pyraxis) doesn't stand up through the
 				# mat while it's warmed: the shaders and skinning are the same
 				(inst as Node3D).scale = Vector3.ONE * 0.05
@@ -893,6 +926,7 @@ func _tint_model(s: Slot, m: Color) -> void:
 	var dim := minf(1.0, minf(m.r, minf(m.g, m.b)))
 	var tinted: bool = s.model.has_meta("stand_in_tint")
 	var tint: Color = s.model.get_meta("stand_in_tint", Color.WHITE)
+	var cr := s.crystal if s.crystal_mat != null else 0.0
 	for mi in s.model.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mi as MeshInstance3D
 		for i in mesh.mesh.get_surface_count() if mesh.mesh != null else 0:
@@ -903,6 +937,24 @@ func _tint_model(s: Slot, m: Color) -> void:
 			if not mesh.has_meta(key):
 				mesh.set_meta(key, src)
 			var base: BaseMaterial3D = mesh.get_meta(key)
+			if s.crystal_mat != null:
+				# turning to crystal (29 October): its own colours paling to
+				# glass as the sheen climbs, glossy, lit from inside as it
+				# cracks; the sheen itself is a second pass (DuelCrystal)
+				var cov: BaseMaterial3D = mesh.get_surface_override_material(i)
+				if cov == null or cov == base:
+					cov = base.duplicate()
+					mesh.set_surface_override_material(i, cov)
+				var glass := s.crystal_tint
+				var bc := base.albedo_color * (DuelArt.soft_tint(tint) if tinted else Color.WHITE)
+				cov.albedo_color = bc.lerp(Color(glass.r * 0.8, glass.g * 0.8, glass.b * 0.8, bc.a), cr * 0.7)
+				cov.metallic = lerpf(base.metallic, 0.5, cr)
+				cov.roughness = lerpf(base.roughness, 0.1, cr)
+				cov.emission_enabled = true
+				cov.emission = (base.emission if base.emission_enabled else Color.BLACK).lerp(glass, cr * 0.6)
+				cov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + cr * 0.4 + s.crack * 0.7
+				cov.next_pass = s.crystal_mat
+				continue
 			if flash <= 0.001 and dim >= 0.999 and not tinted:
 				if mesh.get_surface_override_material(i) != null:
 					mesh.set_surface_override_material(i, null)
@@ -1395,7 +1447,7 @@ class Bolt3D:
 
 
 ## A crackling bolt of lightning between two points.
-func lightning(a: Vector3, b: Vector3, col: Color, dur: float = 0.32, width: float = 0.16) -> void:
+func lightning(a: Vector3, b: Vector3, col: Color, dur: float = 0.32, width: float = 0.16, lit: bool = true) -> void:
 	var n := Lightning3D.new()
 	n.a = a
 	n.b = b
@@ -1406,8 +1458,9 @@ func lightning(a: Vector3, b: Vector3, col: Color, dur: float = 0.32, width: flo
 	var tw := n.create_tween()
 	tw.tween_property(n, "t", 1.0, dur)
 	tw.tween_callback(n.queue_free)
-	flash_light(b, col, 8.0, dur)
-	flash_light(a, col, 3.0, dur * 0.5)
+	if lit:   # (29 October: the small arcs of a blow's burst bring no light of their own; each is another pass on the phone)
+		flash_light(b, col, 8.0, dur)
+		flash_light(a, col, 3.0, dur * 0.5)
 
 
 class Lightning3D:
@@ -1489,36 +1542,74 @@ class Lightning3D:
 ## Totem's body, or the duellist's plate for a Rite on nobody); `ahead` is
 ## the way towards that Totem's enemy (a wall stands on that side). Returns
 ## how long it plays (s), for the screen to wait.
-func rite_motif(card: DuelCard, at: Vector3, ahead: Vector3, col: Color) -> float:
+##
+## 29 October (Gary: "animations added to each card"): the motif comes from
+## DuelFXStyle.rite_motif (a table of what the card does, with a few cards
+## of their own), so the Rites that had only a pillar of light (the boons,
+## the revivals, the standing Rites, Terrain, Unbind, the searches...) have
+## pictures too, and a card added later finds one by itself. `from` is the
+## caster's side (for a drain, the light comes back there).
+func rite_motif(card: DuelCard, at: Vector3, ahead: Vector3, col: Color, from: Vector3 = Vector3.ZERO) -> float:
 	var d: Dictionary = card.def
 	var el := String(d.get("element", "any"))
 	var effects: Array = d.get("effects", [])
-	var dmg := int(d.get("damage", 0))
-	var ops := []
-	for e in effects:
-		ops.append(String((e as Dictionary).get("op", "")))
 	var foot := Vector3(at.x, 0.0, at.z)
 	var status := ""
+	var boon := ""
 	for e in effects:
-		if String((e as Dictionary).get("op", "")) == "status":
+		if String((e as Dictionary).get("op", "")) == "status" and status == "":
 			status = String((e as Dictionary).get("status", ""))
-	if "shield" in ops:
-		return wall_ring(foot, ahead, el)
-	if "heal" in ops or "cure" in ops or "regen" in ops or "life" in ops:
-		return mend(foot, col)
-	if "buff" in ops or "empower" in ops:
-		return aura(foot, col)
-	if "draw" in ops or "search_totem" in ops or "search" in ops or "search_rite" in ops:
-		return cards_fan(foot, col)
-	if "essence" in ops or "essence_max" in ops:
-		return essence_motes(foot, col)
-	if "bounce" in ops or "move_foe" in ops or "drain" in ops:
-		return wave(foot, ahead, col)
-	if status != "":
-		return status_motif(foot, status, el, col)
-	if dmg > 0 or String(d.get("target", "none")) in ["foe_totem", "all_foes"]:
-		return strike_motif(foot, el, col, ahead)
+		if String((e as Dictionary).get("op", "")) == "boon" and boon == "":
+			boon = String((e as Dictionary).get("boon", ""))
+	match DuelFXStyle.rite_motif(d, card.id):
+		"wall":
+			return wall_ring(foot, ahead, el)
+		"mend":
+			return mend(foot, col)
+		"aura":
+			return aura(foot, col)
+		"howl_aura":
+			DuelStrikeFX.howl(self, foot + Vector3(0, 0.8, 0), foot + Vector3(0, 0.8, 0) - ahead * 3.0, col, col.lightened(0.4), 1.2, 1.0)
+			return aura(foot, col)
+		"cards":
+			return cards_fan(foot, col)
+		"essence":
+			return essence_motes(foot, col)
+		"wave":
+			return wave(foot, ahead, col)
+		"drain":
+			return DuelStrikeFX.drain(self, at, from if from != Vector3.ZERO else foot - ahead * 4.0, col)
+		"status":
+			return status_motif(foot, status, el, col)
+		"strike":
+			return strike_motif(foot, el, col, ahead)
+		"revival":
+			return DuelStrikeFX.revival(self, foot, col)
+		"blessing":
+			return DuelStrikeFX.blessing(self, foot, col)
+		"veil":
+			return DuelStrikeFX.veil(self, foot, DuelFXStyle.col("umbral") if el in ["any", "psychic", "venom"] else col)
+		"haste":
+			return DuelStrikeFX.haste(self, foot, col)
+		"banner":
+			return DuelStrikeFX.banner(self, foot, el, col)
+		"terrain":
+			floor_wave(foot, col, 7.0, 1.0)
+			DuelStrikeFX.cast_sigil(self, foot, col, 5.0, 1.2)
+			DuelStrikeFX.flourish(self, foot + Vector3(0, 0.5, 0), el, 1.4)
+			return 0.9
+		"unbind", "reveal":
+			return DuelStrikeFX.rune_seal(self, foot + Vector3(0, 1.0, 0), col)
+		"stoke":
+			return flames(foot, col)
+		"ash_storm":
+			return DuelStrikeFX.ash_storm(self, foot, col)
+		"dice":
+			return DuelStrikeFX.dice(self, foot, col)
+		"relic":
+			return DuelStrikeFX.relic(self, foot, col)
 	# a Rite on nobody in particular: the god's light at the plate
+	DuelStrikeFX.cast_sigil(self, foot, col, 2.6, 1.0)
 	pillar(foot, col, 4.0, 1.4, 0.8)
 	rise(foot, col, 18, 0.9, 1.0)
 	return 0.6
@@ -1526,9 +1617,11 @@ func rite_motif(card: DuelCard, at: Vector3, ahead: Vector3, col: Color) -> floa
 
 ## Where a Rite on nobody in particular plays: on the ground in front of
 ## that side's row, in view (the plates themselves sit past the camera's
-## edge, under the hand).
+## edge, under the hand). (29 October: on the open ground between the rows,
+## on that side; just behind each row, where it was, it lay under the hand
+## of cards at the bottom, or the rival's fanned hand at the top.)
 func plate_world(side: int) -> Vector3:
-	return Vector3(0, 0, MY_Z + 0.6) if side == me else Vector3(0, 0, RIVAL_Z - 0.8)
+	return Vector3(0, 0, MY_Z - 1.45) if side == me else Vector3(0, 0, RIVAL_Z + 1.35)
 
 
 ## The way from a slot towards the row across from it.
@@ -1568,9 +1661,15 @@ func strike_motif(foot: Vector3, el: String, col: Color, ahead: Vector3) -> floa
 			return swirl(foot, col, 0.9, 2.2)
 		"earth":
 			return rockfall(foot, col)
-		_:
+		"any":
 			pillar(foot, col, 4.5, 1.6, 0.7)
 			swirl(foot, col, 0.7, 1.2)
+			return 0.6
+		_:
+			# (29 October) the gods' elements, and psychic and mystic: their
+			# own impacts, as their Totems' blows land
+			pillar(foot, col, 3.5, 1.3, 0.6)
+			DuelStrikeFX.impact(self, DuelFXStyle.attack_style("", el, {}, 0), foot + Vector3(0, 1.0, 0), true)
 			return 0.6
 
 
@@ -1737,46 +1836,41 @@ func flames(foot: Vector3, col: Color) -> float:
 ## water with a rolling white crest (solid geometry, which reads on the
 ## bright floor where a glow would not), then spray as it passes.
 func wave(foot: Vector3, dir: Vector3, col: Color) -> float:
+	# (29 October: rebuilt as moving water. The first wave was a box of
+	# translucent water under a white roller, and on Ashford's bright lawn
+	# it read as a pale slab: now a curling crest of foam over a body of
+	# water thrown up and falling behind it as it passes)
 	var holder := Node3D.new()
 	var flat := Vector3(dir.x, 0, dir.z).normalized()
-	var from := foot - flat * 2.0
-	var to := foot + flat * 2.0
+	var from := foot - flat * 2.2
+	var to := foot + flat * 2.2
 	holder.position = from
 	_fx_parent().add_child(holder)
 	holder.look_at(from + flat, Vector3.UP)
-	var water := Color(col.r * 0.8, col.g * 0.9, col.b * 1.05, 0.62)
-	var body := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = Vector3(3.2, 1.4, 0.7)
-	body.mesh = bm
-	var wm := _solid(water, 0.08, 0.55)
-	wm.metallic = 0.2
-	body.material_override = wm
-	body.position = Vector3(0, 0.7, 0)
-	body.rotation.x = 0.3
-	holder.add_child(body)
-	var crest := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.34
-	cm.bottom_radius = 0.34
-	cm.height = 3.0
-	cm.radial_segments = 14
-	crest.mesh = cm
-	var crm := _solid(Color(0.9, 0.97, 1.0, 0.85), 0.2, 0.9)
-	crest.material_override = crm
-	crest.position = Vector3(0, 1.45, 0.2)
-	crest.rotation.z = PI * 0.5
-	holder.add_child(crest)
+	var deep := Color(col.r * 0.45, col.g * 0.7, col.b * 0.95, 0.8)
+	# the body: water heaped up along the front, falling away behind it
+	DuelStrikeFX.emit(self, Vector3(0, 0.45, 0), {"parent": holder, "emit_for": 0.55, "amount": 120, "life": 0.55,
+		"shape": "box", "box": Vector3(1.6, 0.35, 0.15), "dir": Vector3(0, 1, 0.4), "spread": 25.0, "speed": [1.5, 3.2],
+		"gravity": Vector3(0, -7.0, 0), "tex": "glow", "blend": "mix", "size": 1.0, "scale": [0.7, 1.0], "grow": "flat",
+		"cols": [Color(deep, 0.0), deep, Color(col.r * 0.7, col.g * 0.85, col.b, 0.5)], "explode": 0.0})
+	# its crest: white foam curling over the top
+	DuelStrikeFX.emit(self, Vector3(0, 1.2, -0.15), {"parent": holder, "emit_for": 0.55, "amount": 60, "life": 0.4,
+		"shape": "box", "box": Vector3(1.5, 0.1, 0.1), "dir": Vector3(0, 0.6, -1), "spread": 30.0, "speed": [1.0, 2.6],
+		"gravity": Vector3(0, -6.0, 0), "tex": "glow", "blend": "mix", "size": 0.32, "grow": "shrink",
+		"cols": [Color(0.95, 0.98, 1.0, 0.95), Color(0.8, 0.92, 1.0, 0.6)], "explode": 0.0})
+	# and light on the water
+	DuelStrikeFX.emit(self, Vector3(0, 0.9, 0), {"parent": holder, "emit_for": 0.55, "amount": 30, "life": 0.35,
+		"shape": "box", "box": Vector3(1.5, 0.4, 0.1), "speed": [0.2, 0.8], "gravity": Vector3.ZERO, "tex": "star",
+		"size": 0.16, "cols": [Color.WHITE, col], "explode": 0.0})
 	var tw := holder.create_tween()
 	tw.tween_property(holder, "position", to, 0.6).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
-	tw.parallel().tween_property(crest, "rotation:x", -TAU * 1.5, 0.6)
-	tw.parallel().tween_property(wm, "albedo_color:a", 0.0, 0.25).set_delay(0.4)
-	tw.parallel().tween_property(crm, "albedo_color:a", 0.0, 0.25).set_delay(0.4)
+	tw.tween_interval(0.7)
 	tw.tween_callback(holder.queue_free)
 	floor_wave(foot, col, 3.0, 0.5)
-	# spray thrown up as it passes
-	get_tree().create_timer(0.22).timeout.connect(func() -> void:
-		burst(foot + Vector3(0, 0.9, 0), Color(0.85, 0.95, 1.0), 44, 4.5, 0.7, 0.14, 1.0))
+	# spray thrown up as it breaks over the Totem
+	get_tree().create_timer(0.24).timeout.connect(func() -> void:
+		DuelStrikeFX.emit(self, foot + Vector3(0, 0.8, 0), {"amount": 40, "life": 0.8, "dir": Vector3.UP, "spread": 45.0, "speed": [3.0, 5.5],
+			"gravity": Vector3(0, -12.0, 0), "blend": "mix", "size": 0.14, "cols": [Color(0.92, 0.98, 1.0, 0.95), Color(col.r * 0.6, col.g * 0.85, col.b, 0.85)]}))
 	flash_light(foot + Vector3(0, 1.0, 0), col, 4.0, 0.6)
 	return 0.7
 
@@ -2035,3 +2129,206 @@ func essence_motes(at: Vector3, col: Color) -> float:
 		flash_sprite(at + Vector3(0, 1.4, 0), col, 2.4, 0.4)
 		flash_light(at + Vector3(0, 1.4, 0), col, 6.0, 0.4))
 	return 0.9
+
+
+# ================================ every blow and card its own picture ===
+# 29 October (Gary: "In the card battle I want animations added to each card
+# or attacks effect"): the pieces are DuelStrikeFX's, the choice of them
+# DuelFXStyle's; these are what the screen calls.
+
+## A blow crossing from `a` to `b`, in its element's way (st from
+## DuelFXStyle.attack_style). Returns as it lands.
+func strike_travel(st: Dictionary, a: Vector3, b: Vector3, spd: float = 1.0, k: float = 1.0) -> void:
+	await DuelStrikeFX.travel(self, st, a, b, k, maxf(0.1, spd))
+
+
+## A blow landing on a Totem (or a duellist's side): its element's impact.
+func strike_impact(st: Dictionary, body: Vector3, big: bool, k: float = 1.0) -> void:
+	DuelStrikeFX.impact(self, st, body, big, k)
+
+
+## A melee blow's lunge: the striker's element trailing off it for `dur`.
+func lunge_trail(side: int, slot: int, st: Dictionary, dur: float) -> void:
+	var s: Slot = slots[side][slot]
+	if s.trail != null and is_instance_valid(s.trail):
+		s.trail.queue_free()
+	s.trail = DuelStrikeFX.lunge_trail(self, st, s, Vector3(0, s.creature_h * 0.45, 0), dur)
+
+
+## A condition or boon settling on a Totem (29 October: "buffs/debuffs: an
+## aura ring"): a ring of its colour climbing the body for a boon, coming
+## down round it and tightening for a condition.
+func status_ring(foot: Vector3, col: Color, boon: bool) -> void:
+	var r := DuelStrikeFX.ring_mesh(col, 1.0, 0.05)
+	_fx_parent().add_child(r)
+	var h := 2.0
+	r.position = foot + Vector3(0, 0.15 if boon else h, 0)
+	r.scale = Vector3.ONE * (1.1 if boon else 1.35)
+	var mat := r.material_override as StandardMaterial3D
+	var tw := r.create_tween()
+	tw.tween_property(r, "position:y", foot.y + (h if boon else 0.2), 0.55).set_ease(Tween.EASE_OUT if boon else Tween.EASE_IN).set_trans(Tween.TRANS_SINE)
+	tw.parallel().tween_property(r, "scale", Vector3.ONE * (0.55 if boon else 0.8), 0.55)
+	tw.parallel().tween_property(mat, "albedo_color:a", 0.0, 0.35).set_delay(0.3)
+	tw.tween_callback(r.queue_free)
+	DuelStrikeFX.emit(self, foot + Vector3(0, 0.6 if boon else 1.4, 0), {"amount": 18, "life": 0.8, "shape": "ring", "radius": 0.8,
+		"speed": [0.4, 1.0], "dir": Vector3.UP if boon else Vector3.DOWN, "spread": 15.0, "gravity": Vector3.ZERO,
+		"tex": "star", "size": 0.14, "cols": [Color.WHITE, col]})
+
+
+# ====================================================== the crystal death ===
+
+## A Totem knocked out turns to crystal and shatters (29 October, Gary: "When
+## a card dies can we have the creature turn to dust or diamonds rather then
+## just fall over"): it stops still; glass climbs it from its feet to its
+## head; it cracks, the light inside showing; it bursts into diamonds that
+## tumble and fade into drifting sparkling dust (DuelCrystal), and its card
+## goes to light. Returns when the slot can be cleared (the dust drifts on a
+## moment after). `cue` is told "crack" and "burst", for the screen's sounds
+## and words. Works for a model and for a painted cut-out alike.
+func crystal_death(side: int, slot: int, el: String, spd: float = 1.0, cue := Callable()) -> void:
+	var s: Slot = slots[side][slot]
+	if s.card_id == "" or s.card_id == "__veiled__":
+		return
+	spd = maxf(0.1, spd)
+	var gem := DuelFXStyle.gem(el)
+	var tint := Color(0.8, 0.93, 1.0).lerp(gem, 0.3)
+	var foot := foot_world(side, slot)
+	var hover := 0.35 if s.fly else 0.0
+	var y0 := foot.y + 0.06 + hover
+	var y1 := y0 + s.creature_h * 1.08
+	s.dying = true
+	s.crystal_tint = tint
+	if s.anim != null:
+		s.anim.pause()   # (caught as it was struck)
+	var mat: ShaderMaterial = null
+	if s.model != null:
+		mat = DuelCrystal.overlay_material(tint, y0, y1)
+	elif s.sprite.texture != null:
+		mat = DuelCrystal.sprite_material(s.sprite.texture, tint, y0, y1)
+		s.sprite.material_override = mat
+	s.crystal_mat = mat
+	# 1. the glass climbs it, frost spreading at its feet
+	flash_light(foot + Vector3(0, 1.0, 0), tint, 3.0, 0.6 / spd, 5.0)
+	DuelStrikeFX.emit(self, foot + Vector3(0, 0.08, 0), {"amount": 26, "life": 0.7 / spd, "shape": "ring", "radius": 0.7,
+		"speed": [0.2, 0.6], "dir": Vector3.UP, "spread": 20.0, "gravity": Vector3.ZERO, "tex": "star", "size": 0.14,
+		"cols": [Color.WHITE, tint]})
+	var tw := create_tween()
+	tw.tween_method(func(v: float) -> void:
+		s.crystal = v
+		if mat != null:
+			mat.set_shader_parameter("progress", v), 0.0, 1.0, 0.5 / spd).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_SINE)
+	await tw.finished
+	if not is_instance_valid(self):
+		return
+	# 2. it cracks, light showing through
+	if cue.is_valid():
+		cue.call("crack")
+	var tw2 := create_tween()
+	tw2.tween_method(func(v: float) -> void:
+		s.crack = v
+		if mat != null:
+			mat.set_shader_parameter("crack", v), 0.0, 1.0, 0.3 / spd).set_ease(Tween.EASE_IN)
+	DuelStrikeFX.emit(self, foot + Vector3(0, hover + s.creature_h * 0.5, 0), {"amount": 8, "life": 0.5, "speed": [0.3, 1.0],
+		"shape": "sphere", "radius": s.creature_h * 0.3, "gravity": Vector3(0, -6.0, 0), "tex": "star", "size": 0.1, "cols": [Color.WHITE, tint]})
+	await tw2.finished
+	if not is_instance_valid(self):
+		return
+	# 3. it bursts into diamonds
+	s.shattered = true
+	var centre := foot + Vector3(0, hover + s.creature_h * 0.48, 0)
+	var half := Vector3(s.creature_h * 0.3, s.creature_h * 0.36, s.creature_h * 0.26)
+	DuelCrystal.shatter(self, centre, half, tint, gem, spd)
+	flash_sprite(centre, tint, 2.4, 0.35)
+	flash_light(centre, tint, 7.0, 0.5 / spd, 7.0)
+	floor_wave(foot, tint, 3.6, 0.6)
+	DuelStrikeFX.emit(self, centre, {"amount": 40, "life": 0.9, "speed": [2.0, 5.0], "gravity": Vector3(0, -2.0, 0), "damp": [1.5, 3.0],
+		"tex": "star", "size": 0.2, "cols": [Color.WHITE, tint, gem]})
+	cam_shake(10.0)
+	if cue.is_valid():
+		cue.call("burst")
+	# 4. its card goes to light: up a little, turning, and gone into a spark
+	if s.card.visible:
+		var ct := s.card.create_tween().set_parallel(true)
+		ct.tween_property(s.card, "position:y", 0.45, 0.45 / spd).set_delay(0.25 / spd).set_ease(Tween.EASE_OUT)
+		ct.tween_property(s.card, "scale", Vector3.ONE * 0.04, 0.45 / spd).set_delay(0.3 / spd).set_ease(Tween.EASE_IN)
+		ct.chain().tween_callback(func() -> void:
+			if is_instance_valid(s):
+				flash_sprite(s.global_position + Vector3(0, 0.45, 0), tint.lightened(0.5), 1.6, 0.3))
+	await get_tree().create_timer(0.8 / spd).timeout
+
+
+## A slot made ready for a new Totem after a knockout.
+func _reset_death(s: Slot) -> void:
+	s.dying = false
+	s.shattered = false
+	s.crystal = 0.0
+	s.crack = 0.0
+	s.crystal_mat = null
+	s.sprite.material_override = null
+	s.card.scale = Vector3.ONE
+	s.card.position.y = 0.05
+	if s.trail != null and is_instance_valid(s.trail):
+		s.trail.queue_free()
+	s.trail = null
+
+
+## Draws, once, under the floor and out of sight, the shaders and particle
+## materials the duel's new effects use (the crystal, the diamonds, shields,
+## the particle looks), so the first knockout or blow of a kind doesn't stop
+## to compile them; the models get their crystal sheen drawn once in
+## warm_models. 29 October.
+func warm_fx() -> void:
+	if world == null:
+		return
+	var pit := Node3D.new()
+	pit.name = "WarmFX"
+	pit.position = Vector3(0, -3.0, 0)
+	world.add_child(pit)
+	var ball := SphereMesh.new()
+	ball.radius = 0.05
+	ball.height = 0.1
+	for mat in [DuelCrystal.overlay_material(Color.WHITE, 0.0, 1.0), DuelCrystal.sprite_material(DuelFX.glow_tex(), Color.WHITE, 0.0, 1.0)]:
+		var mi := MeshInstance3D.new()
+		mi.mesh = ball
+		mi.material_override = mat
+		pit.add_child(mi)
+	var dome := MeshInstance3D.new()
+	dome.mesh = ball
+	var sm := ShaderMaterial.new()
+	sm.shader = DuelCrystal.shield_shader()
+	dome.material_override = sm
+	pit.add_child(dome)
+	var sh := DuelCrystal.Shards3D.new()
+	sh.setup(2, Vector3.ZERO, Vector3.ONE * 0.01, Color.WHITE, Color.WHITE, 0.0)
+	sh.set_process(false)
+	pit.add_child(sh)
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.05, 0.05)
+	for tname in ["dot", "glow", "star", "leaf"]:
+		for blend in ["add", "mix"]:
+			for mode in ["face", "streak", "spin"]:
+				var mi2 := MeshInstance3D.new()
+				mi2.mesh = quad
+				mi2.material_override = DuelStrikeFX.pmat(tname, blend, mode)
+				pit.add_child(mi2)
+	for i in 3:
+		await get_tree().process_frame
+	if is_instance_valid(pit):
+		pit.queue_free()
+
+
+## A model being warmed wears what its knockout will give it: each surface
+## glossy and glowing, with the crystal sheen as a second pass.
+static func _warm_crystal(inst: Node3D) -> void:
+	var sheen := DuelCrystal.overlay_material(Color.WHITE, 0.0, 1.0)
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var src := mesh.get_active_material(i)
+			if src is BaseMaterial3D:
+				var ov: BaseMaterial3D = (src as BaseMaterial3D).duplicate()
+				ov.emission_enabled = true
+				ov.next_pass = sheen
+				mesh.set_surface_override_material(i, ov)
