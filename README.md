@@ -1049,16 +1049,18 @@ v7 wins; the parts it changed:
   middle. `tests/back_peek.tscn -- <out.png> <id> [clips]` takes a character
   from behind, three-quarters and above in clips.
 - **Player A's nose** ("face still look weird around the nose area"): the
-  model is fine; its Tripo3D atlas cuts the face into a hundred islands, and
-  down the right side of the nose one was a smeared orange strip from the
-  eye to the nostril with hard edges, with hard seams beside the bridge.
-  `tools/heal_face.py MODEL --window ... --patch "x,y;..." --seams ...`
-  renders the face flat from the front, fills the strip smoothly from the
-  skin round it with the cheek's grain over it, inpaints the hard island
-  edges below the eyes, and writes the change back into the atlas texel by
-  texel (and into the gutter round each island, or the old colour shows as a
-  hairline down every seam). His portrait is re-rendered. `tests/face_close.gd
-  -- <out.png> <id> [clip] [glb]` takes a face close from six sides.
+  model's mesh is Gary's as he made it (the same points since 26 October;
+  the face is 99% on the Head bone, so no clip bends it), but its colours
+  are his 4K texture cut to 2048, and his model's normal map (the fine shape
+  painted into the light: the nostrils, the bridge) was left out when he was
+  rigged (`rig_character.py` drops normal maps unless `--normal-map`: the
+  AssetFurnace ones split faces in two). The atlas also has a smeared orange
+  strip down the right side of the nose. `tools/heal_face.py` (painting over
+  the strip from the front) was tried on 29 October and taken back the same
+  afternoon (Gary: put the head back as it was before it was edited): the
+  atlas is the 26 October one again (`9ee55f7`). The fix is his original
+  file (`New_Player_A_Master_22_Animations.glb`): its full texture and its
+  normal map on the head.
 - **Nell's stick** ("goes through the bench before you sit with her"): sat,
   her stick stands on the ground by her right knee, clear of the seat
   (`Figure3D.plant_stick(foot)`: the hand turned so the stick hangs straight
