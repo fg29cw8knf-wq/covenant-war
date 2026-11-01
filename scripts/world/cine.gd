@@ -504,7 +504,7 @@ static func blockers(w: World) -> Array:
 						continue
 					for i in k:
 						var cc := gt.origin + axis * (long * ((float(i) + 0.5) / k - 0.5))
-						out.append([Vector2(cc.x, cc.z), rr])
+						out.append([Vector2(cc.x, cc.z), rr, g2])
 					continue
 			elif cs.shape is CylinderShape3D:
 				var cy := cs.shape as CylinderShape3D
@@ -526,9 +526,22 @@ static func blockers(w: World) -> Array:
 				g = bottom
 			if bottom > g + 1.2 or top < g + 0.25:
 				continue
-			out.append([Vector2(gt.origin.x, gt.origin.z), r])
+			out.append([Vector2(gt.origin.x, gt.origin.z), r, g])
 	w.set_meta("blockers", out)
 	w.set_meta("blockers_at", now)
+	return out
+
+
+## The blockers on the same floor as height `y` (each is [middle, radius,
+## the floor it stands on]): the rooms are built under the village, so a
+## barrel on the green above the attic isn't in the attic (1 November: Bram's
+## walk to the attic window went round the village's things overhead, and
+## ended out of the shot).
+static func blockers_at(w: World, y: float) -> Array:
+	var out: Array = []
+	for bl in blockers(w):
+		if (bl as Array).size() < 3 or absf(float(bl[2]) - y) < 3.0:
+			out.append(bl)
 	return out
 
 
@@ -557,16 +570,16 @@ static func people(w: World, walker := "") -> Array:
 	var out: Array = []
 	var me := body(w, walker) if walker != "" else null
 	if w.player != null and w.player != me and w.player.is_inside_tree():
-		out.append([Vector2(w.player.global_position.x, w.player.global_position.z), PERSON_R])
+		out.append([Vector2(w.player.global_position.x, w.player.global_position.z), PERSON_R, w.player.global_position.y])
 	for n in w.find_children("*", "StaticBody3D", true, false):
 		var sb := n as StaticBody3D
 		if sb != me and sb.has_meta("npc") and sb.is_inside_tree() and sb.is_visible_in_tree():
-			out.append([Vector2(sb.global_position.x, sb.global_position.z), PERSON_R])
+			out.append([Vector2(sb.global_position.x, sb.global_position.z), PERSON_R, sb.global_position.y])
 	var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
 	for id in ex:
 		var b = ex[id].body
 		if b is Node3D and b != me and (b as Node3D).is_inside_tree() and (b as Node3D).is_visible_in_tree():
-			out.append([Vector2((b as Node3D).global_position.x, (b as Node3D).global_position.z), PERSON_R])
+			out.append([Vector2((b as Node3D).global_position.x, (b as Node3D).global_position.z), PERSON_R, (b as Node3D).global_position.y])
 	return out
 
 
@@ -575,9 +588,11 @@ static func route(w: World, from: Vector3, to: Vector3, clear := 0.35, walker :=
 	var b := Vector2(to.x, to.z)
 	if a.distance_to(b) < 0.05:
 		return [to]
-	var all := blockers(w)
+	var all := blockers_at(w, from.y)
 	if walker != "":
-		all = all + people(w, walker)
+		for pp in people(w, walker):
+			if absf(float(pp[2]) - from.y) < 3.0:
+				all.append(pp)
 	if _crossings(all, a, b, clear) == 0:
 		return [to]
 	# the things near the way, and the points round each
@@ -741,7 +756,7 @@ static func off_blockers(w: World, p: Vector3, clear := 0.45) -> Vector3:
 	var q := Vector2(p.x, p.z)
 	for k in 3:
 		var moved := false
-		for bl in blockers(w):
+		for bl in blockers_at(w, p.y):
 			var o: Vector2 = bl[0]
 			var r := float(bl[1]) + clear
 			var d := q.distance_to(o)

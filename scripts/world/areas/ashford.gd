@@ -2979,9 +2979,11 @@ static func _coat_on(w: World, who: String, coat: Node3D) -> void:
 # ------------------------------------------------------- P3 · dawn ---
 
 ## Where everyone stands on the green at dawn, looking up the road. Bram is
-## at the player's right shoulder, close enough to put a hand on it.
+## at the player's right shoulder, close enough to put a hand on it, and
+## far enough that the two of them crouched don't run into each other (at
+## 0.7 m their shoulders went into each other as they knelt).
 const DAWN := {
-	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(0.42, 0, 11.68), "corin": Vector3(-1.0, 0, 10.4),
+	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(0.35, 0, 11.86), "corin": Vector3(-1.0, 0, 10.4),
 	"tilly": Vector3(-3.2, 0, 13.0), "nell": Vector3(-2.2, 0, 9.4), "tam": Vector3(3.2, 0, 9.6),
 	"hob": Vector3(2.4, 0, 15.8), "ned": Vector3(-4.6, 0, 10.6),
 }
@@ -3246,7 +3248,9 @@ static func _herald_3d(w: World) -> Dictionary:
 		Cine.look(w, who, p)
 	await Cine.wait(w, 1.2)
 	# silence; and the featureless hood snaps down onto you
-	Cine.shot(w, herald.hood_pos() + Vector3(-1.6, -0.2, 1.4), herald.hood_pos(), 30.0)
+	# (from further off than it was: at two metres the hood filled the
+	# screen, its edges cut off, for the whole of its next speech)
+	Cine.shot(w, herald.hood_pos() + Vector3(-2.9, -0.55, 2.5), herald.hood_pos() + Vector3(0, -0.35, 0), 34.0)
 	await Cine.wait(w, 1.4)
 	herald.turn_hood(p + Vector3(0, 1.0, 0))
 	_sfx(w, "ward_spring", 0.6)

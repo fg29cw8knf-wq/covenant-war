@@ -241,6 +241,8 @@ static func attach(f, bone: String, node: Node3D, at := Vector3.ZERO, rot := Vec
 	ba.name = "P1_" + bone
 	ba.bone_name = bone
 	sk.add_child(ba)
+	if node.get_parent() != null:
+		node.get_parent().remove_child(node)
 	ba.add_child(node)
 	node.position = at
 	node.rotation = rot
@@ -732,7 +734,10 @@ static func stand_up(w: World, who: String, blend := 0.4) -> void:
 		fig.stand(blend)
 		if ahead > 0.0 and b != null:
 			var to := from + fwd * ahead
-			to.y = Cine.ground(w, to)
+			# (on the village's ground; in a room built under it, its floor:
+			# Bram got up off his stool in the attic onto the green 40 m
+			# overhead, and walked about up there out of every shot)
+			to.y = Cine.ground(w, to) if Cine._on_terrain(w, b) else from.y
 			var tw := w.create_tween()
 			tw.tween_property(b, "global_position", to, blend).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await Cine.wait(w, blend)
@@ -1101,7 +1106,7 @@ static func _round_props(w: World, at: Vector3) -> Vector3:
 	var v := village(w)
 	if v == null:
 		return at
-	for pr in v.props_placed + Cine.blockers(w):
+	for pr in v.props_placed + Cine.blockers_at(w, at.y):
 		var c: Vector2 = pr[0]
 		var r := float(pr[1]) + 0.35
 		var off := Vector2(at.x, at.z) - c
