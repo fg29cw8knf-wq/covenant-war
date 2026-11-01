@@ -22,7 +22,10 @@ extends Node
 ## close look at a moment the watch pointed at. "ui=1.3" plays it at the
 ## biggest Text and buttons size. "scale3d=0.5" draws the 3D at half size,
 ## for a quicker reference video recorded with Movie Maker; "stop=<frames>"
-## ends the recording after that many frames.
+## ends the recording after that many frames. "storyboard" makes the stills
+## clean (no subtitles, bars, buttons or dialogue box: the picture only, for
+## Gary to make the film from), takes none at each line, and writes
+## storyboard.txt beside them: each still's time and the line being said.
 
 var out_dir := "user://"
 var every := 0
@@ -35,6 +38,8 @@ var _part := ""
 var _keys := false       # draw only the frames that are kept (fast)
 var _was_waiting := false
 var _shooting := false
+var _board := false      # "storyboard": clean stills and their lines
+var _time := 0.0         # game seconds since the run began
 var _line_frames := 0
 var _start_part := ""
 var _ending := false
@@ -62,6 +67,7 @@ func _ready() -> void:
 	_only = "only" in args
 	_keys = "keys" in args
 	_notap = "notap" in args
+	_board = "storyboard" in args
 	for a in args:
 		if String(a).begins_with("stop="):
 			_stop = int(String(a).substr(5))
@@ -158,6 +164,7 @@ func _use_later(u) -> void:
 
 func _process(_d: float) -> void:
 	_frame += 1
+	_time += _d
 	if _stop > 0 and _frame >= _stop:
 		print("FILM: stopped at frame ", _frame)
 		get_tree().quit()
@@ -250,11 +257,11 @@ func _process(_d: float) -> void:
 			(r as DeckReveal)._close()
 	if _keys and world.has_meta("cine_overlay"):
 		var ov2: CineOverlay = world.get_meta("cine_overlay")
-		if ov2._waiting and _line_frames == 4:
+		if ov2._waiting and _line_frames == 4 and not _board:
 			_shot("line_%04d" % _frame)
 		_was_waiting = ov2._waiting
 	if every > 0 and _frame % every == 0 and _in_window():
-		_shot("f%04d" % _frame)
+		_shot("%d-%02d" % [int(_time) / 60, int(_time) % 60] if _board else "f%04d" % _frame)
 	# "only": stop when the film moves on to its next part
 	if _only and _start_part != "" and not _ending and _frame > 30:
 		var now := str(Game.flag("pro_part")) + str(Game.flag("thorn_part"))
@@ -297,6 +304,34 @@ func _shot(label: String) -> void:
 	if DisplayServer.get_name() == "headless" or _shooting:
 		return
 	_shooting = true
+	var hidden: Array = []
+	var said := ""
+	if _board:
+		# the picture only: the film's words, bars and buttons, and the
+		# game's own dialogue box and buttons, off for the still (the fade
+		# to black stays: it's part of the picture)
+		if world != null and world.has_meta("cine_overlay"):
+			var ov: CineOverlay = world.get_meta("cine_overlay")
+			if ov._line.is_visible_in_tree() and ov._line.get_parsed_text().strip_edges() != "":
+				said = ov._line.get_parsed_text().strip_edges()
+				if ov._who.is_visible_in_tree() and ov._who.text.strip_edges() != "":
+					said = ov._who.text.strip_edges().capitalize() + ": " + said
+			elif ov._cap.is_visible_in_tree() and ov._cap.text.strip_edges() != "":
+				said = "(caption) " + ov._cap.text.strip_edges()
+			for c in [ov._who, ov._line, ov._cap, ov._cap_sub, ov._choices, ov._hint, ov._top, ov._bot]:
+				if c != null and (c as CanvasItem).visible:
+					hidden.append(c)
+		if world != null and world.hud != null:
+			if said == "" and world.hud.dialogue.visible:
+				said = world.hud.dialogue._text.get_parsed_text().strip_edges()
+			if world.hud.visible:
+				hidden.append(world.hud)
+		# and the game's own panels over the picture (the cart heave's)
+		for q in get_tree().root.find_children("*", "CartHeave", true, false):
+			if (q as CanvasItem).visible:
+				hidden.append(q)
+		for h in hidden:
+			h.visible = false
 	if _keys:
 		RenderingServer.render_loop_enabled = true
 		await get_tree().process_frame
@@ -307,6 +342,15 @@ func _shot(label: String) -> void:
 	_shooting = false
 	_shots += 1
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))
+	for h in hidden:
+		if is_instance_valid(h):
+			h.visible = true
+	if _board:
+		var f := FileAccess.open(out_dir.path_join("storyboard.txt"), FileAccess.READ_WRITE if FileAccess.file_exists(out_dir.path_join("storyboard.txt")) else FileAccess.WRITE)
+		if f != null:
+			f.seek_end()
+			f.store_line("%03d\t%s\t%s" % [_shots, label, said.replace("\n", " ")])
+			f.close()
 
 
 func _frames(n: int) -> void:
