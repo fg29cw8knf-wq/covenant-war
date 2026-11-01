@@ -26,6 +26,8 @@ extends Node
 ## clean (no subtitles, bars, buttons or dialogue box: the picture only, for
 ## Gary to make the film from), takes none at each line, and writes
 ## storyboard.txt beside them: each still's time and the line being said.
+## "to_heave" stops a midnight run where the cart heave begins (the end of the
+## Midnight film itself).
 
 var out_dir := "user://"
 var every := 0
@@ -224,6 +226,13 @@ func _process(_d: float) -> void:
 		if not qh.has_meta("film_seen"):
 			qh.set_meta("film_seen", true)
 			print("FILM: the cart heave at frame ", _frame)
+			if "to_heave" in OS.get_cmdline_user_args() and not _ending:
+				# the Midnight film alone: it ends where the heave (played,
+				# not filmed) begins
+				_ending = true
+				print("FILM: midnight film over at the heave, frame ", _frame)
+				get_tree().quit()
+				return
 		if qh.phase == "heave" and _frame % 2 == 0:
 			qh.heave()
 		elif qh.phase == "pull":
@@ -260,8 +269,10 @@ func _process(_d: float) -> void:
 		if ov2._waiting and _line_frames == 4 and not _board:
 			_shot("line_%04d" % _frame)
 		_was_waiting = ov2._waiting
+	if _board:
+		_log_events()
 	if every > 0 and _frame % every == 0 and _in_window():
-		_shot("%d-%02d" % [int(_time) / 60, int(_time) % 60] if _board else "f%04d" % _frame)
+		_shot("%07.3f" % _time if _board else "f%04d" % _frame)
 	# "only": stop when the film moves on to its next part
 	if _only and _start_part != "" and not _ending and _frame > 30:
 		var now := str(Game.flag("pro_part")) + str(Game.flag("thorn_part"))
@@ -270,6 +281,59 @@ func _process(_d: float) -> void:
 			print("FILM: part over after ", _frame, " frames (", now, ")")
 			await _shot("end")
 			get_tree().quit()
+
+
+## "storyboard": a log beside the stills (events.txt) of what happens
+## between them, by game time: each camera cut, each line as it comes up
+## (who and what), and each choice offered, for writing the shot scripts.
+var _ev_cam := Transform3D()
+var _ev_have_cam := false
+var _ev_line := ""
+var _ev_choice := false
+
+
+func _log_events() -> void:
+	var ev: Array = []
+	var cam := get_viewport().get_camera_3d()
+	if cam != null:
+		var t := cam.global_transform
+		if _ev_have_cam:
+			var moved := t.origin.distance_to(_ev_cam.origin)
+			var turned := rad_to_deg(acos(clampf(t.basis.z.normalized().dot(_ev_cam.basis.z.normalized()), -1.0, 1.0)))
+			if moved > 1.2 or turned > 18.0:
+				ev.append("CUT\tmoved %.1f m, turned %.0f deg" % [moved, turned])
+		_ev_cam = t
+		_ev_have_cam = true
+	# (a still being taken hides the words for a moment: not a line ending)
+	if world != null and world.has_meta("cine_overlay") and not _shooting:
+		var ov: CineOverlay = world.get_meta("cine_overlay")
+		var line := ""
+		if ov._line.is_visible_in_tree() and ov._line.modulate.a > 0.01:
+			line = ov._line.get_parsed_text().strip_edges()
+			if line != "" and ov._who.is_visible_in_tree() and ov._who.text.strip_edges() != "":
+				line = ov._who.text.strip_edges().capitalize() + ": " + line
+		if line != _ev_line:
+			if line != "":
+				ev.append("LINE\t" + line.replace("\n", " "))
+			else:
+				ev.append("LINE OFF")
+			_ev_line = line
+		var ch: bool = ov._choices.visible and ov._choices.get_child_count() > 0
+		if ch and not _ev_choice:
+			var opts: Array = []
+			for b in ov._choices.find_children("*", "Button", true, false):
+				opts.append((b as Button).text)
+			ev.append("CHOICE\t" + " | ".join(opts))
+		_ev_choice = ch
+	if ev.is_empty():
+		return
+	var path := out_dir.path_join("events.txt")
+	var f := FileAccess.open(path, FileAccess.READ_WRITE if FileAccess.file_exists(path) else FileAccess.WRITE)
+	if f != null:
+		f.seek_end()
+		for e in ev:
+			f.store_line("%.3f\t%d\t%s" % [_time, _frame, e])
+		f.close()
 
 
 func _in_window() -> bool:
@@ -336,6 +400,15 @@ func _shot(label: String) -> void:
 		RenderingServer.render_loop_enabled = true
 		await get_tree().process_frame
 		await get_tree().process_frame
+	if _board and world != null and world.has_meta("cine_overlay"):
+		# a line that came up while we waited has shown its name and words
+		# again (say() sets them visible): off again, for the frame we keep
+		var ov3: CineOverlay = world.get_meta("cine_overlay")
+		for c in [ov3._who, ov3._line, ov3._cap, ov3._cap_sub, ov3._choices, ov3._hint, ov3._top, ov3._bot]:
+			if c != null and (c as CanvasItem).visible:
+				(c as CanvasItem).visible = false
+				if not hidden.has(c):
+					hidden.append(c)
 	await RenderingServer.frame_post_draw
 	if _keys:
 		RenderingServer.render_loop_enabled = false

@@ -191,6 +191,11 @@ var tear_light: DirectionalLight3D
 func build_environment() -> void:
 	env = Environment.new()
 	sky_mat = shader_mat("sky")
+	# the sky starts whole: the shader's own default has the tear wide open,
+	# which showed whenever the night began without the day's light handing
+	# over to it (a game resumed at midnight, or the film stills: the rift
+	# was up before the lanterns had even stopped)
+	sky_mat.set_shader_parameter("tear_open", 0.0)
 	var sky := Sky.new()
 	sky.sky_material = sky_mat
 	sky.radiance_size = Sky.RADIANCE_SIZE_128
