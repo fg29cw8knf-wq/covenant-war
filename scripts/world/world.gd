@@ -800,6 +800,7 @@ func run_steps(steps: Array, npc) -> void:
 			# one answer to what someone's just said or asked (two ways, usually)
 			if director.is_valid():
 				director.call("?")
+			_plate_for(npc)
 			var i := await hud.dialogue.choose(st.choice)
 			var branches: Array = st.get("then", [])
 			if i < branches.size():
@@ -807,6 +808,7 @@ func run_steps(steps: Array, npc) -> void:
 		elif st.has("ask"):
 			if director.is_valid():
 				director.call("?")
+			_plate_for(npc)
 			await _ask(st, npc)
 		elif st.has("set"):
 			Game.set_flag(st.set)
@@ -850,6 +852,16 @@ func run_steps(steps: Array, npc) -> void:
 			# (world, npc) and awaited (Solhaven's side stories)
 			await (st.call as Callable).call(self, npc)
 	_refresh_markers()
+
+
+## Questions or a choice with no line of theirs over them (a hub a talk
+## opens with, on a second visit): the box shows who's being talked to.
+func _plate_for(npc) -> void:
+	if npc == null or not (npc is Dictionary) or hud == null:
+		return
+	var id := String((npc as Dictionary).def.get("id", ""))
+	if id != "":
+		hud.dialogue.plate(_speaker(id), _portrait(id))
 
 
 ## Things the player can ask (Gary, 20 October: one question needn't cost the

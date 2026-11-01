@@ -5,6 +5,16 @@ extends RefCounted
 ## and an instruction ("Tap Brookfin") lights up the one thing to tap while
 ## everything else on the screen is locked. Nothing moves on until it's done.
 ##
+## Every line is a memory of Bram (2 November, Gary: "rather than have
+## different people teach different things about cards ... have him say
+## 'all the years I've been teaching you about duels, you know how to do
+## them, just remember what I taught you'; then any time you encounter
+## something new in a duel, or are about to do something new, Bram's memory
+## could pop up as a message teaching you how to do it"): the box is headed
+## A MEMORY OF BRAM with his face, the words his, as the player remembers
+## them, in every duel the story plays, whoever is across the Circle. The
+## friendly games no longer teach in Tam's or Nell's words.
+##
 ## spec.tutorial = {
 ##   "events": {"intro": [step...], "weakness": [step...], ...},   shown once, when the duel reaches them
 ##   "turns":  [[step...], [step...], ...]                          the player's turns, in order
@@ -23,12 +33,11 @@ extends RefCounted
 ## again later by lesson()).
 ##
 ## Every line is kept, in order, on the pause menu's How to Duel page
-## (Game.lessons()). Later duels where Bram is about (spec.lessons = true)
-## get a tutor with no script, just for lesson(): the first condition, Ward
-## or Ascension is explained the same gated way, once ever, in the words of
+## (Game.lessons()). Every other story duel (spec.lessons = true) gets a
+## tutor with no script, just for lesson(): the first condition, Ward or
+## Ascension is explained the same gated way, once ever, in the words of
 ## Master Script v3 (FIRST_TIME). spec.tutorial = {"quiet": true} gives a
-## duel with no lessons at all: the Lantern Duel when the player told Bram
-## they'd watched enough duels ("Then I'll keep quiet. Mostly.").
+## duel with no lessons at all.
 
 signal _did_step
 
@@ -150,59 +159,47 @@ func _rival_done() -> void:
 
 
 ## A one-off lesson for something seen for the first time (a condition, a
-## Ward, Ascension): one gated line from Bram, kept on the How to Duel page,
-## never taught twice. `focus` spotlights what it's about.
-func lesson(id: String, text: String, p_group: String, p_focus: String = "", who: String = "Bram") -> void:
+## Ward, Ascension): one gated line (or a few in turn, `text` an Array)
+## remembered of Bram, kept on the How to Duel page, never taught twice.
+## `focus` spotlights what it's about.
+func lesson(id: String, text, p_group: String, p_focus: String = "", _who: String = WHO) -> void:
 	if Game.learned(id) or bool(data.get("quiet", false)):
 		return
-	# a duel that teaches only some things (28 October: Tam's chains, Nell's
-	# gods), in its own teacher's words; the rest wait for Bram
-	var only: Array = data.get("only", [])
-	if not only.is_empty() and not only.has(id):
-		return
-	if data.has("who"):
-		who = String(data.who)
-	text = first_time_line(id, text)
-	# a teacher's own words: one line, or several in turn (1 November: Nell
-	# says what she's about to explain before she explains it)
-	var said: Array = [text]
-	if (data.get("lines", {}) as Dictionary).has(id):
-		var own = data.lines[id]
-		said = (own as Array).duplicate() if own is Array else [String(own)]
-	Game.learn(id, p_group, who, " ".join(said))
+	var said: Array = (text as Array).duplicate() if text is Array else [first_time_line(id, String(text))]
+	Game.learn(id, p_group, WHO, " ".join(PackedStringArray(said)))
 	await _rival_done()
 	for line in said:
-		await _explain({"say": String(line), "who": who, "look": String(data.get("look", "")), "focus": p_focus, "keep": false})
+		await _explain({"say": String(line), "who": WHO, "focus": p_focus, "keep": false})
 	_show_head()
 
 
+## Whose words every lesson is: Bram's, remembered.
+const WHO := "Bram"
+## The box's heading over his face (2 November).
+const HEAD := "A MEMORY OF BRAM"
+
+
 ## Bram's first-time lines in Master Script v3's words ("Bram, the first time
-## each thing appears"), by lesson id. The Duel screen asks for each lesson
-## with its own (older) wording and the cards it's about filled in; where v3
-## rewrote the line, this gives v3's, with the same cards. "(mine)" is the
-## version for when Bram is the one across the Circle.
+## each thing appears"), by lesson id, filled out a little (2 November, Gary:
+## "make the descriptions more descriptive"). The Duel screen asks for each
+## lesson with its own (older) wording and the cards it's about filled in;
+## where v3 rewrote the line, this gives v3's, with the same cards. They're
+## memories now, so none of them says "my": whoever is across the Circle,
+## the words are what Bram taught, years ago.
 const FIRST_TIME := {
-	"fate": "That's a Fate roll. High, and it hits hard; low, nothing. The die doesn't care who you are.",
-	"ward_set": "A Ward. Face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
-	"ward_set (mine)": "That's my Ward, face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it.",
-	"ward_mine": "Yours is down. It'll spring on its own when its moment comes. Set them early, while they're cheap.",
-	"ward_spring": "There it goes. It's spent now. Next time, think what it's waiting for, and don't give it that.",
-	"summon (theirs)": "That was a Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
-	"summon (mine)": "That was my Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.",
-	"ascend": "That %s is an Ascension: %s, grown up. Play it on your %s and it steps into the same slot, bigger, with everything it had. It costs Essence, so think about when.",
+	"fate": "That's a Fate roll. Some moves don't say what they'll do: they ask the die. High, and the move hits hard; low, and it does nothing at all. The die doesn't care who you are, so don't lean on a Fate move when a plain one would do the job.",
+	"ward_set": "A Ward. It goes down face down, so nobody can read it, and it waits. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it: if you can't tell what it's waiting for, don't do the obvious thing next.",
+	"ward_mine": "Yours is down. It'll spring on its own when its moment comes, and your rival can't see what it is. Set them early, while they're cheap, and let the other side walk into them.",
+	"ward_spring": "There it goes. A Ward springs once and then it's spent: into the discard with it. Next time one's lying face down, think what it's waiting for, and don't give it that.",
+	"summon": "That was a Summon. Not a Totem that stands and fights: a piece of something far bigger, called for one great blow, and then it's gone again. It costs a fortune in Essence, so nobody can do that often. Save yours for when it counts.",
+	"ascend": "That %s is an Ascension: %s, grown up. Play it on your %s and it steps into the same slot, bigger, with everything it had: its wounds, its conditions, its place in the line. It costs Essence, so think about when: a grown Totem with half its Life is still half dead.",
 }
 
 
 static func first_time_line(id: String, text: String) -> String:
-	var mine := text.begins_with("That's my") or text.begins_with("That was my")
 	match id:
-		"fate", "ward_mine", "ward_spring":
+		"fate", "ward_mine", "ward_spring", "ward_set", "summon":
 			return FIRST_TIME[id]
-		"ward_set":
-			return FIRST_TIME["ward_set (mine)" if mine else "ward_set"]
-		"summon":
-			if text.begins_with("That was"):
-				return FIRST_TIME["summon (mine)" if mine else "summon (theirs)"]
 		"ascend":
 			var m := RegEx.create_from_string("^That (.+) is an Ascension: (.+), grown up\\.").search(text)
 			if m != null:
@@ -403,17 +400,18 @@ func _show_head() -> void:
 
 
 func _show_box(step: Dictionary, footer: String) -> void:
-	var who := String(step.get("who", "Bram"))
-	who_label.text = who.to_upper()
+	var who := String(step.get("who", WHO))
+	# (every line a memory of Bram: his face and the heading; a step with
+	# "who": "" is the game's own words, in brackets, with neither)
+	who_label.text = HEAD if who == WHO else who.to_upper()
+	who_label.visible = who != ""
 	text_label.text = String(step.get("say", ""))
 	foot_label.text = footer
 	var look := String(step.get("look", "")) if String(step.get("look", "")) != "" else who.to_lower()
-	# 29 October (Gary: Nell's "image ... is different then her model"): a
-	# teacher with a portrait rendered from their own model shows that, not
-	# the stand-in look (Nell's "elder" is Old Maren's face, Tam's "farmer"
-	# the crowd's farmer)
-	portrait.texture = DollArt.portrait(look) if (DollArt.has_portrait(look) or DollArt.LOOKS.has(look)) else null
+	portrait.texture = DollArt.portrait(look) if who != "" and (DollArt.has_portrait(look) or DollArt.LOOKS.has(look)) else null
 	portrait.visible = portrait.texture != null
+	# (a remembered face: a little faded, warm, like an old picture)
+	portrait.modulate = Color(0.92, 0.86, 0.76, 0.9) if who == WHO else Color.WHITE
 	var was := box.visible
 	box.visible = true
 	box.reset_size()
@@ -429,7 +427,7 @@ func _show_box(step: Dictionary, footer: String) -> void:
 
 ## Every scripted line goes on the How to Duel page, in the order it was said.
 func _keep(step: Dictionary, who: String) -> void:
-	if not bool(step.get("keep", true)):
+	if not bool(step.get("keep", true)) or who == "":
 		return
 	_said += 1
 	Game.learn("%s:%d" % [group, _said], group, who, String(step.get("say", "")))

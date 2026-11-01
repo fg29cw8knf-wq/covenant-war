@@ -1130,9 +1130,10 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		# foot of the stairs, where Bram stops anyone heading back up them
 		"walk": Rect2(BAR_X + 0.75, -D * 0.5 + 0.35, 3.6 - (BAR_X + 0.75), D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
 			[Vector2(t.x + 1.15, t.z + 0.55), 0.42],
-			# (1 November, _eve_tavern) the settle at the fire, the trestle
-			# table and its bench, the little table under the north window
-			[Vector2(2.85, 0.45), 0.42], [Vector2(2.85, 1.35), 0.42], [Vector2(1.75, 2.6), 0.55], [Vector2(2.95, 2.6), 0.55],
+			# (1 November, _eve_tavern) the settle under the notice board, the
+			# trestle table and its bench, the little table under the north window
+			[Vector2(EVE_SETTLE_X - 0.4, -D * 0.5 + 0.21), 0.42], [Vector2(EVE_SETTLE_X + 0.4, -D * 0.5 + 0.21), 0.42],
+			[Vector2(1.75, 2.6), 0.55], [Vector2(2.95, 2.6), 0.55],
 			[Vector2(-0.7, -2.75), 0.5], [Vector2(-1.32, -2.63), 0.24], [Vector2(-0.08, -2.63), 0.24]],
 		"keep_out": [Rect2(-3.95, D * 0.5 - 1.38, 4.3, 1.6)],
 		# the counter as a solid for hands (Figure3D.hands_off; 29 October,
@@ -1143,6 +1144,11 @@ static func eve(v: AshfordVillage) -> Dictionary:
 			AABB(root.to_global(Vector3(BAR_X - 0.425, 1.13, BAR_FLAP_Z)), Vector3(0.85, 0.7, 0.08))],
 		"bar_top": root.to_global(Vector3(BAR_X, 1.13, bar_mid)),
 		"stairs_zone": Rect2(-1.3, D * 0.5 - 1.95, 2.0, 1.2),
+		# the two open doorways in the east wall (the kitchen's and the back
+		# passage's): heading into either, the player is turned back with a
+		# word (AshfordP1._taproom; 2 November, Gary)
+		"stray_zones": [{"name": "kitchen", "rect": Rect2(3.2, EVE_KITCHEN_Z - 0.75, 0.45, 1.5), "back": Vector2(-1, 0)},
+			{"name": "passage", "rect": Rect2(3.2, EVE_PASSAGE_Z - 0.75, 0.45, 1.5), "back": Vector2(-1, 0)}],
 		"floor_y": EVE_AT.y}
 	# the street through the doorway: the village itself, from the inn's door
 	var front := inn_front(v)
@@ -1161,14 +1167,18 @@ static func eve(v: AshfordVillage) -> Dictionary:
 ## dresser; and the back passage's, south of the hearth (EVE_PASSAGE_Z),
 ## running east to the yard door with the day round its edges, a lamp and
 ## a coat on a peg, and the door to the back stairs. Behind the bar the
-## cellar's trapdoor with its ring. In the taproom: a high-backed settle at
-## the fire, a trestle table with its bench along the south wall under an
+## cellar's trapdoor with its ring. In the taproom: a high-backed settle
+## under the notice board (2 November: it stood in front of the fire, and
+## Gary didn't want it there), a trestle table with its bench along the south wall under an
 ## iron candle wheel, a little table and two stools under the north window,
 ## tankards and candles on the tables, cloaks on the pegs by the door, the
 ## notice board with Ironvault's red-sealed notice on it, and a slate of
 ## what's on chalked up by the barrels.
 const EVE_KITCHEN_Z := -1.6
 const EVE_PASSAGE_Z := 2.75
+## Where the settle stands along the north wall (its middle, x), under the
+## notice board, between the window and the door.
+const EVE_SETTLE_X := 0.72
 const EVE_DOOR_W := 1.0
 const EVE_DOOR_H := 2.1
 
@@ -1342,13 +1352,15 @@ static func _eve_tavern(v: AshfordVillage, root: Node3D, W: float, D: float, H: 
 	v.box(root, Vector3(0.1, 0.04, 0.04), Vector3(ex + 0.9, 1.65, pz0 + 0.03), post)
 	v.box(root, Vector3(0.45, 0.85, 0.08), Vector3(ex + 0.9, 1.2, pz0 + 0.08), mk.call(Color(0.24, 0.27, 0.22), 1.0))
 	# ---------------------------------------------- the taproom's furniture
-	# a high-backed settle at the fire, facing it
-	var st := Vector3(2.85, 0, 0.9)
-	v.box(root, Vector3(0.42, 0.06, 1.5), st + Vector3(0, 0.45, 0), oak)
-	v.box(root, Vector3(0.06, 1.25, 1.5), st + Vector3(-0.2, 0.62, 0), dark)
-	for sz in [-0.72, 0.72]:
-		v.box(root, Vector3(0.46, 0.75, 0.05), st + Vector3(0, 0.375, sz), dark)
-		v.box(root, Vector3(0.46, 0.05, 0.06), st + Vector3(0.0, 0.72, sz), oak)
+	# a high-backed settle against the north wall, west of the door, under
+	# the notice board, facing into the room (2 November, Gary: it stood
+	# "right in front of the fireplace", and hid the fire)
+	var st := Vector3(EVE_SETTLE_X, 0, -D * 0.5 + 0.21)
+	v.box(root, Vector3(1.4, 0.06, 0.42), st + Vector3(0, 0.45, 0), oak)
+	v.box(root, Vector3(1.4, 1.25, 0.06), st + Vector3(0, 0.62, -0.2), dark)
+	for sx in [-0.67, 0.67]:
+		v.box(root, Vector3(0.05, 0.75, 0.46), st + Vector3(sx, 0.375, 0), dark)
+		v.box(root, Vector3(0.06, 0.05, 0.46), st + Vector3(sx, 0.72, 0.0), oak)
 	# the trestle table along the south wall, its bench, the candle wheel over it
 	var tt := Vector3(2.35, 0, 2.85)
 	v.box(root, Vector3(1.9, 0.07, 0.7), tt + Vector3(0, 0.76, 0), oak)
@@ -1394,8 +1406,9 @@ static func _eve_tavern(v: AshfordVillage, root: Node3D, W: float, D: float, H: 
 		else:
 			v.cyl(root, 0.17, 0.17, 0.02, Vector3(cx, 1.62, -D * 0.5 + 0.18), mk.call(Color(0.2, 0.16, 0.12), 0.9), 14, Vector3(PI * 0.5, 0, 0))
 			v.cyl(root, 0.1, 0.11, 0.12, Vector3(cx, 1.62, -D * 0.5 + 0.22), mk.call(Color(0.2, 0.16, 0.12), 0.9), 14, Vector3(PI * 0.5, 0, 0))
-	# the notice board west of the door, Ironvault's notice on it with its seal
-	var nb := Vector3(0.62, 1.5, -D * 0.5 + 0.04)
+	# the notice board west of the door, Ironvault's notice on it with its
+	# seal, over the settle
+	var nb := Vector3(EVE_SETTLE_X, 1.66, -D * 0.5 + 0.04)
 	v.box(root, Vector3(0.8, 0.6, 0.04), nb, dark)
 	var sheets := [[Vector3(-0.2, 0.05, 0), Vector2(0.26, 0.34), "notice", 0.05], [Vector3(0.15, -0.06, 0), Vector2(0.24, 0.3), "notice", -0.07], [Vector3(0.22, 0.17, 0), Vector2(0.18, 0.14), "moth", 0.0]]
 	for i in sheets.size():
@@ -1415,11 +1428,13 @@ static func _eve_tavern(v: AshfordVillage, root: Node3D, W: float, D: float, H: 
 	v.cyl(root, 0.03, 0.03, 0.01, nb + Vector3(-0.2, -0.08, 0.03), mk.call(Color(0.6, 0.08, 0.06), 0.4), 12, Vector3(PI * 0.5, 0, 0))
 	# the slate of what's on, chalked, on the north wall over the barrels
 	var sl := Vector3(-4.0, 1.75, -D * 0.5 + 0.03)
-	v.box(root, Vector3(0.62, 0.48, 0.03), sl, mk.call(Color(0.12, 0.13, 0.14), 0.8))
-	v.box(root, Vector3(0.68, 0.54, 0.02), sl + Vector3(0, 0, -0.01), oak)
+	v.box(root, Vector3(0.78, 0.48, 0.03), sl, mk.call(Color(0.12, 0.13, 0.14), 0.8))
+	v.box(root, Vector3(0.84, 0.54, 0.02), sl + Vector3(0, 0, -0.01), oak)
 	var chalk := Label3D.new()
-	chalk.text = "LANTERN NIGHT\nFestival pie . 3d\nAle . 1d\nCider . 1d"
-	chalk.font_size = 40
+	# (2 November, Gary: "what does the d stand for?": it was old-money
+	# pence; the game's small coin is the copper, as Corin's "a copper each")
+	chalk.text = "LANTERN NIGHT\nFestival pie . 3 coppers\nAle . 1 copper\nCider . 1 copper"
+	chalk.font_size = 30
 	chalk.pixel_size = 0.0018
 	chalk.modulate = Color(0.88, 0.88, 0.84)
 	chalk.outline_size = 0

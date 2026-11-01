@@ -125,7 +125,7 @@ func _ready() -> void:
 	theme = UITheme.make()
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
-	speed = float(spec.get("speed", Game.settings.get("duel_speed", 1.0)))
+	speed = rate(float(spec.get("speed", Game.settings.get("duel_speed", 1.0))))
 	sfx = Sfx.new()
 	add_child(sfx)
 	sfx.volume_db = linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)))) - 8.0
@@ -397,7 +397,7 @@ func _build() -> void:
 		var steps := [1.0, 2.0, 4.0]
 		var i := 0
 		for k in steps.size():
-			if is_equal_approx(speed, float(steps[k])):
+			if is_equal_approx(speed, rate(float(steps[k]))):
 				i = k
 		_set_speed(float(steps[(i + 1) % steps.size()])))
 	stage.add_child(speed_btn)
@@ -416,10 +416,21 @@ func _build() -> void:
 
 var speed_btn: Button
 
+## How fast Normal plays (2 November, Gary: "make normal mode in the card
+## battle slightly faster"): the setting's 1x is this much faster than the
+## duel's own time; Fast (2x) and Fastest (4x) are as they were. A test's
+## autoplay (20x) passes straight through.
+const NORMAL_RATE := 1.2
+
+
+## The duel's rate for a Battle speed setting (1, 2 or 4).
+static func rate(setting: float) -> float:
+	return NORMAL_RATE if setting <= 1.0 else setting
+
 
 func _speed_text() -> String:
 	# (in words: the display font's 1 reads as an I)
-	if speed <= 1.0:
+	if speed <= NORMAL_RATE:
 		return "Speed: Normal"
 	if speed <= 2.0:
 		return "Speed: Fast"
@@ -427,7 +438,7 @@ func _speed_text() -> String:
 
 
 func _set_speed(v: float) -> void:
-	speed = v
+	speed = rate(v)
 	Game.settings["duel_speed"] = v
 	Game.save_settings()
 	if speed_btn != null:
@@ -612,13 +623,11 @@ func _start() -> void:
 	game.first_forced = int(spec.get("first", -1))
 	game.life_floor = spec.get("life_floor", [0, 0])
 	game.totem_floor = spec.get("totem_floor", [0, 0])
+	# (2 November: every story duel teaches each new thing once, as a memory
+	# of Bram, DuelTutor; the friendly games used to teach only their own
+	# things in Tam's or Nell's words, spec.teach)
 	if (not lesson.is_empty() or spec.get("lessons", false)) and not ai_flags[me]:
 		tutor = DuelTutor.new().setup(self, lesson, String(spec.get("lesson_group", "The Lantern Duel")))
-	elif not (spec.get("teach", []) as Array).is_empty() and not ai_flags[me]:
-		# a duel that teaches only some things (28 October: Tam's chains, Nell's
-		# gods), in its own teacher's words (spec.teach, teacher, teach_lines)
-		tutor = DuelTutor.new().setup(self, {"only": spec.teach, "who": String(spec.get("teacher", "Bram")),
-			"look": String(spec.get("teacher_look", "")), "lines": spec.get("teach_lines", {})}, String(spec.get("lesson_group", "Lessons")))
 	game.law = String(spec.get("law", ""))
 	game.story_rules = spec.get("story_rules", {})
 	game.friendly = bool(spec.get("friendly", false))
@@ -632,7 +641,8 @@ func _start() -> void:
 	# (spec.skills for both, else the player's chosen one and spec.rival_skill),
 	# the comeback card and the Circle's events. None of them in a lesson, on
 	# a set board (a puzzle, the Trial) or where the spec says no.
-	var plain := (tutor != null and (spec.get("teach", []) as Array).is_empty()) or spec.has("tutorial") or not game.puzzle.is_empty() or bool(spec.get("trial", false))
+	# (a friendly game keeps its skills while it teaches: spec.skills_on)
+	var plain := (tutor != null and not bool(spec.get("skills_on", false))) or spec.has("tutorial") or not game.puzzle.is_empty() or bool(spec.get("trial", false))
 	var sk: Array = ["", ""]
 	if spec.has("skills"):
 		sk = (spec.skills as Array).duplicate()
@@ -1680,7 +1690,7 @@ func _select_totem(t: DuelTotem) -> void:
 			_add_action(title, sub, 0, true, func() -> void: _respond({"type": "stance", "totem": t, "stance": stance}), "stance:" + stance)
 			offered = true
 		if offered and tutor != null:
-			tutor.lesson("stance", "Set it to Strike, Guard or Rest. Guard turns half of every blow aside and makes no attack; Rest mends it and pays you an Essence next turn. A choice is only a choice when it costs you something, and here it costs the attack.", "Stances", "")
+			tutor.lesson("stance", "Every Totem of yours stands in a stance, and you can set it: Strike, Guard or Rest. Strike is the plain one: it fights. Guard turns half of every blow aside, but it makes no attack that turn. Rest mends the Totem a little and pays you an Essence next turn, and it does nothing else. A choice is only a choice when it costs you something, and here it costs the attack.", "Stances", "")
 	if game.phase_problem("shift") == "" and game.shift_problem(me, t, (t.slot + 1) % DuelRules.SLOTS) == "":
 		var sc := game.shift_cost(me)
 		_add_action("Shift", "Move to another slot (swaps if taken).", sc, true, func() -> void:
@@ -1952,7 +1962,7 @@ func begin_respond(event: Dictionary, cards: Array) -> void:
 	_clear_actions()
 	_hide_detail()
 	if tutor != null:
-		await tutor.lesson("answer", "They've made their move, and it hasn't landed yet. That's your moment: an answer from your hand, or let it be. Six breaths, then it lands.", "Answers", "")
+		await tutor.lesson("answer", "They've made their move, and it hasn't landed yet. That's your moment: an answer from your hand, a card played in the gap between the saying and the doing, or let it be. Six breaths, then it lands. Only some cards can be played as an answer; the ones that can say so.", "Answers", "")
 	var strip := RespondStrip.new()
 	strip.screen = self
 	strip.setup(event, cards, affordable)
@@ -2426,7 +2436,24 @@ func _ground_lesson() -> void:
 		DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST]
 	_seen("ground", "The gods' grace", line)
 	if tutor != null:
-		await tutor.lesson("ground", line, "The gods' grace", "")
+		# (2 November: what Bram taught about the grounds, remembered before
+		# the first card's played on one; it was Old Nell's lesson before)
+		var lines := [
+			"Before you play a card, know whose ground you're standing on. Nobody told me that when I started, and it cost me a good few games.",
+			"Every Circle stands on some god's ground. %s. Every card answers to a god too: it says which at the foot of the card." % _ground_whose(gg),
+			"On its own god's ground a card does better than it says. Graced, we call it: a Totem hits %d harder, any other card costs %d less to play." % [DuelSynergy.GRACE_DAMAGE, DuelSynergy.GRACE_COST],
+			("Take a card onto the ground of a god who quarrels with its own, %s's here, and it does less than it says: Shunned. Look at the foot of a card before you play it, and look in the corner for whose ground it is." % DuelSynergy.god_name(rv)) if rv != ""
+				else "Take a card onto the ground of a god who quarrels with its own and it does less than it says: Shunned. Look at the foot of a card before you play it, and look in the corner for whose ground it is.",
+		]
+		await tutor.lesson("ground", lines, "The gods' grace", "")
+
+
+## Whose ground this Circle is, for the ground lesson: Ashford's green is
+## Ellowen's, the Lantern Keeper's; elsewhere, the god's name.
+func _ground_whose(gg: String) -> String:
+	if _arena_name == "ashford":
+		return "Ashford's green is Ellowen's, the Lantern Keeper's: it's her festival the village keeps every year"
+	return "This one is %s's" % DuelSynergy.god_name(gg)
 
 
 ## Two or more of a family on one side, for the first time this duel.
@@ -3078,7 +3105,7 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 		DuelFX.flash(fx_layer, c, col, 260.0, 0.45 / speed)
 		await pause(maxf(0.1, minf(hold2, 1.6) / speed))
 		if tutor != null:
-			await tutor.lesson("rite", ("That was a Rite of mine." if pi == rival and _bram_rival() else ("That was a Rite." if pi == rival else "A Rite.")) + " Cast once and gone, and it answers at once. The Essence it costs is Essence you're not calling a Totem with: spend it when the board asks for it, not because it's in your hand.", "Rites")
+			await tutor.lesson("rite", RITE_LESSON, "Rites")
 		if tutor != null and pi == rival:
 			await tutor.event("rival_rite")
 		return
@@ -3113,7 +3140,7 @@ func fx_rite(pi: int, card: DuelCard, target) -> void:
 			hold = field.rite_motif(card, field.plate_world(pi), field.ahead_of(pi), col)
 	await pause(maxf(0.1, minf(hold, 1.6) / speed))
 	if tutor != null:
-		await tutor.lesson("rite", ("That was a Rite of mine." if pi == rival and _bram_rival() else ("That was a Rite." if pi == rival else "A Rite.")) + " Cast once and gone, and it answers at once. The Essence it costs is Essence you're not calling a Totem with: spend it when the board asks for it, not because it's in your hand.", "Rites")
+		await tutor.lesson("rite", RITE_LESSON, "Rites")
 	if tutor != null and pi == rival:
 		await tutor.event("rival_rite")
 
@@ -3149,7 +3176,7 @@ func fx_ward_set(pi: int, _card: DuelCard) -> void:
 	await pause(0.15)
 	if tutor != null:
 		if pi == rival:
-			var ws := ("That's my Ward, face down, so you can't read it." if _bram_rival() else "A Ward. Face down, so you can't read it.") + " It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it."
+			var ws := "A Ward. Face down, so you can't read it. It springs by itself when the right thing happens: a Totem called, a Rite cast, a hit coming in. Mind what you give it."
 			await tutor.lesson("ward_set", ws, "Wards", "ward:rival")
 		else:
 			await tutor.lesson("ward_mine", "Yours is down. It'll spring on its own when its moment comes. Set them early, while they're cheap.", "Wards", "ward:mine")
@@ -3221,7 +3248,7 @@ func fx_shift(_pi: int) -> void:
 	sfx.play("shift")
 	_strike = {}
 	if tutor != null:
-		await tutor.lesson("shift", "A Shift: two of your Totems change places, for an Essence. It's the only way to move one once it's called, so a slot you've put the wrong Totem in isn't a slot you're stuck with.", "Shift")
+		await tutor.lesson("shift", "A Shift: two of your Totems change places, for an Essence. Where a Totem stands matters: who it faces across the Circle, and who stands beside it. A Shift is the only way to move one once it's called, so a slot you've put the wrong Totem in isn't a slot you're stuck with.", "Shift")
 	for side in 2:
 		for v in views[side]:
 			v.set_totem(game.players[side].slots[v.slot])
@@ -3473,7 +3500,7 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 		# line, or the one-off lesson in a later duel)
 		await tutor.event("fate" if _pi == me else "rival_fate")
 		await tutor.lesson("fate", "That's a Fate roll. High, and it hits hard; low, nothing. The die doesn't care who you are.", "Fate", "die")
-		await tutor.lesson("fate_bands", "The bands under a move say what the die has to make: the low band does the small thing, the top band the big one. A move with a wide top band is a gamble. A narrow one is steady money.", "Fate", "detail")
+		await tutor.lesson("fate_bands", "Look at a Fate move up close and you'll see bands under it. They say what the die has to make: roll into the low band and the move does the small thing, into the top band and it does the big one. A move with a wide top band is a gamble that pays. A narrow one is steady money. Read the bands before you trust the die.", "Fate", "detail")
 	_dice_view = null
 	var tw := dv.create_tween()
 	tw.tween_property(dv, "modulate:a", 0.0, 0.15 / speed)
@@ -3585,7 +3612,7 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	if tutor != null:
 		if weak and att != null and att.owner == me and t.owner != me:
 			await tutor.event("weakness")
-			await tutor.lesson("weakness", "See that? Every element hurts something and fears something. Twelve of them. You'll learn the rest the way I did: by getting hit.", "The elements", "foe:" + t.id())
+			await tutor.lesson("weakness", "See that? Every element hurts something and fears something. Twelve of them. Hit a Totem on the element it fears and the blow does half as much again; the little sign on every card says what it fears. The chart in the menu has all twelve, but you'll learn them the way I did: by getting hit.", "The elements", "foe:" + t.id())
 		elif t.owner == me:
 			await tutor.event("hit_mine")
 
@@ -3630,8 +3657,13 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	DuelFX.burst(fx_layer, to, col, 26, 520.0, 14.0, 0.6, Vector2(0, 300), 180.0, Vector2.UP, speed)
 	shake(8.0 + minf(float(amount), 100.0) * 0.1)
 	punch(Vector2(FIELD_CX, 476), 0.02)
-	DuelFX.number(fx_layer, _life_number_pos(pi), "-%d" % amount, Color("ff4d6a"), 88 if not info.get("spill", false) else 70,
-		_read(1.2, "SPILL-OVER" if info.get("spill", false) else "") / speed, "SPILL-OVER" if info.get("spill", false) else "")
+	# (2 November, Gary: "it doesn't explain why each player is getting hurt
+	# ... 10 every turn": a draw from an empty deck is tagged on the number,
+	# and the first one brings Bram's words on it)
+	var fatigue: bool = String(info.get("source", "")) == "fatigue"
+	var tag := "SPILL-OVER" if info.get("spill", false) else ("EMPTY DECK" if fatigue else "")
+	DuelFX.number(fx_layer, _life_number_pos(pi), "-%d" % amount, Color("ff4d6a"), 88 if tag == "" else 70,
+		_read(1.2, tag) / speed, tag)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(p, "flash", 0.0, 0.5 / speed)
 	tw.tween_property(p, "shake", 0.0, 0.45 / speed)
@@ -3646,8 +3678,25 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 		await _finishing_end(to)
 	if field != null:
 		field.cam_home(0.7 / speed)
+	if fatigue and tutor != null and not finishing:
+		await tutor.lesson("fatigue", _fatigue_lesson(pi, amount), "Running dry", "life")
 	if pi == me:
 		await _blank_eye_check()
+
+
+## Why Life goes when a deck runs out (2 November): a friendly game's
+## evening clock, or a real duel's price for an empty deck.
+func _fatigue_lesson(pi: int, amount: int) -> Array:
+	if game.friendly:
+		return [
+			"Both decks are empty now, so there's nothing left to draw. A friendly game can't go on all night, so from here the game itself wears you both down: %d Life from each of you at every draw, until one of you falls." % amount,
+			"Nothing to do about it but make every card you still hold count. When you see a deck running low, think about how you'll finish before it does.",
+		]
+	var whose := "Your" if pi == me else "Their"
+	return [
+		"%s deck's run dry. There's nothing left to draw, and the Circle doesn't let that pass: every draw from an empty deck costs %d Life instead of a card. It never stops, and it only gets worse." % [whose, amount],
+		"So a deck is a clock. Twelve cards is a short one; a bigger deck, or cards that go back into it, keep you in the duel longer. Count what's left on both sides, and finish the duel before the cards do.",
+	]
 
 
 ## The finishing blow (27 October, Gary: "add all the go battles"): time
@@ -3857,7 +3906,7 @@ func fx_status(t: DuelTotem, status: String) -> void:
 
 ## Bram's one line on a condition: what it does, and how long it lasts.
 func _status_lesson(t: DuelTotem, status: String) -> String:
-	var who := "Your %s" % t.card_name() if t.owner == me else ("My %s" if _bram_rival() else "His %s") % t.card_name()
+	var who := "Your %s" % t.card_name() if t.owner == me else "Their %s" % t.card_name()
 	var nm := DuelConditions.display_name(status)
 	var what := DuelConditions.describe(status)
 	var turns := DuelConditions.turns(status)
@@ -4022,11 +4071,16 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	else:
 		landing.call()
 	if tutor != null and pi == rival:
-		await tutor.lesson("summon", ("That was my Summon." if _bram_rival() else "That was a Summon.") + " One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.", "Summons")
+		await tutor.lesson("summon", "That was a Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.", "Summons")
 
 
 ## Is Bram the one across the Circle (the practice round at the campfire)?
 ## Then his one-off lines are about his own cards.
+## A Rite, the first time one is cast (2 November: a memory of Bram, the
+## same words whoever cast it).
+const RITE_LESSON := "That was a Rite: magic you cast once, straight from the hand, and then it's gone to the discard. It answers at once, the moment it's cast: a wall of stone, a draught of healing, a bolt of fire. The Essence it costs is Essence you're not calling a Totem with, so spend it when the board asks for it, not because it's in your hand."
+
+
 func _bram_rival() -> bool:
 	var names: Array = spec.get("names", [])
 	return names.size() > rival and String(names[rival]) == "Bram"

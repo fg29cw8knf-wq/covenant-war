@@ -589,6 +589,72 @@ func slump(amount := 1.0, blend := 1.0) -> void:
 	_play(nm, blend)
 
 
+## A morning stretch, standing: both arms up over the head and a little
+## back, the elbows easing out, the back arching and the face coming up,
+## held a breath and let down again (2 November, Gary: the attic's stretch
+## "arms deform in unnatural way": it was two hand targets over the head
+## and the arm IK, which straightened one arm up like a pole and threw the
+## other out sideways on its way). A clip built from their idle (as slump
+## is), so the arms turn at the shoulders and elbows as arms do, over
+## `secs`: up over the first 0.4 of it, held, and down over the last 0.35.
+## Degrees about each bone's own axes at the full stretch; waited for.
+const STRETCH := {"LeftArm": Vector3(-165, 0, 15), "RightArm": Vector3(-165, 0, -15),
+	"LeftForeArm": Vector3(20, 0, 0), "RightForeArm": Vector3(20, 0, 0),
+	"Spine1": Vector3(-6, 0, 0), "Spine2": Vector3(-6, 0, 0), "Head": Vector3(-10, 0, 0)}
+
+func stretch(secs := 2.8) -> void:
+	if anim == null or not anim.has_animation("idle") or _skel == null:
+		return
+	var nm := "stretch_%d" % roundi(secs * 10.0)
+	if not anim.has_animation(nm):
+		var a := (anim.get_animation("idle") as Animation).duplicate(true) as Animation
+		a.loop_mode = Animation.LOOP_NONE
+		a.length = secs
+		var prefix := ""
+		var done := {}
+		var amount := func(t: float) -> float:
+			var k := t / secs
+			return smoothstep(0.0, 0.4, k) * (1.0 - smoothstep(0.65, 1.0, k))
+		var step := 1.0 / 30.0
+		for t in a.get_track_count():
+			var bone := String(a.track_get_path(t).get_concatenated_subnames())
+			if bone == "":
+				continue
+			prefix = String(a.track_get_path(t).get_concatenated_names())
+			if a.track_get_type(t) != Animation.TYPE_ROTATION_3D or not STRETCH.has(bone):
+				continue
+			var e: Vector3 = STRETCH[bone]
+			var full := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))
+			# the idle's own turn at each moment, with the stretch eased over it
+			var samples: Array = []
+			var tt := 0.0
+			while tt <= secs + 0.0001:
+				samples.append([tt, Quaternion.IDENTITY.slerp(full, amount.call(tt)) * a.rotation_track_interpolate(t, tt)])
+				tt += step
+			while a.track_get_key_count(t) > 0:
+				a.track_remove_key(t, 0)
+			for s in samples:
+				a.rotation_track_insert_key(t, float(s[0]), s[1])
+			done[bone] = true
+		# a bone the idle doesn't move: a track of its own, at rest plus the stretch
+		for bone: String in STRETCH:
+			if done.has(bone) or _skel.find_bone(bone) < 0 or prefix == "":
+				continue
+			var e: Vector3 = STRETCH[bone]
+			var full := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))
+			var rest := _skel.get_bone_rest(_skel.find_bone(bone)).basis.get_rotation_quaternion()
+			var t := a.add_track(Animation.TYPE_ROTATION_3D)
+			a.track_set_path(t, NodePath(prefix + ":" + bone))
+			var tt := 0.0
+			while tt <= secs + 0.0001:
+				a.rotation_track_insert_key(t, tt, Quaternion.IDENTITY.slerp(full, amount.call(tt)) * rest)
+				tt += step
+		if not anim.has_animation_library(""):
+			anim.add_animation_library("", AnimationLibrary.new())
+		anim.get_animation_library("").add_animation(nm, a)
+	await act(nm, 1.0, 0.3)
+
+
 ## Back to standing, walking or talking.
 func release(blend := 0.3) -> void:
 	_action = ""
@@ -972,8 +1038,14 @@ var _palms := {}   # "left"/"right": [palm direction (world), influence]
 ## `flat` (0..1) straightens the fingers too (towards their rest, which is straight), so a
 ## hand laid on a counter lies flat on it instead of curling over its edge
 ## (29 October, Gary: Bram "isn't rubbing the counter, he is waving his hand
-## above it").
-func palm(side: String, dir: Vector3, secs := 0.3, flat := 0.0, own_frame := false) -> void:
+## above it"). `fingers` (2 November) says which way the fingers point (in
+## the same frame as `dir`; Vector3.ZERO leaves them on along the forearm):
+## a hand on the side of a box, palm in, fingers forward. Without it, a palm
+## turned to face the way the forearm already points (the hands on a box's
+## sides, the elbows out) had no way left for the fingers and folded back
+## at the wrist (Gary: the player's "hands go all deformed when it takes the
+## box then holding the box").
+func palm(side: String, dir: Vector3, secs := 0.3, flat := 0.0, own_frame := false, fingers := Vector3.ZERO) -> void:
 	if _skel == null:
 		return
 	if not _skel.has_node("HandTurn"):
@@ -984,13 +1056,14 @@ func palm(side: String, dir: Vector3, secs := 0.3, flat := 0.0, own_frame := fal
 	_skel.move_child(_skel.get_node("HandTurn"), -1)
 	if _skel.has_node("HandsOff"):
 		_skel.move_child(_skel.get_node("HandsOff"), -1)   # (solids come last)
-	var cur: Array = _palms.get(side, [dir, 0.0, flat, own_frame])
-	while cur.size() < 4:
-		cur.append(0.0 if cur.size() == 2 else false)
+	var cur: Array = _palms.get(side, [dir, 0.0, flat, own_frame, fingers])
+	while cur.size() < 5:
+		cur.append(0.0 if cur.size() == 2 else (false if cur.size() == 3 else Vector3.ZERO))
 	if dir != Vector3.ZERO:
 		cur[0] = dir.normalized()
 		cur[2] = flat
 		cur[3] = own_frame
+		cur[4] = fingers.normalized() if fingers != Vector3.ZERO else Vector3.ZERO
 	_palms[side] = cur
 	var tw := create_tween()
 	tw.tween_method(func(k: float) -> void:
@@ -1004,8 +1077,11 @@ func _turn_hands() -> void:
 	for side in _palms:
 		var pd: Vector3 = _palms[side][0]
 		var k: float = _palms[side][1]
+		var fd: Vector3 = _palms[side][4] if (_palms[side] as Array).size() > 4 else Vector3.ZERO
 		if (_palms[side] as Array).size() > 3 and bool(_palms[side][3]):
 			pd = (global_transform.basis * (Basis(Vector3.UP, _yaw) * pd)).normalized()
+			if fd != Vector3.ZERO:
+				fd = (global_transform.basis * (Basis(Vector3.UP, _yaw) * fd)).normalized()
 		if k <= 0.001:
 			continue
 		var pre := "Left" if side == "left" else "Right"
@@ -1031,6 +1107,11 @@ func _turn_hands() -> void:
 		var to_sk := _skel.global_transform.basis.inverse()
 		var p_t := (to_sk * pd).normalized()
 		var f_t := f_now - p_t * f_now.dot(p_t)
+		if fd != Vector3.ZERO:
+			var f_ask := (to_sk * fd).normalized()
+			f_ask = f_ask - p_t * f_ask.dot(p_t)
+			if f_ask.length() > 0.05:
+				f_t = f_ask
 		if f_t.length() < 0.05:
 			continue
 		f_t = f_t.normalized()

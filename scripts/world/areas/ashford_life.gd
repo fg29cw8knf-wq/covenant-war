@@ -18,7 +18,8 @@ extends RefCounted
 ## Nobody moves while a scene has the camera, while the player is talking to
 ## them, while they sit, carry, or play a pose, or once midnight's begun.
 ## Each one's standing clip is started at its own moment, so nobody breathes
-## in step with anybody else. Started from AshfordDay.watch.
+## in step with anybody else. Started from AshfordDay.watch, and (2 November)
+## from the opening as the player steps out of the inn (AshfordP1._street).
 
 const KIDS := ["p1_kid_a", "p1_kid_b", "p1_kid_c"]
 const ADULTS := ["corin_mam", "hob", "ned"]
@@ -131,7 +132,11 @@ static func _run(w: World) -> void:
 		if not is_instance_valid(w) or Game.flag("ash_lantern_duel"):
 			return
 		t += TICK
-		if not Game.flag("ash_started"):
+		# (2 November, Gary: Corin and the children "still aren't moving when
+		# you leave the inn": life waited for the opening to end; now it runs
+		# from the moment the player steps out of the inn's door, the
+		# opening's "street" and "green" parts included)
+		if not Game.flag("ash_started") and not String(Game.flag("p1_stage", "")) in ["street", "green"]:
 			continue
 		for id in _ids():
 			if t < float(next[id]):

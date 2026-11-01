@@ -24,6 +24,9 @@ const OBJECTIVES := {
 		"computer": "(Press E, or click the mirror.)", "controller": "(Press A.)"}],
 	"take_crate": ["Take the lantern crate.", {"phone": "(Walk up to it and tap it.)", "tablet": "(Walk up to it and tap it.)",
 		"computer": "(Walk up to it and press E, or click it.)", "controller": "(Walk up to it and press A.)"}],
+	# (2 November, Gary: the porridge can be eaten first)
+	"crate_or_eat": ["Take the lantern crate, or eat your porridge first.", {"phone": "(Walk up to it and tap it.)", "tablet": "(Walk up to it and tap it.)",
+		"computer": "(Walk up to it and press E, or click it.)", "controller": "(Walk up to it and press A.)"}],
 	"green_crate": ["Take the lantern crate down to the green.", {"phone": "(Tap the ground to walk.)",
 		"tablet": "(Tap the ground, or drag, to walk.)", "computer": "(W A S D or the arrow keys to walk, or click the ground.)",
 		"controller": "(Left stick to walk.)"}],

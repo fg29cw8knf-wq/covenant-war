@@ -89,9 +89,10 @@ _(The camera tracks behind the protagonist descending the creaking stairs into
 the taproom. Bram stands behind the counter, rubbing a rag over an oak surface
 that doesn't need cleaning.)_
 
-**[BRAM]:** "Left the shutter unlatched again. Cold air costs firewood, wood costs
-coin, and coin is the one thing nobody in Ashford has enough of today. Eat
-something first. I'm not having you walking down to the green on an empty stomach."
+**[BRAM] (2 November: it's the player he's telling off):** "You left the shutter
+unlatched again, Sprout. Cold air costs firewood, wood costs coin, and coin is the
+one thing nobody in Ashford has enough of today. Eat something first. I'm not
+having you walking down to the green on an empty stomach."
 
 ### Interactive dialogue hub: Bram Holloway
 
@@ -165,25 +166,30 @@ ready, I'd let you start using cards. I suppose the end of an Age is as good a
 time as any. So let's start you with this lot."
 _(The protagonist reaches out and takes it.)_
 [GAME] YOUR FIRST DECK: Bram's twelve Sparks fan out on screen.
-**[BRAM]:** "You've seen enough duels to know how it works, but in case you're
-not sure, I'll talk you through it. There's no shame in it, it being your first
-duel."
-**Choice:** "Talk me through it." → **[BRAM]:** "Right. Listen for me." /
-"I've watched enough duels." → **[BRAM]:** "Then I'll keep quiet. Mostly."
+**[BRAM] (changed, 2 November, Gary's: no coaching offer):** "All the years I've
+been teaching you about duels, Sprout: you know how to do them. You've sat at my
+elbow through more of them than Corin's had hot dinners."
+**[BRAM]:** "Just remember what I taught you. It'll come back to you when you need
+it."
+[GAME] (Whenever a duel shows you something new, what Bram taught you about it
+over the years comes back to you. Everything you remember is kept in the menu,
+under How to Duel.)
 
 **Encounter: The Lantern Duel (Tutorial)** · Corin · _Special rule:_ **Showboat.**
 Corin plays flashy, sub-optimal moves to impress the crowd (his Cinderpup attacks
-the moment it can, whatever's in its way). [GAME] If the player said "Talk me
-through it", Bram coaches every step from his stool, gated, exactly as the game
-already teaches it (the hand, a Totem and its card panel, calling it, Essence, the
-first-turn rule, End Turn, a move, the target, a weakness, a Rite, Fate, a knockout,
-the Life); if not, he keeps quiet and Corin still plays his script. Either way it
-can't be lost, and anything Bram didn't explain here he explains the first time it
-matters later.
+the moment it can, whatever's in its way). [GAME] Every step is taught, gated, as
+**a memory of Bram** (2 November, Gary): a box headed A MEMORY OF BRAM with his
+face, the words what he taught over the years, not what he sees on the board
+(the hand, a Totem and its card panel, calling it, Essence, the first-turn rule,
+End Turn, a move, the target, a weakness, a Rite, Fate, a knockout, the Life).
+The first opens: "(Bram's voice comes back to you, from a hundred evenings at the
+taproom table.)" It can't be lost, and anything not remembered here comes back
+the first time it matters in any later duel, whoever is across the Circle: a
+Ward, a condition, the grounds, a chain, an empty deck.
 _(One tutorial line changed, so it doesn't clash with Tam's death later: "Out it
 goes, back into its card. Nobody bleeds inside a Circle unless the stakes say so,
-and tonight they don't.")_ [GAME] Afterwards: (Everything Bram showed you is kept
-in the menu, under How to Duel.)
+and in a friendly they don't.")_ [GAME] Afterwards: (Everything you remembered of
+Bram's teaching is kept in the menu, under How to Duel.)
 
 _(The Lantern Duel ends with a cheer from the village. Corin laughs, catching his
 breath and brushing off his new coat.)_
@@ -1126,3 +1132,38 @@ While building v7 the game needed a few short lines the script doesn't have. The
 - **After the white card:** Bram puts his coat round your shoulders (it had been
   dropped over you). The awakening and the Herald's coming are staged as films; the
   words are unchanged.
+
+## Changes, 2 November 2026 (Gary's notes)
+
+- **The shutter:** Bram's first taproom line starts "You left the shutter
+  unlatched again, Sprout." (it's the player he's telling off).
+- **Breakfast (new, optional):** the bowl on the bar can be eaten before the crate
+  is taken: the player walks up to the bar and eats it, spoon to mouth, and the
+  bowl's empty. **[BRAM]:** "That's more like it. Now the crate."
+- **The taproom's doorways (new):** heading into the kitchen's or the back
+  passage's open doorway with the crate in your arms, your own thought: _(I need to
+  get these lanterns to the green first.)_; before the crate, **[BRAM]:** "Not
+  through there, Sprout. The crate. Corner by the door."
+- **The chalked slate** by the barrels prices in coppers ("Festival pie . 3
+  coppers / Ale . 1 copper / Cider . 1 copper"; it said 3d and 1d).
+- **The duel's teaching, all of it as memories of Bram:** Bram's hand-over lines
+  are now the two above ("All the years I've been teaching you about duels ...
+  Just remember what I taught you."), with no offer to coach and no choice. Every
+  lesson in every story duel (the Lantern Duel's gated steps, and each new thing
+  the first time it comes up: Wards, Fate, Rites, conditions, the grounds, chains,
+  Ascension, an empty deck) is a box headed A MEMORY OF BRAM, in his words as the
+  player remembers them. Tam's chain lesson and Nell's grounds lesson (1 November)
+  are Bram's memories now, in his voice; Tam's and Nell's barks in their games are
+  unchanged. The memories are a little fuller than the old lines were.
+- **An empty deck (new):** the first time a draw from an empty deck costs Life,
+  a memory explains it. In a friendly game: "Both decks are empty now, so there's
+  nothing left to draw. A friendly game can't go on all night, so from here the
+  game itself wears you both down: 10 Life from each of you at every draw, until
+  one of you falls." / "Nothing to do about it but make every card you still hold
+  count. When you see a deck running low, think about how you'll finish before it
+  does." In a real duel: "Your deck's run dry. There's nothing left to draw, and
+  the Circle doesn't let that pass: every draw from an empty deck costs 30 Life
+  instead of a card. It never stops, and it only gets worse." / "So a deck is a
+  clock. Twelve cards is a short one; a bigger deck, or cards that go back into it,
+  keep you in the duel longer. Count what's left on both sides, and finish the
+  duel before the cards do."

@@ -57,82 +57,88 @@ const CORIN_DECK := [
 ## Both start on 25 Life, so Brookfin's Undertow to the Life ends the lesson.
 const LANTERN_LIFE := 25
 
-## Bram teaches the duel from his stool, one step at a time (Master Script v3,
-## "P1 · Bram during the Lantern Duel"), if the player asked him to. Each line
-## waits for the player: an explanation until they tap, an instruction until
-## they've done it, and nothing else can be touched meanwhile; the light
-## shows where things are (Bram never says where on the screen). See
-## DuelTutor for the step format. Only lines v3 marks "(… lights up)" have a
-## focus. It teaches only what's on the table tonight (Totems, Rites,
-## Essence, Life, attacking, one weakness, Fate and the card panel); Wards,
-## the element chart, conditions and Ascension are taught the first time
-## each matters, later on.
+## The Lantern Duel's lesson, one step at a time, as memories of Bram (2
+## November, Gary: "anytime you encounter something new in a duel or are
+## about to do something new Bram's memory could pop up as a message teaching
+## you how to do it, like you remembered what he taught you over the years";
+## until then Bram coached it from his stool, if asked, in Master Script v3's
+## "P1 · Bram during the Lantern Duel"). Each line waits for the player: an
+## explanation until they tap, an instruction until they've done it, and
+## nothing else can be touched meanwhile; the light shows where things are.
+## See DuelTutor for the step format. The words are what he taught over the
+## years, not what he sees now: nothing in them is about this afternoon's
+## board that wouldn't hold in any duel. Only lines v3 marks "(… lights
+## up)" have a focus. It teaches only what's on the table tonight (Totems,
+## Rites, Essence, Life, attacking, one weakness, Fate and the card panel);
+## Wards, the element chart, conditions and Ascension are taught the first
+## time each matters, later on.
 const LESSON := {
 	"events": {
 		"intro": [
-			{"say": "Right. Those cards are Sigils. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window."},
-			{"say": "Yours are Sparks, the smallest kind. That's the gods on a quiet day. When they fight, it doesn't drip. It pours."},
-			# (25 October, Gary: it's the afternoon, not night; and say what's
-			# at stake, since other duels will have more riding on them)
-			{"say": "There's more to duelling than one afternoon's worth. Today, just the basics. The rest comes as the cards do."},
-			{"say": "Your Totems do the fighting. Bring his Life down to nothing and you've won.", "focus": "life"},
-			{"say": "Every duel has its stakes. Some are played for cards, some for coin, and some for a good deal worse. This one's a friendly: nothing to win or lose but your pride."},
-			{"say": "Roll for who goes first. Highest starts.", "do": "die"},
+			{"say": "(Bram's voice comes back to you, from a hundred evenings at the taproom table.)", "who": "", "keep": false},
+			{"say": "Those cards are Sigils, Sprout. The gods' magic is always leaking into the world, a drop at a time, and where it lands it sets hard. Like frost on a window."},
+			{"say": "Sparks are the smallest kind. That's the gods on a quiet day. When they fight, it doesn't drip. It pours."},
+			# (25 October, Gary: say what's at stake, since other duels will
+			# have more riding on them)
+			{"say": "There's more to duelling than one afternoon's worth. Start with the basics. The rest comes as the cards do."},
+			{"say": "Your Totems do the fighting. Bring the other duellist's Life down to nothing and you've won.", "focus": "life"},
+			{"say": "Every duel has its stakes. Some are played for cards, some for coin, and some for a good deal worse. A friendly's played for nothing but pride, and the Lantern Duel's played for the Lantern."},
+			{"say": "First thing, always: roll for who goes first. Highest starts.", "do": "die"},
 		],
 		"rival_call": [
-			{"say": "There's his Cinderpup. Fire. Remember it."},
+			{"say": "A Cinderpup. That's fire. Mark what element every Totem is the moment it's called: it decides what hurts it."},
 		],
 		"weakness": [
 			{"say": "See that? Water puts fire out. Hit a Totem where it's weak and it hurts a good deal more. The sign on every card says what it fears.", "learn": "weakness"},
 		],
 		"rival_fate": [
-			{"say": "That's Fate. Some moves roll the die: high, and they hit hard; low, nothing. His deck's full of them.", "learn": "fate"},
+			{"say": "That's Fate. Some moves roll the die: high, and they hit hard; low, nothing. A fire deck's full of them.", "learn": "fate"},
 		],
 		"absorbed": [
-			{"say": "And the stone took the lot."},
+			{"say": "And when the stone's up, the stone takes the lot. That's what you paid for."},
 		],
 		"ko_rival": [
 			# (v7: so it doesn't clash with Tam's death the next evening)
-			{"say": "Out it goes, back into its card. Nobody bleeds inside a Circle unless the stakes say so, and today they don't."},
+			{"say": "Out it goes, back into its card. Nobody bleeds inside a Circle unless the stakes say so, and in a friendly they don't."},
 		],
 		"hit_mine": [
-			{"say": "He's throwing Rites now. Brookfin's tougher than it looks."},
+			{"say": "When they start throwing Rites at your Totem, it's because they can't beat it with teeth. Hold your nerve: a Totem's tougher than it looks."},
 		],
 	},
 	"turns": [
 		[
 			{"say": "That's your hand. Five to start, and one more every turn after this.", "focus": "hand"},
-			{"say": "Brookfin's your Totem: a Spark of river water. Pick it up.", "do": "card:brookfin"},
-			{"say": "That's the card up close: what it costs, what it is, what its moves do. You can look at any card like that, his or yours.", "focus": "detail"},
+			{"say": "Start with your Totem. Brookfin's a Spark of river water. Pick it up.", "do": "card:brookfin"},
+			{"say": "That's the card up close: what it costs, what it is, what its moves do. You can look at any card like that, theirs or yours. Do it before you play it, every time.", "focus": "detail"},
 			{"say": "Now call it into the Circle.", "do": "slot:1"},
 			{"say": "That cost one Essence. You get another every turn, and what you don't spend is gone, so spend it.", "focus": "essence"},
-			{"say": "Nobody attacks on the first turn, and a Totem that's just been called needs a moment to find its feet. That's you done."},
+			{"say": "Nobody attacks on the first turn, and a Totem that's just been called needs a moment to find its feet. That's a first turn done."},
 			{"say": "End your turn.", "do": "end"},
 		],
 		[
 			{"say": "You drew one. Every turn, like I said."},
 			{"say": "Brookfin can fight now.", "do": "totem:brookfin"},
-			{"say": "Splash costs nothing. Undertow costs one Essence, hits harder and mends Brookfin a little. Splash first.", "do": "move:0"},
-			{"say": "At his Cinderpup.", "do": "target:cinderpup"},
+			{"say": "Splash costs nothing. Undertow costs one Essence, hits harder and mends Brookfin a little. The free move first, while the other side's fresh.", "do": "move:0"},
+			{"say": "At the Cinderpup.", "do": "target:cinderpup"},
 			{"say": "You've still two Essence. Not every card's a Totem. That Bulwark's a Rite: magic you cast once, then it's gone.", "focus": "card:bulwark"},
 			{"say": "It throws a wall of stone round one of your Totems. The next hit it takes, the stone takes first, up to fifty of it."},
-			{"say": "He'll go straight for Brookfin on his turn. He always does. So the wall goes up now.", "focus": "foe:cinderpup"},
+			{"say": "A fire deck goes straight for your Totem the moment it can. It always does. So the wall goes up before it comes.", "focus": "foe:cinderpup"},
 			{"say": "Bulwark.", "do": "card:bulwark"},
 			{"say": "Round Brookfin.", "do": "target:brookfin"},
 			{"say": "That'll do. End it.", "do": "end"},
 		],
 		[
-			{"say": "His pup's hurting. Undertow will finish it."},
+			{"say": "Their Totem's hurting. Undertow will finish it."},
 			{"say": "Brookfin.", "do": "totem:brookfin"},
 			{"say": "Undertow.", "do": "move:1"},
-			{"say": "His Cinderpup.", "do": "target:cinderpup"},
-			{"say": "Nothing stands across from Brookfin now. Next turn it goes straight at Corin.", "focus": "life"},
+			{"say": "The Cinderpup.", "do": "target:cinderpup"},
+			{"say": "Nothing stands across from Brookfin now. Next turn it goes straight at the duellist.", "focus": "life"},
 			{"say": "End your turn.", "do": "end"},
 		],
 		[
 			{"say": "Now. Brookfin.", "do": "totem:brookfin"},
 			{"say": "Undertow.", "do": "move:1"},
-			{"say": "Straight at him. Nothing's in the way.", "do": "target:life"},
+			{"say": "Straight at them. Nothing's in the way.", "do": "target:life"},
 		],
 	],
 }
@@ -584,13 +590,13 @@ static func _corin_morning() -> Array:
 		{"who": "bram", "say": "I've always told you, when you were ready, I'd let you start using cards. I suppose the end of an Age is as good a time as any. So let's start you with this lot."},
 		# the player takes it: YOUR FIRST DECK
 		{"scene": "first_deck"},
-		{"who": "bram", "say": "You've seen enough duels to know how it works, but in case you're not sure, I'll talk you through it."},
-		{"who": "bram", "say": "There's no shame in it, it being your first duel."},
-		{"set": "coach_asked"},
-		{"choice": ["Talk me through it.", "I've watched enough duels."], "then": [
-			[{"scene": "coach_on"}, {"who": "bram", "say": "Right. Listen for me."}],
-			[{"set": "coach_off"}, {"who": "bram", "say": "Then I'll keep quiet. Mostly."}],
-		]},
+		# (2 November, Gary: no coaching offer; "all the years I've been
+		# teaching you about duels, you know how to do them, just remember
+		# what I taught you", and what he taught comes back in the duel
+		# itself as memories of him, DuelTutor)
+		{"who": "bram", "say": "All the years I've been teaching you about duels, Sprout: you know how to do them. You've sat at my elbow through more of them than Corin's had hot dinners."},
+		{"who": "bram", "say": "Just remember what I taught you. It'll come back to you when you need it."},
+		{"say": "[i](Whenever a duel shows you something new, what Bram taught you about it over the years comes back to you. Everything you remember is kept in the menu, under How to Duel.)[/i]"},
 	] + _the_duel()
 
 
@@ -627,11 +633,7 @@ static func _after_the_duel() -> Array:
 		{"who": "bram", "say": "Tam'll be down at the mill this time of day. Take the lane by the signpost, off the east side of the green, and on through the field gate. You can't miss the wheel."},
 		{"scene": "bram_smile"},
 		{"who": "bram", "say": "Go on, get some practice in. No harm in learning a few tricks before tonight's festivities."},
-		{"if": "coach_off", "then": [
-			{"say": "[i](Whatever Bram teaches you about duelling is kept in the menu, under How to Duel.)[/i]"},
-		], "else": [
-			{"say": "[i](Everything Bram showed you is kept in the menu, under How to Duel.)[/i]"},
-		]},
+		{"say": "[i](Everything you remembered of Bram's teaching is kept in the menu, under How to Duel.)[/i]"},
 		# duel skills (27 October): the first the player hears of them
 		{"if": "told_skills", "then": [], "else": [
 			{"set": "told_skills"},
@@ -712,13 +714,9 @@ const NELL_DECK := [
 ## by beating them (DuelSkills.LEARNED_BY), and says more as it goes.
 const FRIENDLY := {
 	"tam_friendly": {"name": "Tam", "deck": TAM_DECK, "difficulty": 0.75, "skill": "loyal_hound",
-		# 28 October (Gary: synergy, taught through the game): Tam teaches the
-		# chain, the miller's rhythm (DuelSynergy; the rest waits for Bram)
-		"teach": ["chain", "combo"], "teacher": "Tam", "teacher_look": "tam",
-		"teach_lines": {
-			"chain": "Steady, Sprout. That's two cards this turn. The third comes cheaper: one Essence less. Every miller knows it. You don't haul one sack at a time; you get a rhythm going. Cheap ones first, the dear one third.",
-			"combo": "Now that one likes being third. A Combo card, that: played third or later in a turn, it does more. Bulwark holds stronger, a Firebrand burns hotter. Mind the order.",
-		},
+		# (28 October: Tam taught the chain and the combo in his own words;
+		# since 2 November every new thing in any story duel comes back as a
+		# memory of Bram, DuelTutor, so his game teaches as the rest do)
 		"bark_on": {
 			"my_chain": "There's the rhythm. One, two, three.",
 			"rival_first_fate": "Come on, girl. Bite.",
@@ -733,21 +731,10 @@ const FRIENDLY := {
 			"rival_falls": "Ha! Good. That's good, Sprout.",
 		}},
 	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards", "life": 50, "gentle": true,
-		# 28 October (Gary: "all cards linked to a god"): Nell, the oldest
-		# memory in the village, says whose ground the green is
-		"teach": ["ground", "graced", "shunned"], "teacher": "Old Nell", "teacher_look": "nell",
-		"teach_lines": {
-			# (1 November, Gary: start it with "before we start let me make sure
-			# you understand about different grounds", then explain)
-			"ground": [
-				"Before we start, love, let me make sure you understand about the different grounds. Nobody ever told Bram, and it cost him a good few games.",
-				"Every Circle stands on some god's ground. Ashford's is Ellowen's, the Lantern Keeper's: it's her festival we're keeping tonight.",
-				"Every card answers to a god, too. It says which at the foot of the card. On its own god's ground a card does better than it says: Graced, we call it.",
-				"A Traveller's Pack is one of Ellowen's, so here it'll cost you less. Take a card onto the ground of a god who quarrels with its own, and it does less than it says: Shunned. Look at the foot of a card before you play it.",
-			],
-			"graced": "There, see? Graced. Ellowen's card, on Ellowen's ground. And it's not only the ground: a god that's pleased with you graces its cards wherever you are. One that's cross with you shuns them.",
-			"shunned": "Oh, that one's Shunned, love: its god's not best pleased, or this is its rival's ground. It'll do less than it says. You'll learn which gods quarrel.",
-		},
+		# (28 October: Nell said whose ground the green is, in her own words,
+		# four lines from 1 November; since 2 November the grounds come back
+		# as a memory of Bram the first time a card's played on anyone's
+		# ground, DuelScreen._ground_lesson)
 		"bark_on": {
 			"rival_graced": "Hers, that one. The Lantern Keeper's. She looks after her own on festival night.",
 			# Bram isn't at her bench to explain a Ward, so she does
@@ -792,13 +779,15 @@ static func duel_spec(spec: Dictionary) -> Dictionary:
 		"practice_line": "The Lantern Duel is the village's game: nothing is won but the Lantern.",
 	}
 	# dealt in order, the player first, and it can't be lost: a first duel
-	# should teach, not punish. With Bram coaching, every step is gated; if
-	# not, Corin still plays his script, so he never reaches the player's Life.
+	# should teach, not punish. Every step is gated (the memories of Bram);
+	# Corin plays his script, so he never reaches the player's Life.
 	out["stacked"] = [true, true]
 	out["first"] = 0
 	out["life_floor"] = [1, 0]
 	out["totem_floor"] = [1, 0]
-	out["tutorial"] = {"quiet": true} if Game.flag("coach_off") else LESSON
+	# (2 November: always the lesson, as memories of Bram; until then a
+	# player who'd "watched enough duels" got none)
+	out["tutorial"] = LESSON
 	out["rival_script"] = CORIN_SCRIPT
 	return out
 
@@ -834,10 +823,10 @@ static func _friendly_spec(id: String, me: String, arena: String) -> Dictionary:
 		"stacked": [true, true],
 		"rival_skill": String(f.get("skill", "")),
 		"bark_on": f.bark_on,
-		"teach": f.get("teach", []),
-		"teacher": String(f.get("teacher", "")),
-		"teacher_look": String(f.get("teacher_look", "")),
-		"teach_lines": f.get("teach_lines", {}),
+		# (2 November) each new thing taught once, as a memory of Bram, and
+		# the game keeps its skills while it does
+		"lessons": true,
+		"skills_on": true,
 		"lesson_group": "Tam's game" if id == "tam_friendly" else "Nell's game",
 		"rewards": {"opponent": "village"},
 		"practice": true,
@@ -1606,11 +1595,15 @@ static func _box_out_scene(w: World) -> void:
 			hand.name = "BoxHand"
 			fig.carry(hand, BOX_POCKET)
 			w.set_meta("box_hand_bram", hand)
-			fig.palm("right", Vector3.UP, 0.3)
+			# (2 November, Gary: "Bram's fingers go through the box while it's
+			# in his hand": the hand was turned palm up with the fingers left
+			# curled as his clip has them, up through the box; flat now, the
+			# box on the open hand, the fingers out under its far side)
+			fig.palm("right", Vector3.UP, 0.3, 1.0)
 			fig.reach(null, hand, 0.35)
 			box.visible = false
 			await Cine.wait(w, 0.35)
-			fig.attach(box, "palm", "right", CARD_BOX_SIZE.y * 0.5 - 0.006, PI)
+			fig.attach(box, "palm", "right", CARD_BOX_SIZE.y * 0.5 + 0.004, PI)
 			await w.get_tree().process_frame
 			box.visible = true
 			var up := w.create_tween()
@@ -1638,17 +1631,47 @@ static func _first_deck(w: World) -> void:
 		# a step in towards him, so the box he holds out is within their
 		# reach, hands coming up as they go
 		await _step_to_take(w, "player", "bram")
-		# both hands on its sides, palms in (he holds it turned round, its
-		# clasp to him, so its "L" side is on their left)
-		me.palm("left", Vector3.RIGHT * -1.0, 0.4, 0.0, true)
-		me.palm("right", Vector3.RIGHT, 0.4, 0.0, true)
-		me.reach(box.get_node("L"), box.get_node("R"), 0.45)
-		me.grip(box, CARD_BOX_SIZE.x, 0.5)
-		await Cine.wait(w, 0.55)
-		# and it's theirs: held between their palms (Figure3D.attach), his
-		# hand comes away from under it
-		me.grip(null)
-		me.attach(box, "between", "right", 0.0, 0.0, CARD_BOX_SIZE.x)
+		# (2 November, Gary: the player's "hands go all deformed when it
+		# takes the box then holding the box": they took it by its sides,
+		# palms in, and with the hands that close together the forearms
+		# pointed in at it and the hands folded back at the wrists. Now it's
+		# taken the way anyone takes a small box held out to them: both
+		# hands slide in under it, palms up, flat, fingers forward, side by
+		# side, and it's lifted off his hand onto them.) The hands' marks
+		# hang from a carried frame (BoxGrip): where they go, the box goes.
+		var grip := Node3D.new()
+		grip.name = "BoxGrip"
+		me.carry(grip, Vector3.ZERO)
+		grip.global_position = box.global_position + Vector3(0, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0)
+		grip.rotation = Vector3.ZERO
+		for sd in [["L", 1.0], ["R", -1.0]]:
+			var mk := Node3D.new()
+			mk.name = sd[0]
+			# (a hand's half-width in from the middle, each under its half)
+			mk.position = Vector3(float(sd[1]) * 0.042, 0.0, 0.0)
+			grip.add_child(mk)
+		w.set_meta("box_grip_player", grip)
+		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
+		me.palm("right", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
+		# in from below and in front, so the hands don't come through his
+		var way_l := Node3D.new()
+		var way_r := Node3D.new()
+		for way in [way_l, way_r]:
+			grip.add_child(way)
+		way_l.position = (grip.get_node("L") as Node3D).position + Vector3(0.03, -0.1, -0.14)
+		way_r.position = (grip.get_node("R") as Node3D).position + Vector3(-0.03, -0.1, -0.14)
+		me.reach(way_l, way_r, 0.3)
+		var under := w.create_tween().set_parallel(true)
+		under.tween_property(way_l, "position", (grip.get_node("L") as Node3D).position, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		under.tween_property(way_r, "position", (grip.get_node("R") as Node3D).position, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await under.finished
+		me.reach(grip.get_node("L"), grip.get_node("R"), 0.1)
+		way_l.queue_free()
+		way_r.queue_free()
+		await Cine.wait(w, 0.15)
+		# and it's theirs: on the flat of their left hand (Figure3D.attach:
+		# the hand puts it where the hand is), the right hand under its
+		# other half; his hand comes away from under it
 		if f is Figure3D:
 			(f as Figure3D).detach(box)
 			(f as Figure3D).let_go(0.35)
@@ -1656,51 +1679,40 @@ static func _first_deck(w: World) -> void:
 		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
 		w.set_meta("box_player", box)
-		# in to them: their hands' marks go from the box's sides to where
-		# they hold a thing, and the box comes with the hands
-		var grip := Node3D.new()
-		grip.name = "BoxGrip"
-		me.carry(grip, Vector3.ZERO)
-		grip.global_position = box.global_position
-		grip.rotation = Vector3.ZERO
-		for sd in [["L", 1.0], ["R", -1.0]]:
-			var mk := Node3D.new()
-			mk.name = sd[0]
-			mk.position = Vector3(float(sd[1]) * (CARD_BOX_SIZE.x * 0.5 + 0.02), -CARD_BOX_SIZE.y * 0.1, 0.0)
-			grip.add_child(mk)
-		w.set_meta("box_grip_player", grip)
-		me.reach(grip.get_node("L"), grip.get_node("R"), 0.15)
-		var hold := me.hold_point(0.5, 0.62)
+		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 + 0.004)
+		# (the right hand under the box's other half, wherever the left palm
+		# puts the box: its mark hangs from the box)
+		var rmark := Node3D.new()
+		rmark.name = "RightUnder"
+		box.add_child(rmark)
+		rmark.position = Vector3(-0.042, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0.0)
+		me.reach(grip.get_node("L"), rmark, 0.1)
+		# in to them, a little up: the hands' marks come in, and the box with
+		# the left hand
+		var hold := me.hold_point(0.5, 0.62) + Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0.0)
 		var bring := w.create_tween()
 		bring.tween_property(grip, "position", hold, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await bring.finished
 		# to open it (29 October, Gary: "his hands are in the way when he
-		# opens it"): the box down onto the flat of the left hand, the right
-		# hand to the front of the lid, lifting it as it swings up on its
-		# hinge, and a close shot from in front and above, looking into it.
-		# (1 November, Gary: "players hand goes through it": each hand went
-		# to its next place in a straight line, the left from the box's side
-		# to under it and the right from its side to the lid's front edge,
-		# both through the box. Now the box rests in the grip while the left
-		# hand goes out, down and in under it, and the right goes up over the
-		# side, then along to the lid's edge.)
-		me.detach(box)
-		box.reparent(grip, true)
+		# opens it"): the box stays on the flat of the left hand, the right
+		# hand comes out from under it, up over the side and along to the
+		# front of the lid, lifting it as it swings up on its hinge, and a
+		# close shot from in front and above, looking into it. (1 November,
+		# Gary: "players hand goes through it": each hand went to its next
+		# place in a straight line, through the box; the right goes out and
+		# up round its side.)
 		var lh := Node3D.new()
 		lh.name = "LeftWay"
 		grip.add_child(lh)
 		lh.position = (grip.get_node("L") as Node3D).position
-		var under_at := Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01)
-		me.palm("left", Vector3.UP, 0.35)
-		me.reach(lh, grip.get_node("R"), 0.15)
+		# (the left hand to the box's middle under it, so it's balanced on
+		# one hand once the right lets go)
+		var under_at := Vector3(0.0, 0.0, 0.0)
+		me.reach(lh, rmark, 0.1)
 		var half := CARD_BOX_SIZE.x * 0.5
-		var round_under := w.create_tween()
-		round_under.tween_property(lh, "position", Vector3(half + 0.07, -CARD_BOX_SIZE.y * 0.6, 0.01), 0.22).set_trans(Tween.TRANS_SINE)
-		round_under.tween_property(lh, "position", Vector3(half * 0.4, -CARD_BOX_SIZE.y * 0.5 - 0.06, 0.01), 0.16).set_trans(Tween.TRANS_SINE)
-		round_under.tween_property(lh, "position", under_at, 0.14).set_trans(Tween.TRANS_SINE)
-		await round_under.finished
-		box.reparent(w, true)
-		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 - 0.006)
+		var centre_under := w.create_tween()
+		centre_under.tween_property(lh, "position", under_at, 0.3).set_trans(Tween.TRANS_SINE)
+		await centre_under.finished
 		_into_box_shot(w, box)
 		var lid := box.get_node_or_null("Lid") as Node3D
 		if lid == null:
@@ -1716,13 +1728,15 @@ static func _first_deck(w: World) -> void:
 		var rh := Node3D.new()
 		rh.name = "RightWay"
 		w.add_child(rh)
-		rh.global_position = (grip.get_node("R") as Node3D).global_position
+		rh.global_position = rmark.global_position
 		me.reach(lh, rh, 0.1)
+		var side_out := box.to_global(Vector3(-half - 0.07, -CARD_BOX_SIZE.y * 0.3, 0.0))
 		var side_up := box.to_global(Vector3(-half - 0.05, CARD_BOX_SIZE.y * 0.5 + 0.07, 0.0))
 		var over_edge := edge.global_position + Vector3(0, 0.06, 0)
 		me.palm("right", Vector3.DOWN, 0.3, 0.3)
 		var round_over := w.create_tween()
-		round_over.tween_property(rh, "global_position", side_up, 0.2).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", side_out, 0.16).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", side_up, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", edge.global_position, 0.12).set_trans(Tween.TRANS_SINE)
 		await round_over.finished

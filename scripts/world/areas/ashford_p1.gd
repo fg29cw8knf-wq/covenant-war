@@ -77,16 +77,27 @@ static func coach(w: World) -> WorldCoach:
 
 # ================================================================== props ===
 
+## How big the lanterns packed in the crate are (the bunting's lantern mesh
+## scaled; the ones hung about the green are 0.62).
+const PACKED_SCALE := 0.5
+
+
+## The widest a packed lantern is (m): the mesh's top radius at PACKED_SCALE.
+static func paper_lantern_size() -> float:
+	return 0.2 * PACKED_SCALE
+
+
 ## A paper lantern (the village's own, as on the bunting), glowing; its
-## origin is the ring at its top, where it hangs from.
-static func paper_lantern(v: AshfordVillage, energy := 1.0) -> Node3D:
+## origin is the ring at its top, where it hangs from. `size` scales the
+## body (the bunting's 0.62 by default).
+static func paper_lantern(v: AshfordVillage, energy := 1.0, size := 0.62) -> Node3D:
 	var n := Node3D.new()
 	n.name = "PaperLantern"
 	var mat: ShaderMaterial = (v.mats.lantern as ShaderMaterial).duplicate()
 	# (unlit by day, lit as the light goes: AshfordVillage.lit_by_night)
 	mat.set_shader_parameter("energy", 2.2 * energy * v.night_lamps())
 	v.lit_by_night.append([mat, 2.2 * energy])
-	var body := v.multimesh(n, v.lantern_mesh(), mat, [Transform3D(Basis().scaled(Vector3.ONE * 0.62), Vector3(0, -0.2, 0))],
+	var body := v.multimesh(n, v.lantern_mesh(), mat, [Transform3D(Basis().scaled(Vector3.ONE * size), Vector3(0, -0.04 - 0.26 * size, 0))],
 		[Color(1.0, 0.5 + 0.15 * v.rng.randf(), 0.16, v.rng.randf())], false)
 	body.name = "Paper"
 	v.cyl(n, 0.05, 0.1, 0.03, Vector3(0, -0.04, 0), v.mats.dark, 10)
@@ -129,11 +140,18 @@ static func crate(v: AshfordVillage) -> Node3D:
 			v.box(n, Vector3(0.03, h, d), Vector3(s * (w * 0.5 - 0.015), h * 0.5, 0), v.mats.wood)
 			for t in [-1.0, 1.0]:
 				v.box(n, Vector3(0.05, h + 0.02, 0.05), Vector3(s * (w * 0.5 - 0.02), h * 0.5 + 0.01, t * (d * 0.5 - 0.02)), v.mats.beam_v)
-	# the paper lanterns packed in it, their tops showing
-	for p in [Vector3(-0.15, 0, -0.11), Vector3(0.14, 0, -0.1), Vector3(-0.12, 0, 0.12), Vector3(0.15, 0, 0.12), Vector3(0.0, 0, 0.0)]:
-		var l := paper_lantern(v, 0.55)
-		l.position = Vector3(p.x, h + 0.06, p.z)
-		l.rotation = Vector3(v.rng.randf_range(-0.15, 0.15), v.rng.randf() * TAU, v.rng.randf_range(-0.15, 0.15))
+	# the paper lanterns packed in it, their tops showing (2 November, Gary:
+	# "lanterns in the crate show through the crate": Gary's crate's walls
+	# are thick, its inside only 0.5 by 0.38 m at this size, and the
+	# lanterns, a fifth wider than the ones on the bunting and tipped over up
+	# to nine degrees, stood through its sides; they're the bunting's size
+	# now, packed inside its walls, and only a touch askew)
+	var packed := paper_lantern_size()
+	var p_in := Vector2(0.5 * 0.5 - packed * 1.05, 0.38 * 0.5 - packed * 1.05)
+	for p in [Vector3(-p_in.x, 0, -p_in.y), Vector3(p_in.x, 0, -p_in.y), Vector3(-p_in.x, 0, p_in.y), Vector3(p_in.x, 0, p_in.y), Vector3(0.0, 0.03, 0.0)]:
+		var l := paper_lantern(v, 0.55, PACKED_SCALE)
+		l.position = Vector3(p.x, h + 0.06 + p.y, p.z)
+		l.rotation = Vector3(v.rng.randf_range(-0.06, 0.06), v.rng.randf() * TAU, v.rng.randf_range(-0.06, 0.06))
 		l.name = "Packed"
 		n.add_child(l)
 	for s in [["L", 1.0], ["R", -1.0]]:
@@ -888,15 +906,27 @@ class Use:
 ## camera watching from `cam_at`, until `done.call(position)` says stop.
 ## `follower` (an NPC's id) walks after them. The room gives "walk" (the
 ## floor's free rectangle, in its own x/z) and "blocks" ([centre, radius]).
+## `stray` is called with a zone's name when the player walks into one of
+## the room's stray zones (see below), if it takes an argument; a `stray`
+## that takes none is called for the stairs alone (as before 2 November).
 static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callable, follower := "", stray := Callable()) -> void:
 	var root: Node3D = room.root
 	var floor_y := float(room.floor_y)
 	var target = [null]
 	# "stairs_zone": a patch of floor (the foot of the stairs) where `stray` is
 	# called when the player walks into it, once, and again if they come back;
-	# they're stopped and turned back a step while whoever it is says so
-	var zone: Rect2 = room.get("stairs_zone", Rect2())
-	var in_zone := false
+	# they're stopped and turned back a step while whoever it is says so.
+	# "stray_zones" (2 November: the taproom's two open doorways, Gary: "if
+	# player tries to walk through either of the open doors have a message
+	# pop up"): more of the same, each {"name", "rect", "back"}, `back` the
+	# way (in the room's x/z) they're turned back a step, named to `stray`
+	var zones: Array = []
+	if room.has("stairs_zone"):
+		var sz: Rect2 = room.stairs_zone
+		zones.append({"name": "stairs", "rect": sz, "back": Vector2(0, -1)})
+	for z in room.get("stray_zones", []):
+		zones.append(z)
+	var in_zone := ""
 	var strayed_at := -100.0
 	var held_until := 0.0   # (no walking while they're being turned back)
 	# the walk's own clock, in game time (frames' deltas), not the wall clock:
@@ -931,6 +961,11 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 		if done.call(p):
 			break
 		var move := Vector3.ZERO
+		# (a thing in the room tapped from further off, a Use with reach: it
+		# asks the world to walk the player there, and in here that's ours)
+		if w._move_target != null:
+			target[0] = w._move_target
+			w._move_target = null
 		if clock < held_until:
 			target[0] = null
 		elif not w.hud.menu_open() and not (w.hud.dialogue.visible and not w.hud.dialogue.barking()):
@@ -968,17 +1003,30 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 			pf.face(move, w.cam)
 		if follower != "":
 			_follow_step(w, follower, 1.6, dt, 2.0, room, follow_token)
-		if zone.size != Vector2.ZERO and stray.is_valid():
+		if not zones.is_empty() and stray.is_valid():
 			var lp := root.to_local(np)
-			var here := zone.has_point(Vector2(lp.x, lp.z))
-			if here and not in_zone and clock - strayed_at > 6.0:
+			var here := ""
+			var hit: Dictionary = {}
+			for z in zones:
+				if (z.rect as Rect2).has_point(Vector2(lp.x, lp.z)):
+					here = String(z.name)
+					hit = z
+					break
+			if here != "" and here != in_zone and clock - strayed_at > 6.0:
 				strayed_at = clock
 				target[0] = null   # (they stop: the way's wrong)
 				held_until = clock + 1.6
-				stray.call()
+				if stray.get_argument_count() > 0:
+					stray.call(here)
+				elif here == "stairs":
+					stray.call()
 				# a step back out of it, facing the room again
-				var back := Vector3(zone.get_center().x, 0.0, zone.position.y - 0.45)
-				var out_at := root.to_global(back)
+				var rect: Rect2 = hit.rect
+				var dir: Vector2 = (hit.back as Vector2).normalized()
+				var edge := Vector2(rect.get_center().x if dir.x == 0.0 else (rect.position.x if dir.x < 0.0 else rect.end.x),
+					rect.get_center().y if dir.y == 0.0 else (rect.position.y if dir.y < 0.0 else rect.end.y))
+				var back2 := edge + dir * 0.45
+				var out_at := root.to_global(Vector3(back2.x, 0.0, back2.y))
 				out_at.y = floor_y
 				var tb := w.create_tween()
 				tb.tween_property(w.player, "global_position", out_at, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -1184,7 +1232,8 @@ const BRAM_CALLS := [
 ## from the corner. Corin's duel comes first (Gary, 24 October), so Tam is
 ## for afterwards.
 const TAPROOM := [
-	{"who": "bram", "say": "Left the shutter unlatched again. Cold air costs firewood, wood costs coin, and coin is the one thing nobody in Ashford has enough of today."},
+	# (2 November, Gary: say who left it: it's the player he's telling off)
+	{"who": "bram", "say": "You left the shutter unlatched again, Sprout. Cold air costs firewood, wood costs coin, and coin is the one thing nobody in Ashford has enough of today."},
 	{"who": "bram", "say": "Eat something first. I'm not having you walking down to the green on an empty stomach."},
 	{"ask": ["Ironvault's bailiffs are on the road early today.", "Is Tam Hayes going to lose the mill tonight?", "Why is this inn the only roof Ironvault doesn't own?"],
 		"leave": "I'm ready for the festival prep.", "then": [
@@ -1218,6 +1267,10 @@ const AT_DOOR := [{"say": "{menu} [i](It stops the game, and saves it.)[/i]"}]
 const DAWDLE := "The green. Big pole, middle of it. You've walked there every day of your life."
 ## If they head back up the stairs with the crate (Gary, 19 October).
 const WRONG_WAY := "Wrong way, Sprout. The green's out the door, not up the stairs."
+## If they head through the kitchen's or the back passage's doorway (2
+## November, Gary): with the crate, their own thought; before it, Bram.
+const DOORS_LATER := "[i]I need to get these lanterns to the green first.[/i]"
+const DOORS_FIRST := "Not through there, Sprout. The crate. Corner by the door."
 ## If they head off down the lane to Tam's mill with the crate still in their
 ## arms (1 November, Gary: "the game glitches: make it so Bram stops you and
 ## reminds you where to go"). Bram calls them back, they turn round, and he
@@ -1356,15 +1409,22 @@ static func _attic(w: World) -> void:
 		var bl: Node3D = a.blanket
 		var on_mattress := (a.lie_at as Vector3) + Vector3(-0.28, a.bed_top + 0.02, 0.34)
 		if bl is MeshInstance3D and bl.has_meta("rows"):
-			var corner := BlanketThrow.corner_of(bl)
+			# (2 November, Gary: the arms "deform in unnatural way": the hand
+			# was sent to the hem's corner and then to the corner's place in
+			# the heap by the wall, up and over on a high arc, and where that
+			# was beyond the arm the arm stood straight up like a pole; the
+			# hand now goes only as far as the arm reaches from the shoulder
+			# he's lying on, low across his chest, and the cloth follows the
+			# hand as far as it goes and settles the rest of the way itself)
+			var corner := _hand_can(fig, "right", BlanketThrow.corner_of(bl))
 			hand.global_position = corner
 			fig.reach(null, hand, 0.35)
 			await Cine.wait(w, 0.3)
 			var bt := BlanketThrow.start(bl, a.blanket_off, hand, 0.8)
-			var to := BlanketThrow.corner_in_heap(bl, a.blanket_off)
+			var to := _hand_can(fig, "right", BlanketThrow.corner_in_heap(bl, a.blanket_off))
 			var sweep := w.create_tween()
 			sweep.tween_method(func(u: float) -> void:
-				hand.global_position = corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.22, 0), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+				hand.global_position = _hand_can(fig, "right", corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.1, 0)), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await sweep.finished
 			bt.let_go()
 			if not rise_clip:
@@ -1395,9 +1455,10 @@ static func _attic(w: World) -> void:
 	# (1 November, Gary: the getting up "looking a lot better ... can we
 	# improve it any more so it looks more real and natural"): on his feet,
 	# a slow stretch, both arms up over his head and back down, as anyone
-	# does first thing
+	# does first thing (2 November: the arms turned at the shoulders by a
+	# clip of their own, Figure3D.stretch, not reached up after targets)
 	if pf is Figure3D:
-		await _stretch(w, pf as Figure3D)
+		await (pf as Figure3D).stretch(2.8)
 	await Cine.wait(w, 0.3)
 	# the first lesson: walking, to the washbasin, on their own feet
 	controls_on(w)
@@ -1421,27 +1482,18 @@ static func _attic(w: World) -> void:
 
 
 
-## A morning stretch: both hands up over the head, a breath held, and down.
-static func _stretch(w: World, fig: Figure3D) -> void:
-	var head := fig.to_world(Vector3(0.0, fig.hold_point(0.0, 0.0).y + 0.42 * fig.stature(), 0.06))
-	var across := fig.facing().cross(Vector3.UP).normalized()
-	var hl := Node3D.new()
-	var hr := Node3D.new()
-	w.add_child(hl)
-	w.add_child(hr)
-	# (their left is against across: across is their right)
-	hl.global_position = head - across * 0.16
-	hr.global_position = head + across * 0.16
-	var up := w.create_tween().set_parallel(true)
-	var lift := Vector3(0, 0.12, -0.02)
-	up.tween_property(hl, "global_position", hl.global_position + lift, 1.1).set_trans(Tween.TRANS_SINE)
-	up.tween_property(hr, "global_position", hr.global_position + lift, 1.1).set_trans(Tween.TRANS_SINE)
-	fig.reach(hl, hr, 0.75)
-	await Cine.wait(w, 1.5)
-	fig.let_go(0.7)
-	await Cine.wait(w, 0.6)
-	hl.queue_free()
-	hr.queue_free()
+## `to` pulled back towards a hand's own shoulder (the upper arm bone, wherever
+## the body is: lying, sitting or standing) until the arm can get there with
+## the elbow still a little bent, so a hand sent after something never
+## straightens the arm out at it. (_in_reach does the same from a standing
+## figure's frame; this reads the shoulder itself, so it holds lying down.)
+static func _hand_can(f: Figure3D, side: String, to: Vector3) -> Vector3:
+	var sh := f.bone_pos(("Left" if side == "left" else "Right") + "Arm")
+	var d := to - sh
+	var most := f.arm_reach() * 0.9
+	if d.length() > most:
+		return sh + d.normalized() * most
+	return to
 
 
 ## Up out of the attic bed the way it was done before 27 October, built
@@ -1516,13 +1568,28 @@ static func _rise_from_bed(w: World, fig: Figure3D, a: Dictionary) -> void:
 	var from: Vector3 = w.player.global_position
 	var to_edge: Vector3 = (a.edge_at as Vector3) - from
 	to_edge.y = 0.0
+	# (2 November, Gary: he "goes through objects more": the feet swung round
+	# over the side through the bed's rail and the straw, the clip's legs
+	# being made for a lower bed; and the body jumped up a hand's breadth on
+	# the first frame, the lift onto the mattress coming all at once) the
+	# lift comes in over the clip's blend-in, and the seat rises a little
+	# as the legs come round, so the feet clear the rail, and settles again
+	# as they come down
+	var blend := 0.35
 	var extra := func(t: float) -> Vector3:
 		var slide := smoothstep(1.3, 2.5, t)
-		var y := lerpf(lie_off, edge_off, slide)
+		var y := lerpf(lie_off * smoothstep(0.0, blend, t), edge_off, slide)
+		y += SWING_LIFT * sin(PI * clampf((t - 1.45) / 1.05, 0.0, 1.0))
 		y = lerpf(y, 0.0, smoothstep(3.1, 4.0, t))
 		return to_edge * slide + Vector3(0, y, 0)
-	await fig.play_rooted("get_out_of_bed", true, 1.15, extra, 0.35)
+	await fig.play_rooted("get_out_of_bed", true, 1.15, extra, blend)
 	fig.release(0.4)
+
+
+## How far the seat rises as the legs swing round over the bed's side (m):
+## enough for the feet to clear the rail and the straw at the mattress's
+## edge, most as they cross it.
+const SWING_LIFT := 0.13
 ## Master Script v7 (with Gary's 24 October change to Q0): at the washbasin
 ## he wipes the frost off the oval glass with his palm and sees the ash-grey
 ## mark on his collarbone; the frost creeps back and he writes his name in it
@@ -1798,13 +1865,15 @@ static func _taproom(w: World) -> void:
 		var bowl := Node3D.new()
 		bowl.name = "Porridge"
 		root.add_child(bowl)
-		bowl.position = Vector3(InnRooms.BAR_X, 1.13, 0.55)
+		# (near the counter's front edge, where a hand reaches it from the
+		# room: 2 November, it's eaten)
+		bowl.position = Vector3(InnRooms.BAR_X + 0.2, 1.13, 0.55)
 		v.cyl(bowl, 0.09, 0.06, 0.06, Vector3(0, 0.03, 0), v.mats.wood_h, 14)
 		var oats := StandardMaterial3D.new()
 		oats.albedo_color = Color(0.86, 0.8, 0.66)
 		oats.roughness = 0.9
-		v.cyl(bowl, 0.08, 0.08, 0.005, Vector3(0, 0.058, 0), oats, 14)
-		v.box(bowl, Vector3(0.015, 0.008, 0.16), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15))
+		v.cyl(bowl, 0.08, 0.08, 0.005, Vector3(0, 0.058, 0), oats, 14).name = "Oats"
+		v.box(bowl, Vector3(0.015, 0.008, 0.16), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15)).name = "Spoon"
 		e["porridge"] = bowl
 	# Bram in the walkway behind the counter, the player a step off its front
 	# (25 October: he stood inside the counter, his back in the shelves)
@@ -1830,17 +1899,61 @@ static func _taproom(w: World) -> void:
 	wiping[0] = false
 	if bf is Figure3D:
 		(bf as Figure3D).look_toward(w.player.global_position, w.cam)
-	# the crate from the corner: walk to it and take it
+	# the crate from the corner: walk to it and take it; or the porridge
+	# first, from the bar (2 November, Gary: "should have option to eat the
+	# porridge on the side and have character eat if they want"): the bowl
+	# glows too, and a tap on it (walking up to the bar) eats it
 	controls_on(w)
 	w.hud._menu_btn.visible = false
-	coach(w).objective("take_crate")
-	var stray := func() -> void:
-		Cine.look(w, "bram", w.player.global_position)
-		w.hud.dialogue.bark(w._speaker("bram"), w._portrait("bram"), WRONG_WAY)
-	await walk_room(w, e, root.to_global(Vector3(0.2, 2.6, 2.6)), func(p: Vector3) -> bool:
-		return Vector2(p.x - corner.x, p.z - corner.z).length() < 1.15, "", stray)
-	if not is_instance_valid(w) or not w.is_inside_tree():
-		return
+	coach(w).objective("take_crate" if Game.flag("p1_ate") else "crate_or_eat")
+	# the wrong way: up the stairs, or through the kitchen's or the back
+	# passage's doorway (2 November, Gary: "if player tries to walk through
+	# either of the open doors have a message pop up (I need to get these
+	# lanterns to the green first)"): with the crate in their arms it's their
+	# own thought; before that, Bram
+	var stray := func(zone: String) -> void:
+		if zone == "stairs":
+			Cine.look(w, "bram", w.player.global_position)
+			w.hud.dialogue.bark(w._speaker("bram"), w._portrait("bram"), WRONG_WAY)
+		elif w.has_meta("p1_crate"):
+			w.hud.dialogue.bark(w._speaker("player"), w._portrait("player"), DOORS_LATER)
+		else:
+			Cine.look(w, "bram", w.player.global_position)
+			w.hud.dialogue.bark(w._speaker("bram"), w._portrait("bram"), DOORS_FIRST)
+	var eat := [false]
+	var bowl_use: Use = null
+	var bowl_glow: Node3D = null
+	if not Game.flag("p1_ate"):
+		var bowl: Node3D = e.porridge
+		bowl_glow = light_up(v, bowl, Vector3(0, 0.05, 0), 0.3)
+		bowl_use = Use.new()
+		bowl_use.w = w
+		bowl_use.target = bowl
+		bowl_use.reach = 1.1
+		bowl_use.stand = root.to_global(Vector3(InnRooms.BAR_X + 0.75, 0, 0.55))
+		bowl_use.glow = bowl_glow
+		w.add_child(bowl_use)
+		bowl_use.used.connect(func() -> void: eat[0] = true)
+	while true:
+		await walk_room(w, e, root.to_global(Vector3(0.2, 2.6, 2.6)), func(p: Vector3) -> bool:
+			return eat[0] or Vector2(p.x - corner.x, p.z - corner.z).length() < 1.15, "", stray)
+		if not is_instance_valid(w) or not w.is_inside_tree():
+			return
+		if not eat[0]:
+			break
+		eat[0] = false
+		if is_instance_valid(bowl_use):
+			bowl_use.queue_free()
+		if is_instance_valid(bowl_glow):
+			bowl_glow.queue_free()
+		await _eat(w, e)
+		controls_on(w)
+		w.hud._menu_btn.visible = false
+		coach(w).objective("take_crate")
+	if is_instance_valid(bowl_use):
+		bowl_use.queue_free()
+	if is_instance_valid(bowl_glow):
+		bowl_glow.queue_free()
 	await use(w, cr, "take_crate", 0.0, Vector3.INF, 0.55)
 	await _take_crate(w, cr)
 	# to the door with it
@@ -1870,6 +1983,79 @@ static func _taproom(w: World) -> void:
 	await Cine.wait(w, 0.6)
 	await Cine.fade(w, 1.0, 0.7)
 	door.rotation.y = 0.0
+
+
+## Breakfast at the bar (2 November, Gary: "have character eat if they
+## want"): the player walks up to the bar in front of the bowl, takes the
+## spoon in their right hand, and eats, the spoon going from the bowl to
+## their mouth and back a few times; the bowl's empty after ("Eat every
+## crumb"), and Bram says so. The camera watches from along the bar.
+static func _eat(w: World, e: Dictionary) -> void:
+	var root: Node3D = e.root
+	var bowl: Node3D = e.porridge
+	var pf = w.player_doll
+	w.busy = true
+	w.cine = true
+	w.hud.set_controls_visible(false)
+	coach(w).objective("")
+	# (a step from the counter's edge, the bowl within the arm's reach)
+	var stand := root.to_global(Vector3(InnRooms.BAR_X + 0.66, 0, 0.55))
+	if w.player.global_position.distance_to(stand) > 0.1:
+		await Cine.path(w, "player", [stand], 1.0)
+	var at_bowl: Vector3 = bowl.global_position
+	Cine.look(w, "player", at_bowl)
+	# from the room's north side, the player's right hand and the bowl in
+	# view, Bram behind the counter beyond (the raised flap at the counter's
+	# south end filled a shot from the south)
+	Cine.move(w, root.to_global(Vector3(InnRooms.BAR_X + 2.1, 1.5, -0.95)), root.to_global(Vector3(InnRooms.BAR_X + 0.4, 1.2, 0.5)), 0.8, 38.0)
+	await Cine.wait(w, 0.45)
+	if pf is Figure3D:
+		var me := pf as Figure3D
+		var hand := Node3D.new()
+		hand.name = "SpoonHand"
+		w.add_child(hand)
+		var spoon: Node3D = bowl.get_node_or_null("Spoon")
+		var over := at_bowl + Vector3(0, 0.09, 0)
+		hand.global_position = _hand_can(me, "right", over)
+		me.reach(null, hand, 0.45)
+		await Cine.wait(w, 0.5)
+		if spoon != null:
+			spoon.reparent(hand)
+			spoon.position = Vector3(0, -0.02, 0.04)
+			spoon.rotation = Vector3(0.3, 0, 0)
+		var fwd := me.facing()
+		for k in 3:
+			# (the mouth: forward and a little up from the head bone's root)
+			var mouth := _hand_can(me, "right", me.bone_pos("Head") + fwd * 0.12 + Vector3(0, 0.03, 0))
+			var up := w.create_tween()
+			up.tween_property(hand, "global_position", mouth, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await up.finished
+			await Cine.wait(w, 0.3)
+			var down := w.create_tween()
+			down.tween_property(hand, "global_position", _hand_can(me, "right", over), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			await down.finished
+			await Cine.wait(w, 0.15)
+		var oats: Node3D = bowl.get_node_or_null("Oats")
+		if oats != null:
+			oats.visible = false
+		if spoon != null:
+			spoon.reparent(bowl)
+			spoon.position = Vector3(0.05, 0.065, 0.02)
+			spoon.rotation = Vector3(0, 0.4, 0.15)
+		me.let_go(0.4)
+		await Cine.wait(w, 0.4)
+		hand.queue_free()
+	else:
+		await Cine.wait(w, 1.5)
+	Game.set_flag("p1_ate")
+	Cine.look(w, "bram", w.player.global_position)
+	await w.run_steps(ATE, null)
+	w.hud.dialogue.close()
+	Cine.move(w, root.to_global(Vector3(0.2, 2.6, 2.6)), w.player.global_position + Vector3(0, 1.0, 0), 0.7, 50.0)
+
+
+## Bram, once the bowl's empty.
+const ATE := [{"who": "bram", "say": "That's more like it. Now the crate."}]
 
 
 ## Bram's rag going over the counter until `state[0]` goes false (v7:
@@ -2253,6 +2439,10 @@ static func _street(w: World) -> void:
 		await Cine.path(w, "player", [on], 1.5)
 		behind[0] = false
 	await home(w, 1.2)
+	# the green's people get on with their morning from here (AshfordLife;
+	# 2 November, Gary: Corin and the kids stood "solid" until the crate was
+	# down)
+	AshfordLife.start(w)
 	# their own feet now, Bram behind
 	mute_all_but(w, [], true)
 	coach(w).objective("green_crate")
@@ -2889,8 +3079,13 @@ static func _tam_holds_letter(w: World, f: Figure3D, l: Node3D) -> void:
 		hold.add_child(mk)
 	w.set_meta("tam_letter_hold", hold)
 	f.release(0.35)
-	f.palm("left", Vector3.RIGHT * -1.0, 0.35, 0.25, true)
-	f.palm("right", Vector3.RIGHT, 0.35, 0.25, true)
+	# (2 November, Gary: the letter "goes through the characters' hands as
+	# they are talking": the palms faced in but the fingers were left to the
+	# clip, curling through the paper as he talked, and pointed on along the
+	# forearms, in at it; straight now, and up, the way anyone holds a sheet
+	# up to read it)
+	f.palm("left", Vector3.RIGHT * -1.0, 0.35, 1.0, true, Vector3.UP)
+	f.palm("right", Vector3.RIGHT, 0.35, 1.0, true, Vector3.UP)
 	f.reach(hold.get_node("L"), hold.get_node("R"), 0.4)
 	f.attach(l, "between", "right", 0.02, 0.0, 0.15)
 
@@ -2909,6 +3104,11 @@ static func _tam_lets_letter_go(w: World, f: Figure3D, l: Node3D) -> void:
 		l.get_parent().remove_child(l)
 
 
+## How far apart Tam and the player stand when the letter changes hands
+## (m, between their middles): held out, it's within the other's reach.
+const LETTER_GAP := 0.82
+
+
 ## "Read Tam's letter. (Tap it.)": the player takes it and it's held up to
 ## the screen; a tap puts it down (still in their hands).
 static func tam_letter_read(w: World) -> void:
@@ -2923,9 +3123,18 @@ static func tam_letter_read(w: World) -> void:
 	var tf = Cine.fig(w, "tam")
 	if pf is Figure3D:
 		var me := pf as Figure3D
+		# a step in to him first, so it's within reach (2 November: the arm
+		# went out straight across the gap to it), and the hand goes only as
+		# far as the arm reaches
+		var mp := w.player.global_position
+		var gap := Vector2(tp.x - mp.x, tp.z - mp.z).length()
+		if gap > LETTER_GAP + 0.05:
+			var near := mp + Vector3(tp.x - mp.x, 0.0, tp.z - mp.z).normalized() * (gap - LETTER_GAP)
+			await Cine.path(w, "player", [near], 0.8)
+			Cine.look(w, "player", tp)
 		var to := Node3D.new()
 		w.add_child(to)
-		to.global_position = l.global_position
+		to.global_position = _hand_can(me, "right", l.global_position)
 		me.reach(null, to, 0.35)
 		await Cine.wait(w, 0.4)
 		if tf is Figure3D:
@@ -2935,6 +3144,10 @@ static func tam_letter_read(w: World) -> void:
 			l.get_parent().remove_child(l)
 		me.carry(l, Vector3(0.0, 1.22, 0.3))
 		l.rotation = Vector3(-0.5, 0.0, 0.0)
+		# (their hands flat to its sides, fingers up: 2 November, the letter
+		# went through them while they talked)
+		me.palm("left", Vector3.RIGHT * -1.0, 0.3, 1.0, true, Vector3(0.0, 0.85, -0.5))
+		me.palm("right", Vector3.RIGHT, 0.3, 1.0, true, Vector3(0.0, 0.85, -0.5))
 		me.reach(l.get_node("L"), l.get_node("R"), 0.3)
 		to.queue_free()
 	Cine.look(w, "player", tp)
@@ -2958,17 +3171,21 @@ static func letter_back(w: World) -> void:
 		var tp := Cine.body(w, "tam").global_position
 		var mp := w.player.global_position
 		var gap := Vector2(tp.x - mp.x, tp.z - mp.z).length()
-		if gap > 1.0:
-			var to := mp + Vector3(tp.x - mp.x, 0.0, tp.z - mp.z).normalized() * (gap - 0.95)
+		if gap > LETTER_GAP + 0.05:
+			var to := mp + Vector3(tp.x - mp.x, 0.0, tp.z - mp.z).normalized() * (gap - LETTER_GAP)
 			await Cine.path(w, "player", [to], 0.8)
 		Cine.look(w, "player", tp)
 		var out := w.create_tween()
-		out.tween_property(l, "position", Vector3(0.0, 1.16, 0.44), 0.45).set_trans(Tween.TRANS_SINE)
+		out.tween_property(l, "position", Vector3(0.0, 1.16, 0.4), 0.45).set_trans(Tween.TRANS_SINE)
 		# his hands to its sides, his left to the side on their right
+		tam.palm("left", Vector3.RIGHT * -1.0, 0.35, 1.0, true, Vector3.UP)
+		tam.palm("right", Vector3.RIGHT, 0.35, 1.0, true, Vector3.UP)
 		tam.reach(l.get_node("R"), l.get_node("L"), 0.45)
 		await out.finished
 		await Cine.wait(w, 0.15)
 		me.let_go(0.35)
+		me.palm("left", Vector3.ZERO, 0.3)
+		me.palm("right", Vector3.ZERO, 0.3)
 	_tam_holds_letter(w, tam, l)
 	await Cine.wait(w, 0.45)
 

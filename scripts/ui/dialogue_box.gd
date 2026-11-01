@@ -149,6 +149,7 @@ func say(speaker: String, portrait: Texture2D, text: String, hold := -1.0) -> vo
 	_portrait.texture = portrait
 	_portrait_frame.visible = portrait != null
 	_text.text = mark_instructions(text)
+	_text.visible = true
 	_text.visible_ratio = 0.0
 	_typing = true
 	_waiting = true
@@ -188,6 +189,7 @@ func bark(speaker: String, portrait: Texture2D, text: String) -> void:
 	_portrait.texture = portrait
 	_portrait_frame.visible = portrait != null
 	_text.text = text
+	_text.visible = true
 	_text.visible_ratio = 0.0
 	modulate.a = 1.0
 	var speed: float = CHARS_PER_SEC * float(Game.settings.get("text_speed", 1.0))
@@ -229,6 +231,10 @@ func choose(options: Array) -> int:
 	_hint.visible = false
 	_text.visible_ratio = 1.0
 	_typing = false
+	# (no line to put them under: the name plate and the face alone)
+	_text.visible = _text.text != ""
+	_name.visible = _name.text != ""
+	_portrait_frame.visible = _portrait.texture != null
 	for c in _choices.get_children():
 		_choices.remove_child(c)   # gone now, so the new first answer is child 0
 		c.queue_free()
@@ -256,6 +262,22 @@ func close() -> void:
 		return   # a passing remark goes by itself
 	visible = false
 	_choices.visible = false
+	# (2 November, Gary: "when you go to talk to someone the last message
+	# from the previous person is still there": a talk that opens with
+	# questions showed them under whatever was last said, by whoever)
+	_text.text = ""
+	_name.text = ""
+	_portrait.texture = null
+
+
+## Who the player is talking to, before they've said anything: their name
+## and face over the questions a talk opens with (World._ask). Only when the
+## box is empty (closed): a line already up keeps its own speaker.
+func plate(speaker: String, portrait: Texture2D) -> void:
+	if visible and _text.text != "":
+		return
+	_name.text = speaker
+	_portrait.texture = portrait
 
 
 func _gui_input(event: InputEvent) -> void:

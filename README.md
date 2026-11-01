@@ -361,8 +361,8 @@ Reactions, Chains and Combos, The gods' grace; and its own riddle):
 
 | Where | What | How |
 | --- | --- | --- |
-| Tam's friendly game | chains, Combo | Tam says it as the player's second card goes down (`spec.teach`, `teach_lines`: a duel that teaches only some lessons, in its own teacher's words); a note after a win |
-| Nell's friendly game | whose ground, Graced | Nell at the first turn: Ashford's Circle is Ellowen's, and the Traveller's Pack is hers; a note after a win |
+| Tam's friendly game | chains, Combo | a memory of Bram as the player's second card goes down (2 November; until then Tam said it in his own words, `spec.teach`, `teach_lines`, gone); a note after a win |
+| Nell's friendly game | whose ground, Graced | a memory of Bram at the first turn, four lines: Ashford's Circle is Ellowen's (2 November; until then Nell's own lesson); a note after a win |
 | Bram's campfire, Dask on the road | families, side by side, Shelter/Rally/Tend, reactions | Bram, the first time each happens (`lessons`); Dask's pack and his steel (Pack Howl, Rend) bark it |
 | Hale at the gate | Shells, Shelter, Solmaris's ground | his Gate Watch stands shoulder to shoulder |
 | Wren | chains | "Quick hands" |
@@ -883,6 +883,40 @@ player, below).
 Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, `BattleScreen`) are only what `Main.run_duel` falls back to for a spec without decks. While a duel is on, the place it was started from is hidden and stopped still (`Main.run_duel` sets the world's `process_mode` to disabled and puts it back after): until 27 October Ashford's whole festival kept running under the first duel, every villager's animation and every script, and on the phone it ran slow and kept freezing (Gary). An empty slot's lamp on the Circle is switched off, not just turned down to nothing (each light costs the phone another pass over the floor).
 
 ## Story mode
+
+**2 November (Gary's playtest notes; `docs/handover/2026-11-02.md` has the
+whole list):** every lesson in every story duel is **a memory of Bram**
+(`DuelTutor`: a box headed A MEMORY OF BRAM with his face, faded a little;
+Bram's hand-over says "all the years I've been teaching you about duels, you
+know how to do them, just remember what I taught you", with no offer to
+coach, and the Lantern Duel's gated steps are reworded as what he taught over
+the years; Tam's and Nell's own lessons are gone, their games teach as the
+rest do (`spec.lessons`, `skills_on` keeps their skills); the first draw from
+an empty deck brings a memory on it (`DuelScreen._fatigue_lesson`, the number
+tagged EMPTY DECK); the first-time lines are fuller). Getting out of bed: the
+blanket hand keeps within the arm's reach (`AshfordP1._hand_can`), the seat
+rises as the legs swing round so the feet clear the rail (`SWING_LIFT`), the
+lift onto the mattress comes in over the blend, and the stretch is a clip of
+its own built from the idle (`Figure3D.stretch`, `STRETCH`), not two IK
+targets. The taproom: "You left the shutter unlatched again, Sprout."; the
+slate prices in coppers; the settle is on the north wall under the notice
+board, not in front of the fire (`InnRooms.EVE_SETTLE_X`); the porridge can
+be eaten first (`AshfordP1._eat`, objective `crate_or_eat`, flag `p1_ate`);
+the kitchen's and the passage's doorways turn the player back with a word
+(`walk_room` "stray_zones", `DOORS_LATER`, `DOORS_FIRST`). The green's life
+starts as the player steps out of the inn, not when the crate's down
+(`AshfordLife` from `_street`). The lanterns are packed inside the crate's
+thick walls (`PACKED_SCALE`, `paper_lantern(size)`). The card box sits on a
+flat hand (`Figure3D.palm(..., flat 1.0)`), and the player takes it in both
+hands from underneath, palms up, the right hand's mark hanging from the box
+(`_first_deck`); `palm()` takes a `fingers` direction, so a hand on the side
+of a thing points its fingers forward or up instead of folding at the wrist
+(Tam's letter, flat fingers up). A talk that opens with questions shows who's
+being talked to over them, not the last line said by whoever was last
+(`DialogueBox.plate`, `close` clears). Normal battle speed is 1.2x
+(`DuelScreen.NORMAL_RATE`). `tests/bed_probe.tscn` prints the rise's numbers;
+`tests/box_hands_peek.gd` and `tests/crate_peek.tscn` take the close-ups;
+`tests/pose_try.gd` tries bone turns.
 
 **1 November (Gary's playtest notes; `docs/handover/2026-11-01.md` has the
 whole list):** Ashford's people never stand frozen (`AshfordLife`, new: Corin
