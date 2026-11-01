@@ -49,6 +49,10 @@ const CAMP_DECK := [
 	{"do": "close"},
 	{"do": "tab:codex"},
 	{"say": "Every card you own goes in here, and every card anybody plays against you. It's short. It won't stay short.", "focus": "codex_grid"},
+	# (1 November, Gary: the skill notes in Ashford said "under Deck" before
+	# the Deck page was there; this is where it opens)
+	{"do": "tab:deck"},
+	{"say": "One more thing on the Deck page: your duel skill, over the cards. Every one you've learned is there: Second Wind, Corin's Showman, and any you won off Tam or Nell. Choose the one that suits the duel."},
 	{"do": "resume"},
 ]
 

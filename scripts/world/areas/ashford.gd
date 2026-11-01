@@ -206,7 +206,7 @@ static func build(root: Node3D) -> void:
 	# the festival reel: its intro once, then the loop (Music.LOOP_START), and
 	# it carries on from where it was when a duel or a scene hands back
 	w.music = ["ashford_festival"]
-	if not Game.flag("ash_marked") and not w.held:
+	if not Game.flag("ash_marked") and not w.held and not quiet_start():
 		Music.play(w.music, 2.0, true)
 	# Bram's stool, Nell's bench, the drum and the Great Lantern's hooks
 	AshfordP1.dress(root as World)
@@ -345,7 +345,7 @@ static func _tam_game() -> Array:
 			"win": [{"set": "beat_tam"}, {"who": "tam", "say": "Ha! Bram's been teaching you more than sums down there."},
 				{"if": "told_loyal_hound", "then": [], "else": [
 					{"set": "told_loyal_hound"},
-					{"say": "[i](You've learned Tam's duel skill, Loyal Hound: the first time one of your Totems would be knocked out, it holds on. Choose your skill in the menu, under Deck.)[/i]"},
+					{"say": "[i](You've learned Tam's duel skill, Loyal Hound: the first time one of your Totems would be knocked out, it holds on. You'll choose which skill to take into a duel in the menu, under Deck, once you have a deck of your own to build: the Deck page opens the night after the festival.)[/i]"},
 				]},
 				{"if": "told_chain", "then": [], "else": [{"if": "learned:chain", "then": [
 					{"set": "told_chain"},
@@ -447,7 +447,7 @@ static func _nell_game() -> Array:
 			"win": [{"set": "beat_nell"}, {"who": "nell", "say": "Hm. Tam owes me a ribbon. I told him you would."},
 				{"if": "told_old_wards", "then": [], "else": [
 					{"set": "told_old_wards"},
-					{"say": "[i](You've learned Nell's duel skill, Old Wards: your first Ward costs no Essence. Choose your skill in the menu, under Deck.)[/i]"},
+					{"say": "[i](You've learned Nell's duel skill, Old Wards: your first Ward costs no Essence. You'll choose which skill to take into a duel in the menu, under Deck, once that page opens, the night after the festival.)[/i]"},
 				]},
 				{"if": "told_ground", "then": [], "else": [{"if": "learned:ground", "then": [
 					{"set": "told_ground"},
@@ -470,7 +470,9 @@ static func _tilly() -> Array:
 				{"set": "tilly_thanks"},
 				# she comes at a run, the moth card held up in both hands; it's grey again
 				{"scene": "tilly_gift"},
-				{"who": "tilly", "say": "It flew! I told everyone and nobody believed me, so I tried to make it fly again and it wouldn't."},
+				# (1 November, Gary: "it flew! I told everyone" needed rewriting)
+				{"who": "tilly", "say": "It flew for you this afternoon! I told everyone, and nobody believed me."},
+				{"who": "tilly", "say": "So I tried and tried to make it fly again, and it wouldn't. Not even a flutter."},
 				{"who": "tilly", "say": "Father says a Spark goes grey for good if it's kept away from the one it likes. So."},
 				# she holds the card out, arms straight, not looking at it
 				{"who": "tilly", "say": "You keep it. I'll come and visit it.", "during": "tilly_hands_over", "at": "You keep it"},
@@ -490,11 +492,17 @@ static func _tilly() -> Array:
 					{"who": "tilly", "say": "Even Tam couldn't summon it, and he calls down a River Hound every morning!"},
 					{"scene": "moth_for_tilly"},
 					{"who": "tilly", "say": "It flew! Why does it only fly for you?"},
-					{"who": "player", "say": "[i]You don't know. Anyone in Ashford can summon a basic Totem, but the magic in this valley has always bent toward you without you even asking.[/i]"},
-					{"who": "player", "say": "[i]A quiet, terrifying habit you've learned to hide.[/i]"},
+					# (1 November, Gary: a thought, not speech: in brackets and
+					# italics; "You don't know. Anyone in Ashford..." read as
+					# "you don't know anyone in Ashford")
+					{"who": "player", "say": "[i](You don't know why. Anyone in Ashford can wake a common Spark, but the magic in this valley has always leaned towards you, without you ever asking.)[/i]"},
+					{"who": "player", "say": "[i](A quiet, frightening habit, and one you learned to hide a long time ago.)[/i]"},
 					{"standing": {"tilly": 1}, "why": "You woke her Lantern Moth."},
-					# (the game's own note says "Tilly will remember that.")
-					{"say": "[i](How people, and later the gods, see you is kept in the menu, under Standing.)[/i]"},
+					# (the game's own note says "Tilly will remember that"; the gods
+					# aren't mentioned here any more: they mean nothing to the
+					# player yet, and Nell's game teaches that the gods keep
+					# score too)
+					{"say": "[i](What people think of you is kept in the menu, under Standing.)[/i]"},
 					{"set": "ash_tilly"},
 				]]},
 			]},
@@ -606,6 +614,7 @@ static func _the_duel() -> Array:
 static func _after_the_duel() -> Array:
 	return [
 		{"set": "ash_won_lantern"},
+		{"scene": "box_away"},
 		{"scene": "after_lantern"},
 		{"who": "corin", "say": "Alright, I yield! You win this year, Sprout. I'll be over by the merchant carts if anyone wants a signed card before I leave for the city!"},
 		{"scene": "corin_off"},
@@ -626,7 +635,7 @@ static func _after_the_duel() -> Array:
 		# duel skills (27 October): the first the player hears of them
 		{"if": "told_skills", "then": [], "else": [
 			{"set": "told_skills"},
-			{"say": "[i](Duel skills: every duellist has one, shown on their plate. It works once a duel, by itself. Yours is Second Wind, and you learn others by beating people at cards. Corin's Showman is yours now. Choose your skill in the menu, under Deck.)[/i]"},
+			{"say": "[i](Duel skills: every duellist has one, shown on their plate. It works once a duel, by itself. Yours is Second Wind, and you learn others by beating people at cards: Corin's Showman is yours now. The menu's Deck page, where you choose your skill, opens once you have a deck of your own to build, the night after the festival. Until then you duel with Second Wind.)[/i]"},
 		]},
 		{"scene": "afternoon"},
 	]
@@ -686,7 +695,13 @@ const TAM_DECK := [
 ]
 ## Nell's: one patient Totem and three Wards, face down till they bite
 ## (until 27 October two Totems and four Wards, against the player's one
-## Totem: a new player never won; now about half the time).
+## Totem: a new player never won; then about half the time, decided by who
+## ran out of cards first). Since 1 November (Gary: "Nell seems unbeatable as
+## getting hurt 30 each turn") her game is a gentle one (FRIENDLY "gentle",
+## DuelGame.friendly): no Life lost to an empty deck until both are empty,
+## then 10 a turn each; no Guard two turns running; and she starts on 50
+## Life to the player's 60. A new player's plain play wins about 4 in 5, in
+## about 15 turns (tests/friendly_sim).
 const NELL_DECK := [
 	"shellguard", "iron_bastion", "essence_flask", "healing_draught", "essence_flask", "ambush_snare",
 	"essence_flask", "healing_draught", "iron_bastion", "travellers_pack", "healing_draught", "essence_flask",
@@ -717,12 +732,19 @@ const FRIENDLY := {
 			"my_lethal": "Go on, then. Finish it.",
 			"rival_falls": "Ha! Good. That's good, Sprout.",
 		}},
-	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards",
+	"nell_friendly": {"name": "Old Nell", "deck": NELL_DECK, "difficulty": 0.3, "skill": "old_wards", "life": 50, "gentle": true,
 		# 28 October (Gary: "all cards linked to a god"): Nell, the oldest
 		# memory in the village, says whose ground the green is
 		"teach": ["ground", "graced", "shunned"], "teacher": "Old Nell", "teacher_look": "nell",
 		"teach_lines": {
-			"ground": "Before you start, love: whose ground this is. Ashford's Circle is Ellowen's, the Lantern Keeper's. It's her festival we're keeping. Every card answers to some god or other, it says which at the foot, and hers do better here: Graced, we say. A Traveller's Pack is hers. It'll cost you less tonight.",
+			# (1 November, Gary: start it with "before we start let me make sure
+			# you understand about different grounds", then explain)
+			"ground": [
+				"Before we start, love, let me make sure you understand about the different grounds. Nobody ever told Bram, and it cost him a good few games.",
+				"Every Circle stands on some god's ground. Ashford's is Ellowen's, the Lantern Keeper's: it's her festival we're keeping tonight.",
+				"Every card answers to a god, too. It says which at the foot of the card. On its own god's ground a card does better than it says: Graced, we call it.",
+				"A Traveller's Pack is one of Ellowen's, so here it'll cost you less. Take a card onto the ground of a god who quarrels with its own, and it does less than it says: Shunned. Look at the foot of a card before you play it.",
+			],
 			"graced": "There, see? Graced. Ellowen's card, on Ellowen's ground. And it's not only the ground: a god that's pleased with you graces its cards wherever you are. One that's cross with you shuns them.",
 			"shunned": "Oh, that one's Shunned, love: its god's not best pleased, or this is its rival's ground. It'll do less than it says. You'll learn which gods quarrel.",
 		},
@@ -807,6 +829,7 @@ static func _friendly_spec(id: String, me: String, arena: String) -> Dictionary:
 		"difficulty": float(f.difficulty),
 		"arena": arena,
 		"life": FRIENDLY_LIFE,
+		"lives": [FRIENDLY_LIFE, int(f.get("life", FRIENDLY_LIFE))],
 		"story": true,
 		"stacked": [true, true],
 		"rival_skill": String(f.get("skill", "")),
@@ -819,6 +842,10 @@ static func _friendly_spec(id: String, me: String, arena: String) -> Dictionary:
 		"rewards": {"opponent": "village"},
 		"practice": true,
 		"practice_line": "A friendly game: no experience is won or lost.",
+		# (1 November, Gary: "Nell seems unbeatable as getting hurt 30 each
+		# turn": Nell's game is played gently, DuelGame.friendly: no Life
+		# lost to an empty deck, no Guard two turns running)
+		"friendly": bool(f.get("gentle", false)),
 	}
 
 
@@ -842,6 +869,8 @@ static func scene(name: String, w: World) -> void:
 			await _box_out_scene(w)
 		"first_deck":
 			await _first_deck(w)
+		"box_away":
+			_box_away(w)
 		"coach_on":
 			Game.set_flag("coach_off", false)
 		"tilly_gift":
@@ -868,6 +897,17 @@ static func scene(name: String, w: World) -> void:
 static func in_opening() -> bool:
 	var s := String(Game.flag("p1_stage", ""))
 	return s != "" and s != "done" and not Game.flag("ash_started")
+
+
+## The game starts in the attic with Morrowen's voice over the night sky
+## (1 November, Gary: "don't have the Ashford background music going while
+## she is talking"): the village's music waits until the dream is over
+## (AshfordP1._attic starts it as he wakes).
+static func quiet_start() -> bool:
+	if Game.flag("arrived_ashford") or Game.flag("ash_started"):
+		return false
+	var s := String(Game.flag("p1_stage", ""))
+	return (s == "" or s == "attic") and AshfordP1.DREAM_SECS > 0.0
 
 
 ## Coming back to a Prologue film part-way through, or into the opening
@@ -1637,14 +1677,29 @@ static func _first_deck(w: World) -> void:
 		# to open it (29 October, Gary: "his hands are in the way when he
 		# opens it"): the box down onto the flat of the left hand, the right
 		# hand to the front of the lid, lifting it as it swings up on its
-		# hinge, and a close shot from in front and above, looking into it
-		var under := Node3D.new()
-		under.name = "Under"
-		grip.add_child(under)
-		under.position = Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01)
+		# hinge, and a close shot from in front and above, looking into it.
+		# (1 November, Gary: "players hand goes through it": each hand went
+		# to its next place in a straight line, the left from the box's side
+		# to under it and the right from its side to the lid's front edge,
+		# both through the box. Now the box rests in the grip while the left
+		# hand goes out, down and in under it, and the right goes up over the
+		# side, then along to the lid's edge.)
+		me.detach(box)
+		box.reparent(grip, true)
+		var lh := Node3D.new()
+		lh.name = "LeftWay"
+		grip.add_child(lh)
+		lh.position = (grip.get_node("L") as Node3D).position
+		var under_at := Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01)
 		me.palm("left", Vector3.UP, 0.35)
-		me.reach(under, grip.get_node("R"), 0.35)
-		await Cine.wait(w, 0.2)
+		me.reach(lh, grip.get_node("R"), 0.15)
+		var half := CARD_BOX_SIZE.x * 0.5
+		var round_under := w.create_tween()
+		round_under.tween_property(lh, "position", Vector3(half + 0.07, -CARD_BOX_SIZE.y * 0.6, 0.01), 0.22).set_trans(Tween.TRANS_SINE)
+		round_under.tween_property(lh, "position", Vector3(half * 0.4, -CARD_BOX_SIZE.y * 0.5 - 0.06, 0.01), 0.16).set_trans(Tween.TRANS_SINE)
+		round_under.tween_property(lh, "position", under_at, 0.14).set_trans(Tween.TRANS_SINE)
+		await round_under.finished
+		box.reparent(w, true)
 		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 - 0.006)
 		_into_box_shot(w, box)
 		var lid := box.get_node_or_null("Lid") as Node3D
@@ -1656,12 +1711,32 @@ static func _first_deck(w: World) -> void:
 		edge.position = Vector3(0.0, CARD_BOX_SIZE.y * 0.5 + 0.01, CARD_BOX_SIZE.z * 0.5)
 		if lid != null:
 			edge.reparent(lid, true)
+		# the right hand up off the box's side, over its top and along to the
+		# lid's front edge
+		var rh := Node3D.new()
+		rh.name = "RightWay"
+		w.add_child(rh)
+		rh.global_position = (grip.get_node("R") as Node3D).global_position
+		me.reach(lh, rh, 0.1)
+		var side_up := box.to_global(Vector3(-half - 0.05, CARD_BOX_SIZE.y * 0.5 + 0.07, 0.0))
+		var over_edge := edge.global_position + Vector3(0, 0.06, 0)
 		me.palm("right", Vector3.DOWN, 0.3, 0.3)
-		me.reach(under, edge, 0.35)
-		await Cine.wait(w, 0.4)
+		var round_over := w.create_tween()
+		round_over.tween_property(rh, "global_position", side_up, 0.2).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", edge.global_position, 0.12).set_trans(Tween.TRANS_SINE)
+		await round_over.finished
+		me.reach(lh, edge, 0.08)
+		rh.queue_free()
+		await Cine.wait(w, 0.15)
 		# the lid up, and the deck comes out of it
 		await open_box_lid(w, box, true, 0.6)
-		me.reach(under, null, 0.35)
+		var away := Node3D.new()
+		away.name = "RightAway"
+		w.add_child(away)
+		away.global_position = edge.global_position + Vector3(0, 0.12, 0)
+		me.reach(lh, away, 0.3)
+		w.set_meta("box_right_away", away)
 		me.palm("right", Vector3.ZERO, 0.35)
 		await Cine.wait(w, 0.35)
 	else:
@@ -1672,10 +1747,56 @@ static func _first_deck(w: World) -> void:
 	await Cine.wait(w, 0.6)
 	await Cine.reveal(w, PLAYER_DECK, "YOUR FIRST DECK", "Bram's Spark deck · twelve cards")
 	_give_first_deck()
+	# (1 November, Gary: the box "disappears while text is still going on",
+	# and the camera stayed on the close shot of the empty hands through
+	# Bram's next lines): the lid shut, the box kept on the flat of the left
+	# hand, held at the waist, the right hand down, and back to the two of
+	# them. It goes into their pack when the duel starts (_box_away).
+	if box != null and is_instance_valid(box):
+		await open_box_lid(w, box, false, 0.35)
+	if w.has_meta("box_right_away"):
+		var ra = w.get_meta("box_right_away")
+		if ra != null and is_instance_valid(ra):
+			(ra as Node).queue_free()
+		w.remove_meta("box_right_away")
 	if pf is Figure3D:
-		(pf as Figure3D).release()
-	_drop_box(w, "player")
-	await Cine.wait(w, 0.3)
+		var me2 := pf as Figure3D
+		var gw = AshfordP1.meta(w, "box_grip_player")
+		var lh2: Node3D = (gw as Node3D).get_node_or_null("LeftWay") if gw != null and is_instance_valid(gw) else null
+		if lh2 != null:
+			me2.reach(lh2, null, 0.4)
+			me2.palm("right", Vector3.ZERO, 0.3)
+			var low := w.create_tween()
+			low.tween_property(gw, "position", me2.hold_point(0.36, 0.8), 0.5).set_trans(Tween.TRANS_SINE)
+	_two_shot_after_box(w)
+	await Cine.wait(w, 0.4)
+
+
+## Back to the two of them, Bram and the player, after the close shot into
+## the box (the lines that follow are spoken in it).
+static func _two_shot_after_box(w: World) -> void:
+	var bb := Cine.body(w, "bram")
+	if bb == null:
+		return
+	var p := w.player.global_position
+	var stop := bb.global_position
+	var mid := (p + stop) * 0.5
+	var d := stop - p
+	d.y = 0.0
+	var perp := d.normalized().cross(Vector3.UP)
+	var look := mid + Vector3(0, 1.3, 0)
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + perp * 2.8 + Vector3(0, 1.6, 0), mid - perp * 2.8 + Vector3(0, 1.6, 0),
+		mid + perp * 2.4 + Vector3(0, 2.2, 0), mid - perp * 2.4 + Vector3(0, 2.2, 0)], look, ["player", "bram"]), look, 36.0)
+
+
+## The card box goes into the player's pack as the duel starts (off the
+## screen then): their hands come free.
+static func _box_away(w: World) -> void:
+	if w.has_meta("box_player") or w.has_meta("box_grip_player"):
+		_drop_box(w, "player")
+		var pf = Cine.fig(w, "player")
+		if pf is Figure3D:
+			(pf as Figure3D).release(0.0)
 
 
 ## A close shot of the box in the player's hands as they open it: from
@@ -2121,24 +2242,27 @@ static func _midnight(w: World) -> void:
 static func _midnight_3d(w: World) -> void:
 	var v := village(w)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
-	# the bell, and everyone waiting under the Lantern
-	Cine.shot(w, Vector3(3.2, 1.0, 12.5), top * 0.55, 34.0)
-	Cine.fade(w, 0.0, 1.2)
-	Cine.drift(w, Vector3(3.2, 1.0, 12.5), Vector3(2.2, 1.3, 10.0), top * 0.55, top * 0.62, 7.0)
-	_bell(w, 12)
-	await Cine.say(w, "", "Midnight. The chapel bell counts twelve, and all of Ashford counts with it.")
-	await Cine.wait(w, 1.0)
-	# you walk up with a lit taper and light it (the Lantern Duel can't be lost)
+	# (1 November, Gary: "make the movie start from the lantern lighting"):
+	# it opens on the taper at the Lantern's steps, the bell counting twelve
+	# over it, rather than on the crowd waiting and the long walk up to it.
+	# You light it (the Lantern Duel can't be lost).
 	var lighter := "player"
 	var at: Vector3 = Vector3(-0.3, 0, 1.85)
+	at.y = v.height(at.x, at.z)
+	Cine.place(w, lighter, at, Vector3(0, at.y, 0))
 	var taper := _taper(v)
 	_hold(w, lighter, taper)
-	# from the west side of the green: you walk up to the Lantern's steps
-	Cine.shot(w, Vector3(-3.6, 1.35, 2.6), Vector3(-0.4, 1.3, 2.8), 40.0)
-	await Cine.walk(w, lighter, at, 1.2)
-	Cine.look(w, lighter, Vector3.ZERO)
-	Cine.shot(w, at + Vector3(1.2, 0.5, 2.0), top - Vector3(0, 1.2, 0), 46.0)
 	var lf = Cine.fig(w, lighter)
+	# low beside them, the taper's flame and their face, the Lantern's hood
+	# high over them
+	var face := at + Vector3(0, 1.55, 0)
+	Cine.shot(w, at + Vector3(1.05, 1.05, 1.35), face + Vector3(0, 0.25, 0), 40.0)
+	Cine.fade(w, 0.0, 1.0)
+	_bell(w, 12)
+	if lf is Figure3D:
+		(lf as Figure3D).pose("play_card", 0.3, 0.8)
+	Cine.drift(w, at + Vector3(1.05, 1.05, 1.35), at + Vector3(0.7, 0.8, 1.6), face + Vector3(0, 0.25, 0), top - Vector3(0, 0.9, 0), 6.0, 42.0)
+	await Cine.say(w, "", "Midnight. The chapel bell counts twelve, and all of Ashford counts with it.")
 	if lf is Figure3D:
 		(lf as Figure3D).act("play_card", 0.8)
 	await Cine.wait(w, 0.9)
@@ -2215,8 +2339,32 @@ static func _midnight_3d(w: World) -> void:
 	# from under the Lantern, their faces turned up to the sky
 	Cine.shot(w, Vector3(-0.5, 0.95, 1.7), Vector3(-0.6, 1.75, 4.6), 44.0)
 	await Cine.wait(w, 1.8)
+	# the lanterns hang dead still in the sky; no wind moves them. Then a
+	# hairline of light runs across the stars (1 November, Gary: Corin
+	# asked "is it meant to do that?" before anything had happened: the
+	# lanterns had only stopped, too far up to see)
 	Cine.shot(w, Vector3(4.0, 1.2, 8.8), Vector3(8.0, 40.0, -30.0), 50.0)
-	await Cine.wait(w, 2.2)
+	await Cine.wait(w, 1.4)
+	Cine.drift(w, Vector3(4.0, 1.2, 8.8), Vector3(4.6, 1.3, 9.6), Vector3(14.0, 30.0, -34.0), Vector3(30.0, 24.0, -40.0), 3.6, 48.0)
+	v.tear_target = 0.14
+	_sfx(w, "sigil_strike", 0.45)
+	w.shake(0.08)
+	await Cine.wait(w, 2.4)
+	# his face, from in front and a little below, the sky behind the camera
+	# lighting it (from fixed sides of him the shot could fall behind his
+	# head)
+	var corin_face := Cine.head(w, "corin")
+	var face_cams: Array = []
+	var cfig = Cine.fig(w, "corin")
+	if cfig is Figure3D:
+		var cf := cfig as Figure3D
+		var hy := corin_face.y - cf.global_position.y
+		for x in [0.45, -0.45, 0.85, -0.85]:
+			face_cams.append(cf.to_world(Vector3(x, hy - 0.4, 1.3)))
+	face_cams += [corin_face + Vector3(1.1, -0.35, 1.2), corin_face + Vector3(-1.1, -0.35, 1.2),
+		corin_face + Vector3(1.2, -0.3, -1.1), corin_face + Vector3(-1.2, -0.3, -1.1)]
+	Cine.shot(w, AshfordP1.clear_cam(w, face_cams, corin_face, ["corin", "player", "bram", "tilly"]),
+		corin_face + Vector3(0, 0.1, 0), 34.0)
 	await Cine.say(w, "corin", "Bram. Is it meant to do that?")
 	# the sky tears
 	Cine.shot(w, Vector3(6.0, 3.0, 20.0), Vector3(34.0, 22.0, -40.0), 50.0)
@@ -2698,10 +2846,21 @@ static func _the_white_light(w: World) -> void:
 	var mb := (bram.global_position + p) * 0.5
 	Cine.shot(w, mb + open * 2.8 + along * 0.6 + Vector3(0, 1.55, 0), mb + Vector3(0, 1.35, 0), 32.0)
 	var bfig = Cine.fig(w, "bram")
+	# his coat off his back and round your shoulders, his hands on them a
+	# moment, then his left hand down over your right
 	var coat := _bram_coat(v)
-	coat.global_position = Cine.head(w, "player") + Vector3(0, 0.5, 0)
+	coat.visible = false
+	if bfig is Figure3D and pf is Figure3D:
+		var sl := _shoulder_point(w, "player", bram.global_position)
+		(bfig as Figure3D).reach(null, sl, 0.35)
+		await Cine.wait(w, 0.3)
+		_free_tracker(sl)
+	_coat_on(w, "player", coat)
+	coat.visible = true
+	var drape := coat.scale
+	coat.scale = drape * Vector3(1.12, 0.9, 1.12)
 	var ct := w.create_tween()
-	ct.tween_property(coat, "global_position", Cine.head(w, "player") - Vector3(0, 0.45, 0), 0.45).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	ct.tween_property(coat, "scale", drape, 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if bfig is Figure3D:
 		(bfig as Figure3D).reach(holder, null, 0.6)   # his left hand, over your right
 	await Cine.say(w, "bram", "Close your fist. Don't look at it. Hide it. Now.")
@@ -2732,25 +2891,89 @@ static func _the_white_light(w: World) -> void:
 	await Cine.say(w, "", "[i](The white card is in your Items. It can't be played, and it can't be put down.)[/i]")
 
 
-## Bram's heavy wool coat, thrown over the player at midnight (a plain
-## drape until there's a model for it).
+## Bram's heavy wool coat, thrown round the player's shoulders at midnight.
+## (1 November, Gary: "when Bram says close your fist the player deforms with
+## something around it": it was a plain cone of cloth dropped over the
+## player's head from above, like a lampshade, and it hid the arms that
+## reach out of it for the card.) Now a coat: worn brown wool hanging from
+## the shoulders to the knee in folds, open at the front where the arms come
+## out, a turned-down collar at the neck. Its origin is the middle of the
+## shoulders; put it on with _coat_on, which sits it on the chest bone so it
+## goes where they go.
 static func _bram_coat(v: AshfordVillage) -> Node3D:
 	var c := Node3D.new()
 	c.name = "BramsCoat"
 	v.add_child(c)
 	var wool := StandardMaterial3D.new()
-	wool.albedo_color = Color(0.26, 0.2, 0.16)
+	wool.albedo_color = Color(0.27, 0.2, 0.15)
 	wool.roughness = 1.0
+	wool.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var lining := StandardMaterial3D.new()
+	lining.albedo_color = Color(0.36, 0.14, 0.1)
+	lining.roughness = 0.9
+	# rings from the shoulders down: [y, half width, half depth]
+	var rings := [[0.06, 0.13, 0.1], [0.0, 0.24, 0.15], [-0.08, 0.27, 0.17], [-0.3, 0.27, 0.18], [-0.55, 0.3, 0.21], [-0.8, 0.33, 0.24], [-0.95, 0.35, 0.26]]
+	var seg := 26
+	var open := 0.62   # the opening at the front (radians each side of ahead)
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var pt := func(ri: int, k: int) -> Vector3:
+		var r: Array = rings[ri]
+		var a := open + (TAU - 2.0 * open) * float(k) / seg
+		# folds, deeper towards the hem
+		var fold := 1.0 + 0.06 * sin(a * 9.0 + ri) * clampf(-float(r[0]) * 1.4, 0.0, 1.0)
+		return Vector3(sin(a) * float(r[1]) * fold, float(r[0]), cos(a) * float(r[2]) * fold)
+	for ri in rings.size() - 1:
+		for k in seg:
+			var a0: Vector3 = pt.call(ri, k)
+			var a1: Vector3 = pt.call(ri, k + 1)
+			var b0: Vector3 = pt.call(ri + 1, k)
+			var b1: Vector3 = pt.call(ri + 1, k + 1)
+			var u0 := float(k) / seg
+			var u1 := float(k + 1) / seg
+			var v0 := float(ri) / (rings.size() - 1)
+			var v1 := float(ri + 1) / (rings.size() - 1)
+			for tri in [[a0, Vector2(u0, v0), b0, Vector2(u0, v1), a1, Vector2(u1, v0)], [a1, Vector2(u1, v0), b0, Vector2(u0, v1), b1, Vector2(u1, v1)]]:
+				st.set_uv(tri[1]); st.add_vertex(tri[0])
+				st.set_uv(tri[3]); st.add_vertex(tri[2])
+				st.set_uv(tri[5]); st.add_vertex(tri[4])
+	st.generate_normals()
 	var m := MeshInstance3D.new()
-	var cm := CylinderMesh.new()
-	cm.top_radius = 0.22
-	cm.bottom_radius = 0.42
-	cm.height = 0.9
-	cm.radial_segments = 14
-	m.mesh = cm
+	m.mesh = st.commit()
 	m.material_override = wool
 	c.add_child(m)
+	# the collar, turned down round the back of the neck
+	var collar := MeshInstance3D.new()
+	var cm := CylinderMesh.new()
+	cm.top_radius = 0.12
+	cm.bottom_radius = 0.17
+	cm.height = 0.07
+	cm.radial_segments = 16
+	cm.cap_top = false
+	cm.cap_bottom = false
+	collar.mesh = cm
+	collar.material_override = lining
+	collar.position = Vector3(0, 0.07, -0.02)
+	collar.scale = Vector3(1.0, 1.0, 0.75)
+	c.add_child(collar)
 	return c
+
+
+## The coat round someone's shoulders, on their chest bone (Spine2), so it
+## moves with them; falls back to their body if there's no such bone.
+static func _coat_on(w: World, who: String, coat: Node3D) -> void:
+	var f = Cine.fig(w, who)
+	if f is Figure3D:
+		var fig := f as Figure3D
+		var at := Vector3(0, 0.13 * fig.stature(), -0.02)
+		var ba := AshfordP1.attach(fig, "Spine2", coat, at, Vector3.ZERO)
+		if ba != null:
+			coat.scale = Vector3.ONE * fig.stature()
+			return
+	var b := Cine.body(w, who)
+	if b != null:
+		coat.reparent(b, false)
+		coat.position = Vector3(0, 1.42, 0)
 
 
 # ------------------------------------------------------- P3 · dawn ---
@@ -2874,35 +3097,84 @@ static func _herald_3d(w: World) -> Dictionary:
 	# the temperature drops; there is no sound of arrival. It is simply,
 	# suddenly there, hovering inches above the crushed grass: a towering,
 	# shifting mass of grey burial cloth and rusted iron chains (v7)
+	# (1 November, Gary: "the Herald moving also needs reanimating so it
+	# looks like a movie": it had simply appeared, faded in on its mark.)
+	# Now the cold comes first: the mist rolls down the road from the east
+	# against the wind, the grass bowing and the lanterns guttering; heads
+	# turn to it one by one; the Herald comes out of it, hovering over the
+	# road, chains dragging, and glides down past the last cottages to its
+	# mark, the village going down on its knees as it passes, Bram's hand
+	# bringing the player down with him.
 	var herald := PaleHerald.new()
 	herald.name = "PaleHerald"
 	herald.form = "shroud"
 	w.add_child(herald)
 	Cine.call_by(w, "herald", "The Pale Herald")
-	var hat := HERALD_AT
-	hat.y = v.height(hat.x, hat.z)
-	herald.global_position = hat
-	herald.snap_dir(Vector3(-1, 0, -0.15))
+	var road: Array = []
+	for rp in HERALD_ROAD:
+		var q: Vector3 = rp
+		q.y = v.height(q.x, q.z)
+		road.append(q)
+	var hat: Vector3 = road[road.size() - 1]
+	herald.global_position = road[1]
+	herald.snap_dir((road[2] as Vector3) - (road[1] as Vector3))
 	herald.fade = 0.0
 	var mist := _mist_bank(v, herald)
-	# the village in a wide, terrified ring, and Bram's hand on your shoulder
 	var shoulder := _shoulder_point(w, "player")
 	var bf = Cine.fig(w, "bram")
 	var pp := w.player.global_position
-	Cine.shot(w, Vector3(5.6, 1.5, 11.2), Vector3(-1.0, 0.9, 11.6), 44.0)
-	await Cine.wait(w, 1.2)
-	for who in ["bram", "corin", "player", "nell", "tam", "hob", "tilly", "kid", "ned"]:
-		Cine.look(w, who, HERALD_AT)
+	# the cold: the green from the west, everyone still, breath showing
+	Cine.drift(w, Vector3(-4.0, 1.5, 13.6), Vector3(-3.4, 1.55, 13.0), Vector3(4.0, 1.2, 11.6), Vector3(6.0, 1.3, 12.2), 3.4, 44.0)
+	await Cine.wait(w, 1.0)
+	# heads turn to the road, one after another
+	for who in ["hob", "tam", "nell", "corin", "bram", "player", "tilly", "kid", "ned"]:
+		Cine.look(w, who, road[1])
+		await Cine.wait(w, 0.18)
+	await Cine.wait(w, 1.0)
+	# down the road from behind them, long: the mist coming, the shape in it
+	var road_cam := Vector3(4.6, 1.75, 12.4)
+	var walk := _herald_walk(w, herald, road.slice(1), 1.25)
 	var appear := w.create_tween()
-	appear.tween_property(herald, "fade", 1.0, 0.25)
+	appear.tween_property(herald, "fade", 1.0, 3.0)
 	_sfx(w, "ward_set", 0.5)
-	w.shake(0.08)
-	Cine.shot(w, HERALD_AT + Vector3(-5.5, 1.0, 3.5), HERALD_AT + Vector3(0, 2.4, 0), 40.0)
-	await Cine.wait(w, 1.8)
-	Cine.shot(w, pp + Vector3(2.4, 1.15, -0.6), pp + Vector3(0.0, 1.05, 0.35), 34.0)
+	Cine.drift(w, road_cam, road_cam + Vector3(0.6, -0.15, 0.2), (road[1] as Vector3) + Vector3(0, 2.0, 0), (road[2] as Vector3) + Vector3(0, 2.1, 0), 6.0, 30.0)
+	await Cine.wait(w, 5.2)
+	# low by the last cottage as it passes, its chains dragging on the road
+	var low := (road[2] as Vector3) + Vector3(-1.8, 0.45, 3.2)
+	var watch := [true]
+	var cam_watch := func() -> void:
+		var tok := Cine.take_camera(w)
+		w.cam.global_position = low
+		w.cam.fov = 36.0
+		while watch[0] and is_instance_valid(herald) and Cine.has_camera(w, tok):
+			w.cam.look_at(herald.global_position + Vector3(0, 1.7, 0), Vector3.UP)
+			await w.get_tree().process_frame
+	cam_watch.call()
+	await Cine.wait(w, 3.0)
+	watch[0] = false
+	# the village goes down on its knees as it comes past them
+	Cine.drift(w, Vector3(3.6, 1.4, 8.4), Vector3(3.2, 1.45, 8.9), Vector3(-1.0, 0.9, 11.4), Vector3(-0.6, 0.85, 11.6), 4.5, 42.0)
+	for who in ["hob", "tam", "ned", "nell", "corin", "tilly", "kid"]:
+		Cine.look(w, who, herald.global_position)
+		_kneel(w, who, 0.7)
+		await Cine.wait(w, 0.32)
+	for k in 30:
+		if not is_instance_valid(walk) or walk.has_meta("done"):
+			break
+		await Cine.wait(w, 0.15)
+	if is_instance_valid(herald):
+		herald.global_position = hat
+		herald.look_dir(Vector3(-1, 0, -0.15))
+	for who in ["bram", "corin", "player", "nell", "tam", "hob", "tilly", "kid", "ned"]:
+		Cine.look(w, who, hat)
+	# Bram's hand on your shoulder, and the two of you go down together
+	Cine.drift(w, pp + Vector3(2.4, 1.15, -0.6), pp + Vector3(2.2, 0.95, -0.5), pp + Vector3(0.0, 1.05, 0.35), pp + Vector3(0.0, 0.8, 0.35), 2.0, 34.0)
 	if bf is Figure3D:
 		(bf as Figure3D).reach(shoulder, null, 0.5)   # his left hand, on your right shoulder
-	await Cine.wait(w, 0.6)
+	await Cine.wait(w, 0.5)
+	_kneel(w, "bram", 0.8)
+	_kneel(w, "player", 0.9)
+	await Cine.wait(w, 0.8)
 	await Cine.say(w, "bram", "A Pale Herald. Morrowen's own. Head down. Hand in your pocket.")
 	# the Covenant
 	Cine.shot(w, HERALD_AT + Vector3(-3.6, 0.9, 2.4), herald.hood_pos() + Vector3(0, -0.15, 0), 36.0)
@@ -2924,12 +3196,13 @@ static func _herald_3d(w: World) -> Dictionary:
 	await _vision_out(w, cv)
 	# then the other five, too quick to hold; the camera on Ashford's faces
 	# (at face height: at 0.85 m they showed chests and legs)
+	# (1 November: they're on their knees now, faces a good half metre lower)
 	var faces := [
 		[Vector3(-4.0, 1.7, 15.6), Vector3(4.0, 2.6, 12.0)],
-		[DAWN.nell + Vector3(1.6, 1.5, -1.3), DAWN.nell + Vector3(0.0, 1.42, 0.0)],
-		[DAWN.tam + Vector3(1.8, 1.6, -1.1), DAWN.tam + Vector3(0.0, 1.55, 0.0)],
-		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 1.6, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 1.5, 0)],
-		[DAWN.hob + Vector3(2.0, 1.65, -1.0), DAWN.hob + Vector3(0.0, 1.6, 0.0)],
+		[DAWN.nell + Vector3(1.6, 1.05, -1.3), DAWN.nell + Vector3(0.0, 0.97, 0.0)],
+		[DAWN.tam + Vector3(1.8, 1.15, -1.1), DAWN.tam + Vector3(0.0, 1.1, 0.0)],
+		[(DAWN.corin + DAWN.player) * 0.5 + Vector3(2.06, 1.15, -0.94), (DAWN.corin + DAWN.player) * 0.5 + Vector3(0, 1.05, 0)],
+		[DAWN.hob + Vector3(2.0, 1.2, -1.0), DAWN.hob + Vector3(0.0, 1.15, 0.0)],
 	]
 	var flick := Cine.light(w, HERALD_AT + Vector3(-2.0, 3.0, 0.0), Color(0.8, 0.86, 1.0), 0.0, 22.0)
 	for i in 5:
@@ -2963,7 +3236,7 @@ static func _herald_3d(w: World) -> Dictionary:
 	bl.omni_range = 9.0
 	blaze.add_child(bl)
 	w.player.add_child(blaze)
-	blaze.position = Vector3(0.1, 1.35, 0.15)
+	blaze.position = Vector3(0.1, 0.95, 0.15)   # (on their knees)
 	_sfx(w, "gift")
 	await w.flash(Color(0.9, 0.95, 1.0), 0.05, 0.9)
 	w.shake(0.2)
@@ -2999,25 +3272,37 @@ static func _herald_3d(w: World) -> Dictionary:
 	var tf = Cine.fig(w, "tam")
 	if tf is Figure3D:
 		(tf as Figure3D).pose("defeat", 0.3, 0.6)
+	# up off their knees, slowly, and back: each away from the player along
+	# their own line, one after another, so nobody walks into anybody (1
+	# November, Gary: "characters going through each other and items"),
+	# each walk finding its way round what's solid and who's standing
+	for who in ["bram", "player"]:
+		_stand(w, who, 0.6)
 	var away := func(who: String, by: float) -> void:
 		var b := Cine.body(w, who)
 		if b == null:
 			return
+		_stand(w, who, 0.5)
+		await Cine.wait(w, 0.45)
 		var d := b.global_position - p
 		d.y = 0.0
-		Cine.path(w, who, [b.global_position + d.normalized() * by], 0.9)
-	away.call("nell", 1.6)
-	away.call("tilly", 1.8)
-	away.call("hob", 1.4)
-	away.call("ned", 1.4)
-	away.call("kid", 1.6)
-	await Cine.wait(w, 1.8)
-	# Bram steps firmly into the empty space between you and the village
+		var to := Cine.off_blockers(w, b.global_position + d.normalized() * by)
+		Cine.path(w, who, [to], 0.9)
+	for d in [["corin", 0.0], ["tam", 0.0], ["nell", 1.6], ["tilly", 1.8], ["hob", 1.4], ["ned", 1.4], ["kid", 1.6]]:
+		if float(d[1]) > 0.0:
+			away.call(String(d[0]), float(d[1]))
+		else:
+			_stand(w, String(d[0]), 0.6)
+		await Cine.wait(w, 0.22)
+	await Cine.wait(w, 1.4)
+	# Bram steps firmly into the empty space between you and the village: a
+	# step out to the side of you first (he stood at your shoulder), then in
 	var bp := Cine.body(w, "bram").global_position
 	var village_dir := (Cine.body(w, "nell").global_position - p)
 	village_dir.y = 0.0
 	var between := p + village_dir.normalized() * 1.1
-	await Cine.path(w, "bram", [between], 1.3)
+	var aside := p + (bp - p).normalized() * 0.9
+	await Cine.path(w, "bram", [aside, between], 1.3)
 	Cine.look(w, "bram", Cine.body(w, "nell").global_position)
 	Cine.shot(w, p - village_dir.normalized() * 2.6 + village_dir.normalized().cross(Vector3.UP) * 1.2 + Vector3(0, 1.6, 0), between + Vector3(0, 1.3, 0), 38.0)
 	await Cine.wait(w, 1.4)

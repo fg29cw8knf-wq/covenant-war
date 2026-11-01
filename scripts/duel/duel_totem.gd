@@ -37,6 +37,7 @@ var attacked := false          # this turn
 ## its owner's Main phase, back to Strike at their next turn.
 var stance := "strike"
 var stance_turn := -1          # the game turn its stance was set on (one stance a turn)
+var guard_turn := -99          # the game turn it last took a Guard stance (a friendly game allows no two running)
 ## Phase C: what a Totem is beyond its card.
 var bond: Dictionary = {}      # the bond it's in while its partner stands beside it (DuelCards.BONDS), else {}
 var relic: DuelCard = null     # the Relic it carries (one each); lost when it falls

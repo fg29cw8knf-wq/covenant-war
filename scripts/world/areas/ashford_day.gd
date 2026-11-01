@@ -50,9 +50,12 @@ const FESTIVAL := "Explore Ashford and help prepare for the festival.\nOptional:
 ## on the screen (WorldHUD.set_way: the signpost at the lane's mouth, then
 ## the field gate once they're in the lane).
 const FESTIVAL_TAM := "Explore Ashford and help prepare for the festival.\nFind Tam at his mill. (Follow the arrow, or the light: the lane by the signpost, east of the green.)\nOptional: challenge villagers to friendly card duels."
-const EVENING_CORIN := "Enjoy the festival. Meet Bram at the Great Lantern before midnight.\nCorin's gone off on his own, down by the mill race. (Follow the arrow, or the light: the lane by the signpost, east of the green.)"
-const SUN_GOING := "The sun's going down. Find Bram at the Great Lantern."
-const EVENING := "Enjoy the festival. Meet Bram at the Great Lantern before midnight."
+## (1 November, Gary: "it says find Bram at the green lantern but he's still
+## sat next to the pole": the Great Lantern is the pole, and Bram is on his
+## stool beside it; the words say so now, and the arrow points at him)
+const EVENING_CORIN := "Enjoy the festival. Before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green).\nCorin's gone off on his own, down by the mill race. (Follow the arrow, or the light: the lane by the signpost, east of the green.)"
+const SUN_GOING := "The sun's going down. Go back to Bram, on his stool by the Great Lantern (the tall lantern pole in the middle of the green)."
+const EVENING := "Enjoy the festival. Before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green)."
 
 
 static func village(w: World) -> AshfordVillage:
@@ -150,13 +153,23 @@ static func stage(w: World) -> void:
 static func show_way(w: World) -> void:
 	if w == null or w.hud == null:
 		return
-	if not lane_wanted() or Game.flag("ash_lantern_duel"):
+	if Game.flag("ash_lantern_duel"):
 		w.hud.set_way(null, null)
 		return
 	var v := village(w)
 	var p := w.player.global_position if w.player != null else Vector3.ZERO
 	if at_mill(p):
 		w.hud.set_way(null, null)
+		return
+	if not lane_wanted():
+		# the afternoon's jobs done, or the evening with nobody down the lane:
+		# the arrow is on Bram, on his stool by the Great Lantern
+		var bb := Cine.body(w, "bram")
+		var to_bram := (phase() == "afternoon" and jobs_done()) or phase() == "evening"
+		if to_bram and bb != null and not at_mill(bb.global_position) and _flat(p, bb.global_position) > 3.0:
+			w.hud.set_way(w.cam, bb.global_position + Vector3(0, 0.2, 0), "Bram")
+		else:
+			w.hud.set_way(null, null)
 		return
 	var mouth := LANE_MOUTH
 	mouth.y = v.height(mouth.x, mouth.z)
@@ -348,6 +361,8 @@ static func watch(w: World) -> void:
 	if w.has_meta("day_watch"):
 		return
 	w.set_meta("day_watch", true)
+	# (1 November) the people on the green get on with their afternoon
+	AshfordLife.start(w)
 	await _watching(w)
 	# (midnight, or the village left: the way to the mill goes)
 	if is_instance_valid(w) and w.hud != null:
@@ -426,17 +441,65 @@ static func after_lantern(w: World) -> void:
 
 ## Corin wades off into the crowd towards the merchant carts, still
 ## complaining about losing (Gary's direction, 24 October).
+##
+## (1 November, Gary: "Corin's message about the wind should be him
+## shouting it to everyone, not saying it, and his body should look like
+## he's shouting it"; and the line "gets skipped really quickly": it was a
+## passing remark that went by itself after a second and a half.) He gets a
+## few strides off, stops, turns to the whole green, hands cupped round his
+## mouth, and bellows it; the line waits for a tap like any other; then off
+## he goes to the carts.
 static func corin_off(w: World) -> void:
 	var v := village(w)
 	var to := CORIN_CARTS
 	to.y = v.height(to.x, to.z)
 	var cf = Cine.fig(w, "corin")
+	var cb := Cine.body(w, "corin")
 	if cf is Figure3D:
 		(cf as Figure3D).release(0.3)   # (the defeat pose, off as he goes)
-	Cine.path(w, "corin", AshfordP1.round_lantern(w, Cine.body(w, "corin").global_position, to), 1.6)
-	await Cine.wait(w, 0.9)
-	w.hud.dialogue.bark(w._speaker("corin"), w._portrait("corin"), "It was the wind! Everyone saw the wind!")
-	await Cine.wait(w, 1.4)
+	var way := AshfordP1.round_lantern(w, cb.global_position, to)
+	# a few strides along the way
+	var first: Vector3 = way[0]
+	var d := first - cb.global_position
+	d.y = 0.0
+	var stop := cb.global_position + d.normalized() * minf(2.6, d.length() * 0.6)
+	stop = Cine.off_blockers(w, stop)
+	stop.y = v.height(stop.x, stop.z)
+	await Cine.path(w, "corin", [stop], 1.6)
+	# turned to the green, hands to his mouth, chest out: a shout for everyone
+	var green := Vector3(0.0, stop.y, 0.0)
+	var crowd_dir := (green - stop)
+	crowd_dir.y = 0.0
+	crowd_dir = crowd_dir.normalized() if crowd_dir.length() > 0.5 else d.normalized()
+	Cine.look(w, "corin", stop + crowd_dir * 4.0)
+	var hands: Array = []
+	if cf is Figure3D:
+		var fig := cf as Figure3D
+		await Cine.wait(w, 0.35)
+		var head := Cine.head(w, "corin")
+		var across := crowd_dir.cross(Vector3.UP).normalized()
+		for sd in [-1.0, 1.0]:
+			var hn := Node3D.new()
+			w.add_child(hn)
+			hn.global_position = head + crowd_dir * 0.13 + across * sd * 0.07 + Vector3(0, -0.1, 0)
+			hands.append(hn)
+		# (his left hand on his left side: across is his right)
+		fig.palm("left", Vector3.ZERO, 0.2)
+		fig.reach(hands[0], hands[1], 0.3)
+	var mid := stop + crowd_dir * 1.2
+	Cine.shot(w, AshfordP1.clear_cam(w, [mid + crowd_dir.cross(Vector3.UP) * 3.2 + Vector3(0, 1.4, 0), mid - crowd_dir.cross(Vector3.UP) * 3.2 + Vector3(0, 1.4, 0),
+		stop + crowd_dir * 3.4 + Vector3(0, 1.3, 0)], stop + Vector3(0, 1.4, 0), ["corin", "player", "bram"]), stop + Vector3(0, 1.45, 0), 38.0)
+	for k in AshfordP1.KIDS:
+		Cine.look(w, String(k[0]), stop)
+	w.shake(0.04)
+	await w.hud.dialogue.say(w._speaker("corin") + " (shouting)", w._portrait("corin"), "[b]It was the WIND! Everyone saw the wind![/b]")
+	w.hud.dialogue.close()
+	if cf is Figure3D:
+		(cf as Figure3D).let_go(0.3)
+	for hn in hands:
+		(hn as Node).queue_free()
+	Cine.path(w, "corin", AshfordP1.round_lantern(w, stop, to), 1.6)
+	await Cine.wait(w, 0.6)
 
 
 ## Bram turns to the player, looking rather pleased.
@@ -503,6 +566,14 @@ static func to_mill(w: World) -> void:
 		await Cine.fade(w, 1.0, 0.6)
 	MillSet.enter(w)
 	MillSet.lamps(v, evening)
+	# (the arrow to the gate is for the village: at the mill it pointed back
+	# up the lane, "Tam's mill · 668 m", with Tam in front of them)
+	w.hud.set_way(null, null)
+	if evening and not Game.flag("corin_pond"):
+		# (1 November, Gary: the evening with Corin as a film, not a
+		# conversation from behind the player's back)
+		await _corin_pond_film(w, m)
+		return
 	var arrive: Vector3 = m.arrive
 	_to_spot(w, who)
 	if evening:
@@ -551,6 +622,171 @@ static func to_mill(w: World) -> void:
 	await Cine.fade(w, 0.0, 0.7)
 	AshfordP1.controls_on(w)
 	w.busy = false
+
+
+## Corin's evening by the mill race as a film (1 November, Gary: "the whole
+## time you and Corin are talking in the evening you can just see the black
+## of the player: I want this whole scene animated and more story film than
+## just a conversation", the music "more serious" while they talk, and
+## "Corin halfway through what he's sitting on"). The music goes quiet and
+## serious; the mill at night from across the meadow, the wheel turning, the
+## lanterns on the race wall and Corin alone on it, small; nearer, his coat
+## folded beside him and a card turning over in his fingers; the player
+## comes down along the bank to him and sits on the wall beside him. Then
+## the talk, each line from in front of whoever speaks (PondDirector), with
+## the two of them together between; his button; and as it ends he looks
+## back at the water and the player gets up and leaves him to it. Corin's
+## body stays square on the wall throughout (he'd been turned on it to face
+## the player as they came, and his legs went into the stone).
+static func _corin_pond_film(w: World, m: Dictionary) -> void:
+	var v := village(w)
+	var root: Node3D = m.root
+	Music.play(["corin_evening", "river_farewell", "dawn_after"], 2.5, true)
+	_to_spot(w, "corin")
+	_sit_corin(w)
+	var cb := Cine.body(w, "corin")
+	var seat := cb.global_position
+	var fwd := Vector3.LEFT   # (he faces the meadow, his back to the race)
+	var along := Vector3.BACK # (along the wall, the way the player comes)
+	var beside := seat + along * 0.78
+	var arrive: Vector3 = m.arrive
+	Cine.place(w, "player", arrive, beside)
+	# his coat folded on the wall beside him, and a card in his fingers
+	var coat := Node3D.new()
+	coat.name = "CorinsCoat"
+	coat.set_meta("p1_prop", true)
+	root.add_child(coat)
+	var blue := StandardMaterial3D.new()
+	blue.albedo_color = Color(0.18, 0.24, 0.42)
+	blue.roughness = 1.0
+	v.box(coat, Vector3(0.36, 0.07, 0.26), Vector3.ZERO, blue)
+	v.box(coat, Vector3(0.34, 0.05, 0.24), Vector3(0.0, 0.055, 0.0), blue, Vector3(0, 0.1, 0))
+	coat.global_position = seat - along * 0.5 + Vector3(0.05, 0.535, 0)
+	var cf = Cine.fig(w, "corin")
+	var card := Node3D.new()
+	card.name = "SignedCard"
+	card.set_meta("p1_prop", true)
+	var cardm := StandardMaterial3D.new()
+	cardm.albedo_color = Color(0.86, 0.8, 0.66)
+	cardm.roughness = 0.8
+	v.box(card, Vector3(0.063, 0.088, 0.003), Vector3.ZERO, cardm)
+	w.add_child(card)
+	if cf is Figure3D:
+		(cf as Figure3D).attach(card, "palm", "right", 0.004, 0.0)
+	# the mill at night across the meadow: the windows lit, the wheel turning
+	var est_a := root.to_global(Vector3(-9.5, 1.4, 15.5))
+	var est_b := root.to_global(Vector3(-8.0, 1.8, 12.5))
+	var look_a := seat + Vector3(0.0, 1.2, -2.0)
+	Cine.shot(w, est_a, look_a, 46.0)
+	await Cine.fade(w, 0.0, 1.2)
+	await Cine.drift(w, est_a, est_b, look_a, seat + Vector3(0, 0.9, 0), 4.2, 44.0)
+	# nearer: Corin alone on the wall, the card turning in his hand
+	var near_cam := seat + fwd * 2.3 - along * 1.3 + Vector3(0, 1.0, 0)
+	Cine.shot(w, near_cam, seat + Vector3(0, 0.75, 0), 34.0)
+	var turning := [true]
+	_card_turns(w, card, turning)
+	Cine.drift(w, near_cam, seat + fwd * 1.9 - along * 0.9 + Vector3(0, 0.9, 0), seat + Vector3(0, 0.75, 0), seat + Vector3(0, 0.8, 0), 3.0, 32.0)
+	await Cine.wait(w, 2.6)
+	# the player comes down the bank to him, and sits on the wall beside him
+	var stand_at := beside + fwd * 0.55
+	Cine.shot(w, seat + fwd * 4.2 + along * 2.4 + Vector3(0, 1.5, 0), (seat + arrive) * 0.5 + Vector3(0, 0.9, 0), 40.0)
+	var walk_done := [false]
+	var walking := func() -> void:
+		await Cine.path(w, "player", [stand_at], 1.4)
+		walk_done[0] = true
+	walking.call()
+	var t := 0.0
+	while not walk_done[0] and t < 14.0:
+		await w.get_tree().process_frame
+		t += w.get_process_delta_time()
+		var pp := w.player.global_position
+		w.cam.look_at(pp + Vector3(0, 1.0, 0) + (seat - pp) * 0.25, Vector3.UP)
+	if not is_instance_valid(w):
+		return
+	Cine.look(w, "player", seat)
+	# a two-shot as they sit: the pair on the wall, the race and the lit
+	# mill behind them
+	_pond_shot(w, "", seat, beside, fwd, along)
+	await AshfordP1.sit_down(w, "player", beside, fwd, 0.5, 0.6)
+	await Cine.wait(w, 0.5)
+	turning[0] = false
+	var n = w._npc_by_id("corin")
+	if n != null:
+		n.doll.set_marker("")
+		w.director = func(who: String) -> void:
+			_pond_shot(w, who, seat, beside, fwd, along)
+		await w.run_steps(n.def.talk, n)
+		w.director = Callable()
+	if not is_instance_valid(w) or not w.is_inside_tree():
+		return
+	w.hud.dialogue.close()
+	# he looks back at the water; the player gets up and leaves him to it
+	if cf is Figure3D:
+		(cf as Figure3D).detach(card)
+		if not ((cf as Figure3D).seat >= 0.0):
+			AshfordP1.sit_down(w, "corin", seat, fwd, 0.5, 0.5)
+	if is_instance_valid(card):
+		card.queue_free()
+	_pond_shot(w, "", seat, beside, fwd, along)
+	await Cine.wait(w, 0.8)
+	await AshfordP1.stand_up(w, "player", 0.5)
+	Cine.path(w, "player", [beside + fwd * 1.4 + along * 1.2, arrive], 1.3)
+	Cine.drift(w, seat + fwd * 3.6 - along * 1.0 + Vector3(0, 1.1, 0), seat + fwd * 4.4 - along * 1.6 + Vector3(0, 1.6, 0),
+		seat + Vector3(0, 0.8, 0), seat + Vector3(0, 0.9, 0), 3.5, 38.0)
+	await Cine.wait(w, 2.6)
+	await Cine.fade(w, 1.0, 1.0)
+	if is_instance_valid(coat):
+		coat.queue_free()
+	MillSet.leave(w)
+	if cf is Figure3D:
+		(cf as Figure3D).stand(0.0)
+	back_on_green(w)
+	stage(w)
+	w.resume_music()
+	await Cine.fade(w, 0.0, 0.7)
+	AshfordP1.controls_on(w)
+	w.busy = false
+
+
+## The card turning over in Corin's fingers while `state[0]` holds.
+static func _card_turns(w: World, card: Node3D, state: Array) -> void:
+	var cf = Cine.fig(w, "corin")
+	if not (cf is Figure3D):
+		return
+	var t := 0.0
+	while state[0] and is_instance_valid(card) and is_instance_valid(w):
+		t += w.get_process_delta_time()
+		(cf as Figure3D).attach(card, "palm", "right", 0.004, sin(t * 1.3) * 0.9)
+		await w.get_tree().process_frame
+
+
+## The pond's shots, by who's speaking: in front of Corin for his lines,
+## in front of the player for theirs and their choices, low and a little to
+## the side so the other's shoulder is at the edge; the two of them together
+## from in front for anything else, and every few lines for a breath.
+## Each shot drifts a little as the line plays.
+static func _pond_shot(w: World, who: String, seat: Vector3, beside: Vector3, fwd: Vector3, along: Vector3) -> void:
+	var n: int = w.get_meta("pond_lines", 0) + 1
+	w.set_meta("pond_lines", n)
+	# (their heads where they are now: sat, or Corin stood for his button)
+	var ch := Cine.head(w, "corin") if Cine.body(w, "corin") != null else seat + Vector3(0, 1.12, 0)
+	var ph := Cine.head(w, "player")
+	var mid := (ch + ph) * 0.5
+	var pos: Vector3
+	var look: Vector3
+	var fov := 30.0
+	if who == "corin" and n % 4 != 0:
+		pos = ch + fwd * 1.45 + along * 0.55 + Vector3(0, -0.12, 0)
+		look = ch + Vector3(0, -0.04, 0)
+	elif (who == "player" or who == "?") and n % 4 != 0:
+		pos = ph + fwd * 1.45 - along * 0.55 + Vector3(0, -0.12, 0)
+		look = ph + Vector3(0, -0.04, 0)
+	else:
+		pos = mid + fwd * 2.7 + Vector3(0, -0.15, 0)
+		look = mid + Vector3(0, -0.2, 0)
+		fov = 36.0
+	var to := pos + fwd * -0.12 + Vector3(0, 0.02, 0)
+	Cine.drift(w, pos, to, look, look, 6.0, fov)
 
 
 ## Corin on the race wall, his back to the water, facing the meadow.
@@ -775,20 +1011,16 @@ const BUTTON_MODEL := "res://assets/models/ashford/corin_button.glb"
 static func corin_button(w: World) -> void:
 	var cf = Cine.fig(w, "corin")
 	var pf = w.player_doll
-	if cf is Figure3D:
-		(cf as Figure3D).stand(0.4)
-		await Cine.wait(w, 0.5)
-	_mill_two_shot(w, "corin")
 	if not (cf is Figure3D):
 		await Cine.wait(w, 0.5)
 		return
+	var corin := cf as Figure3D
 	var b := Node3D.new()
 	b.name = "Button"
 	if ResourceLoader.exists(BUTTON_MODEL):
 		# Gary's button (26 October): iron-plated, a scrap of his coat's blue
 		# wool on its back, 2.8 cm across, made lying flat
 		var gm: Node3D = load(BUTTON_MODEL).instantiate()
-		gm.rotation.x = PI * 0.5
 		b.add_child(gm)
 	else:
 		var iron := StandardMaterial3D.new()
@@ -802,27 +1034,55 @@ static func corin_button(w: World) -> void:
 		var mi := MeshInstance3D.new()
 		mi.mesh = c
 		mi.material_override = iron
-		mi.rotation.x = PI * 0.5
 		b.add_child(mi)
 	b.set_meta("p1_prop", true)
-	(cf as Figure3D).pose("play_card", 0.3, 0.3)
-	await Cine.wait(w, 0.5)
-	(cf as Figure3D).hand_light(b)
-	(cf as Figure3D).pose("play_card", 0.5, 0.35)
+	w.add_child(b)
+	# (1 November: sat side by side on the race wall, he holds it out on the
+	# flat of his hand towards the player, who takes it on theirs; standing
+	# up off the wall where he sat put his legs in the stone. Both hands put
+	# it there every frame, Figure3D.attach, so it's in a hand, not on an arm)
+	var cb := Cine.body(w, "corin")
+	var to_p := w.player.global_position - cb.global_position
+	to_p.y = 0.0
+	to_p = to_p.normalized()
+	var his_side := "left" if to_p.dot(corin.facing().cross(Vector3.UP)) < 0.0 else "right"
+	var give := Node3D.new()
+	give.name = "ButtonGive"
+	w.add_child(give)
+	var seated := corin.seat >= 0.0
+	var h := (corin.hold_point(0.0, 0.0).y - corin.arm_reach() * 0.55) if not seated else 0.95 * corin.stature()
+	give.global_position = cb.global_position + to_p * 0.32 + corin.facing() * 0.3 + Vector3(0, h, 0)
+	corin.palm(his_side, Vector3.UP, 0.35)
+	corin.reach(give if his_side == "left" else null, give if his_side == "right" else null, 0.45)
+	await Cine.wait(w, 0.2)
+	corin.attach(b, "palm", his_side, 0.008)
 	await Cine.wait(w, 0.7)
 	if pf is Figure3D:
-		var to := Node3D.new()
-		w.add_child(to)
-		to.global_position = b.global_position
-		(pf as Figure3D).reach(null, to, 0.35)
-		await Cine.wait(w, 0.45)
-		(cf as Figure3D).hand_light(null)
-		(cf as Figure3D).release(0.3)
-		if b.get_parent() != null:
-			b.get_parent().remove_child(b)
-		(pf as Figure3D).hand_light(b)
-		(pf as Figure3D).let_go(0.3)
-		to.queue_free()
+		var me := pf as Figure3D
+		var my_side := "right" if (-to_p).dot(me.facing().cross(Vector3.UP)) > 0.0 else "left"
+		var take := Node3D.new()
+		w.add_child(take)
+		take.global_position = give.global_position + Vector3(0, 0.02, 0)
+		me.palm(my_side, Vector3.DOWN, 0.3)
+		me.reach(take if my_side == "left" else null, take if my_side == "right" else null, 0.45)
+		await Cine.wait(w, 0.55)
+		corin.detach(b)
+		corin.let_go(0.35)
+		corin.palm(his_side, Vector3.ZERO, 0.35)
+		me.palm(my_side, Vector3.UP, 0.25)
+		me.attach(b, "palm", my_side, 0.008)
+		# in to them, and into a pocket (it's in Items)
+		var tw := w.create_tween()
+		tw.tween_property(take, "global_position", me.to_world(Vector3(0.0, me.hold_point(0.0, 0.0).y - 0.25, 0.22)), 0.6).set_trans(Tween.TRANS_SINE)
+		await tw.finished
+		await Cine.wait(w, 0.4)
+		me.detach(b)
+		me.let_go(0.35)
+		me.palm(my_side, Vector3.ZERO, 0.35)
+		take.queue_free()
+	if is_instance_valid(b):
+		b.queue_free()
+	give.queue_free()
 	Game.set_flag("corin_button")
 	await Cine.wait(w, 0.3)
 

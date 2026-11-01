@@ -6,8 +6,12 @@ extends Node3D
 ##   xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 \
 ##       --resolution 512x512 res://tools/render_portraits.tscn -- [ids...]
 
+## (1 November, Gary: "Tilly's picture is the old one, it's not the new
+## model": Tilly has been Gary's brown-haired girl, child_c, since 24 October
+## (Figure3D.MODELS); her portrait was still rendered from the first, blonde
+## model, which is a girl in the crowd now)
 const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "player_a": "player_a", "player_b": "player_b",
-	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "tilly", "nell": "nell", "ned": "ned", "hob": "hob"}
+	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "child_c", "nell": "nell", "ned": "ned", "hob": "hob"}
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's (and stands back for Tam's, big and capped).
 const CLOSER := {"tilly": 0.88, "tam": 1.08}

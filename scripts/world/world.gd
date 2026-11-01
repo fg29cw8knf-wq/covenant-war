@@ -68,6 +68,10 @@ var cine := false:         # a cutscene is driving the camera
 var _shake := 0.0
 var _shake_goal := 0.0
 var music: Array = []      # the area's tracks (set by its build()), resumed after a duel
+## A film's camera for a conversation (1 November): called with the speaker
+## before each line ("?" before a choice or a question), so a scene can cut
+## to whoever's talking (AshfordDay's evening with Corin).
+var director := Callable()
 ## Built ahead of time, under the title screen or the opening movie, so New
 ## Game's attic comes up the moment the movie ends (or is skipped): add it to
 ## the tree with `ahead = true`, `await prepare()` builds it a piece a frame,
@@ -140,7 +144,10 @@ func release() -> void:
 		if is_instance_valid(l):
 			(l as CanvasLayer).visible = true
 	_held_layers.clear()
-	resume_music()
+	# (an area can start in silence: Ashford's opening dream has Morrowen's
+	# voice alone over it, and the music comes in after)
+	if not (area.has_method("quiet_start") and area.quiet_start()):
+		resume_music()
 	released.emit()
 
 
@@ -771,6 +778,8 @@ func run_steps(steps: Array, npc) -> void:
 			return
 		if st.has("say"):
 			var who: String = st.get("who", "narrator")
+			if director.is_valid():
+				director.call(who)
 			var talker = _figure_of(who)
 			if talker is Figure3D:
 				(talker as Figure3D).talking = true
@@ -789,14 +798,26 @@ func run_steps(steps: Array, npc) -> void:
 			await run_steps(st.get("then", []) if ok else st.get("else", []), npc)
 		elif st.has("choice"):
 			# one answer to what someone's just said or asked (two ways, usually)
+			if director.is_valid():
+				director.call("?")
 			var i := await hud.dialogue.choose(st.choice)
 			var branches: Array = st.get("then", [])
 			if i < branches.size():
 				await run_steps(branches[i], npc)
 		elif st.has("ask"):
+			if director.is_valid():
+				director.call("?")
 			await _ask(st, npc)
 		elif st.has("set"):
 			Game.set_flag(st.set)
+		elif st.has("theme"):
+			# {"theme": ["corin_evening", "river_farewell"]}: a person's own music
+			# while you talk (the first track that's in the game; nothing changes
+			# if none is); {"theme": "back"} brings the area's music back.
+			if typeof(st.theme) == TYPE_STRING and String(st.theme) == "back":
+				resume_music()
+			else:
+				Music.play(Array(st.theme), 2.0, true)
 		elif st.has("standing"):
 			# {"standing": {"tilly": 1, "solmaris": -1}, "why": "..."}
 			for who in st.standing:

@@ -23,9 +23,11 @@ func _ready() -> void:
 		g.setup(spec.decks, ["Sprout", String(spec.names[1])], [DuelAI.new(pa), DuelAI.new(float(spec.difficulty))],
 			[Lore.new_profile("Sprout"), Lore.new_profile(String(spec.names[1]))], 1000 + i)
 		g.start_life = int(spec.life)
+		g.start_lives = spec.get("lives", [])
 		# (27 October: as the screen sets them up: the Circle and its events,
 		# the comeback card, the rival's skill and the player's)
 		g.arena = String(spec.get("arena", ""))
+		g.friendly = bool(spec.get("friendly", false))
 		g.skills = [skill, String(spec.get("rival_skill", ""))]
 		var peak := [0, 0]
 		g.state_changed.connect(func() -> void:

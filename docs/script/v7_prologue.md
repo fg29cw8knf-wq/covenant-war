@@ -284,11 +284,12 @@ _(The protagonist kneels and gently touches the edge of the card. Instantly, the
 grey crystal surface flares with warm amber light. A spectral Lantern Moth
 flutters up from the card, circling Tilly's head.)_
 **[TILLY]:** "It flew! Why does it only fly for you?"
-**[INNER VOICE]:** "You don't know. Anyone in Ashford can summon a basic Totem, but
-the magic in this valley has always bent toward you without you even asking. A
-quiet, terrifying habit you've learned to hide."
-[GAME] "Tilly will remember that." (How people, and later the gods, see you is
-kept under Standing in the menu.)
+**[INNER VOICE]** _(a thought, in brackets and italics; 1 November)_: "(You don't
+know why. Anyone in Ashford can wake a common Spark, but the magic in this valley
+has always leaned towards you, without you ever asking.)" / "(A quiet, frightening
+habit, and one you learned to hide a long time ago.)"
+[GAME] "Tilly will remember that." (What people think of you is kept in the menu,
+under Standing.)
 
 **Q2:** [Speak to Nell] "Are you waiting for the lantern lighting, Nell?"
 **[NELL]:** "I'm waiting for Tam to come up from the mill. He thinks I don't know
@@ -325,7 +326,8 @@ it is herself ("That's a Ward, love. Face down till it bites."), since Bram isn'
 her bench. Both: twelve-card Spark decks, XP 0, no cards won, can be lost,
 repeatable practice until the sun goes down.
 
-**[OBJECTIVE] (new)** Enjoy the festival. Meet Bram at the Great Lantern before midnight.
+**[OBJECTIVE] (new)** Enjoy the festival. Before midnight, find Bram on his stool by the
+Great Lantern (the tall lantern pole in the middle of the green).
 
 ---
 
@@ -342,8 +344,9 @@ midnight objective lights only once the player has spoken to Bram.
 
 _(Tilly comes at a run, the moth card held up in both hands. It's grey again.)_
 
-**[TILLY]:** "It flew! I told everyone and nobody believed me, so I tried to make
-it fly again and it wouldn't."
+**[TILLY]:** "It flew for you this afternoon! I told everyone, and nobody believed me."
+**[TILLY]:** "So I tried and tried to make it fly again, and it wouldn't. Not even a
+flutter."
 **[TILLY]:** "Father says a Spark goes grey for good if it's kept away from the one
 it likes. So."
 _(She holds the card out, arms straight, not looking at it.)_
@@ -1072,12 +1075,12 @@ or Bram's lesson. The first experience is Dask's duel.
 While building v7 the game needed a few short lines the script doesn't have. They're in the game; Gary can change any of them.
 
 - **Bram, sending you on in the afternoon:** "Tam's at the mill, Sprout. Down the lane past the last cottage, where the sign is. He won't ask, so you'll have to." / "Tilly's been sat by the well with a face like a wet week. Go and see what's wrong." / "Nell's on her bench by the well. Sit with her a minute. She'll not ask twice." Once all three are done: "That's the jobs done, then. Look at that sky. Last sunset of the Age." (Talking to him then makes the sun go down, so there's time for another friendly game first.)
-- **Corin:** walking off after the duel, "It was the wind! Everyone saw the wind!" By the merchant carts: "Signed cards, a copper each. For you, two. You know why." On the race wall once you've talked: "Go on. Bram'll be looking for you."
+- **Corin:** walking off after the duel, he stops, turns to the whole green, hands cupped round his mouth, and shouts "It was the WIND! Everyone saw the wind!" (a line that waits for a tap, 1 November) By the merchant carts: "Signed cards, a copper each. For you, two. You know why." On the race wall once you've talked: "Go on. Bram'll be looking for you."
 - **Tam:** back at the mill, "Back again? She's still keen if you are." In his game: "Come on, girl. Bite." / "Steady, girl. Back you come." Dancing: "Not now, Sprout. I'm concentrating."
 - **Nell**, dancing: "Hush. He's nearly in time."
 - **Tilly**, after the moth: "It's gone grey again. It always goes grey again." In the evening, after: "Every day. You promised."
 - **Bram's evening hub** has a way out that isn't midnight: "I'll have a last look round."
-- **On screen:** "Find Corin by the mill race." / "The sun's going down. Find Bram at the Great Lantern." / "A friendly game: no experience is won or lost." / "The Lantern Duel is the village's game: nothing is won but the Lantern." / "Bram's lesson: no experience is won or lost." / Run to Ground: "Dask's hounds hit 10 harder for every round that passes."
+- **On screen:** "Find Corin by the mill race." / "The sun's going down. Go back to Bram, on his stool by the Great Lantern (the tall lantern pole in the middle of the green)." / "A friendly game: no experience is won or lost." / "The Lantern Duel is the village's game: nothing is won but the Lantern." / "Bram's lesson: no experience is won or lost." / Run to Ground: "Dask's hounds hit 10 harder for every round that passes."
 
 **Kept from v3 (nothing in v7 clashes):** Corin's "It's a good village, this." and "Bram. Is it meant to do that?", Bram's lantern line and "Two thousand years..." with its choice; Corin's "I'm all right. I'm all right." at the cart and "It came to you. It just came to you."; Bram's "A Pale Herald. Morrowen's own. Head down. Hand in your pocket."; Hob's "Lost half the barley. Found nine cards in the cabbages."; Dask's lines after his duel and Bram's "Morne."; the ridge.
 
@@ -1086,3 +1089,40 @@ While building v7 the game needed a few short lines the script doesn't have. The
 **New recordings needed:** herald_21 ("The Age is turned...") and herald_22 ("The Covenant updates..."); nell_crying.ogg for the look back; Morrowen's attic line ("Every soul in my book starts with a debt...") came as morrowen_attic on 25 October (Gary's old_woman_debt_book_reading.wav, mastered into assets/audio/vo/morrowen_attic.ogg): recorded.
 
 **Bram's lesson, reworded (Gary, 25 October):** "There's more to duelling than one afternoon's worth. Today, just the basics. The rest comes as the cards do." (it was "one night's worth. Tonight"); a new line before the roll, "Every duel has its stakes. Some are played for cards, some for coin, and some for a good deal worse. This one's a friendly: nothing to win or lose but your pride."; the knockout line ends "and today they don't"; and the turn's steps are four short lines in place of one: "See the little band under his plate? That's one turn, in six steps, left to right. The lit one is where you are now." / "The first two happen on their own: DAWN wakes anything that wakes at the start of a turn, then DRAW gives you a card." / "MAIN is yours: call Totems, set Wards, cast Rites. Then the CLASH: your Totems strike. MAIN II is a last chance for a Rite or a Shift if you've Essence left, and DUSK ends the turn." / "That's why a button goes dark sometimes. It isn't broken. It's just not the step of the turn for it."
+
+---
+
+## Changes, 1 November 2026 (Gary's notes)
+
+- **The crate and the lane (new):** heading off down the lane to Tam's mill with the
+  lantern crate still in your arms, Bram calls you back and you turn round:
+  **[BRAM]:** "Oi! Not that way, Sprout. Tam's mill can wait." /
+  **[BRAM]:** "Lanterns first. The green: the big pole in the middle of it. Then you
+  can go where you like."
+- **Nell's game, the ground (rewritten to start as Gary asked):**
+  **[NELL]:** "Before we start, love, let me make sure you understand about the
+  different grounds. Nobody ever told Bram, and it cost him a good few games." /
+  "Every Circle stands on some god's ground. Ashford's is Ellowen's, the Lantern
+  Keeper's: it's her festival we're keeping tonight." / "Every card answers to a god,
+  too. It says which at the foot of the card. On its own god's ground a card does
+  better than it says: Graced, we call it." / "A Traveller's Pack is one of
+  Ellowen's, so here it'll cost you less. Take a card onto the ground of a god who
+  quarrels with its own, and it does less than it says: Shunned. Look at the foot of
+  a card before you play it."
+- **Duel skills (the notes say when the Deck page opens):** after the Lantern Duel,
+  "(... The menu's Deck page, where you choose your skill, opens once you have a deck
+  of your own to build, the night after the festival. Until then you duel with
+  Second Wind.)"; after Tam's and Nell's games, the same said of their skills. At the
+  campfire, Bram's walk round the deck screen ends: **[BRAM]:** "One more thing on the
+  Deck page: your duel skill, over the cards. Every one you've learned is there:
+  Second Wind, Corin's Showman, and any you won off Tam or Nell. Choose the one that
+  suits the duel."
+- **Corin's evening** is played as a film: the mill at night, Corin alone on the race
+  wall turning a card over, the player coming down the bank and sitting beside him;
+  the words are as above.
+- **Midnight** opens on the taper at the Lantern (the bell counting over it); before
+  Corin's "Bram. Is it meant to do that?" the lanterns hang dead still and a hairline
+  of light runs across the stars.
+- **After the white card:** Bram puts his coat round your shoulders (it had been
+  dropped over you). The awakening and the Herald's coming are staged as films; the
+  words are unchanged.

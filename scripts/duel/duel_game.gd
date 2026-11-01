@@ -125,6 +125,15 @@ var face_up := {}
 ## "licensed" (the Sergeant), "patter" (Fen), "scrapper" (Pip) and
 ## "discipline" (the Captain).
 var story_rules := {}
+## A friendly game (Tam's and Nell's in Ashford; 1 November, Gary: "Nell seems
+## unbeatable as getting hurt 30 each turn"): an empty deck costs no Life
+## (nothing is drawn) until both are empty, then each side loses 10 a turn
+## (FRIENDLY_CLOCK), and no Totem may hold a Guard stance two turns
+## running. The player's twelve-card deck ran out by their fourth or fifth
+## turn while Nell's Shellguard sat in Guard behind her Wards, and the empty
+## deck took 30 of their 60 Life a turn.
+var friendly := false
+const FRIENDLY_CLOCK := 10
 ## Both duellists start on this share of their usual Life (Hale's short duel
 ## at the gate is fought at half: "a test, not a fight").
 var life_scale := 1.0
@@ -1329,6 +1338,8 @@ func stance_problem(pi: int, t, stance: String) -> String:
 		return "%s is resting: it stays put this turn." % t.card_name()
 	if t.stance_turn == turn:
 		return "%s has taken its stance for this turn." % t.card_name()
+	if friendly and stance == "guard" and t.guard_turn >= turn - 2:
+		return "%s guarded last turn. In a friendly game, it can't hold Guard two turns running." % t.card_name()
 	var was: String = t.stance
 	t.stance = "strike"
 	var ready := ready_problem(pi, t)
@@ -1344,6 +1355,8 @@ func _act_stance(pi: int, t: DuelTotem, stance: String) -> void:
 	var p: DuelPlayer = players[pi]
 	t.stance = stance
 	t.stance_turn = turn
+	if stance == "guard":
+		t.guard_turn = turn
 	p.stats.stances += 1
 	match stance:
 		"guard":
@@ -4102,6 +4115,18 @@ func _draw_raw(p: DuelPlayer, n: int) -> Array:
 func _draw(p: DuelPlayer, n: int) -> Array:
 	var out := []
 	for i in n:
+		if p.deck.is_empty() and friendly:
+			# a friendly game: an empty deck just means nothing to draw, until
+			# both are empty; then the evening's getting on, and it costs each
+			# of them a little a turn, so a game that's stuck still ends
+			if opponent(p.index).deck.is_empty():
+				_log("Both decks are empty. Time's getting on.", -1)
+				await _hit_life(p.index, FRIENDLY_CLOCK, {"no_guard": true, "source": "fatigue"})
+				if over:
+					break
+			else:
+				_log("%s deck is empty: nothing to draw." % whose(p.player_name), p.index)
+			continue
 		if p.deck.is_empty():
 			_log("%s deck is empty!" % whose(p.player_name), p.index)
 			await _hit_life(p.index, DuelRules.fatigue, {"no_guard": true, "source": "fatigue"})

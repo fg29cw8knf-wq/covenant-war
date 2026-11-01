@@ -621,6 +621,7 @@ func _start() -> void:
 			"look": String(spec.get("teacher_look", "")), "lines": spec.get("teach_lines", {})}, String(spec.get("lesson_group", "Lessons")))
 	game.law = String(spec.get("law", ""))
 	game.story_rules = spec.get("story_rules", {})
+	game.friendly = bool(spec.get("friendly", false))
 	# the Circle's own rule (Phase D); a story duel's own rule stands in its place
 	game.arena = "" if (spec.has("rule") or not game.story_rules.is_empty()) else _arena_name
 	game.ai_oaths = not bool(spec.get("story", false))   # (story rivals don't swear)

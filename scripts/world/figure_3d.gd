@@ -262,6 +262,7 @@ func _ready() -> void:
 				anim.get_animation(c).loop_mode = Animation.LOOP_LINEAR
 		_play("idle", 0.0)
 		anim.seek(randf() * 1.5, true)   # nobody breathes in step
+	_add_posture()
 	# a soft round shadow, as the cut-outs have, to sit them on the grass
 	_shadow = MeshInstance3D.new()
 	var q := QuadMesh.new()
@@ -498,6 +499,46 @@ func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(
 			t = anim.current_animation_position
 	if _action == nm:
 		at.call(an.length)
+
+
+## How a model carries itself, put right over every clip (degrees about each
+## bone's own axes, before the hands are placed: Posture, a modifier first in
+## the skeleton's list). (1 November, Gary: "Player A looks a bit hunched
+## over, though the face looks much better": the clips were made for the
+## AssetFurnace bodies and round his back, his chest sunk and his head
+## pushed forward; his upper back straightens, the shoulders go back and the
+## neck comes up a little, the face kept level, head_level's -11 still in
+## the clips.)
+const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 0, 0), "Head": Vector3(6, 0, 0),
+	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)}}
+
+
+class Posture:
+	extends SkeletonModifier3D
+	var turns: Array = []   # [bone index, Quaternion]
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		var sk := get_skeleton()
+		if sk == null:
+			return
+		for t in turns:
+			var b: int = t[0]
+			sk.set_bone_pose_rotation(b, (t[1] as Quaternion) * sk.get_bone_pose_rotation(b))
+
+
+func _add_posture() -> void:
+	if _skel == null or not POSTURE.has(_model_name) or _skel.has_node("Posture"):
+		return
+	var pm := Posture.new()
+	pm.name = "Posture"
+	for bone: String in POSTURE[_model_name]:
+		var i := _skel.find_bone(bone)
+		if i < 0:
+			continue
+		var e: Vector3 = POSTURE[_model_name][bone]
+		pm.turns.append([i, Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))])
+	_skel.add_child(pm)
+	_skel.move_child(pm, 0)
 
 
 ## Beaten: the head drops, the back rounds and the shoulders fall forward,
@@ -1561,6 +1602,8 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 			kt.fig = self
 			_skel.add_child(kt)
 			_skel.move_child(kt, 0)   # (before the hands: modifiers run in order)
+			if _skel.has_node("Posture"):
+				_skel.move_child(_skel.get_node("Posture"), 0)
 		ik = TwoBoneIK3D.new()
 		ik.name = pre + "Reach"
 		ik.setting_count = 1

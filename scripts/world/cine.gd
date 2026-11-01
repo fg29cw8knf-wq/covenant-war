@@ -699,7 +699,15 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 	b.set_meta("cine_path", token)
 	# over the village's slopes, feet stay on the grass
 	var follow := _on_terrain(w, b)
-	for p in points:
+	for pi in points.size():
+		var p: Vector3 = points[pi]
+		# a point on the way (not the walk's own end) that's on or against
+		# something solid is moved off it: the leg to it would count as
+		# ending on that thing and go straight through it (1 November, Gary:
+		# "Bram walks through bench on way to lantern": his swing out wide
+		# round the player put a point on the end of Nell's bench)
+		if pi < points.size() - 1:
+			p = off_blockers(w, p)
 		# the way to each point is found as its walk starts (the things in
 		# it, and the people, where they stand then)
 		for leg in route(w, b.global_position, p, 0.35, who):
@@ -725,6 +733,25 @@ static func path(w: World, who: String, points: Array, speed := 1.5, gait := "wa
 		if f is Figure3D:
 			(f as Figure3D).pace = 0.0
 			(f as Figure3D).gait = "walk"
+
+
+## `p` moved out of any solid thing's clearance (a body's half-width and a
+## little more from its edge), the shortest way.
+static func off_blockers(w: World, p: Vector3, clear := 0.45) -> Vector3:
+	var q := Vector2(p.x, p.z)
+	for k in 3:
+		var moved := false
+		for bl in blockers(w):
+			var o: Vector2 = bl[0]
+			var r := float(bl[1]) + clear
+			var d := q.distance_to(o)
+			if d < r:
+				var out := (q - o).normalized() if d > 0.01 else Vector2.RIGHT
+				q = o + out * (r + 0.05)
+				moved = true
+		if not moved:
+			break
+	return Vector3(q.x, p.y, q.y)
 
 
 ## Plays a clip on a 3D figure (cut-outs give a little hop instead).

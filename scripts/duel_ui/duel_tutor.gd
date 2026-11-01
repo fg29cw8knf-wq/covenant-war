@@ -163,11 +163,16 @@ func lesson(id: String, text: String, p_group: String, p_focus: String = "", who
 	if data.has("who"):
 		who = String(data.who)
 	text = first_time_line(id, text)
+	# a teacher's own words: one line, or several in turn (1 November: Nell
+	# says what she's about to explain before she explains it)
+	var said: Array = [text]
 	if (data.get("lines", {}) as Dictionary).has(id):
-		text = String(data.lines[id])
-	Game.learn(id, p_group, who, text)
+		var own = data.lines[id]
+		said = (own as Array).duplicate() if own is Array else [String(own)]
+	Game.learn(id, p_group, who, " ".join(said))
 	await _rival_done()
-	await _explain({"say": text, "who": who, "look": String(data.get("look", "")), "focus": p_focus, "keep": false})
+	for line in said:
+		await _explain({"say": String(line), "who": who, "look": String(data.get("look", "")), "focus": p_focus, "keep": false})
 	_show_head()
 
 

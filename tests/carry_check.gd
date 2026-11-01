@@ -73,6 +73,42 @@ func _ready() -> void:
 		f.let_go(0.0)
 		c.queue_free()
 		await _frames(3)
+		# the pick-up off the taproom's crate stand, half way and done
+		var stand := AshfordP1._crate_stand(v, world, at + Vector3(0, 0, 0.62), 0.0)
+		var c2 := AshfordP1.crate(v)
+		world.add_child(c2)
+		c2.global_position = at + Vector3(0, AshfordP1.CRATE_STAND_H, 0.62)
+		c2.rotation.y = 0.3
+		await world.cine_to(at + Vector3(2.4, 1.1, 0.9), at + Vector3(0, 0.8, 0.3), 0.05)
+		AshfordP1._take_crate(world, c2)
+		for t in [[0.75, 1], [0.45, 2], [0.35, 3], [1.0, 4]]:
+			await get_tree().create_timer(float(t[0])).timeout
+			if int(t[1]) < 4:
+				await _shot("pickup_%s_%d" % [look, int(t[1])])
+		await _frames(4)
+		await _shot("pickup_%s_4" % look)
+		# and down on the ground in front of them from a crouch (as at the Lantern)
+		var down_at := at + Vector3(0, 0, AshfordP1.CRATE_DOWN)
+		f.pose("sit", AshfordP1.CROUCH, 0.55)
+		await get_tree().create_timer(0.2).timeout
+		c2.reparent(world)
+		var tw := create_tween()
+		tw.tween_property(c2, "global_position", down_at + Vector3(0, 0.14, 0), 0.5)
+		await get_tree().create_timer(0.3).timeout
+		await _shot("putdown_%s_1" % look)
+		if tw.is_running():
+			await tw.finished
+		await _shot("putdown_%s_2" % look)
+		f.let_go(0.2)
+		c2.global_position = down_at
+		await get_tree().create_timer(0.3).timeout
+		await _shot("putdown_%s_3" % look)
+		f.release(0.0)
+		world.busy = true
+		f.let_go(0.0)
+		c2.queue_free()
+		stand.queue_free()
+		await _frames(3)
 	print("CARRY CHECK: %s (%d problems)" % ["PASS" if problems == 0 else "FAIL", problems])
 	get_tree().quit()
 

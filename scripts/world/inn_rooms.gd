@@ -353,15 +353,23 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	v.glow_sprite(root, Vector3(-2.1, 0.58, -1.95), Color(1.0, 0.7, 0.35), 0.16, 0.9)
 	var cl := OmniLight3D.new()
 	cl.light_color = Color(1.0, 0.66, 0.34)
-	cl.light_energy = 0.35   # (a guttered stub: it's morning)
+	cl.light_energy = 0.55   # (a guttered stub: it's morning)
 	cl.omni_range = 5.5
 	cl.shadow_enabled = true
 	cl.position = Vector3(-2.1, 0.75, -1.85)
 	root.add_child(cl)
-	v.flicker_lights.append([cl, 0.35])
+	v.flicker_lights.append([cl, 0.55])
+	# the morning's cold light off the floorboards and the bed linen, up
+	# into the room (1 November: the attic read nearly black)
+	var bounce := OmniLight3D.new()
+	bounce.light_color = Color(0.82, 0.84, 0.9)
+	bounce.light_energy = 0.7
+	bounce.omni_range = 4.5
+	bounce.position = Vector3(-0.6, 0.9, -0.6)
+	root.add_child(bounce)
 	var fill := OmniLight3D.new()
 	fill.light_color = Color(0.8, 0.84, 0.92)
-	fill.light_energy = 1.15   # (the web's renderer draws it darker than a desktop does)
+	fill.light_energy = 1.9    # (the web's renderer draws it darker than a desktop does; 1 November: lifted so the room's things read)
 	fill.omni_range = 7.0
 	fill.position = Vector3(1.2, 2.2, 0.8)
 	root.add_child(fill)
@@ -426,6 +434,9 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	writing.position = Vector3(-0.05, 0.02, 0)
 	writing.rotation = Vector3(0, -PI * 0.5, 0)
 	writing.scale = Vector3(1.0, 1.0 / 1.32, 1.0)
+	# (1 November, Gary: "decorate the player's room so it actually looks like
+	# he lives there")
+	_attic_dressing(v, root, W, D, K)
 	# the hatch down to the stairs, by the south-east corner
 	var hatch := Vector3(2.0, 0.0, 1.35)
 	v.box(root, Vector3(0.85, 0.015, 0.85), hatch + Vector3(0, 0.008, 0), v.mats.dark)
@@ -446,7 +457,9 @@ static func attic(v: AshfordVillage) -> Dictionary:
 		# round the bed, the candle crate, the chest, the washstand and the hatch
 		"walk": Rect2(-2.55, -1.3, 5.05, 2.95),
 		"blocks": [[Vector2(-1.25, -1.9), 0.62], [Vector2(-0.25, -1.9), 0.62], [Vector2(-2.1, -1.95), 0.4],
-			[Vector2(0.75, -2.05), 0.5], [Vector2(stand_x, mz), 0.34], [Vector2(hatch.x, hatch.z), 0.62]]}
+			[Vector2(0.75, -2.05), 0.5], [Vector2(stand_x, mz), 0.34], [Vector2(hatch.x, hatch.z), 0.62],
+			# (1 November) his desk under the window and its stool, his boots
+			[Vector2(-2.78, 0.95), 0.5], [Vector2(-2.3, 1.05), 0.26], [Vector2(2.3, -2.15), 0.3]]}
 	# the green through the window: the village itself, from the inn's upper floor
 	var front := inn_front(v)
 	var eye: Vector3 = front.root.to_global(Vector3(2.2, 6.6, front.front_z + 0.4))
@@ -454,9 +467,295 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	out["view_quad"] = q
 	# the morning's light, the candle and the fill (the awakening, before
 	# sunrise, turns them down: AshfordWake)
-	out["lights"] = {"window": moon, "candle": cl, "fill": fill}
+	out["lights"] = {"window": moon, "candle": cl, "fill": fill, "bounce": bounce}
 	v.set_meta("attic", out)
 	return out
+
+
+## The attic as a room someone has lived in for twenty years (1 November,
+## Gary: "decorate the player's room so it actually looks like he lives
+## there"): a braided rag rug by the bed; on the north knee wall a shelf of
+## his things (books, a carved horse Bram whittled him, a jar of feathers, a
+## tin box, river stones, a candle stub), his wooden practice sword leant
+## beside it and his boots under it; his writing desk under the west window
+## with a stool, an open book, an inkpot and quill, papers and a mug; drawings
+## and a hand-drawn map of the valley pinned to the east gable by the mirror,
+## a towel over the washstand's rail; a half-made paper lantern of his own for
+## tonight hanging from a collar beam, a bunch of lavender drying on another;
+## a shirt and a pair of breeches over the chest at the bed's foot, a scarf on
+## the peg by the coat, and a satchel hung on the hatch rail.
+static func _attic_dressing(v: AshfordVillage, root: Node3D, W: float, D: float, _K: float) -> void:
+	var mk := func(col: Color, rough := 0.85, metal := 0.0) -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = col
+		m.roughness = rough
+		m.metallic = metal
+		return m
+	var oak: Material = v.mats.wood_h
+	var dark_oak: Material = v.mats.wood
+	var beam: Material = v.mats.beam_v
+	var paper: StandardMaterial3D = mk.call(Color(0.86, 0.8, 0.66), 0.95)
+	var ink: StandardMaterial3D = mk.call(Color(0.08, 0.07, 0.06), 0.4)
+	var leather: StandardMaterial3D = mk.call(Color(0.36, 0.22, 0.12), 0.7)
+	var leather_dk: StandardMaterial3D = mk.call(Color(0.2, 0.12, 0.07), 0.75)
+	var linen: StandardMaterial3D = mk.call(Color(0.82, 0.78, 0.68), 0.95)
+	var wool_g: StandardMaterial3D = mk.call(Color(0.28, 0.36, 0.22), 1.0)
+	var wool_r: StandardMaterial3D = mk.call(Color(0.5, 0.16, 0.1), 1.0)
+	var brown_cloth: StandardMaterial3D = mk.call(Color(0.33, 0.25, 0.17), 1.0)
+	var clay: StandardMaterial3D = mk.call(Color(0.62, 0.38, 0.24), 0.7)
+	var tin: StandardMaterial3D = mk.call(Color(0.55, 0.55, 0.52), 0.4, 0.8)
+	var wax: StandardMaterial3D = mk.call(Color(0.93, 0.88, 0.74), 0.7)
+	var nk := -D * 0.5 + 0.06    # the north knee wall's inner face (z)
+	# --- the rag rug by the bed: braided rings of old cloth, an oval
+	var rug := Node3D.new()
+	rug.name = "RagRug"
+	root.add_child(rug)
+	rug.position = Vector3(-0.55, 0.0, -0.95)
+	rug.scale = Vector3(1.0, 1.0, 0.55)
+	# (old cloth, faded: muted browns and a dull green, close in tone, so it
+	# reads as a rug, not a target)
+	var ring_cols := [Color(0.3, 0.2, 0.15), Color(0.38, 0.31, 0.23), Color(0.27, 0.27, 0.23), Color(0.36, 0.25, 0.18), Color(0.3, 0.3, 0.24), Color(0.4, 0.33, 0.25)]
+	for i in ring_cols.size():
+		var r := 0.68 - i * 0.11
+		v.cyl(rug, r, r, 0.012, Vector3(0, 0.006 + i * 0.0012, 0), mk.call(ring_cols[i], 1.0), 28)
+	# --- the shelf on the north knee wall, east of the bed's foot
+	var sx0 := 1.25
+	var sx1 := 2.75
+	var sy := 0.78
+	v.box(root, Vector3(sx1 - sx0, 0.035, 0.24), Vector3((sx0 + sx1) * 0.5, sy, nk + 0.12), oak)
+	for bx in [sx0 + 0.12, sx1 - 0.12]:
+		v.box(root, Vector3(0.04, 0.12, 0.2), Vector3(bx, sy - 0.07, nk + 0.1), beam)
+	var top := sy + 0.0175
+	# books: four stood up, the last leaning, and three lying in a stack
+	var spine_cols := [Color(0.42, 0.14, 0.1), Color(0.18, 0.26, 0.2), Color(0.5, 0.36, 0.18), Color(0.2, 0.2, 0.32)]
+	for i in 4:
+		var bh := 0.2 - 0.02 * (i % 2)
+		v.box(root, Vector3(0.04, bh, 0.15), Vector3(sx0 + 0.2 + i * 0.045, top + bh * 0.5, nk + 0.11), mk.call(spine_cols[i], 0.8), Vector3(0, 0, -0.08 if i == 3 else 0.0))
+	for i in 3:
+		v.box(root, Vector3(0.17 - i * 0.01, 0.035, 0.13 - i * 0.01), Vector3(sx0 + 0.52, top + 0.0175 + i * 0.035, nk + 0.11), mk.call(spine_cols[(i + 2) % 4], 0.8), Vector3(0, 0.15 * i, 0))
+	# the carved horse Bram whittled him: body, neck, head and four legs
+	var horse := Node3D.new()
+	root.add_child(horse)
+	horse.position = Vector3(sx0 + 0.82, top, nk + 0.11)
+	horse.rotation.y = -0.5
+	v.box(horse, Vector3(0.11, 0.045, 0.04), Vector3(0, 0.07, 0), oak)
+	v.box(horse, Vector3(0.03, 0.06, 0.03), Vector3(0.055, 0.105, 0), oak, Vector3(0, 0, -0.5))
+	v.box(horse, Vector3(0.05, 0.025, 0.028), Vector3(0.08, 0.13, 0), oak, Vector3(0, 0, 0.3))
+	for lx in [-0.04, 0.04]:
+		for lz in [-0.012, 0.012]:
+			v.box(horse, Vector3(0.012, 0.05, 0.012), Vector3(lx, 0.025, lz), oak)
+	# a clay jar of feathers
+	v.cyl(root, 0.035, 0.045, 0.11, Vector3(sx0 + 1.02, top + 0.055, nk + 0.12), clay, 12)
+	var feather_cols := [Color(0.9, 0.88, 0.82), Color(0.45, 0.32, 0.22), Color(0.2, 0.3, 0.42)]
+	for k in 3:
+		v.box(root, Vector3(0.008, 0.2, 0.025), Vector3(sx0 + 1.02 + (k - 1) * 0.015, top + 0.19, nk + 0.12), mk.call(feather_cols[k], 0.9), Vector3(0, k * 0.6, (k - 1) * 0.25))
+	# a tin box, river stones, a candle stub
+	v.box(root, Vector3(0.12, 0.05, 0.08), Vector3(sx0 + 1.2, top + 0.025, nk + 0.11), tin, Vector3(0, 0.3, 0))
+	for k in 4:
+		var st := SphereMesh.new()
+		st.radius = 0.02 + 0.005 * (k % 2)
+		st.height = st.radius * 1.2
+		v.add_mesh(root, st, mk.call(Color(0.5 + 0.08 * k, 0.5 + 0.05 * k, 0.48), 0.6), Transform3D(Basis.IDENTITY, Vector3(sx0 + 1.32 + k * 0.035, top + 0.012, nk + 0.1 + 0.02 * (k % 2))))
+	v.cyl(root, 0.035, 0.04, 0.012, Vector3(sx1 - 0.1, top + 0.006, nk + 0.12), tin, 10)
+	v.cyl(root, 0.014, 0.014, 0.06, Vector3(sx1 - 0.1, top + 0.04, nk + 0.12), wax, 8)
+	# his wooden practice sword leant against the wall past the shelf's end
+	var sword := Node3D.new()
+	root.add_child(sword)
+	sword.position = Vector3(2.85, 0.0, nk + 0.12)
+	sword.rotation = Vector3(-0.12, 0.0, 0.2)
+	v.box(sword, Vector3(0.045, 0.62, 0.016), Vector3(0, 0.46, 0), oak)
+	v.box(sword, Vector3(0.16, 0.025, 0.03), Vector3(0, 0.14, 0), dark_oak)
+	v.box(sword, Vector3(0.03, 0.13, 0.03), Vector3(0, 0.065, 0), leather_dk)
+	# his boots under the shelf, one stood, one fallen over
+	for b in [[Vector3(2.15, 0, -2.2), 0.1, false], [Vector3(2.36, 0, -2.12), -0.6, true]]:
+		var boot := Node3D.new()
+		root.add_child(boot)
+		boot.position = b[0]
+		boot.rotation = Vector3(0, b[1], PI * 0.5 if b[2] else 0.0)
+		if b[2]:
+			boot.position.y = 0.05
+		v.box(boot, Vector3(0.1, 0.24, 0.09), Vector3(0, 0.12, 0), leather)
+		v.box(boot, Vector3(0.24, 0.06, 0.09), Vector3(0.06, 0.03, 0), leather)
+		v.box(boot, Vector3(0.11, 0.03, 0.1), Vector3(0, 0.23, 0), leather_dk)
+	# --- his desk under the west window, and its stool
+	var desk := Vector3(-2.78, 0.0, 0.95)
+	var dh := 0.74
+	v.box(root, Vector3(0.44, 0.04, 0.82), desk + Vector3(0, dh, 0), oak)
+	for lx in [-0.18, 0.18]:
+		for lz in [-0.37, 0.37]:
+			v.box(root, Vector3(0.045, dh, 0.045), desk + Vector3(lx, dh * 0.5, lz), beam)
+	v.box(root, Vector3(0.36, 0.1, 0.74), desk + Vector3(0, dh - 0.06, 0), dark_oak)
+	var dt := dh + 0.02
+	# an open book, a sheet half written, the inkpot and quill, a mug, a candle
+	v.box(root, Vector3(0.21, 0.02, 0.29), desk + Vector3(0.02, dt + 0.002, -0.12), mk.call(Color(0.35, 0.16, 0.1), 0.8), Vector3(0, 0.1, 0))
+	for sd in [-1.0, 1.0]:
+		v.box(root, Vector3(0.19, 0.012, 0.135), desk + Vector3(0.02, dt + 0.016, -0.12 + sd * 0.07), paper, Vector3(sd * 0.05, 0.1, 0))
+	v.box(root, Vector3(0.18, 0.004, 0.24), desk + Vector3(0.05, dt + 0.002, 0.2), paper, Vector3(0, -0.25, 0))
+	for k in 5:
+		v.box(root, Vector3(0.004, 0.002, 0.1 - 0.012 * (k % 3)), desk + Vector3(0.01 + k * 0.018, dt + 0.005, 0.18 + 0.01 * k), ink, Vector3(0, -0.25, 0))
+	v.cyl(root, 0.025, 0.03, 0.045, desk + Vector3(-0.1, dt + 0.022, 0.33), ink, 10)
+	v.box(root, Vector3(0.006, 0.006, 0.24), desk + Vector3(-0.1, dt + 0.1, 0.3), linen, Vector3(0.9, 0, 0.2))
+	v.cyl(root, 0.04, 0.036, 0.09, desk + Vector3(0.1, dt + 0.045, 0.34), clay, 12)
+	v.cyl(root, 0.03, 0.035, 0.015, desk + Vector3(-0.12, dt + 0.008, -0.33), tin, 10)
+	v.cyl(root, 0.015, 0.015, 0.09, desk + Vector3(-0.12, dt + 0.06, -0.33), wax, 8)
+	var stool := Vector3(-2.3, 0.0, 1.05)
+	v.cyl(root, 0.17, 0.17, 0.04, stool + Vector3(0, 0.46, 0), oak, 14)
+	for k in 3:
+		var a := TAU * k / 3.0
+		v.box(root, Vector3(0.04, 0.46, 0.04), stool + Vector3(cos(a) * 0.11, 0.23, sin(a) * 0.11), beam, Vector3(sin(a) * 0.12, 0, -cos(a) * 0.12))
+	# --- drawings and a map pinned to the east gable, north of the mirror
+	var ex := W * 0.5 - 0.01
+	var pins: StandardMaterial3D = mk.call(Color(0.7, 0.5, 0.2), 0.4, 0.7)
+	var sheets := [[Vector3(ex, 1.55, -0.55), Vector2(0.42, 0.32), 0.04, "map"], [Vector3(ex, 1.08, -0.42), Vector2(0.22, 0.28), -0.08, "moth"],
+		[Vector3(ex, 1.2, -0.95), Vector2(0.24, 0.2), 0.1, "hound"], [Vector3(ex, 1.72, -1.15), Vector2(0.26, 0.34), -0.05, "notice"]]
+	for i in sheets.size():
+		var sh: Array = sheets[i]
+		var q := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = sh[1]
+		q.mesh = qm
+		var pm := StandardMaterial3D.new()
+		pm.albedo_texture = _sketch(String(sh[3]), i)
+		pm.roughness = 0.95
+		pm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		q.material_override = pm
+		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		# facing west, into the room, off the east gable
+		q.transform = Transform3D(Basis(Vector3.UP, -PI * 0.5) * Basis(Vector3.BACK, float(sh[2])), sh[0])
+		root.add_child(q)
+		var pin_at: Vector3 = sh[0] + Vector3(-0.004, (sh[1] as Vector2).y * 0.5 - 0.025, 0)
+		v.cyl(root, 0.008, 0.008, 0.01, pin_at, pins, 6, Vector3(0, 0, PI * 0.5))
+	# --- a towel over the washstand's rail (the stand is at z 0.55, x W/2 - 0.28)
+	v.box(root, Vector3(0.012, 0.28, 0.2), Vector3(W * 0.5 - 0.56, 0.66, 0.72), linen)
+	v.box(root, Vector3(0.05, 0.012, 0.2), Vector3(W * 0.5 - 0.535, 0.8, 0.72), linen)
+	# --- his own paper lantern for tonight, half made, hung from a collar beam,
+	# and a bunch of lavender drying upside down on the next
+	var lan := Node3D.new()
+	root.add_child(lan)
+	# (on his desk, half made: hung from a beam it filled a corner of every
+	# shot of the room)
+	lan.position = desk + Vector3(0.0, dt + 0.12, 0.18)
+	var ball := SphereMesh.new()
+	ball.radius = 0.13
+	ball.height = 0.24
+	ball.radial_segments = 12
+	ball.rings = 6
+	var lp := StandardMaterial3D.new()
+	lp.albedo_color = Color(0.95, 0.66, 0.3)
+	lp.roughness = 0.9
+	lp.emission_enabled = true
+	lp.emission = Color(0.4, 0.18, 0.05)
+	lp.emission_energy_multiplier = 0.25
+	v.add_mesh(lan, ball, lp, Transform3D.IDENTITY)
+	for k in 3:
+		var rr := 0.132 - 0.02 * absf(k - 1)
+		v.cyl(lan, rr, rr, 0.006, Vector3(0, -0.06 + k * 0.06, 0), leather_dk, 14)
+	var lav := Node3D.new()
+	root.add_child(lav)
+	lav.position = Vector3(0.0, 1.86, -0.85)
+	v.box(lav, Vector3(0.01, 0.12, 0.01), Vector3(0, 0.08, 0), wool_g)
+	# (a loose, uneven bunch of thin stems fanning out from a twine tie, the
+	# flower spikes greyed with drying: nine stiff spokes and fat purple blocks
+	# read as a potted plant hanging in the air)
+	var stem: StandardMaterial3D = mk.call(Color(0.36, 0.42, 0.3), 1.0)
+	var bloom: StandardMaterial3D = mk.call(Color(0.44, 0.4, 0.54), 1.0)
+	var twine: StandardMaterial3D = mk.call(Color(0.62, 0.52, 0.36), 1.0)
+	v.cyl(lav, 0.016, 0.018, 0.035, Vector3(0, 0.0, 0), twine, 10)
+	for k in 15:
+		var a := TAU * k / 15.0 + 0.37 * sin(k * 2.3)
+		var tilt := 0.1 + 0.16 * absf(sin(k * 1.7))
+		var ln := 0.2 + 0.07 * absf(cos(k * 2.9))
+		var out := Vector3(cos(a), 0, sin(a)) * sin(tilt)
+		var down := Vector3(0, -cos(tilt), 0)
+		var dir := (out + down).normalized()
+		var axis := Vector3.UP.cross(-dir).normalized()
+		var bas := Basis(axis, Vector3.UP.angle_to(-dir)) if axis.length() > 0.01 else Basis()
+		var mid := dir * ln * 0.5
+		v.add_mesh(lav, _thin_box(0.005, ln, 0.005), stem, Transform3D(bas, mid))
+		v.add_mesh(lav, _thin_box(0.011, 0.075, 0.011), bloom, Transform3D(bas, dir * (ln + 0.03)))
+	# --- a shirt and breeches over the chest at the bed's foot (the chest's
+	# top at 0.46, at x 0.75, z -2.05), a sleeve and a leg hanging down
+	v.box(root, Vector3(0.5, 0.025, 0.36), Vector3(0.72, 0.475, -2.05), linen, Vector3(0, 0.18, 0.04))
+	v.box(root, Vector3(0.1, 0.24, 0.025), Vector3(0.42, 0.36, -1.84), linen, Vector3(0.1, 0, 0.25))
+	v.box(root, Vector3(0.38, 0.03, 0.3), Vector3(0.82, 0.5, -2.08), brown_cloth, Vector3(0, -0.3, 0))
+	v.box(root, Vector3(0.14, 0.3, 0.03), Vector3(1.0, 0.34, -1.83), brown_cloth, Vector3(-0.05, 0, -0.12))
+	# --- a scarf on a second peg by the coat on the south knee wall
+	v.box(root, Vector3(0.1, 0.04, 0.04), Vector3(-0.85, 0.88, D * 0.5 - 0.03), beam)
+	v.box(root, Vector3(0.12, 0.55, 0.03), Vector3(-0.85, 0.6, D * 0.5 - 0.07), wool_r)
+	v.box(root, Vector3(0.12, 0.42, 0.03), Vector3(-0.78, 0.66, D * 0.5 - 0.09), wool_r, Vector3(0, 0, 0.08))
+	# --- his satchel hung on the hatch rail's east post
+	var sat := Node3D.new()
+	root.add_child(sat)
+	sat.position = Vector3(2.0 + 0.32, 0.0, 1.35 + 0.38)
+	v.box(sat, Vector3(0.3, 0.24, 0.09), Vector3(0.0, 0.55, 0.06), leather)
+	v.box(sat, Vector3(0.3, 0.12, 0.095), Vector3(0.0, 0.62, 0.065), leather_dk)
+	v.box(sat, Vector3(0.025, 0.36, 0.01), Vector3(-0.12, 0.8, 0.02), leather_dk, Vector3(0, 0, -0.35))
+	v.box(sat, Vector3(0.025, 0.36, 0.01), Vector3(0.12, 0.8, 0.02), leather_dk, Vector3(0, 0, 0.35))
+
+
+## A pinned sheet's picture, drawn in ink on old paper: the valley's map (the
+## river, the road, the green's ring of houses), a Lantern Moth and a river
+## hound as a boy draws them, or the festival's notice.
+static func _sketch(kind: String, seed: int) -> ImageTexture:
+	var n := 96
+	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7000 + seed
+	for y in n:
+		for x in n:
+			var g := 0.02 * sin(x * 0.7 + y * 0.3) + rng.randf_range(-0.02, 0.02)
+			var edge := minf(minf(x, n - 1 - x), minf(y, n - 1 - y)) / 6.0
+			var age := 0.08 * (1.0 - clampf(edge, 0.0, 1.0))
+			img.set_pixel(x, y, Color(0.88 + g - age, 0.82 + g - age * 1.2, 0.68 + g - age * 1.5))
+	var dot := func(x: float, y: float, r: float, c: Color) -> void:
+		for yy in range(int(y - r), int(y + r) + 1):
+			for xx in range(int(x - r), int(x + r) + 1):
+				if xx >= 0 and yy >= 0 and xx < n and yy < n and Vector2(xx - x, yy - y).length() <= r:
+					img.set_pixel(xx, yy, c)
+	var line := func(a: Vector2, b: Vector2, c: Color, r := 0.8) -> void:
+		var steps := int(a.distance_to(b) * 1.5) + 1
+		for i in steps + 1:
+			var p := a.lerp(b, float(i) / steps)
+			dot.call(p.x, p.y, r, c)
+	var ink := Color(0.16, 0.12, 0.1)
+	var blue := Color(0.22, 0.32, 0.5)
+	var red := Color(0.55, 0.2, 0.14)
+	match kind:
+		"map":
+			var prev := Vector2(4, 30)
+			for i in 12:
+				var nx := Vector2(4 + (i + 1) * 7.6, 30 + 14 * sin((i + 1) * 0.6))
+				line.call(prev, nx, blue, 1.2)
+				prev = nx
+			line.call(Vector2(10, 88), Vector2(88, 60), ink, 0.7)
+			for k in 8:
+				var a := TAU * k / 8.0
+				dot.call(52 + cos(a) * 13, 64 + sin(a) * 9, 1.6, ink)
+			dot.call(52, 64, 2.5, red)
+			line.call(Vector2(64, 50), Vector2(80, 32), ink, 0.6)
+			dot.call(82, 30, 3.0, ink)
+		"moth":
+			dot.call(48, 54, 7, Color(0.85, 0.55, 0.2))
+			for s in [-1.0, 1.0]:
+				for k in 14:
+					var a := k / 14.0 * PI
+					line.call(Vector2(48, 50), Vector2(48 + s * (10 + 22 * sin(a)), 50 - 26 * cos(a) * 0.9), ink, 0.6)
+			line.call(Vector2(46, 46), Vector2(40, 30), ink, 0.6)
+			line.call(Vector2(50, 46), Vector2(56, 30), ink, 0.6)
+		"hound":
+			line.call(Vector2(20, 60), Vector2(70, 58), blue, 2.0)
+			line.call(Vector2(70, 58), Vector2(82, 40), blue, 1.8)
+			dot.call(84, 38, 5, blue)
+			for lx in [26, 36, 58, 66]:
+				line.call(Vector2(lx, 60), Vector2(lx + rng.randf_range(-3, 3), 80), blue, 1.2)
+			line.call(Vector2(20, 60), Vector2(10, 50), blue, 1.0)
+		"notice":
+			for k in 8:
+				var wl := 70 - (k % 3) * 12
+				line.call(Vector2(13, 18 + k * 9), Vector2(13 + wl, 18 + k * 9), ink, 0.6 if k > 0 else 1.4)
+			dot.call(48, 86, 4, red)
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
 
 
 ## The height of the attic bed's mattress (the straw and the sacking over it)
@@ -729,7 +1028,9 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	v.box(root, Vector3(W, 0.2, D), Vector3(0, -0.1, 0), v.mats.wood_h)
 	v.box(root, Vector3(W, 0.2, D), Vector3(0, H + 0.1, 0), v.mats.beam)
 	v.box(root, Vector3(W, H, 0.3), Vector3(0, H * 0.5, D * 0.5 + 0.15), wall)
-	v.box(root, Vector3(0.3, H, D), Vector3(W * 0.5 + 0.15, H * 0.5, 0), wall)
+	# the east wall, with the doorways to the kitchen and the back passage
+	# (1 November, _eve_tavern)
+	_eve_east_wall(v, root, wall, W, D, H)
 	# the west wall behind the bar, round its window, and the north wall
 	# west of the door round its two (29 October, Gary: "need some windows
 	# on the room as you say about the shutters but there are no windows":
@@ -778,6 +1079,7 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	v.box(root, Vector3(0.12, 1.05, 0.12), Vector3(BAR_X - 0.29, 0.525, BAR_Z1), v.mats.beam_v)
 	_eve_dressing(v, root, W, D, H)
 	_eve_windows(v, root, W, D)
+	_eve_tavern(v, root, W, D, H, wall)
 	for p in [Vector3(-4.0, 0, -3.0), Vector3(-3.3, 0, -3.05)]:
 		var b := v.make_barrel()
 		b.position = p + Vector3(0, AshfordVillage.BARREL_HALF, 0)
@@ -827,7 +1129,11 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		# stools) and square ones (the stairs, their rail included), and the
 		# foot of the stairs, where Bram stops anyone heading back up them
 		"walk": Rect2(BAR_X + 0.75, -D * 0.5 + 0.35, 3.6 - (BAR_X + 0.75), D - 1.35), "blocks": [[Vector2(t.x, t.z), 1.05], [Vector2(t.x - 1.2, t.z + 0.2), 0.42],
-			[Vector2(t.x + 1.15, t.z + 0.55), 0.42]],
+			[Vector2(t.x + 1.15, t.z + 0.55), 0.42],
+			# (1 November, _eve_tavern) the settle at the fire, the trestle
+			# table and its bench, the little table under the north window
+			[Vector2(2.85, 0.45), 0.42], [Vector2(2.85, 1.35), 0.42], [Vector2(1.75, 2.6), 0.55], [Vector2(2.95, 2.6), 0.55],
+			[Vector2(-0.7, -2.75), 0.5], [Vector2(-1.32, -2.63), 0.24], [Vector2(-0.08, -2.63), 0.24]],
 		"keep_out": [Rect2(-3.95, D * 0.5 - 1.38, 4.3, 1.6)],
 		# the counter as a solid for hands (Figure3D.hands_off; 29 October,
 		# Gary: Bram's hands went "onto the wood of the bar"): its body and
@@ -844,6 +1150,295 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	view_of(v, root, eye, eye + front.out * 10.0 + Vector3(0, -0.4, 0), Transform3D(Basis(), Vector3(dx, 1.25, -D * 0.5 - 1.6)), Vector2(3.4, 2.6))
 	v.set_meta("eve", out)
 	return out
+
+
+## The Crooked Lantern as a working inn, not a hall with a door and a stair
+## (1 November, Gary: "it's meant to be a tavern but there is only the front
+## door and stairs going up, no other rooms"). The east wall has two
+## doorways: the kitchen's, north of the hearth (EVE_KITCHEN_Z), its own big
+## cooking hearth straight ahead through it with the pot on its crane, a
+## work table of bread and onions, pans on the beam and crocks on the
+## dresser; and the back passage's, south of the hearth (EVE_PASSAGE_Z),
+## running east to the yard door with the day round its edges, a lamp and
+## a coat on a peg, and the door to the back stairs. Behind the bar the
+## cellar's trapdoor with its ring. In the taproom: a high-backed settle at
+## the fire, a trestle table with its bench along the south wall under an
+## iron candle wheel, a little table and two stools under the north window,
+## tankards and candles on the tables, cloaks on the pegs by the door, the
+## notice board with Ironvault's red-sealed notice on it, and a slate of
+## what's on chalked up by the barrels.
+const EVE_KITCHEN_Z := -1.6
+const EVE_PASSAGE_Z := 2.75
+const EVE_DOOR_W := 1.0
+const EVE_DOOR_H := 2.1
+
+
+## The east wall with its two doorways (W, D, H: the room's size).
+static func _eve_east_wall(v: AshfordVillage, root: Node3D, mat: Material, W: float, D: float, H: float) -> void:
+	var x := W * 0.5 + 0.15
+	var cuts := [[EVE_KITCHEN_Z - EVE_DOOR_W * 0.5, EVE_KITCHEN_Z + EVE_DOOR_W * 0.5], [EVE_PASSAGE_Z - 0.45, EVE_PASSAGE_Z + 0.45]]
+	var at := -D * 0.5
+	for c in cuts:
+		if float(c[0]) > at:
+			v.box(root, Vector3(0.3, H, float(c[0]) - at), Vector3(x, H * 0.5, (at + float(c[0])) * 0.5), mat)
+		v.box(root, Vector3(0.3, H - EVE_DOOR_H, float(c[1]) - float(c[0])), Vector3(x, EVE_DOOR_H + (H - EVE_DOOR_H) * 0.5, (float(c[0]) + float(c[1])) * 0.5), mat)
+		# the doorway's oak frame: posts and a lintel
+		for z in [c[0], c[1]]:
+			v.box(root, Vector3(0.36, EVE_DOOR_H, 0.12), Vector3(x, EVE_DOOR_H * 0.5, float(z)), v.mats.beam_v)
+		v.box(root, Vector3(0.36, 0.16, float(c[1]) - float(c[0]) + 0.24), Vector3(x, EVE_DOOR_H + 0.08, (float(c[0]) + float(c[1])) * 0.5), v.mats.beam)
+		at = float(c[1])
+	if D * 0.5 > at:
+		v.box(root, Vector3(0.3, H, D * 0.5 - at), Vector3(x, H * 0.5, (at + D * 0.5) * 0.5), mat)
+
+
+static func _eve_tavern(v: AshfordVillage, root: Node3D, W: float, D: float, H: float, wall: Material) -> void:
+	var mk := func(col: Color, rough := 0.85, metal := 0.0) -> StandardMaterial3D:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = col
+		m.roughness = rough
+		m.metallic = metal
+		return m
+	var oak: Material = v.mats.wood_h
+	var dark: Material = v.mats.wood
+	var beam: Material = v.mats.beam
+	var post: Material = v.mats.beam_v
+	var iron: Material = v.mats.metal
+	var pewter: StandardMaterial3D = mk.call(Color(0.6, 0.6, 0.58), 0.38, 0.85)
+	var stoneware: StandardMaterial3D = mk.call(Color(0.72, 0.64, 0.5), 0.6)
+	var stone_dk: StandardMaterial3D = mk.call(Color(0.42, 0.3, 0.2), 0.5)
+	var wax: StandardMaterial3D = mk.call(Color(0.93, 0.88, 0.74), 0.7)
+	var bread: StandardMaterial3D = mk.call(Color(0.68, 0.44, 0.2), 0.8)
+	var onion: StandardMaterial3D = mk.call(Color(0.72, 0.5, 0.3), 0.6)
+	var cabbage: StandardMaterial3D = mk.call(Color(0.4, 0.55, 0.3), 0.8)
+	var sack: StandardMaterial3D = mk.call(Color(0.62, 0.54, 0.4), 1.0)
+	var flag_stone: Material = v.mats.stone_ww
+	var copper: StandardMaterial3D = mk.call(Color(0.78, 0.42, 0.24), 0.32, 0.9)
+	var ex := W * 0.5 + 0.3   # the far side of the east wall
+	# ---------------------------------------------------------- the kitchen
+	var kx0 := ex
+	var kx1 := ex + 3.9
+	var kz0 := -D * 0.5
+	var kz1 := 0.5
+	var kc := Vector3((kx0 + kx1) * 0.5, 0, (kz0 + kz1) * 0.5)
+	v.box(root, Vector3(kx1 - kx0, 0.2, kz1 - kz0), kc + Vector3(0, -0.1, 0), flag_stone)
+	v.box(root, Vector3(kx1 - kx0, 0.2, kz1 - kz0), kc + Vector3(0, H + 0.1, 0), beam)
+	v.box(root, Vector3(kx1 - kx0, H, 0.3), Vector3(kc.x, H * 0.5, kz0 - 0.15), wall)
+	v.box(root, Vector3(kx1 - kx0, H, 0.3), Vector3(kc.x, H * 0.5, kz1 + 0.15), wall)
+	for z in [kz0 + 0.8, kc.z, kz1 - 0.8]:
+		v.box(root, Vector3(kx1 - kx0, 0.22, 0.2), Vector3(kc.x, H - 0.11, z), beam)
+	# its cooking hearth in the far wall, straight ahead through the doorway
+	var hz := EVE_KITCHEN_Z
+	v.box(root, Vector3(0.6, H, 3.9), Vector3(kx1 + 0.3, H * 0.5, kc.z), v.mats.stone)
+	v.box(root, Vector3(0.75, 1.3, 1.8), Vector3(kx1 - 0.1, 0.65, hz), v.mats.stone)
+	v.box(root, Vector3(0.5, 1.0, 1.4), Vector3(kx1 - 0.2, 0.5, hz), v.mats.dark)
+	v.box(root, Vector3(0.95, 0.22, 2.1), Vector3(kx1 - 0.2, 1.38, hz), v.mats.stone)
+	v.box(root, Vector3(0.12, 0.12, 2.0), Vector3(kx1 - 0.55, 1.38, hz), beam)
+	_hearth(v, root, Vector3(kx1 - 0.25, 0.1, hz))
+	# the pot on its crane over the fire, a kettle on the hob
+	v.box(root, Vector3(0.04, 0.9, 0.04), Vector3(kx1 - 0.55, 0.85, hz - 0.62), iron)
+	v.box(root, Vector3(0.5, 0.04, 0.04), Vector3(kx1 - 0.35, 1.25, hz - 0.62), iron, Vector3(0, 0.9, 0))
+	v.box(root, Vector3(0.012, 0.42, 0.012), Vector3(kx1 - 0.3, 1.02, hz - 0.3), iron)
+	var pot := SphereMesh.new()
+	pot.radius = 0.2
+	pot.height = 0.32
+	v.add_mesh(root, pot, mk.call(Color(0.12, 0.11, 0.1), 0.55, 0.6), Transform3D(Basis.IDENTITY, Vector3(kx1 - 0.3, 0.68, hz - 0.3)))
+	v.cyl(root, 0.08, 0.11, 0.16, Vector3(kx1 - 0.25, 0.55, hz + 0.45), copper, 12)
+	var kl := OmniLight3D.new()
+	kl.light_color = Color(1.0, 0.58, 0.26)
+	kl.light_energy = 2.4
+	kl.omni_range = 6.5
+	kl.position = Vector3(kx1 - 0.8, 0.9, hz)
+	root.add_child(kl)
+	v.flicker_lights.append([kl, 2.4])
+	var kf := OmniLight3D.new()
+	kf.light_color = Color(0.95, 0.8, 0.62)
+	kf.light_energy = 0.7
+	kf.omni_range = 5.0
+	kf.position = Vector3(kc.x, 2.4, kc.z)
+	root.add_child(kf)
+	# the work table, scrubbed pale, with the day's bread and the onions
+	var wt := Vector3(kc.x - 0.3, 0.0, kc.z + 0.4)
+	v.box(root, Vector3(1.6, 0.07, 0.75), wt + Vector3(0, 0.84, 0), mk.call(Color(0.62, 0.5, 0.36), 0.9))
+	for lx in [-0.7, 0.7]:
+		for lz in [-0.3, 0.3]:
+			v.box(root, Vector3(0.08, 0.84, 0.08), wt + Vector3(lx, 0.42, lz), post)
+	for k in 3:
+		var loaf := SphereMesh.new()
+		loaf.radius = 0.11
+		loaf.height = 0.12
+		v.add_mesh(root, loaf, bread, Transform3D(Basis.from_scale(Vector3(1.3, 1, 1)), wt + Vector3(-0.5 + k * 0.24, 0.92, -0.15)))
+	for k in 6:
+		var o := SphereMesh.new()
+		o.radius = 0.04
+		o.height = 0.07
+		v.add_mesh(root, o, onion, Transform3D(Basis.IDENTITY, wt + Vector3(0.25 + (k % 3) * 0.08, 0.91, 0.12 + (k / 3) * 0.08)))
+	var cb := SphereMesh.new()
+	cb.radius = 0.12
+	cb.height = 0.22
+	v.add_mesh(root, cb, cabbage, Transform3D(Basis.IDENTITY, wt + Vector3(0.6, 0.98, -0.12)))
+	v.box(root, Vector3(0.36, 0.03, 0.24), wt + Vector3(-0.1, 0.89, 0.15), oak)
+	v.box(root, Vector3(0.16, 0.01, 0.06), wt + Vector3(-0.1, 0.91, 0.15), iron, Vector3(0, 0.4, 0))
+	# pans and ladles hung on the beam over it
+	for k in 5:
+		var px := wt.x - 0.6 + k * 0.3
+		v.box(root, Vector3(0.012, 0.3, 0.012), Vector3(px, H - 0.38, kc.z), iron)
+		if k % 2 == 0:
+			v.cyl(root, 0.13, 0.11, 0.05, Vector3(px, H - 0.62, kc.z), copper, 14, Vector3(PI * 0.5, 0, 0))
+		else:
+			v.cyl(root, 0.05, 0.05, 0.04, Vector3(px, H - 0.6, kc.z), iron, 10)
+	# the dresser on the north wall: crocks, plates and jugs
+	var dz := kz0 + 0.25
+	v.box(root, Vector3(1.6, 0.9, 0.45), Vector3(kc.x - 0.2, 0.45, dz + 0.02), dark)
+	v.box(root, Vector3(1.6, 1.1, 0.05), Vector3(kc.x - 0.2, 1.45, kz0 + 0.03), dark)
+	for y in [1.25, 1.65]:
+		v.box(root, Vector3(1.55, 0.04, 0.22), Vector3(kc.x - 0.2, y, kz0 + 0.14), oak)
+		for k in 6:
+			var px := kc.x - 0.85 + k * 0.26
+			if (k + int(y * 10)) % 2 == 0:
+				v.cyl(root, 0.1, 0.1, 0.012, Vector3(px, y + 0.11, kz0 + 0.1), pewter, 16, Vector3(PI * 0.5 - 0.2, 0, 0))
+			else:
+				v.cyl(root, 0.045, 0.06, 0.15, Vector3(px, y + 0.095, kz0 + 0.14), stoneware if k % 3 else stone_dk, 12)
+	# flour sacks and the water butt in the corner by the door
+	for k in 2:
+		v.cyl(root, 0.2, 0.24, 0.6, Vector3(kx0 + 0.45 + k * 0.42, 0.3, kz0 + 0.45), sack, 12)
+	var butt := v.make_barrel()
+	butt.position = Vector3(kx0 + 0.5, AshfordVillage.BARREL_HALF, kz1 - 0.45)
+	root.add_child(butt)
+	# --------------------------------------------------- the back passage
+	var pz0 := EVE_PASSAGE_Z - 0.55
+	var pz1 := EVE_PASSAGE_Z + 0.55
+	var px1 := ex + 3.6
+	var pc := Vector3((ex + px1) * 0.5, 0, (pz0 + pz1) * 0.5)
+	v.box(root, Vector3(px1 - ex, 0.2, pz1 - pz0), pc + Vector3(0, -0.1, 0), oak)
+	v.box(root, Vector3(px1 - ex, 0.2, pz1 - pz0), pc + Vector3(0, 2.5, 0), beam)
+	v.box(root, Vector3(px1 - ex, 2.6, 0.3), Vector3(pc.x, 1.3, pz0 - 0.15), wall)
+	v.box(root, Vector3(px1 - ex, 2.6, 0.3), Vector3(pc.x, 1.3, pz1 + 0.15), wall)
+	# the yard door at its end, the day round its edges
+	v.box(root, Vector3(0.3, 2.6, pz1 - pz0 + 0.6), Vector3(px1 + 0.15, 1.3, pc.z), wall)
+	v.box(root, Vector3(0.06, 1.95, 0.9), Vector3(px1 - 0.02, 0.975, pc.z), v.mats.door_natural)
+	v.box(root, Vector3(0.05, 0.05, 0.08), Vector3(px1 - 0.06, 1.0, pc.z - 0.32), iron)
+	var chink := StandardMaterial3D.new()
+	chink.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	chink.albedo_color = Color(1.0, 0.95, 0.85) * 2.2
+	v.box(root, Vector3(0.02, 0.02, 0.92), Vector3(px1 - 0.05, 1.96, pc.z), chink)
+	v.box(root, Vector3(0.02, 1.9, 0.015), Vector3(px1 - 0.05, 0.97, pc.z + 0.46), chink)
+	var yard := OmniLight3D.new()
+	yard.light_color = Color(0.85, 0.9, 1.0)
+	yard.light_energy = 0.8
+	yard.omni_range = 3.0
+	yard.position = Vector3(px1 - 0.4, 1.2, pc.z)
+	root.add_child(yard)
+	# the door to the back stairs, a lamp on its hook, a coat on a peg
+	v.box(root, Vector3(0.8, 1.95, 0.06), Vector3(ex + 1.6, 0.975, pz1 - 0.02), v.mats.door_natural)
+	v.box(root, Vector3(0.05, 0.05, 0.06), Vector3(ex + 1.9, 1.0, pz1 - 0.07), iron)
+	v.box(root, Vector3(0.14, 0.2, 0.14), Vector3(ex + 2.6, 1.9, pz0 + 0.12), v.mats.lamp_glass).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var pl := OmniLight3D.new()
+	pl.light_color = Color(1.0, 0.66, 0.34)
+	pl.light_energy = 1.2
+	pl.omni_range = 3.5
+	pl.position = Vector3(ex + 2.6, 1.8, pz0 + 0.3)
+	root.add_child(pl)
+	v.flicker_lights.append([pl, 1.2])
+	v.box(root, Vector3(0.1, 0.04, 0.04), Vector3(ex + 0.9, 1.65, pz0 + 0.03), post)
+	v.box(root, Vector3(0.45, 0.85, 0.08), Vector3(ex + 0.9, 1.2, pz0 + 0.08), mk.call(Color(0.24, 0.27, 0.22), 1.0))
+	# ---------------------------------------------- the taproom's furniture
+	# a high-backed settle at the fire, facing it
+	var st := Vector3(2.85, 0, 0.9)
+	v.box(root, Vector3(0.42, 0.06, 1.5), st + Vector3(0, 0.45, 0), oak)
+	v.box(root, Vector3(0.06, 1.25, 1.5), st + Vector3(-0.2, 0.62, 0), dark)
+	for sz in [-0.72, 0.72]:
+		v.box(root, Vector3(0.46, 0.75, 0.05), st + Vector3(0, 0.375, sz), dark)
+		v.box(root, Vector3(0.46, 0.05, 0.06), st + Vector3(0.0, 0.72, sz), oak)
+	# the trestle table along the south wall, its bench, the candle wheel over it
+	var tt := Vector3(2.35, 0, 2.85)
+	v.box(root, Vector3(1.9, 0.07, 0.7), tt + Vector3(0, 0.76, 0), oak)
+	for sx in [-0.75, 0.75]:
+		v.box(root, Vector3(0.08, 0.74, 0.5), tt + Vector3(sx, 0.37, 0), post)
+		v.box(root, Vector3(0.08, 0.06, 0.62), tt + Vector3(sx, 0.05, 0), post)
+	v.box(root, Vector3(1.4, 0.08, 0.06), tt + Vector3(0, 0.3, 0), post)
+	v.box(root, Vector3(1.7, 0.06, 0.3), tt + Vector3(0, 0.45, -0.58), oak)
+	for sx in [-0.65, 0.65]:
+		v.box(root, Vector3(0.06, 0.44, 0.24), tt + Vector3(sx, 0.22, -0.58), post)
+	var wheel := Vector3(tt.x, 2.25, tt.z - 0.1)
+	v.cyl(root, 0.4, 0.4, 0.035, wheel, iron, 20)
+	v.cyl(root, 0.36, 0.36, 0.04, wheel, v.mats.dark, 20)
+	for k in 6:
+		var a := TAU * k / 6.0
+		v.cyl(root, 0.018, 0.018, 0.12, wheel + Vector3(cos(a) * 0.38, 0.08, sin(a) * 0.38), wax, 8)
+		if k % 2 == 0:
+			v.box(root, Vector3(0.008, 0.85, 0.008), wheel + Vector3(cos(a) * 0.2, 0.44, sin(a) * 0.2), iron, Vector3(sin(a) * 0.22, 0, -cos(a) * 0.22))
+	# a little table and two stools under the north window
+	var nt := Vector3(-0.7, 0, -2.75)
+	v.cyl(root, 0.42, 0.42, 0.05, nt + Vector3(0, 0.74, 0), oak, 20)
+	v.cyl(root, 0.06, 0.1, 0.72, nt + Vector3(0, 0.36, 0), post, 10)
+	v.cyl(root, 0.22, 0.22, 0.04, nt + Vector3(0, 0.02, 0), post, 14)
+	for sx in [-0.62, 0.62]:
+		v.cyl(root, 0.18, 0.16, 0.44, nt + Vector3(sx, 0.22, 0.12), dark, 12)
+	# tankards and candles in bottles on the tables (the middle one's at 0.6, 0.3)
+	var tops := [[Vector3(0.6, 0.815, 0.3), 0.5], [tt + Vector3(0, 0.795, 0), 0.7], [nt + Vector3(0, 0.765, 0), 0.25]]
+	for i in tops.size():
+		var tp: Vector3 = tops[i][0]
+		var spread: float = tops[i][1]
+		v.cyl(root, 0.045, 0.05, 0.13, tp + Vector3(-spread * 0.4, 0.065, 0.08), pewter, 12)
+		v.box(root, Vector3(0.015, 0.08, 0.04), tp + Vector3(-spread * 0.4 + 0.06, 0.07, 0.08), pewter)
+		if i != 2:
+			v.cyl(root, 0.045, 0.05, 0.13, tp + Vector3(spread * 0.3, 0.065, -0.1), stoneware, 12)
+		v.cyl(root, 0.035, 0.035, 0.16, tp + Vector3(spread * 0.05, 0.08, -0.15), mk.call(Color(0.16, 0.3, 0.14), 0.15), 10)
+		v.cyl(root, 0.016, 0.016, 0.08, tp + Vector3(spread * 0.05, 0.2, -0.15), wax, 8)
+	# cloaks on the pegs east of the front door, a hat on one
+	for k in 3:
+		var cx := 3.2 + k * 0.45
+		v.box(root, Vector3(0.04, 0.04, 0.12), Vector3(cx, 1.7, -D * 0.5 + 0.06), post)
+		if k != 1:
+			v.box(root, Vector3(0.38, 0.95, 0.08), Vector3(cx, 1.2, -D * 0.5 + 0.1), mk.call([Color(0.3, 0.22, 0.16), Color(0.22, 0.25, 0.3), Color(0.35, 0.18, 0.12)][k], 1.0), Vector3(0.05, 0, 0.03 * (k - 1)))
+		else:
+			v.cyl(root, 0.17, 0.17, 0.02, Vector3(cx, 1.62, -D * 0.5 + 0.18), mk.call(Color(0.2, 0.16, 0.12), 0.9), 14, Vector3(PI * 0.5, 0, 0))
+			v.cyl(root, 0.1, 0.11, 0.12, Vector3(cx, 1.62, -D * 0.5 + 0.22), mk.call(Color(0.2, 0.16, 0.12), 0.9), 14, Vector3(PI * 0.5, 0, 0))
+	# the notice board west of the door, Ironvault's notice on it with its seal
+	var nb := Vector3(0.62, 1.5, -D * 0.5 + 0.04)
+	v.box(root, Vector3(0.8, 0.6, 0.04), nb, dark)
+	var sheets := [[Vector3(-0.2, 0.05, 0), Vector2(0.26, 0.34), "notice", 0.05], [Vector3(0.15, -0.06, 0), Vector2(0.24, 0.3), "notice", -0.07], [Vector3(0.22, 0.17, 0), Vector2(0.18, 0.14), "moth", 0.0]]
+	for i in sheets.size():
+		var sh: Array = sheets[i]
+		var q := MeshInstance3D.new()
+		var qm := QuadMesh.new()
+		qm.size = sh[1]
+		q.mesh = qm
+		var pm := StandardMaterial3D.new()
+		pm.albedo_texture = _sketch(String(sh[2]), 20 + i)
+		pm.roughness = 0.95
+		q.material_override = pm
+		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		q.transform = Transform3D(Basis(Vector3.BACK, float(sh[3])), nb + sh[0] + Vector3(0, 0, 0.025))
+		root.add_child(q)
+	# Ironvault's red wax seal on the first
+	v.cyl(root, 0.03, 0.03, 0.01, nb + Vector3(-0.2, -0.08, 0.03), mk.call(Color(0.6, 0.08, 0.06), 0.4), 12, Vector3(PI * 0.5, 0, 0))
+	# the slate of what's on, chalked, on the north wall over the barrels
+	var sl := Vector3(-4.0, 1.75, -D * 0.5 + 0.03)
+	v.box(root, Vector3(0.62, 0.48, 0.03), sl, mk.call(Color(0.12, 0.13, 0.14), 0.8))
+	v.box(root, Vector3(0.68, 0.54, 0.02), sl + Vector3(0, 0, -0.01), oak)
+	var chalk := Label3D.new()
+	chalk.text = "LANTERN NIGHT\nFestival pie . 3d\nAle . 1d\nCider . 1d"
+	chalk.font_size = 40
+	chalk.pixel_size = 0.0018
+	chalk.modulate = Color(0.88, 0.88, 0.84)
+	chalk.outline_size = 0
+	chalk.shaded = true
+	chalk.double_sided = false
+	chalk.line_spacing = -6.0
+	chalk.position = sl + Vector3(0, 0.0, 0.02)
+	root.add_child(chalk)
+	# the cellar's trapdoor in the walkway behind the bar, with its iron ring
+	var td := Vector3(-4.05, 0.0, -2.35)
+	v.box(root, Vector3(0.72, 0.025, 0.72), td + Vector3(0, 0.012, 0), dark)
+	for k in 4:
+		v.box(root, Vector3(0.72, 0.028, 0.012), td + Vector3(0, 0.013, -0.27 + k * 0.18), post)
+	for sz in [-0.22, 0.22]:
+		v.box(root, Vector3(0.28, 0.03, 0.05), td + Vector3(-0.2, 0.016, sz), iron)
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.035
+	ring.outer_radius = 0.05
+	v.add_mesh(root, ring, iron, Transform3D(Basis.IDENTITY, td + Vector3(0.22, 0.03, 0)))
 
 
 ## The taproom's windows (29 October): one in the west wall behind the bar,
@@ -1311,3 +1906,9 @@ static func outside(v: AshfordVillage) -> void:
 		v.env.fog_enabled = s[6]
 		v.env.volumetric_fog_enabled = s[7]
 	v.remove_meta("outside_env")
+
+
+static func _thin_box(x: float, y: float, z: float) -> BoxMesh:
+	var b := BoxMesh.new()
+	b.size = Vector3(x, y, z)
+	return b

@@ -884,6 +884,24 @@ Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, 
 
 ## Story mode
 
+**1 November (Gary's playtest notes; `docs/handover/2026-11-01.md` has the
+whole list):** Ashford's people never stand frozen (`AshfordLife`, new: Corin
+and the children move about, the adults turn, shift and chat; the old circle
+of four walkers is two couples dancing); the taproom's crate waits on a side
+table and is lifted with the knees and set down from a crouch
+(`AshfordP1._crate_stand`, `_take_crate`, `CROUCH`); the inn has rooms behind
+the taproom (`InnRooms._eve_tavern`) and the attic is dressed as his room
+(`_attic_dressing`); standing figures carry themselves upright
+(`Figure3D` `Posture` modifier, first in the chain); Corin's evening, the
+awakening and the Herald are staged as films (`AshfordDay._corin_pond_film`,
+`AshfordNight.awakening`, `Ashford._herald_3d`), midnight opens on the taper;
+a talk can set its own music (`{"theme": [...]}` in a talk tree, `"back"` to
+return; Corin's evening asks for `corin_evening`); a staged walk's turns are
+moved off anything solid (`Cine.off_blockers`); friendly games (Tam's, Nell's)
+deal no fatigue until both decks are empty and a Totem can't Guard two turns
+running (`DuelGame.friendly`, `guard_turn`); the duel's text goes by a little
+quicker at each reading speed (`DuelReading.LEVELS`).
+
 **Since 24 October the Prologue follows Gary's Master Script v7**
 (`docs/script/v7_prologue.md`, made from his v6 PDF beside it; the Claude doc
 "Master Script v7" is the master). Where the code below still describes v3,

@@ -67,16 +67,29 @@ static func awakening(w: World) -> void:
 		(L.window as Light3D).light_energy = 1.1
 		(L.candle as Light3D).light_energy = 1.5
 		(L.fill as Light3D).light_energy = 0.6
+		if L.has("bounce"):
+			(L.bounce as Light3D).light_energy = 0.35
 	if a.has("fog_mat"):
 		(a.fog_mat as StandardMaterial3D).albedo_color.a = 0.6
 	if a.has("writing"):
 		(a.writing as Label3D).modulate.a = 0.0
 	AshfordP1.asleep(w)
 	var root: Node3D = a.root
-	# Bram's stool beside the cot, and Bram on it, a cloth in his hand
+	# (1 November, Gary: "the whole conversation between Bram and the player
+	# after passing out needs redoing and animating so it's a movie, not just
+	# a conversation", "characters going through the items", and Bram's eyes
+	# "look mental" when you wake). The same words, staged: Bram watching
+	# over the bed on his stool, the player sitting up, then on the bed's
+	# edge; Bram on his feet and at the window with his back to them for the
+	# hard part, turning to face them for the rest; the bell, the two of
+	# them at the window together, his hand on their shoulder, and down the
+	# hatch. Every shot moves a little; nothing is shot from the pillow up
+	# into his face; nobody's walk crosses the bed, the crate, the desk or
+	# the stool (each walk's points are picked clear of them).
 	var lie: Vector3 = a.lie_at
-	var stool := lie + Vector3(0.15, 0, 0.95)
-	stool.y = (a.bed_side as Vector3).y
+	var fy := (a.bed_side as Vector3).y
+	var stool := lie + Vector3(0.15, 0, 1.0)
+	stool.y = fy
 	var st: Node3D = AshfordP1.meta(v, "wake_stool")
 	if st == null:
 		st = Node3D.new()
@@ -93,80 +106,151 @@ static func awakening(w: World) -> void:
 	cm.roughness = 1.0
 	v.box(cloth, Vector3(0.14, 0.02, 0.1), Vector3.ZERO, cm)
 	cloth.set_meta("p1_prop", true)
+	w.add_child(cloth)
 	var bf = Cine.fig(w, "bram")
+	var pf = w.player_doll
 	if bf is Figure3D:
-		(bf as Figure3D).hand_light(cloth)
+		(bf as Figure3D).attach(cloth, "palm", "right", 0.012)
 	Music.play(["dawn_after"], 2.0, true)
+	# the window: where Bram stands to look out (clear of the candle's crate
+	# and the desk), and where the player comes to stand beside him
+	var win: Vector3 = a.window
+	var bram_win := root.to_global(Vector3(-2.38, 0, -0.3))
+	var me_win := root.to_global(Vector3(-2.15, 0, 0.3))
+	bram_win.y = fy
+	me_win.y = fy
+	var into := (lie - stool).normalized()
+	var side := into.cross(Vector3.UP)
 	# the beams overhead, as his eyes open (twice: a blink, then awake)
 	var up := lie + Vector3(0, 0.55, 0)
 	Cine.shot(w, up, up + Vector3(0.3, 1.0, -0.2), 60.0)
 	await Cine.fade(w, 0.35, 0.8)
 	await Cine.fade(w, 0.9, 0.4)
 	await Cine.fade(w, 0.0, 1.1)
-	await Cine.wait(w, 0.8)
-	# Bram, haggard, from the pillow
+	await Cine.wait(w, 0.6)
+	# from the foot of the bed: the sleeper, and Bram bent forward on his
+	# stool, elbows on his knees, the cloth in his hands; a slow push in
 	var bh := Cine.head(w, "bram")
-	Cine.shot(w, lie + Vector3(-0.1, 0.62, 0.1), bh, 44.0)
+	var foot_a := lie + Vector3(2.0, 1.15, 0.85)
+	Cine.drift(w, foot_a, foot_a + Vector3(-0.45, -0.08, -0.12), (bh + lie + Vector3(0, 0.6, 0)) * 0.5, bh + Vector3(0, -0.08, 0), 5.0, 40.0)
 	await Cine.say(w, "bram", "Thank the Courts. You gave me quite a scare out there, Sprout.")
 	# up onto an elbow (sat up in the bed), Bram leaning in
-	var pf = w.player_doll
 	if pf is Figure3D:
 		(pf as Figure3D).sit_long(a.lie_top, 1.4)
-	await Cine.wait(w, 1.2)
+	await Cine.wait(w, 1.0)
 	var mid := (lie + stool) * 0.5
-	var side := (stool - lie).normalized().cross(Vector3.UP)
-	Cine.shot(w, mid + side * 1.9 + Vector3(0, 1.25, 0), mid + Vector3(0, 0.85, 0), 40.0)
+	Cine.drift(w, mid + side * 2.0 + Vector3(0, 1.2, 0), mid + side * 1.75 + Vector3(0.0, 1.15, 0) - into * 0.1, mid + Vector3(0, 0.85, 0), mid + Vector3(0, 0.88, 0), 7.0, 40.0)
 	if bf is Figure3D:
 		(bf as Figure3D).act("talk", 0.6)
 	await Cine.say(w, "bram", "Listen to me carefully. I wanted to break this to you slowly, but the turning of the Age just tore up that timeline.")
+	# he gets up off the stool (it scrapes back) and goes to the window
+	if bf is Figure3D:
+		(bf as Figure3D).detach(cloth)
+	if is_instance_valid(cloth):
+		cloth.queue_free()
+	await AshfordP1.stand_up(w, "bram", 0.5)
+	var push := w.create_tween()
+	push.tween_property(st, "global_position", stool + side * 0.7 + into * -0.3, 0.5).set_trans(Tween.TRANS_SINE)
+	Cine.drift(w, lie + Vector3(1.2, 1.3, 1.6), lie + Vector3(0.9, 1.35, 1.9), (stool + bram_win) * 0.5 + Vector3(0, 1.3, 0), bram_win + Vector3(0, 1.45, 0), 3.4, 44.0)
+	await Cine.path(w, "bram", [root.to_global(Vector3(-1.4, 0, -0.55)), bram_win], 1.05)
+	Cine.look(w, "bram", win)
+	# his back to the room, the grey light on him
+	Cine.drift(w, root.to_global(Vector3(-1.05, 1.6, 0.85)), root.to_global(Vector3(-1.25, 1.62, 0.6)), bram_win + Vector3(0, 1.55, 0), bram_win + Vector3(0, 1.5, 0), 6.5, 36.0)
 	await Cine.say(w, "bram", "I'm not who you think I am, and you aren't who you think you are.")
+	# the player swings their legs out and sits on the bed's edge
+	if pf is Figure3D:
+		var fig := pf as Figure3D
+		await fig.shift_seat(a.edge_at, Vector3.BACK, 0.9, 0.05)
+		fig.sit(a.edge_top, 0.6)
+		await Cine.wait(w, 0.4)
+		fig.look_toward(bram_win, w.cam)
 	await Cine.say(w, "bram", "Everything I've done has been to protect you. To protect what you are... and what you're going to become.")
-	# how the player takes it (v7, Gary's note: the protagonist's own feeling)
+	# how the player takes it (v7, Gary's note: the protagonist's own feeling):
+	# close on them, sat on the bed's edge, from the hatch side
+	var ph := Cine.head(w, "player")
+	Cine.drift(w, ph + Vector3(1.3, -0.05, 0.75), ph + Vector3(1.15, -0.03, 0.62), ph + Vector3(0, -0.05, 0), ph + Vector3(0, -0.04, 0), 6.0, 34.0)
 	var feel := await Cine.choose(w, ["Twenty years, Bram. You lied to me for twenty years.", "What's happening to me?", "Then stop protecting me and tell me what I'm up against."])
+	# he turns from the window to them
+	Cine.look(w, "bram", w.player.global_position)
+	var bh2 := Cine.head(w, "bram")
 	match feel:
 		0:
 			Game.set_flag("temper_angry")
+			Cine.drift(w, (ph + bh2) * 0.5 + side * 1.6 + Vector3(0, 0.1, 0), (ph + bh2) * 0.5 + side * 1.45 + Vector3(0, 0.12, 0), bh2, bh2 + Vector3(0, -0.05, 0), 5.0, 38.0)
 			await Cine.say(w, "bram", "Every day of them. Be as angry as you like. Just be angry and listening.")
 		1:
 			Game.set_flag("temper_afraid")
-			# he takes your wrist, the way he did when you were small and had a fever
+			# he comes across and takes your wrist, the way he did when you
+			# were small and had a fever
+			var by := w.player.global_position + Vector3(-0.45, 0, 0.6)
+			by.y = fy
+			await Cine.path(w, "bram", [root.to_global(Vector3(-1.6, 0, 0.1)), by], 1.1)
+			Cine.look(w, "bram", w.player.global_position)
 			if bf is Figure3D and pf is Figure3D:
 				var wrist := Node3D.new()
 				w.add_child(wrist)
-				wrist.global_position = (pf as Figure3D).bone_pos("RightHand")
+				wrist.global_position = (pf as Figure3D).bone_pos("LeftHand")
 				(bf as Figure3D).reach(null, wrist, 0.5)
 				await Cine.wait(w, 0.6)
 				wrist.set_meta("p1_prop", true)
 				w.set_meta("wake_wrist", wrist)
+			var mm := (w.player.global_position + by) * 0.5
+			Cine.drift(w, mm + Vector3(0.9, 1.25, 1.5), mm + Vector3(0.75, 1.2, 1.35), mm + Vector3(0, 0.9, 0), mm + Vector3(0, 0.95, 0), 5.0, 38.0)
 			await Cine.say(w, "bram", "Nothing I'll let finish you. Breathe.")
 		_:
 			Game.set_flag("temper_resolved")
+			Cine.drift(w, (ph + bh2) * 0.5 + side * 1.6 + Vector3(0, 0.1, 0), (ph + bh2) * 0.5 + side * 1.45 + Vector3(0, 0.12, 0), bh2, bh2 + Vector3(0, -0.05, 0), 5.0, 38.0)
 			await Cine.say(w, "bram", "Twenty years I've waited to hear you say something like that. I'd hoped it'd be about the inn.")
 	if bf is Figure3D:
 		(bf as Figure3D).let_go(0.4)
 	var wr = AshfordP1.meta(w, "wake_wrist")
 	if wr != null and is_instance_valid(wr):
 		(wr as Node).queue_free()
-	# the Betrayal
+	# the Betrayal: the player, on the bed's edge, over Bram's shoulder
+	var bp := Cine.body(w, "bram").global_position
+	var to_me := w.player.global_position - bp
+	to_me.y = 0.0
+	to_me = to_me.normalized()
+	var across := to_me.cross(Vector3.UP)
+	var over := bp + to_me * 0.35 + across * 0.75 + Vector3(0, 1.55, 0)
+	Cine.drift(w, over, over + to_me * 0.15, ph + Vector3(0, -0.05, 0), ph, 7.0, 36.0)
 	await Cine.say(w, "player", "Protect me from what? What do you mean you aren't who I think you are? Bram, you're not making any sense.")
 	await Cine.say(w, "player", "And last night... the sky tore open. I remember the cart, and then that light... what happened to me out there? What was that card?")
-	Cine.shot(w, stool + side * -0.4 + (lie - stool).normalized() * 1.6 + Vector3(0, 1.0, 0), bh + Vector3(0, -0.1, 0), 36.0)
+	# Bram, from behind the player's shoulder, the window's grey light on him
+	bh2 = Cine.head(w, "bram")
+	var behind := w.player.global_position + (w.player.global_position - bp).normalized() * 0.5 + Vector3(0, 1.25, 0) - side * 0.3
+	Cine.drift(w, behind, behind + (bp - w.player.global_position).normalized() * 0.15, bh2 + Vector3(0, -0.06, 0), bh2 + Vector3(0, -0.04, 0), 8.0, 34.0)
 	await Cine.say(w, "bram", "The inn was a lie. My name is a lie. But keeping you safe... that was the truest thing I've ever done.")
 	await Cine.say(w, "bram", "I can't tell you everything yet. I've seen too many kingdoms burn because of the powers I used to serve. I just wanted to stop. I wanted you to just be a boy.")
 	# he looks down at his scarred hands
 	if bf is Figure3D:
 		(bf as Figure3D).pose("play_card", 0.35, 0.5)
-	Cine.shot(w, stool + side * 0.8 + Vector3(0, 0.9, 0) + (lie - stool).normalized() * 0.7, stool + Vector3(0, 0.75, 0), 32.0)
-	await Cine.wait(w, 1.4)
+	var hands := (bf as Figure3D).bone_pos("RightHand") if bf is Figure3D else bp + Vector3(0, 1.0, 0)
+	Cine.drift(w, hands + side * 0.75 + Vector3(0, 0.22, 0) + (w.player.global_position - bp).normalized() * 0.35, hands + side * 0.65 + Vector3(0, 0.26, 0) + (w.player.global_position - bp).normalized() * 0.3,
+		hands, (hands + Cine.head(w, "bram")) * 0.5, 2.4, 32.0)
+	await Cine.wait(w, 1.6)
 	if bf is Figure3D:
 		(bf as Figure3D).release(0.5)
-	Cine.shot(w, mid + side * 1.9 + Vector3(0, 1.25, 0), mid + Vector3(0, 0.85, 0), 40.0)
+	# he comes back to the bed and sits on its end, by them
+	var bed_end := w.player.global_position + Vector3(0.62, 0, 0.0)
+	bed_end.y = fy
+	var end_way := root.to_global(Vector3(-1.2, 0, 0.1))
+	var two := (w.player.global_position + bed_end) * 0.5
+	Cine.drift(w, two + side * 2.3 + Vector3(0, 1.3, 0) + into * -0.4, two + side * 2.0 + Vector3(0, 1.22, 0) + into * -0.3, two + Vector3(0, 0.95, 0), two + Vector3(0, 0.9, 0), 8.0, 40.0)
+	if Cine.body(w, "bram").global_position.distance_to(bed_end) > 0.3:
+		await Cine.path(w, "bram", [end_way, bed_end + Vector3(0, 0, 0.35)], 1.05)
+	await AshfordP1.sit_down(w, "bram", bed_end, Vector3.BACK, a.edge_top, 0.5)
 	await Cine.say(w, "bram", "I kept you away from magic because magic [i]wants[/i] you. A deck in the cellar, Sparks so spent they'd barely answer, and my hand over yours. Never the deep draw.")
 	await Cine.say(w, "bram", "Channelling Essence properly would wake you up and light a beacon for every god in Veyl.")
+	# side by side on the bed's edge, from in front, a slow drift
+	var front := two + Vector3(0, 0, 1.0)
+	Cine.drift(w, front + Vector3(0.2, 1.05, 0.95), front + Vector3(-0.1, 1.08, 0.75), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.98, 0), 9.0, 40.0)
 	await Cine.say(w, "bram", "But the dreams started again. Visions from an old master I haven't heard from in a very long time. I was going to train you slowly, but that card falling forced my hand.")
 	# the Artifact
 	var asked := [false]
 	await Cine.ask(w, ["What exactly did I catch out there? What is that card?"], func(_q: int) -> void:
+		var bh3 := Cine.head(w, "bram")
+		Cine.drift(w, bh3 + Vector3(-0.35, -0.05, 1.25), bh3 + Vector3(-0.3, -0.04, 1.1), bh3, bh3, 6.0, 34.0)
 		await Cine.say(w, "bram", "The most dangerous thing in Veyl. A blank space at the bottom of the Covenant. The Last Seal.")
 		await Cine.say(w, "bram", "The gods didn't create this world, they borrowed it, and the Covenant is the loan agreement.")
 		asked[0] = true, "")
@@ -174,37 +258,70 @@ static func awakening(w: World) -> void:
 		var more := await Cine.choose(w, ["And what does a blank space at the bottom of a loan do?", "But my chest was on fire. I thought it was going to kill me."])
 		if more == 0:
 			# he looks at you a moment too long
+			Cine.look(w, "bram", w.player.global_position)
 			await Cine.wait(w, 1.2)
 			await Cine.say(w, "bram", "Enough that every god in Veyl will want it, and every bank that lends to them. That's all you need tonight.")
 			Game.set_flag("bram_holds_back")
 			await Cine.say(w, "", "[i](Morrowen's Ledger: Bram knows more than he is saying.)[/i]")
 			await Cine.say(w, "player", "But my chest was on fire. I thought it was going to kill me.")
-		else:
-			pass
 	else:
 		await Cine.say(w, "player", "But my chest was on fire. I thought it was going to kill me.")
+	Cine.drift(w, front + Vector3(0.2, 1.05, 0.95), front + Vector3(0.35, 1.0, 0.85), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.95, 0), 6.0, 40.0)
 	await Cine.say(w, "bram", "I thought so too. The resonance should have stopped your heart, but it didn't. Tell me, how do you feel now? Is the mark burning?")
 	await Cine.say(w, "player", "No... I feel fine. Actually... I feel better than I ever have.")
-	# he looks at his hands: the exhaustion gone, a strange vitality
-	Cine.shot(w, lie + Vector3(0.25, 1.05, 0.55), lie + Vector3(0.05, 0.75, 0.15), 34.0)
+	# they look at their hands: the exhaustion gone, a strange vitality, the
+	# mark under the collar
+	if pf is Figure3D:
+		(pf as Figure3D).pose("play_card", 0.4, 0.6)
+	var neck: Vector3 = (pf as Figure3D).bone_pos("Neck") if pf is Figure3D else w.player.global_position + Vector3(0, 1.0, 0)
+	Cine.drift(w, neck + Vector3(0.15, 0.05, 0.75), neck + Vector3(0.1, 0.0, 0.6), neck + Vector3(0, -0.12, 0), neck + Vector3(0, -0.15, 0), 3.0, 32.0)
 	SealMark.show_on(w, true)
-	await Cine.wait(w, 1.6)
-	Cine.shot(w, mid + side * 1.9 + Vector3(0, 1.25, 0), mid + Vector3(0, 0.85, 0), 40.0)
+	await Cine.wait(w, 2.0)
+	if pf is Figure3D:
+		(pf as Figure3D).release(0.5)
+	Cine.drift(w, two + side * 2.3 + Vector3(0, 1.25, 0), two + side * 2.1 + Vector3(0, 1.2, 0), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.95, 0), 6.0, 40.0)
 	await Cine.say(w, "bram", "I was afraid of that. The seal isn't just a piece of paper, Sprout. It's a lock. And last night something turned the key.")
-	# the chapel bell, frantic, through the cold morning air
+	# the chapel bell, frantic, through the cold morning air: both up, and to
+	# the window
 	Music.stop(1.0)
 	w.area.call("_bell", w, 6)
-	await Cine.wait(w, 1.2)
-	Cine.look(w, "bram", a.window)
-	Cine.shot(w, root.to_global(Vector3(-1.2, 1.7, 1.2)), a.window, 46.0)
+	await Cine.wait(w, 0.6)
+	Cine.look(w, "bram", win)
+	Cine.look(w, "player", win)
+	await AshfordP1.stand_up(w, "bram", 0.45)
+	await AshfordP1.stand_up(w, "player", 0.45)
+	Cine.drift(w, root.to_global(Vector3(0.6, 1.7, 1.3)), root.to_global(Vector3(0.2, 1.65, 1.0)), (bram_win + me_win) * 0.5 + Vector3(0, 1.4, 0), win, 4.0, 46.0)
+	Cine.path(w, "bram", [root.to_global(Vector3(-1.5, 0, -0.2)), bram_win], 1.3)
+	await Cine.path(w, "player", [root.to_global(Vector3(-1.3, 0, 0.45)), me_win], 1.2)
+	Cine.look(w, "bram", win)
+	Cine.look(w, "player", win)
+	# the two of them at the little window, the grey light on their faces
+	var wm := (bram_win + me_win) * 0.5 + Vector3(0, 1.5, 0)
+	Cine.drift(w, wm + Vector3(1.25, 0.0, 0.35), wm + Vector3(1.05, 0.02, 0.25), wm + Vector3(-0.4, 0.0, 0.0), wm + Vector3(-0.5, 0.0, 0.0), 6.0, 38.0)
 	await Cine.say(w, "", "[i]Villagers, outside:[/i] \"Look at the mist! A Herald! A Herald is approaching!\"")
+	# he turns to them, his hand on their shoulder
 	Cine.look(w, "bram", w.player.global_position)
-	Cine.shot(w, mid + side * 1.9 + Vector3(0, 1.25, 0), mid + Vector3(0, 0.85, 0), 40.0)
+	Cine.look(w, "player", Cine.body(w, "bram").global_position)
+	var sh = w.area.call("_shoulder_point", w, "player", Cine.body(w, "bram").global_position)
+	if bf is Figure3D and sh != null:
+		(bf as Figure3D).reach(null, sh, 0.5)
+	var bh4 := Cine.head(w, "bram")
+	Cine.drift(w, bh4 + Vector3(1.0, -0.08, 0.9), bh4 + Vector3(0.85, -0.06, 0.78), (bh4 + Cine.head(w, "player")) * 0.5, (bh4 + Cine.head(w, "player")) * 0.5, 5.0, 38.0)
 	await Cine.say(w, "bram", "We're out of time. Keep your head down, and whatever happens out there, do not draw your deck.")
 	SealMark.show_on(w, false)
+	# down the hatch: he goes first
+	if bf is Figure3D:
+		(bf as Figure3D).let_go(0.3)
+	if sh != null:
+		w.area.call("_free_tracker", sh)
+	var hatch: Vector3 = a.hatch
+	hatch.y = fy
+	Cine.path(w, "bram", [root.to_global(Vector3(-0.6, 0, 0.6)), root.to_global(Vector3(1.2, 0, 0.75)), hatch + Vector3(-0.3, 0, 0)], 1.4)
+	await Cine.wait(w, 0.8)
+	Cine.path(w, "player", [root.to_global(Vector3(-0.9, 0, 0.9)), root.to_global(Vector3(1.0, 0, 0.95))], 1.3)
+	await Cine.wait(w, 0.6)
 	await Cine.fade(w, 1.0, 1.0)
 	if bf is Figure3D:
-		(bf as Figure3D).hand_light(null)
 		(bf as Figure3D).stand(0.0)
 	if pf is Figure3D:
 		(pf as Figure3D).stand(0.0)

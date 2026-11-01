@@ -5,11 +5,12 @@ extends RefCounted
 ## fraction longer"). One setting, Reading time (Options, and the duel's own
 ## Menu; Game.settings.duel_reading):
 ##
-##   Normal (the new default)  every timed word in a duel stays up 1.6 times
-##                             as long as it did, and never less than a
-##                             reader needs for its words: 0.9 s and 0.3 s a
-##                             word (at most 5 s; a longer line is in How to
-##                             Duel or the log to read again)
+##   Quick                     as it was before 29 October
+##   Normal (the default)      every timed word in a duel stays up 1.3 times
+##                             as long as Quick, and never less than a
+##                             reader needs for its words: 0.75 s and 0.25 s
+##                             a word (at most 4.2 s; a longer line is in How
+##                             to Duel or the log to read again)
 ##   Slow                      2.2 times as long, 1.3 s and 0.42 s a word
 ##
 ## It covers the banners, a move's name as it's used, the damage and
@@ -20,11 +21,15 @@ extends RefCounted
 ## battle speeds still shorten the words, but by less than the animation
 ## (the square root of the speed), so even at Fastest they can be read.
 
+## (1 November, Gary: "The duels text is a little bit too slow": Normal was
+## 1.6 times, 0.9 s and 0.3 s a word, cap 5 s; now a little quicker, and
+## Quick is as it was before 29 October, for anyone who reads fast)
 const LEVELS := {
-	"normal": {"name": "Normal", "mult": 1.6, "base": 0.9, "per_word": 0.3, "cap": 5.0},
+	"quick": {"name": "Quick", "mult": 1.0, "base": 0.6, "per_word": 0.2, "cap": 3.5},
+	"normal": {"name": "Normal", "mult": 1.3, "base": 0.75, "per_word": 0.25, "cap": 4.2},
 	"slow": {"name": "Slow", "mult": 2.2, "base": 1.3, "per_word": 0.42, "cap": 7.5},
 }
-const ORDER := ["normal", "slow"]
+const ORDER := ["quick", "normal", "slow"]
 
 
 static func key() -> String:

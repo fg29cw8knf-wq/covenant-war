@@ -177,6 +177,11 @@ func make_materials() -> void:
 	glass.emission = Color(1.0, 0.5, 0.18)
 	glass.emission_energy_multiplier = 2.6
 	mats.lamp_glass = glass
+	# the lamps out of doors (doors, stalls, the inn's sign): their own glass,
+	# which goes dark by day (set_daylight; 1 November, Gary: "a yellow light
+	# right in the background that shouldn't be there" while Tilly talked:
+	# every door and stall lamp burned bright in the afternoon sun)
+	mats.lamp_glass_out = glass.duplicate()
 
 # ------------------------------------------------------------------ environment
 
@@ -552,6 +557,15 @@ var _model_info := {}   # model id -> its chimney top (measured once)
 ## lights at their doors, which the daylight turns down (set_daylight).
 var window_mats: Array = []
 var house_lights: Array = []
+## Paper lanterns made one by one (AshfordP1.paper_lantern: the crate's, the
+## Lantern's hooks, the post by Nell's bench), [material, energy lit]: dark
+## paper by day, lit as the light goes, like the festival's own (1 November).
+var lit_by_night: Array = []
+
+
+## How lit the lamps are at this time of day: 1 at night, a glimmer by day.
+func night_lamps() -> float:
+	return lerpf(0.06, 1.0, 1.0 - smoothstep(0.15, 0.55, daylight))
 ## The festival night as built, kept so the daylight can blend back into it
 ## (Master Script v7: P1 is a frosty morning and an afternoon, and the
 ## lanterns are lit as the sun drops behind the mill).
@@ -725,7 +739,7 @@ func house(pos: Vector3, L: float, D: float, H: float, style: int, door: String,
 	# door lantern
 	var lan := Vector3(door_x + 0.95, 2.05, fz + 0.28)
 	box(root, Vector3(0.05, 0.05, 0.3), lan + Vector3(0, 0.25, -0.15), mats.metal)
-	box(root, Vector3(0.2, 0.28, 0.2), lan, mats.lamp_glass)
+	box(root, Vector3(0.2, 0.28, 0.2), lan, mats.lamp_glass_out)
 	cyl(root, 0.0, 0.17, 0.12, lan + Vector3(0, 0.2, 0), mats.metal, 4)
 	var ll := OmniLight3D.new()
 	ll.light_color = Color(1.0, 0.62, 0.3)
@@ -735,11 +749,12 @@ func house(pos: Vector3, L: float, D: float, H: float, style: int, door: String,
 	ll.position = lan + Vector3(0, -0.1, 0.2)
 	ll.light_size = 0.1
 	root.add_child(ll)
+	house_lights.append(ll)
 	if inn:
 		# hanging sign of the Crooked Lantern
 		box(root, Vector3(0.08, 0.08, 1.4), Vector3(L / 2 - 1.0, 3.0, fz + 0.65), mats.metal)
 		box(root, Vector3(0.08, 0.75, 1.0), Vector3(L / 2 - 1.0, 2.5, fz + 0.9), mats.door_red)
-		box(root, Vector3(0.22, 0.3, 0.22), Vector3(L / 2 - 1.0, 2.0, fz + 1.4), mats.lamp_glass)
+		box(root, Vector3(0.22, 0.3, 0.22), Vector3(L / 2 - 1.0, 2.0, fz + 1.4), mats.lamp_glass_out)
 	if burning:
 		burning_house = root
 		set_meta("burning_dims", [L, D, H, R])
@@ -1118,11 +1133,12 @@ func stall(parent: Node3D, pos: Vector3, yaw: float, cloth: Material) -> Node3D:
 		var bar := CylinderMesh.new(); bar.top_radius = 0.28; bar.bottom_radius = 0.28; bar.height = 0.8; bar.radial_segments = 14
 		add_mesh(s, bar, mats.wood, Transform3D(Basis(), Vector3(-1.6 + i * 0.1, 0.4, -0.3 + i * 0.6)))
 	box(s, Vector3(0.6, 0.45, 0.45), Vector3(1.6, 0.22, -0.2), mats.wood_h, Vector3(0, 0.3, 0))
-	box(s, Vector3(0.22, 0.3, 0.22), Vector3(1.05, 2.0, 0.55), mats.lamp_glass)
+	box(s, Vector3(0.22, 0.3, 0.22), Vector3(1.05, 2.0, 0.55), mats.lamp_glass_out)
 	var l := OmniLight3D.new()
 	l.light_color = Color(1.0, 0.6, 0.3); l.light_energy = 1.3; l.omni_range = 6.0
 	l.position = Vector3(1.05, 1.8, 0.75)
 	s.add_child(l)
+	house_lights.append(l)
 	footprints.append([Vector2(pos.x, pos.z), 1.8])
 	solid_box(Vector3(pos.x, 1.5, pos.z), Vector3(2.7, 3.0, 1.5), yaw)
 	return s
@@ -2822,6 +2838,7 @@ func set_daylight(k: float) -> void:
 			"fog_col": env.fog_light_color, "fog_d": env.fog_density, "exposure": env.tonemap_exposure,
 			"fest": festival_light.light_energy, "tear": tear_light.visible,
 			"lantern": _param(mats.lantern, "energy", 1.0), "bulb": _param(mats.bulb, "energy", 1.0),
+			"lamp_out": (mats.lamp_glass_out as StandardMaterial3D).emission_energy_multiplier,
 			"tear_open": _param(sky_mat, "tear_open", 0.0),
 			"ll_vis": lantern_lights.map(func(ll) -> bool: return (ll[0] as Node3D).visible)}
 	k = clampf(k, 0.0, 1.0)
@@ -2859,6 +2876,10 @@ func set_daylight(k: float) -> void:
 	mats.lantern.set_shader_parameter("energy", float(n.lantern) * lamps)
 	mats.bulb.set_shader_parameter("energy", float(n.bulb) * lamps)
 	festival_light.light_energy = float(n.fest) * lamps
+	(mats.lamp_glass_out as StandardMaterial3D).emission_energy_multiplier = float(n.lamp_out) * lerpf(0.04, 1.0, lamps)
+	for pl in lit_by_night:
+		if pl[0] != null:
+			(pl[0] as ShaderMaterial).set_shader_parameter("energy", float(pl[1]) * night_lamps())
 	for wm in window_mats:
 		(wm[0] as StandardMaterial3D).emission_energy_multiplier = float(wm[1]) * lamps
 	for hl in house_lights:
