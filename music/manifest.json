@@ -34,6 +34,11 @@
   "length": 86.848020833,
   "onset": 0.145063
  },
+ "corin_evening": {
+  "file": "corin_evening.mp3?v=e14a54f4b6",
+  "length": 165.960854167,
+  "onset": 0.173729
+ },
  "dask": {
   "file": "dask.mp3?v=b7fefb89d6",
   "length": 120.206291667,
@@ -83,6 +88,11 @@
   "file": "solhaven_dawn.mp3?v=89d171d474",
   "length": 94.51875,
   "onset": 0.017229
+ },
+ "solhaven_town": {
+  "file": "solhaven_town.mp3?v=76fbd7d5ae",
+  "length": 161.4014375,
+  "onset": 0.196667
  },
  "summon_grondmaw": {
   "file": "summon_grondmaw.mp3?v=d2232ec152",
