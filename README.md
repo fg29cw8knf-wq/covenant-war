@@ -912,9 +912,10 @@ green), Tam (`tam_mill`), Nell (`nell_waltz`) and Tilly (`tilly_moth`) each
 ask for their own track while you talk to them (`{"theme": [...]}` /
 `"back"`), and nothing changes until Gary's tracks come. Nell's crying loops
 under the bell at the look back; `tools/far_off.sh` makes his close recording
-sound far off when it comes. Size: the Golden Gate's atlas imports at 2048
-(it was 4096, 21 MB of the phone link in two formats), the hay cart, the
-first merchant cart, the stall and the well at 1024.
+sound far off when it comes. (Size: the Golden Gate's atlas and four props'
+were shrunk for the phone link's 1 GB that night, then put back to full size
+when Gary dropped the link: the gate at 4096, VRAM-compressed, the props at
+2048.)
 
 **2 November (Gary's playtest notes; `docs/handover/2026-11-02.md` has the
 whole list):** every lesson in every story duel is **a memory of Bram**
