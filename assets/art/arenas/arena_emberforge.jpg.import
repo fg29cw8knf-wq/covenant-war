@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ceqcpa72yfg6"
-path="res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.ctex"
+path.bptc="res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.bptc.ctex"
+path.astc="res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/arenas/arena_emberforge.jpg"
-dest_files=["res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.ctex"]
+dest_files=["res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.bptc.ctex", "res://.godot/imported/arena_emberforge.jpg-25bbdfd4a75ba9520494f91bfbce1def.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=false
+mipmaps/generate=true
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

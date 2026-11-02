@@ -930,6 +930,21 @@ came at 2048 and stays so; remade in Tripo3D they'd come in at 4096.
 Tripo picture's full size and import it that way. The Mac and iPhone builds
 keep `.godot/imported` between runs (actions/cache), since the 4096 VRAM
 pictures are slow to make.
+**Full-size art and scenery (2 November, Gary: "can we make the scenery and
+assets 4k?"):** the inn's atlas is back at 4096 (`atlas_4k.py`, its master
+`crooked_lantern.glb`); the other buildings and props were made at 2048 (the
+small ones 1024) and stay so until they're remade. Gary's painted art went
+in at the size he painted it, matched to the game's files by what they show
+(`tools/art_full.py <game dir> <his dir>`, his "Covenant Art" folder): 58
+card paintings at 1536 (they were 640), the seven gods at 1536x2048 (512x682),
+five arenas at 3840x2160 (2560x1440) and the four Summons' scenes at
+3840x2160 (1920x1080), all VRAM-compressed at high quality, which on the
+phone costs about what the smaller lossy ones did. Twelve more cards came
+from his "card game folder" (`cards:<id>.png`, 1254) and Cinderpup's from
+`cinderpup_3d_test 4/reference_card.png` (1536): 71 of the 72 at full size.
+Left as they were: Rallying Light (a stand-in painting), the Ashford arena
+(its original is the game's size) and the Summons' cut-outs (their
+transparency was made in the game).
 
 **2 November (Gary's playtest notes; `docs/handover/2026-11-02.md` has the
 whole list):** every lesson in every story duel is **a memory of Bram**

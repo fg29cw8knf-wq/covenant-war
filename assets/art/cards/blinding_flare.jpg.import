@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://42yqwgeqimer"
-path="res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.ctex"
+path.bptc="res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.bptc.ctex"
+path.astc="res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/blinding_flare.jpg"
-dest_files=["res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.ctex"]
+dest_files=["res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.bptc.ctex", "res://.godot/imported/blinding_flare.jpg-3f11d79d790cdb963252c8c02ae76442.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

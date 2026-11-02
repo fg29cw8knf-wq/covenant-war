@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bsx8iucm2mgny"
-path="res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.ctex"
+path.bptc="res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.bptc.ctex"
+path.astc="res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/stone_gaze.jpg"
-dest_files=["res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.ctex"]
+dest_files=["res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.bptc.ctex", "res://.godot/imported/stone_gaze.jpg-9260bc97dd3fe5cc6de5a57e4dcdf288.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

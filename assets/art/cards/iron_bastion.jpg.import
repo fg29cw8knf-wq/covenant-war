@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ckru7nn54o8kl"
-path="res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.ctex"
+path.bptc="res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.bptc.ctex"
+path.astc="res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/iron_bastion.jpg"
-dest_files=["res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.ctex"]
+dest_files=["res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.bptc.ctex", "res://.godot/imported/iron_bastion.jpg-685a638b3df90be142c1b7ad7b72d6ee.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

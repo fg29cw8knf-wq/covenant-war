@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://byj2cu65esv0t"
-path="res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.ctex"
+path.bptc="res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.bptc.ctex"
+path.astc="res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/thornwarden.jpg"
-dest_files=["res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.ctex"]
+dest_files=["res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.bptc.ctex", "res://.godot/imported/thornwarden.jpg-4c78f0cba57bc548f2af889e1e20f5ff.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

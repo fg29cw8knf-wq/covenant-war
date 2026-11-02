@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://tombcygh38ak"
-path="res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.ctex"
+path.bptc="res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.bptc.ctex"
+path.astc="res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/gust_shove.jpg"
-dest_files=["res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.ctex"]
+dest_files=["res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.bptc.ctex", "res://.godot/imported/gust_shove.jpg-f3729d94410a46942a2e5fd18b60087d.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

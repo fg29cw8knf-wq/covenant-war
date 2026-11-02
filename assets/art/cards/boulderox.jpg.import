@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://x7n6w1od28cq"
-path="res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.ctex"
+path.bptc="res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.bptc.ctex"
+path.astc="res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/boulderox.jpg"
-dest_files=["res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.ctex"]
+dest_files=["res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.bptc.ctex", "res://.godot/imported/boulderox.jpg-42f2cd88be4c59f86482c4c320303ce7.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cdusxfj1wltlo"
-path="res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.ctex"
+path.bptc="res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.bptc.ctex"
+path.astc="res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/shellguard.jpg"
-dest_files=["res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.ctex"]
+dest_files=["res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.bptc.ctex", "res://.godot/imported/shellguard.jpg-55e8dd17b7fe4351a98d251081ad51d6.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

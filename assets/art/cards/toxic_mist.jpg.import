@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bqobyv3j7akvr"
-path="res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.ctex"
+path.bptc="res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.bptc.ctex"
+path.astc="res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/toxic_mist.jpg"
-dest_files=["res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.ctex"]
+dest_files=["res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.bptc.ctex", "res://.godot/imported/toxic_mist.jpg-afafd53fa1008da217184e38df7be46b.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

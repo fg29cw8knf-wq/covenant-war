@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bd8bjniqisetr"
-path="res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.ctex"
+path.bptc="res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.bptc.ctex"
+path.astc="res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/gods/solmaris.jpg"
-dest_files=["res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.ctex"]
+dest_files=["res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.bptc.ctex", "res://.godot/imported/solmaris.jpg-edf98dfc46d99d2d73e533899a9f4135.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

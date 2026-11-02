@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dpemtj830b35k"
-path="res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.ctex"
+path.bptc="res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.bptc.ctex"
+path.astc="res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/goading_ember.jpg"
-dest_files=["res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.ctex"]
+dest_files=["res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.bptc.ctex", "res://.godot/imported/goading_ember.jpg-e66e2c2388f3acbc5f94cb742d663520.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

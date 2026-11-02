@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d2v8oetvh0l6b"
-path="res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.ctex"
+path.bptc="res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.bptc.ctex"
+path.astc="res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/emberwisp.jpg"
-dest_files=["res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.ctex"]
+dest_files=["res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.bptc.ctex", "res://.godot/imported/emberwisp.jpg-90989223a512747da3aa604a904ae8ba.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

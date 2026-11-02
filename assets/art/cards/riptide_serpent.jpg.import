@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bi8ykkh2ae67t"
-path="res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.ctex"
+path.bptc="res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.bptc.ctex"
+path.astc="res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/art/cards/riptide_serpent.jpg"
-dest_files=["res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.ctex"]
+dest_files=["res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.bptc.ctex", "res://.godot/imported/riptide_serpent.jpg-4df055b413ce2e847dd380d018fea5cc.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
