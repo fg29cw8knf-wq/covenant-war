@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://wj3dv7u707v6"
-path="res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.ctex"
+path.bptc="res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.bptc.ctex"
+path.astc="res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/models/creatures/brookfin_atlas.png"
-dest_files=["res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.ctex"]
+dest_files=["res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.bptc.ctex", "res://.godot/imported/brookfin_atlas.png-1855b3d1761204b47777b2864b6171c9.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.75
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

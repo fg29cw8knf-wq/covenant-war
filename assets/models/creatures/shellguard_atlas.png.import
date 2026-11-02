@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://2s4bl7maqvet"
-path="res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.ctex"
+path.bptc="res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.bptc.ctex"
+path.astc="res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/models/creatures/shellguard_atlas.png"
-dest_files=["res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.ctex"]
+dest_files=["res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.bptc.ctex", "res://.godot/imported/shellguard_atlas.png-05415d74370fef135b6d9d48266b9a1b.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.75
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dq01yfeqjn2gs"
-path="res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.ctex"
+path.bptc="res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.bptc.ctex"
+path.astc="res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/models/characters/enforcer_atlas.png"
-dest_files=["res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.ctex"]
+dest_files=["res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.bptc.ctex", "res://.godot/imported/enforcer_atlas.png-9e23c1ae43e817f55f6764b43d62255e.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

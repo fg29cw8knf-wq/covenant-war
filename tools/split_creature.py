@@ -15,7 +15,7 @@ from PIL import Image
 
 src, dst = sys.argv[1], sys.argv[2]
 glow = "--glow" in sys.argv
-size = 2048
+size = 4096   # (2 November: Tripo's full size, VRAM-compressed at import: tools/atlas_4k.py)
 stem = os.path.basename(dst)[:-4]
 out_dir = os.path.dirname(dst)
 b = open(src, "rb").read()
@@ -42,6 +42,12 @@ if img.width > size:
     img = img.resize((size, size), Image.LANCZOS)
 atlas = "%s_atlas.png" % stem
 img.save(os.path.join(out_dir, atlas), "PNG", optimize=True)
+# a picture over 2048 is VRAM-compressed at high quality (ASTC on iPhone, BPTC on
+# Mac), so in memory it costs what a lossy 2048 did; set before Godot first imports it
+if img.width > 2048 and not os.path.exists(os.path.join(out_dir, atlas) + ".import"):
+    open(os.path.join(out_dir, atlas) + ".import", "w").write(
+        '[remap]\n\nimporter="texture"\ntype="CompressedTexture2D"\n\n[params]\n\n'
+        'compress/mode=2\ncompress/high_quality=true\nmipmaps/generate=true\nprocess/size_limit=0\n')
 images = [{"name": "atlas", "uri": atlas}]
 textures = [{"sampler": 0, "source": 0}]
 pbr["baseColorTexture"] = {"index": 0}

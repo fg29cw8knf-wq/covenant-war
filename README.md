@@ -916,6 +916,20 @@ sound far off when it comes. (Size: the Golden Gate's atlas and four props'
 were shrunk for the phone link's 1 GB that night, then put back to full size
 when Gary dropped the link: the gate at 4096, VRAM-compressed, the props at
 2048.)
+**4K pictures (2 November, Gary: yes to sharper people and creatures):** the
+models Gary made in Tripo3D came with 4096 colour pictures, cut to 2048 by
+the rig tools; Player A, Bram, Hale, the enforcer, Cinderpup, Brookfin, the
+River Hound and the Shellguard have their 4096 back (`tools/atlas_4k.py
+<master.glb> <atlas.png>`: the master's picture, with anything painted on
+the game's copy kept, Bram's open eyes), VRAM-compressed at high quality
+(ASTC 4x4 on iPhone, BPTC on Mac): in memory that's about what a lossy 2048
+was, so the phone holds as many at once. Everyone AssetFurnace made (Corin,
+Tam, Tilly, Nell, Hob, Ned, Krell, looks B to D, the crowd, the Sun Guard)
+came at 2048 and stays so; remade in Tripo3D they'd come in at 4096.
+`rig_character.py` (`--texture-size` 4096) and `split_creature.py` now keep a
+Tripo picture's full size and import it that way. The Mac and iPhone builds
+keep `.godot/imported` between runs (actions/cache), since the 4096 VRAM
+pictures are slow to make.
 
 **2 November (Gary's playtest notes; `docs/handover/2026-11-02.md` has the
 whole list):** every lesson in every story duel is **a memory of Bram**

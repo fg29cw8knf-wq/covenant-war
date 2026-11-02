@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dsm4lg8fcbtsk"
-path="res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.ctex"
+path.bptc="res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.bptc.ctex"
+path.astc="res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/models/characters/player_a_atlas.png"
-dest_files=["res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.ctex"]
+dest_files=["res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.bptc.ctex", "res://.godot/imported/player_a_atlas.png-8f6baa1b10ea02cd2447532301bc69e7.astc.ctex"]
 
 [params]
 
-compress/mode=1
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.85
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

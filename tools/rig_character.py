@@ -678,7 +678,9 @@ detect_3d/compress_to=0
 
 def write_tex_import(png_path, normal=False):
     """Our import settings for a texture (lossy, mipmapped, as the other characters'),
-    written only when the texture hasn't one yet."""
+    written only when the texture hasn't one yet. A picture over 2048 is
+    VRAM-compressed at high quality instead (ASTC 4x4 on iPhone, BPTC on Mac):
+    in memory it takes about what a lossy 2048 does (tools/atlas_4k.py)."""
     imp = png_path + ".import"
     if os.path.exists(imp):
         return
@@ -687,7 +689,14 @@ def write_tex_import(png_path, normal=False):
     while proj != "/" and not os.path.exists(os.path.join(proj, "project.godot")):
         proj = os.path.dirname(proj)
     res = os.path.relpath(root, proj) if proj != "/" else os.path.basename(root)
-    open(imp, "w").write(TEX_IMPORT.format(res=res, q="0.9" if normal else "0.85", normal=1 if normal else 0))
+    text = TEX_IMPORT.format(res=res, q="0.9" if normal else "0.85", normal=1 if normal else 0)
+    try:
+        from PIL import Image as _I
+        if _I.open(png_path).width > 2048:
+            text = text.replace("compress/mode=1", "compress/mode=2").replace("compress/high_quality=false", "compress/high_quality=true")
+    except Exception:
+        pass
+    open(imp, "w").write(text)
 
 
 # ---------------------------------------------------------------- main ---
@@ -1098,7 +1107,9 @@ def main():
     ap.add_argument("--seam", action="append", default=[], help="a looping clip whose end is eased into its start")
     ap.add_argument("--borrow", action="append", default=[], help="model.glb:clip,clip,... clips to fit from another model (theirs=ours renames one; *=ours takes a single-clip file's only clip)")
     ap.add_argument("--rename", action="append", default=[], help="theirs=ours: one of the model's own clips under our name")
-    ap.add_argument("--texture-size", type=int, default=2048)
+    # (2 November: 4096, so a Tripo3D model's picture keeps its full size;
+    # AssetFurnace's come at 2048 and stay so)
+    ap.add_argument("--texture-size", type=int, default=4096)
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
     ap.add_argument("--hold-arm", action="append", default=[],
                     help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM, or in the rest pose (FROM = rest), in these clips (a walking stick's hand)")

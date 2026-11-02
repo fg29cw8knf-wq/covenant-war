@@ -59,6 +59,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: tools/fetch_native.sh
 
+      # Godot's imported files, kept between builds: since 2 November eight
+      # of the pictures are 4096 VRAM-compressed (ASTC and BPTC), slow to
+      # make from scratch, so only what's changed is imported again
+      - name: Godot's imported files (cached)
+        uses: actions/cache@v4
+        with:
+          path: .godot/imported
+          key: imported-ios-${{ hashFiles('**/*.import') }}
+          restore-keys: imported-ios-
+
       - name: Import the project
         run: godot --headless --import
 
