@@ -186,7 +186,7 @@ static func _corin(w: World, rng: RandomNumberGenerator) -> float:
 	var home: Vector3 = b.get_meta("life_home", b.global_position)
 	b.set_meta("life_home", home)
 	var to := home + Vector3(rng.randf_range(-0.6, 0.6), 0.0, rng.randf_range(-0.6, 0.6))
-	_walk(w, "corin", to, 1.0)
+	_walk(w, "corin", Cine.off_blockers(w, to, 0.4), 1.0)
 	return rng.randf_range(4.0, 6.0)
 
 
@@ -206,6 +206,11 @@ static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 			to = anchor + Vector3(cos(a) * d, 0.0, sin(a) * d)
 			if Vector2(to.x, to.z).length() > 2.6:   # (clear of the Lantern's foot)
 				break
+		# a spot on or against something solid (a cart, a stall, the drum) is
+		# moved off it: a walk that ends on a thing goes straight through it
+		# (2 November: p1_v7_test caught a child running through the stall
+		# by the carts)
+		to = Cine.off_blockers(w, to, 0.4)
 		_walk(w, id, to, rng.randf_range(2.6, 3.4), "run", watch_at)
 		return rng.randf_range(2.5, 4.5)
 	if r < 0.65:
