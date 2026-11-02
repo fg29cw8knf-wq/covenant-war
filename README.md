@@ -33,7 +33,12 @@ floats, sinks, pops or waits on nothing; every cut and camera move is
 deliberate; the gated steps always say what to do. After each update: the
 play-through as every look (`tests/ashford_test.tscn -- <dir> opening
 look=<a|b|c|d> keys`, and the rest of the game as each) with its stills looked
-at, and the web build published so the phone link matches `main`. The look
+at. (2 November, Gary: "don't worry about doing the phone link, just the
+Mac version and the one for the phone through Xcode". The web build isn't
+built or published any more; the Mac app and the iPhone app's Xcode project
+rebuild themselves on every push to `main`, from the `mac` and `iphone`
+releases, and are what he plays. `tools/build_web.sh` and
+`tools/publish_web.sh` stay for when he wants the link again.) The look
 pass itself hasn't started (22 October): it's the next big job, and Gary should
 be asked before it's begun, as `docs/handover/2026-10-18.md` says of anything
 big.
