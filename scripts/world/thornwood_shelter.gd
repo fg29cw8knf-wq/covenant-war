@@ -75,26 +75,36 @@ static func room(v: ThornwoodSet) -> Dictionary:
 	root.add_child(door)
 	door.position = Vector3(-0.5, 0, D * 0.5 + 0.12)
 	v.box(door, Vector3(1.0, 1.6, 0.08), Vector3(0.5, 0.8, 0), wood)
-	# shelves on the west wall: water, bread, meat, the pot
-	for y in [0.8, 1.35]:
-		v.box(root, Vector3(0.35, 0.05, 2.0), Vector3(-W * 0.5 + 0.2, y, -0.3), wood)
-	var clay := StandardMaterial3D.new()
-	clay.albedo_color = Color(0.5, 0.36, 0.24)
-	for k in 4:
-		v.cyl(root, 0.07, 0.07, 0.24, Vector3(-W * 0.5 + 0.2, 1.5, -1.0 + k * 0.32), clay, 10)
-	var waxed := StandardMaterial3D.new()
-	waxed.albedo_color = Color(0.72, 0.66, 0.5)
-	for k in 3:
-		v.box(root, Vector3(0.22, 0.12, 0.26), Vector3(-W * 0.5 + 0.2, 0.89, -0.9 + k * 0.4), waxed)
-	var iron := StandardMaterial3D.new()
-	iron.albedo_color = Color(0.18, 0.18, 0.19)
-	iron.metallic = 0.6
-	iron.roughness = 0.6
+	# shelves on the west wall: water, bread, meat, the pot. Gary's shelves
+	# (2 November, shelter_shelves.glb: four shelves of jars, bread, candles
+	# and a lantern on iron uprights, 1.4 m wide) stand with their back to the
+	# wall, facing the room; the drawn ones stand in if it isn't there
+	var own_shelves := _model(root, "shelter_shelves", Vector3(-W * 0.5 + 0.06, 0.0, -0.3), PI * 0.5)
+	if own_shelves == null:
+		for y in [0.8, 1.35]:
+			v.box(root, Vector3(0.35, 0.05, 2.0), Vector3(-W * 0.5 + 0.2, y, -0.3), wood)
+		var clay := StandardMaterial3D.new()
+		clay.albedo_color = Color(0.5, 0.36, 0.24)
+		for k in 4:
+			v.cyl(root, 0.07, 0.07, 0.24, Vector3(-W * 0.5 + 0.2, 1.5, -1.0 + k * 0.32), clay, 10)
+		var waxed := StandardMaterial3D.new()
+		waxed.albedo_color = Color(0.72, 0.66, 0.5)
+		for k in 3:
+			v.box(root, Vector3(0.22, 0.12, 0.26), Vector3(-W * 0.5 + 0.2, 0.89, -0.9 + k * 0.4), waxed)
 	var pot := Node3D.new()
 	pot.name = "Pot"
 	root.add_child(pot)
-	pot.position = Vector3(-W * 0.5 + 0.2, 0.83, 0.55)
-	v.cyl(pot, 0.13, 0.11, 0.16, Vector3(0, 0.08, 0), iron, 14)
+	# Gary's iron pot (iron_pot.glb: a sooty three-legged pot with its lid
+	# and handle, 0.3 m across) waits on the floor by the shelves' foot
+	if _model(pot, "iron_pot", Vector3.ZERO, 0.0) != null:
+		pot.position = Vector3(-W * 0.5 + 0.3, 0.0, 0.72)
+	else:
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.18, 0.18, 0.19)
+		iron.metallic = 0.6
+		iron.roughness = 0.6
+		pot.position = Vector3(-W * 0.5 + 0.2, 0.83, 0.55)
+		v.cyl(pot, 0.13, 0.11, 0.16, Vector3(0, 0.08, 0), iron, 14)
 	# the flat stone on the floor by the table, where the pot goes to warm
 	var flat := Vector3(-0.9, 0.0, -0.9)
 	v.box(root, Vector3(0.5, 0.12, 0.4), flat + Vector3(0, 0.06, 0), stone)
@@ -165,6 +175,23 @@ static func room(v: ThornwoodSet) -> Dictionary:
 
 
 ## The rise, the roots hanging over the low stone door (outside, in the trees).
+## One of Gary's prop models (assets/models/ashford/<id>.glb) at a spot in
+## the room, standing on the floor (no ground height or collision of its own,
+## as AshfordVillage.prop_model gives a prop on the green). Null if it isn't there.
+static func _model(parent: Node3D, id: String, at: Vector3, yaw: float) -> Node3D:
+	var path := "res://assets/models/ashford/%s.glb" % id
+	if not ResourceLoader.exists(path):
+		return null
+	var m: Node3D = (load(path) as PackedScene).instantiate()
+	m.name = id.capitalize().replace(" ", "")
+	parent.add_child(m)
+	m.position = at
+	m.rotation.y = yaw
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	return m
+
+
 static func _door_outside(v: ThornwoodSet) -> Node3D:
 	if v.has_meta("shelter_door"):
 		return v.get_meta("shelter_door")

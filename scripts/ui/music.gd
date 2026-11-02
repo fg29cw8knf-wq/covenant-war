@@ -19,7 +19,9 @@ const DIR := "res://assets/audio/music/"
 const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch": 29.78, "duel_alt": 11.376,
 		"arena_emberforge": 7.997, "arena_solhaven": 12.245, "arena_tidegrove": 6.409, "arena_ironstone": 10.008,
 		"arena_veilwild": 8.406, "ashford_burns": 19.714, "dask": 9.822, "dawn_after": 10.333,
-		"river_farewell": 8.104, "solhaven_dawn": 8.243, "thornwood": 10.890}
+		"river_farewell": 8.104, "solhaven_dawn": 8.243, "thornwood": 10.890,
+		# Gary's 2 November tracks: Corin's evening by the mill race, and Solhaven's square
+		"corin_evening": 4.226, "solhaven_town": 8.940}
 ## The two duel themes take turns, duel by duel.
 const DUEL_THEMES := ["duel_main", "duel_alt"]
 

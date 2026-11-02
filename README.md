@@ -884,6 +884,33 @@ Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, 
 
 ## Story mode
 
+**2 November, later (Gary's files; `docs/handover/2026-11-02-pm.md`):**
+Warden Hale (`characters/hale.glb`) and the Sun Guard (`sun_guard.glb`, every
+guard in Chapter 1 and the gate warden) are Gary's Tripo3D models, rigged by
+`tools/rig_villager.sh hale|sun_guard`, their portraits rendered from them;
+Ironvault's second enforcer, the woman in grey (`enforcer.glb`, Hale's clips
+fitted to her: `HALE=<his master> tools/rig_villager.sh enforcer`), is one
+bailiff at the Reckoning (`h2`) and one grey coat in the look back (`g2`)
+(`Figure3D.MODELS`). Tripo's Mixamo-rigged exports turn the figure a quarter
+round in a node matrix above the armature: `tools/glb_bake_turn.py` bakes it
+in first (and `tools/glb_trs.py` reads matrices as TRS). The Shellguard is
+Gary's coral turtle, rigged by Tripo but without clips: `tools/creature_clips.py
+--kind turtle` makes its eight from its own bones (idle, attack, hit, defeat,
+spawn, run, victory, and guard, its stance: head and legs drawn in under the
+shell). The Thornwood shelter has his shelves and iron pot
+(`ashford/shelter_shelves.glb`, `iron_pot.glb`; `ThornwoodShelter._model`).
+`corin_evening` and `solhaven_town` are in, looped (`Music.LOOP_START`);
+Solmaris's lines 2 to 9 play in the Sun Court (Gary's files 02 and 08 held
+each other's words; his 01 is a copy of 06, so line 1 stays a subtitle).
+**Talk music:** Bram (`bram_theme`, the deck hand-over and his evening on the
+green), Tam (`tam_mill`), Nell (`nell_waltz`) and Tilly (`tilly_moth`) each
+ask for their own track while you talk to them (`{"theme": [...]}` /
+`"back"`), and nothing changes until Gary's tracks come. Nell's crying loops
+under the bell at the look back; `tools/far_off.sh` makes his close recording
+sound far off when it comes. Size: the Golden Gate's atlas imports at 2048
+(it was 4096, 21 MB of the phone link in two formats), the hay cart, the
+first merchant cart, the stall and the well at 1024.
+
 **2 November (Gary's playtest notes; `docs/handover/2026-11-02.md` has the
 whole list):** every lesson in every story duel is **a memory of Bram**
 (`DuelTutor`: a box headed A MEMORY OF BRAM with his face, faded a little;

@@ -338,14 +338,14 @@ no,area,speaker,id,words,file,scene,note
 0337,solhaven,aldric,25324e1a,She hasn't spoken to me in a month.,assets/audio/vo/solhaven/aldric/25324e1a.ogg,The Sun Court,
 0338,solhaven,narrator,2d75a24e,He walks away before you can answer.,assets/audio/vo/solhaven/narrator/2d75a24e.ogg,The Sun Court,
 0339,solhaven,solmaris,solmaris_01,Don't be frightened. Nobody else can hear us.,assets/audio/vo/solmaris_01.ogg,Solmaris,"to record, as solmaris_01.wav"
-0340,solhaven,solmaris,solmaris_02,"I watched your village burn. Nobody there was praying to me, and I can't answer a prayer nobody says.",assets/audio/vo/solmaris_02.ogg,Solmaris,"to record, as solmaris_02.wav"
-0341,solhaven,solmaris,solmaris_03,"And what I want from you, I can't take. The Covenant lets me ask. Nothing more.",assets/audio/vo/solmaris_03.ogg,Solmaris,"to record, as solmaris_03.wav"
-0342,solhaven,solmaris,solmaris_04,"So I will offer. Give me that card, freely, and Ashford will be its own again by the next new moon. Every roof. Every note paid. The mill turning.",assets/audio/vo/solmaris_04.ogg,Solmaris,"to record, as solmaris_04.wav"
-0343,solhaven,solmaris,solmaris_05,"I can't give you back the miller. Morrowen keeps what she keeps. Everything else, I can.",assets/audio/vo/solmaris_05.ogg,Solmaris,"to record, as solmaris_05.wav"
-0344,solhaven,solmaris,solmaris_06,Nobody says yes the first time.,assets/audio/vo/solmaris_06.ogg,Solmaris,"to record, as solmaris_06.wav"
-0345,solhaven,solmaris,solmaris_07,Then keep my offer. It doesn't spoil.,assets/audio/vo/solmaris_07.ogg,Solmaris,"to record, as solmaris_07.wav"
-0346,solhaven,solmaris,solmaris_08,Something I have spent two thousand years making sure nobody found. And then it found you.,assets/audio/vo/solmaris_08.ogg,Solmaris,"to record, as solmaris_08.wav"
-0347,solhaven,solmaris,solmaris_09,"I'll ask again, when you've seen what that card costs the people around you.",assets/audio/vo/solmaris_09.ogg,Solmaris,"to record, as solmaris_09.wav"
+0340,solhaven,solmaris,solmaris_02,"I watched your village burn. Nobody there was praying to me, and I can't answer a prayer nobody says.",assets/audio/vo/solmaris_02.ogg,Solmaris,recorded already: solmaris_02
+0341,solhaven,solmaris,solmaris_03,"And what I want from you, I can't take. The Covenant lets me ask. Nothing more.",assets/audio/vo/solmaris_03.ogg,Solmaris,recorded already: solmaris_03
+0342,solhaven,solmaris,solmaris_04,"So I will offer. Give me that card, freely, and Ashford will be its own again by the next new moon. Every roof. Every note paid. The mill turning.",assets/audio/vo/solmaris_04.ogg,Solmaris,recorded already: solmaris_04
+0343,solhaven,solmaris,solmaris_05,"I can't give you back the miller. Morrowen keeps what she keeps. Everything else, I can.",assets/audio/vo/solmaris_05.ogg,Solmaris,recorded already: solmaris_05
+0344,solhaven,solmaris,solmaris_06,Nobody says yes the first time.,assets/audio/vo/solmaris_06.ogg,Solmaris,recorded already: solmaris_06
+0345,solhaven,solmaris,solmaris_07,Then keep my offer. It doesn't spoil.,assets/audio/vo/solmaris_07.ogg,Solmaris,recorded already: solmaris_07
+0346,solhaven,solmaris,solmaris_08,Something I have spent two thousand years making sure nobody found. And then it found you.,assets/audio/vo/solmaris_08.ogg,Solmaris,recorded already: solmaris_08
+0347,solhaven,solmaris,solmaris_09,"I'll ask again, when you've seen what that card costs the people around you.",assets/audio/vo/solmaris_09.ogg,Solmaris,recorded already: solmaris_09
 0348,solhaven,narrator,d301ad2d,The light folds away and time comes back. Nobody else seems to have seen a thing.,assets/audio/vo/solhaven/narrator/d301ad2d.ogg,Solmaris,
 0349,solhaven,liora,fcc20398,You're the Unsworn. I'm Liora.,assets/audio/vo/solhaven/liora/fcc20398.ogg,The trial,
 0350,solhaven,liora,373dc9ec,I keep the Trial.,assets/audio/vo/solhaven/liora/373dc9ec.ogg,The trial,

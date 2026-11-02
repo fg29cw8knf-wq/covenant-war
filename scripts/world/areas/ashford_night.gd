@@ -1379,7 +1379,13 @@ static func _nell_crying(w: World) -> Node:
 	if not ResourceLoader.exists(PATH):
 		return null
 	var p := AudioStreamPlayer.new()
-	p.stream = load(PATH)
+	var st = load(PATH)
+	# (the look back lasts as long as the player stands there: she goes on
+	# crying under the bell until they turn away. Gary's recording, made to
+	# sound far off and down the hill when it's mastered, docs/handover/2026-11-02-pm.md)
+	if st is AudioStreamOggVorbis:
+		(st as AudioStreamOggVorbis).loop = true
+	p.stream = st
 	p.volume_db = -14.0
 	w.add_child(p)
 	p.play()

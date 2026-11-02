@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 550 lines, 6 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-01 (a7dffa1); run it again after the words change.
+Every line the game speaks, in the order it's played: 550 lines, 14 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-02 (2f149b2); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -598,14 +598,14 @@ Every line the game speaks, in the order it's played: 550 lines, 6 of them recor
 | No. | Who | Line | Id |
 |---|---|---|---|
 | 0339 | Solmaris | Don't be frightened. Nobody else can hear us. *(to record, as solmaris_01.wav)* | `solmaris_01` |
-| 0340 | Solmaris | I watched your village burn. Nobody there was praying to me, and I can't answer a prayer nobody says. *(to record, as solmaris_02.wav)* | `solmaris_02` |
-| 0341 | Solmaris | And what I want from you, I can't take. The Covenant lets me ask. Nothing more. *(to record, as solmaris_03.wav)* | `solmaris_03` |
-| 0342 | Solmaris | So I will offer. Give me that card, freely, and Ashford will be its own again by the next new moon. Every roof. Every note paid. The mill turning. *(to record, as solmaris_04.wav)* | `solmaris_04` |
-| 0343 | Solmaris | I can't give you back the miller. Morrowen keeps what she keeps. Everything else, I can. *(to record, as solmaris_05.wav)* | `solmaris_05` |
-| 0344 | Solmaris | Nobody says yes the first time. *(to record, as solmaris_06.wav)* | `solmaris_06` |
-| 0345 | Solmaris | Then keep my offer. It doesn't spoil. *(to record, as solmaris_07.wav)* | `solmaris_07` |
-| 0346 | Solmaris | Something I have spent two thousand years making sure nobody found. And then it found you. *(to record, as solmaris_08.wav)* | `solmaris_08` |
-| 0347 | Solmaris | I'll ask again, when you've seen what that card costs the people around you. *(to record, as solmaris_09.wav)* | `solmaris_09` |
+| 0340 | Solmaris | I watched your village burn. Nobody there was praying to me, and I can't answer a prayer nobody says. *(recorded already: solmaris_02)* | `solmaris_02` |
+| 0341 | Solmaris | And what I want from you, I can't take. The Covenant lets me ask. Nothing more. *(recorded already: solmaris_03)* | `solmaris_03` |
+| 0342 | Solmaris | So I will offer. Give me that card, freely, and Ashford will be its own again by the next new moon. Every roof. Every note paid. The mill turning. *(recorded already: solmaris_04)* | `solmaris_04` |
+| 0343 | Solmaris | I can't give you back the miller. Morrowen keeps what she keeps. Everything else, I can. *(recorded already: solmaris_05)* | `solmaris_05` |
+| 0344 | Solmaris | Nobody says yes the first time. *(recorded already: solmaris_06)* | `solmaris_06` |
+| 0345 | Solmaris | Then keep my offer. It doesn't spoil. *(recorded already: solmaris_07)* | `solmaris_07` |
+| 0346 | Solmaris | Something I have spent two thousand years making sure nobody found. And then it found you. *(recorded already: solmaris_08)* | `solmaris_08` |
+| 0347 | Solmaris | I'll ask again, when you've seen what that card costs the people around you. *(recorded already: solmaris_09)* | `solmaris_09` |
 | 0348 | Narrator | The light folds away and time comes back. Nobody else seems to have seen a thing. | `d301ad2d` |
 
 ### The trial

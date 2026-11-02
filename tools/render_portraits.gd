@@ -11,15 +11,18 @@ extends Node3D
 ## (Figure3D.MODELS); her portrait was still rendered from the first, blonde
 ## model, which is a girl in the crowd now)
 const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "player_a": "player_a", "player_b": "player_b",
-	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "child_c", "nell": "nell", "ned": "ned", "hob": "hob"}
+	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "child_c", "nell": "nell", "ned": "ned", "hob": "hob",
+	# (2 November: Gary's Warden Hale and Sun Guard models; the gate warden wears the Sun Guard's)
+	"hale": "hale", "gate_warden": "sun_guard"}
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's (and stands back for Tam's, big and capped).
-const CLOSER := {"tilly": 0.88, "tam": 1.08}
+const CLOSER := {"tilly": 0.88, "tam": 1.08, "gate_warden": 1.08, "hale": 1.04}
 ## Whose head bone sits low in the skull (AssetFurnace's rigs: the player's,
 ## Corin's, Tam's, Tilly's, Nell's): the camera aims this much higher (m) so
 ## the face sits like the others'.
 const RAISE := {"player": 0.05, "player_a": 0.05, "player_b": 0.05, "player_c": 0.05, "player_d": 0.05, "corin": 0.05,
-	"tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05, "ned": 0.05}
+	"tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05, "ned": 0.05,
+	"hale": 0.045, "gate_warden": 0.06}
 const OUT := "res://assets/art/characters/"
 const SIZE := 512
 

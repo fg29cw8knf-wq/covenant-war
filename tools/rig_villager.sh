@@ -202,8 +202,38 @@ elder|child_b|child_c|refugee|corin_mam|krell)
 		--borrow assets/models/characters/bram.glb:lift \
 		--head-up=-12:walk,run
 	;;
+hale|sun_guard)
+	# Solhaven's gate (2 November): Warden Hale (Gary's Tripo3D model, a
+	# 53-joint Mixamo rig with the player's 21 clips and get_out_of_bed, as
+	# Krell's) and the Sun Guard (Solmaris_Solder_model.glb, a 34-joint rig
+	# like the merchant's, the same clips), who plays every Sun Guard in
+	# Chapter 1 and the gate warden ("gate_warden" in Figure3D.MODELS)
+	case "$who" in
+	hale) name="Warden Hale"; height=1.84 ;;
+	sun_guard) name="Sun Guard"; height=1.82 ;;
+	esac
+	python3 tools/rig_character.py "$src" "$out" --name "$name" --height "$height" \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
+enforcer)
+	# Ironvault's second enforcer (2 November): Gary's Tripo3D woman in
+	# Ironvault grey, a 53-joint Mixamo rig with no clips of its own, so she
+	# borrows the 22 of Warden Hale's master (the same rig: give its path as
+	# HALE, e.g. HALE=.../Warden_Hale_3d_model.glb tools/rig_villager.sh enforcer ...)
+	: "${HALE:?set HALE to Warden Hale's master .glb, whose clips she borrows}"
+	OWN="idle,walk,run,sneak,strafe_left,jump,sit,fight_stance,punch,punch_combo,kick,roundhouse,flying_kick,sword_swing,kata,hit_react,death,cheer,dance,wave,roll,get_out_of_bed"
+	python3 tools/rig_character.py "$src" "$out" --name "Ironvault Enforcer" --height 1.72 \
+		--cycle walk --cycle run --seam idle --seam dance \
+		--borrow "$HALE:$OWN" \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

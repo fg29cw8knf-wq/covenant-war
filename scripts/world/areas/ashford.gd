@@ -257,6 +257,9 @@ static func _bram() -> Array:
 
 static func _bram_evening() -> Array:
 	return [
+		# (2 November: Bram's own music while you talk, Gary's bram_theme when
+		# it's in; nothing changes until then)
+		{"theme": ["bram_theme"]},
 		{"if": "bram_lantern", "then": [], "else": [
 			{"set": "bram_lantern"},
 			{"who": "bram", "say": "Look at them."},
@@ -278,6 +281,7 @@ static func _bram_evening() -> Array:
 				{"scene": "midnight"},
 			],
 		]},
+		{"if": "ash_lantern_duel", "then": [], "else": [{"theme": "back"}]},
 	]
 
 
@@ -298,6 +302,8 @@ static func _tam() -> Array:
 
 static func _tam_mill() -> Array:
 	return [
+		# (2 November: Tam's own music at the mill, Gary's tam_mill when it's in)
+		{"theme": ["tam_mill"]},
 		{"who": "tam", "say": "Ah, Sprout. Mind the flour dust on your boots. The draft's blowing hard through the timber seams today."},
 		{"who": "tam", "say": "I was just... checking the alignment on the lower stone. Making sure we get a fine grind for the festival loaves before the sun drops."},
 		{"ask": ["Is that a notice from Ironvault, Tam?", "How is the harvest coming along this year?", "Bram says you're always up for a game."],
@@ -336,6 +342,7 @@ static func _tam_mill() -> Array:
 		{"who": "tam", "say": "Thank you, Sprout. You're a good lad."},
 		{"who": "tam", "say": "Go on back up to the green. I hear you put Corin on his backside. He'll be telling everyone it was the wind."},
 		{"set": "ash_tam"},
+		{"theme": "back"},
 		{"if": "tam_letter_seen", "then": [
 			{"say": "[i](Tam's letter has gone into Morrowen's Ledger, with every account you open from now on. Open the menu and choose Ledger.)[/i]"},
 		]},
@@ -420,6 +427,8 @@ static func _nell() -> Array:
 				{"who": "nell", "say": "Bench is still here. So am I."},
 				{"choice": ["Deal me in.", "Later, Nell."], "then": [_nell_game(), []]},
 			], "else": [
+				# (2 November: Nell's own music, Gary's nell_waltz when it's in)
+				{"theme": ["nell_waltz"]},
 				{"scene": "nell_face"},
 				{"ask": ["Are you waiting for the lantern lighting, Nell?", "Bram says not to underestimate you."],
 					"follow": {0: ["How long have you and Tam lived in Ashford?", [
@@ -439,6 +448,7 @@ static func _nell() -> Array:
 					],
 				]},
 				{"set": "ash_nell"},
+				{"theme": "back"},
 			]},
 		]},
 	]
@@ -474,6 +484,8 @@ static func _tilly() -> Array:
 				{"who": "tilly", "say": "Every day. You promised."},
 			], "else": [
 				{"set": "tilly_thanks"},
+				# (2 November: Tilly's own music, Gary's tilly_moth when it's in)
+				{"theme": ["tilly_moth"]},
 				# she comes at a run, the moth card held up in both hands; it's grey again
 				{"scene": "tilly_gift"},
 				# (1 November, Gary: "it flew! I told everyone" needed rewriting)
@@ -487,11 +499,13 @@ static func _tilly() -> Array:
 					[{"who": "tilly", "say": "Every day. You promised. Everyone heard."}],
 					[{"who": "tilly", "say": "No. Take it quick before I'm sure."}],
 				]},
+				{"theme": "back"},
 			]},
 		], "else": [
 			{"if": "ash_tilly", "then": [
 				{"who": "tilly", "say": "It's gone grey again. It always goes grey again."},
 			], "else": [
+				{"theme": ["tilly_moth"]},
 				{"scene": "tilly_face"},
 				{"ask": ["Is your moth card not working, Tilly?"], "then": [[
 					{"who": "tilly", "say": "It won't wake up. Father bought it from a merchant last winter, but the wings just stay flat."},
@@ -511,6 +525,7 @@ static func _tilly() -> Array:
 					{"say": "[i](What people think of you is kept in the menu, under Standing.)[/i]"},
 					{"set": "ash_tilly"},
 				]]},
+				{"theme": "back"},
 			]},
 		]},
 	]
@@ -585,6 +600,7 @@ static func _corin_morning() -> Array:
 		# (25 October, Gary: "You do now." on its own; then he hands the box
 		# over, the player reaches out and takes it, and the next line starts
 		# "You've seen enough duels"; and a line of Gary's as he gives it)
+		{"theme": ["bram_theme"]},
 		{"who": "bram", "say": "You do now."},
 		{"scene": "box_out"},
 		{"who": "bram", "say": "I've always told you, when you were ready, I'd let you start using cards. I suppose the end of an Age is as good a time as any. So let's start you with this lot."},

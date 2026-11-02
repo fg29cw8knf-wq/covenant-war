@@ -47,7 +47,11 @@ const MODELS := {"player": "player_a", "gate_warden": "sun_guard", "child": "chi
 	# Dask, Player C is Wren, Player D is Ironvault's hunters and enforcers
 	# (until their own models come). Tilly is the brown-skinned girl he made
 	# (child_c); her first, blonde model is a girl in the crowd ("girl").
-	"dask": "player_b", "wren": "player_c", "hunter": "player_d", "enforcer": "player_d",
+	"dask": "player_b", "wren": "player_c", "hunter": "player_d",
+	# Gary's second Ironvault enforcer (2 November), the woman in Ironvault
+	# grey: one of the bailiffs at the Reckoning (h2) and one of the grey
+	# coats pacing the green in the look back (g2); the rest are Player D
+	"enforcer": "enforcer", "h2": "enforcer", "g2": "enforcer",
 	"tilly": "child_c", "girl": "tilly"}
 ## Clips that repeat until something else is asked for.
 const LOOPS := ["idle", "walk", "run", "sneak", "talk", "duel_idle", "cheer", "fight_stance", "dance"]
@@ -92,6 +96,11 @@ const OWN_GAIT := {
 	"corin_mam": {"walk": 1.70, "run": 4.30},
 	"krell": {"walk": 1.56, "run": 3.95},
 	"refugee": {"walk": 1.58, "run": 4.00},
+	# Gary's 2 November three: Warden Hale, the Sun Guard and Ironvault's
+	# second enforcer (her clips Hale's, fitted to her)
+	"hale": {"walk": 2.12, "run": 5.37, "sneak": 1.08},
+	"sun_guard": {"walk": 1.92, "run": 4.87, "sneak": 0.98},
+	"enforcer": {"walk": 1.96, "run": 4.98},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
