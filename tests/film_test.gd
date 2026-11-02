@@ -288,6 +288,8 @@ func _process(_d: float) -> void:
 ## (who and what), and each choice offered, for writing the shot scripts.
 var _ev_cam := Transform3D()
 var _ev_have_cam := false
+var _ev_moved := 0.0
+var _ev_turned := 0.0
 var _ev_line := ""
 var _ev_choice := false
 
@@ -300,8 +302,13 @@ func _log_events() -> void:
 		if _ev_have_cam:
 			var moved := t.origin.distance_to(_ev_cam.origin)
 			var turned := rad_to_deg(acos(clampf(t.basis.z.normalized().dot(_ev_cam.basis.z.normalized()), -1.0, 1.0)))
-			if moved > 1.2 or turned > 18.0:
+			# a jump, against how the camera was moving the frame before (a
+			# drift or a follow moves about as much every frame; a close-up
+			# cut to another close-up can jump less than a metre)
+			if moved > maxf(0.3, _ev_moved * 4.0) or turned > maxf(8.0, _ev_turned * 4.0):
 				ev.append("CUT\tmoved %.1f m, turned %.0f deg" % [moved, turned])
+			_ev_moved = moved
+			_ev_turned = turned
 		_ev_cam = t
 		_ev_have_cam = true
 	# (a still being taken hides the words for a moment: not a line ending)
