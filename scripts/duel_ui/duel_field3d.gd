@@ -869,6 +869,155 @@ func _load_model(s: Slot, id: String) -> void:
 		inst.set_meta("stand_in_tint", Color(String(d.stand_in_tint)))
 	s.sprite.visible = false
 	s.shadow.visible = true
+	if s.side == spectral_side:
+		spectral(inst)
+
+
+# ============================================================ film mode ===
+# The Night of the White Sky (3 November, Gary): Bram's duel twenty years
+# ago, played by the real duel on this field and filmed (WhiteSky): no HUD,
+# the field out in the snow of the Shardlands under the torn sky, the
+# faceless hunter's Totems made of pale Sigil light ("hounds of white smoke").
+
+## The side whose Totems are drawn as pale Sigil light (-1: none).
+var spectral_side := -1
+var _snow: GPUParticles3D
+static var _spectral_mat: ShaderMaterial
+
+const SPECTRAL := """
+shader_type spatial;
+render_mode blend_mix, cull_back, depth_draw_opaque, unshaded;
+// Over a Totem's own materials (material_overlay): pale smoke and Sigil
+// light, brightest at the edges, drifting, the creature's shape kept.
+uniform float t_off = 0.0;
+float h(vec3 p) { return fract(sin(dot(p, vec3(12.9898, 78.233, 37.719))) * 43758.5453); }
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(h(i), h(i + vec3(1,0,0)), f.x), mix(h(i + vec3(0,1,0)), h(i + vec3(1,1,0)), f.x), f.y),
+		mix(mix(h(i + vec3(0,0,1)), h(i + vec3(1,0,1)), f.x), mix(h(i + vec3(0,1,1)), h(i + vec3(1,1,1)), f.x), f.y), f.z);
+}
+varying vec3 wp;
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2);
+	float flow = n3(wp * 2.2 + vec3(0.0, TIME * 0.9 + t_off, TIME * 0.3));
+	flow = flow * 0.6 + n3(wp * 5.0 - vec3(TIME * 0.6, 0.0, 0.0)) * 0.4;
+	vec3 smoke = mix(vec3(0.55, 0.6, 0.72), vec3(0.92, 0.95, 1.0), flow);
+	ALBEDO = smoke * (0.75 + fres * 1.6);
+	ALPHA = clamp(0.84 + fres * 0.16 - (1.0 - flow) * 0.12, 0.0, 0.98);
+}
+"""
+
+
+## A model drawn as pale Sigil light over its own shape (the hunter's hounds).
+static func spectral(inst: Node3D) -> void:
+	if _spectral_mat == null:
+		var sh := Shader.new()
+		sh.code = SPECTRAL
+		_spectral_mat = ShaderMaterial.new()
+		_spectral_mat.shader = sh
+	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		mi.material_overlay = _spectral_mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## The field as a film of a duel in a snowstorm under the torn sky: the
+## arena's painting and backdrop gone for trampled snow, the sky's shader
+## (the village's, the Sigilfall's tear open across it), cold moonlight,
+## driven snow and a heavier haze.
+func film_mode(quality := 2) -> void:
+	if world == null:
+		return
+	_back.visible = false
+	var snow := StandardMaterial3D.new()
+	var nt := NoiseTexture2D.new()
+	nt.width = 512
+	nt.height = 512
+	nt.seamless = true
+	var fn := FastNoiseLite.new()
+	fn.frequency = 0.012
+	fn.fractal_octaves = 4
+	nt.noise = fn
+	var g := Gradient.new()
+	g.set_color(0, Color(0.3, 0.34, 0.44))
+	g.set_color(1, Color(0.62, 0.67, 0.78))
+	nt.color_ramp = g
+	snow.albedo_texture = nt
+	snow.uv1_scale = Vector3(7, 7, 7)
+	snow.roughness = 0.92
+	snow.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
+	_mat.material_override = snow
+	_mat_material = snow
+	var ground := StandardMaterial3D.new()
+	ground.albedo_texture = nt
+	ground.uv1_scale = Vector3(46, 46, 46)
+	ground.roughness = 0.95
+	for c in world.get_children():
+		if c is MeshInstance3D and c != _mat and (c as MeshInstance3D).mesh is PlaneMesh and absf(c.position.y + 0.03) < 0.001:
+			(c as MeshInstance3D).material_override = ground
+	var sky := Sky.new()
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://assets/shaders/village/sky.gdshader")
+	sm.set_shader_parameter("zenith", Color(0.006, 0.009, 0.022))
+	sm.set_shader_parameter("horizon", Color(0.05, 0.06, 0.1))
+	sm.set_shader_parameter("tear_open", 1.2)
+	sm.set_shader_parameter("sky_dim", 0.55)
+	sky.sky_material = sm
+	_env.background_mode = Environment.BG_SKY
+	_env.sky = sky
+	_env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	_env.ambient_light_color = Color(0.36, 0.42, 0.62)
+	_env.ambient_light_energy = 0.38
+	_env.fog_light_color = Color(0.1, 0.12, 0.18)
+	_env.fog_density = 0.04
+	_env.glow_intensity = 0.8
+	sun.light_color = Color(0.68, 0.76, 1.0)
+	sun.light_energy = 0.55
+	sun.rotation_degrees = Vector3(-38, -25, 0)
+	if _hall != null:
+		_hall.light_color = Color(0.8, 0.86, 1.0)
+		_hall.light_energy = 0.7
+	_mote_col = Color(0.85, 0.9, 1.0)
+	_snow = snow_particles([700, 1500, 2600][clampi(quality, 0, 2)], Vector3(22, 9, 22), Vector3(-2.6, -2.2, 0.8))
+	_snow.position = Vector3(0, 7, 0)
+	world.add_child(_snow)
+
+
+## Driven snow: soft flakes falling through a box `extents` about the node,
+## blown by `wind` (m/s). Shared with the memory's walk (WhiteSky).
+static func snow_particles(amount: int, extents: Vector3, wind: Vector3, flake := 0.06) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = amount
+	p.lifetime = 6.0
+	p.preprocess = 6.0
+	p.visibility_aabb = AABB(-extents * 2.0 - Vector3(0, 12, 0), extents * 4.0 + Vector3(0, 12, 0))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = extents
+	pm.direction = wind.normalized()
+	pm.spread = 12.0
+	pm.initial_velocity_min = wind.length() * 0.7
+	pm.initial_velocity_max = wind.length() * 1.2
+	pm.gravity = Vector3(0, -0.6, 0)
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 1.4
+	pm.turbulence_noise_scale = 3.0
+	pm.scale_min = 0.5
+	pm.scale_max = 1.3
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(flake, flake)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = DuelFX.dot_tex()
+	m.albedo_color = Color(0.92, 0.95, 1.0, 0.85)
+	m.vertex_color_use_as_albedo = true
+	q.material = m
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
 
 
 ## The model packs name their magic surfaces: fire, flame, mist, veil, water,

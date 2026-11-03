@@ -1298,6 +1298,9 @@ const HUNG := [
 ## (DREAM_WHITE) so it's full as she finishes, then the beat of white
 ## (DREAM_HOLD) and black on the drum.
 const DREAM_SECS := 5.2
+## The Night of the White Sky (WhiteSky, 3 November) in place of the dream;
+## false puts the five seconds of stars back.
+const MEMORY := true
 const DREAM_LEAD := 1.2
 const DREAM_WHITE := 2.6
 const DREAM_HOLD := 0.8
@@ -1375,11 +1378,31 @@ static func _attic(w: World) -> void:
 	asleep(w)
 	var root: Node3D = a.root
 	Cine.shot(w, root.to_global(Vector3(2.45, 1.6, 1.3)), a.bed + Vector3(0.2, 0.15, 0.0), 46.0)
-	await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
+	if MEMORY and _memory_wanted(w):
+		# The Night of the White Sky (3 November, Gary): twenty years ago in
+		# the Shardlands, Bram finds the child and duels the faceless hunter
+		# for it; Morrowen's line is spoken over its sky. It ends on black.
+		var m := WhiteSky.new()
+		m.w = w
+		w.add_child(m)
+		# the village isn't drawn under it (the memory has a 3D view of its
+		# own, and a phone shouldn't draw both)
+		var vp := w.get_viewport()
+		vp.disable_3d = true
+		await m.play()
+		ov.black(true)
+		vp.disable_3d = false
+		m.queue_free()
+		await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
+		if not w.music.is_empty():
+			Music.play(w.music, 4.0, true)
+	else:
+		await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
+	var memory := MEMORY and _memory_wanted(w)
 	# the dream they're about to tell Bram about: the night sky from the
 	# bed, Morrowen's words over it, and the white light that takes it; cut
-	# to black on the drum
-	if DREAM_SECS > 0.0:
+	# to black on the drum (until 3 November: the memory takes its place)
+	if not memory and DREAM_SECS > 0.0:
 		await _dream(w, ov)
 		# Morrowen speaks alone over the sky; the village's music comes in
 		# softly as he wakes (Ashford.quiet_start held it back till now)
@@ -1389,6 +1412,16 @@ static func _attic(w: World) -> void:
 	# rise, from the fade-up to standing, is about seven seconds now where
 	# it was twelve; each movement is the same, just brisker)
 	await Cine.wait(w, 0.2)
+	if memory:
+		# the mark under his collar still glowing from the dream, fading as
+		# he comes round (it was the mark that showed him the night)
+		SealMark.blaze(w, 0.45, 0.01)
+		w.get_tree().create_timer(0.9, false).timeout.connect(func() -> void:
+			if is_instance_valid(w):
+				SealMark.blaze(w, 0.0, 2.2))
+		w.get_tree().create_timer(3.4, false).timeout.connect(func() -> void:
+			if is_instance_valid(w):
+				SealMark.show_on(w, false))
 	Cine.fade(w, 0.0, 1.0)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
 		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
@@ -1506,6 +1539,19 @@ static func _hand_can(f: Figure3D, side: String, to: Vector3) -> Vector3:
 ## white, then black. A tap skips her line as any voiced line, and the white
 ## comes at once. Without her recording (on the web, before the voices pack
 ## is in) the line waits for a tap like any other, the sky holding under it.
+## The memory plays in the game, and in a test only when the test asks for it
+## (test_memory: tests/ashford_test.gd plays it; the attic's own stills and
+## checks start from the attic as they always have).
+static var test_memory := false
+
+
+static func _memory_wanted(w: World) -> bool:
+	var sc := w.get_tree().current_scene
+	if sc != null and String(sc.scene_file_path).begins_with("res://tests/"):
+		return test_memory
+	return true
+
+
 static func _dream(w: World, ov: CineOverlay) -> void:
 	ov.dream_begin()
 	await Cine.wait(w, DREAM_LEAD)

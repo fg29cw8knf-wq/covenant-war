@@ -40,7 +40,7 @@ func _ready() -> void:
 	for f in ["ash_marked", "ash_tam", "ash_tilly", "ash_nell", "ash_won_lantern", "bram_deck", "beat_hunter",
 			"met_bram", "met_corin", "met_tam", "met_tilly", "met_nell", "arrived_solhaven", "beat_wren"]:
 		Game.flags[f] = true
-	Game.flags["solmaris_favour"] = "defiant"
+	Game.flags["solmaris_favour"] = "refused"   # (v7: "not_yet" or "refused"; "defiant" was v3)
 	for id in DuelCards.card_list("dask_hounds"):
 		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
 		Game.v2.codex[id] = "seen"
@@ -50,6 +50,7 @@ func _ready() -> void:
 	Game.v2.xp = 25
 	Game.v2.pool = 9
 	Game.v2.attune["cinderpup"] = 4
+	Game.v2.shards = 40   # Shards to forge with (3 November)
 	Game.give_item("hearth_charm")
 	Game.equip("charm", "hearth_charm")
 	# Bram's lessons so far (the How to Duel page) and two conditions met (the Codex)
@@ -90,6 +91,20 @@ func _ready() -> void:
 	menu._open_card("cinderpup")
 	await _frames(10)
 	await _shot("detail_cinderpup")
+	# Shards: the detail offers to forge it, and forging makes a copy
+	var forge: Button = null
+	for b in menu._overlay.find_children("*", "Button", true, false):
+		if (b as Button).text.begins_with("Forge with"):
+			forge = b
+	if forge == null:
+		problems.append("no Forge button on Cinderpup's detail with 40 Shards")
+	else:
+		var had := int(Game.v2.collection.get("cinderpup", 0))
+		forge.pressed.emit()
+		await _frames(8)
+		await _shot("detail_forged")
+		if int(Game.v2.collection.get("cinderpup", 0)) != had + 1 or Game.shards() != 40 - DuelRewards.card_cost("cinderpup"):
+			problems.append("forging Cinderpup didn't make a copy for its cost")
 	menu._overlay.closed.emit()
 	await _frames(4)
 	menu._open_card("brookfin")
@@ -120,7 +135,7 @@ func _ready() -> void:
 	Game.shift_standing("corin", 2, "Test nudge.")
 	await get_tree().create_timer(0.6).timeout
 	await _shot("standing_toast")
-	if Standing.value("tilly") != 2 or Standing.value("solmaris") != -2 or Standing.value("corin") != 3:
+	if Standing.value("tilly") != 2 or Standing.value("solmaris") != -1 or Standing.value("corin") != 3:
 		problems.append("standing values wrong: tilly %d solmaris %d corin %d" % [Standing.value("tilly"), Standing.value("solmaris"), Standing.value("corin")])
 	if int(Game.profile.attributes.resolve) != int(Game.profile.base.resolve) + 2:
 		problems.append("the charm's +1 Resolve isn't counted")

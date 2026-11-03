@@ -41,6 +41,8 @@ var way: WayMarker
 
 func _ready() -> void:
 	layer = 10
+	# Shards from a side quest finished or a Sigilfall shard picked up
+	Game.shards_gained.connect(_on_shards)
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -272,6 +274,10 @@ func show_hint(text: String) -> void:
 	_hint.visible = true
 	var tw2 := create_tween()
 	tw2.tween_property(_hint, "modulate:a", 1.0, 0.4)
+
+
+func _on_shards(amount: int, _why: String) -> void:
+	toast("+%d Shard%s" % [amount, "" if amount == 1 else "s"])
 
 
 func toast(text: String) -> void:

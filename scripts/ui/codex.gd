@@ -122,6 +122,8 @@ static func resonance_block(id: String) -> String:
 		return "Summons can't be crystallised. The story hands them to you."
 	if DuelCards.is_ascension(id):
 		return "Ascended cards don't crystallise from wins. They manifest through Attunement (below)."
+	if bool(d.get("pvp_only", false)):
+		return "A prize of ranked play. It's won there, never crystallised or forged."
 	if tier > DuelRewards.MAX_RESONANCE_TIER:
 		return "Too rare to crystallise from a duel. Only the story holds these."
 	if not v.get("codex", {}).has(id):
@@ -513,7 +515,7 @@ class Detail:
 	var deck = null
 	var _info: RichTextLabel
 	var _meters: HBoxContainer
-	var _buttons: HBoxContainer
+	var _buttons: HFlowContainer   # wraps onto a second row when there are many (3 November: Forge added one)
 	var _status: Label
 	var _art: Control
 	var _close: Button
@@ -586,8 +588,9 @@ class Detail:
 		_status = UITheme.label("", 26, UITheme.TEXT_DIM)
 		_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		right.add_child(_status)
-		_buttons = HBoxContainer.new()
-		_buttons.add_theme_constant_override("separation", 14)
+		_buttons = HFlowContainer.new()
+		_buttons.add_theme_constant_override("h_separation", 14)
+		_buttons.add_theme_constant_override("v_separation", 12)
 		right.add_child(_buttons)
 		_refresh()
 
@@ -614,6 +617,9 @@ class Detail:
 			var target := String(v.get("target", "")) == id
 			lines.append("Each win makes Resonance. Point it at this card and %d Resonance crystallises a copy. %s" % [cost,
 				"[color=#%s]Your wins are building towards it: %d / %d.[/color]" % [gold, banked, cost] if target else ("Banked so far: %d / %d." % [banked, cost] if banked > 0 else "")])
+			var sh := Game.shards()
+			lines.append("Or forge it yourself with Shards (one Shard, one Resonance): it needs %d more, and you have %d." % [Game.forge_needed(id), sh]
+				if sh > 0 else "Or forge it yourself with Shards, once you have some: wins spill a few, and so do side stories and Sigilfalls.")
 		# --- Ascension
 		var p := Codex.ascension_progress(id)
 		if String(p.get("state", "")) == "filling" and Codex.owned(String(p.root)) <= 0 and int(p.get("have", 0)) <= 0:
@@ -664,6 +670,26 @@ class Detail:
 			_add("Build towards this", func() -> void:
 				Game.set_resonance_target(id)
 				_status.text = "Your wins now build Resonance towards %s." % d.name
+				_after())
+		if block == "" and not DuelCards.is_ascension(id) and Game.can_forge(id):
+			var pour := mini(Game.shards(), Game.forge_needed(id))
+			_add("Forge with %d Shard%s" % [pour, "" if pour == 1 else "s"], func() -> void:
+				var r := Game.forge(id)
+				if String(r.made) != "":
+					_status.text = "%s crystallises in your hand!  (%d Shards left)" % [d.name, Game.shards()]
+				else:
+					_status.text = "%d Shards poured in: %d / %d.  Wins and more Shards will finish it." % [int(r.poured), int(r.banked), int(r.cost)]
+				_after())
+		if Game.spare_is_shards(id) and Game.spare_copies(id) > 0:
+			_add("Turn a spare into %d Shards" % DuelRewards.copy_shards(id), func() -> void:
+				Game.reabsorb(id, 1)
+				_status.text = "Nothing left for it to feed, so it breaks down into Shards: you have %d." % Game.shards()
+				_after())
+		elif p.get("state", "") != "filling" and DuelCards.is_basic_totem(id) and Game.spare_copies(id) > 0 and Game.temper_of(id) < 3:
+			# nothing left to manifest, but it can still be Tempered (then spares turn into Shards)
+			_add("Re-absorb a spare %s" % d.name, func() -> void:
+				Game.reabsorb(id, 1)
+				_status.text = "%s is Tempered (%d of 3)." % [d.name, Game.temper_of(id)]
 				_after())
 		if p.get("state", "") == "filling":
 			var root: String = p.root

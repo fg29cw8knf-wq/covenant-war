@@ -355,7 +355,9 @@ func _hero() -> Control:
 	var codex := tab_open("codex")
 	var res := "Your wins build Resonance towards [b]%s[/b]: %d / %d.%s" % [DuelCards.CARDS[tgt].name, int(v.get("banked", {}).get(tgt, 0)), DuelRewards.card_cost(tgt), " Change it in the Codex." if codex else ""] if tgt != "" and DuelCards.CARDS.has(tgt) \
 		else ("Your wins make Resonance. Pick a card in the Codex to build it towards." if codex else "Your wins make Resonance, and Resonance makes new cards.")
-	right.add_child(_wrap(res + "  Attunement pool: %d." % int(v.get("pool", 0)), 24, UITheme.TEXT_DIM, true))
+	var sh := int(v.get("shards", 0))
+	var sh_t := ("  Shards: %d, to forge cards yourself in the Codex." % sh) if sh > 0 and codex else ""
+	right.add_child(_wrap(res + "  Attunement pool: %d." % int(v.get("pool", 0)) + sh_t, 24, UITheme.TEXT_DIM, true))
 	return _scroll(hb)
 
 

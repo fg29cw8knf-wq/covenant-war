@@ -7,6 +7,10 @@ signal changed
 signal standing_changed(who: String, by: int, why: String)
 ## A part of the pack (pause menu) opened up for the first time (see unlock()).
 signal feature_unlocked(feature: String)
+## Shards came in from somewhere other than a duel's result screen (a side
+## quest finished, a Sigilfall shard picked up, a spare copy turned in); the
+## world's HUD says so ("+3 Shards").
+signal shards_gained(amount: int, why: String)
 
 const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
@@ -105,7 +109,7 @@ func new_game(p_name: String, starter_deck: String = "", keep_progress := false)
 static func new_v2(starter_deck: String) -> Dictionary:
 	var v := {"rank": 1, "xp": 0, "points": 0, "seals": [], "convocation": false,
 		"collection": {}, "bonded": {}, "codex": {}, "target": "", "target_chosen": false, "banked": {},
-		"attune": {}, "stage": {}, "pool": 0, "deck": []}
+		"attune": {}, "stage": {}, "pool": 0, "deck": [], "shards": 0}
 	if DuelCards.DECKS.has(starter_deck):
 		v.deck = DuelCards.card_list(starter_deck)
 		for id in v.deck:
@@ -215,6 +219,11 @@ func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, 
 	var res := DuelRewards.resonance(game, me, opponent_kind, thick, ad)
 	var out := add_resonance(int(res.total))
 	out["resonance"] = res
+	# some of the win spills over as Shards, kept for the player to spend
+	# (never in the Prologue, which teaches the game: Ads.in_prologue())
+	var spill := 0 if not flag("beat_hunter") else DuelRewards.shard_spill(int(res.total))
+	v.shards = int(v.get("shards", 0)) + spill
+	out["shards"] = spill
 	# the story hands out the deeper duel's cards (Phase E): one the player
 	# hasn't met comes into the Codex, from the pools this chapter has opened
 	var rng := RandomNumberGenerator.new()
@@ -271,6 +280,114 @@ func add_resonance(amount: int) -> Dictionary:
 	out["ranks_gained"] = ups
 	changed.emit()
 	return out
+
+# ------------------------------------------------------------- Shards ---
+# A Shard is crystallised Resonance the player keeps and spends themselves,
+# from the Codex (forge()). Duels spill a little (record_win), side quests
+# give some once (set_flag), Sigilfall shards lie about the world once a day
+# (collect_sigilfall, SigilShards), and spare copies with nothing left to
+# feed turn into them (reabsorb). DuelRewards has the numbers.
+
+func shards() -> int:
+	return int(_v2().get("shards", 0))
+
+
+## Adds Shards to the wallet. `why` (if any) is said by the world's HUD.
+func add_shards(amount: int, why := "") -> void:
+	if amount <= 0:
+		return
+	var v := _v2()
+	v.shards = int(v.get("shards", 0)) + amount
+	changed.emit()
+	if why != "":
+		shards_gained.emit(amount, why)
+
+
+## Shards still needed to forge a copy of `id` (its cost less what's banked).
+func forge_needed(id: String) -> int:
+	var v := _v2()
+	return maxi(0, DuelRewards.card_cost(id) - int(v.banked.get(id, 0)))
+
+
+## Can Shards be poured into this card now? (The same cards a win can build
+## towards: DuelRewards.eligible.)
+func can_forge(id: String) -> bool:
+	var v := _v2()
+	return shards() > 0 and DuelRewards.eligible(id, int(v.rank), v.codex)
+
+
+## Pours the player's Shards into `id`'s bank: only what it needs, the rest
+## stays in the wallet. A full bank crystallises a copy. No Rank experience
+## (that comes from duels). Returns {"poured", "made" ("" or the id), "banked", "cost"}.
+func forge(id: String) -> Dictionary:
+	var v := _v2()
+	var out := {"poured": 0, "made": "", "banked": int(v.banked.get(id, 0)), "cost": DuelRewards.card_cost(id)}
+	if not can_forge(id):
+		return out
+	var pour := mini(shards(), forge_needed(id))
+	v.shards = shards() - pour
+	var have := int(v.banked.get(id, 0)) + pour
+	out.poured = pour
+	if have >= int(out.cost):
+		v.collection[id] = int(v.collection.get(id, 0)) + 1
+		v.banked.erase(id)
+		out.made = id
+		out.banked = 0
+		if String(v.target) == id and not bool(v.get("target_chosen", false)):
+			v.target = ""   # an automatic target moves on to the next card
+	else:
+		v.banked[id] = have
+		out.banked = have
+	changed.emit()
+	return out
+
+
+## Shards left lying in the world after a Sigilfall: picks up the one at
+## `spot` (a key unique to its area) if it's there today and the day's cap
+## isn't reached. Returns the Shards gained (0 if none). They come back each
+## day by the device's calendar.
+func collect_sigilfall(spot: String, amount: int, today := "") -> int:
+	if today == "":
+		today = Time.get_date_string_from_system()
+	var v := _v2()
+	var st: Dictionary = v.get("sigilfall", {})
+	if String(st.get("day", "")) != today:
+		st = {"day": today, "got": [], "total": 0}
+	if (st.got as Array).has(spot):
+		return 0
+	var room := DuelRewards.SIGILFALL_DAILY_CAP - int(st.total)
+	var n := mini(amount, room)
+	if n <= 0:
+		return 0
+	(st.got as Array).append(spot)
+	st.total = int(st.total) + n
+	v["sigilfall"] = st
+	add_shards(n, "Sigilfall")
+	return n
+
+
+## Is the Sigilfall shard at `spot` still there today (and is there room)?
+func sigilfall_here(spot: String, today := "") -> bool:
+	if today == "":
+		today = Time.get_date_string_from_system()
+	var st: Dictionary = _v2().get("sigilfall", {})
+	if String(st.get("day", "")) != today:
+		return true
+	return not (st.get("got", []) as Array).has(spot) and int(st.get("total", 0)) < DuelRewards.SIGILFALL_DAILY_CAP
+
+
+## A side quest's flag has moved: if it just finished, its Shards (once).
+func _quest_shards(key: String, value) -> void:
+	var n := DuelRewards.quest_shards(key, value)
+	if n <= 0:
+		return
+	var v := _v2()
+	var paid: Dictionary = v.get("quest_shards", {})
+	if paid.has(key):
+		return
+	paid[key] = n
+	v["quest_shards"] = paid
+	add_shards(n, "Story")
 
 
 ## Spends an attribute point on one attribute.
@@ -389,6 +506,16 @@ func reabsorb(id: String, copies: int) -> String:
 	copies = mini(copies, spare_copies(id))
 	if copies <= 0 or not DuelCards.is_basic_totem(id):
 		return ""
+	# a Totem with nothing left to manifest and fully Tempered: its spare
+	# copies have nowhere to go, so they turn into Shards instead
+	var spent := 0
+	while spent < copies and spare_is_shards(id):
+		v.collection[id] = int(v.collection[id]) - 1
+		add_shards(DuelRewards.copy_shards(id))   # (the Codex says so itself)
+		spent += 1
+	copies -= spent
+	if copies <= 0:
+		return ""
 	v.collection[id] = int(v.collection[id]) - copies
 	v.attune[id] = int(v.attune.get(id, 0)) + copies * DuelRewards.copy_points(id)
 	# Tempering (Phase C, Gary's rule): each copy re-absorbed marks the card
@@ -397,6 +524,16 @@ func reabsorb(id: String, copies: int) -> String:
 	tm[id] = mini(3, int(tm.get(id, 0)) + copies)
 	v["temper"] = tm
 	return _try_manifest(id)
+
+
+## True when a spare copy of this Basic Totem has nowhere left to go (no
+## Ascension left to manifest and Tempered three times), so re-absorbing it
+## gives Shards (DuelRewards.copy_shards).
+func spare_is_shards(id: String) -> bool:
+	var v := _v2()
+	if not DuelCards.is_basic_totem(id):
+		return false
+	return DuelRewards.next_ascension(id, int(v.stage.get(id, 0))) == "" and temper_of(id) >= 3
 
 
 ## How many times a card has been Tempered (0 to 3).
@@ -452,6 +589,8 @@ func flag(key: String, default = false):
 func set_flag(key: String, value = true) -> void:
 	var before = flags.get(key, null)
 	flags[key] = value
+	if key.begins_with("side_"):
+		_quest_shards(key, value)
 	if before == null or str(before) != str(value):
 		var e := Standing.effect_of(key, value)
 		if not e.is_empty():

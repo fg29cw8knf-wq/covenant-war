@@ -163,6 +163,7 @@ func _build(spread: bool) -> void:
 		if spread:
 			await get_tree().process_frame
 		_spawn_npc(def)
+	SigilShards.place(self)   # Sigilfall shards to pick up (after the Prologue)
 	_build_camera()
 	# a story film picking up where it was starts on black, not on the world
 	if not attract and area.get_script_constant_map().has("RESUMES") and area.starts_black():

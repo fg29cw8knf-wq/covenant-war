@@ -21,6 +21,21 @@ const TIER_COST := [0, 30, 80, 160, 320]
 ## Duels never make cards above Relic.
 const MAX_RESONANCE_TIER := 4
 
+# --- Shards --------------------------------------------------------------------------
+## A Shard is crystallised Resonance (one Shard, one Resonance) the player keeps
+## and spends themselves, from the Codex, on any card their wins could build
+## towards (Gary, 3 November: "spending shards you should be able to do
+## yourself"). Kept slow on purpose: shards_test.gd's pacing check holds them
+## to about a quarter of a chapter's card income.
+## Every won story duel also spills this share of its Resonance as Shards.
+const SHARD_SPILL := 0.1
+## Sigilfall shards in the world: what each spot holds, and the most a day.
+const SIGILFALL_DAILY_CAP := 12
+## A story side quest finished, by its size (one time each).
+const QUEST_SHARDS := {"side_mercy": 20, "side_fen": 15, "side_pip": 15, "side_scar": 20, "side_hale": 25}
+## The quest flag values that aren't the end yet (any other value is).
+const QUEST_NOT_DONE := {"side_fen": ["pending"], "side_pip": ["seen", "pending"]}
+
 # --- Attunement ------------------------------------------------------------------
 ## Points one spare copy gives its own Totem's store, by tier.
 const COPY_POINTS := [0, 2, 2, 3, 6]
@@ -105,9 +120,41 @@ static func eligible(id: String, rank: int, codex: Dictionary) -> bool:
 		return false
 	if d.kind == "summon" or DuelCards.is_ascension(id):
 		return false   # Summons come from the story; Ascensions from Attunement
+	if pvp_only(d):
+		return false   # PvP prizes are won in ranked play, never made
 	if tier == 4 and String(codex[id]) != "champion":
 		return false
 	return true
+
+
+## A PvP prize (weekly top rankers, event days, tournaments): won in ranked
+## play, never crystallised or forged. No card carries the flag yet.
+static func pvp_only(d: Dictionary) -> bool:
+	return bool(d.get("pvp_only", false))
+
+
+## The Shards a won duel spills, from its final Resonance (at least one).
+static func shard_spill(resonance_total: int) -> int:
+	if resonance_total <= 0:
+		return 0
+	return maxi(1, int(round(resonance_total * SHARD_SPILL)))
+
+
+## What a spare copy is worth in Shards once its Totem has nothing left to
+## manifest and is fully Tempered: a tenth of its crystallising cost.
+static func copy_shards(id: String) -> int:
+	return int(ceil(card_cost(id) / 10.0))
+
+
+## The Shards a finished side quest gives (0 if it isn't one, or isn't done).
+static func quest_shards(flag: String, value) -> int:
+	if not QUEST_SHARDS.has(flag):
+		return 0
+	if value == null or value is bool or String(value) == "":
+		return 0
+	if String(value) in QUEST_NOT_DONE.get(flag, []):
+		return 0
+	return int(QUEST_SHARDS[flag])
 
 
 ## The highest tier that answers a duellist of this Rank.

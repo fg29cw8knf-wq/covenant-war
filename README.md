@@ -1232,7 +1232,49 @@ Script" until they're rebuilt to v3. The words and talk trees are in
 `scripts/world/areas/ashford.gd` (above the films), the staging in
 `scripts/world/areas/ashford_p1.gd`.
 
-New Game opens on black and the caption "Ashford / The last night of the Age."
+**The Night of the White Sky** (3 November, Gary: "add that to the story and
+build it"; "Bram should face a faceless hunter"): New Game's memory, twenty
+years before the attic, in place of the dream's five seconds of stars
+(`scripts/story/white_sky.gd`, `WhiteSky`, played by `AshfordP1._attic` while
+`AshfordP1.MEMORY` is true). Its own 3D set in a SubViewport of its own (the
+Shardlands at night: snow drifts and the crater from `WhiteSky.height()`, the
+village's sky shader with its tear opening, dark glass spires, white shards
+round the crater's lip, driven snow from `DuelField3D.snow_particles`): the
+caption "The Shardlands / Twenty years ago.", Morrowen's `morrowen_attic` over
+the sky (moved from the attic), the sky tearing and Sigils falling (streaks,
+flashes, cards of light settling in the snow), then the player walks as Bram,
+from behind, his face never in a shot (hold to walk, gated, the bracketed
+instruction by device), the hunter glimpsed off to the side and gone in a gust,
+down into the crater, the child (a wool bundle with SealMark's painting glowing
+on it; Gary's `baby_bundle.glb` to come) picked up on a tap, "Hush, now. I've
+got you.", tucked into his coat, the hunter on the rim ("Not this one.").
+Bram wears a drawn travelling coat over his model (`_dress_bram`, on his
+Spine2 bone) until Gary's `bram_coat.glb` is used whole in its place; the
+hunter is drawn (`WhiteSky.Hunter`: a ragged ash-coloured cloak, a hood with a
+void for a face, smoke off it) until `shard_hunter.glb` comes. **Bram's duel**
+is the real duel filmed: `DuelScreen` with `spec.film` (no stage, overlay or
+arena overlay; no Circle rule, skills, comeback, events, Oaths or ground god)
+and `DuelField3D.film_mode()` (snow for the mat, the torn sky, cold light,
+driven snow) with `spectral_side` 1, the hunter's Totems drawn as pale Sigil
+light over their own shapes (`DuelField3D.spectral`, a `material_overlay`).
+Bram's old Ironstone against Veilwild without its Summon (`WhiteSkyDuel`, the
+decks, seed and skill; `tests/white_sky_probe.gd` found seed 30: two of his
+Totems knocked out before he calls Grondmaw on turn 9), both sides the computer;
+Bram and the hunter stand at the ends of the field, Bram with the child in his
+left arm, the play-card clip on each of his plays; the camera cuts between
+`WhiteSky.SHOTS` (all on Bram's side of him or looking away from him). When
+Grondmaw's blow lands the screen burns white; black; Morrowen: "Twenty years
+later, the debt came due." (a subtitle until it's recorded, line 0004 on the
+voice sheet); then the attic caption, and the player wakes with the mark under
+his collar glowing and fading (`SealMark.blaze`). The filmed duel always has a
+Skip button; once the memory has been seen (`Game.settings.seen_white_sky`)
+all of it has. Its music is `white_sky` (Gary's, to come; `sigilfall` plays
+till then), its sounds `assets/sfx/storm_wind` and `baby_cry` (to come). The
+gate at dawn and the clerk counting the crowns are the Reckoning film's shot
+`rk_02b`. `tests/white_sky_test.tscn -- <dir> [every s] [skip]` plays it as a
+player would and takes stills.
+
+Before the memory (and with `AshfordP1.MEMORY` false) New Game opened on black and the caption "Ashford / The last night of the Age."
 in the inn's attic, then the dream the player is about to tell Bram about
 (`CineOverlay.dream_sky()`, `AshfordP1.DREAM_SECS`, 0 turns it off): the night
 sky as it's seen from the bed through the attic window, full of stars with a
@@ -1685,6 +1727,48 @@ godot --headless res://tests/lantern_sim.tscn -- 0.3 x 300 rematch       # the r
 - **Items** (`scripts/game/items.gd`): story items shown from flags, and equipment in three slots (charm, ring, deck case) that adds to attributes in every duel. A dialogue step `{"item": "<id>"}` gives one.
 - **Morrowen's Ledger** (`scripts/ui/ledger.gd`, the Ledger tab after Hero): the quest log in Morrowen's voice, as the Keeper of the Dead's record of the Age (Master Script v3, Side Quests). *Accounts* lists the main story and the side stories, those still open first, then the settled ones, newest first, a sentence or two each in the past tense; *People* has everyone met, by place, with their face (`assets/art/characters/<id>_portrait.png`, or their cut-out's until it exists), one line on what's known of them and, where it's kept, how they stand with you. The words, and the flags that pick between them, are in `scripts/story/ledger_entries.gd`, from the Prologue on.
 - **Sworn wagers** (`scripts/ui/swear_screen.gd`): before a one-shot wager duel, the swear screen says who's across the Circle and with what deck, what each side stakes, the opponent's duel rule, and "A sworn wager. Win or lose, it stands.", with **Not yet** and **Swear now** (armed after a moment, so a thumb tapping through talk can't swear by accident). The oath is saved (`wager_<id>`, `wagers_sworn`); the duel has no Try again (`spec.once`), and a game closed in the middle of one goes straight back into it.
+- **Shards** (3 November, Gary: shards to collect as well as cards won in
+  duels, "spending shards you should be able to do yourself", and "make sure
+  cards aren't got too quickly"): a Shard is crystallised Resonance (one
+  Shard, one Resonance) that the player keeps in a wallet (`Game.v2.shards`,
+  `Game.shards()`; old saves start with none) and spends themselves, any time,
+  from a card's detail in the Codex: **Forge with N Shards** pours only what
+  the card still needs into its bank (`v2.banked`, the same bank a win's
+  Resonance fills), a full bank crystallises a copy, and the rest stays in the
+  wallet (`Game.forge()`). Only the cards a win could build towards can be
+  forged (`DuelRewards.eligible()`: seen in a duel, answering at the player's
+  Rank, a Relic only once a Champion or boss has played one, never a Summon or
+  an Ascension), and a card marked `pvp_only` (PvP prizes; none yet) never.
+  Forging gives no Rank experience: that comes from duels. Where they come
+  from, all of it small (`DuelRewards`):
+  - a won story duel spills a tenth of its Resonance as Shards
+    (`SHARD_SPILL` 0.1, at least 1; on the result screen, "+8 Shards spill
+    over"), and the advert that doubles a win doubles them too;
+  - **Sigilfall shards** (`scripts/world/sigil_shards.gd`, `SigilShards`):
+    little glowing crystals of Sigil glass (DuelCrystal's cut glass) at six
+    spots round Solhaven's square, 2 or 3 each; walking onto one picks it up
+    ("+2 Shards"), it's gone for the day and back the next by the device's
+    calendar, and a day gives at most `SIGILFALL_DAILY_CAP` (12). None in
+    the Prologue (`Ads.in_prologue()`), none before the Codex opens, and they
+    hide while a film has the camera. `World._build` places them
+    (`SigilShards.place`); another area gets them by adding its spots to
+    `SigilShards.SPOTS`;
+  - each of Chapter 1's side stories, once, when it's finished
+    (`QUEST_SHARDS`: Mercy 20, Fen 15, Pip 15, the Sundial 20, Hale 25; paid
+    from `Game.set_flag` when a `side_*` flag reaches an ending, so every
+    branch pays; the HUD says "+20 Shards");
+  - a spare copy of a Basic Totem with nothing left to manifest and already
+    Tempered three times turns into Shards, a tenth of its cost
+    (`Game.spare_is_shards`, `DuelRewards.copy_shards`: a Spark's spare is
+    3), from the Codex ("Turn a spare into 3 Shards"); such a Totem not yet
+    fully Tempered can still be Re-absorbed to Temper it (the button had only
+    shown while an Ascension was filling).
+  The Hero page's Resonance line says how many Shards are held. The Codex
+  detail's buttons wrap onto a second row (an `HFlowContainer`); at 1600x900
+  the row had run off the panel and the Close button was off screen.
+  `godot --headless --script res://tests/shards_test.gd` checks it all and
+  prints the pacing; `godot --headless res://tests/sigilfall_test.tscn` the
+  crystals in Solhaven; `menu_test` forges a Cinderpup (`detail_forged`).
 - **Adverts** (`scripts/game/ads.gd`, autoload `Ads`): one full-screen advert at most every 3 story duels and 5 minutes (never in the Prologue, never mid-duel), retries always free, and an optional advert after a story win that doubles its Resonance (3 a day; never offered in the Prologue either, `Ads.in_prologue()`). Until the AdMob plugin (poingstudios/godot-admob-plugin) is added to the iOS and Android exports, a labelled placeholder shows where each would play; Options turns previews off.
 
 Ashford's cottages, the Crooked Lantern, the windmill (its sails turn until the thatch catches at midnight) and the oaks round the village are Gary's models (`assets/models/ashford/`; an `oak_b.glb`, `oak_c.glb`... is used alongside `oak_a` as soon as it's there); each has a `<id>_glow.png` window mask made from its colour atlas, so the windows light up at night. Missing models fall back to the drawn stand-ins.

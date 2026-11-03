@@ -79,6 +79,7 @@ var _shake := 0.0
 var _base_k := 1.0
 var _zoom := 0.0
 var _won_resonance := 0
+var _won_shards := 0      # the Shards that win spilled (the advert doubles them too)
 var _zoom_at := Vector2(1000, 476)
 var _started := false
 var _arena_name := "solhaven"
@@ -139,6 +140,18 @@ func _ready() -> void:
 		field = DuelField3D.new()
 		add_child(field)
 		field.setup(arena_name)
+		if bool(spec.get("film", false)):
+			# a duel filmed, not played (the Night of the White Sky, WhiteSky):
+			# out in the snow under the torn sky; spec.spectral_side's Totems
+			# are pale Sigil light
+			field.film_mode(Gfx.level())
+			field.spectral_side = int(spec.get("spectral_side", -1))
+			if spec.has("film_home"):
+				var fh: Array = spec.film_home
+				field.cam_fov = float(fh[2]) if fh.size() > 2 else field.cam_fov
+				field.set_home(fh[0], fh[1])
+				field.cam_pos = fh[0]
+				field.cam_look = fh[1]
 		if spec.has("herald_at"):
 			# the story's Pale Herald, at the Circle's edge, watching
 			_herald = PaleHerald.new()
@@ -186,6 +199,13 @@ func _ready() -> void:
 	add_child(overlay)
 	resized.connect(_fit)
 	SafeArea.watch(self, _fit)
+	if bool(spec.get("film", false)):
+		# no HUD in a filmed duel: the hand, the Life, the buttons, the
+		# banners and the numbers are all on the stage and the overlay
+		stage.visible = false
+		overlay.visible = false
+		bg.visible = false
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_start.call_deferred()
 
 
@@ -666,6 +686,16 @@ func _start() -> void:
 		for k in game.synergy:
 			game.synergy[k] = false
 	game.place_god = String(spec.get("place_god", DuelSynergy.place_god(game.law, _arena_name)))
+	if bool(spec.get("film", false)):
+		# a filmed duel is the plain duel its probe found the seed for
+		# (tests/white_sky_probe.gd): no Circle rule, skills, comeback card,
+		# Circle events, Oaths or ground god
+		game.arena = ""
+		game.skills = ["", ""]
+		game.comeback = false
+		game.arena_events = false
+		game.ai_oaths = false
+		game.place_god = ""
 	if not ai_flags[me] or bool(spec.get("story", false)):
 		game.god_standing[me] = _player_standing()
 	if spec.has("rival_standing"):
@@ -4629,7 +4659,7 @@ func _show_result(r: String) -> String:
 		sc.custom_minimum_size.y = minf(rv.size.y + 8, overlay.size.y * 0.32)
 		# an advert the player can choose to watch, to double this win
 		if _won_resonance > 0 and spec.get("story", false) and Ads.can_offer_rewarded():
-			var dbl := UITheme.button("Watch an advert: double this win's Resonance (%d left today)" % Ads.rewarded_left_today(), false, 0)
+			var dbl := UITheme.button("Watch an advert: double this win's %s (%d left today)" % ["Resonance and Shards" if _won_shards > 0 else "Resonance", Ads.rewarded_left_today()], false, 0)
 			dbl.custom_minimum_size = Vector2(0, 84)
 			dbl.add_theme_font_size_override("font_size", 26)
 			dbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -4637,7 +4667,10 @@ func _show_result(r: String) -> String:
 				dbl.disabled = true
 				if await Ads.rewarded("double_resonance"):
 					var extra := Game.add_resonance(_won_resonance)
+					Game.add_shards(_won_shards)
 					var t := "Doubled! +%d more Resonance." % _won_resonance
+					if _won_shards > 0:
+						t = "Doubled! +%d more Resonance, +%d more Shards." % [_won_resonance, _won_shards]
 					if not extra.made.is_empty():
 						t += "  %s crystallises in your hand!" % DuelCards.CARDS[extra.made[0]].name
 					elif String(extra.get("target", "")) != "":
@@ -4758,7 +4791,10 @@ func _reward_lines() -> Array:
 		return ["This win makes %d Resonance (%s)." % [res.total, _resonance_why(res)]]
 	var out := Game.record_win(game, me, kind, bool(rw.get("thick", false)), false)
 	_won_resonance = int(out.resonance.total)
+	_won_shards = int(out.get("shards", 0))
 	var lines := ["+%d Resonance  (%s)" % [out.resonance.total, _resonance_why(out.resonance)]]
+	if _won_shards > 0:
+		lines.append("+%d Shards spill over: yours to spend in the Codex (%d in all)" % [_won_shards, Game.shards()])
 	var target: String = out.get("target", "")
 	if not out.made.is_empty():
 		lines.append("%s crystallises in your hand!" % DuelCards.CARDS[out.made[0]].name)

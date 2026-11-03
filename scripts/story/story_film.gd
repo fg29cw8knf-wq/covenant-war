@@ -137,6 +137,10 @@ const FILMS := {
 				"lines": [{"at": 0.4, "who": "krell", "say": "Good evening. I hold the foreclosure notes for twenty-two properties in this valley."},
 					{"at": 5.0, "who": "krell", "say": "By the authority of Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit tonight."},
 					{"at": 11.0, "who": "krell", "say": "Alternatively, you may surrender one card, the white one, and the notes are burned. I will wait five minutes."}]},
+			# (3 November, Gary: the gate and the crowns, kept back from the
+			# Night of the White Sky for this moment: "every roof but the inn's")
+			{"id": "rk_02b", "len": 8.0, "see": "A flash of white, then twenty years ago: Ashford's gate at dawn, snow on the ground. Bram, never his face, snow on his heavy coat and a baby asleep inside it, sets a heavy purse on a trestle. Aurex Morne's clerk counts out four thousand gold crowns, stacks them, and seals a single page. A flash of white, back to Krell.",
+				"lines": [{"at": 4.6, "who": "clerk", "say": "Four thousand crowns. Paid in full, and sealed."}]},
 			{"music": "stop"},
 			{"id": "rk_03", "len": 4.0, "see": "Nobody speaks. The silence stretches across the frightened faces, Nell's among them."},
 			{"id": "rk_04", "len": 12.0, "see": "Tam steps forward, between her horse and the path up to the inn, and slaps his note down on a rain barrel.",

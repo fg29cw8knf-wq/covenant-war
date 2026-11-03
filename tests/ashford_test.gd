@@ -56,6 +56,8 @@ func _ready() -> void:
 	# goes through it must keep running under the pause (its _process
 	# stopped with the tree and the run sat paused for good)
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# the memory before the attic plays here (AshfordP1._memory_wanted)
+	AshfordP1.test_memory = true
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
 		out_dir = args[0]
@@ -130,7 +132,9 @@ func _ready() -> void:
 
 func _opening() -> void:
 	# black, the caption, the attic; the mirror waits for a look
-	await _until(func() -> bool: return _picker() != null, 200.0, "the mirror")
+	# (the Night of the White Sky comes first since 3 November: about two
+	# and a half minutes, the duel skipped)
+	await _until(func() -> bool: return _picker() != null, 480.0, "the mirror")
 	await _secs(1.0)
 	await _shot("mirror")
 	_expect(not hud._menu_btn.visible, "the pause square shows before Bram has mentioned it")
@@ -325,6 +329,18 @@ func _process(_d: float) -> void:
 		return
 	var dlg := hud.dialogue
 	var ov := Cine.overlay(world)
+	# the Night of the White Sky (3 November) before the attic: walk on,
+	# pick the child up, and skip the filmed duel (tests/white_sky_test
+	# plays that through)
+	for c in world.get_children():
+		if c is WhiteSky and not (c as WhiteSky)._done:
+			var m := c as WhiteSky
+			m._held = true
+			if m._hint.modulate.a > 0.9 and m._hint.text.contains("pick up"):
+				m._tapped = true
+			if is_instance_valid(m._screen) and not m._skipping and m._screen.game != null:
+				print("  [white sky] the filmed duel started; skipped")
+				m.skip()
 	if dlg._choices.visible:
 		_wait += 1
 		if _wait == read:

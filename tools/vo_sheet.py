@@ -51,6 +51,7 @@ OUT_CSV = "docs/script/vo_lines.csv"
 
 # in the order the game plays them
 SOURCES = [
+	("ashford", "scripts/story/white_sky.gd", "The Night of the White Sky (the memory before the attic)"),
 	("ashford", "scripts/world/areas/ashford_p1.gd", "Ashford: the last morning (the opening)"),
 	("ashford", "scripts/world/areas/ashford.gd", "Ashford: the village, the Lantern Night, the dawn"),
 	("ashford", "scripts/story/story_film.gd", "Ashford: the midnight and dawn films"),
@@ -62,6 +63,7 @@ SOURCES = [
 
 # the people, as the sheet names them (an id not here is shown capitalised)
 NAMES = {
+	"clerk": "Morne's clerk",
 	"narrator": "Narrator", "bram": "Bram", "corin": "Corin", "tilly": "Tilly", "nell": "Old Nell", "tam": "Tam",
 	"ned": "Ned", "hob": "Hob", "herald": "The Pale Herald", "solmaris": "Solmaris", "dask": "Dask",
 	"wren": "Wren", "pip": "Pip", "maren": "Old Maren", "tamsin": "Tamsin", "liora": "Liora", "aldric": "Ser Aldric Vane",
@@ -319,7 +321,7 @@ def scene_of(fn):
 def gather():
 	rows, seen = [], {}
 	for area, path, what in SOURCES:
-		for fn, who, words, lid, note in lines_of(path, path.endswith("story_film.gd")):
+		for fn, who, words, lid, note in lines_of(path, path.endswith("story_film.gd") or path.endswith("white_sky.gd")):
 			speaker = speaker_of(who)
 			key = (speaker, lid or words)
 			if key in seen:

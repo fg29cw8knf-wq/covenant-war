@@ -36,15 +36,84 @@ allows). Nothing of the game's plays over it. It cuts to black, then the attic.
 
 ---
 
-## Prologue P1 · The Attic (morning)
+## Prologue P0 · The Night of the White Sky (new, 3 November 2026)
 
-_(The protagonist awakens on a cot under bare timber rafters. Pale morning light
-filters through a frost-cracked shutter. On the washbasin opposite the bed sits
-an oval mirror veiled in cold grey condensation.)_
+_(A memory, twenty years before the attic, in place of the five seconds of stars
+that were the dream. About two and a half minutes. Once it has been seen, a Skip
+button skips all of it; the filmed duel can always be skipped.)_
+
+_(Black.)_ **[CAPTION]** The Shardlands / Twenty years ago.
+
+_(The night sky over a plain of snow, stars between the clouds, the first flakes
+falling. Far off, dark glass spires stand out of the snow.)_
 
 **[NARRATOR – MORROWEN] (V.O.):** "Every soul in my book starts with a debt. Most
 spend a lifetime paying interest on a life they never asked for, trying to
 balance an account that was written before they were born."
+
+_(The sky tears from one horizon to the other and pours white. Cards rain down
+out of it as Sigils, streaks of every colour striking the snow. Down on the
+plain, a man in a heavy coat stops and looks up. We see him only from behind:
+never his face.)_
+
+[GAME] The player is Bram. **(Hold W or the up arrow to walk.)** / **(Touch and
+hold anywhere to walk.)** / **(Push the left stick up to walk.)** He walks only
+while it's held, into the storm, towards a white light on the ground ahead. Cards
+of light tumble down round him with the snow.
+
+_(Off to the side, through the snow, something tall stands watching. A gust, and
+it's gone.)_
+
+_(The light is a crater, its bowl fused to black glass, white shards thrown out
+round its rim. A baby is crying. Bram goes down into it. At the bottom, in the
+glow, a child wrapped in grey wool, and over its heart an ash-grey mark like a
+broken seal.)_
+
+[GAME] **(Press E, or click, to pick up the child.)** / **(Tap the screen to pick
+up the child.)** / **(Press A to pick up the child.)**
+
+_(He lifts the child. The crying stops.)_
+
+**[BRAM] (new, very quietly):** "Hush, now. I've got you."
+
+_(He opens his coat and tucks the child inside, against his chest, and holds it
+there with one arm. A gust of snow. When it clears, a figure stands on the
+crater's rim above him: taller than a man, a ragged cloak the colour of old ash,
+a hood with nothing in it. No face. No voice.)_
+
+**[BRAM] (new):** "Not this one."
+
+_(The hunter lifts a hand. Cards rise out of the snow round it, white.)_
+
+### Bram's duel (filmed, new)
+
+_(Played by the duel itself, filmed, with nothing on the screen but the duel:
+no hand, no Life, no buttons. Bram plays one-handed, the child in his coat; his
+old Ironstone Guardians stand between him and the hunter's hounds of white
+smoke, pale Sigil light in the shape of foxes. He loses a Totem; he's behind.
+Then he calls down Grondmaw, the Mountain's Heart, and the screen burns white.
+Nobody sees who won.)_
+
+_(Black.)_
+
+**[NARRATOR – MORROWEN] (V.O., new):** "Twenty years later, the debt came due."
+
+_(The attic.)_
+
+---
+
+## Prologue P1 · The Attic (morning)
+
+_(Black.)_ **[CAPTION]** Ashford / The last night of the Age.
+
+_(The protagonist awakens on a cot under bare timber rafters. Pale morning light
+filters through a frost-cracked shutter. On the washbasin opposite the bed sits
+an oval mirror veiled in cold grey condensation. (new) As he wakes, the mark under
+his collar is glowing faintly; it fades to ash-grey as he sits up.)_
+
+_(changed, 3 November: Morrowen's line, "Every soul in my book starts with a
+debt...", is spoken over the sky of the Shardlands at the start of P0 now, not
+over the attic.)_
 
 **[OBJECTIVE]** Walk to the washbasin. [GAME] (Left stick / W A S D / tap the floor.)
 
@@ -674,6 +743,16 @@ House of Ironvault, the terms are as follows. Every roof but the inn's is forfei
 tonight. Alternatively, you may surrender one card—the white one—and the notes
 are burned. I will wait five minutes."
 
+_(new, 3 November: kept back from the Night of the White Sky. A flash of white,
+then twenty years ago: Ashford's gate at dawn, snow on the ground. Bram, never his
+face, snow on his heavy coat and a baby asleep inside it, sets a heavy purse on a
+trestle. Aurex Morne's clerk counts out four thousand gold crowns, stacks them,
+and seals a single page.)_
+
+**[AUREX MORNE'S CLERK] (new):** "Four thousand crowns. Paid in full, and sealed."
+
+_(A flash of white, back to Krell.)_
+
 _[LORE RULE: The Ashford Pact. The villagers have always known the protagonist was
 a magical foundling pulled from the Shardlands. Over the years, they formed an
 unspoken pact to protect the child from the outside world. This collective loyalty
@@ -1167,3 +1246,23 @@ While building v7 the game needed a few short lines the script doesn't have. The
   clock. Twelve cards is a short one; a bigger deck, or cards that go back into it,
   keep you in the duel longer. Count what's left on both sides, and finish the
   duel before the cards do."
+
+## Changes, 3 November 2026 (Gary's notes)
+
+- **The Night of the White Sky (new, P0):** the memory twenty years ago opens a New
+  Game in place of the dream's five seconds of stars (above, before the attic):
+  the Shardlands in snow, the sky tearing white, cards raining down as Sigils,
+  the player walking as Bram (never his face) to the crater, picking up the child
+  with the ash-grey mark, "Hush, now. I've got you.", the faceless hunter on the
+  rim, "Not this one.", and Bram's duel against it, filmed: his old Ironstone
+  against the hunter's hounds of white smoke, one-handed with the child in his
+  coat, losing until he calls down Grondmaw, and the screen burns white. Black;
+  Morrowen: "Twenty years later, the debt came due."; then the attic, the player
+  waking with the mark fading. Morrowen's first line moves from the attic to the
+  start of the memory.
+- **The gate and the crowns (new, P4):** Bram paying Aurex Morne's clerk four
+  thousand crowns at Ashford's gate at dawn, the baby asleep in his coat, is a
+  flash in the Reckoning, after Krell's "Every roof but the inn's", not part of
+  the opening (so the opening doesn't say where Bram's gold came from).
+- **Shards (new, all of Gary's five):** see the README's Codex and Shards
+  section; nothing in the script changes.
