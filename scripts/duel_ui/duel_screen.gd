@@ -708,6 +708,11 @@ func _start() -> void:
 		for p in game.players:
 			for c in p.deck:
 				ids[c.id] = true
+			# (a set board: what's standing and in hand too)
+			for c in p.hand:
+				ids[c.id] = true
+			for t in p.totems():
+				ids[t.id()] = true
 		for side in game.kept_back:
 			for kid in side:
 				ids[String(kid)] = true

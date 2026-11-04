@@ -1258,13 +1258,18 @@ and `DuelField3D.film_mode()` (snow for the mat, the torn sky, cold light,
 driven snow) with `spectral_side` 1, the hunter's Totems drawn as pale Sigil
 light over their own shapes (`DuelField3D.spectral`, a `material_overlay`).
 Bram plays as the god's man he was for many years (4 November, Gary: "a very
-powerful distinguished player"; which god stays hidden, no patron or Gift in
-it): his Earth and Metal at their strongest, Cragmaul and the Ironclad
-Behemoth already Ascended, the Quarry Golem, Gilded Sentinels, Relics and the
-hardest Wards, every attribute at 10 (`WhiteSkyDuel.BRAM_CARDS`), against the
-hunter's pack of Hounds and Foxes (`HUNTER_CARDS`) at the same height
-(`tests/white_sky_probe.gd` found seed 7: he breaks one of the pack and loses
-two before he calls Grondmaw on turn 11; `FILM_SPEED` 3), both sides the computer;
+powerful distinguished player", "high tier cards, nothing low tier"; which god
+stays hidden, no patron or Gift in it): the film cuts in with the duel already
+joined, on a set board (`spec.puzzle`, as the Trial of Light; `WhiteSkyDuel.board()`):
+Cragmaul and the Ironclad Behemoth Ascended and standing, Last Stand set, the
+Quarry Golem, Gilded Sentinels, Relics and Rites in hand and deck (nothing under
+Crystal among his Totems, nothing under Glimmer at all), six Essence a turn,
+every attribute at 10, and the story rule `free_call` (a Crystal costs him no
+tribute, `DuelGame.tributes_needed`); the hunter's pack of Hounds and Foxes
+already standing and Ascended too (`HUNTER_BOARD`), the hunter striking first
+with Doom Sigil (`tests/white_sky_probe.gd` found seed 2: Doom claims his
+Cragmaul, he breaks two of the pack and loses two before he calls Grondmaw on
+turn 8; `FILM_SPEED` 3), both sides the computer;
 Bram and the hunter stand at the ends of the field, Bram with the child in his
 left arm, the play-card clip on each of his plays; the camera cuts between
 `WhiteSky.SHOTS` (all on Bram's side of him or looking away from him). When

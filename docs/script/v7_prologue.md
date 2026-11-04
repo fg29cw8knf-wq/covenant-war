@@ -90,13 +90,15 @@ _(The hunter lifts a hand. Cards rise out of the snow round it, white.)_
 _(Played by the duel itself, filmed, with nothing on the screen but the duel:
 no hand, no Life, no buttons. (changed, 4 November, Gary: Bram has served a god
 for many years and is a powerful, distinguished duellist, and it shows.) Bram
-plays one-handed, the child in his coat, a champion's Earth and Metal at their
-strongest: Cragmaul and the Ironclad Behemoth already Ascended, the Quarry Golem,
-Gilded Sentinels, Relics and the hardest Wards. Which god he served stays hidden.
-The hunter's pack is worse: hounds and foxes of white smoke that bite harder for
-every one beside them. Bram breaks one of them; he loses two. Then he calls down
-Grondmaw, the Mountain's Heart, and as its blow lands the screen burns white.
-Nobody sees who won.)_
+plays one-handed, the child in his coat, and nothing in his hands is low: the
+film cuts in with the duel already joined, Cragmaul and the Ironclad Behemoth
+Ascended and standing, Last Stand set, the Quarry Golem and Gilded Sentinels,
+Relics and Rites to hand, every card Crystal tier or above. Which god he served
+stays hidden. The hunter's pack is already on the field too: hounds and foxes of
+white smoke, Ascended, that bite harder for every one beside them, and it Dooms
+his Cragmaul with its first card. Bram breaks two of them; he loses two. Then he
+calls down Grondmaw, the Mountain's Heart, and as its blow lands the screen burns
+white. Nobody sees who won.)_
 
 _(Black.)_
 
@@ -1267,10 +1269,10 @@ While building v7 the game needed a few short lines the script doesn't have. The
   the player walking as Bram (never his face) to the crater, picking up the child
   with the ash-grey mark, "Hush, now. I've got you.", the faceless hunter on the
   rim, "Not this one.", and Bram's duel against it, filmed: a champion's Earth
-  and Metal (4 November: he has served a god for many years; which stays
-  hidden) against the hunter's pack of hounds and foxes of white smoke,
-  one-handed with the child in his coat, losing until he calls down Grondmaw,
-  and the screen burns white. Black;
+  and Metal, high tier only (4 November: he has served a god for many years;
+  which stays hidden), the duel cut into already joined, against the hunter's
+  pack of hounds and foxes of white smoke, one-handed with the child in his
+  coat, until he calls down Grondmaw and the screen burns white. Black;
   Morrowen: "Twenty years later, the debt came due."; then the attic, the player
   waking with the mark fading. Morrowen's first line moves from the attic to the
   start of the memory.

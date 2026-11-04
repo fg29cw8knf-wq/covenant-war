@@ -1022,6 +1022,9 @@ func blessed(pi: int) -> bool:
 func tributes_needed(card: DuelCard) -> int:
 	if card == null or not card.is_basic_totem() or _phase_free:
 		return 0
+	# (the Night of the White Sky: a god's champion calls without tribute)
+	if int(story_rules.get("free_call", -1)) == card.owner:
+		return 0
 	if card.tier() >= DuelRules.tribute_two_tier:
 		return 2
 	if card.tier() >= DuelRules.tribute_tier:

@@ -19,6 +19,8 @@ func _initialize() -> void:
 	for sd in range(first, first + count):
 		var game := DuelGame.new()
 		game.stacked = [true, true]
+		game.puzzle = WhiteSkyDuel.board()
+		game.story_rules = WhiteSkyDuel.story_rules()
 		var profiles := [WhiteSkyDuel.bram_profile(), WhiteSkyDuel.hunter_profile()]
 		game.setup([WhiteSkyDuel.bram_deck(sd, pos), WhiteSkyDuel.hunter_deck(sd)], ["Bram", "?"],
 			[DuelAI.new(WhiteSkyDuel.SKILL), DuelAI.new(WhiteSkyDuel.SKILL)], profiles, sd)

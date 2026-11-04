@@ -479,6 +479,7 @@ func _duel() -> void:
 static func duel_spec() -> Dictionary:
 	var D := WhiteSkyDuel
 	return {"decks": [D.bram_deck(D.SEED, D.GRONDMAW_AT), D.hunter_deck(D.SEED)], "stacked": [true, true],
+		"puzzle": D.board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
 		"film": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
