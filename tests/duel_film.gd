@@ -5,12 +5,16 @@ extends Node
 ## duel ends. Record it with:
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 \
-##       --write-movie out.avi --fixed-fps 30 res://tests/duel_film.tscn -- <WxH> <seed> [pos] [max seconds] [rival deck]
+##       --write-movie out.avi --fixed-fps 30 res://tests/duel_film.tscn -- <WxH> <seed> [pos] [max seconds] [rival deck] [fps]
+## Headless, with --fixed-fps 30 and the fps given as 30, it just prints when
+## each turn began (a thirtieth of a second a frame), to time the pace of a
+## duel; --plain turns the cinematic touches off (DuelRules.cinematic).
 
 const Probe := preload("res://tests/film_probe.gd")
 
 var _t0 := 0.0
 var _fps := 24.0
+var _over_said := false
 
 
 func _ready() -> void:
@@ -21,6 +25,8 @@ func _ready() -> void:
 	var max_sec: float = float(args[3]) if args.size() > 3 else 600.0
 	var rival: String = args[4] if args.size() > 4 else "tidegrove"
 	_fps = float(args[5]) if args.size() > 5 else 24.0
+	if args.has("--plain"):
+		DuelRules.cinematic = false   # (4 November: the pace alone, without the freezes and slow motion)
 	get_window().size = Vector2i(int(wh[0]), int(wh[1]))
 	get_tree().root.theme = UITheme.make()
 	var p0 := Lore.new_profile("You", "pyrrhane", 4)
@@ -40,6 +46,18 @@ func _ready() -> void:
 	screen.game.logged.connect(func(t, _who) -> void:
 		if t.begins_with("Turn ") or "calls down" in t or "wins!" in t or "draw" in t:
 			print("[%6.1fs] %s" % [Engine.get_process_frames() / _fps, t]))
+	screen.game.state_changed.connect(func() -> void:
+		if screen.game.over and not _over_said:
+			_over_said = true
+			print("[%6.1fs] duel over: turn %d, %s" % [Engine.get_process_frames() / _fps, screen.game.turn, screen.game.win_reason]))
 	await get_tree().create_timer(max_sec).timeout
 	print("[%6.1fs] time limit" % (Engine.get_process_frames() / _fps))
+	if screen.game != null and not screen.game.over:
+		# (stalled: say where, as duel_monkey does)
+		var pops := []
+		for c in screen.overlay.get_children():
+			pops.append(c.get_class() + ("(" + String(c.get_script().get_global_name()) + ")" if c.get_script() else ""))
+		print("  STALLED: mode %s, pending '%s', phase %s, current %d, time_scale %.2f, overlay %s" % [screen.mode, screen.pending, screen.game.phase, screen.game.current, Engine.time_scale, pops])
+		for ln in screen.game.log_lines.slice(-8):
+			print("    ", ln)
 	get_tree().quit()

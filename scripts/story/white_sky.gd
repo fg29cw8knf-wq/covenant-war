@@ -10,12 +10,19 @@ extends CanvasLayer
 ##      debt...") over it.
 ##   2. The sky tears white over the Shardlands and cards rain down as Sigils.
 ##   3. The player walks as Bram, seen from behind and never his face, through
-##      the storm towards the light of a crater (gated: hold to walk). Something
-##      stands in the snow off to the side, and is gone.
-##   4. In the crater, a crying baby with an ash-grey mark. The player picks the
-##      child up (gated), Bram tucks it into his coat ("Hush, now. I've got
-##      you."), and turns: the faceless hunter on the crater's rim.
-##      "Not this one."
+##      the storm towards the light of a crater: free to walk about (the pad,
+##      the keys, a tap on the snow) from the first moment, while Morrowen
+##      speaks; once she stops, a compass in the bottom left corner points
+##      the way to the light (4 November, Gary: "have him able to walk around
+##      as Morrowen is talking - once she stops talking ... a compass in the
+##      bottom left with an arrow pointing direction you need to go, this can
+##      become the map later"). Something stands in the snow off to the side,
+##      and is gone.
+##   4. In the crater, a crying baby with an ash-grey mark, seen from the rim
+##      by the light it lies in. The player goes down to it and picks the
+##      child up (gated): Bram kneels to it, lifts it and stands with it;
+##      he tucks it into his coat ("Hush, now. I've got you."), and turns:
+##      the faceless hunter on the crater's rim. "Not this one."
 ##   5. Bram's duel, filmed: the real duel engine (DuelScreen, spec.film) with
 ##      no HUD and the camera directed, out in the snow; Bram's old Ironstone
 ##      against the hunter's pale hounds of Sigil light. Bram plays one-handed,
@@ -48,8 +55,10 @@ const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 
 	Color(0.65, 0.3, 1.0), Color(0.2, 1.0, 0.8), Color(0.45, 1.0, 0.3), Color(1.0, 0.35, 0.7)]
 
 ## The bracketed instructions (never in a character's voice), by device.
-const HOW_WALK := {"phone": "(Touch and hold anywhere to walk.)", "tablet": "(Touch and hold anywhere to walk.)",
-	"computer": "(Hold W or the up arrow to walk.)", "controller": "(Push the left stick up to walk.)"}
+const HOW_WALK := {"phone": "(Drag anywhere, or tap the snow, to walk.)", "tablet": "(Drag anywhere, or tap the snow, to walk.)",
+	"computer": "(W A S D or the arrow keys to walk, or click the snow.)", "controller": "(Left stick to walk.)"}
+## The compass's name for where the light is.
+const COMPASS_LABEL := "The light"
 const HOW_TAKE := {"phone": "(Tap the screen to pick up the child.)", "tablet": "(Tap the screen to pick up the child.)",
 	"computer": "(Press E, or click, to pick up the child.)", "controller": "(Press A to pick up the child.)"}
 
@@ -82,13 +91,14 @@ const CRATER := Vector3(0.0, 0.0, -30.0)
 const CRATER_R := 7.0
 const CRATER_DEPTH := 2.4
 const WALK_FROM := Vector3(0.0, 0.0, -2.0)
-const WALK_TO := Vector3(0.0, 0.0, -21.6)
-const WALK_SPEED := 1.25
-## Where the hunter is glimpsed during the walk (shown when Bram passes
-## GLIMPSE_AT of the way), and where it stands on the rim.
-const GLIMPSE := Vector3(-13.0, 0.0, -16.0)
-const GLIMPSE_AT := 0.55
-const RIM_STAND := Vector3(0.0, 0.0, -38.6)
+const WALK_SPEED := 1.3
+## How far from the crater's middle the walk ends (just outside its lip) and
+## the hunter is glimpsed; how far he can wander from the crater at all.
+const RIM_AT := 8.6
+const GLIMPSE_AT := 19.0
+const ROAM_R := 60.0
+## How far short of the child he stops to kneel to it (m).
+const CHILD_STOP := 0.5
 ## Gary's models, used when they exist (stand-ins are drawn till then).
 const BABY_MODEL := "res://assets/models/ashford/baby_bundle.glb"
 
@@ -126,8 +136,18 @@ var _tapped := false
 var _last_input := ""
 var _skipping := false
 var _done := false
-var _falling: Array = []      # [node, velocity, spin]
+var _falling: Array = []      # [node, velocity, spin, colour]
 var _rng := RandomNumberGenerator.new()
+## Walking about (the pad, the keys, a tap on the snow): on through the walk.
+var _roam := false
+var _pad: WorldHUD.TouchPad
+var _compass: WorldHUD.Compass
+var _flat := Vector3.ZERO        # where he is on the plan (y 0)
+var _move_target := Vector3.INF  # a tap on the snow to walk to
+var _cam_yaw := PI               # the camera's heading behind him (eased)
+var _spires: Array = []          # [x, z, radius]: the glass he walks round
+var _landed: Array = []          # the Sigils standing in the snow (the oldest go)
+var _line_over := false
 
 
 static func seen() -> bool:
@@ -156,6 +176,12 @@ func _ready() -> void:
 	_vpc.add_child(_vp)
 	Gfx.apply(_vp)
 	_build_set()
+	# the touch pad (drag: a joystick; a tap: walk there), under everything
+	# else drawn over the picture, so the Skip button still takes its taps
+	_pad = WorldHUD.TouchPad.new()
+	_pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_pad.tapped.connect(_tap_snow)
+	_root.add_child(_pad)
 	_black = _rect(Color.BLACK, 1.0)
 	_white = _rect(Color(1.0, 0.99, 0.96), 0.0)
 	_hint = Label.new()
@@ -183,6 +209,12 @@ func _ready() -> void:
 	_skip.focus_mode = Control.FOCUS_NONE
 	_skip.pressed.connect(skip)
 	_root.add_child(_skip)
+	_compass = WorldHUD.Compass.new()
+	_compass.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_compass.cam = _cam
+	_compass.label = COMPASS_LABEL
+	_root.add_child(_compass)
+	SafeArea.fit(_compass)
 	_wind = _sound("storm_wind", -14.0, true)
 	_cry = _sound("baby_cry", -6.0, true)
 
@@ -255,20 +287,51 @@ func skip() -> void:
 
 
 # --- 1. the sky ---------------------------------------------------------
+## The caption on black; then Bram from behind under the night sky, his to
+## walk about from the first moment, while Morrowen speaks over him. Her
+## line ends on its own (voiced) or on a tap; the walk goes on through it.
 func _open() -> void:
-	_shot(Vector3(0.6, 1.5, 3.0), Vector3(2.0, 9.0, -30.0), 52.0)
+	_flat = WALK_FROM
 	_bram.position = Vector3(WALK_FROM.x, height(WALK_FROM.x, WALK_FROM.z), WALK_FROM.z)
+	_face(_bram, Vector3.FORWARD)
+	_cam_yaw = PI
+	_cam_mode = "roam"
+	_cam_pos = Vector3.ZERO   # (snaps to its place behind him on the first frame)
+	_cam.fov = 50.0
 	await _ov.caption(CAPTION[0], CAPTION[1], 2.6)
 	if _skipping:
 		return
 	_fade(_black, 0.0, 2.2)
-	_drift(Vector3(0.6, 1.5, 3.0), Vector3(0.4, 1.6, 2.2), Vector3(2.0, 9.0, -30.0), Vector3(1.2, 10.0, -30.0), 14.0)
-	await _wait(1.0)
-	await _say(OPEN)
+	_roam = true
+	_show_hint(HOW_WALK)
+	await _wait(0.8)
+	_line_over = false
+	_say_over(OPEN)
+	while not _line_over and not _skipping:
+		await get_tree().process_frame
+
+
+## A line spoken over whatever's happening (the walk goes on under it);
+## _line_over goes true when it's done.
+func _say_over(line: Dictionary) -> void:
+	await _say(line)
+	_line_over = true
 
 
 # --- 2. the sky tears ---------------------------------------------------------
+## He stops and looks up as the sky opens; then the compass comes up in the
+## corner, pointing to the light, and the walk is his again.
 func _sigilfall() -> void:
+	_roam = false
+	_set_walking(_bram, false)
+	_move_target = Vector3.INF
+	_hide_hint()
+	var b := _bram.position
+	var f := _heading()
+	var r := f.cross(Vector3.UP)
+	# up at the sky over him, from low behind his shoulder
+	_shot(b - f * 2.4 + r * 0.7 + Vector3(0, 1.6, 0), b + f * 14.0 + Vector3(0, 9.0, 0), 52.0)
+	await _wait(0.6)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_method(func(k: float) -> void: _sky.set_shader_parameter("tear_open", k), 0.0, 1.25, 3.2).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(_tear_light, "light_energy", 0.55, 3.0)
@@ -279,53 +342,84 @@ func _sigilfall() -> void:
 	fl.tween_property(_white, "modulate:a", 0.55, 0.35)
 	fl.tween_property(_white, "modulate:a", 0.0, 1.6)
 	_strike_burst(6, 0.4)
-	await _wait(1.8)
-	# down to Bram, from behind, looking up at it
-	_shot(WALK_FROM + Vector3(0.7, 1.75, 2.6), WALK_FROM + Vector3(0.0, 4.5, -12.0), 50.0)
-	_face(_bram, Vector3.FORWARD)
 	_act(_bram, "look_up")
 	_rain_cards(true)
-	await _wait(3.4)
+	await _wait(3.6)
+	if _skipping:
+		return
+	# the compass: the way to the light
+	_compass.target = CRATER
+	_compass.show_compass(true)
+	_cam_mode = "roam"
+	_roam = true
 
 
 # --- 3. the walk ------------------------------------------------------------------
+## His to walk (the pad, the keys, a tap on the snow: _process moves him)
+## until he reaches the crater's lip; the hunter is glimpsed on the way.
 func _walk() -> void:
-	_show_hint(HOW_WALK)
-	var pos := WALK_FROM
 	var glimpsed := false
-	var total := WALK_FROM.distance_to(WALK_TO)
-	var flat := WALK_FROM   # where he is on the plan (y 0); pos.y is the snow's
-	_follow(pos)
-	while flat.distance_to(WALK_TO) > 0.05 and not _skipping:
-		var dt := get_process_delta_time()
-		var go := _walk_held()
-		_set_walking(_bram, go)
-		if go:
-			_hide_hint()
-			flat = flat.move_toward(WALK_TO, WALK_SPEED * dt)
-			pos = Vector3(flat.x, height(flat.x, flat.z), flat.z)
-			_bram.position = pos
-			_face(_bram, Vector3.FORWARD)
-		_follow(pos)
-		var k := 1.0 - flat.distance_to(WALK_TO) / total
-		if not glimpsed and k >= GLIMPSE_AT:
+	while _crater_dist() > RIM_AT and not _skipping:
+		if not glimpsed and _crater_dist() < GLIMPSE_AT:
 			glimpsed = true
 			_glimpse()
 		await get_tree().process_frame
+	_roam = false
 	_set_walking(_bram, false)
+	_move_target = Vector3.INF
 	_hide_hint()
+	_compass.show_compass(false, 0.8)
 
 
-func _walk_held() -> bool:
-	if _held:
-		return true
-	return Input.is_action_pressed("move_up") or Input.is_action_pressed("interact")
+## How far he is from the crater's middle, on the plan.
+func _crater_dist() -> float:
+	return Vector2(_flat.x - CRATER.x, _flat.z - CRATER.z).length()
 
 
-## The hunter, off to the side in the snow, for a few seconds: then a gust and
-## it's gone.
+## The way he's facing, flat.
+func _heading() -> Vector3:
+	if _bram is PaperDoll:
+		var f: Vector3 = (_bram as PaperDoll).facing()
+		f.y = 0.0
+		if f.length() > 0.01:
+			return f.normalized()
+	return Vector3.FORWARD
+
+
+## A tap on the snow: walk there (the ray from the camera through the tap,
+## marched down onto the snow).
+func _tap_snow(pos: Vector2) -> void:
+	if not _roam or _cam == null:
+		return
+	var vpp := Vector2(pos.x / maxf(1.0, _root.size.x) * float(_vp.size.x), pos.y / maxf(1.0, _root.size.y) * float(_vp.size.y))
+	var from := _cam.project_ray_origin(vpp)
+	var dir := _cam.project_ray_normal(vpp)
+	var t := 0.5
+	var last := from
+	while t < 90.0:
+		var p := from + dir * t
+		if p.y <= height(p.x, p.z):
+			# between last and p: halve in
+			var a := last
+			var b := p
+			for k in 6:
+				var m := (a + b) * 0.5
+				if m.y <= height(m.x, m.z):
+					b = m
+				else:
+					a = m
+			_move_target = Vector3(b.x, 0.0, b.z)
+			return
+		last = p
+		t += 0.5
+
+
+## The hunter, off to the side in the snow ahead, for a few seconds: then a
+## gust and it's gone.
 func _glimpse() -> void:
-	_hunter.position = Vector3(GLIMPSE.x, height(GLIMPSE.x, GLIMPSE.z), GLIMPSE.z)
+	var f := _heading()
+	var at := _bram.position + f * 9.0 - f.cross(Vector3.UP) * 7.5
+	_hunter.position = Vector3(at.x, height(at.x, at.z), at.z)
 	_hunter.look_at_dir(_bram.position - _hunter.position)
 	_hunter.visible = true
 	_hunter.fade_to(1.0, 1.2)
@@ -337,30 +431,60 @@ func _glimpse() -> void:
 
 
 # --- 4. the crater --------------------------------------------------------------
+## On the lip: the bowl below him and the child in its light at the bottom,
+## seen and held (4 November, Gary: "you should be able to see there is
+## something there, not just there one second"); then down to it, the
+## camera coming down with him and the child kept in the picture; the
+## pick-up (gated), the child in his arms.
+var _ad := Vector3.FORWARD    # the way he came down into the crater, flat
+var _bottom := Vector3.ZERO   # where he stands by the child
+
 func _crater() -> void:
-	# over the rim: down to where the light is, from behind and above him
-	var bottom := CRATER + Vector3(0.0, 0.0, 1.05)
-	bottom.y = height(bottom.x, bottom.z)
-	_shot(WALK_TO + Vector3(1.6, 3.6, 3.4), CRATER + Vector3(0, -1.5, 0), 44.0)
+	_ad = CRATER - _bram.position
+	_ad.y = 0.0
+	_ad = _ad.normalized()
+	var rt := _ad.cross(Vector3.UP)
+	var want_yaw := atan2(_ad.x, _ad.z)
+	_face(_bram, _ad)
+	var b := _bram.position
+	_bottom = CRATER - _ad * CHILD_STOP
+	_bottom.y = height(_bottom.x, _bottom.z)
+	# over his shoulder from the rim, high, down into the bowl: him on the
+	# lip, the light and the child at the bottom
+	var reveal := b - _ad * 2.6 + rt * 1.3 + Vector3(0, 3.4, 0)
+	_shot(reveal, _baby.position + Vector3(0, 0.3, 0), 44.0)
+	_child_beacon(true)
 	if _cry != null:
 		_cry.play()
+	await _wait(2.2)
+	if _skipping:
+		return
+	# down the slope to it, the camera coming down behind him and keeping
+	# the child in the middle of the picture
+	var close := _bottom - _ad * 2.4 + rt * 1.1 + Vector3(0, 2.3, 0)
+	var secs := 5.4
+	_drift(reveal, close, _baby.position + Vector3(0, 0.3, 0), _baby.position + Vector3(0, 0.1, 0), secs)
 	_set_walking(_bram, true)
-	var from := _bram.position
-	var steps := 70
-	for i in steps + 1:
+	if _bram is Figure3D:
+		(_bram as Figure3D).pace = b.distance_to(_bottom) / secs
+	var from := b
+	# (by the frames' own clock, as the camera's drift is, so the two keep
+	# step however slowly the frames come)
+	var el := 0.0
+	while el < secs:
 		if _skipping:
 			return
-		var p := from.lerp(bottom, float(i) / steps)
+		await get_tree().process_frame
+		el = minf(secs, el + get_process_delta_time())
+		var p := from.lerp(_bottom, el / secs)
 		p.y = height(p.x, p.z)
 		_bram.position = p
-		await _wait(5.0 / steps)
 	_set_walking(_bram, false)
-	_face(_bram, Vector3.FORWARD)
-	# close, over his shoulder, down at the child (where it lies on the
-	# crater's floor: 4 November, the shot had looked at the crater's rim
-	# height, over the child and up at the sky)
-	_shot(bottom + Vector3(0.75, 1.9, 1.15), _baby.position + Vector3(0, 0.1, 0), 34.0)
-	await _wait(1.2)
+	if _bram is Figure3D:
+		(_bram as Figure3D).pace = 0.0
+	_face(_bram, _ad)
+	_cam_yaw = want_yaw
+	await _wait(0.6)
 	_show_hint(HOW_TAKE)
 	_tapped = false
 	while not _tapped and not _skipping:
@@ -370,18 +494,16 @@ func _crater() -> void:
 	_hide_hint()
 	if _skipping:
 		return
-	# he bends and lifts the child; the crying stops in his arms
-	var lift := _act(_bram, "lift")
-	await _wait(0.6 if lift else 0.1)
-	_pick_up()
-	if _cry != null:
-		var ct := create_tween()
-		ct.tween_property(_cry, "volume_db", -40.0, 1.6)
-		ct.tween_callback(_cry.stop)
-	await _wait(1.0)
+	# he kneels to it and lifts it, and stands with it; the crying stops in
+	# his arms (closer, low over his right shoulder, the child in the middle)
+	_shot(_bottom - _ad * 1.7 + rt * 0.95 + Vector3(0, 1.45, 0), _baby.position + Vector3(0, 0.15, 0), 38.0)
+	_child_beacon(false)
+	await _lift_child()
+	if _skipping:
+		return
 	# high over his shoulder, steeply down at the child in his arms (his face
 	# stays out of it: the camera is behind and above him)
-	_shot(bottom + Vector3(0.6, 2.7, 0.95), bottom + Vector3(0.0, 1.0, -0.3), 36.0)
+	_shot(_bottom - _ad * 1.0 + rt * 0.6 + Vector3(0, 2.7, 0), _bottom + _ad * 0.25 + Vector3(0, 1.05, 0), 36.0)
 	await _say(HUSH)
 	# into his coat, held in his left arm from here on
 	_tuck()
@@ -390,16 +512,20 @@ func _crater() -> void:
 
 # --- the hunter on the rim ----------------------------------------------------
 func _the_hunter() -> void:
-	_gust(RIM_STAND)
-	_hunter.position = Vector3(RIM_STAND.x, height(RIM_STAND.x, RIM_STAND.z), RIM_STAND.z)
+	var rim := CRATER + _ad * RIM_AT
+	var rt := _ad.cross(Vector3.UP)
+	_gust(rim)
+	_hunter.position = Vector3(rim.x, height(rim.x, rim.z), rim.z)
 	_hunter.look_at_dir(_bram.position - _hunter.position)
 	_hunter.visible = true
 	_hunter.fade_to(1.0, 0.8)
 	var b := _bram.position
 	# low behind his right shoulder, up at the rim
-	_shot(b + Vector3(0.9, 1.0, 2.6), _hunter.position + Vector3(0, 2.2, 0), 38.0)
+	var c0 := b - _ad * 2.6 + rt * 0.9 + Vector3(0, 1.0, 0)
+	var c1 := b - _ad * 2.0 + rt * 0.6 + Vector3(0, 1.2, 0)
+	_shot(c0, _hunter.position + Vector3(0, 2.2, 0), 38.0)
 	await _wait(1.6)
-	_drift(b + Vector3(0.9, 1.0, 2.6), b + Vector3(0.6, 1.2, 2.0), _hunter.position + Vector3(0, 2.2, 0), _hunter.position + Vector3(0, 2.0, 0), 6.0)
+	_drift(c0, c1, _hunter.position + Vector3(0, 2.2, 0), _hunter.position + Vector3(0, 2.0, 0), 6.0)
 	await _say(NOT_THIS)
 	if _skipping:
 		return
@@ -496,6 +622,9 @@ static func duel_spec() -> Dictionary:
 func _close() -> void:
 	_skip.visible = false
 	_hide_hint()
+	_roam = false
+	if _compass != null:
+		_compass.show_compass(false, 0.3)
 	if _white.modulate.a < 0.99:
 		var wt := create_tween()
 		wt.tween_property(_white, "modulate:a", 1.0, 0.5)
@@ -562,7 +691,9 @@ func _build_set() -> void:
 	_env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 	_env.fog_enabled = true
 	_env.fog_light_color = Color(0.13, 0.15, 0.22)
-	_env.fog_density = 0.034
+	# (0.034 until 4 November: the spires, 26 m and more from the crater,
+	# were all but lost in it, and the storm read as an empty white field)
+	_env.fog_density = 0.026
 	_env.fog_sky_affect = 0.25
 	if quality >= 2:
 		_env.volumetric_fog_enabled = true
@@ -579,7 +710,7 @@ func _build_set() -> void:
 	_moon = DirectionalLight3D.new()
 	_moon.rotation_degrees = Vector3(-32, 140, 0)
 	_moon.light_color = Color(0.66, 0.74, 1.0)
-	_moon.light_energy = 0.62
+	_moon.light_energy = 0.78
 	_moon.shadow_enabled = true
 	_moon.directional_shadow_max_distance = 60.0
 	_set.add_child(_moon)
@@ -600,6 +731,7 @@ func _build_set() -> void:
 	_build_crater_shards()
 	_snow = DuelField3D.snow_particles([1400, 3000, 5200][clampi(quality, 0, 2)], Vector3(16, 9, 16), Vector3(-5.5, -2.8, 1.6), 0.075)
 	_set.add_child(_snow)
+	_build_storm()
 	_cam = Camera3D.new()
 	_cam.near = 0.05
 	_cam.far = 400.0
@@ -655,37 +787,212 @@ func _build_ground() -> void:
 	_set.add_child(mi)
 
 
-## The Shardlands: dark glass spires standing out of the snow, leaning, some
-## lit faintly from inside.
+## The Shardlands: dark glass spires standing out of the snow, leaning, lit
+## faintly from inside and rimmed with the sky's light, from great ones far
+## off to shards no taller than a man about his way (4 November, Gary: "make
+## the snow storm place look better": the 46 spires were all 26 m or more
+## from the crater, in fog that hid them, so he walked an empty field). He
+## walks round them (_spires).
 func _build_spires() -> void:
-	var glass := StandardMaterial3D.new()
-	glass.albedo_color = Color(0.03, 0.035, 0.05)
-	glass.metallic = 0.4
-	glass.roughness = 0.08
-	glass.emission_enabled = true
-	glass.emission = Color(0.3, 0.4, 0.75)
-	glass.emission_energy_multiplier = 0.06
+	var glass := ShaderMaterial.new()
+	var sh := Shader.new()
+	sh.code = GLASS
+	glass.shader = sh
 	var r := RandomNumberGenerator.new()
 	r.seed = 77
-	for i in 46:
+	var n: int = [40, 64, 90][clampi(quality, 0, 2)]
+	for i in n:
 		var ang := r.randf() * TAU
-		var dist := r.randf_range(26.0, 85.0)
+		var big: bool = i % 3 == 0
+		var dist := r.randf_range(24.0, 70.0) if big else r.randf_range(6.0, 40.0)
 		var p := CRATER + Vector3(cos(ang), 0, sin(ang)) * dist
-		if absf(p.x) < 6.0 and p.z > -26.0:
-			continue   # never across his path
+		if p.distance_to(WALK_FROM) < 4.0 or (absf(p.x) < 3.0 and p.z > -27.0 and p.z < 1.0):
+			continue   # not on top of him at the start, nor straight across his way
 		var cm := CylinderMesh.new()
-		cm.radial_segments = 5
+		cm.radial_segments = 5 if big else 4
 		cm.rings = 1
-		var hgt := r.randf_range(4.0, 16.0)
+		var hgt := r.randf_range(9.0, 22.0) if big else r.randf_range(1.2, 6.0)
 		cm.height = hgt
-		cm.bottom_radius = hgt * r.randf_range(0.05, 0.09)
+		cm.bottom_radius = hgt * r.randf_range(0.06, 0.11)
 		cm.top_radius = 0.0
 		var mi := MeshInstance3D.new()
 		mi.mesh = cm
 		mi.material_override = glass
+		mi.set_instance_shader_parameter("seed", r.randf() * 10.0)
 		mi.position = p + Vector3(0, height(p.x, p.z) + hgt * 0.42, 0)
-		mi.rotation = Vector3(r.randf_range(-0.35, 0.35), r.randf() * TAU, r.randf_range(-0.35, 0.35))
+		mi.rotation = Vector3(r.randf_range(-0.3, 0.3), r.randf() * TAU, r.randf_range(-0.3, 0.3))
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if big else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		_set.add_child(mi)
+		_spires.append([p.x, p.z, cm.bottom_radius * 1.1 + 0.45])
+		# a few small shards about its foot
+		if not big and r.randf() < 0.5:
+			for k in 3:
+				var sp := p + Vector3(r.randf_range(-1.5, 1.5), 0, r.randf_range(-1.5, 1.5))
+				var sm := CylinderMesh.new()
+				sm.radial_segments = 4
+				sm.rings = 1
+				var sh2 := r.randf_range(0.3, 0.9)
+				sm.height = sh2
+				sm.bottom_radius = sh2 * 0.16
+				sm.top_radius = 0.0
+				var si := MeshInstance3D.new()
+				si.mesh = sm
+				si.material_override = glass
+				si.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				si.position = sp + Vector3(0, height(sp.x, sp.z) + sh2 * 0.3, 0)
+				si.rotation = Vector3(r.randf_range(-0.5, 0.5), r.randf() * TAU, r.randf_range(-0.5, 0.5))
+				_set.add_child(si)
+
+
+## The storm itself, over the snowfall: sheets of snow blown low along the
+## ground in the wind (streaks, their long side along the way they go),
+## and big flakes close to the camera.
+var _blown: GPUParticles3D
+var _near_snow: GPUParticles3D
+
+func _build_storm() -> void:
+	_blown = GPUParticles3D.new()
+	_blown.amount = [160, 320, 520][clampi(quality, 0, 2)]
+	_blown.lifetime = 3.2
+	_blown.preprocess = 3.2
+	_blown.visibility_aabb = AABB(Vector3(-60, -10, -60), Vector3(120, 30, 120))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(22, 1.2, 22)
+	pm.direction = Vector3(-5.5, -0.15, 1.6).normalized()
+	pm.spread = 8.0
+	pm.initial_velocity_min = 6.0
+	pm.initial_velocity_max = 10.0
+	pm.gravity = Vector3(0, -0.2, 0)
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 2.2
+	pm.turbulence_noise_scale = 1.6
+	pm.scale_min = 0.6
+	pm.scale_max = 1.6
+	pm.particle_flag_align_y = true
+	var cr := Curve.new()
+	cr.add_point(Vector2(0, 0.0))
+	cr.add_point(Vector2(0.3, 1.0))
+	cr.add_point(Vector2(1, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cr
+	pm.alpha_curve = ct
+	_blown.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.14, 1.6)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = DuelFX.dot_tex()
+	m.albedo_color = Color(0.88, 0.92, 1.0, 0.16)
+	m.vertex_color_use_as_albedo = true
+	q.material = m
+	_blown.draw_pass_1 = q
+	_blown.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_set.add_child(_blown)
+	# big flakes close to the camera, soft
+	_near_snow = DuelField3D.snow_particles([60, 110, 160][clampi(quality, 0, 2)], Vector3(4, 3, 4), Vector3(-4.5, -2.4, 1.3), 0.2)
+	((_near_snow.draw_pass_1 as QuadMesh).material as StandardMaterial3D).albedo_color = Color(0.92, 0.95, 1.0, 0.45)
+	_set.add_child(_near_snow)
+
+
+## Light rising off the child in the crater, so it's seen from the rim: a
+## soft beacon of light over it and a slow rise of sparks (on until he
+## kneels to it).
+var _beacon: Node3D
+
+func _child_beacon(on: bool) -> void:
+	if not on:
+		if _beacon != null and is_instance_valid(_beacon):
+			var tw := create_tween()
+			tw.tween_property(_beacon, "scale", Vector3(0.01, 1.0, 0.01), 0.8)
+			tw.tween_callback(_beacon.queue_free)
+			_beacon = null
+		return
+	if _beacon != null:
+		return
+	_beacon = Node3D.new()
+	_beacon.position = _baby.position
+	_set.add_child(_beacon)
+	# the shaft: a tall soft quad, drawn as light, turned to the camera
+	var mi := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(0.8, 3.6)
+	mi.mesh = qm
+	var bm := StandardMaterial3D.new()
+	bm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	bm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	bm.billboard_mode = BaseMaterial3D.BILLBOARD_FIXED_Y
+	bm.albedo_texture = _beam_tex()
+	bm.albedo_color = Color(0.22, 0.26, 0.4, 1.0)
+	mi.material_override = bm
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position.y = 1.7
+	_beacon.add_child(mi)
+	var sp := GPUParticles3D.new()
+	sp.amount = [20, 36, 56][clampi(quality, 0, 2)]
+	sp.lifetime = 3.0
+	sp.preprocess = 3.0
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.35
+	pm.direction = Vector3.UP
+	pm.spread = 12.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.1
+	pm.gravity = Vector3.ZERO
+	pm.scale_min = 0.05
+	pm.scale_max = 0.14
+	pm.color = Color(0.85, 0.9, 1.0)
+	var cr := Curve.new()
+	cr.add_point(Vector2(0, 0.0))
+	cr.add_point(Vector2(0.2, 1.0))
+	cr.add_point(Vector2(1, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cr
+	pm.alpha_curve = ct
+	sp.process_material = pm
+	var q := QuadMesh.new()
+	var qm2 := StandardMaterial3D.new()
+	qm2.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm2.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm2.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	qm2.albedo_texture = _soft_dot()
+	qm2.vertex_color_use_as_albedo = true
+	q.material = qm2
+	q.size = Vector2(0.5, 0.5)
+	sp.draw_pass_1 = q
+	sp.position.y = 0.1
+	_beacon.add_child(sp)
+	sp.emitting = true
+	# a brighter glow on it than its mark gives by itself
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(0.8, 0.86, 1.0)
+	glow.light_energy = 0.9
+	glow.omni_range = 2.6
+	glow.position.y = 0.6
+	_beacon.add_child(glow)
+
+
+static var _beam: GradientTexture2D
+
+## A soft shaft of light: bright along the middle, fading out to its sides
+## and off at its top.
+static func _beam_tex() -> Texture2D:
+	if _beam == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(0, 0, 0, 0))
+		_beam = GradientTexture2D.new()
+		_beam.gradient = g
+		_beam.width = 64
+		_beam.height = 128
+		_beam.fill = GradientTexture2D.FILL_RADIAL
+		_beam.fill_from = Vector2(0.5, 0.95)
+		_beam.fill_to = Vector2(0.5, 0.1)
+	return _beam
 
 
 ## Shards of white glass thrown out of the crater, pointing away from it.
@@ -952,21 +1259,48 @@ void fragment() {
 """
 
 
-func _pick_up() -> void:
-	if _bram is Figure3D:
-		var fig := _bram as Figure3D
-		fig.carry(_baby, fig.hold_point(0.38, 0.5))
-		_baby.rotation = Vector3(0, PI * 0.5, 0)
-		var l := Node3D.new()
-		var r := Node3D.new()
-		_baby.add_child(l)
-		_baby.add_child(r)
-		l.position = Vector3(0.0, -0.05, 0.16)
-		r.position = Vector3(0.0, -0.06, -0.12)
-		fig.reach(l, r, 0.35)
-	else:
+## He kneels to the child, his hands go under it where it lies, and he
+## lifts it as he stands: it rises with his hands into his arms (4
+## November, Gary: "he doesn't pick up the baby, it's just in his hands").
+func _lift_child() -> void:
+	if not (_bram is Figure3D):
 		_baby.reparent(_bram, false)
 		_baby.position = Vector3(0, 1.1, 0.25)
+		await _wait(0.8)
+		return
+	var fig := _bram as Figure3D
+	# his hands' places on the bundle: under its head end and its feet
+	var l := Node3D.new()
+	var r := Node3D.new()
+	_baby.add_child(l)
+	_baby.add_child(r)
+	l.position = Vector3(0.0, -0.04, 0.15)
+	r.position = Vector3(0.0, -0.05, -0.12)
+	# down on one knee over it, the hands going down to it
+	fig.kneel(1.2)
+	await _wait(0.5)
+	fig.reach(l, r, 0.8)
+	await _wait(1.1)
+	if _skipping:
+		return
+	if _cry != null:
+		var ct := create_tween()
+		ct.tween_property(_cry, "volume_db", -40.0, 2.0)
+		ct.tween_callback(_cry.stop)
+	# and up: the bundle goes with the hands, from the snow to his arms, as
+	# he stands (it's carried in his own frame from here, so it turns with him)
+	_baby.reparent(fig._pivot, true)
+	var p0 := _baby.position
+	var b0 := _baby.basis
+	var p1 := fig.hold_point(0.38, 0.5)
+	var b1 := Basis(Vector3.UP, PI * 0.5)
+	fig.rise(1.5)
+	var tw := create_tween()
+	tw.tween_method(func(u: float) -> void:
+		var kk := smoothstep(0.0, 1.0, u)
+		_baby.position = p0.lerp(p1, kk) + Vector3(0, sin(kk * PI) * 0.08, 0)
+		_baby.basis = b0.slerp(b1, kk), 0.0, 1.0, 1.5)
+	await tw.finished
 
 
 ## Into his coat, against his chest, held in his left arm alone (his right
@@ -1069,9 +1403,9 @@ func _impact(at: Vector3, col: Color) -> void:
 	sp.emitting = true
 	get_tree().create_timer(2.0, false).timeout.connect(sp.queue_free)
 	var card := _card_mesh(col)
-	card.position = at + Vector3(0, 0.05, 0)
-	card.rotation = Vector3(-PI * 0.5 + _rng.randf_range(-0.2, 0.2), _rng.randf() * TAU, 0)
+	card.position = at
 	_set.add_child(card)
+	_card_lands(card, col)
 	_play_strike()
 
 
@@ -1108,11 +1442,15 @@ static func _soft_dot() -> Texture2D:
 	return _dot
 
 
-## A Sigil: a card of light, the size of a hand.
+## A Sigil: a card of light, a little bigger than a hand, with its back's
+## painting on it and its colour burning through (4 November, Gary: the
+## bits on the ground "look like confetti": they were a hand's size, lying
+## flat, with no light of their own on the snow; now each stands tilted in
+## the snow where it lands, glowing, with a pool of its light under it).
 func _card_mesh(col: Color) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	var bm := BoxMesh.new()
-	bm.size = Vector3(0.2, 0.28, 0.005)
+	bm.size = Vector3(0.3, 0.42, 0.008)
 	mi.mesh = bm
 	var m := StandardMaterial3D.new()
 	var back := DuelArt.card_back()
@@ -1120,13 +1458,44 @@ func _card_mesh(col: Color) -> MeshInstance3D:
 	m.albedo_color = Color(0.9, 0.9, 0.9)
 	m.emission_enabled = true
 	m.emission = col
-	m.emission_energy_multiplier = 1.0
+	m.emission_energy_multiplier = 1.6
 	if back != null:
 		m.emission_texture = back
 	m.roughness = 0.3
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
+
+
+## A card stood in the snow where it fell: leaning, a little way in, with a
+## pool of its light on the snow about it. The oldest go when there are too
+## many.
+func _card_lands(c: MeshInstance3D, col: Color) -> void:
+	var at := c.position
+	at.y = height(at.x, at.z)
+	c.position = at + Vector3(0, 0.14, 0)
+	c.rotation = Vector3(_rng.randf_range(-0.5, -0.2), _rng.randf() * TAU, _rng.randf_range(-0.25, 0.25))
+	var pool := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(1.3, 1.3)
+	pool.mesh = qm
+	var pmat := StandardMaterial3D.new()
+	pmat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	pmat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	pmat.albedo_texture = _soft_dot()
+	pmat.albedo_color = col * 0.45
+	pool.material_override = pmat
+	pool.rotation_degrees = Vector3(-90, 0, 0)
+	pool.position = at + Vector3(0, 0.03, 0)
+	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_set.add_child(pool)
+	_landed.append([c, pool])
+	var most: int = [18, 30, 44][clampi(quality, 0, 2)]
+	while _landed.size() > most:
+		var old: Array = _landed.pop_front()
+		for n in old:
+			if is_instance_valid(n):
+				(n as Node).queue_free()
 
 
 ## Cards drifting down through the snow round him as Sigils (on: keep them
@@ -1202,7 +1571,21 @@ func _apply_cam() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	if _cam_mode == "follow":
+	if _roam:
+		_roam_step(delta)
+	if _cam_mode == "roam":
+		# behind him, over his right shoulder, the camera's heading easing
+		# round to his as he turns
+		var p := _bram.position
+		var h := _heading()
+		var want_yaw := atan2(h.x, h.z)
+		_cam_yaw = lerp_angle(_cam_yaw, want_yaw, minf(1.0, delta * 2.6))
+		var f := Vector3(sin(_cam_yaw), 0, cos(_cam_yaw))
+		var r := f.cross(Vector3.UP)
+		_cam_want = p - f * 2.9 + r * 0.75 + Vector3(0, 1.85, 0)
+		_look_want = p + f * 7.0 + Vector3(0, 1.35, 0)
+		_cam.fov = 50.0
+	if _cam_mode == "follow" or _cam_mode == "roam":
 		var k := 1.0 - exp(-delta * 3.0)
 		if _cam_pos == Vector3.ZERO:
 			k = 1.0
@@ -1217,7 +1600,7 @@ func _process(delta: float) -> void:
 			_strike_next = _t + _rng.randf_range(0.7, 1.8)
 		if _t >= _rain_next:
 			_drop_card()
-			_rain_next = _t + _rng.randf_range(0.25, 0.6)
+			_rain_next = _t + _rng.randf_range(0.5, 1.1)
 	for i in range(_falling.size() - 1, -1, -1):
 		var f: Array = _falling[i]
 		var n: Node3D = f[0]
@@ -1226,9 +1609,9 @@ func _process(delta: float) -> void:
 			continue
 		n.position += (f[1] as Vector3) * delta
 		n.rotate_object_local(Vector3(1, 0.4, 0.2).normalized(), float(f[2]) * delta)
-		if n.position.y <= height(n.position.x, n.position.z) + 0.03:
-			n.position.y = height(n.position.x, n.position.z) + 0.03
+		if n.position.y <= height(n.position.x, n.position.z) + 0.1:
 			_falling.remove_at(i)
+			_card_lands(n as MeshInstance3D, f[3])
 	# the crater breathes its light
 	if _crater_light != null:
 		_crater_light.light_energy = 2.4 + sin(_t * 1.7) * 0.35 + sin(_t * 4.1) * 0.12
@@ -1236,16 +1619,73 @@ func _process(delta: float) -> void:
 		_ground_mat.set_shader_parameter("glow", 0.6 + sin(_t * 1.7) * 0.1)
 
 
+## His walking, a frame of it: the pad or the keys (the way the camera
+## looks is up), or on towards where the snow was tapped; kept out of the
+## glass and within ROAM_R of the crater; his feet matched to the ground.
+func _roam_step(delta: float) -> void:
+	var v := Vector2.ZERO
+	if _pad != null:
+		v = _pad.vector
+	var k := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	if k.length() > v.length():
+		v = k
+	var dir := Vector3.ZERO
+	if v.length() > 0.15:
+		_move_target = Vector3.INF
+		var f := Vector3(sin(_cam_yaw), 0, cos(_cam_yaw))
+		var r := f.cross(Vector3.UP)
+		dir = r * v.x - f * v.y
+		if dir.length() > 1.0:
+			dir = dir.normalized()
+	elif _move_target != Vector3.INF:
+		var to := _move_target - _flat
+		to.y = 0.0
+		if to.length() < 0.15:
+			_move_target = Vector3.INF
+		else:
+			dir = to.normalized()
+	var speed := dir.length() * WALK_SPEED
+	if speed > 0.05:
+		_hide_hint()
+		var nf := _flat + dir.normalized() * speed * delta
+		# round the glass
+		for sp in _spires:
+			var d := Vector2(nf.x - float(sp[0]), nf.z - float(sp[1]))
+			var rr := float(sp[2])
+			if d.length() < rr and d.length() > 0.001:
+				var out := d.normalized() * rr
+				nf.x = float(sp[0]) + out.x
+				nf.z = float(sp[1]) + out.y
+		# and not away over the Shardlands
+		var from_c := Vector2(nf.x - CRATER.x, nf.z - CRATER.z)
+		if from_c.length() > ROAM_R:
+			from_c = from_c.normalized() * ROAM_R
+			nf.x = CRATER.x + from_c.x
+			nf.z = CRATER.z + from_c.y
+		if Vector2(nf.x - _flat.x, nf.z - _flat.z).length() < 0.0005:
+			speed = 0.0
+			_move_target = Vector3.INF
+		_flat = Vector3(nf.x, 0.0, nf.z)
+		_bram.position = Vector3(_flat.x, height(_flat.x, _flat.z), _flat.z)
+		if _bram is PaperDoll:
+			(_bram as PaperDoll).face(dir, _cam)
+	_set_walking(_bram, speed > 0.05)
+	if _bram is Figure3D:
+		(_bram as Figure3D).pace = speed
+
+
 ## One card of light drifting down near him, tumbling.
 func _drop_card() -> void:
 	if not is_instance_valid(_bram) or _bram.get_parent() != _set:
 		return
-	var c := _card_mesh(SIGIL_COLS[_rng.randi() % SIGIL_COLS.size()])
-	var around := _bram.position + Vector3(_rng.randf_range(-7, 7), 0, _rng.randf_range(-12, 3))
+	var col: Color = SIGIL_COLS[_rng.randi() % SIGIL_COLS.size()]
+	var c := _card_mesh(col)
+	var f := _heading()
+	var around := _bram.position + f * _rng.randf_range(-3, 12) + f.cross(Vector3.UP) * _rng.randf_range(-7, 7)
 	c.position = around + Vector3(0, _rng.randf_range(7, 11), 0)
 	_set.add_child(c)
-	_falling.append([c, Vector3(_rng.randf_range(-1.2, -0.4), -_rng.randf_range(1.1, 1.8), _rng.randf_range(-0.2, 0.4)), _rng.randf_range(1.5, 4.0)])
-	# (they lie where they land, and go with the set)
+	_falling.append([c, Vector3(_rng.randf_range(-1.2, -0.4), -_rng.randf_range(1.1, 1.8), _rng.randf_range(-0.2, 0.4)), _rng.randf_range(1.5, 4.0), col])
+	# (they stand where they land, and go with the set)
 
 
 # ================================================================== input ===
@@ -1351,12 +1791,27 @@ float n2(vec2 p) {
 	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
 }
 float fbm(vec2 p) { float a = 0.5; float s = 0.0; for (int i = 0; i < 4; i++) { s += a * n2(p); p *= 2.03; a *= 0.5; } return s; }
+// the wind's ripples: noise stretched along the way it blows
+float ripple(vec2 p) {
+	vec2 w = vec2(p.x * 0.35 - p.y * 0.12, p.x * 0.12 + p.y * 0.35);
+	return fbm(vec2(w.x * 0.9, w.y * 6.0));
+}
 void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
 	float n = fbm(wp.xz * 0.3);
 	float fine = fbm(wp.xz * 3.1);
-	vec3 snow = mix(vec3(0.5, 0.55, 0.68), vec3(0.82, 0.86, 0.94), n * 0.7 + fine * 0.3);
+	float rp = ripple(wp.xz);
+	vec3 snow = mix(vec3(0.5, 0.55, 0.68), vec3(0.82, 0.86, 0.94), n * 0.6 + fine * 0.25 + rp * 0.15);
 	float d = length(wp.xz - crater.xz);
+	// the drifts' and ripples' own shape in the light: a normal from the
+	// slope of the noise, in place of the flat mesh's
+	float eps = 0.35;
+	float hx = (fbm((wp.xz + vec2(eps, 0.0)) * 0.3) - fbm((wp.xz - vec2(eps, 0.0)) * 0.3)) * 1.2
+		+ (ripple(wp.xz + vec2(eps, 0.0)) - ripple(wp.xz - vec2(eps, 0.0))) * 0.5;
+	float hz = (fbm((wp.xz + vec2(0.0, eps)) * 0.3) - fbm((wp.xz - vec2(0.0, eps)) * 0.3)) * 1.2
+		+ (ripple(wp.xz + vec2(0.0, eps)) - ripple(wp.xz - vec2(0.0, eps))) * 0.5;
+	vec3 wn = normalize(vec3(-hx, 1.0, -hz));
+	NORMAL = normalize(mix(NORMAL, (VIEW_MATRIX * vec4(wn, 0.0)).xyz, 0.7));
 	// the bowl: black glass, fused by the fall, snow only at its edges
 	float inner = smoothstep(crater_r * 0.98, crater_r * 0.55, d + (fine - 0.5) * 1.6);
 	vec3 glass = mix(vec3(0.03, 0.035, 0.05), vec3(0.14, 0.16, 0.22), fine);
@@ -1370,6 +1825,39 @@ void fragment() {
 	// the light at the bottom of the bowl
 	e += vec3(0.85, 0.9, 1.0) * glow * inner * exp(-d * 0.5) * 2.4;
 	EMISSION = e;
+}
+"""
+
+
+## The Shardlands' glass: near black, with the sky's cold light along its
+## edges, a faint light moving inside it, and frost where the snow has
+## caught on it.
+const GLASS := """
+shader_type spatial;
+render_mode specular_schlick_ggx;
+instance uniform float seed = 0.0;
+varying vec3 wp;
+varying vec3 lp;
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; lp = VERTEX; }
+void fragment() {
+	float vein = n3(lp * 2.2 + seed) * 0.6 + n3(lp * 7.0 + seed * 3.0) * 0.4;
+	vec3 dark = mix(vec3(0.02, 0.025, 0.04), vec3(0.09, 0.1, 0.15), vein);
+	// frost caught on its upper faces, and along its ridges
+	float up = clamp(dot(normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz), vec3(0.0, 1.0, 0.0)), 0.0, 1.0);
+	float frost = smoothstep(0.25, 0.75, up) * smoothstep(0.35, 0.8, n3(wp * 4.0));
+	ALBEDO = mix(dark, vec3(0.78, 0.82, 0.9), frost * 0.85);
+	ROUGHNESS = mix(0.08, 0.7, frost);
+	METALLIC = mix(0.35, 0.0, frost);
+	SPECULAR = 0.7;
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.5);
+	float inner = pow(n3(lp * 1.4 + vec3(0.0, TIME * 0.08, 0.0) + seed), 3.0);
+	EMISSION = vec3(0.35, 0.45, 0.8) * rim * 0.55 * (1.0 - frost) + vec3(0.3, 0.42, 0.75) * inner * 0.5;
 }
 """
 

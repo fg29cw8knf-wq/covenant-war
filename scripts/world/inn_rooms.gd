@@ -499,25 +499,32 @@ static func _attic_dressing(v: AshfordVillage, root: Node3D, W: float, D: float,
 	var leather: StandardMaterial3D = mk.call(Color(0.36, 0.22, 0.12), 0.7)
 	var leather_dk: StandardMaterial3D = mk.call(Color(0.2, 0.12, 0.07), 0.75)
 	var linen: StandardMaterial3D = mk.call(Color(0.82, 0.78, 0.68), 0.95)
-	var wool_g: StandardMaterial3D = mk.call(Color(0.28, 0.36, 0.22), 1.0)
 	var wool_r: StandardMaterial3D = mk.call(Color(0.5, 0.16, 0.1), 1.0)
 	var brown_cloth: StandardMaterial3D = mk.call(Color(0.33, 0.25, 0.17), 1.0)
 	var clay: StandardMaterial3D = mk.call(Color(0.62, 0.38, 0.24), 0.7)
 	var tin: StandardMaterial3D = mk.call(Color(0.55, 0.55, 0.52), 0.4, 0.8)
 	var wax: StandardMaterial3D = mk.call(Color(0.93, 0.88, 0.74), 0.7)
 	var nk := -D * 0.5 + 0.06    # the north knee wall's inner face (z)
-	# --- the rag rug by the bed: braided rings of old cloth, an oval
-	var rug := Node3D.new()
+	# --- the rag rug by the bed: an oval of braided rings of old cloth, drawn
+	# as one picture on a flat oval (4 November: six stacked discs of plain
+	# colour read as a target, with a seam showing between them)
+	var rug := MeshInstance3D.new()
 	rug.name = "RagRug"
+	var rm := QuadMesh.new()
+	rm.size = Vector2(1.4, 1.4)
+	rug.mesh = rm
+	var rug_mat := StandardMaterial3D.new()
+	rug_mat.albedo_texture = _rug_texture()
+	rug_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	rug_mat.alpha_scissor_threshold = 0.5
+	rug_mat.roughness = 1.0
+	rug_mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	rug.material_override = rug_mat
+	rug.position = Vector3(-0.55, 0.008, -0.95)
+	rug.rotation_degrees = Vector3(-90, 0, 0)
+	rug.scale = Vector3(1.0, 0.6, 1.0)
+	rug.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	root.add_child(rug)
-	rug.position = Vector3(-0.55, 0.0, -0.95)
-	rug.scale = Vector3(1.0, 1.0, 0.55)
-	# (old cloth, faded: muted browns and a dull green, close in tone, so it
-	# reads as a rug, not a target)
-	var ring_cols := [Color(0.3, 0.2, 0.15), Color(0.38, 0.31, 0.23), Color(0.27, 0.27, 0.23), Color(0.36, 0.25, 0.18), Color(0.3, 0.3, 0.24), Color(0.4, 0.33, 0.25)]
-	for i in ring_cols.size():
-		var r := 0.68 - i * 0.11
-		v.cyl(rug, r, r, 0.012, Vector3(0, 0.006 + i * 0.0012, 0), mk.call(ring_cols[i], 1.0), 28)
 	# --- the shelf on the north knee wall, east of the bed's foot
 	var sx0 := 1.25
 	var sx1 := 2.75
@@ -603,33 +610,53 @@ static func _attic_dressing(v: AshfordVillage, root: Node3D, W: float, D: float,
 	for k in 3:
 		var a := TAU * k / 3.0
 		v.box(root, Vector3(0.04, 0.46, 0.04), stool + Vector3(cos(a) * 0.11, 0.23, sin(a) * 0.11), beam, Vector3(sin(a) * 0.12, 0, -cos(a) * 0.12))
-	# --- drawings and a map pinned to the east gable, north of the mirror
+	# --- on the east gable, north of the mirror: a map of the valley drawn
+	# in ink on parchment, pinned up, and two of Gary's Sigil paintings (the
+	# Lantern Moth and Brookfin, a boy's favourites) in plain oak frames.
+	# (4 November, Gary: the pictures "look like drawn by a 2 year old":
+	# until then they were 96-pixel scribbles of a moth, a hound and a
+	# notice, drawn here as a boy draws.)
 	var ex := W * 0.5 - 0.01
 	var pins: StandardMaterial3D = mk.call(Color(0.7, 0.5, 0.2), 0.4, 0.7)
-	var sheets := [[Vector3(ex, 1.55, -0.55), Vector2(0.42, 0.32), 0.04, "map"], [Vector3(ex, 1.08, -0.42), Vector2(0.22, 0.28), -0.08, "moth"],
-		[Vector3(ex, 1.2, -0.95), Vector2(0.24, 0.2), 0.1, "hound"], [Vector3(ex, 1.72, -1.15), Vector2(0.26, 0.34), -0.05, "notice"]]
+	var sheets := [[Vector3(ex, 1.56, -0.56), Vector2(0.44, 0.33), 0.03, "map"],
+		[Vector3(ex, 1.1, -0.4), Vector2(0.27, 0.27), -0.02, "res://assets/art/cards/lantern_moth.jpg"],
+		[Vector3(ex, 1.14, -0.98), Vector2(0.25, 0.25), 0.025, "res://assets/art/cards/brookfin.jpg"]]
 	for i in sheets.size():
 		var sh: Array = sheets[i]
+		var what := String(sh[3])
 		var q := MeshInstance3D.new()
 		var qm := QuadMesh.new()
 		qm.size = sh[1]
 		q.mesh = qm
 		var pm := StandardMaterial3D.new()
-		pm.albedo_texture = _sketch(String(sh[3]), i)
-		pm.roughness = 0.95
+		var framed := what.begins_with("res://") and ResourceLoader.exists(what)
+		pm.albedo_texture = load(what) if framed else _sketch("map", i)
+		pm.roughness = 0.7 if framed else 0.95
 		pm.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		q.material_override = pm
 		q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		# facing west, into the room, off the east gable
-		q.transform = Transform3D(Basis(Vector3.UP, -PI * 0.5) * Basis(Vector3.BACK, float(sh[2])), sh[0])
+		var xf := Transform3D(Basis(Vector3.UP, -PI * 0.5) * Basis(Vector3.BACK, float(sh[2])), sh[0])
+		q.transform = xf
 		root.add_child(q)
-		var pin_at: Vector3 = sh[0] + Vector3(-0.004, (sh[1] as Vector2).y * 0.5 - 0.025, 0)
-		v.cyl(root, 0.008, 0.008, 0.01, pin_at, pins, 6, Vector3(0, 0, PI * 0.5))
+		if framed:
+			# a plain oak frame round it, standing a little off the wall
+			var fr := Node3D.new()
+			fr.transform = xf
+			root.add_child(fr)
+			var sz: Vector2 = sh[1]
+			var t := 0.022
+			for e in [[Vector3(0, sz.y * 0.5 + t * 0.5, 0), Vector3(sz.x + t * 2.0, t, 0.018)], [Vector3(0, -sz.y * 0.5 - t * 0.5, 0), Vector3(sz.x + t * 2.0, t, 0.018)],
+				[Vector3(sz.x * 0.5 + t * 0.5, 0, 0), Vector3(t, sz.y, 0.018)], [Vector3(-sz.x * 0.5 - t * 0.5, 0, 0), Vector3(t, sz.y, 0.018)]]:
+				v.box(fr, e[1], e[0] + Vector3(0, 0, -0.006), dark_oak)
+			q.position += xf.basis.z * 0.004
+		else:
+			var pin_at: Vector3 = sh[0] + Vector3(-0.004, (sh[1] as Vector2).y * 0.5 - 0.025, 0)
+			v.cyl(root, 0.008, 0.008, 0.01, pin_at, pins, 6, Vector3(0, 0, PI * 0.5))
 	# --- a towel over the washstand's rail (the stand is at z 0.55, x W/2 - 0.28)
 	v.box(root, Vector3(0.012, 0.28, 0.2), Vector3(W * 0.5 - 0.56, 0.66, 0.72), linen)
 	v.box(root, Vector3(0.05, 0.012, 0.2), Vector3(W * 0.5 - 0.535, 0.8, 0.72), linen)
-	# --- his own paper lantern for tonight, half made, hung from a collar beam,
-	# and a bunch of lavender drying upside down on the next
+	# --- his own paper lantern for tonight, half made, on his desk
 	var lan := Node3D.new()
 	root.add_child(lan)
 	# (on his desk, half made: hung from a beam it filled a corner of every
@@ -650,35 +677,15 @@ static func _attic_dressing(v: AshfordVillage, root: Node3D, W: float, D: float,
 	for k in 3:
 		var rr := 0.132 - 0.02 * absf(k - 1)
 		v.cyl(lan, rr, rr, 0.006, Vector3(0, -0.06 + k * 0.06, 0), leather_dk, 14)
-	var lav := Node3D.new()
-	root.add_child(lav)
-	lav.position = Vector3(0.0, 1.86, -0.85)
-	v.box(lav, Vector3(0.01, 0.12, 0.01), Vector3(0, 0.08, 0), wool_g)
-	# (a loose, uneven bunch of thin stems fanning out from a twine tie, the
-	# flower spikes greyed with drying: nine stiff spokes and fat purple blocks
-	# read as a potted plant hanging in the air)
-	var stem: StandardMaterial3D = mk.call(Color(0.36, 0.42, 0.3), 1.0)
-	var bloom: StandardMaterial3D = mk.call(Color(0.44, 0.4, 0.54), 1.0)
-	var twine: StandardMaterial3D = mk.call(Color(0.62, 0.52, 0.36), 1.0)
-	v.cyl(lav, 0.016, 0.018, 0.035, Vector3(0, 0.0, 0), twine, 10)
-	for k in 15:
-		var a := TAU * k / 15.0 + 0.37 * sin(k * 2.3)
-		var tilt := 0.1 + 0.16 * absf(sin(k * 1.7))
-		var ln := 0.2 + 0.07 * absf(cos(k * 2.9))
-		var out := Vector3(cos(a), 0, sin(a)) * sin(tilt)
-		var down := Vector3(0, -cos(tilt), 0)
-		var dir := (out + down).normalized()
-		var axis := Vector3.UP.cross(-dir).normalized()
-		var bas := Basis(axis, Vector3.UP.angle_to(-dir)) if axis.length() > 0.01 else Basis()
-		var mid := dir * ln * 0.5
-		v.add_mesh(lav, _thin_box(0.005, ln, 0.005), stem, Transform3D(bas, mid))
-		v.add_mesh(lav, _thin_box(0.011, 0.075, 0.011), bloom, Transform3D(bas, dir * (ln + 0.03)))
-	# --- a shirt and breeches over the chest at the bed's foot (the chest's
-	# top at 0.46, at x 0.75, z -2.05), a sleeve and a leg hanging down
-	v.box(root, Vector3(0.5, 0.025, 0.36), Vector3(0.72, 0.475, -2.05), linen, Vector3(0, 0.18, 0.04))
-	v.box(root, Vector3(0.1, 0.24, 0.025), Vector3(0.42, 0.36, -1.84), linen, Vector3(0.1, 0, 0.25))
-	v.box(root, Vector3(0.38, 0.03, 0.3), Vector3(0.82, 0.5, -2.08), brown_cloth, Vector3(0, -0.3, 0))
-	v.box(root, Vector3(0.14, 0.3, 0.03), Vector3(1.0, 0.34, -1.83), brown_cloth, Vector3(-0.05, 0, -0.12))
+	# (the bunch of lavender that hung drying from the next collar beam is
+	# gone: 4 November, Gary, "you have flowers coming out of ceiling")
+	# --- his shirt and breeches folded on the chest at the bed's foot (the
+	# chest's top at 0.46, at x 0.75, z -2.05): two neat flat piles (4
+	# November, Gary: the clothes draped over it with a sleeve and a leg
+	# hanging down looked like "broken items on the side")
+	v.box(root, Vector3(0.32, 0.035, 0.26), Vector3(0.62, 0.48, -2.05), linen, Vector3(0, 0.06, 0))
+	v.box(root, Vector3(0.3, 0.03, 0.24), Vector3(0.62, 0.512, -2.05), linen, Vector3(0, 0.06, 0))
+	v.box(root, Vector3(0.26, 0.04, 0.22), Vector3(0.92, 0.482, -2.06), brown_cloth, Vector3(0, -0.08, 0))
 	# --- a scarf on a second peg by the coat on the south knee wall
 	v.box(root, Vector3(0.1, 0.04, 0.04), Vector3(-0.85, 0.88, D * 0.5 - 0.03), beam)
 	v.box(root, Vector3(0.12, 0.55, 0.03), Vector3(-0.85, 0.6, D * 0.5 - 0.07), wool_r)
@@ -693,67 +700,165 @@ static func _attic_dressing(v: AshfordVillage, root: Node3D, W: float, D: float,
 	v.box(sat, Vector3(0.025, 0.36, 0.01), Vector3(0.12, 0.8, 0.02), leather_dk, Vector3(0, 0, 0.35))
 
 
-## A pinned sheet's picture, drawn in ink on old paper: the valley's map (the
-## river, the road, the green's ring of houses), a Lantern Moth and a river
-## hound as a boy draws them, or the festival's notice.
-static func _sketch(kind: String, seed: int) -> ImageTexture:
-	var n := 96
-	var img := Image.create(n, n, false, Image.FORMAT_RGB8)
+## The rag rug's picture: rings of braided cloth in muted browns and a dull
+## green, each ring a plait of short diagonal strands, worn pale at the
+## middle where feet have been.
+static var _rug_tex: ImageTexture
+
+static func _rug_texture() -> ImageTexture:
+	if _rug_tex != null:
+		return _rug_tex
+	var n := 256
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var cols := [Color(0.32, 0.22, 0.16), Color(0.4, 0.33, 0.24), Color(0.28, 0.29, 0.24), Color(0.37, 0.26, 0.19),
+		Color(0.31, 0.31, 0.25), Color(0.42, 0.35, 0.26), Color(0.35, 0.24, 0.17), Color(0.3, 0.3, 0.22)]
 	var rng := RandomNumberGenerator.new()
-	rng.seed = 7000 + seed
+	rng.seed = 404
 	for y in n:
 		for x in n:
-			var g := 0.02 * sin(x * 0.7 + y * 0.3) + rng.randf_range(-0.02, 0.02)
-			var edge := minf(minf(x, n - 1 - x), minf(y, n - 1 - y)) / 6.0
-			var age := 0.08 * (1.0 - clampf(edge, 0.0, 1.0))
-			img.set_pixel(x, y, Color(0.88 + g - age, 0.82 + g - age * 1.2, 0.68 + g - age * 1.5))
+			var dx := (x + 0.5) / n - 0.5
+			var dy := (y + 0.5) / n - 0.5
+			var d := Vector2(dx, dy).length() * 2.0   # 0 at the middle, 1 at the edge
+			if d > 1.0:
+				img.set_pixel(x, y, Color(0.2, 0.15, 0.1, 0.0))
+				continue
+			var ring := int(d * 8.0)
+			var c: Color = cols[ring % cols.size()]
+			# the plait: strands across each ring, slanting, with a dark line between
+			var ang := atan2(dy, dx)
+			var strand := fmod(ang * 30.0 + d * 90.0, 1.0)
+			var groove := smoothstep(0.0, 0.2, strand) * smoothstep(1.0, 0.8, strand)
+			var edge := fmod(d * 8.0, 1.0)
+			var seam := smoothstep(0.0, 0.1, edge) * smoothstep(1.0, 0.9, edge)
+			var shade := 0.72 + 0.28 * groove * seam
+			var wear := 1.0 + 0.18 * (1.0 - smoothstep(0.0, 0.6, d))
+			var g := rng.randf_range(-0.03, 0.03)
+			img.set_pixel(x, y, Color(clampf(c.r * shade * wear + g, 0, 1), clampf(c.g * shade * wear + g, 0, 1), clampf(c.b * shade * wear + g, 0, 1)))
+	img.generate_mipmaps()
+	_rug_tex = ImageTexture.create_from_image(img)
+	return _rug_tex
+
+
+## The valley's map, drawn in ink on old parchment and pinned to the gable:
+## the river in two blue lines winding down from the hills, the road in a
+## dashed brown line, Ashford's green as a ring of little houses round a
+## circle with the inn marked red, the mill by the river, the hills as
+## arcs, trees as dots, and a compass rose. Drawn soft-edged at 256 pixels
+## (4 November: the old 96-pixel scribbles looked "drawn by a 2 year old").
+static func _sketch(_kind: String, seed: int) -> ImageTexture:
+	var nw := 256
+	var nh := 192
+	var img := Image.create(nw, nh, false, Image.FORMAT_RGB8)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7000 + seed
+	for y in nh:
+		for x in nw:
+			var g := 0.025 * sin(x * 0.21 + y * 0.13) + 0.02 * sin(x * 0.047 - y * 0.09) + rng.randf_range(-0.018, 0.018)
+			var edge := minf(minf(x, nw - 1 - x), minf(y, nh - 1 - y)) / 14.0
+			var age := 0.1 * (1.0 - clampf(edge, 0.0, 1.0))
+			img.set_pixel(x, y, Color(0.86 + g - age, 0.79 + g - age * 1.2, 0.62 + g - age * 1.6))
+	# soft-edged dots and lines, blended in
 	var dot := func(x: float, y: float, r: float, c: Color) -> void:
-		for yy in range(int(y - r), int(y + r) + 1):
-			for xx in range(int(x - r), int(x + r) + 1):
-				if xx >= 0 and yy >= 0 and xx < n and yy < n and Vector2(xx - x, yy - y).length() <= r:
-					img.set_pixel(xx, yy, c)
+		for yy in range(int(floor(y - r - 1)), int(ceil(y + r + 1)) + 1):
+			for xx in range(int(floor(x - r - 1)), int(ceil(x + r + 1)) + 1):
+				if xx < 0 or yy < 0 or xx >= nw or yy >= nh:
+					continue
+				var a := clampf(r + 0.5 - Vector2(xx - x, yy - y).length(), 0.0, 1.0) * c.a
+				if a > 0.0:
+					img.set_pixel(xx, yy, img.get_pixel(xx, yy).lerp(Color(c.r, c.g, c.b), a))
 	var line := func(a: Vector2, b: Vector2, c: Color, r := 0.8) -> void:
-		var steps := int(a.distance_to(b) * 1.5) + 1
+		var steps := int(a.distance_to(b) * 2.0) + 1
 		for i in steps + 1:
 			var p := a.lerp(b, float(i) / steps)
 			dot.call(p.x, p.y, r, c)
-	var ink := Color(0.16, 0.12, 0.1)
-	var blue := Color(0.22, 0.32, 0.5)
-	var red := Color(0.55, 0.2, 0.14)
-	match kind:
-		"map":
-			var prev := Vector2(4, 30)
-			for i in 12:
-				var nx := Vector2(4 + (i + 1) * 7.6, 30 + 14 * sin((i + 1) * 0.6))
-				line.call(prev, nx, blue, 1.2)
-				prev = nx
-			line.call(Vector2(10, 88), Vector2(88, 60), ink, 0.7)
-			for k in 8:
-				var a := TAU * k / 8.0
-				dot.call(52 + cos(a) * 13, 64 + sin(a) * 9, 1.6, ink)
-			dot.call(52, 64, 2.5, red)
-			line.call(Vector2(64, 50), Vector2(80, 32), ink, 0.6)
-			dot.call(82, 30, 3.0, ink)
-		"moth":
-			dot.call(48, 54, 7, Color(0.85, 0.55, 0.2))
-			for s in [-1.0, 1.0]:
-				for k in 14:
-					var a := k / 14.0 * PI
-					line.call(Vector2(48, 50), Vector2(48 + s * (10 + 22 * sin(a)), 50 - 26 * cos(a) * 0.9), ink, 0.6)
-			line.call(Vector2(46, 46), Vector2(40, 30), ink, 0.6)
-			line.call(Vector2(50, 46), Vector2(56, 30), ink, 0.6)
-		"hound":
-			line.call(Vector2(20, 60), Vector2(70, 58), blue, 2.0)
-			line.call(Vector2(70, 58), Vector2(82, 40), blue, 1.8)
-			dot.call(84, 38, 5, blue)
-			for lx in [26, 36, 58, 66]:
-				line.call(Vector2(lx, 60), Vector2(lx + rng.randf_range(-3, 3), 80), blue, 1.2)
-			line.call(Vector2(20, 60), Vector2(10, 50), blue, 1.0)
-		"notice":
-			for k in 8:
-				var wl := 70 - (k % 3) * 12
-				line.call(Vector2(13, 18 + k * 9), Vector2(13 + wl, 18 + k * 9), ink, 0.6 if k > 0 else 1.4)
-			dot.call(48, 86, 4, red)
+	var ink := Color(0.17, 0.13, 0.1)
+	var faint := Color(0.17, 0.13, 0.1, 0.45)
+	var blue := Color(0.24, 0.36, 0.56)
+	var red := Color(0.6, 0.18, 0.12)
+	var brown := Color(0.42, 0.28, 0.14)
+	# the hills across the top, as arcs
+	for h in [[36.0, 30.0, 18.0], [78.0, 22.0, 24.0], [122.0, 28.0, 16.0], [168.0, 20.0, 22.0], [214.0, 30.0, 18.0]]:
+		var cx: float = h[0]
+		var cy: float = h[1]
+		var rr: float = h[2]
+		var prev := Vector2(cx - rr, cy)
+		for k in 12:
+			var ang := PI + PI * (k + 1) / 12.0
+			var nx := Vector2(cx + cos(ang) * rr, cy + sin(ang) * rr * 0.55)
+			line.call(prev, nx, faint, 0.7)
+			prev = nx
+	# the river, two lines, winding down from the hills to the bottom right
+	var river: Array = []
+	for i in 15:
+		river.append(Vector2(20.0 + i * 16.5, 46.0 + 70.0 * i / 14.0 + 11.0 * sin(i * 0.9)))
+	for sd: float in [-1.0, 1.0]:
+		for i in 14:
+			var a: Vector2 = river[i]
+			var b: Vector2 = river[i + 1]
+			var n: Vector2 = (b - a).normalized().orthogonal() * 2.6 * float(sd)
+			line.call(a + n, b + n, blue, 0.9)
+	# the road, dashed, from the left edge to the green and on to the mill
+	var road := [Vector2(8, 170), Vector2(60, 150), Vector2(108, 132), Vector2(150, 126), Vector2(196, 118), Vector2(236, 98)]
+	for i in road.size() - 1:
+		var a: Vector2 = road[i]
+		var b: Vector2 = road[i + 1]
+		var n := int(a.distance_to(b) / 7.0)
+		for k in n:
+			var u0 := float(k) / n
+			var u1 := u0 + 0.5 / n
+			line.call(a.lerp(b, u0), a.lerp(b, u1), brown, 1.0)
+	# Ashford: the green (a ring) and the houses round it, the inn in red
+	var gc := Vector2(150, 126)
+	for k in 48:
+		var ang := TAU * k / 48.0
+		dot.call(gc.x + cos(ang) * 17.0, gc.y + sin(ang) * 12.0, 0.9, faint)
+	for k in 9:
+		var ang := TAU * k / 9.0 + 0.3
+		var hp := gc + Vector2(cos(ang) * 25.0, sin(ang) * 18.0)
+		var c := red if k == 2 else ink
+		# a little house: a square and a roof
+		line.call(hp + Vector2(-3, 2), hp + Vector2(3, 2), c, 0.8)
+		line.call(hp + Vector2(-3, 2), hp + Vector2(-3, -2), c, 0.8)
+		line.call(hp + Vector2(3, 2), hp + Vector2(3, -2), c, 0.8)
+		line.call(hp + Vector2(-3.5, -2), hp + Vector2(0, -5.5), c, 0.8)
+		line.call(hp + Vector2(0, -5.5), hp + Vector2(3.5, -2), c, 0.8)
+	# the mill by the river, its wheel a circle
+	var mill := Vector2(222, 102)
+	line.call(mill + Vector2(-4, 3), mill + Vector2(4, 3), ink, 0.8)
+	line.call(mill + Vector2(-4, 3), mill + Vector2(-4, -3), ink, 0.8)
+	line.call(mill + Vector2(4, 3), mill + Vector2(4, -3), ink, 0.8)
+	line.call(mill + Vector2(-4.5, -3), mill + Vector2(0, -7), ink, 0.8)
+	line.call(mill + Vector2(0, -7), mill + Vector2(4.5, -3), ink, 0.8)
+	for k in 20:
+		var ang := TAU * k / 20.0
+		dot.call(mill.x + 7.5 + cos(ang) * 3.2, mill.y + 1.0 + sin(ang) * 3.2, 0.7, ink)
+	# trees: little rings of dots in the bottom left and by the hills
+	for t in [[30, 100], [44, 112], [26, 126], [58, 96], [200, 58], [214, 70], [92, 62], [106, 72]]:
+		for k in 8:
+			var ang := TAU * k / 8.0
+			dot.call(float(t[0]) + cos(ang) * 3.0, float(t[1]) + sin(ang) * 3.0, 0.8, faint)
+		dot.call(float(t[0]), float(t[1]) + 4.5, 0.6, faint)
+	# a compass rose in the top left corner
+	var cr := Vector2(34, 160)
+	for k in 32:
+		var ang := TAU * k / 32.0
+		dot.call(cr.x + cos(ang) * 11.0, cr.y + sin(ang) * 11.0, 0.7, ink)
+	for k in 4:
+		var ang := TAU * k / 4.0 - PI * 0.5
+		var tip := cr + Vector2(cos(ang), sin(ang)) * 14.0
+		var l := cr + Vector2(cos(ang + 0.5), sin(ang + 0.5)) * 4.0
+		var r := cr + Vector2(cos(ang - 0.5), sin(ang - 0.5)) * 4.0
+		line.call(l, tip, ink, 0.8)
+		line.call(r, tip, ink, 0.8)
+		if k == 0:
+			dot.call(tip.x, tip.y - 3.0, 1.6, red)
+	# a ruled border
+	for k in range(6, nw - 6):
+		dot.call(k, 6, 0.6, faint)
+		dot.call(k, nh - 7, 0.6, faint)
+	for k in range(6, nh - 6):
+		dot.call(6, k, 0.6, faint)
+		dot.call(nw - 7, k, 0.6, faint)
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 

@@ -1498,8 +1498,17 @@ static func _attic(w: World) -> void:
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
 	coach(w).objective("basin")
 	var stand: Vector3 = a.mirror_stand
-	await walk_room(w, a, root.to_global(Vector3(-2.35, 2.0, 1.55)), func(p: Vector3) -> bool:
+	# the camera comes along behind them, under the collar beams (4 November,
+	# Gary: "when you walk towards mirror it cuts player out due to stairs
+	# leading up, character should stay in view": from its corner up by the
+	# roof, the beams stepping away across the room came between it and
+	# him as he crossed to the glass)
+	a["cam_follow"] = func(p: Vector3) -> Vector3:
+		var lp := root.to_local(p)
+		return root.to_global(Vector3(clampf(lp.x - 2.4, -2.55, 0.3), 1.62, clampf(lp.z + 1.0, 0.6, 1.35)))
+	await walk_room(w, a, root.to_global(Vector3(-2.35, 1.62, 1.35)), func(p: Vector3) -> bool:
 		return Vector2(p.x - stand.x, p.z - stand.z).length() < 0.8)
+	a.erase("cam_follow")
 	if not is_instance_valid(w) or not w.is_inside_tree():
 		return
 	coach(w).objective("")
@@ -1843,6 +1852,13 @@ void fragment() {
 static func warm(w: World) -> void:
 	var v := village(w)
 	pose(w)
+	# the frosty morning, before the attic's window and the taproom's doorway
+	# take their pictures of the village (4 November, Gary: "when door opens
+	# in tavern before you walk out with crate it shows it as night outside
+	# but then you walk out into day": the village is built as the festival
+	# night, opening() turns the day on, and under the title screen the two
+	# views were taken here, first, by night)
+	v.set_daylight(1.0)
 	var a := InnRooms.attic(v)
 	InnRooms.eve(v)
 	for k in 3:
@@ -2057,38 +2073,49 @@ static func _eat(w: World, e: Dictionary) -> void:
 	await Cine.wait(w, 0.45)
 	if pf is Figure3D:
 		var me := pf as Figure3D
+		# (4 November, Gary: "when the player eats the porridge his arm goes
+		# through himself": the palm was sent to the mouth itself, with the
+		# spoon hanging off it, and the elbow's usual hint, out and back,
+		# folded the arm back past the shoulder so the forearm came forward
+		# through the chest. Now the hand stops a spoon's length short of
+		# the mouth, off to his right, the spoon lies in the palm with its
+		# bowl end towards him, and the elbow is kept down in front of the
+		# ribs; the targets are in his own frame, so they go with him.)
 		var hand := Node3D.new()
 		hand.name = "SpoonHand"
-		w.add_child(hand)
 		var spoon: Node3D = bowl.get_node_or_null("Spoon")
-		var over := at_bowl + Vector3(0, 0.09, 0)
-		hand.global_position = _hand_can(me, "right", over)
+		var over := me.to_own(at_bowl + Vector3(0, 0.09, 0))
+		over.x = minf(over.x, -0.04)   # (the right hand: never across the body)
+		over.z = minf(over.z, me.arm_reach() * 0.92)
+		me.carry(hand, over)
+		me.elbow("right", Vector3(-0.34, me._top - 0.5, 0.1), 0.45)
+		me.palm("right", Vector3(0.7, 0.72, 0.0), 0.45, 0.0, true, Vector3(0.25, 0.1, 0.96))
 		me.reach(null, hand, 0.45)
 		await Cine.wait(w, 0.5)
 		if spoon != null:
-			spoon.reparent(hand)
-			spoon.position = Vector3(0, -0.02, 0.04)
-			spoon.rotation = Vector3(0.3, 0, 0)
-		var fwd := me.facing()
+			me.attach(spoon, "palm", "right", 0.012, PI)
+		# the mouth: a little up from the head bone's root and a hand ahead of
+		# it; the palm a spoon's length in front of that, off to the right
+		var mouth := Vector3(-0.05, me._top + 0.01, 0.2)
 		for k in 3:
-			# (the mouth: forward and a little up from the head bone's root)
-			var mouth := _hand_can(me, "right", me.bone_pos("Head") + fwd * 0.12 + Vector3(0, 0.03, 0))
 			var up := w.create_tween()
-			up.tween_property(hand, "global_position", mouth, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			up.tween_property(hand, "position", mouth, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await up.finished
 			await Cine.wait(w, 0.3)
 			var down := w.create_tween()
-			down.tween_property(hand, "global_position", _hand_can(me, "right", over), 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			down.tween_property(hand, "position", over, 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 			await down.finished
 			await Cine.wait(w, 0.15)
 		var oats: Node3D = bowl.get_node_or_null("Oats")
 		if oats != null:
 			oats.visible = false
 		if spoon != null:
-			spoon.reparent(bowl)
+			me.detach(spoon)
 			spoon.position = Vector3(0.05, 0.065, 0.02)
 			spoon.rotation = Vector3(0, 0.4, 0.15)
 		me.let_go(0.4)
+		me.palm("right", Vector3.ZERO, 0.4)
+		me.elbow("right", Vector3.INF, 0.4)
 		await Cine.wait(w, 0.4)
 		hand.queue_free()
 	else:

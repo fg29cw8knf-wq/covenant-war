@@ -784,6 +784,159 @@ func _read_card(hold: float, id: String, mine: bool) -> float:
 	return _read(hold, String(DuelCards.CARDS[id].name) + " " + DuelCards.card_text(id))
 
 
+# ------------------------------------------------ the pace, and the show ---
+# Gary (4 November): "Battle needs to go a little faster and can we make it
+# more cinematic and dramatic." The pure waits of a turn, trimmed (in the
+# duel's own seconds, which pause() divides by the battle speed; the words'
+# reading times, DuelReading, are untouched: nothing is on screen for less
+# than it was), and the cinematic touches: the camera's attack shots, the
+# freeze on a big blow, the knockout's slow motion and close-up, the hero
+# shot of a big call, the black bars of a Summon and the finishing blow, the
+# glow and colour spikes, the far blur. DuelRules.cinematic turns the
+# touches off (for a phone that struggles); the trims stay.
+
+const BANNER_IN := 0.14          # a banner's words sliding in (its in and out were each 16% of its whole time, about 0.3 s)
+const BANNER_OUT := 0.14         # ...and slipping away
+const BANNER_TAIL := 0.06        # the duel moves on this long after a banner's words begin to leave (it waited 0.45 past its hold)
+const AI_PREVIEW := 0.2          # the rival's card or target shown before its play (was 0.35)
+const CALL_WAIT_MIN := 0.4       # a called Totem's arrival is watched at least this long... (was 0.5)
+const CALL_WAIT_MAX := 0.6       # ...and at most this, its spawn clip playing on under the duel (was uncapped: Cinderpup's is 2 s)
+const HIT_PAUSE := 0.25          # the beat after a blow lands on a Totem (was 0.08 + 0.36)
+const LIFE_HIT_PAUSE := 0.3      # the beat after a blow lands on Life (was 0.5)
+const ROLLOFF_PAUSE := 0.6       # the roll-off dice held after they land (was 1.1)
+const DRAW_PAUSE := 0.15         # the card drawn flying into the hand (was 0.3)
+const WINDUP_PAUSE := 0.15       # an attacker gathering itself before the blow (was 0.26)
+const KO_TAIL := 0.08            # after the crystal has burst, before the slot is cleared (was 0.12)
+const CAM_HOME_AFTER := 0.4      # the camera goes home this long after the last blow of an attack lands (it went home after every blow)
+const CAM_HOME_FALLBACK := 3.5   # ...and anyway this long after an attack that never lands (cancelled, answered away)
+# the cinematic touches (DuelRules.cinematic)
+const SHOT_IN := 0.3             # the push in behind an attacker (3D field, not in a film)
+const SHOT_WHIP := 0.26          # the whip to where the blow lands, about a blow's flight...
+const SHOT_WHIP_MELEE := 0.14    # ...or a lunge's
+const SHOT_OUT := 0.6            # the camera's way home after a shot
+const HIT_STOP_SCALE := 0.08     # time all but stops on a big blow (Engine.time_scale)...
+const HIT_STOP_MS := 85          # ...for this long, real time...
+const HIT_STOP_RAMP_MS := 130    # ...then runs back up to speed over this
+const HIT_STOP_DAMAGE := 50      # a blow this big stops time (so does one on a weakness, or a natural 20)
+const KO_SLOW := 0.4             # the knockout's burst in slow motion (Engine.time_scale)...
+const KO_SLOW_MS := 400          # ...for this long, real time...
+const KO_SLOW_RAMP_MS := 250     # ...then back up to speed over this
+const HERO_TIER := 3             # a called Totem of this tier and up gets the low hero shot (so does every Ascension)
+const LETTERBOX := 0.08          # the black bars of a Summon and the finishing blow: each this share of the screen's height
+const LETTERBOX_SECS := 0.3      # eased in and out over this (real time)
+
+var _time_gen := 0        # bumped whenever the clock must be left alone from now on (the duel over, the screen leaving)
+var _time_busy := false   # a hit-stop or a slow motion is running
+var _letterbox: Letterbox = null
+
+
+## A duel filmed, not played (the Night of the White Sky): its camera is
+## directed by the film, and the attack shots keep off it.
+func _filmed() -> bool:
+	return bool(spec.get("film", false))
+
+
+## Whether the camera may take the cinematic shots: the touches on, a 3D
+## field, and not a film.
+func _cine() -> bool:
+	return DuelRules.cinematic and field != null and not _filmed()
+
+
+## Whether time may be slowed now: the touches on, a speed a person watches
+## at (never the tests' autoplay, nor above Fastest), and nothing already
+## slowing it (the finishing blow, another freeze).
+func _may_slow() -> bool:
+	return DuelRules.cinematic and speed <= 4.0 and not _time_busy and not _finished_slow \
+		and mode != "over" and Engine.time_scale > 0.99 and is_inside_tree() and not _filmed()
+
+
+## Waits `ms` of real time (frames keep coming however slow the clock is).
+func _real_wait(ms: int) -> void:
+	var t0 := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - t0 < ms:
+		if not is_inside_tree():
+			return
+		await get_tree().process_frame
+
+
+## Runs the clock from `from` back up to full speed over `ms` of real time:
+## the finishing blow's way back, shared by the hit-stop and the knockout.
+## Leaves the clock alone if the duel has ended or been left meanwhile
+## (fx_game_over and _exit_tree set it straight themselves).
+func _time_ramp(from: float, ms: int) -> void:
+	var gen := _time_gen
+	var t0 := Time.get_ticks_msec()
+	while true:
+		if gen != _time_gen or not is_inside_tree():
+			return
+		var k := clampf((Time.get_ticks_msec() - t0) / float(maxi(1, ms)), 0.0, 1.0)
+		Engine.time_scale = lerpf(from, 1.0, k * k)
+		if k >= 1.0:
+			break
+		await get_tree().process_frame
+	Engine.time_scale = 1.0
+
+
+## Time slowed to `scale` for `hold_ms` of real time, then run back up over
+## `ramp_ms`, the colour draining meanwhile: the freeze on a big blow (a
+## blink) and the knockout's slow motion.
+func _slow_time(scale: float, hold_ms: int, ramp_ms: int) -> void:
+	if not _may_slow():
+		return
+	_time_busy = true
+	var gen := _time_gen
+	if field != null:
+		field.slow_grade(true, 0.08 if hold_ms < 200 else 0.2)
+	Engine.time_scale = scale
+	await _real_wait(hold_ms)
+	if gen == _time_gen and is_inside_tree():
+		await _time_ramp(scale, ramp_ms)
+	if field != null and is_inside_tree():
+		field.slow_grade(false, 0.3)
+	_time_busy = false
+
+
+## The black bars at the top and bottom of the screen, eased in (`on`) or
+## out: a Summon's, and the finishing blow's.
+func _bars(on: bool) -> void:
+	if overlay == null or not DuelRules.cinematic or _filmed():
+		return
+	if _letterbox == null:
+		if not on:
+			return
+		_letterbox = Letterbox.new()
+		_letterbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		overlay.add_child(_letterbox)
+	overlay.move_child(_letterbox, overlay.get_child_count() - 1)   # (over whatever else is up)
+	_letterbox.show_bars(on)
+
+
+## The camera back home `delay` seconds after now, unless another move has
+## taken it somewhere since (the next blow of a multi-hit attack, a Rite's
+## picture, the next turn): so it stops bouncing home after every hit.
+func _cam_home_soon(delay: float, dur: float = SHOT_OUT) -> void:
+	if field == null:
+		return
+	var moves: int = field.cam_moves
+	await pause(delay)
+	if field != null and is_inside_tree() and field.cam_moves == moves:
+		field.cam_home(dur / speed)
+
+
+## The low hero shot of a Totem arriving (a call of tier HERO_TIER and up,
+## an Ascension): a cut to the floor in front of it, looking up, then a
+## rise to its eye line over `secs` with the lens punched; the caller sends
+## the camera home after. 3D field, cinematic on, not in a film.
+func _hero_shot(side: int, slot: int, secs: float, out_k: float = 1.0) -> void:
+	if not _cine():
+		return
+	var start: Array = field.shot_hero(side, slot, 0.0, out_k)
+	var top: Array = field.shot_hero(side, slot, 1.0, out_k)
+	field.cam_shot(start[0], start[1], 0.0, DuelField3D.SHOT_FOV_HERO, true)
+	field.cam_shot(top[0], top[1], secs / speed, DuelField3D.SHOT_FOV_HERO - 4.0)
+	field.cam_punch(0.05)
+
+
 # ================================================================ refresh ===
 
 func _refresh() -> void:
@@ -1998,6 +2151,10 @@ func begin_respond(event: Dictionary, cards: Array) -> void:
 	_hide_detail()
 	if tutor != null:
 		await tutor.lesson("answer", "They've made their move, and it hasn't landed yet. That's your moment: an answer from your hand, a card played in the gap between the saying and the doing, or let it be. Six breaths, then it lands. Only some cards can be played as an answer; the ones that can say so.", "Answers", "")
+	if field != null and _strike.get("shot", false):
+		# (4 November) the camera comes off the attacker's shoulder while the
+		# player chooses, so the whole board is there to read
+		field.cam_focus(_strike.get("aim3", Vector3.ZERO), 0.3, 0.5 / speed)
 	var strip := RespondStrip.new()
 	strip.screen = self
 	strip.setup(event, cards, affordable)
@@ -2102,15 +2259,15 @@ func preview_ai_action(pi: int, a: Dictionary) -> void:
 				views[tg.owner][tg.slot].highlight = "target"
 			elif tg is String and tg == DuelGame.LIFE:
 				panels[1 - pi].targetable = true
-			await pause(0.35)
+			await pause(AI_PREVIEW)
 			panels[1 - pi].targetable = false
 		"call", "rite", "summon", "ascend", "answer", "relic":
 			if bool(a.get("veiled", false)):
-				await pause(0.35)   # (a veiled call shows nothing)
+				await pause(AI_PREVIEW)   # (a veiled call shows nothing)
 				return
 			var c: DuelCard = a.card
 			_show_detail(c.id, {"cost": c.cost()})
-			await pause(0.35)
+			await pause(AI_PREVIEW)
 
 
 # ================================================================ effects ===
@@ -2237,7 +2394,7 @@ func fx_rolloff(r0: int, r1: int) -> void:
 		var c := rv.position + rv.die_center(i)
 		DuelFX.flash(fx_layer, c, Color(0.7, 0.6, 1.0), 200.0, 0.5 / speed)
 		DuelFX.burst(fx_layer, c, Color(0.7, 0.6, 1.0), 14, 420.0, 12.0, 0.6, Vector2.ZERO, 180.0, Vector2.UP, speed)
-	await pause(1.1)
+	await pause(ROLLOFF_PAUSE)   # (the banner that follows says who goes first, and is read)
 	_rolloff = null
 	var tw := rv.create_tween()
 	tw.tween_property(rv, "modulate:a", 0.0, 0.2 / speed)
@@ -2301,7 +2458,9 @@ func fx_turn(pi: int) -> void:
 	_refresh()
 	sfx.play("turn_mine" if pi == me else "turn_rival")
 	var t := "YOUR TURN" if pi == me and not _watching() else ("%s turn" % _whose(game.players[pi].player_name)).to_upper()
-	# (its TURN 5 is in the corner too: only YOUR TURN is counted for reading)
+	# (its TURN 5 is in the corner too: only YOUR TURN is counted for reading;
+	# 4 November: a short sweep, the words up for their reading time and no
+	# longer, the duel moving on as they slip away)
 	await _banner(t, UITheme.MINE if pi == me else UITheme.THEIRS, 0.6, 96, "", "TURN %d" % game.turn, false, false)
 	if pi == me:
 		sfx.play("essence_gain")
@@ -3009,7 +3168,7 @@ func fx_draw(pi: int, cards: Array) -> void:
 				hv.position = Vector2(1560 + _edge, 1100)
 				hv.rotation = 0.6
 		_layout_hand()
-		await pause(0.3)
+		await pause(DRAW_PAUSE)
 
 
 func fx_call(t: DuelTotem) -> void:
@@ -3030,10 +3189,16 @@ func fx_call(t: DuelTotem) -> void:
 	sfx.play("card_fly")
 	_layout_hand()
 	var from := Vector2(FIELD_CX, HAND_Y + 80) if t.owner == me else Vector2(FIELD_CX, 30)
+	# (4 November) a big call gets the low hero shot: the camera cuts to the
+	# floor in front of the Totem as its card lands, and rises up it as it
+	# stands, the lens punched
+	var hero := _cine() and not hidden and t.tier() >= HERO_TIER
 	if field != null:
 		field.cam_focus(_foot3(t), 0.3, 0.4 / speed)
 	await _fly_card("" if hidden else t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
 	sfx.play("call_totem")
+	if hero:
+		_hero_shot(t.owner, t.slot, CALL_WAIT_MAX)
 	if field != null:
 		field.pillar(_foot3(t), col, 5.5, 1.8, 0.9 / speed)
 		field.floor_wave(_foot3(t), col, 3.6, 0.6 / speed)
@@ -3056,7 +3221,8 @@ func fx_call(t: DuelTotem) -> void:
 	if t.tier() >= 3 and not hidden:
 		shake(9.0)
 	var clip_len := _clip(t, "summon", speed)
-	await pause(maxf(0.5, clip_len * 0.8))
+	# (4 November: at most CALL_WAIT_MAX; a long spawn clip plays on under the duel)
+	await pause(clampf(clip_len * 0.8, CALL_WAIT_MIN, CALL_WAIT_MAX))
 	if field != null:
 		field.cam_home(0.5 / speed)
 	if tutor != null and t.owner == rival and not hidden:
@@ -3076,8 +3242,11 @@ func fx_ascend(t: DuelTotem) -> void:
 	var c := _center(v)
 	sfx.play("ascend")
 	_layout_hand()
-	if field != null:
+	if _cine():
+		_hero_shot(t.owner, t.slot, 0.95, 1.7)   # (4 November: the low shot rising up it as it grows, back from its pillar)
+	elif field != null:
 		field.cam_focus(_foot3(t), 0.45, 0.5 / speed)
+	if field != null:
 		field.pillar(_foot3(t), UITheme.GOLD, 8.0, 2.4, 1.2 / speed)
 		field.rise(_foot3(t), UITheme.GOLD, 70, 1.4, 1.6)
 	else:
@@ -3094,8 +3263,11 @@ func fx_ascend(t: DuelTotem) -> void:
 		DuelFX.burst(fx_layer, c, UITheme.GOLD, 50, 700.0, 18.0, 0.9, Vector2(0, 200), 180.0, Vector2.UP, speed)
 	shake(10.0)
 	punch(c, 0.04)
+	if field != null:
+		field.impact_glow(1.0)
 	v.flash = 1.0
 	v.flash_color = UITheme.GOLD
+	c = _center(v)   # (where it is now, under the hero shot)
 	DuelFX.number(fx_layer, c + Vector2(0, -150 * v.depth), "ASCENDED!", UITheme.GOLD, 64, _read(1.3, "ASCENDED!") / speed)
 	_clip(t, "summon", speed)
 	v.pop = 1.25
@@ -3329,6 +3501,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		"all": t.move_target(i) == "all_foes"}
 	sfx.play("attack_charge")
 	_strike["clip_len"] = _clip(t, "attack", speed)
+	var hostile: bool = (target is DuelTotem and target.owner != t.owner) or (target is String and target == DuelGame.LIFE) or bool(_strike.all)
 	if field != null:
 		var aim: Vector3 = _body3(target) if target is DuelTotem else (field.life_world(1 - t.owner) if (target is String and target == DuelGame.LIFE) else _body3(t))
 		_strike["aim3"] = aim
@@ -3336,14 +3509,25 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 			field.face_at(t.owner, t.slot, aim, 1.8 / speed)
 			if target is DuelTotem and target.owner != t.owner:
 				field.face_at(target.owner, target.slot, _body3(t), 1.8 / speed)
-		field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
+		if _cine() and hostile:
+			# (4 November) the camera pushes in low behind the attacker, looking
+			# across at what it's about to hit; _deliver whips it to the blow
+			var sh: Array = field.shot_behind(_body3(t), aim, t.owner)
+			field.cam_shot(sh[0], sh[1], SHOT_IN / speed, DuelField3D.SHOT_FOV_BEHIND)
+			_strike["shot"] = true
+			_cam_home_soon(CAM_HOME_FALLBACK)   # (an attack answered away never lands: home anyway)
+		else:
+			field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
 		field.flash_light(_body3(t), col, 4.0, 0.5 / speed, 5.0)
 	# the move's name over the rival's Totem; beside your own (29 October:
 	# above it, it sat in the blow's path across the Circle and hid it)
-	var label_at := src + Vector2(0, -150 * v.depth)
+	var label_off := Vector2(0, -150 * v.depth)
 	if t.owner == me and field != null:
-		label_at = src + Vector2(330.0 if t.slot == 2 else -330.0, -20.0)
-	_move_label(label_at, String(mv.name), col)
+		label_off = Vector2(330.0 if t.slot == 2 else -330.0, -20.0)
+	var label := _move_label(src + label_off, String(mv.name), col)
+	if field != null:
+		# (4 November: it keeps to its Totem as the camera moves)
+		label.follow = func() -> Vector2: return field.body_stage(t.owner, t.slot) + label_off
 	# gather power: a glow, sparks drawn in, and a step back
 	v.flash = 0.7
 	v.flash_color = col
@@ -3354,7 +3538,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 	if not _strike.melee:
 		tw.tween_property(v, "offset", Vector2.ZERO, 0.16 / speed).set_ease(Tween.EASE_IN_OUT)
-	await pause(0.26)
+	await pause(WINDUP_PAUSE)
 	if bool(_strike.get("all", false)):
 		pass   # (a blow on every Totem across: it's delivered to each as it lands, fx_totem_hit)
 	elif (target is String and target == DuelGame.NONE) or (target is DuelTotem and target.owner == t.owner):
@@ -3392,6 +3576,13 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 	var from := _center(v) - v.offset
 	var col := DuelFX.light(att.element())
 	if field != null:
+		if _strike.get("shot", false) and _cine():
+			# (4 November) the camera whips from behind the attacker to where
+			# the blow lands, arriving with it
+			var land: Vector3 = _strike.get("to3", _body3(att))
+			var on_life: bool = _strike.get("target") is String and _strike.get("target") == DuelGame.LIFE
+			var sh: Array = field.shot_close(land, _body3(att), att.owner, on_life)
+			field.cam_shot(sh[0], sh[1], (SHOT_WHIP_MELEE if _strike.get("melee", false) else SHOT_WHIP) / speed, DuelField3D.SHOT_FOV_CLOSE)
 		await _deliver3(att, to)
 		return
 	if _strike.get("melee", false):
@@ -3506,6 +3697,8 @@ func fx_roll(_pi: int, info: Dictionary) -> void:
 	dv.face = int(info.roll)
 	dv.spin = 0.0
 	dv.landed = true
+	if not _strike.is_empty():
+		_strike["roll"] = int(info.roll)   # (a natural 20 stops time when its blow lands, fx_totem_hit)
 	if int(info.roll) == 20:
 		sfx.play("dice_crit")
 	elif int(info.roll) == 1:
@@ -3567,6 +3760,7 @@ func _whiff(att: DuelTotem) -> void:
 	DuelFX.number(fx_layer, to2 + Vector2(0, -50), "MISS", Color(0.85, 0.87, 0.95), 56, _read(1.0, "MISS") / speed)
 	_strike["hit"] = {"_missed": true}
 	await pause(0.3)
+	_cam_home_soon(CAM_HOME_AFTER)
 
 
 func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
@@ -3580,12 +3774,14 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	# (29 October) the blow's own look where it lands: the attack's, a Rite's
 	# element, or a Burn's or a Poison's
 	var st := {}
-	if att != null and src == "" and not _strike.is_empty() and _strike.get("attacker") == att:
+	var struck: bool = att != null and src == "" and not _strike.is_empty() and _strike.get("attacker") == att   # (this attack's blow, not a Rite's or a Burn's)
+	if struck:
 		st = _strike.get("style", {})
 		_strike["k"] = 0.85 if amount <= 20 else (1.2 if amount >= 50 else 1.0)
 		_strike["to3"] = _impact3
 		(_strike["hit"] as Dictionary)[t] = true
 		await _deliver(att, c)
+		c = _center(v)   # (where it is now: the camera may have whipped to it)
 	elif src == "thorns" or src == "recoil":
 		DuelFX.burst(fx_layer, c, Color("9be15d") if src == "thorns" else Color(1, 0.6, 0.4), 14, 300.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)
 	elif String(info.get("element", "")) != "":
@@ -3602,10 +3798,13 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	_last_hit_pos = c
 	if amount <= 0:
 		await pause(0.2)
+		if struck:
+			_cam_home_soon(CAM_HOME_AFTER)
 		if tutor != null and absorbed > 0 and t.owner == me:
 			await tutor.event("absorbed")
 		return
-	sfx.play("hit_weak" if att != null and t.weak_to(att.element()) else ("hit_heavy" if amount >= 40 else "hit_light"))
+	var weak: bool = att != null and t.weak_to(att.element())
+	sfx.play("hit_weak" if weak else ("hit_heavy" if amount >= 40 else "hit_light"))
 	_clip(t, "hit", speed)
 	var col := Color(1.0, 0.45, 0.35)
 	if att != null:
@@ -3617,9 +3816,18 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	_impact(c, col, amount, st)
 	if amount >= 40:
 		punch(c, 0.025 + minf(float(amount), 120.0) * 0.0002)
+	# (4 November) a big blow: the glow flares, and time stops for a blink
+	# once the impact has begun (a frame or two in, so the sparks are out)
+	var crit: bool = struck and int(_strike.get("roll", 0)) == 20
+	var big: bool = amount >= HIT_STOP_DAMAGE or weak or crit
+	if field != null:
+		field.impact_glow(1.0 if big else 0.5)
+	if big and _may_slow():
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await _slow_time(HIT_STOP_SCALE, HIT_STOP_MS, HIT_STOP_RAMP_MS)
 	v.flash = 1.0
 	v.flash_color = Color(1, 0.3, 0.25)
-	var weak: bool = att != null and t.weak_to(att.element())
 	if weak and att != null and att.owner == me and t.owner != me:
 		_coach("weakness")
 		story_bark("weakness_on_rival")
@@ -3640,10 +3848,10 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		tw.tween_property(v, "offset", push * 0.5 + Vector2(randf_range(-10, 10), randf_range(-4, 4)), 0.04 / speed)
 	tw.tween_property(v, "offset", Vector2.ZERO, 0.12 / speed)
 	create_tween().tween_property(v, "flash", 0.0, 0.45 / speed)
-	await pause(0.08)
-	await pause(0.36)
+	await pause(HIT_PAUSE)
 	if field != null and att != null:
-		field.cam_home(0.7 / speed)
+		# (4 November: home after the attack, not after each of its blows)
+		_cam_home_soon(CAM_HOME_AFTER)
 	if tutor != null:
 		if weak and att != null and att.owner == me and t.owner != me:
 			await tutor.event("weakness")
@@ -3684,6 +3892,7 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 			field.burst(land3, Color(1, 0.35, 0.4), 40, 7.0, 0.7, 0.13, 0.0)
 			field.flash_light(land3, Color(1, 0.3, 0.4), 9.0, 0.5 / speed)
 		field.floor_wave(land3 * Vector3(1, 0, 1), Color(1, 0.35, 0.4), 4.0, 0.5 / speed)
+		field.impact_glow(1.0 if amount >= HIT_STOP_DAMAGE else 0.6)
 	sfx.play("life_hit")
 	p.flash = 1.0
 	p.shake = 10.0
@@ -3692,12 +3901,22 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	DuelFX.burst(fx_layer, to, col, 26, 520.0, 14.0, 0.6, Vector2(0, 300), 180.0, Vector2.UP, speed)
 	shake(8.0 + minf(float(amount), 100.0) * 0.1)
 	punch(Vector2(FIELD_CX, 476), 0.02)
+	# (4 November) a big blow on Life stops time for a blink (not the
+	# finishing one, which has its own slow motion)
+	var crit: bool = att != null and _strike.get("attacker") == att and int(_strike.get("roll", 0)) == 20
+	if not finishing and (amount >= HIT_STOP_DAMAGE or crit) and _may_slow():
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await _slow_time(HIT_STOP_SCALE, HIT_STOP_MS, HIT_STOP_RAMP_MS)
 	# (2 November, Gary: "it doesn't explain why each player is getting hurt
 	# ... 10 every turn": a draw from an empty deck is tagged on the number,
 	# and the first one brings Bram's words on it)
 	var fatigue: bool = String(info.get("source", "")) == "fatigue"
 	var tag := "SPILL-OVER" if info.get("spill", false) else ("EMPTY DECK" if fatigue else "")
-	DuelFX.number(fx_layer, _life_number_pos(pi), "-%d" % amount, Color("ff4d6a"), 88 if tag == "" else 70,
+	var num_at := _life_number_pos(pi)
+	if pi == rival and _letterbox != null and _letterbox.amount > 0.3:
+		num_at.y += 70.0   # (under the top bar of the finishing blow)
+	DuelFX.number(fx_layer, num_at, "-%d" % amount, Color("ff4d6a"), 88 if tag == "" else 70,
 		_read(1.2, tag) / speed, tag)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(p, "flash", 0.0, 0.5 / speed)
@@ -3708,11 +3927,14 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 		if att != null and att.owner == me and amount >= 60:
 			story_bark("my_big_hit")
 		_rival_life_barks()
-	await pause(0.5 if not finishing else 0.4)
+	await pause(LIFE_HIT_PAUSE if not finishing else 0.4)
 	if finishing:
 		await _finishing_end(to)
 	if field != null:
-		field.cam_home(0.7 / speed)
+		if finishing:
+			field.cam_home(0.7 / speed)
+		else:
+			_cam_home_soon(CAM_HOME_AFTER)   # (4 November: home after the attack, not after each blow)
 	if fatigue and tutor != null and not finishing:
 		await tutor.lesson("fatigue", _fatigue_lesson(pi, amount), "Running dry", "life")
 	if pi == me:
@@ -3761,6 +3983,9 @@ func _finishing_start(pi: int, land3: Vector3) -> void:
 	tw.tween_property(_slow_shade, "color:a", 0.75, 0.25)
 	if field != null:
 		field.cam_focus(land3, 1.0, 0.45)
+		if DuelRules.cinematic and not _filmed():
+			field.slow_grade(true, 0.4)   # (4 November: the colour drains with the clock)
+	_bars(true)   # (4 November: the black bars of a film for the last blow)
 	Engine.time_scale = FINISH_SLOW
 	sfx.play("ascend")
 
@@ -3768,15 +3993,12 @@ func _finishing_start(pi: int, land3: Vector3) -> void:
 func _finishing_end(at: Vector2) -> void:
 	DuelFX.flash(fx_layer, at, Color(1, 0.95, 0.85), 420.0, 0.5)
 	await pause(0.25)
-	# back up to speed over a moment of real time
-	var t0 := Time.get_ticks_msec()
-	while true:
-		var k := clampf((Time.get_ticks_msec() - t0) / 450.0, 0.0, 1.0)
-		Engine.time_scale = lerpf(FINISH_SLOW, 1.0, k * k)
-		if k >= 1.0:
-			break
-		await get_tree().process_frame
-	Engine.time_scale = 1.0
+	# back up to speed over a moment of real time (4 November: _time_ramp,
+	# shared with the hit-stop and the knockout's slow motion)
+	await _time_ramp(FINISH_SLOW, 450)
+	if field != null and is_inside_tree():
+		field.slow_grade(false, 0.5)
+	_bars(false)
 	if _slow_shade != null and is_instance_valid(_slow_shade):
 		var tw := _slow_shade.create_tween()
 		tw.tween_property(_slow_shade, "color:a", 0.0, 0.4)
@@ -3800,6 +4022,7 @@ void fragment() {
 
 
 func _exit_tree() -> void:
+	_time_gen += 1            # (a freeze or slow motion still running leaves the clock alone from here)
 	Engine.time_scale = 1.0   # (never left slow, whatever ended the duel)
 
 
@@ -3983,19 +4206,30 @@ func fx_ko(t: DuelTotem) -> void:
 	var burst := func() -> void:
 		sfx.play("ko")
 		shake(12.0)
-		punch(c, 0.045)
-		DuelFX.number(fx_layer, c + Vector2(0, -70), "KNOCKED OUT", Color("ff4d6a"), 54, _read(1.2, "KNOCKED OUT") / speed)
+		var at := _center(v)   # (where it is now, under the close-up)
+		punch(at, 0.045)
+		if field != null:
+			field.impact_glow(1.2)
+		# (4 November) the burst in slow motion, the colour draining for it
+		_slow_time(KO_SLOW, KO_SLOW_MS, KO_SLOW_RAMP_MS)
+		# (higher under the close-up, clear of the toasts in the middle)
+		DuelFX.number(fx_layer, at + Vector2(0, -150 if _cine() else -70), "KNOCKED OUT", Color("ff4d6a"), 54, _read(1.2, "KNOCKED OUT") / speed)
 		# its plate goes as it bursts
 		var tw := create_tween()
 		tw.tween_property(v, "fade", 0.0, 0.45 / speed).set_ease(Tween.EASE_IN)
 	if field != null:
-		field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
+		if _cine():
+			# (4 November) a close-up for the crystal and the burst
+			var sh: Array = field.shot_ko(t.owner, t.slot)
+			field.cam_shot(sh[0], sh[1], 0.45 / speed, DuelField3D.SHOT_FOV_KO)
+		else:
+			field.cam_focus(_foot3(t), 0.4, 0.3 / speed)
 		await field.crystal_death(t.owner, t.slot, t.element(), speed, func(stage: String) -> void:
 			if stage == "crack":
 				sfx.play("shield_block", 1.6)
 			elif stage == "burst":
 				burst.call())
-		await pause(0.12)
+		await pause(KO_TAIL)
 	else:
 		# the flat field: the cut-out goes to pale glass, cracks, and bursts
 		v.flash_color = glass
@@ -4070,6 +4304,7 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		story_bark("my_summons")
 	if not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
+	_bars(true)   # (4 November: the black bars of a film, until the Demigod has landed)
 	if SummonVideo.pick(card.id) != "":
 		# Gary's clip for it (the long one the first time, then the short)
 		await SummonVideo.play(overlay, card.id)
@@ -4097,6 +4332,8 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 			field.flash_light(Vector3(0, 2, -0.8), col, 16.0, 1.0 / speed, 14.0)
 		shake(14.0)
 		punch(Vector2(FIELD_CX, 476), 0.05)
+		if field != null:
+			field.impact_glow(1.3)
 	if field != null and DuelField3D.has_summon_model(card.id):
 		# the Demigod itself comes down onto the field
 		var hint_was := hint.visible
@@ -4105,6 +4342,7 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		hint.visible = hint_was
 	else:
 		landing.call()
+	_bars(false)
 	if tutor != null and pi == rival:
 		await tutor.lesson("summon", "That was a Summon. One great blow, then it's gone, and it cost a fortune in Essence. Nobody can do that often.", "Summons")
 
@@ -4238,7 +4476,12 @@ func fx_message(text: String) -> void:
 
 
 func fx_game_over(winner: int, _reason: String) -> void:
+	_time_gen += 1   # (4 November: a freeze or slow motion still running stops touching the clock)
+	_time_busy = false
 	Engine.time_scale = 1.0
+	if field != null and DuelRules.cinematic:
+		field.slow_grade(false, 0.3)
+	_bars(false)
 	close_zoom()
 	if tutor != null:
 		tutor.finish()
@@ -4265,12 +4508,17 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: Stri
 	fx_layer.add_child(b)
 	if not wait or _watching():
 		hold = _read(hold, text + (" " + sub if read_sub else ""))   # (29 October: long enough to read)
-	var total := (hold + 0.55) / speed
+	# (4 November: the words come in and go in a fixed moment each, and are
+	# fully up for the whole hold; before, in and out were each 16% of the
+	# whole and the duel waited 0.45 s past the hold. The hold itself is as it was.)
+	var total := (hold + BANNER_IN + BANNER_OUT) / speed
+	b.in_frac = BANNER_IN / maxf(0.01, hold + BANNER_IN + BANNER_OUT)
+	b.out_frac = BANNER_OUT / maxf(0.01, hold + BANNER_IN + BANNER_OUT)
 	if not wait or _watching():   # (nobody to tap when the computer plays both sides)
 		var tw := b.create_tween()
 		tw.tween_property(b, "t", 1.0, total)
 		tw.tween_callback(b.queue_free)
-		await pause(hold + 0.45)
+		await pause(hold + BANNER_IN + BANNER_TAIL)
 		return
 	# in, then held at full until it's tapped; the band takes every tap, and
 	# the interact key comes through _unhandled_input (tap_banner)
@@ -4285,20 +4533,21 @@ func _banner(text: String, col: Color, hold: float, size_px: int = 72, god: Stri
 	add_child(catcher)
 	var tin := b.create_tween()
 	tin.tween_property(b, "t", 0.5, total * 0.5)
-	await pause(hold * 0.5 + 0.2)   # (the words are in and still before a tap counts)
+	await pause(hold * 0.5 + BANNER_IN)   # (the words are in and still before a tap counts)
 	banner_waiting = true
 	await _banner_tapped
 	banner_waiting = false
 	catcher.queue_free()
 	sfx.play("ui_tap")
 	if is_instance_valid(b):
+		# (4 November: tapped, it goes at once, not after another half of its time)
 		var tout := b.create_tween()
-		tout.tween_property(b, "t", 1.0, total * 0.5)
+		tout.tween_property(b, "t", 1.0, BANNER_OUT * 1.5 / speed)
 		tout.tween_callback(b.queue_free)
-	await pause(0.25)
+	await pause(BANNER_OUT)
 
 
-func _move_label(pos: Vector2, text: String, col: Color) -> void:
+func _move_label(pos: Vector2, text: String, col: Color) -> MoveLabel:
 	var m := MoveLabel.new()
 	m.text = text
 	m.col = col
@@ -4307,6 +4556,7 @@ func _move_label(pos: Vector2, text: String, col: Color) -> void:
 	var tw := m.create_tween()
 	tw.tween_property(m, "t", 1.0, _read(1.0, text) / speed)
 	tw.tween_callback(m.queue_free)
+	return m
 
 
 var _toast_rows := [0, 0, 0, 0]   # when each row's line is gone (ms)
@@ -4975,6 +5225,8 @@ class Banner:
 	var god := ""
 	var edge := 0.0
 	var _pulse := 0.0
+	var in_frac := 0.16    # the share of its whole time the words take coming in (set by _banner from BANNER_IN)...
+	var out_frac := 0.16   # ...and going
 	var t := 0.0:
 		set(v):
 			t = v
@@ -4989,8 +5241,8 @@ class Banner:
 			queue_redraw()
 
 	func _draw() -> void:
-		var tin := clampf(t / 0.16, 0.0, 1.0)
-		var tout := clampf((t - 0.84) / 0.16, 0.0, 1.0)
+		var tin := clampf(t / maxf(0.01, in_frac), 0.0, 1.0)
+		var tout := clampf((t - (1.0 - out_frac)) / maxf(0.01, out_frac), 0.0, 1.0)
 		var e_in := 1.0 - pow(1.0 - tin, 3.0)
 		var h := ((200.0 if sub != "" else 180.0) + (60.0 if footer != "" else 0.0)) * e_in * (1.0 - tout)
 		if h < 1.0:
@@ -5015,7 +5267,7 @@ class Banner:
 		DuelFX.draw_glow(self, Vector2(sx, 0), Vector2(300, h * 0.45), Color(1, 1, 1, 0.3 * (1.0 - tout)))
 		# the words slide in, settle, then slip away
 		var slide := (1.0 - e_in) * 240.0 - tout * 180.0
-		var a := clampf(t / 0.1, 0.0, 1.0) * (1.0 - tout)
+		var a := clampf(t / maxf(0.01, in_frac * 0.6), 0.0, 1.0) * (1.0 - tout)
 		var fnt := CardFace.font("display_bold")
 		var fs := CardFace.fit_size(fnt, text, size_px, 1400)
 		var k := 1.0 + 0.22 * (1.0 - e_in)
@@ -5042,10 +5294,17 @@ class MoveLabel:
 	extends Node2D
 	var text := ""
 	var col := Color.WHITE
+	var follow: Callable   # (4 November) where it should sit now, as the camera moves its Totem
 	var t := 0.0:
 		set(v):
 			t = v
 			queue_redraw()
+
+	func _process(_delta: float) -> void:
+		if follow.is_valid():
+			var p = follow.call()
+			if p is Vector2 and (p as Vector2).is_finite():
+				position = p
 
 	func _draw() -> void:
 		var fnt := CardFace.font("display_bold")
@@ -5080,6 +5339,35 @@ class FlyCard:
 
 
 ## A wash of colour around the screen's edges (you've been hit).
+## The black bars of a widescreen film, top and bottom (4 November): a
+## Summon's and the finishing blow's. `amount` 0 is none, 1 the full bars;
+## they ease in real time, since they come up as the clock slows.
+class Letterbox:
+	extends Control
+	var amount := 0.0:
+		set(v):
+			amount = v
+			queue_redraw()
+	var _tw: Tween
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		resized.connect(queue_redraw)
+
+	func show_bars(on: bool) -> void:
+		if _tw != null and _tw.is_valid():
+			_tw.kill()
+		_tw = create_tween().set_ignore_time_scale(true)
+		_tw.tween_property(self, "amount", 1.0 if on else 0.0, DuelScreen.LETTERBOX_SECS).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+
+	func _draw() -> void:
+		if amount <= 0.001:
+			return
+		var h := size.y * DuelScreen.LETTERBOX * amount
+		draw_rect(Rect2(0, 0, size.x, h), Color.BLACK)
+		draw_rect(Rect2(0, size.y - h, size.x, h), Color.BLACK)
+
+
 class Vignette:
 	extends Control
 	var col := Color.RED

@@ -1,5 +1,7 @@
 class_name Codex
 extends RefCounted
+## The Totems' stories (why each Shard took its form), shown under the card.
+const LORE := preload("res://scripts/duel/duel_lore.gd")
 ## The card collection: every card the player has found, as a grid (their
 ## own, and cards they've seen played, greyed out until they own one; cards
 ## not found yet aren't shown at all), and a detail view for one card with
@@ -599,9 +601,21 @@ class Detail:
 		var d: Dictionary = DuelCards.CARDS[id]
 		var gold := UITheme.GOLD.to_html(false)
 		var text := Codex.describe(id)
+		var lines := []
+		# --- the Totem's story: why its Shard took this form (4 November,
+		# Gary: in the Deck "give each totem a proper back story"; the duel's
+		# quick card view keeps to the short words)
+		var story: String = LORE.backstory(id)
+		if story != "" and Codex.owned(id) > 0:
+			lines.append("[color=#%s][b]WHY THE SHARD TOOK THIS FORM[/b][/color]" % gold)
+			lines.append(story)
+		elif story != "":
+			lines.append("[color=#%s][b]WHY THE SHARD TOOK THIS FORM[/b][/color]" % gold)
+			lines.append("[color=#%s]Its story is told once it's yours.[/color]" % UITheme.TEXT_DIM.to_html(false))
 		# --- yours?
 		var n := Codex.owned(id)
-		var lines := ["", "[color=#%s][b]YOUR COLLECTION[/b][/color]" % gold]
+		lines.append("")
+		lines.append("[color=#%s][b]YOUR COLLECTION[/b][/color]" % gold)
 		if n > 0:
 			var in_deck := Codex.count_in(deck, id) if deck != null else 0
 			lines.append("You own %d.%s" % [n, ("  %d in your deck." % in_deck) if deck != null else ""])

@@ -208,12 +208,26 @@ static func lane_wanted() -> bool:
 static func _lane_go_again(w: World) -> bool:
 	w._move_target = null
 	Game.set_flag("lane_go", false)
+	# the player stands still for the question (4 November, Gary: going back
+	# to Tam's after the village "you go through the floor": the question
+	# didn't take the controls, so a held key or the pad walked them on past
+	# the gate, where the lane climbs and the village has no ground to stand
+	# on, and the hillside rose over their head)
+	var was_busy := w.busy
+	w.busy = true
+	if w.hud != null:
+		w.hud.set_controls_visible(false)
+	w.player.velocity = Vector3.ZERO
+	w.player_doll.walking = false
 	await w.run_steps([
 		{"say": "[i](The lane runs on down to Tam's mill.)[/i]"},
 		{"choice": ["Go down to the mill.", "Stay in the village."], "then": [[{"set": "lane_go"}], []]},
 	], null)
 	if is_instance_valid(w) and w.hud != null:
 		w.hud.dialogue.close()
+		w.hud.set_controls_visible(true)
+	if is_instance_valid(w):
+		w.busy = was_busy
 	var go := bool(Game.flag("lane_go", false))
 	Game.set_flag("lane_go", false)
 	return go
@@ -347,6 +361,13 @@ static func lane_gate(v: AshfordVillage) -> void:
 		v.box(g, Vector3(0.14, 1.1, 0.14), b + Vector3(0, 0.55, 0), wood)
 		for h in [0.45, 0.85]:
 			v.box(g, Vector3(L, 0.08, 0.06), mid + Vector3(0, h, 0), rail, Vector3(0, yaw, 0))
+	# nobody walks on down the lane on their own feet: past the gate the lane
+	# climbs and the village has no ground to stand on, so a solid wall just
+	# beyond it (and along the fence) stops free walking there; the way to
+	# the mill is to_mill()'s own walk through it (4 November, Gary: "you go
+	# through the floor")
+	var yaw_lane := atan2(LANE_DIR.x, LANE_DIR.z)
+	v.solid_box(at + LANE_DIR * 2.2 + Vector3(0, 1.5, 0), Vector3(14.0, 3.0, 0.4), yaw_lane)
 	v.set_meta("lane_gate", g)
 
 

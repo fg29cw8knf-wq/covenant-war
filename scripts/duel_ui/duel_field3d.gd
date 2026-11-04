@@ -30,9 +30,11 @@ var cam_look := Vector3(0, 0.8, 1.3)
 var cam_fov := 33.0
 var _home_pos := Vector3(0, 9.6, 11.4)
 var _home_look := Vector3(0, 0.8, 1.3)
+var _home_fov := 33.0        # the lens at home (set_home keeps the one a film chose)
 var _shake := 0.0
 var _punch := 0.0
 var _cam_tw: Tween
+var cam_moves := 0           # counts every camera move, so the screen can tell if one came after its own
 var _view_k := 1.0        # how much taller the view is than the stage (fit_to_stage)
 ## The player's zoom on the field (Game.settings.duel_view, from a pinch or the
 ## mouse wheel): the lens times this, under 1 is closer. Kept within limits
@@ -128,6 +130,8 @@ func _build() -> void:
 	world = Node3D.new()
 	vp.add_child(world)
 	var env := Environment.new()
+	_glow_base = GLOW_BASE
+	_sat_base = SAT_BASE
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.03, 0.03, 0.06)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
@@ -136,7 +140,7 @@ func _build() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 1.5
 	env.glow_enabled = true
-	env.glow_intensity = 0.55
+	env.glow_intensity = GLOW_BASE
 	env.glow_bloom = 0.0
 	env.glow_hdr_threshold = 1.0
 	env.glow_hdr_scale = 2.0
@@ -146,7 +150,7 @@ func _build() -> void:
 	env.fog_density = 0.018
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.08
-	env.adjustment_saturation = 1.12
+	env.adjustment_saturation = SAT_BASE
 	var we := WorldEnvironment.new()
 	we.environment = env
 	world.add_child(we)
@@ -209,6 +213,7 @@ func _build() -> void:
 	cam.far = 120.0
 	world.add_child(cam)
 	cam.current = true
+	_dof_setup()
 	_place_camera()
 
 
@@ -537,10 +542,30 @@ func world_to_stage(p: Vector3) -> Vector2:
 	return _to_stage(p)
 
 
-## Stage pixels per world unit at a slot (for converting 2D nudges).
+## Stage pixels per world unit at a slot (for converting 2D nudges). (4
+## November: measured along the camera's own right, and never negative; from
+## behind a Totem, with the camera turned about, a metre to +x went left on
+## the screen and came out as 1 px, so a 28 px nudge threw the model 28 m.)
 func px_per_unit(side: int, slot: int) -> float:
 	var f := foot_world(side, slot)
-	return maxf(1.0, _to_stage(f + Vector3(1, 0, 0)).x - _to_stage(f).x)
+	var right := _cam_right()
+	return maxf(1.0, absf(_to_stage(f + right).x - _to_stage(f).x))
+
+
+## The camera's right and its forward, laid flat on the floor: what a nudge
+## across or up the screen is on the field.
+func _cam_right() -> Vector3:
+	if cam == null:
+		return Vector3(1, 0, 0)
+	var r: Vector3 = cam.global_transform.basis.x * Vector3(1, 0, 1)
+	return r.normalized() if r.length() > 0.01 else Vector3(1, 0, 0)
+
+
+func _cam_forward() -> Vector3:
+	if cam == null:
+		return Vector3(0, 0, -1)
+	var f: Vector3 = -cam.global_transform.basis.z * Vector3(1, 0, 1)
+	return f.normalized() if f.length() > 0.01 else Vector3(0, 0, -1)
 
 
 # ================================================================= sync ===
@@ -620,7 +645,8 @@ func sync(v) -> void:
 	s.sprite.scale = Vector3(sx * v.pop, sy * v.pop, 1.0)
 	s.sprite.flip_h = not s.mine
 	var pxu := px_per_unit(v.side, v.slot)
-	var off := Vector3(v.offset.x / pxu, 0, v.offset.y / pxu)
+	# (the 2D nudge, across and up the screen, as the camera sees the floor now)
+	var off: Vector3 = (_cam_right() * v.offset.x - _cam_forward() * v.offset.y) / pxu
 	if s.dying and s.crack > 0.0 and not s.shattered:
 		# (it shudders as it cracks)
 		off += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.035 * s.crack
@@ -971,6 +997,10 @@ func film_mode(quality := 2) -> void:
 	_env.fog_light_color = Color(0.1, 0.12, 0.18)
 	_env.fog_density = 0.04
 	_env.glow_intensity = 0.8
+	_glow_base = 0.8   # (the impact spikes come back to this)
+	if cam != null:
+		cam.attributes = null   # (a film keeps its own directed look: no far blur)
+		_dof = null
 	sun.light_color = Color(0.68, 0.76, 1.0)
 	sun.light_energy = 0.55
 	sun.rotation_degrees = Vector3(-38, -25, 0)
@@ -1307,33 +1337,245 @@ func _ring_state(s: Slot, h: String, base: Color, a: float) -> void:
 
 
 # =============================================================== camera ===
+# The camera's moves. Until 4 November it only leaned (cam_focus: a touch
+# closer and lower, never turning); now it can be put anywhere and look
+# anywhere (cam_shot), with the idle drift, the shake and the fov punch
+# still laid over it, and the screen uses that for the attack shots, the
+# knockout close-up and the hero shot of a big call (DuelScreen, "4
+# November"). Every move counts in cam_moves, so a return home planned
+# after a hit can tell if a later move has taken over.
+
+## The lens for a shot (degrees, vertical; the home view is 33).
+const SHOT_FOV_BEHIND := 40.0    # pushed in behind an attacker, looking across at its target
+const SHOT_FOV_CLOSE := 37.0     # close on where a blow lands
+const SHOT_FOV_HERO := 44.0      # the low hero shot of a big call, rising up it
+const SHOT_FOV_KO := 38.0        # the knockout close-up
+## Where the attack shots stand (metres).
+const BEHIND_BACK := 5.4         # behind the attacker, back from its body...
+const BEHIND_SIDE := 2.5         # ...off to one side (towards the middle of the field)...
+const BEHIND_UP := 1.7           # ...and this much above its body's centre
+const BEHIND_AIM := 0.6          # how far along from attacker to target the camera looks (0 attacker, 1 target)
+const CLOSE_BACK := 5.2          # short of where the blow lands, on the attacker's side
+const CLOSE_SIDE := 1.9
+const CLOSE_UP := 2.5
+const LIFE_BACK := 8.4           # a blow on Life lands beyond the row: the camera stays back so the row is in the frame...
+const LIFE_SIDE := 2.4
+const LIFE_UP := 3.8             # ...and higher
+const HERO_OUT := 3.3            # in front of a called Totem (towards its enemies)
+const HERO_SIDE := 1.3
+const HERO_LOW := 0.45           # the hero shot starts this high off the floor...
+const HERO_RISE := 0.95          # ...and rises to this share of the Totem's height above the floor
+const KO_OUT := 3.4              # in front of a Totem knocked out (short of the row across)
+const KO_SIDE := 1.5
+const KO_UP := 1.0               # share of its height the camera stands at
+## The far blur (CameraAttributesPractical, only at Gfx.level() 2: a Mac or
+## a phone set to Full): what's this far past the shot's subject softens.
+const DOF_MARGIN := 2.6          # the blur starts this far beyond the subject
+const DOF_TRANSITION := 7.0      # and comes in over this distance
+const DOF_AMOUNT := 0.055        # how soft (Godot's dof_blur_amount; 0.1 is a strong blur)
+## The grade: the glow spikes on a big impact, the colour drains in slow motion.
+const GLOW_BASE := 0.55          # the Environment's glow at rest
+const GLOW_SPIKE := 1.65         # times the base, at the top of an impact's spike (0.55 to 0.9)
+const GLOW_SPIKE_SECS := 0.4     # the whole spike, up and back
+const SAT_BASE := 1.12           # the Environment's saturation at rest
+const SAT_SLOW := 0.72           # the saturation while time is slowed
+
+var _glow_base := GLOW_BASE
+var _sat_base := SAT_BASE
+var _dof: CameraAttributesPractical = null
+var _glow_tw: Tween
+var _sat_tw: Tween
+var _dof_tw: Tween
+
 
 func set_home(pos: Vector3, look: Vector3) -> void:
 	_home_pos = pos
 	_home_look = look
+	_home_fov = cam_fov
 	cam_pos = pos
 	cam_look = look
 
 
 func cam_home(dur: float = 0.6) -> void:
-	_cam_to(_home_pos, _home_look, dur)
+	_cam_to(_home_pos, _home_look, dur, _home_fov)
+	dof_off(dur)
 
 
 ## Leans towards a point on the field: a touch closer and lower, so both
-## rows stay on screen under the HUD.
+## rows stay on screen under the HUD. (With the far blur on, what lies well
+## beyond the point softens.)
 func cam_focus(target: Vector3, amount: float = 0.35, dur: float = 0.35) -> void:
 	var lean := Vector3(target.x * 0.25, -1.2, (target.z - _home_look.z) * 0.25 - 0.9) * amount
 	var to_pos := _home_pos + lean
 	var to_look := _home_look + Vector3(target.x * 0.3, 0.0, (target.z - _home_look.z) * 0.3) * amount
 	_cam_to(to_pos, to_look, dur)
+	if amount >= 0.3:
+		dof_far(to_pos.distance_to(target), dur)
 
 
-func _cam_to(pos: Vector3, look: Vector3, dur: float) -> void:
+## Puts the camera at `pos` looking at `look` over `dur` seconds, with the
+## lens at `fov` degrees (under 0: unchanged). The drift, shake and punch
+## still apply. `cut` true jumps there at once and then holds (a cut).
+func cam_shot(pos: Vector3, look: Vector3, dur: float, fov: float = -1.0, cut: bool = false) -> void:
+	if cut:
+		if _cam_tw != null and _cam_tw.is_valid():
+			_cam_tw.kill()
+		cam_pos = pos
+		cam_look = look
+		if fov > 0.0:
+			cam_fov = fov
+		cam_moves += 1
+	else:
+		_cam_to(pos, look, dur, fov)
+	dof_far(pos.distance_to(look), maxf(0.05, dur))
+
+
+## The shot from low behind a Totem about to strike, looking across at
+## what it's striking: [pos, look]. The camera stands off to the side the
+## middle of the field is on, so the attacker is at the edge of the frame
+## and its target in the middle.
+func shot_behind(body: Vector3, aim: Vector3, side: int) -> Array:
+	var d := _flat_dir(body, aim, side)
+	if Vector3(aim.x - body.x, 0, aim.z - body.z).length() < 0.2:
+		aim = body + d * (MY_Z - RIVAL_Z)   # (a blow on every Totem across: look at the row across)
+	var right := d.cross(Vector3.UP).normalized()
+	var toward_mid := -signf(body.x) if absf(body.x) > 0.5 else 1.0
+	var pos := body - d * BEHIND_BACK + right * (BEHIND_SIDE * toward_mid) + Vector3(0, BEHIND_UP, 0)
+	var look := body.lerp(aim, BEHIND_AIM)
+	look.y = minf(body.y, aim.y) * 0.75
+	return [pos, look]
+
+
+## The shot close on where a blow lands, from the attacker's side: [pos,
+## look]. `on_life` for a blow on a duellist's Life, which lands beyond
+## their row: further back and higher, so the row is in the frame.
+func shot_close(land: Vector3, from: Vector3, side: int, on_life: bool = false) -> Array:
+	var d := _flat_dir(from, land, side)
+	var right := d.cross(Vector3.UP).normalized()
+	var toward_mid := -signf(land.x) if absf(land.x) > 0.5 else 1.0
+	var back := LIFE_BACK if on_life else CLOSE_BACK
+	var side_off := LIFE_SIDE if on_life else CLOSE_SIDE
+	var up := LIFE_UP if on_life else CLOSE_UP
+	var pos := land - d * back + right * (side_off * toward_mid) + Vector3(0, up, 0)
+	var look := Vector3(land.x, land.y * 0.7, land.z)
+	return [pos, look]
+
+
+## The low hero shot of a Totem just called: from in front of it (its
+## enemies' side), looking up; `k` 0 is the start down by the floor, 1 the
+## top of its rise. [pos, look]
+## `out_k` stands the camera further off (an Ascension's pillar of light
+## would fill the lens from HERO_OUT).
+func shot_hero(side: int, slot: int, k: float, out_k: float = 1.0) -> Array:
+	var s: Slot = slots[side][slot]
+	var foot := foot_world(side, slot)
+	var h: float = s.creature_h if s.card_id != "" else 2.0
+	var d := ahead_of(side)
+	var right := d.cross(Vector3.UP).normalized()
+	var toward_mid := -signf(foot.x) if absf(foot.x) > 0.5 else 1.0
+	var pos := foot + d * (HERO_OUT * out_k) + right * (HERO_SIDE * toward_mid)
+	pos.y = foot.y + lerpf(HERO_LOW, h * HERO_RISE, k)
+	var look := foot + Vector3(0, h * lerpf(0.58, 0.5, k), 0)
+	return [pos, look]
+
+
+## The close-up of a Totem being knocked out: [pos, look].
+func shot_ko(side: int, slot: int) -> Array:
+	var s: Slot = slots[side][slot]
+	var foot := foot_world(side, slot)
+	var h: float = s.creature_h if s.card_id != "" else 2.0
+	var d := ahead_of(side)
+	var right := d.cross(Vector3.UP).normalized()
+	var toward_mid := -signf(foot.x) if absf(foot.x) > 0.5 else 1.0
+	var pos := foot + d * KO_OUT + right * (KO_SIDE * toward_mid) + Vector3(0, h * KO_UP, 0)
+	var look := foot + Vector3(0, h * 0.5, 0)
+	return [pos, look]
+
+
+## The way across the floor from a to b (a side's way forward when they're
+## the same point: a blow on every Totem across).
+func _flat_dir(a: Vector3, b: Vector3, side: int) -> Vector3:
+	var d := Vector3(b.x - a.x, 0, b.z - a.z)
+	if d.length() < 0.2:
+		return ahead_of(side)
+	return d.normalized()
+
+
+func _cam_to(pos: Vector3, look: Vector3, dur: float, fov: float = -1.0) -> void:
+	cam_moves += 1
 	if _cam_tw != null and _cam_tw.is_valid():
 		_cam_tw.kill()
 	_cam_tw = create_tween().set_parallel(true)
 	_cam_tw.tween_property(self, "cam_pos", pos, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	_cam_tw.tween_property(self, "cam_look", look, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+	if fov > 0.0 and absf(fov - cam_fov) > 0.01:
+		_cam_tw.tween_property(self, "cam_fov", fov, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+
+
+# --- the far blur, and the grade --------------------------------------------
+
+## The camera's far blur, only where the device has the power for it
+## (Gfx.level() 2: Forward+ on a Mac, or a phone set to Full) and the
+## cinematic touches are on. Off until a shot asks for it.
+func _dof_setup() -> void:
+	if cam == null or Gfx.level() < 2 or not DuelRules.cinematic:
+		return
+	_dof = CameraAttributesPractical.new()
+	_dof.dof_blur_far_enabled = false
+	_dof.dof_blur_near_enabled = false
+	_dof.dof_blur_amount = 0.0
+	_dof.dof_blur_far_transition = DOF_TRANSITION
+	_dof.auto_exposure_enabled = false
+	cam.attributes = _dof
+
+
+## Softens what lies more than `dist` (the shot's subject's distance from
+## the camera) plus a margin away.
+func dof_far(dist: float, dur: float) -> void:
+	if _dof == null:
+		return
+	if _dof_tw != null and _dof_tw.is_valid():
+		_dof_tw.kill()
+	_dof.dof_blur_far_enabled = true
+	_dof_tw = create_tween().set_parallel(true)
+	_dof_tw.tween_property(_dof, "dof_blur_far_distance", dist + DOF_MARGIN, dur)
+	_dof_tw.tween_property(_dof, "dof_blur_amount", DOF_AMOUNT, dur)
+
+
+## The far blur eased off (the camera going home).
+func dof_off(dur: float) -> void:
+	if _dof == null or not _dof.dof_blur_far_enabled:
+		return
+	if _dof_tw != null and _dof_tw.is_valid():
+		_dof_tw.kill()
+	_dof_tw = create_tween()
+	_dof_tw.tween_property(_dof, "dof_blur_amount", 0.0, dur)
+	_dof_tw.tween_callback(func() -> void:
+		if _dof != null:
+			_dof.dof_blur_far_enabled = false)
+
+
+## The glow spiking on an impact and settling back (`k` scales the spike).
+func impact_glow(k: float = 1.0) -> void:
+	if _env == null:
+		return
+	if _glow_tw != null and _glow_tw.is_valid():
+		_glow_tw.kill()
+	var top := _glow_base * lerpf(1.0, GLOW_SPIKE, clampf(k, 0.0, 1.5))
+	_glow_tw = create_tween()
+	_glow_tw.tween_property(_env, "glow_intensity", top, GLOW_SPIKE_SECS * 0.25).set_ease(Tween.EASE_OUT)
+	_glow_tw.tween_property(_env, "glow_intensity", _glow_base, GLOW_SPIKE_SECS * 0.75).set_ease(Tween.EASE_IN_OUT)
+
+
+## The colour draining while time is slowed (`on`), and coming back. Runs in
+## real time, since it plays while the clock is slow.
+func slow_grade(on: bool, secs: float = 0.3) -> void:
+	if _env == null:
+		return
+	if _sat_tw != null and _sat_tw.is_valid():
+		_sat_tw.kill()
+	_sat_tw = create_tween().set_ignore_time_scale(true)
+	_sat_tw.tween_property(_env, "adjustment_saturation", SAT_SLOW if on else _sat_base, secs).set_ease(Tween.EASE_OUT)
 
 
 func cam_shake(amount: float) -> void:

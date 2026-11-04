@@ -294,6 +294,125 @@ errors, 26.1 turns on average, first player 53%; `duel_monkey -- 4` and
 won, no problems; `manual_shot` ok at 390x844, 844x390, 1280x720 and
 1920x1080, and at the Largest text size (`ui=1.3`) at the first three.
 
+### Faster, more cinematic duels (4 November)
+
+Gary (4 November): "Battle needs to go a little faster and can we make it
+more cinematic and dramatic." Two things, then: the pure waiting in a turn
+trimmed, and the 3D field given a camera and a clock that know a big moment
+when they see one. The words' reading times (Reading time, above) are not
+touched: nothing is on screen for less than it was.
+
+**Faster.** Every wait below is in the duel's own seconds (at Normal the
+duel runs 1.2 times that; Fast and Fastest divide again), each a named
+constant at the top of the effects in `DuelScreen` ("the pace, and the
+show") or in `DuelHuman.Paced`:
+
+| What | Was | Now |
+| --- | --- | --- |
+| The turn banner ("YOUR TURN"): its words slide in and out in a fixed moment each (`BANNER_IN`, `BANNER_OUT` 0.14) and are fully up for their whole reading time, and the duel moves on as they slip away (`BANNER_TAIL` 0.06) | words up 1.09 s, 1.52 s a turn at Normal | words up 1.14 s, 1.31 s a turn |
+| The rival thinking before a play (`THINK_ACTION`) | 0.5 | 0.25 |
+| ...showing the card or target it chose (`AI_PREVIEW`) | 0.35 | 0.2 |
+| ...before an answer on your turn (`THINK_RESPONSE`) | 0.6 | 0.35 |
+| ...choosing cards, Totems, a slot or a reroll (`THINK_CARDS`, `THINK_SLOT`) | 0.4, 0.3 | 0.2, 0.15 |
+| ...ending its turn (`THINK_END`: it chooses first now, and ending needs no thinking) | 0.5 | 0 |
+| A called Totem watched arriving (`CALL_WAIT_MIN` to `CALL_WAIT_MAX`: a long spawn clip, Cinderpup's 2 s, plays on under the duel) | 0.5 to the whole clip | 0.4 to 0.6 |
+| The beat after a blow lands on a Totem (`HIT_PAUSE`, one wait where there were two) | 0.44 | 0.25 |
+| ...on Life (`LIFE_HIT_PAUSE`) | 0.5 | 0.3 |
+| The roll-off dice held after they land (`ROLLOFF_PAUSE`) | 1.1 | 0.6 |
+| The card drawn (`DRAW_PAUSE`) | 0.3 | 0.15 |
+| An attacker gathering itself (`WINDUP_PAUSE`) | 0.26 | 0.15 |
+| After a knockout's dust (`KO_TAIL`) | 0.12 | 0.08 |
+| The camera going home: after the last blow of an attack (`CAM_HOME_AFTER` 0.4), not after each one, so it stops bouncing home between the blows of a multi-hit; and anyway 3.5 s after an attack that never lands (`CAM_HOME_FALLBACK`) | after every hit | once |
+
+The same duel timed both ways (`tests/duel_film.tscn` headless, seed 3,
+Emberstorm against Tidegrove, `--plain` so no freeze or slow motion counts):
+15 turns in 236.7 s before, 189.8 s now, 20% shorter, 16.4 s a turn down to
+13.1 (the rival's turns gain most: 11.0 s to 7.8, 13.1 to 10.5). What's
+left of a turn is mostly words and blows.
+
+**More cinematic and dramatic**, on the 3D field (the flat field keeps its
+own look, but the freeze, the slow motion and the bars play there too). One
+switch, `DuelRules.cinematic` (on; `DuelRules.set_value("cinematic",
+false)` for a phone that struggles), and every number a named constant with
+a line saying what it is (`DuelScreen`, and the camera's in `DuelField3D`,
+"camera"):
+
+- **The camera moves.** `DuelField3D.cam_shot(pos, look, dur, fov)` puts
+  it anywhere, looking anywhere, the lens tweened too (`_cam_to` takes a
+  fov now; `set_home` keeps a film's lens as `_home_fov`), the idle drift,
+  shake and punch still laid over it. On an attack it pushes in low behind
+  the attacker over 0.3 s (`SHOT_IN`; `shot_behind`: 5.4 m back, 2.5 to the
+  side the middle of the field is on, 1.7 up, lens 40), looking across at
+  the target, then whips to where the blow lands as it lands (`SHOT_WHIP`
+  0.26, a lunge's 0.14; `shot_close`: 5.2 m short of it, 1.9 aside, 2.5
+  up, lens 37; a blow on Life, which lands beyond the row, from 8.4 m back
+  and 3.8 up so the row is in the frame), and goes home 0.4 s after the
+  attack's last blow. The move's name keeps to its Totem as the camera
+  moves (`MoveLabel.follow`), and a 2D nudge (the windup, the knockback)
+  is read through the camera's own axes now (`px_per_unit`,
+  `_cam_right`/`_cam_forward`): from behind a Totem a metre to +x used to
+  come out as 1 px, and a 28 px step threw the model 28 m off the field.
+  While the player chooses an answer the camera comes off the attacker's
+  shoulder so the whole board can be read (`begin_respond`). Films (the
+  White Sky, `spec.film`) keep their directed cameras: none of this runs in
+  one (`_cine()`).
+- **Hit-stop.** A blow of 50 or more (`HIT_STOP_DAMAGE`), one on a
+  weakness, or a natural 20 (`fx_roll` leaves the roll on the strike) stops
+  the clock at 0.08 (`HIT_STOP_SCALE`) for 85 ms of real time
+  (`HIT_STOP_MS`), a frame or two after the impact so the sparks are out,
+  then runs it back up over 130 ms (`HIT_STOP_RAMP_MS`), the finishing
+  blow's own ramp (`_time_ramp`, shared now). Never above Fastest, in a
+  film, or while the finishing blow or another freeze has the clock
+  (`_may_slow`); the clock is set straight whatever ends the duel or the
+  screen (`_time_gen`: a ramp still running leaves it alone from then on).
+- **Knockouts.** A close-up (`shot_ko`: 3.4 m in front, short of the row
+  across, 1.5 aside, at head height, lens 38) and the crystal's burst in
+  slow motion, 0.4 for 400 ms real then back over 250 ms (`KO_SLOW`,
+  `KO_SLOW_MS`, `KO_SLOW_RAMP_MS`); KNOCKED OUT sits higher, clear of the
+  toasts in the middle.
+- **Big calls.** A call of tier 3 and up (`HERO_TIER`) and every Ascension:
+  as the card lands the camera cuts to the floor in front of the Totem
+  (`shot_hero`: 3.3 m out, 1.3 aside, 0.45 up, lens 44; an Ascension from
+  1.7 times as far, back from its pillar of light) and rises to its eye
+  line over the wait, the lens punched.
+- **Black bars** top and bottom, 8% of the screen each (`LETTERBOX`),
+  eased in and out over 0.3 s of real time (`LETTERBOX_SECS`), for a Summon
+  (up until the Demigod has landed) and the finishing blow
+  (`DuelScreen.Letterbox`, on the overlay). The Life number of the
+  finishing blow sits under the top bar.
+- **The grade.** The glow spikes on an impact, 0.55 to 0.9 and back over
+  0.4 s (`impact_glow`: `GLOW_SPIKE` 1.65 times `GLOW_BASE`,
+  `GLOW_SPIKE_SECS`; half a spike on a small blow, more on a knockout, an
+  Ascension and a Summon landing; a film's 0.8 is its own base), and the
+  colour drains while the clock is slow, saturation 1.12 to 0.72
+  (`slow_grade`, `SAT_BASE`, `SAT_SLOW`, in real time).
+- **The far blur.** A `CameraAttributesPractical` on the field's camera,
+  only at `Gfx.level()` 2 (Forward+ on a Mac, or a phone set to Full; the
+  phone's Smooth and the Compatibility renderer never pay for it), with a
+  gentle far blur (`DOF_AMOUNT` 0.055) that starts 2.6 m past a shot's
+  subject (`DOF_MARGIN`) and comes in over 7 m (`DOF_TRANSITION`);
+  `cam_shot` and a `cam_focus` of 0.3 or more turn it on, `cam_home` eases
+  it off. A film has none.
+
+```sh
+# stills of all of it (the attack shots at four moments for your blow and the rival's, the knockout
+# close-up at the crystal, the burst and the dust, the hero shots, a Summon's bars, the finishing
+# blow; `flat` the flat field; `pace` prints the waits at Normal, old and new):
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
+    res://tests/duel_cine_shot.tscn -- <dir> [attack] [ko] [call] [summon] [finish] [pace] [flat]
+# the pace of a whole duel, headless (prints when each turn begins; --plain: no freezes or slow motion):
+godot --headless --fixed-fps 30 res://tests/duel_film.tscn -- 1280x720 3 8 600 tidegrove 30 --plain
+```
+
+`duel_cine_shot` checks for itself that the camera pushed in and came home,
+that the clock stopped and was set straight, that the bars came and went and
+the knocked-out slot cleared. Tests with the changes: `load_all` 0 failed;
+`duel_sim -- 300` 0 invariant errors, first player 53%; `duel_monkey -- 4`
+and `-- 4 --3d` no script errors; `duel_cine_shot` (every part, and `flat`)
+no problems; `duel_notes_shot -- ko reading` no problems. The Duel Lab's
+tuning panel doesn't list `cinematic` yet (its rows are named in
+`duel_lab.gd`'s `TUNE_LABELS`); `DuelRules.set_value` reaches it.
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about
@@ -1106,6 +1225,86 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 4 November play-through notes (the opening, the village, the menu)
+
+Sixteen notes from playing the Mac build, 4 November, and what each became
+(the Night of the White Sky's six are under Story mode, the duel's under
+"Faster, more cinematic duels"):
+
+- **The title screen** ("can we animate it or make it look better"): the
+  painting itself moves (`TitleScreen.ArtLayer`'s shader: the rivers of
+  gold light run down the mountain, the brightest stars twinkle on their own
+  clocks, the sea of cloud roils under a slow warp), a shaft of light stands
+  and breathes over the Throne, a shooting star crosses the sky every six to
+  thirteen seconds, and on opening the title rises in with a sweep of gold
+  across its letters and the buttons come in after it one by one
+  (`TitleScreen.Lights`, `Logo.set_sweep`). `tests/title_shot.tscn` still
+  takes its three stills.
+- **The attic's decorations** ("flowers coming out of ceiling", "broken items
+  on the side", "picture on side look like drawn by a 2 year old"): the
+  bunch of lavender hung from a collar beam is gone; the shirt and breeches
+  draped over the chest with a sleeve and a leg hanging (the broken-looking
+  boxes) are two neat folded piles on its lid; the three scribbles pinned
+  by the mirror are two of Gary's card paintings (the Lantern Moth and
+  Brookfin) in plain oak frames and a proper ink map of the valley on
+  parchment (`InnRooms._sketch`, 256 pixels, soft-edged: the river, the
+  road, the green's ring of houses with the inn in red, the mill, hills,
+  trees, a compass rose); the rag rug is one picture on a flat oval
+  (`InnRooms._rug_texture`: braided rings, a plait across each) in place of
+  six stacked discs that read as a target.
+- **Player A's little finger** ("the baby finger looks deformed"): his
+  Tripo3D rig put every finger joint within a centimetre or two of the
+  knuckles, jumbled, with nothing of them along the fingers, so the idle's
+  curl of the fingers turned the skin about the wrong pivots (the right
+  hand's little finger worst, the left with its wristband too). His finger
+  bones are kept at rest now (`Figure3D.FROZEN`, in the Posture modifier):
+  the hands as he modelled them, moving whole from the wrist.
+  `tests/hand_peek.gd -- <dir> [look] [idle|walk|rest]` takes close-ups of
+  both hands.
+- **Walking to the mirror** ("it cuts player out due to stairs leading up"):
+  the camera for that walk was up in the south-west corner by the roof, and
+  the collar beams stepping away across the room came between it and him;
+  it comes along behind him now, under the beams (`cam_follow` on the attic
+  for that walk, at 1.62 m).
+- **Eating the porridge** ("his arm goes through himself"): the palm had been
+  sent to the mouth itself with the spoon hanging from it, and the elbow's
+  usual hint (out and back) folded the arm back past the shoulder so the
+  forearm came forward through the chest. Now the hand stops a spoon's
+  length short of the mouth, off to his right, the spoon lies in the palm
+  with its bowl end towards him (`Figure3D.attach`), and the elbow is kept
+  down in front of the ribs: `Figure3D.elbow(side, at)` puts the hint a
+  reaching arm's elbow bends towards where it should be (their own frame;
+  `Vector3.INF` gives the usual one back); the targets are in his own frame
+  (`Figure3D.to_own`) so they go with him.
+- **Taking the card box from Bram** ("arms go into body"): with the hands side
+  by side under the box in front of the belly, the same elbow hint bent the
+  elbows back past the flanks and the forearms ran in through the sides of
+  the body. The elbows are held out to the sides and a touch forward at the
+  ribs for as long as the box is held (`elbow`, given back in `_drop_box`),
+  and the low hold after the reveal is out from the belly (`hold_point(0.52,
+  0.78)`, was `(0.36, 0.8)`).
+- **The taproom door showing night** ("it shows it as night outside but then
+  you walk out into day"): the doorway's view is a picture of the village
+  taken once (`InnRooms.view_of`), and under the title screen it was taken
+  before the opening turned the day on. `AshfordP1.warm` sets the daylight
+  first now (the attic's window view too).
+- **Going back to Tam's** ("you go through the floor"): the second time at the
+  field gate the game asks whether to go down to the mill, and the question
+  didn't take the controls, so a held key or the pad walked the player on
+  past the gate, where the lane climbs and the village has no ground to
+  stand on. The question stands them still (`AshfordDay._lane_go_again`:
+  `busy`, the controls hidden), and a solid wall just past the gate stops
+  free walking down the lane at all (the way to the mill is `to_mill`'s own
+  walk, which isn't stopped by it).
+- **The Deck in the menu** ("give each totem a proper back story, why that
+  shard took that form"): every one of the 49 Totems has its story
+  (`scripts/duel/duel_lore.gd`, `DuelLore.BACKSTORY`: what the Shard found
+  when it fell, and why it kept that shape), shown under the card as "WHY
+  THE SHARD TOOK THIS FORM" in the Deck's and the Codex's card view
+  (`Codex.Detail`) once the card is owned (a card seen but not owned says
+  its story is told once it's yours); the duel's quick card view keeps to
+  the short words.
+
 ### Gary's 29 October notes on the opening
 
 - **Bram wiping the counter** ("he is waving his hand above it ... he needs a
@@ -1309,6 +1508,49 @@ standing from the first frame, every card Crystal tier or above, no tribute
 for his calls; built in Gary's other chat and merged here). Bram's own model
 keeps its painted-open eyes (Gary, 4 November: "the one we have at the moment
 seems to be alright with the painted eyes"), so no new Bram is waited for.
+
+**4 November, later: Gary's play-through notes on the memory.** Six of his
+notes were about it, and it plays differently now. *He walks about freely
+from the first moment*, while Morrowen speaks over him (Gary: "have him able
+to walk around as Morrowen is talking"): the pad (a drag is a joystick, a
+tap on the snow walks there, `WhiteSky._tap_snow` marching the tap's ray
+down onto the snow), the keys or a stick, the way the camera looks being up
+(`_roam_step`), kept out of the glass spires and within `ROAM_R` of the
+crater, the camera easing round behind him as he turns (`_cam_mode` "roam")
+and his feet matched to the ground (`Figure3D.pace`: until then the clip
+ran at its own 1.62 m/s over a 1.25 m/s walk, and "Bram walks very weird").
+Her line ends on its own or a tap; then he stops and looks up as the sky
+tears, and *a compass comes up in the bottom left corner* pointing the way
+to the light ("The light · 27 m"; `WorldHUD.Compass`, a dial whose points
+turn with the camera and whose needle turns to its `target`, made for the
+world to use as the map later, as Gary asked), gone at the crater's lip
+(`RIM_AT`). The hunter is glimpsed ahead and to his left on the way
+(`GLIMPSE_AT`). *The Shardlands look like a storm*: the spires come in close
+about his way now, from shards no taller than a man to spires of 22 m, in a
+glass shader of their own (`GLASS`: near black, the sky's cold light along
+their edges, a faint light moving inside, frost caught on their upper faces),
+with small shards about their feet; sheets of snow blown low along the
+ground in the wind (`_build_storm`: streaks aligned with their flight) and
+big soft flakes close to the camera over the snowfall; the snow's own shape
+in the light (the ground shader works a normal out of its drifts and the
+wind's ripples) and the fog thinned (0.034 to 0.026) so the spires are seen
+at all. *The Sigils on the ground are cards*, not confetti: a little bigger
+than a hand, each stands tilted in the snow where it lands with a pool of
+its light under it (`_card_lands`), the oldest going when there are more
+than `[18, 30, 44]` by quality. *The child is seen from the rim*: on the lip
+the camera holds over his shoulder for two seconds on the bowl, the bundle
+at the bottom in a beacon of light with sparks rising off it
+(`_child_beacon`), then comes down the slope with him keeping the child in
+the middle of the picture (his walk and the camera's drift on the same
+frame clock). *He picks the child up*: on the tap he goes down on one knee
+over it (`Figure3D.kneel`: the right knee to the ground, the shin along it,
+the left foot planted ahead, the back bent over it; a clip built from the
+idle as the seated ones are), his hands go under it (`reach`), and it rises
+with his hands into his arms as he stands (`rise`, the bundle carried in his
+own frame from then on), the beacon gone and the crying fading. The test
+drives him with the up key now (`white_sky_test`, `ashford_test`);
+`tests/kneel_peek.gd -- <dir> [model]` shows the kneel and the lift on a
+plain stage.
 
 Before the memory (and with `AshfordP1.MEMORY` false) New Game opened on black and the caption "Ashford / The last night of the Age."
 in the inn's attic, then the dream the player is about to tell Bram about

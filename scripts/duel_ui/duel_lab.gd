@@ -363,6 +363,7 @@ const TUNE_LABELS := {
 	"wrath_bonus": ["Wrath bonus", 5], "mercy_heal": ["Dawn's Mercy heal", 10],
 	"phases": ["Turn phases (Dawn, Clash...)", 1],
 	"skills": ["Duel skills", 1], "comeback": ["Comeback card at a quarter Life", 1],
+	"cinematic": ["Cinematic camera, freeze and slow motion", 1],
 	"arena_events": ["The Circle joins in", 1], "arena_event_first": ["...first on turn", 1],
 	"arena_event_every": ["...then every so many turns", 1],
 	"rest_heal": ["Rest mends", 5], "rest_essence": ["Rest gives Essence", 1],

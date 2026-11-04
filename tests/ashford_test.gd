@@ -335,7 +335,12 @@ func _process(_d: float) -> void:
 	for c in world.get_children():
 		if c is WhiteSky and not (c as WhiteSky)._done:
 			var m := c as WhiteSky
-			m._held = true
+			# (4 November: he walks about freely; the up key walks him on
+			# the way the camera looks, towards the light)
+			if m._roam:
+				Input.action_press("move_up")
+			else:
+				Input.action_release("move_up")
 			if m._hint.modulate.a > 0.9 and m._hint.text.contains("pick up"):
 				m._tapped = true
 			if is_instance_valid(m._screen) and not m._skipping and m._screen.game != null:

@@ -1,7 +1,7 @@
 extends Node
 ## Plays the Night of the White Sky (WhiteSky) on its own, as a player would
-## (holding to walk, tapping to pick up the child, tapping each line on after a
-## moment) and takes a still every few seconds and at each beat, then checks
+## (walking on with the up key, tapping to pick up the child, tapping each
+## line on after a moment) and takes a still every few seconds and at each beat, then checks
 ## it ran to the end: the duel was filmed, Grondmaw was called and the memory
 ## finished. Run (stills in <dir>):
 ##
@@ -79,8 +79,12 @@ func _process(delta: float) -> void:
 		print("white_sky_test: stopped at %.1f s (max)" % _t)
 		get_tree().quit(0)
 		return
-	# walk while the walking hint is up, or any time he's on the way
-	m._held = true
+	# walk on, the way the camera looks (the pad's up, as a key), whenever the
+	# walk is his (4 November: he walks about freely, no longer held forward)
+	if m._roam:
+		Input.action_press("move_up")
+	else:
+		Input.action_release("move_up")
 	# the lines: read for a moment, then tap
 	var ov := m._ov
 	if ov != null and ov._waiting:

@@ -720,3 +720,108 @@ class WayMarker:
 		lp.y = clampf(lp.y, ts2.y + 12.0 * k, vp.y - 12.0 * k)
 		draw_rect(Rect2(lp + Vector2(-10 * k, -ts2.y + 4 * k), Vector2(ts2.x + 20 * k, ts2.y + 6 * k)), dark)
 		draw_string(font, lp, words2, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, gold)
+
+
+## A compass in the bottom left corner (4 November, Gary: once Morrowen
+## stops talking "a compass in the bottom left with an arrow pointing
+## direction you need to go, this can become the map later"): a dark dial
+## with a gold rim and its four points, a gold needle that turns to point
+## the way to `target` as the camera turns, and under it the place's name
+## and how far it is. `cam` is the camera the player sees through; `label`
+## the place; show(true/false) fades it in and out. It sits inside the
+## safe area (SafeArea) and is drawn at the player's text size.
+class Compass:
+	extends Control
+	var cam: Camera3D
+	var target := Vector3.INF
+	var label := ""
+	var _t := 0.0
+	var _shown := false
+	var _ang := 0.0        # the needle's angle on the screen (eased)
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		modulate.a = 0.0
+
+	func show_compass(on: bool, secs := 0.6) -> void:
+		_shown = on
+		var tw := create_tween()
+		tw.tween_property(self, "modulate:a", 1.0 if on else 0.0, secs)
+
+	## The needle's angle on the screen for `target`: 0 straight up (the way
+	## the camera looks), turning clockwise.
+	func angle_to(p: Vector3) -> float:
+		if cam == null or not is_instance_valid(cam):
+			return 0.0
+		var b := cam.global_transform.basis
+		var f := -b.z
+		f.y = 0.0
+		var r := b.x
+		r.y = 0.0
+		if f.length() < 0.01:
+			f = Vector3.FORWARD
+		f = f.normalized()
+		r = r.normalized()
+		var d := p - cam.global_position
+		d.y = 0.0
+		if d.length() < 0.01:
+			return 0.0
+		return atan2(d.dot(r), d.dot(f))
+
+	func _process(delta: float) -> void:
+		_t += delta
+		if target != Vector3.INF and modulate.a > 0.001:
+			var want := angle_to(target)
+			_ang = lerp_angle(_ang, want, minf(1.0, delta * 6.0))
+			queue_redraw()
+
+	func _draw() -> void:
+		if target == Vector3.INF or cam == null or not is_instance_valid(cam):
+			return
+		var k := SafeArea.ui_scale()
+		var r := 58.0 * k
+		var c := Vector2(r + 26.0 * k, size.y - r - 70.0 * k)
+		var gold := Color(1.0, 0.82, 0.38)
+		var dark := Color(0.06, 0.04, 0.02, 0.78)
+		# the dial
+		draw_circle(c, r + 4.0 * k, Color(0, 0, 0, 0.35))
+		draw_circle(c, r, dark)
+		draw_arc(c, r, 0.0, TAU, 72, Color(gold, 0.85), 3.0 * k, true)
+		draw_arc(c, r * 0.78, 0.0, TAU, 72, Color(gold, 0.25), 1.5 * k, true)
+		# the four points of the dial turn with the world, so the top of the
+		# dial is the way the camera looks
+		var north := angle_to(cam.global_position + Vector3.FORWARD) if cam != null else 0.0
+		for i in 4:
+			var a := -north + TAU * i / 4.0 - PI * 0.5
+			var p := c + Vector2(cos(a), sin(a)) * r * 0.9
+			var long := i == 0
+			draw_line(c + Vector2(cos(a), sin(a)) * r * (0.72 if long else 0.8), p, Color(gold, 0.9 if long else 0.5), (3.0 if long else 2.0) * k)
+		for i in 12:
+			if i % 3 == 0:
+				continue
+			var a := -north + TAU * i / 12.0 - PI * 0.5
+			draw_line(c + Vector2(cos(a), sin(a)) * r * 0.84, c + Vector2(cos(a), sin(a)) * r * 0.9, Color(gold, 0.35), 1.5 * k)
+		# the needle: a gold arrow, breathing a little
+		var a := _ang - PI * 0.5
+		var d := Vector2(cos(a), sin(a))
+		var perp := Vector2(-d.y, d.x)
+		var pulse := 1.0 + 0.04 * sin(_t * 3.0)
+		var tip := c + d * r * 0.66 * pulse
+		var tail := c - d * r * 0.3
+		draw_colored_polygon(PackedVector2Array([tip, c + perp * r * 0.16, tail, c - perp * r * 0.16]), Color(gold, 0.18))
+		draw_colored_polygon(PackedVector2Array([tip, c + perp * r * 0.11, c - d * r * 0.05, c - perp * r * 0.11]), gold)
+		draw_colored_polygon(PackedVector2Array([c - d * r * 0.05, c + perp * r * 0.11, tail, c - perp * r * 0.11]), Color(0.75, 0.7, 0.62, 0.85))
+		draw_circle(c, 4.0 * k, Color(0.1, 0.07, 0.03))
+		draw_arc(c, 4.0 * k, 0.0, TAU, 16, gold, 1.5 * k, true)
+		# the place and how far
+		var font := CardFace.font("bold")
+		var fs := roundi(26 * k)
+		var words := label
+		if words != "" and cam != null:
+			words = "%s  ·  %d m" % [label, roundi(cam.global_position.distance_to(target))]
+		if words != "":
+			var ts := font.get_string_size(words, HORIZONTAL_ALIGNMENT_LEFT, -1, fs)
+			var at := Vector2(c.x - ts.x * 0.5, c.y + r + 12.0 * k + ts.y * 0.8)
+			at.x = maxf(at.x, 12.0 * k)
+			draw_rect(Rect2(at + Vector2(-10 * k, -ts.y + 4 * k), Vector2(ts.x + 20 * k, ts.y + 6 * k)), dark)
+			draw_string(font, at, words, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, gold)

@@ -102,6 +102,19 @@ static var oath_favour := 3            # the Favour an Oath gives when it's swor
 static var oath_turns := 8             # the Oath of the Swift End: win by this many of your turns
 static var oath_life_cost := 30        # a broken Oath costs this much Life
 
+# --- the show (4 November) -----------------------------------------------------------
+## The duel's cinematic touches on the 3D field (4 November, Gary: "make it
+## more cinematic and dramatic"): the camera pushing in behind an attacker
+## and whipping to the blow, the freeze on a big hit, the slow motion and
+## close-up of a knockout, the hero shot of a big call, the black bars of a
+## Summon and the finishing blow, the glow and colour spikes, the far blur.
+## Off, the camera leans as it did before and nothing stops time but the
+## finishing blow. Not an Option: a switch here (DuelRules.set_value) for a
+## phone that struggles. The camera and the grade are the 3D field's; the
+## freeze, the slow motion and the bars play on the flat field too. A film
+## (the White Sky) keeps its own directed camera whatever this says.
+static var cinematic := true
+
 # --- safety ------------------------------------------------------------------------
 static var max_turns := 60             # a duel this long is a draw
 const MAX_ACTIONS_PER_TURN := 60
@@ -116,7 +129,8 @@ static func tunables() -> Array:
 		"burn_damage", "poison_damage", "shift_cost", "wrath_bonus", "mercy_heal",
 		"corroded_bonus", "bleed_damage", "shock_fail", "blind_fail", "confuse_fail", "soaked_bonus", "enraged_bonus", "marked_bonus", "doom_dawns", "enraged_exposed", "frozen_roll", "shielded_amount", "empowered_bonus", "regen_heal", "wake_roll", "burn_turns",
 		"phases", "skills", "comeback", "arena_events", "synergy", "arena_event_first", "arena_event_every", "rest_heal", "rest_essence", "chain_max", "respond_secs", "tribute_tier", "tribute_two_tier", "revive_hp",
-		"terrain_turns", "continuous_slots", "arena_guard", "favour_max", "oath_favour", "oath_turns", "oath_life_cost"]
+		"terrain_turns", "continuous_slots", "arena_guard", "favour_max", "oath_favour", "oath_turns", "oath_life_cost",
+		"cinematic"]
 
 
 static func snapshot() -> Dictionary:
@@ -179,6 +193,7 @@ static func get_value(key: String):
 		"oath_favour": return oath_favour
 		"oath_turns": return oath_turns
 		"oath_life_cost": return oath_life_cost
+		"cinematic": return cinematic
 	return null
 
 
@@ -237,6 +252,7 @@ static func set_value(key: String, v) -> void:
 		"oath_favour": oath_favour = int(v)
 		"oath_turns": oath_turns = int(v)
 		"oath_life_cost": oath_life_cost = int(v)
+		"cinematic": cinematic = bool(v)
 
 
 static func reset() -> void:

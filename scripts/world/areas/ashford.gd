@@ -1379,6 +1379,8 @@ static func _drop_box(w: World, who: String) -> void:
 		fig.let_go(0.3)
 		fig.palm("left", Vector3.ZERO, 0.3)
 		fig.palm("right", Vector3.ZERO, 0.3)
+		fig.elbow("left", Vector3.INF, 0.3)
+		fig.elbow("right", Vector3.INF, 0.3)
 	_free_box_hand(w, who)
 	_clear_boxes(w, who)
 
@@ -1669,6 +1671,14 @@ static func _first_deck(w: World) -> void:
 		w.set_meta("box_grip_player", grip)
 		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
 		me.palm("right", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
+		# the elbows out to the sides and a touch forward, at the ribs, for as
+		# long as the box is held (4 November, Gary: "when you take box from
+		# Bram arms go into body": with the hands side by side under the box
+		# in front of the belly, the elbows' usual hint, out and back, bent
+		# them back past the flanks and the forearms ran in through the sides
+		# of the body to the hands); _drop_box gives them back
+		me.elbow("left", Vector3(0.46, me._shoulder - 0.38, 0.14), 0.4)
+		me.elbow("right", Vector3(-0.46, me._shoulder - 0.38, 0.14), 0.4)
 		# in from below and in front, so the hands don't come through his
 		var way_l := Node3D.new()
 		var way_r := Node3D.new()
@@ -1797,7 +1807,9 @@ static func _first_deck(w: World) -> void:
 			me2.reach(lh2, null, 0.4)
 			me2.palm("right", Vector3.ZERO, 0.3)
 			var low := w.create_tween()
-			low.tween_property(gw, "position", me2.hold_point(0.36, 0.8), 0.5).set_trans(Tween.TRANS_SINE)
+			# (held out from the belly, not against it: the forearms stay
+			# clear of the body, 4 November)
+			low.tween_property(gw, "position", me2.hold_point(0.52, 0.78), 0.5).set_trans(Tween.TRANS_SINE)
 	_two_shot_after_box(w)
 	await Cine.wait(w, 0.4)
 

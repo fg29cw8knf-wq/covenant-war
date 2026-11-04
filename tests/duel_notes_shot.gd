@@ -300,7 +300,7 @@ func _reading() -> void:
 	for k in DuelReading.ORDER:
 		DuelReading.set_level(k)
 		print("NOTES SHOT: reading %s: turn banner %.2f s, reaction %.2f s, move name %.2f s, toast %.2f s, bark %.2f s" % [k,
-			ds._read(0.6, "YOUR TURN") + 0.45, ds._read(0.55, "STEAM! " + String(DuelSynergy.reaction("steam").text)) + 0.45,
+			ds._read(0.6, "YOUR TURN") + DuelScreen.BANNER_IN + DuelScreen.BANNER_TAIL, ds._read(0.55, "STEAM! " + String(DuelSynergy.reaction("steam").text)) + DuelScreen.BANNER_IN + DuelScreen.BANNER_TAIL,
 			ds._read(1.0, "Reckless Bite"), DuelReading.secs(1.6, "Bonded: Flood"), DuelReading.secs(2.6, "Six. Give me a six.")])
 	DuelReading.set_level("normal")
 	ds._toast("Bonded: Flood")

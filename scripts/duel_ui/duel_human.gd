@@ -88,47 +88,61 @@ func choose_scry(_game: DuelGame, _pi: int, card: DuelCard) -> bool:
 
 
 ## The computer duellist, slowed down so a person can follow what it does.
+## (4 November, Gary: "Battle needs to go a little faster": its thinking
+## pauses are about half what they were, in the duel's own seconds, which
+## pause() divides by the battle speed; and it takes no time at all to end
+## its turn or move the turn on, which it used to think about for half a
+## second as if it were a play.)
 class Paced:
 	extends RefCounted
 	var ai: DuelAI
 	var screen = null
 
+	const THINK_ACTION := 0.25     # before each play of its turn (was 0.5)
+	const THINK_RESPONSE := 0.35   # before an answer on your turn (was 0.6)
+	const THINK_CARDS := 0.2       # picking cards or Totems for a Rite's choice (was 0.4)
+	const THINK_SLOT := 0.15       # picking a slot, or whether to reroll (was 0.3)
+	const THINK_END := 0.0         # ending its turn, or moving the turn on (was 0.5)
+
 	func _init(difficulty: float = 1.0) -> void:
 		ai = DuelAI.new(difficulty)
 
 	func _pause(sec: float) -> void:
-		if screen != null:
+		if screen != null and sec > 0.0:
 			await screen.pause(sec)
 
 	func choose_action(game: DuelGame, pi: int) -> Dictionary:
-		await _pause(0.5)
+		# (the choice itself is instant: it's made first, so ending the turn
+		# can go straight through while a play still looks thought about)
 		var a := ai.choose_action(game, pi)
-		if screen != null and not (a.get("type", "") in ["end", "next"]):
+		var ending: bool = a.get("type", "") in ["end", "next"]
+		await _pause(THINK_END if ending else THINK_ACTION)
+		if screen != null and not ending:
 			await screen.preview_ai_action(pi, a)
 		return a
 
 	func choose_response(game: DuelGame, pi: int, event: Dictionary, cards: Array) -> DuelCard:
 		var c := ai.choose_response(game, pi, event, cards)
 		if c != null:
-			await _pause(0.6)
+			await _pause(THINK_RESPONSE)
 			if screen != null:
 				await screen.preview_ai_action(pi, {"type": "answer", "card": c})
 		return c
 
 	func choose_cards(game: DuelGame, pi: int, prompt: String, cards: Array, min_n: int, max_n: int, context: Dictionary) -> Array:
-		await _pause(0.4)
+		await _pause(THINK_CARDS)
 		return ai.choose_cards(game, pi, prompt, cards, min_n, max_n, context)
 
 	func choose_totems(game: DuelGame, pi: int, prompt: String, totems: Array, min_n: int, max_n: int) -> Array:
-		await _pause(0.4)
+		await _pause(THINK_CARDS)
 		return ai.choose_totems(game, pi, prompt, totems, min_n, max_n)
 
 	func choose_slot(game: DuelGame, pi: int, prompt: String, slots: Array, context: Dictionary) -> int:
-		await _pause(0.3)
+		await _pause(THINK_SLOT)
 		return ai.choose_slot(game, pi, prompt, slots, context)
 
 	func choose_reroll(game: DuelGame, pi: int, info: Dictionary) -> bool:
-		await _pause(0.3)
+		await _pause(THINK_SLOT)
 		return ai.choose_reroll(game, pi, info)
 
 	func choose_scry(game: DuelGame, pi: int, card: DuelCard) -> bool:
@@ -167,7 +181,7 @@ class Scripted:
 				# no later phase to come, the step can't be done this turn. With
 				# phases off every step is done in the order written.
 				if game.next_phase(pi) != "end":
-					await _pause(0.3)
+					await _pause(THINK_END)
 					return {"type": "next"}
 				_queue.pop_front()
 				continue
@@ -177,7 +191,7 @@ class Scripted:
 			if a.has("_roll"):
 				(game.forced_rolls[pi] as Array).append(int(a._roll))   # the Fate roll this lesson needs
 				a.erase("_roll")
-			await _pause(0.6)
+			await _pause(THINK_ACTION)
 			if screen != null:
 				await screen.preview_ai_action(pi, a)
 			return a
@@ -186,11 +200,11 @@ class Scripted:
 		if not owed.is_empty():
 			if DuelRules.phases and game.phase != "clash":
 				return {"type": "next"}   # (on to the Clash, where the attack is owed)
-			await _pause(0.6)
+			await _pause(THINK_ACTION)
 			if screen != null:
 				await screen.preview_ai_action(pi, owed)
 			return owed
-		await _pause(0.4)
+		await _pause(THINK_END)
 		return {"type": "end"}
 
 	static func _resolve(game: DuelGame, pi: int, step: Dictionary) -> Dictionary:

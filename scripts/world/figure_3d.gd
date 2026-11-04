@@ -527,10 +527,27 @@ func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(
 const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 0, 0), "Head": Vector3(6, 0, 0),
 	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)}}
 
+## Bones kept at rest whatever a clip does to them (4 November, Gary:
+## "Players right hand the baby finger looks deformed"): Player A's finger
+## joints, as his Tripo3D rig placed them, all lie within a centimetre or
+## two of the knuckles, jumbled, with nothing of them along the fingers
+## themselves, so the idle's curl of the fingers turned the skin about the
+## wrong pivots and pulled the hands out of shape (the right hand's little
+## finger worst, the left hand with its wristband too). At rest the hands
+## are as he modelled them; so his fingers stay as modelled, straight and
+## still, and the hands move whole from the wrist.
+const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb3",
+	"LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandMiddle3",
+	"LeftHandRing1", "LeftHandRing2", "LeftHandRing3", "LeftHandPinky1", "LeftHandPinky2", "LeftHandPinky3",
+	"RightHandThumb1", "RightHandThumb2", "RightHandThumb3",
+	"RightHandIndex1", "RightHandIndex2", "RightHandIndex3", "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3",
+	"RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3"]}
+
 
 class Posture:
 	extends SkeletonModifier3D
 	var turns: Array = []   # [bone index, Quaternion]
+	var frozen: Array = []  # [bone index, its rest turn]
 
 	func _process_modification_with_delta(_delta: float) -> void:
 		var sk := get_skeleton()
@@ -539,19 +556,25 @@ class Posture:
 		for t in turns:
 			var b: int = t[0]
 			sk.set_bone_pose_rotation(b, (t[1] as Quaternion) * sk.get_bone_pose_rotation(b))
+		for f in frozen:
+			sk.set_bone_pose_rotation(int(f[0]), f[1] as Quaternion)
 
 
 func _add_posture() -> void:
-	if _skel == null or not POSTURE.has(_model_name) or _skel.has_node("Posture"):
+	if _skel == null or (not POSTURE.has(_model_name) and not FROZEN.has(_model_name)) or _skel.has_node("Posture"):
 		return
 	var pm := Posture.new()
 	pm.name = "Posture"
-	for bone: String in POSTURE[_model_name]:
+	for bone: String in POSTURE.get(_model_name, {}):
 		var i := _skel.find_bone(bone)
 		if i < 0:
 			continue
 		var e: Vector3 = POSTURE[_model_name][bone]
 		pm.turns.append([i, Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))])
+	for bone: String in FROZEN.get(_model_name, []):
+		var i := _skel.find_bone(bone)
+		if i >= 0:
+			pm.frozen.append([i, _skel.get_bone_rest(i).basis.get_rotation_quaternion()])
 	_skel.add_child(pm)
 	_skel.move_child(pm, 0)
 
@@ -668,6 +691,131 @@ func stretch(secs := 2.8) -> void:
 			anim.add_animation_library("", AnimationLibrary.new())
 		anim.get_animation_library("").add_animation(nm, a)
 	await act(nm, 1.0, 0.3)
+
+
+## Down on one knee (4 November, Gary: in the Night of the White Sky "he
+## doesn't pick up the baby, it's just in his hands": Bram's lift clip bends
+## a hand's breadth at the knees, made for a crate at waist height, and the
+## child lay in the snow): the right knee to the ground with the shin along
+## it behind, the left foot planted ahead, the hips down to a knee's height,
+## the back and head bent over whatever lies in front of them, eased into
+## over `blend` seconds and held (a clip built from their idle, as the
+## seated ones are, so they still breathe) until rise(). The hands are put
+## on the thing with reach(); `lean` (0..1) is how far the back comes down
+## over it. The directions are of the thighs and shins, as _seated_pose
+## gives them (the bones rest square to the world).
+const KNEEL_PAD := 0.07   # the knee's own depth, off the ground (m)
+
+func kneel(blend := 0.9, lean := 1.0) -> void:
+	if _skel == null or anim == null or not anim.has_animation("idle"):
+		return
+	seat = -1.0
+	var nm := "kneel_%d" % roundi(lean * 100.0)
+	if not anim.has_animation(nm):
+		var a := (anim.get_animation("idle") as Animation).duplicate(true) as Animation
+		var prefix := ""
+		var pose := _kneel_pose(lean)
+		var bent: Dictionary = pose.bend
+		var done := {}
+		for t in range(a.get_track_count() - 1, -1, -1):
+			var p := a.track_get_path(t)
+			var bone := String(p.get_concatenated_subnames())
+			if bone == "":
+				continue
+			prefix = String(p.get_concatenated_names())
+			if bone in SIT_BONES:
+				a.remove_track(t)
+			elif a.track_get_type(t) == Animation.TYPE_ROTATION_3D and bent.has(bone):
+				var extra: Quaternion = bent[bone]
+				for k in a.track_get_key_count(t):
+					a.track_set_key_value(t, k, extra * (a.track_get_key_value(t, k) as Quaternion))
+				done[bone] = true
+		for bone: String in bent:
+			if done.has(bone) or _skel.find_bone(bone) < 0 or prefix == "":
+				continue
+			var t := a.add_track(Animation.TYPE_ROTATION_3D)
+			a.track_set_path(t, NodePath(prefix + ":" + bone))
+			var q: Quaternion = (bent[bone] as Quaternion) * _skel.get_bone_rest(_skel.find_bone(bone)).basis.get_rotation_quaternion()
+			a.rotation_track_insert_key(t, 0.0, q)
+			a.rotation_track_insert_key(t, a.length, q)
+		for kind in ["pos", "rot"]:
+			for bone: String in pose[kind]:
+				var t := a.add_track(Animation.TYPE_POSITION_3D if kind == "pos" else Animation.TYPE_ROTATION_3D)
+				a.track_set_path(t, NodePath(prefix + ":" + bone))
+				for at in [0.0, a.length]:
+					if kind == "pos":
+						a.position_track_insert_key(t, at, pose.pos[bone])
+					else:
+						a.rotation_track_insert_key(t, at, pose.rot[bone])
+		a.loop_mode = Animation.LOOP_LINEAR
+		if not anim.has_animation_library(""):
+			anim.add_animation_library("", AnimationLibrary.new())
+		anim.get_animation_library("").add_animation(nm, a)
+	_action = nm
+	_held = true
+	_play(nm, blend)
+
+
+## Up off the knee, back to standing (or walking).
+func rise(blend := 0.8) -> void:
+	release(blend)
+
+
+## The hips and legs down on the right knee: {"pos", "rot"} as _seated_pose
+## gives them, and "bend": the turns put over the idle's own for the back,
+## neck and head, bent forward over what's in front of them.
+func _kneel_pose(lean: float) -> Dictionary:
+	var rot := {}
+	var pos := {}
+	var hb := _skel.find_bone("Hips")
+	var rest := _skel.get_bone_rest(hb).origin
+	var hips_g := _skel.get_bone_global_rest(hb).origin
+	var tilt := deg_to_rad(14.0)   # the kneeling thigh, back off straight down
+	var hip_joint := 0.0
+	for side in ["Left", "Right"]:
+		var up := _skel.find_bone(side + "UpLeg")
+		var kn := _skel.find_bone(side + "Leg")
+		var ft := _skel.find_bone(side + "Foot")
+		if up < 0 or kn < 0 or ft < 0:
+			continue
+		var pu := _skel.get_bone_global_rest(up).origin
+		var pk := _skel.get_bone_global_rest(kn).origin
+		var pf := _skel.get_bone_global_rest(ft).origin
+		var thigh := pk - pu
+		var shin := pf - pk
+		var lt := thigh.length()
+		var ls := shin.length()
+		var side_x := thigh.x / lt * 0.6
+		var t_dir: Vector3
+		var s_dir: Vector3
+		if side == "Right":
+			# the knee on the ground a little behind, the shin flat along it
+			t_dir = Vector3(side_x, -cos(tilt), -sin(tilt))
+			s_dir = Vector3(side_x * 0.5, -0.06, -1.0)
+			hip_joint = lt * cos(tilt) + KNEEL_PAD * stature() + (pu.y - hips_g.y)
+			rot[side + "Foot"] = Quaternion(Vector3.RIGHT, deg_to_rad(28.0))   # toes back
+		else:
+			# the foot planted ahead, the thigh out level and the shin down
+			t_dir = Vector3(side_x, -0.26, 0.97)
+			s_dir = Vector3(0.0, -0.96, 0.28)
+			rot[side + "Foot"] = Quaternion.IDENTITY
+		t_dir = t_dir.normalized()
+		s_dir = s_dir.normalized()
+		var gu := Quaternion(thigh / lt, t_dir)
+		var gk := Quaternion(shin / ls, s_dir)
+		rot[side + "UpLeg"] = gu
+		rot[side + "Leg"] = gu.inverse() * gk
+		rot[side + "Foot"] = gk.inverse() * rot[side + "Foot"]
+		rot[side + "ToeBase"] = Quaternion.IDENTITY
+	# the hips over the kneeling knee's spot, a little back of where they stand
+	var hips_y := hip_joint - (hips_g.y - rest.y)
+	pos["Hips"] = Vector3(rest.x, hips_y, rest.z - 0.08 * stature())
+	rot["Hips"] = Quaternion(Vector3.RIGHT, deg_to_rad(9.0 * lean))
+	var bend := {}
+	for b in [["Spine", 20.0], ["Spine1", 18.0], ["Spine2", 15.0], ["Neck", 6.0], ["Head", 10.0]]:
+		if _skel.find_bone(String(b[0])) >= 0:
+			bend[String(b[0])] = Quaternion(Vector3.RIGHT, deg_to_rad(float(b[1]) * lean))
+	return {"pos": pos, "rot": rot, "bend": bend}
 
 
 ## Back to standing, walking or talking.
@@ -1611,6 +1759,41 @@ static func _donor_clip(donor: String, clip: String) -> Dictionary:
 
 # ------------------------------------------------------------------ hands ---
 
+## Where a reaching arm's elbow is drawn towards, in their own frame (x to
+## their left, y up, z ahead): out to the side, down and a little back, as
+## an arm hangs. A hand brought in close to the body (a spoon to the mouth,
+## a box held against the chest) bends its elbow back past the shoulder
+## towards this, and the forearm comes forward through the chest to the
+## hand (4 November, Gary: eating the porridge "his arm goes through
+## himself"; taking the box "arms go into body"): elbow() puts the hint
+## where that arm's elbow should be instead.
+var _elbow_want := {}   # "left"/"right": Vector3 in their own frame
+
+
+func _elbow_default(side: String) -> Vector3:
+	var s := _hips / ADULT_HIPS
+	return Vector3((0.55 if side == "left" else -0.55) * s, 0.75 * s, -0.55 * s)
+
+
+## Puts the hint a reaching arm's elbow bends towards at `at` (their own
+## frame: x to their left, y up, z ahead; scaled to their size by the
+## caller), eased there over `secs`: down and out in front of the ribs for
+## a hand at the mouth, out to the side and forward for a box held against
+## the chest. Vector3.INF gives the arm its usual hint back.
+func elbow(side: String, at: Vector3, secs := 0.3) -> void:
+	var want := _elbow_default(side) if at == Vector3.INF else at
+	if at == Vector3.INF:
+		_elbow_want.erase(side)
+	else:
+		_elbow_want[side] = want
+	var pre := "Left" if side == "left" else "Right"
+	var pole := _pivot.get_node_or_null(pre + "Elbow") as Node3D
+	if pole == null:
+		return
+	var tw := create_tween()
+	tw.tween_property(pole, "position", want, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+
+
 ## Puts their hands on things: each hand goes to its target (a Node3D, and
 ## follows it if it moves; null leaves that hand to the clip), blending in
 ## over `secs`, elbows out and down. Holding a barrel by its rims, a card
@@ -1657,6 +1840,11 @@ func arm_reach() -> float:
 ## up, z ahead) where it is now.
 func to_world(at: Vector3) -> Vector3:
 	return global_transform * (Basis(Vector3.UP, _yaw) * at)
+
+
+## A world point in their own frame (the inverse of to_world).
+func to_own(world: Vector3) -> Vector3:
+	return Basis(Vector3.UP, -_yaw) * (global_transform.affine_inverse() * world)
 
 
 ## How tall they stand, as a fraction of a grown-up (Tilly about 0.7).
@@ -1717,10 +1905,12 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 		if _skel.has_node("HandsOff"):
 			_skel.move_child(_skel.get_node("HandsOff"), -1)   # (and solids after that)
 		# the elbow bends towards this: out to their side, down and back
+		# (or where elbow() has put it)
 		var pole := Node3D.new()
 		pole.name = pre + "Elbow"
-		var s := _hips / ADULT_HIPS
-		pole.position = Vector3((0.55 if side == "left" else -0.55) * s, 0.75 * s, -0.55 * s)
+		pole.position = _elbow_default(side)
+		if _elbow_want.has(side):
+			pole.position = _elbow_want[side]
 		_pivot.add_child(pole)
 		ik.set_pole_node(0, ik.get_path_to(pole))
 		_ik[side] = ik
