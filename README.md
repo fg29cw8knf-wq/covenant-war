@@ -1274,15 +1274,41 @@ Bram and the hunter stand at the ends of the field, Bram with the child in his
 left arm, the play-card clip on each of his plays; the camera cuts between
 `WhiteSky.SHOTS` (all on Bram's side of him or looking away from him). When
 Grondmaw's blow lands the screen burns white; black; Morrowen: "Twenty years
-later, the debt came due." (a subtitle until it's recorded, line 0004 on the
-voice sheet); then the attic caption, and the player wakes with the mark under
+later, the debt came due." (line 0004 on the voice sheet, recorded 4 November);
+then the attic caption, and the player wakes with the mark under
 his collar glowing and fading (`SealMark.blaze`). The filmed duel always has a
 Skip button; once the memory has been seen (`Game.settings.seen_white_sky`)
-all of it has. Its music is `white_sky` (Gary's, to come; `sigilfall` plays
-till then), its sounds `assets/sfx/storm_wind` and `baby_cry` (to come). The
+all of it has. Its music is Gary's `white_sky` and `white_sky_duel`, its
+sounds `assets/sfx/storm_wind` and `baby_cry` (all in since 4 November, below). The
 gate at dawn and the clerk counting the crowns are the Reckoning film's shot
 `rk_02b`. `tests/white_sky_test.tscn -- <dir> [every s] [skip]` plays it as a
 player would and takes stills.
+
+**4 November: Gary's White Sky files, and Bram as a god's champion.** Everything
+the memory played a stand-in for is now his: the faceless hunter
+(`characters/shard_hunter.glb`, a Tripo3D Mixamo rig with the 22 library clips,
+baked and cut like Hale's by `tools/rig_villager.sh shard_hunter`, 2.29 m;
+`WhiteSky.Hunter` plays its idle, fades it through
+`GeometryInstance3D.transparency` and fans the cards by its hood), Bram in his
+heavy coat (`characters/bram_coat.glb`, `rig_villager.sh bram_coat`, 1.84 m
+with Bram's lift; `Figure3D.make("bram_coat")` plays the whole memory, so the
+drawn coat is never put on him), the child (`ashford/baby_bundle.glb`:
+Tripo's 1.95-million-triangle, 8192-pixel bundle slimmed to 30,000 and 2048 by
+`tools/slim_glb.py` and laid along z face up; the mark is painted on the
+blanket over its heart as it was on the drawn one), the storm and the crying
+(`assets/sfx/storm_wind.ogg`, 41 s, and `baby_cry.ogg`, both looped without a
+join by `tools/sfx_loop.py`, the recordings kept in `assets/audio/source/sfx/`)
+and Morrowen's line 0004 (`vo/ashford/morrowen/6ec01c26.ogg`, mastered by
+`vo_master.py --lines`). His one piece of music is cut in two (Music loops,
+below): `white_sky` for the walk and `white_sky_duel` for the duel, which the
+duel's spec names first and which stops dead with the white (`Music.stop(0.12)`
+as the white lands; `Music.FROM_START` makes both begin from their start every
+time the memory plays). Bram's deck in the duel is the champion's set board
+of the same night (the paragraph above: Cragmaul and the Ironclad Behemoth
+standing from the first frame, every card Crystal tier or above, no tribute
+for his calls; built in Gary's other chat and merged here). Bram's own model
+keeps its painted-open eyes (Gary, 4 November: "the one we have at the moment
+seems to be alright with the painted eyes"), so no new Bram is waited for.
 
 Before the memory (and with `AshfordP1.MEMORY` false) New Game opened on black and the caption "Ashford / The last night of the Age."
 in the inn's attic, then the dream the player is about to tell Bram about
@@ -1867,7 +1893,15 @@ godot --headless --script res://tests/loop_probe.gd -- <name>      # where Godot
 ```
 
 `--start` and `--end` are a bar-aligned pair (the tool nudges `--end` onto the
-beat and adds the crossfade); put the start in `LOOP_START`. The seam-check mp3
+beat and adds the crossfade); put the start in `LOOP_START`. Gary's 4 November
+tracks: `bram_theme` (14.698 to 145.090), `tam_mill` (4.946 to 88.921),
+`nell_waltz` (5.828 to 159.086, scouted in three-time: `--beats-per-bar 3`),
+and the Night of the White Sky's one piece, `white_sky.mp3` (224 s), cut in
+two: `white_sky` is its first 122 s (24.613 to 121.974, the walk's loop, rarely
+reached since the walk takes 60 to 90 s) and `white_sky_duel` is the piece from
+149.5 s (the hush before the storm) with its climax looping (8.870 to 50.759 of
+that cut) until the white cuts it dead; the tail after the climax is never
+played. A piece in `Music.FROM_START` always begins at its start. The seam-check mp3
 is the join as the game plays it, three times, for listening to.
 `tools/music_scout.py <mp3>` suggests the pair for a new track: the tempo and
 bar grid, the first downbeat where the intro has settled, and the latest

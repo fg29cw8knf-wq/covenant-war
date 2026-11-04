@@ -17,6 +17,8 @@
 #   tools/rig_villager.sh refugee   .../Travel_Worn_Woman_Master_21_Animations.glb  (27 Oct)
 #   tools/rig_villager.sh corin_mam .../Cornis_mam.glb                                (27 Oct)
 #   tools/rig_villager.sh krell     .../Huntmaster_Krel.glb                           (27 Oct)
+#   tools/rig_villager.sh bram_coat    <Bram_Coat.glb, baked>       (4 Nov: the memory's Bram in his coat)
+#   tools/rig_villager.sh shard_hunter <Shadow_Hunter.glb, baked>   (4 Nov: the faceless hunter)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -218,6 +220,25 @@ hale|sun_guard)
 		--borrow assets/models/characters/bram.glb:lift \
 		--head-up=-12:walk,run
 	;;
+bram_coat|shard_hunter)
+	# The Night of the White Sky (4 November): Gary's two Tripo3D models for
+	# the memory twenty years ago, Mixamo rigs with the 22 library clips, the
+	# quarter turn baked out first (tools/glb_bake_turn.py) as Hale's was.
+	# Bram in his heavy travelling coat (characters/bram_coat.glb) plays in
+	# place of bram.glb for the whole memory (Figure3D.has_model), so he's
+	# Bram's height and has Bram's lift (he lifts the child with it); the
+	# faceless hunter (characters/shard_hunter.glb, WhiteSky.Hunter uses it
+	# whole and plays its idle) stands seven and a half feet.
+	case "$who" in
+	bram_coat) name="Bram"; height=1.84 ;;
+	shard_hunter) name="Shard Hunter"; height=2.29 ;;
+	esac
+	python3 tools/rig_character.py "$src" "$out" --name "$name" --height "$height" \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
 enforcer)
 	# Ironvault's second enforcer (2 November): Gary's Tripo3D woman in
 	# Ironvault grey, a 53-joint Mixamo rig with no clips of its own, so she
@@ -233,7 +254,7 @@ enforcer)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer|bram_coat|shard_hunter <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

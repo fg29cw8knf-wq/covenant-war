@@ -21,7 +21,18 @@ const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch
 		"arena_veilwild": 8.406, "ashford_burns": 19.714, "dask": 9.822, "dawn_after": 10.333,
 		"river_farewell": 8.104, "solhaven_dawn": 8.243, "thornwood": 10.890,
 		# Gary's 2 November tracks: Corin's evening by the mill race, and Solhaven's square
-		"corin_evening": 4.226, "solhaven_town": 8.940}
+		"corin_evening": 4.226, "solhaven_town": 8.940,
+		# Gary's 4 November tracks: the talk music (Bram's, Tam's at the mill,
+		# Nell's waltz) and the Night of the White Sky, cut in two from his one
+		# piece (tools/music_loop.py on assets/audio/source/white_sky.mp3): the
+		# walk (its first 122 s, looping from 24.6 s) and the duel (from 149.5 s,
+		# the hush before the storm, then its climax looping from 8.9 s until the
+		# white cuts it dead)
+		"bram_theme": 14.698, "tam_mill": 4.946, "nell_waltz": 5.828,
+		"white_sky": 24.613, "white_sky_duel": 8.870}
+## Pieces that always start from their beginning (a memory's music: coming
+## back to it carries on from where it left off for everything else).
+const FROM_START := ["white_sky", "white_sky_duel"]
 ## The two duel themes take turns, duel by duel.
 const DUEL_THEMES := ["duel_main", "duel_alt"]
 
@@ -158,7 +169,7 @@ func _switch(track: String, fade: float) -> void:
 	_names[_active] = track
 	p.stream = s
 	p.volume_db = -40.0
-	var from := float(_resume.get(track, 0.0))
+	var from := 0.0 if track in FROM_START else float(_resume.get(track, 0.0))
 	if from >= s.get_length() - 1.0:
 		from = 0.0
 	p.play(from)
@@ -179,7 +190,7 @@ func _web_switch(track: String, fade: float) -> void:
 	_remember(old)
 	_active = 1 - _active
 	_names[_active] = track
-	var from := float(_resume.get(track, 0.0))
+	var from := 0.0 if track in FROM_START else float(_resume.get(track, 0.0))
 	if from >= float(_web_tracks[track]) - 1.0:
 		from = 0.0
 	_web.play(_active, track, from, float(LOOP_START.get(track, 0.0)), fade, level_db(), old)

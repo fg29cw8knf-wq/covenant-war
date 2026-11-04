@@ -101,6 +101,12 @@ const OWN_GAIT := {
 	"hale": {"walk": 2.12, "run": 5.37, "sneak": 1.08},
 	"sun_guard": {"walk": 1.92, "run": 4.87, "sneak": 0.98},
 	"enforcer": {"walk": 1.96, "run": 4.98},
+	# The Night of the White Sky (4 November): Bram in his heavy coat,
+	# twenty years ago, and the faceless hunter (WhiteSky.Hunter plays its
+	# idle itself; the gait is for completeness), Gary's Tripo3D models on
+	# the 22 library clips, cut as Hale's were
+	"bram_coat": {"walk": 1.62, "run": 4.10, "sneak": 0.83},
+	"shard_hunter": {"walk": 2.41, "run": 6.10, "sneak": 1.23},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884

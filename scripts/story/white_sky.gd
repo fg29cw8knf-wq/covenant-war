@@ -356,8 +356,10 @@ func _crater() -> void:
 		await _wait(5.0 / steps)
 	_set_walking(_bram, false)
 	_face(_bram, Vector3.FORWARD)
-	# close, over his shoulder, down at the child
-	_shot(bottom + Vector3(0.75, 1.9, 1.15), CRATER + Vector3(0, 0.15, 0), 34.0)
+	# close, over his shoulder, down at the child (where it lies on the
+	# crater's floor: 4 November, the shot had looked at the crater's rim
+	# height, over the child and up at the sky)
+	_shot(bottom + Vector3(0.75, 1.9, 1.15), _baby.position + Vector3(0, 0.1, 0), 34.0)
 	await _wait(1.2)
 	_show_hint(HOW_TAKE)
 	_tapped = false
@@ -377,8 +379,9 @@ func _crater() -> void:
 		ct.tween_property(_cry, "volume_db", -40.0, 1.6)
 		ct.tween_callback(_cry.stop)
 	await _wait(1.0)
-	# over his shoulder, down at the child in his arms
-	_shot(bottom + Vector3(0.85, 2.45, 1.7), bottom + Vector3(0.0, 1.05, -0.35), 36.0)
+	# high over his shoulder, steeply down at the child in his arms (his face
+	# stays out of it: the camera is behind and above him)
+	_shot(bottom + Vector3(0.6, 2.7, 0.95), bottom + Vector3(0.0, 1.0, -0.3), 36.0)
 	await _say(HUSH)
 	# into his coat, held in his left arm from here on
 	_tuck()
@@ -469,10 +472,13 @@ func _duel() -> void:
 		if _tapped and not _skip.visible:
 			break
 		await get_tree().process_frame
-	# the white: the Mountain's Heart's blow, or the end of the film
+	# the white: the Mountain's Heart's blow, or the end of the film; the
+	# music (Gary's white_sky_duel, its climax looping under the duel) stops
+	# dead with it
 	var wt := create_tween()
 	wt.tween_property(_white, "modulate:a", 1.0, 1.2 if not _skipping else 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await wt.finished
+	Music.stop(0.12)
 
 
 ## The filmed duel's spec for DuelScreen (tests read it too).
@@ -483,7 +489,7 @@ static func duel_spec() -> Dictionary:
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
 		"film": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
-		"music": ["white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
+		"music": ["white_sky_duel", "white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
 
 
 # --- 6. the end ---------------------------------------------------------------------
@@ -723,13 +729,33 @@ func _make_baby() -> Node3D:
 	var root := Node3D.new()
 	root.name = "Child"
 	if ResourceLoader.exists(BABY_MODEL):
-		# Gary's model, laid along z like the drawn one, about 0.5 m long
+		# Gary's model (4 November, Tripo3D, slimmed and laid along z by
+		# tools/slim_glb.py: head to -z, face up), about 0.5 m long, with the
+		# mark painted on the blanket over the heart as on the drawn one
 		var m := (load(BABY_MODEL) as PackedScene).instantiate() as Node3D
 		root.add_child(m)
 		var aabb := DuelField3D._merged_aabb(m)
 		var k := 0.5 / maxf(0.01, maxf(aabb.size.z, maxf(aabb.size.x, aabb.size.y)))
 		m.scale = Vector3.ONE * k
 		m.position = -aabb.get_center() * k
+		var mark := MeshInstance3D.new()
+		var mq := QuadMesh.new()
+		mq.size = Vector2(0.06, 0.06)
+		mark.mesh = mq
+		var mm := StandardMaterial3D.new()
+		mm.albedo_texture = SealMark.texture()
+		mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mm.albedo_color = SealMark.ASH
+		mm.emission_enabled = true
+		mm.emission = Color(0.75, 0.75, 0.8)
+		mm.emission_energy_multiplier = 0.8
+		mm.emission_texture = SealMark.texture()
+		mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mark.material_override = mm
+		mark.rotation_degrees = Vector3(-90, 0, 0)
+		# on the top of the bundle, a little towards the head
+		mark.position = Vector3(0.0, aabb.size.y * k * 0.5 + 0.004, -0.09)
+		root.add_child(mark)
 		var glow := OmniLight3D.new()
 		glow.light_color = Color(0.85, 0.85, 0.9)
 		glow.light_energy = 0.5
@@ -1364,21 +1390,32 @@ class Hunter:
 	var _t := 0.0
 	var _hand: Node3D
 	var _fade := 0.0
+	## Gary's model's meshes, for the fade; empty with the drawn hunter.
+	var _geometry: Array = []
+	## How high the cards fan: by the hood of the drawn hunter (2.76 m) or
+	## of Gary's (2.29 m, tools/rig_villager.sh shard_hunter).
+	var _card_top := 2.6
 
 	func _ready() -> void:
 		var body := Node3D.new()
 		add_child(body)
 		if ResourceLoader.exists(MODEL):
+			# Gary's faceless hunter (4 November, Tripo3D, rigged and cut like
+			# Hale: 2.29 m, facing +z), playing its own idle
 			var m := (load(MODEL) as PackedScene).instantiate() as Node3D
 			body.add_child(m)
 			var ap := m.find_child("AnimationPlayer", true, false) as AnimationPlayer
 			if ap != null and ap.has_animation("idle"):
 				ap.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
 				ap.play("idle")
+			for g in m.find_children("*", "GeometryInstance3D", true, false):
+				_geometry.append(g)
+			_card_top = 2.2
 			_hand = Node3D.new()
 			_hand.position = Vector3(0.45, 1.3, 0.35)
 			add_child(_hand)
 			_add_smoke()
+			_set_fade(_fade)
 			return
 		_cloth = ShaderMaterial.new()
 		var sh := Shader.new()
@@ -1497,6 +1534,11 @@ class Hunter:
 		_fade = k
 		if _cloth != null:
 			_cloth.set_shader_parameter("fade", k)
+		# Gary's model: faded as a whole (Forward+ and Mobile; the drawn one
+		# fades in its own shader)
+		for g in _geometry:
+			if is_instance_valid(g):
+				(g as GeometryInstance3D).transparency = clampf(1.0 - k, 0.0, 1.0)
 		var sm := get_node_or_null("Smoke") as GPUParticles3D
 		if sm != null:
 			sm.emitting = k > 0.05
@@ -1519,7 +1561,7 @@ class Hunter:
 			c.position = Vector3(sin(a) * 1.4, 0.05, 0.6 + cos(a) * 0.5)
 			var tw := create_tween()
 			tw.tween_interval(i * 0.12)
-			tw.tween_property(c, "position", Vector3(sin(a) * 0.9, 2.6 + absf(a) * -0.3, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.tween_property(c, "position", Vector3(sin(a) * 0.9, _card_top + absf(a) * -0.3, 0.7), 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 			tw.parallel().tween_property(c, "rotation", Vector3(0, a, -a * 0.6), 1.1)
 			_cards.append(c)
 
