@@ -1257,9 +1257,14 @@ arena overlay; no Circle rule, skills, comeback, events, Oaths or ground god)
 and `DuelField3D.film_mode()` (snow for the mat, the torn sky, cold light,
 driven snow) with `spectral_side` 1, the hunter's Totems drawn as pale Sigil
 light over their own shapes (`DuelField3D.spectral`, a `material_overlay`).
-Bram's old Ironstone against Veilwild without its Summon (`WhiteSkyDuel`, the
-decks, seed and skill; `tests/white_sky_probe.gd` found seed 30: two of his
-Totems knocked out before he calls Grondmaw on turn 9), both sides the computer;
+Bram plays as the god's man he was for many years (4 November, Gary: "a very
+powerful distinguished player"; which god stays hidden, no patron or Gift in
+it): his Earth and Metal at their strongest, Cragmaul and the Ironclad
+Behemoth already Ascended, the Quarry Golem, Gilded Sentinels, Relics and the
+hardest Wards, every attribute at 10 (`WhiteSkyDuel.BRAM_CARDS`), against the
+hunter's pack of Hounds and Foxes (`HUNTER_CARDS`) at the same height
+(`tests/white_sky_probe.gd` found seed 7: he breaks one of the pack and loses
+two before he calls Grondmaw on turn 11; `FILM_SPEED` 3), both sides the computer;
 Bram and the hunter stand at the ends of the field, Bram with the child in his
 left arm, the play-card clip on each of his plays; the camera cuts between
 `WhiteSky.SHOTS` (all on Bram's side of him or looking away from him). When

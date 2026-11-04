@@ -30,7 +30,7 @@ func _initialize() -> void:
 		game.arena_events = false
 		game.ai_oaths = false
 		game.place_god = ""
-		var st := {"turn": -1, "life": [0, 0], "lost": 0, "kos_before": 0}
+		var st := {"turn": -1, "life": [0, 0], "lost": 0, "kos_before": 0, "his_kos": 0}
 		game.logged.connect(func(t, who):
 			if game.turn > 24:
 				game.over = true
@@ -40,13 +40,16 @@ func _initialize() -> void:
 				st.turn = game.turn
 				st.life = [game.players[0].life, game.players[1].life]
 				st.kos_before = game.players[0].fallen.size()
+				st.his_kos = game.players[1].fallen.size()
 				game.over = true)
 		await game.run()
 		# (no Life is shown in the film: what reads as losing is his Totems falling)
-		var ok: bool = st.turn >= WhiteSkyDuel.TURN_MIN and st.turn <= WhiteSkyDuel.TURN_MAX and (st.kos_before >= 2 or (st.kos_before >= 1 and st.life[0] < st.life[1]))
+		# (4 November: Bram a champion: he knocks the hunter's hounds out too,
+		# but loses more than he takes)
+		var ok: bool = st.turn >= WhiteSkyDuel.TURN_MIN and st.turn <= WhiteSkyDuel.TURN_MAX and st.kos_before >= 2 and st.his_kos >= 1 and st.kos_before >= st.his_kos
 		if ok:
 			good.append(sd)
-		print("seed %d: grondmaw turn %d | life bram %d hunter %d | bram's KOs before %d %s" % [
-			sd, st.turn, st.life[0], st.life[1], st.kos_before, "  <- good" if ok else ""])
+		print("seed %d: grondmaw turn %d | life bram %d hunter %d | Bram's Totems lost %d, the hunter's %d %s" % [
+			sd, st.turn, st.life[0], st.life[1], st.kos_before, st.his_kos, "  <- good" if ok else ""])
 	print("good seeds: ", good)
 	quit()

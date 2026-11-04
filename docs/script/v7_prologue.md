@@ -88,10 +88,14 @@ _(The hunter lifts a hand. Cards rise out of the snow round it, white.)_
 ### Bram's duel (filmed, new)
 
 _(Played by the duel itself, filmed, with nothing on the screen but the duel:
-no hand, no Life, no buttons. Bram plays one-handed, the child in his coat; his
-old Ironstone Guardians stand between him and the hunter's hounds of white
-smoke, pale Sigil light in the shape of foxes. He loses a Totem; he's behind.
-Then he calls down Grondmaw, the Mountain's Heart, and the screen burns white.
+no hand, no Life, no buttons. (changed, 4 November, Gary: Bram has served a god
+for many years and is a powerful, distinguished duellist, and it shows.) Bram
+plays one-handed, the child in his coat, a champion's Earth and Metal at their
+strongest: Cragmaul and the Ironclad Behemoth already Ascended, the Quarry Golem,
+Gilded Sentinels, Relics and the hardest Wards. Which god he served stays hidden.
+The hunter's pack is worse: hounds and foxes of white smoke that bite harder for
+every one beside them. Bram breaks one of them; he loses two. Then he calls down
+Grondmaw, the Mountain's Heart, and as its blow lands the screen burns white.
 Nobody sees who won.)_
 
 _(Black.)_
@@ -1099,6 +1103,14 @@ the Sun's Court. The end of the Prologue.)_
 
 ## Writers' notes (new; for Gary and Claude only, never shown in the game)
 
+**Bram's former master (Gary, 4 November).** The god Bram served for many years,
+up to the night of the White Sky, is a god of **fate and destiny**, one not yet in
+the game (none of the thirteen is: Oriel is dreams and foresight, Aster the
+stars). Still to create: name, look, element, cards and Summon. Bram's deck in
+the filmed duel is meant to be that god's; until it exists he plays a champion's
+Earth and Metal and calls down Grondmaw. His "visions from an old master" are
+this god's. The lore rule stands: who it is comes out much later.
+
 **What the two halves of the Last Seal are (proposed, for Gary's yes).** The
 Covenant is a loan: the gods borrowed Veyl from whatever was here first, and the
 Covenant is the agreement, signed at the bottom with a seal. It was signed aeons
@@ -1254,9 +1266,11 @@ While building v7 the game needed a few short lines the script doesn't have. The
   the Shardlands in snow, the sky tearing white, cards raining down as Sigils,
   the player walking as Bram (never his face) to the crater, picking up the child
   with the ash-grey mark, "Hush, now. I've got you.", the faceless hunter on the
-  rim, "Not this one.", and Bram's duel against it, filmed: his old Ironstone
-  against the hunter's hounds of white smoke, one-handed with the child in his
-  coat, losing until he calls down Grondmaw, and the screen burns white. Black;
+  rim, "Not this one.", and Bram's duel against it, filmed: a champion's Earth
+  and Metal (4 November: he has served a god for many years; which stays
+  hidden) against the hunter's pack of hounds and foxes of white smoke,
+  one-handed with the child in his coat, losing until he calls down Grondmaw,
+  and the screen burns white. Black;
   Morrowen: "Twenty years later, the debt came due."; then the attic, the player
   waking with the mark fading. Morrowen's first line moves from the attic to the
   start of the memory.
