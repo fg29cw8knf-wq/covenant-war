@@ -232,6 +232,7 @@ class Face:
 
 	func _ready() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # (the faces are 1024 square)
 		if made:
 			_tex = DollArt.portrait("player_" + look) if DollArt.has_portrait("player_" + look) else DollArt.portrait("player")
 		else:

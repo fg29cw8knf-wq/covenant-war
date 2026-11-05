@@ -107,6 +107,9 @@ const OWN_GAIT := {
 	# the 22 library clips, cut as Hale's were
 	"bram_coat": {"walk": 1.62, "run": 4.10, "sneak": 0.83},
 	"shard_hunter": {"walk": 2.41, "run": 6.10, "sneak": 1.23},
+	# Tobin, Ysa's son at the Golden Gate (5 November), a boy of nine on his
+	# own 22 library clips
+	"tobin": {"walk": 1.28, "run": 3.24, "sneak": 0.65},
 }
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
@@ -118,6 +121,12 @@ const STANDING_ONLY := ["walk", "run", "sneak", "strafe_left", "jump", "sit", "f
 const SIT_BONES := ["Hips", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase"]
 ## How far a grown-up's hip joints sit above the seat (m).
 const SEAT_PAD := 0.1
+## Astride a horse (ride()): which way each thigh and shin goes from the hip
+## and the knee, on their left side (x out to that side, y down, z ahead;
+## the right side mirrors it): thighs out over a broad back and forward,
+## shins down its flanks, a little back.
+const ASTRIDE_THIGH := Vector3(0.46, 0.7, 0.55)
+const ASTRIDE_SHIN := Vector3(0.14, 0.97, -0.1)
 ## Lying on a bed (lie_on): how far the body tips up from flat at the head
 ## end, onto the pillow, and how far the feet drop from standing square.
 const LIE_HEAD_UP := deg_to_rad(13.0)
@@ -136,7 +145,8 @@ var seat := -1.0
 var _seat_at := Vector3.ZERO   # where they sat down
 var _seat_settle := 0
 ## How they sit: "" on a seat's edge with the feet down (a bench), "long"
-## with the legs out along it (sat up in bed), "lying" flat on their back.
+## with the legs out along it (sat up in bed), "lying" flat on their back,
+## "astride" on a horse (ride()).
 var _seat_pose := ""
 var _clip := ""          # what's playing
 var _action := ""        # a one-shot or held clip, over the walk/idle choice
@@ -156,6 +166,10 @@ var _shoulder := 1.4     # their shoulder joints' height standing (m)
 var _arm := 0.5          # shoulder to wrist, the arm straight (m)
 var _ik := {}            # "left"/"right": the TwoBoneIK3D holding that hand
 var _pose_n := 0
+var _look_at: Figure3D = null   # who they're turning their head to (look_round())
+var _look_point := Vector3.ZERO
+var _look_w := 0.0               # how far into the turn (0..1, eased)
+var _look_scan := 0.0
 
 static var _donor_cache := {}
 
@@ -278,6 +292,7 @@ func _ready() -> void:
 		_play("idle", 0.0)
 		anim.seek(randf() * 1.5, true)   # nobody breathes in step
 	_add_posture()
+	_add_head_turn()
 	# a soft round shadow, as the cut-outs have, to sit them on the grass
 	_shadow = MeshInstance3D.new()
 	var q := QuadMesh.new()
@@ -860,6 +875,21 @@ func sit(height := 0.45, blend := 0.8) -> void:
 	_sit_as(height, blend)
 
 
+## Sat astride a horse (5 November: Krell on her warhorse at the Reckoning):
+## the hips on the saddle, which is where their body is (whoever carries
+## them puts it on the saddle every frame, so being moved doesn't stand them
+## up as being moved off a bench does), the legs down either side of it
+## (ASTRIDE_THIGH, ASTRIDE_SHIN), the feet level as in stirrups; their soft
+## ground shadow is put away (it would lie on the horse's back). Everything
+## they do up there (idle, talking, act, hold, pose) keeps them mounted, the
+## clip's body, head and arms over the legs, until stand().
+func ride(blend := 0.5) -> void:
+	_seat_pose = "astride"
+	if _shadow != null:
+		_shadow.visible = false
+	_sit_as(0.0, blend)
+
+
 ## Sat up on a bed `height` m off the ground with the legs out along it,
 ## the way they face: hips over the spot, feet a leg's length ahead.
 func sit_long(height := 0.5, blend := 0.8) -> void:
@@ -910,6 +940,8 @@ func shift_seat(to: Vector3, face_dir: Vector3, secs := 0.9, lift := 0.0) -> voi
 
 func stand(blend := 0.6) -> void:
 	seat = -1.0
+	if _seat_pose == "astride" and _shadow != null:
+		_shadow.visible = true
 	_seat_pose = ""
 	_action = ""
 	_held = false
@@ -978,6 +1010,25 @@ func _seated_pose() -> Dictionary:
 				rot[side + "UpLeg"] = Quaternion(Vector3.RIGHT, -LIE_HEAD_UP)
 			if _skel.find_bone(side + "Foot") >= 0:
 				rot[side + "Foot"] = Quaternion(Vector3.RIGHT, LIE_FOOT_DROP)
+		return {"pos": pos, "rot": rot}
+	if _seat_pose == "astride":
+		# astride (ride()): each thigh out to its side and forward over the
+		# horse's back, the shin down its flank, the foot level
+		for side in ["Left", "Right"]:
+			var up := _skel.find_bone(side + "UpLeg")
+			var kn := _skel.find_bone(side + "Leg")
+			var ft := _skel.find_bone(side + "Foot")
+			if up < 0 or kn < 0 or ft < 0:
+				continue
+			var thigh := _skel.get_bone_global_rest(kn).origin - _skel.get_bone_global_rest(up).origin
+			var shin := _skel.get_bone_global_rest(ft).origin - _skel.get_bone_global_rest(kn).origin
+			var out := 1.0 if side == "Left" else -1.0   # (their left is +x)
+			var gu := Quaternion(thigh.normalized(), Vector3(out * ASTRIDE_THIGH.x, -ASTRIDE_THIGH.y, ASTRIDE_THIGH.z).normalized())
+			var gk := Quaternion(shin.normalized(), Vector3(out * ASTRIDE_SHIN.x, -ASTRIDE_SHIN.y, ASTRIDE_SHIN.z).normalized())
+			rot[side + "UpLeg"] = gu
+			rot[side + "Leg"] = gu.inverse() * gk
+			rot[side + "Foot"] = gk.inverse()   # level
+			rot[side + "ToeBase"] = Quaternion.IDENTITY
 		return {"pos": pos, "rot": rot}
 	for side in ["Left", "Right"]:
 		var up := _skel.find_bone(side + "UpLeg")
@@ -1156,7 +1207,7 @@ func _process(delta: float) -> void:
 	if seat >= 0.0 and _seat_settle > 0:
 		_seat_settle -= 1   # (placed on the seat just after sitting: that's the seat)
 		_seat_at = global_position
-	elif seat >= 0.0 and (walking or global_position.distance_to(_seat_at) > 0.3):
+	elif seat >= 0.0 and _seat_pose != "astride" and (walking or global_position.distance_to(_seat_at) > 0.3):
 		stand(0.0 if not walking else 0.3)   # walked off, or put somewhere else
 	if _action == "":
 		var want := _base()
@@ -1167,6 +1218,7 @@ func _process(delta: float) -> void:
 			anim.speed_scale = clampf(pace / natural, 0.5, 1.8) if pace > 0.0 else 1.0
 	if _marker != null and _marker.visible:
 		_marker.position.y = _marker_y() + sin(_t * 3.0) * 0.06
+	_look_round(delta)
 
 
 ## The ground (m/s) a walking clip covers at its own speed on this body; 0
@@ -1936,3 +1988,123 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 	var on := create_tween()
 	on.tween_property(ik, "influence", 1.0, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
 	ik.set_meta("tween", on)
+
+
+# ============================================================== looking ===
+
+## Whoever's talking draws the eyes (5 November, the look pass: "idle life"):
+## someone standing near a person who's talking turns their head to them,
+## and the one talking to whoever's nearest in front of them; a little (the
+## neck taking some of the turn and the head the rest), eased in and out
+## over a third of a second, never further round than LOOK_YAW, and up or
+## down to a taller or a shorter face (Bram looking down at Tilly). Laid
+## over the clip, so they still breathe and talk with their hands. Only
+## over their standing, walking, talking or sitting: never in a clip a
+## scene has asked for (act, hold, pose: a look up at the sky stays where
+## the scene put it), lying down or sat up in bed. `Figure3D.looking = false`
+## turns it off.
+static var looking := true
+const LOOK_RANGE := 4.5                  # metres: further off isn't part of the talk
+const LOOK_FIELD := deg_to_rad(100.0)    # someone further round than this isn't looked at
+const LOOK_YAW := deg_to_rad(50.0)       # the most the head turns aside
+const LOOK_PITCH := deg_to_rad(16.0)     # ...and up or down
+const LOOK_NECK := 0.4                   # the neck's share of the turn
+const LOOK_EASE := 3.0                   # how fast it comes in and goes (a third of a second)
+static var _figures: Array = []          # every figure standing in a scene
+
+
+func _add_head_turn() -> void:
+	_figures.append(self)
+	tree_exiting.connect(func() -> void: _figures.erase(self))
+	tree_entered.connect(func() -> void:   # (moved from one place to another)
+		if not _figures.has(self):
+			_figures.append(self))
+	if _skel == null or _skel.find_bone("Head") < 0 or _skel.has_node("HeadTurn"):
+		return
+	var ht := HeadTurn.new()
+	ht.name = "HeadTurn"
+	ht.fig = self
+	ht.neck = _skel.find_bone("Neck")
+	ht.head = _skel.find_bone("Head")
+	_skel.add_child(ht)
+
+
+## Free to turn their head of their own accord: nothing a scene asked for is
+## playing, and they aren't lying down.
+func _free_to_look() -> bool:
+	return anim != null and _action == "" and _lying < 0.01 and _seat_pose != "lying" \
+		and _seat_pose != "long" and is_visible_in_tree()
+
+
+## Who to look at now: the nearest one talking within reach and in front
+## (or, talking themselves, the nearest anyone), else nobody.
+func _who_to_look_at() -> Figure3D:
+	if not looking or not _free_to_look():
+		return null
+	var fwd := facing()
+	var best: Figure3D = null
+	var best_d := LOOK_RANGE
+	for f in _figures:
+		if f == self or not is_instance_valid(f) or not (f as Figure3D).is_visible_in_tree():
+			continue
+		if not talking and not (f as Figure3D).talking:
+			continue
+		var to: Vector3 = (f as Figure3D).global_position - global_position
+		to.y = 0.0
+		var d := to.length()
+		if d < 0.3 or d > best_d or absf(fwd.signed_angle_to(to / d, Vector3.UP)) > LOOK_FIELD:
+			continue
+		best = f
+		best_d = d
+	return best
+
+
+func _look_round(delta: float) -> void:
+	_look_scan -= delta
+	if _look_scan <= 0.0:
+		_look_scan = 0.2 + randf() * 0.15   # (nobody turns in step)
+		_look_at = _who_to_look_at()
+	var on := _look_at != null and is_instance_valid(_look_at) and _free_to_look()
+	if on:
+		_look_point = _look_at.bone_pos("Head") + Vector3(0, 0.06, 0)
+	_look_w = move_toward(_look_w, 1.0 if on else 0.0, delta * LOOK_EASE)
+
+
+## The turn itself, after the clip (and the posture) each frame: the neck
+## and then the head turned towards the face looked at, about the upright
+## and their own left-right, by their share of it.
+func _turn_head(sk: Skeleton3D, neck: int, head: int) -> void:
+	var w := _look_w * _look_w * (3.0 - 2.0 * _look_w)
+	if w < 0.001 or head < 0:
+		return
+	var sx := sk.global_transform
+	var hp := sx * sk.get_bone_global_pose(head).origin
+	var to := _look_point - hp
+	var flat := Vector3(to.x, 0.0, to.z)
+	if flat.length() < 0.05:
+		return
+	var fwd := facing()
+	var yaw := clampf(fwd.signed_angle_to(flat.normalized(), Vector3.UP), -LOOK_YAW, LOOK_YAW) * w
+	var pitch := clampf(atan2(to.y, flat.length()), -LOOK_PITCH, LOOK_PITCH) * w
+	var side := Vector3.UP.cross(fwd).normalized()   # their left (a turn about it by -pitch lifts the face)
+	var b := sx.basis.orthonormalized()
+	var bi := b.inverse()
+	for part in [[neck, LOOK_NECK], [head, 1.0 - LOOK_NECK]]:
+		var i: int = part[0]
+		if i < 0:
+			continue
+		var k: float = part[1] if neck >= 0 else 1.0
+		var turn := Basis(Vector3.UP, yaw * k) * Basis(side, -pitch * k)
+		var g := sk.get_bone_global_pose(i)
+		sk.set_bone_global_pose(i, Transform3D(bi * turn * b * g.basis, g.origin))
+
+
+class HeadTurn:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+	var neck := -1
+	var head := -1
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		if is_instance_valid(fig):
+			fig._turn_head(get_skeleton(), neck, head)

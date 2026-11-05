@@ -302,7 +302,9 @@ class TotemView:
 			CardFace.box(self, Rect2(br.position, Vector2(br.size.x * lag, br.size.y)), 5.5, Color(1, 0.95, 0.9, 0.8 * f))
 		if frac > 0.0:
 			CardFace.vgrad(self, Rect2(br.position, Vector2(maxf(br.size.y, br.size.x * frac), br.size.y)), 5.5, Color(col.lightened(0.35), f), Color(col.darkened(0.2), f))
-		CardFace.text(self, fnt, Vector2(pr.end.x - 72, pr.position.y + 43), str(int(round(left))), 34, Color(1, 1, 1, f), HORIZONTAL_ALIGNMENT_RIGHT, 62, 6)
+		# (5 November: sized to its 62 px, so three figures (220) aren't cut to "22")
+		var hp_s := str(int(round(left)))
+		CardFace.text(self, fnt, Vector2(pr.end.x - 72, pr.position.y + 43), hp_s, CardFace.fit_size(fnt, hp_s, 34, 60.0, 22), Color(1, 1, 1, f), HORIZONTAL_ALIGNMENT_RIGHT, 62, 6)
 		# stage seal
 		if totem.stage() > 0:
 			DuelViews.pill(self, pr.position + Vector2(28, -14), ["", "II", "III"][totem.stage()], Color("3a2a08", 0.95 * f), UITheme.GOLD, 15, 22)

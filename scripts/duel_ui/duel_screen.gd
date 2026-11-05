@@ -5161,12 +5161,15 @@ func _reward_lines() -> Array:
 	if rw.is_empty() or not spec.get("story", false):
 		var res := DuelRewards.resonance(game, me, kind, bool(rw.get("thick", false)), false)
 		return ["This win makes %d Resonance (%s)." % [res.total, _resonance_why(res)]]
-	var out := Game.record_win(game, me, kind, bool(rw.get("thick", false)), false)
+	var out := Game.record_win(game, me, kind, bool(rw.get("thick", false)), false, String(rw.get("crowns", "")))
 	_won_resonance = int(out.resonance.total)
 	_won_shards = int(out.get("shards", 0))
 	var lines := ["+%d Resonance  (%s)" % [out.resonance.total, _resonance_why(out.resonance)]]
 	if _won_shards > 0:
 		lines.append("+%d Shards spill over: yours to spend in the Codex (%d in all)" % [_won_shards, Game.shards()])
+	var gold := int(out.get("crowns", 0))
+	if gold > 0:
+		lines.append("+%d crown%s  (%d in your purse)" % [gold, "" if gold == 1 else "s", Game.crowns()])
 	var target: String = out.get("target", "")
 	if not out.made.is_empty():
 		lines.append("%s crystallises in your hand!" % DuelCards.CARDS[out.made[0]].name)

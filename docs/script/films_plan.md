@@ -9,8 +9,8 @@ v3's midnight and dawn films is in git's history; v7 changed both.)
 What the player does stays in the game between the films: the cart heave
 (after the midnight film), the cellar and the tunnel (after the reckoning
 film), the look back, every conversation and choice. One choice falls
-inside a film (Bram's question at midnight): the film pauses there, the
-game asks it, and the film carries on.
+inside a film (Bram's question at midnight): the film is made in parts
+around it, and the game asks it between them (below).
 
 ## What to make
 
@@ -41,26 +41,56 @@ holds (632 MB of its 1 GB), so a second 4K film needs somewhere else to
 stream from on the phone link (the apps aren't affected). Claude will set
 that up with you when the first film is ready.
 
-## 1. Midnight (`midnight`), about 97 s
+## 1. Midnight (`midnight`), in three parts
+
+You made this one in pieces, cut at Bram's question (5 November), and the
+game plays them in turn:
+
+- **Part 1** (`midnight_1_4k.mp4`, 34 s, made): from the bell to Bram's
+  "Wonder who'll be sitting up there tomorrow." Its last frame stays on
+  screen under the game's two buttons, and your music carries straight on
+  from the film (`Midnight_Choice_Menu_Music_24s_Continuation.wav`),
+  looping for as long as the player takes to choose.
+- **2A or 2B** (`midnight_2a_4k.mp4`, `midnight_2b_4k.mp4`, 3.4 s each,
+  made): Bram's answer to the pick, the music still playing under it.
+- **Part 3** (`midnight_3_4k.mp4`, still to make): from the lanterns going
+  up to Corin under the wheel. Until it's there, the game's 3D takes over
+  at the lanterns going up, and its own music stops as the lanterns stop.
+  When you make it, start its music where the loop would be by then, or
+  bring it in gently: the game fades the loop out over its first second.
+
+The times below are where each shot and line falls in its own part.
+
+**Part 1** (the times are your film's own cuts)
 
 | Shot | Starts | Length | Player A | What's in it | Said over it |
 |---|---|---|---|---|---|
-| mid_01 | 0:00.0 | 7 s |  | Midnight on the packed green, every face turned up to the unlit Great Lantern; the chapel tower, its bell swinging. | 0:00.6 "Midnight. The chapel bell counts twelve, and all of Ashford counts with it." |
-| mid_02 | 0:07.0 | 7 s | yes | From behind: he climbs the Lantern's steps with a lit taper and touches it to the wick. The Great Lantern burns with a rich, golden flame, and the whole green roars. |  |
-| mid_03 | 0:14.0 | 5 s |  | Little Tilly steps back from the Lantern, her face glowing gold. Behind her, Tam dances with Nell, badly; Ned's fiddle. |  |
-| mid_04 | 0:19.0 | 6 s | yes | Corin beside him, both of them watching the crowd; he says it without looking over. | 0:19.8 Corin: "It's a good village, this. Don't tell anyone I said so." |
-| mid_05 | 0:25.0 | 10 s |  | Bram, looking up at the paper lanterns being readied, their candles lit one by one. | 0:25.5 Bram: "Folk think we send them up for the gods. We don't. A lantern's for whoever's out in the dark, so they know which way is home." |
-| mid_06 | 0:35.0 | 6 s |  | Bram's face, the Lantern behind him, his eyes going up to the stars. | 0:35.4 Bram: "Two thousand years. Wonder who'll be sitting up there tomorrow." |
-| | 0:41.0 | | | **The film pauses here** for Bram's question, asked in the game: "Does it matter to us?" / "Whoever it is owes us a better year." | |
-| mid_07 | 0:41.0 | 5 s |  | Bram, close, the ghost of a laugh. | 0:41.3 Bram: "It shouldn't. It always seems to." (after "Does it matter to us?")<br>0:41.8 Bram: "Write and tell them. See who writes back." (after "Whoever it is owes us a better year.") |
-| mid_08 | 0:46.0 | 10 s | yes | Hundreds of paper lanterns rise over Ashford. Then the wind simply stops. Every lantern freezes mid-air; the fiddle trails off; the village goes dead silent, every face turned up, his among them. |  |
-| mid_09 | 0:56.0 | 5 s |  | Corin, looking up, then at Bram. | 0:56.4 Corin: "Bram. Is it meant to do that?" |
-| mid_10 | 1:01.0 | 8 s |  | With a deafening, glass-shattering crack the sky tears open. A blinding white light bleeds down from the Empyrean, and the midnight green goes as stark and pale as bone. For a breath the children cheer. |  |
-| mid_11 | 1:09.0 | 6 s |  | The first strike lands in the top field. The earth bucks; the shockwave shatters the merchant carts lining the green. | 1:12.4 "Screams finally break the silence." |
-| mid_12 | 1:15.0 | 4 s |  | Bram, shouting over the noise, pointing him at the inn. | 1:15.3 Bram: "Inside! Everyone inside! Sprout, the inn. Now!" |
-| mid_13 | 1:19.0 | 8 s | yes | Everyone runs for their doors. Corin grabs Tilly's hand and runs her up the lane past Tam's cart. He runs for the inn (from behind); strikes land all round him, and one knocks him flat. |  |
-| mid_14 | 1:27.0 | 6 s |  | A blast on the far side of the cart throws it over onto Corin; an iron-banded wheel pins him in the mud. Tilly screams. | 1:29.4 Tilly: "Corin! CORIN!" |
-| mid_15 | 1:33.0 | 4 s | yes | He gets up in the dust and falling debris, sees Corin under the wheel, and turns back. (The game takes over: Find Corin, and the cart.) |  |
+| mid_01 | 0:00.0 | 4.5 s |  | Midnight on the packed green, every face turned up to the unlit Great Lantern; the chapel tower, its bell swinging. | 0:00.6 "Midnight. The chapel bell counts twelve, and all of Ashford counts with it." |
+| mid_02 | 0:04.5 | 5.5 s | yes | From behind: he climbs the Lantern's steps with a lit taper and touches it to the wick. The Great Lantern burns with a rich, golden flame, and the whole green roars. |  |
+| mid_03 | 0:10.0 | 3.5 s |  | Little Tilly steps back from the Lantern, her face glowing gold. Behind her, Tam dances with Nell, badly; Ned's fiddle. |  |
+| mid_04 | 0:13.5 | 4.6 s | yes | Corin beside him, both of them watching the crowd; he says it without looking over. | 0:14.0 Corin: "It's a good village, this. Don't tell anyone I said so." |
+| mid_05 | 0:18.1 | 7.5 s |  | Bram, looking up at the paper lanterns being readied, their candles lit one by one. | 0:18.6 Bram: "Folk think we send them up for the gods. We don't. A lantern's for whoever's out in the dark, so they know which way is home." |
+| mid_06 | 0:25.6 | 8.5 s |  | Bram's face, the Lantern behind him, his eyes going up to the stars. | 0:27.5 Bram: "Two thousand years. Wonder who'll be sitting up there tomorrow." |
+| | 0:34.1 | | | **The game asks Bram's question here**, over the held last frame: "Does it matter to us?" / "Whoever it is owes us a better year." | |
+
+**2A or 2B**
+
+| Shot | Starts | Length | Player A | What's in it | Said over it |
+|---|---|---|---|---|---|
+| mid_07 | 0:00.0 | 3.4 s |  | Bram, close, the ghost of a laugh. | 2A, 0:00.6 Bram: "It shouldn't. It always seems to." (after "Does it matter to us?")<br>2B, 0:00.9 Bram: "Write and tell them. See who writes back." (after "Whoever it is owes us a better year.") |
+
+**Part 3** (still to make; about 51 s)
+
+| Shot | Starts | Length | Player A | What's in it | Said over it |
+|---|---|---|---|---|---|
+| mid_08 | 0:00.0 | 10 s | yes | Hundreds of paper lanterns rise over Ashford. Then the wind simply stops. Every lantern freezes mid-air; the fiddle trails off; the village goes dead silent, every face turned up, his among them. |  |
+| mid_09 | 0:10.0 | 5 s |  | Corin, looking up, then at Bram. | 0:10.4 Corin: "Bram. Is it meant to do that?" |
+| mid_10 | 0:15.0 | 8 s |  | With a deafening, glass-shattering crack the sky tears open. A blinding white light bleeds down from the Empyrean, and the midnight green goes as stark and pale as bone. For a breath the children cheer. |  |
+| mid_11 | 0:23.0 | 6 s |  | The first strike lands in the top field. The earth bucks; the shockwave shatters the merchant carts lining the green. | 0:26.4 "Screams finally break the silence." |
+| mid_12 | 0:29.0 | 4 s |  | Bram, shouting over the noise, pointing him at the inn. | 0:29.3 Bram: "Inside! Everyone inside! Sprout, the inn. Now!" |
+| mid_13 | 0:33.0 | 8 s | yes | Everyone runs for their doors. Corin grabs Tilly's hand and runs her up the lane past Tam's cart. He runs for the inn (from behind); strikes land all round him, and one knocks him flat. |  |
+| mid_14 | 0:41.0 | 6 s |  | A blast on the far side of the cart throws it over onto Corin; an iron-banded wheel pins him in the mud. Tilly screams. | 0:43.4 Tilly: "Corin! CORIN!" |
+| mid_15 | 0:47.0 | 4 s | yes | He gets up in the dust and falling debris, sees Corin under the wheel, and turns back. (The game takes over: Find Corin, and the cart.) |  |
 
 ## 2. The White Light (`white_light`), about 38 s
 

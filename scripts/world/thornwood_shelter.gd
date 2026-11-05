@@ -174,7 +174,6 @@ static func room(v: ThornwoodSet) -> Dictionary:
 	return out
 
 
-## The rise, the roots hanging over the low stone door (outside, in the trees).
 ## One of Gary's prop models (assets/models/ashford/<id>.glb) at a spot in
 ## the room, standing on the floor (no ground height or collision of its own,
 ## as AshfordVillage.prop_model gives a prop on the green). Null if it isn't there.
@@ -192,6 +191,8 @@ static func _model(parent: Node3D, id: String, at: Vector3, yaw: float) -> Node3
 	return m
 
 
+## The rise outside, with the low stone door in it: Gary's doorway (5
+## November) when it's there, else the drawn door with roots hanging over it.
 static func _door_outside(v: ThornwoodSet) -> Node3D:
 	if v.has_meta("shelter_door"):
 		return v.get_meta("shelter_door")
@@ -213,6 +214,14 @@ static func _door_outside(v: ThornwoodSet) -> Node3D:
 	mound.material_override = bracken
 	mound.position = Vector3(0, 0.2, -1.6)
 	n.add_child(mound)
+	if _doorway(v, n) != null:
+		# the bracken rise behind it, set back so it doesn't swallow the
+		# doorway's foot, and broad enough to bed its earth into
+		sm.radius = DOORWAY_RISE.x
+		sm.height = DOORWAY_RISE.y
+		mound.position = Vector3(0, 0.2, DOORWAY_RISE.z)
+		v.set_meta("shelter_door", n)
+		return n
 	var stone := StandardMaterial3D.new()
 	stone.albedo_color = Color(0.36, 0.34, 0.31)
 	v.box(n, Vector3(1.3, 1.5, 0.3), Vector3(0, 0.75, 0.4), stone)
@@ -228,6 +237,73 @@ static func _door_outside(v: ThornwoodSet) -> Node3D:
 		v.box(hang, Vector3(0.04, 1.1, 0.04), Vector3(-0.45 + i * 0.11, 1.05, 0.64), roots, Vector3(0.1 * sin(i * 1.7), 0, 0.12 * cos(i)))
 	v.set_meta("shelter_door", n)
 	return n
+
+
+## Gary's doorway (assets/models/ashford/shelter_door.glb: the whole of it,
+## mossy fieldstone and earth, old oak roots arching over a stone arch, an
+## oak door bound in iron; 3.45 m across and 2.41 m high as made, its door 1
+## m wide and 1.6 m high, facing +z) standing where the drawn door stood. Its
+## door (the oak and the iron on it, a mesh of their own in the model) is
+## cut out and hung on its hinge side as "Leaf", so Bram can push it open
+## (DOOR_OPEN); behind it, the dark of the way in. Null if it isn't there.
+const DOORWAY_HINGE := Vector3(-0.5, 0.0, 0.46)   # the door's left edge, its middle (the ring is on the right)
+const DOORWAY_PARTS := ["Weathered_Oak_Door", "Dark_Wrought_Iron"]
+## The bracken rise behind the doorway: its radius, height and how far back.
+const DOORWAY_RISE := Vector3(3.2, 5.0, -2.9)
+## How far the door swings in (radians about its hinge: short of square, so
+## its far edge stays clear of the stone at the side of the way in).
+const DOOR_OPEN := 1.45
+
+static func _doorway(v: ThornwoodSet, n: Node3D) -> Node3D:
+	var m := _model(n, "shelter_door", Vector3.ZERO, 0.0)
+	if m == null:
+		return null
+	# down onto the lowest ground under it, so no corner of it floats
+	var low := 0.0
+	for p: Vector3 in [Vector3(-1.65, 0, 0.95), Vector3(0, 0, 0.95), Vector3(1.8, 0, 0.95),
+			Vector3(-1.65, 0, -1.2), Vector3(1.8, 0, -1.2)]:
+		var g := n.to_global(p)
+		low = minf(low, v.height(g.x, g.z) - n.global_position.y)
+	m.position.y = low - 0.03
+	var mis := m.find_children("*", "MeshInstance3D", true, false)
+	if mis.is_empty():
+		return m
+	var mi := mis[0] as MeshInstance3D
+	var src := mi.mesh
+	var rest := ArrayMesh.new()
+	var door := ArrayMesh.new()
+	for s in src.get_surface_count():
+		var mat := src.surface_get_material(s)
+		var to: ArrayMesh = door if mat != null and mat.resource_name in DOORWAY_PARTS else rest
+		to.add_surface_from_arrays(src.surface_get_primitive_type(s), src.surface_get_arrays(s))
+		to.surface_set_material(to.get_surface_count() - 1, mat)
+	if door.get_surface_count() == 0:
+		return m   # (no door of its own to swing: it stays as made)
+	mi.mesh = rest
+	var leaf := Node3D.new()
+	leaf.name = "Leaf"
+	m.add_child(leaf)
+	leaf.transform = mi.transform * Transform3D(Basis(), DOORWAY_HINGE)
+	var lm := MeshInstance3D.new()
+	lm.mesh = door
+	lm.position = -DOORWAY_HINGE
+	lm.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	leaf.add_child(lm)
+	n.set_meta("leaf", leaf)
+	# the way in behind the door: dark, a passage going back into the rise
+	# (its inside faces only, so the door can swing in against its wall)
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.03, 0.025, 0.02)
+	dark.roughness = 1.0
+	dark.cull_mode = BaseMaterial3D.CULL_FRONT
+	var way := MeshInstance3D.new()
+	var bm := BoxMesh.new()
+	bm.size = Vector3(1.04, 1.62, 1.4)
+	way.mesh = bm
+	way.material_override = dark
+	way.position = mi.transform * Vector3(0, 0.81, DOORWAY_HINGE.z - 0.71)
+	m.add_child(way)
+	return m
 
 
 # =============================================================== the night ===
@@ -264,10 +340,21 @@ static func night(w: World) -> void:
 	var bf = Cine.fig(w, "bram")
 	if bf is Figure3D:
 		(bf as Figure3D).act("lift", 1.0)
-	var roots: Node3D = dn.get_node("Roots")
+	# (Gary's doorway: he pushes its door in; the drawn one's roots swing aside)
 	var rt := w.create_tween()
-	rt.tween_property(roots, "rotation:z", 0.9, 0.8).set_trans(Tween.TRANS_SINE)
-	Cine.shot(w, stand + to_door.cross(Vector3.UP) * 2.4 + Vector3(0, 1.5, 0), dn.global_position + Vector3(0, 0.8, 0), 38.0)
+	if dn.has_meta("leaf"):
+		var leaf: Node3D = dn.get_meta("leaf")
+		leaf.rotation.y = 0.0
+		rt.tween_property(leaf, "rotation:y", DOOR_OPEN, 1.2).set_trans(Tween.TRANS_SINE).set_delay(0.35)
+	else:
+		var roots: Node3D = dn.get_node("Roots")
+		rt.tween_property(roots, "rotation:z", 0.9, 0.8).set_trans(Tween.TRANS_SINE)
+	if dn.has_meta("leaf"):
+		# (back a little from the side, so the doorway, its roots and Bram
+		# are all in it: Gary's doorway is broader than the drawn door)
+		Cine.shot(w, stand + to_door.cross(Vector3.UP) * 2.6 - to_door * 1.5 + Vector3(0, 1.6, 0), dn.global_position + Vector3(0, 1.0, 0), 40.0)
+	else:
+		Cine.shot(w, stand + to_door.cross(Vector3.UP) * 2.4 + Vector3(0, 1.5, 0), dn.global_position + Vector3(0, 0.8, 0), 38.0)
 	await Cine.wait(w, 1.0)
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.look(w, "player", Cine.body(w, "bram").global_position)

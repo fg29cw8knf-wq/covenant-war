@@ -25,10 +25,12 @@ extends CanvasLayer
 ##      he tucks it into his coat ("Hush, now. I've got you."), and turns:
 ##      the faceless hunter on the crater's rim. "Not this one."
 ##   5. Bram's duel, filmed: the real duel engine (DuelScreen, spec.film) with
-##      no HUD and the camera directed, out in the snow; Bram's old Ironstone
+##      no HUD and the camera directed, out in the snow; Bram's deck of his
+##      god's cards (Kaethis, the Hand Before, never named here: WhiteSkyDuel)
 ##      against the hunter's pale hounds of Sigil light. Bram plays one-handed,
-##      the child in his coat; he is losing; he calls down Grondmaw, the
-##      Mountain's Heart, and the screen burns white. Nobody sees who won.
+##      the child in his coat; he is losing; he calls down Orlanthe, the Last
+##      Page, and when its book opens the screen burns white. Nobody sees who
+##      won.
 ##   6. Black. Morrowen: "Twenty years later, the debt came due." Then the attic
 ##      (AshfordP1._attic): the player wakes, the mark under his collar fading.
 ##
@@ -80,7 +82,7 @@ const SHOTS := [
 	[Vector3(-9.0, 2.8, 0.6), Vector3(1.2, 0.8, -1.0), 40.0],
 ]
 const SHOT_SECS := 6.5
-## When Grondmaw is called: low behind Bram, up past the hunter.
+## When his Summon is called: low behind Bram, up past the hunter.
 const CLIMAX := [Vector3(1.2, 0.9, 10.6), Vector3(0.0, 3.6, -6.0), 46.0]
 ## The longest the duel may run before the white comes anyway (s).
 const FILM_MAX := 140.0
@@ -576,9 +578,9 @@ func _duel() -> void:
 	_screen.game.logged.connect(func(t: String, who: int) -> void:
 		if who == 0 and is_instance_valid(_bram) and (t.contains(" plays ") or t.contains(" calls ") or t.contains(" sets ")):
 			_act(_bram, "play_card")
-		if who == 0 and t.contains("calls down") and t.contains("Grondmaw") and st.called < 0.0:
+		if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()) and st.called < 0.0:
 			st.called = _t
-		# the Mountain's Heart's blow landing on the hunter's side
+		# the Last Page's blow landing on the hunter's side
 		if st.called >= 0.0 and st.struck < 0.0 and who == 1 and t.contains(" takes "):
 			st.struck = _t)
 	_screen.finished.connect(func(_r) -> void: st.over = true)
@@ -590,8 +592,8 @@ func _duel() -> void:
 	var climax := false
 	while not _skipping and not st.over and _t - start < FILM_MAX:
 		if f != null and st.called >= 0.0 and not climax:
-			# the Mountain's Heart: low behind him, looking up past the
-			# hunter at what's coming down
+			# the Last Page: low behind him, looking up past the hunter at
+			# what's coming down
 			climax = true
 			var c: Array = CLIMAX
 			f.cam_fov = float(c[2])
@@ -609,7 +611,7 @@ func _duel() -> void:
 		if _tapped and not _skip.visible:
 			break
 		await get_tree().process_frame
-	# the white: the Mountain's Heart's blow, or the end of the film; the
+	# the white: the book opening on the Last Page's blow, or the end of the film; the
 	# music (Gary's white_sky_duel, its climax looping under the duel) stops
 	# dead with it
 	var wt := create_tween()
@@ -621,7 +623,7 @@ func _duel() -> void:
 ## The filmed duel's spec for DuelScreen (tests read it too).
 static func duel_spec() -> Dictionary:
 	var D := WhiteSkyDuel
-	return {"decks": [D.bram_deck(D.SEED, D.GRONDMAW_AT), D.hunter_deck(D.SEED)], "stacked": [true, true],
+	return {"decks": [D.bram_deck(D.SEED, D.SUMMON_AT), D.hunter_deck(D.SEED)], "stacked": [true, true],
 		"puzzle": D.board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,

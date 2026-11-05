@@ -34,6 +34,7 @@ extends RefCounted
 ## relic:     a card kind (Phase C): given to a Totem of yours (one each),
 ##            it stays until the Totem falls: "relic": {hp | damage |
 ##            keyword | dawn_heal | dawn_shield | move | fall_draw}
+##            (more than one may be given: the Knotted Cord's hp and fall_draw)
 ## reveal:    {op: status_across | damage_across | draw | heal_allies}: what a
 ##            Totem does when it's turned face up after a veiled call
 ## stand_in:  a Totem with no model or painting yet is shown as this one
@@ -1158,6 +1159,91 @@ const CARDS := {
 		"effects": [{"op": "survive", "life": 20}],
 		"art": "a battered duellist standing alone in a ring of golden light, cards raised, refusing to fall",
 	},
+	# ============================= KAETHIS, THE HAND BEFORE (5 November)
+	# Bram's god: fate and destiny, Astral, affinity Resolve (the pantheon doc
+	# of 4 November, for Gary's yes). Its Totems are the top tier of Bram's
+	# champion deck in the Night of the White Sky (WhiteSkyDuel); none is in a
+	# starter deck or a pool yet. Each Totem shows as a tinted stand-in until
+	# Gary's paintings and models come. The god's name lives in Lore.GODS only
+	# (DuelLore's backstories take it from there); no card here names it, and
+	# the ids stay whatever it's called.
+	"scrivener": {
+		"kind": "totem", "name": "The Scrivener", "element": "astral", "tier": 3, "stage": 0, "cost": 3,
+		"hp": 180, "affinity": "resolve", "attuned": {"min": 6, "damage": 20},
+		"stand_in": "gilded_sentinel", "stand_in_tint": "ece4cc",
+		"moves": [
+			{"name": "Entry", "cost": 0, "damage": 40},
+			{"name": "Strike the Name", "cost": 3, "damage": 90, "effects": [{"op": "pierce"}]},
+		],
+		"art": "a tall robed figure in parchment-white with no face under its hood, one ink-black hand holding a quill of cold starlight, writing a name on the air",
+	},
+	"loomwarden": {
+		"kind": "totem", "name": "Loomwarden", "element": "astral", "tier": 3, "stage": 0, "cost": 4,
+		"hp": 220, "affinity": "resolve", "keywords": ["guardian"], "attuned": {"min": 6, "damage": 20},
+		"stand_in": "mirewidow", "stand_in_tint": "d9d4e8",
+		"moves": [
+			{"name": "Warp", "cost": 0, "damage": 30},
+			{"name": "Tangle", "cost": 2, "damage": 50, "effects": [{"op": "status", "status": "rooted"}]},
+		],
+		"art": "a great standing loom of bone-white wood with a many-armed weaver of grey thread crouched inside it, silver threads strung taut between its hands, starlight caught in the weave",
+	},
+	"unspent_hour": {
+		"kind": "totem", "name": "The Unspent Hour", "element": "astral", "tier": 4, "stage": 0, "cost": 4,
+		"hp": 190, "affinity": "resolve", "keywords": ["swift"], "attuned": {"min": 7, "damage": 20},
+		"stand_in": "somnowl", "stand_in_tint": "c9d6ff",
+		"moves": [
+			{"name": "Sandfall", "cost": 0, "damage": 40},
+			{"name": "Turn the Glass", "cost": 3, "damage": 70, "effects": [{"op": "status", "status": "staggered"}]},
+		],
+		"art": "a slender winged spirit of pale glass shaped like an hourglass, starlit sand drifting upward inside it, a face that is only a suggestion, wings of thin cold light",
+	},
+	"weft_serpent": {
+		"kind": "totem", "name": "The Weft Serpent", "element": "astral", "tier": 5, "stage": 0, "cost": 5,
+		"hp": 240, "affinity": "resolve", "attuned": {"min": 7, "damage": 20},
+		"stand_in": "riptide_serpent", "stand_in_tint": "e4ddd0",
+		"moves": [
+			{"name": "Unravel", "cost": 0, "damage": 40, "effects": [{"op": "status", "status": "marked"}]},
+			{"name": "Weave Shut", "cost": 4, "damage": 100, "effects": [{"op": "bonus_if_status", "status": "marked", "amount": 40}]},
+		],
+		"art": "a vast serpent woven from countless threads of grey, white and starlit silver, every thread a life, its coils passing through one another like cloth on a loom, eyes of ink",
+	},
+	# Aldrith's (Mystic, Intellect): the rune-cut slate that stands at Kaethis's door
+	"glyph_warden": {
+		"kind": "totem", "name": "Glyph Warden", "element": "mystic", "tier": 4, "stage": 0, "cost": 3,
+		"hp": 180, "affinity": "intellect", "keywords": ["guardian", "shelter"], "attuned": {"min": 6, "hp": 20},
+		"stand_in": "quarry_golem", "stand_in_tint": "8c90e8",
+		"moves": [
+			{"name": "Rune Strike", "cost": 0, "damage": 30},
+			{"name": "Binding Glyph", "cost": 2, "damage": 50, "effects": [{"op": "status", "status": "silenced"}]},
+		],
+		"art": "a tall standing slate of dark stone cut with glowing indigo runes, two arms of carved stone folded across it, a single rune for an eye, standing watch before a closed door",
+	},
+	"orlanthe": {
+		"kind": "summon", "name": "Orlanthe, the Last Page", "element": "astral", "tier": 6, "cost": 7,
+		"affinity": "resolve",
+		"move": {"name": "Final Entry", "damage": 140, "target": "foe_totem", "effects": [{"op": "pierce"}, {"op": "doom_others"}]},
+		"art": "a vast hooded figure in robes of folded parchment, faceless, with ink-black hands, one holding a closed book the size of a house, the sky behind it going white as the book begins to open",
+	},
+	"cut_thread": {
+		"kind": "rite", "name": "Cut Thread", "element": "astral", "tier": 3, "cost": 3, "target": "foe_totem",
+		"effects": [{"op": "status", "status": "doomed"}],
+		"art": "silver shears closing on a single glowing thread stretched across the dark, starlight along the blades",
+	},
+	"foreordained": {
+		"kind": "rite", "name": "Foreordained", "element": "astral", "tier": 2, "cost": 2, "target": "none",
+		"effects": [{"op": "draw", "count": 1}, {"op": "rival_top_to_bottom"}],
+		"art": "five cards laid face down on a dark table by a hand that isn't there, a faint ink-black shadow of fingers over the last one",
+	},
+	"already_written": {
+		"kind": "ward", "name": "Already Written", "element": "astral", "tier": 2, "cost": 1, "trigger": "foe_rite",
+		"effects": [{"op": "cancel_rite"}],
+		"art": "a page of an old book turning by itself, the words of a spell crossed out in black ink before they were said",
+	},
+	"hourglass_no_sand": {"kind": "relic", "name": "Hourglass With No Sand", "element": "astral", "tier": 2, "cost": 2,
+		"relic": {"move": {"name": "The Fixed Hour", "cost": 2, "damage": 50, "effects": [{"op": "status", "status": "staggered"}]}},
+		"art": "an empty hourglass on a fine chain, nothing in either bulb, the glass faintly starlit from inside"},
+	"knotted_cord": {"kind": "relic", "name": "Knotted Cord", "element": "astral", "tier": 2, "cost": 2, "relic": {"hp": 30, "fall_draw": 1},
+		"art": "a cord of grey wool with seven knots along it, one of them cut, laid on dark stone"},
 }
 
 
@@ -1331,17 +1417,18 @@ static func _one_bond_text(root_id: String, b: Dictionary) -> String:
 ## The words for a Relic.
 static func relic_text(d: Dictionary) -> String:
 	var r: Dictionary = d.get("relic", {})
-	var what := ""
-	if r.has("damage"): what = "its moves deal %d more damage" % int(r.damage)
-	elif r.has("hp"): what = "+%d HP" % int(r.hp)
-	elif r.has("keyword"): what = "it has %s (%s)" % [KEYWORDS[r.keyword].name, String(KEYWORDS[r.keyword].text).trim_suffix(".").to_lower()]
-	elif r.has("dawn_heal"): what = "at your Dawn it heals %d" % int(r.dawn_heal)
-	elif r.has("dawn_shield"): what = "at your Dawn it's shielded for %d" % int(r.dawn_shield)
-	elif r.has("fall_draw"): what = "when it falls, you draw %d" % int(r.fall_draw)
-	elif r.has("move"):
+	# (5 November: a Relic can do two things, the Knotted Cord's HP and draw)
+	var parts := []
+	if r.has("damage"): parts.append("its moves deal %d more damage" % int(r.damage))
+	if r.has("hp"): parts.append("+%d HP" % int(r.hp))
+	if r.has("keyword"): parts.append("it has %s (%s)" % [KEYWORDS[r.keyword].name, String(KEYWORDS[r.keyword].text).trim_suffix(".").to_lower()])
+	if r.has("dawn_heal"): parts.append("at your Dawn it heals %d" % int(r.dawn_heal))
+	if r.has("dawn_shield"): parts.append("at your Dawn it's shielded for %d" % int(r.dawn_shield))
+	if r.has("fall_draw"): parts.append("when it falls, you draw %d" % int(r.fall_draw))
+	if r.has("move"):
 		var m: Dictionary = r.move
-		what = "a new move, %s (%d Essence: %s)" % [m.name, int(m.get("cost", 0)), outcome_text(int(m.get("damage", 0)), m.get("effects", []), m.get("target", "foe"))]
-	return "Give it to one of your Totems (one Relic each): %s. It stays until the Totem falls, then goes to your discard." % what
+		parts.append("a new move, %s (%d Essence: %s)" % [m.name, int(m.get("cost", 0)), outcome_text(int(m.get("damage", 0)), m.get("effects", []), m.get("target", "foe"))])
+	return "Give it to one of your Totems (one Relic each): %s. It stays until the Totem falls, then goes to your discard." % ", and ".join(parts)
 
 
 const TIER_MAX_COPIES := [0, 3, 3, 2, 1, 1, 1, 1]
@@ -1414,6 +1501,7 @@ static func gift_text(g: String) -> String:
 		"star_chart": return "Draw any two of your top 5 cards. +2 on your Fate rolls this turn."
 		"forged_guard": return "Shield each of your Totems for 30, and double your Guard until your next Dawn."
 		"unveil": return "Turn every enemy Ward face up, then destroy one."
+		"foreordained": return "Draw a card. The card on top of your rival's deck goes to its bottom."
 	return ""
 
 
@@ -1552,6 +1640,8 @@ static func effect_text(e: Dictionary) -> String:
 			return "spill-over ignores Guard"
 		"stun_others":
 			return "Stun every other foe"
+		"doom_others":
+			return "every other foe is Doomed"
 		"drain":
 			return "gain Life equal to the damage"
 	return ""
@@ -1689,6 +1779,7 @@ static func _rite_text(d: Dictionary) -> String:
 			"reveal_twice": parts.append("Turn your veiled Totems face up now, each Reveal happening twice")
 			"veil_call_free": parts.append("Call a Basic Totem of tier %d or lower from your hand into an empty slot, veiled and free" % int(e.get("max_tier", 2)))
 			"pick_top": parts.append("Look at your top %d cards and put one in your hand" % int(e.get("count", 3)))
+			"rival_top_to_bottom": parts.append("the card on top of your rival's deck goes to its bottom")
 	return ", and ".join(parts).replace(", and clear", " and clear") + "."
 
 

@@ -29,10 +29,18 @@ const LOOP_START := {"ashford_festival": 35.029, "menu_theme": 59.0, "duel_pinch
 		# the hush before the storm, then its climax looping from 8.9 s until the
 		# white cuts it dead)
 		"bram_theme": 14.698, "tam_mill": 4.946, "nell_waltz": 5.828,
-		"white_sky": 24.613, "white_sky_duel": 8.870}
+		"white_sky": 24.613, "white_sky_duel": 8.870,
+		# Gary's 5 November track: Tilly's talk music, by the well and when she
+		# gives her moth (scouted in three-time; loops 15.4 to 96.4 s)
+		"tilly_moth": 15.372,
+		# and the Midnight film's choice-menu music: his soundtrack's own 24 s
+		# continuation from the end of part 1, looping 16 bars from 5.745 s
+		# while the player decides (StoryFilm, the choice's "music")
+		"midnight_choice": 5.745}
 ## Pieces that always start from their beginning (a memory's music: coming
-## back to it carries on from where it left off for everything else).
-const FROM_START := ["white_sky", "white_sky_duel"]
+## back to it carries on from where it left off for everything else; the
+## Midnight choice's carries straight on from the film before it).
+const FROM_START := ["white_sky", "white_sky_duel", "midnight_choice"]
 ## The two duel themes take turns, duel by duel.
 const DUEL_THEMES := ["duel_main", "duel_alt"]
 

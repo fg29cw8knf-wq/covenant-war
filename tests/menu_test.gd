@@ -51,6 +51,7 @@ func _ready() -> void:
 	Game.v2.pool = 9
 	Game.v2.attune["cinderpup"] = 4
 	Game.v2.shards = 40   # Shards to forge with (3 November)
+	Game.v2.crowns = 23   # and crowns in the purse (5 November)
 	Game.give_item("hearth_charm")
 	Game.equip("charm", "hearth_charm")
 	# Bram's lessons so far (the How to Duel page) and two conditions met (the Codex)
@@ -71,6 +72,8 @@ func _ready() -> void:
 		menu.show_tab(t[0])
 		await _frames(12)
 		await _shot(t[0])
+		if t[0] == "hero" and not _texts(menu._content).contains("Purse: 23 crowns."):
+			problems.append("the Hero page doesn't show the purse")
 	# Morrowen's Ledger: its People page too
 	Ledger.section = "people"
 	menu.show_tab("ledger")
@@ -139,6 +142,8 @@ func _ready() -> void:
 		problems.append("standing values wrong: tilly %d solmaris %d corin %d" % [Standing.value("tilly"), Standing.value("solmaris"), Standing.value("corin")])
 	if int(Game.profile.attributes.resolve) != int(Game.profile.base.resolve) + 2:
 		problems.append("the charm's +1 Resolve isn't counted")
+	# Tamsin's stall (5 November): three sealed caches, one bought and turned over
+	await _stall(world)
 	# the opening notice and an advert placeholder
 	var notice := NoticeScreen.new()
 	add_child(notice)
@@ -218,6 +223,35 @@ func _new_player(world: World, menu: PauseMenu) -> void:
 	menu.request_close()
 	await _frames(4)
 	Game.area = "solhaven"
+
+
+## Tamsin's stall over the square: the counter, then a cache bought.
+func _stall(world: World) -> void:
+	StallSheet.open(world)
+	await get_tree().create_timer(0.6).timeout   # (its fade in; the frames are slow here)
+	await _frames(3)
+	var sheets := world.find_children("StallSheet", "", true, false)
+	if sheets.is_empty():
+		problems.append("no stall sheet")
+		return
+	var sheet: StallSheet = sheets[0]
+	await _shot("stall")
+	if sheet._slots.size() != DuelRewards.CACHES_A_DAY:
+		problems.append("the stall has %d caches, not %d" % [sheet._slots.size(), DuelRewards.CACHES_A_DAY])
+	var had := Game.crowns()
+	var bought := false
+	for s in sheet._slots:
+		if not (s.btn as Button).disabled:
+			(s.btn as Button).pressed.emit()
+			bought = true
+			break
+	await get_tree().create_timer(1.6).timeout   # the card turned over
+	await _frames(3)
+	await _shot("stall_bought")
+	if not bought or Game.crowns() >= had:
+		problems.append("nothing could be bought at the stall with %d crowns" % had)
+	sheet._done.pressed.emit()
+	await get_tree().create_timer(0.5).timeout
 
 
 ## Every bit of text under a node, for checking what a page says.

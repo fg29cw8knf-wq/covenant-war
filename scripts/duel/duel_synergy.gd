@@ -225,6 +225,11 @@ const CARD_GOD := {
 	"rite_of_ashes": "pyrrhane", "kindred_seek": "ellowen", "unbind": "aldrith",
 	"ambush_snare": "nocthra", "last_stand": "hethrin",
 	"relic_hunt": "orrun", "pack_howl": "ellowen", "call_of_kin": "ellowen",
+	# (5 November) Kaethis, the Hand Before: Astral like Aster's, but its own
+	# (the Glyph Warden is Aldrith's by its element)
+	"scrivener": "kaethis", "loomwarden": "kaethis", "unspent_hour": "kaethis", "weft_serpent": "kaethis",
+	"orlanthe": "kaethis", "cut_thread": "kaethis", "foreordained": "kaethis", "already_written": "kaethis",
+	"hourglass_no_sand": "kaethis", "knotted_cord": "kaethis",
 }
 
 ## Each god's rival: where one rules, the other's cards are Shunned.

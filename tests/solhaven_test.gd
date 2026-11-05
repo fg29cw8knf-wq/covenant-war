@@ -242,6 +242,28 @@ func _process(_d: float) -> void:
 		for c in world.hud.find_children("*", "", true, false):
 			if c.has_signal("closed") and c.get("card_id") != null and (c as CanvasItem).is_visible_in_tree() and c.get("_ready_to_close"):
 				c.emit_signal("closed")
+	# Tamsin's stall (5 November): the crier's free cache taken, then Done
+	for st in get_tree().root.find_children("StallSheet", "", true, false):
+		var sheet := st as StallSheet
+		if sheet.modulate.a < 0.99 or _frame % 10 != 0:
+			continue
+		if not sheet.has_meta("seen"):
+			sheet.set_meta("seen", true)
+			_note("STALL: %s  %s" % [sheet._sub.text, sheet._purse.text])
+			if _keys:
+				_shot("stall_%05d" % _frame)
+			continue
+		var took := false
+		if sheet.free > 0:
+			for s in sheet._slots:
+				if not (s.btn as Button).disabled:
+					(s.btn as Button).pressed.emit()
+					took = true
+					break
+		if took:
+			_note("STALL: took the crier's cache: %s" % sheet._toast.text)
+		else:
+			sheet._done.pressed.emit()
 	# Tamsin's crier: the advert (its placeholder) watched to the end
 	if _frame % 10 == 0:
 		for b in get_node("/root/Ads").find_children("*", "Button", true, false):

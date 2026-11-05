@@ -4,26 +4,37 @@ extends RefCounted
 ## and the computer's skill, apart from WhiteSky so tests/white_sky_probe.gd
 ## can play it headless (a --script run has none of the game's autoloads).
 
-## Bram's duel. Twenty years ago Bram had served a god for many years (Gary,
+## Bram's duel. Twenty years ago Bram had served a god for forty years (Gary,
 ## 4 November: "a very powerful distinguished player", and "high tier cards,
-## nothing low tier"), so the film cuts in with the duel already joined, on a
-## set board (DuelGame.puzzle, as the Trial of Light is): Bram's Cragmaul and
-## Ironclad Behemoth already Ascended and standing, Last Stand set, the Quarry
-## Golem and Gilded Sentinels, Relics and Rites to hand, every card of his
-## Crystal tier or above (Rites and Relics Glimmer and up), Grondmaw
-## GRONDMAW_AT cards down his deck, and six Essence a turn; a god's champion
-## pays no tribute to call a Crystal ("free_call"). Which god he served stays
-## hidden (Master Script v7: his former master, a god of fate and destiny not
-## yet in the game, comes out much later): no patron is named and no Divine
-## Gift is played, and the film shows no names. Against him the hunter's pack,
-## hounds and foxes of white smoke already on the field, Ascended too, and
-## more coming (every Hound feeds the others' bite). Both played by the
-## computer at SKILL, every attribute at its height. SEED decides the Fate
-## rolls: tests/white_sky_probe.gd found one where Bram loses two of his
-## Totems and breaks one of the pack before Grondmaw comes. LIFE_FLOOR keeps
-## him standing until then.
-const SEED := 2
-const GRONDMAW_AT := 3
+## nothing low tier"; 5 November: "top tier totems that will be under his own
+## god ... cards in league with his god or its allies"), so the film cuts in
+## with the duel already joined, on a set board (DuelGame.puzzle, as the
+## Trial of Light is). His god is Kaethis, the Hand Before (Lore.GODS, for
+## Gary's yes), and every card is Kaethis's or its allies': the Scrivener and
+## the Loomwarden standing, Last Stand set, the Unspent Hour, Cut Thread and
+## two Relics to hand, Aldrith's Glyph Warden and Counter Runes in the deck,
+## every card of his Crystal tier or above (Rites, Relics and Wards Glimmer
+## and up), Orlanthe, the Last Page, SUMMON_AT cards down his deck, and six
+## Essence a turn; a god's champion pays no tribute to call a Crystal
+## ("free_call"). Which god he served stays hidden (Master Script v7: his
+## former master, a god of fate and destiny, comes out much later): no patron
+## is named and no Divine Gift is played, and the film shows no names.
+## Against him the hunter's pack, hounds and foxes of white smoke already on
+## the field, Ascended too, and more coming (every Hound feeds the others'
+## bite). Both played by the computer at SKILL, every attribute at its
+## height. SEED decides the Fate rolls: tests/white_sky_probe.gd found one
+## where Bram loses two of his Totems and breaks two of the pack before
+## Orlanthe comes (seed 13, 5 November: the hunter Dooms the Scrivener at
+## once; Bram's Loomwarden and Unspent Hour break the Blazehound and the
+## Infernal Warg; the Scrivener and the Unspent Hour fall on the hunter's
+## third turn; he calls the Weft Serpent and the Glyph Warden into the gaps;
+## the Last Page on his fourth turn, the duel's 8th). LIFE_FLOOR keeps him
+## standing until then.
+const SEED := 13
+## The Summon he calls at the end (the white is its blow), and how far down
+## his deck it lies.
+const SUMMON := "orlanthe"
+const SUMMON_AT := 3
 const SKILL := 1.0
 const LIFE_FLOOR := [40, 0]
 const TURN_MIN := 4
@@ -34,10 +45,14 @@ const LIFE := [600, 600]
 const ESSENCE := [6, 6]
 ## Bram's side: the board (a stack is what the Totem rose from, then the one
 ## standing), his hand, his deck in the order it's drawn, his Wards set.
-const BRAM_BOARD := [["boulderox", "cragmaul"], ["ironhide", "ironclad_behemoth"], null]
-const BRAM_HAND := ["quarry_golem", "stone_heart", "stone_gaze", "iron_tithe"]
-const BRAM_DECK := ["shieldwall_call", "gilded_sentinel", "bastion_banner", "grondmaw", "rune_break", "quarry_golem",
-	"iron_brace", "counterweight", "gilded_sentinel", "stone_patience", "stone_heart", "iron_tithe", "shieldwall_call", "bastion_banner"]
+## (5 November: Kaethis's cards in place of his old Ironstone's; the Basics
+## standing from the first frame, nothing stacked under them)
+const BRAM_BOARD := [["scrivener"], ["loomwarden"], null]
+const BRAM_HAND := ["unspent_hour", "cut_thread", "hourglass_no_sand", "knotted_cord"]
+## (the Weft Serpent drawn third, so all five of his Totems are seen before
+## the white: tests/white_sky_probe.gd)
+const BRAM_DECK := ["already_written", "glyph_warden", "weft_serpent", "orlanthe", "doom_sigil", "foreordained", "cut_thread",
+	"counter_rune", "hushed_counter", "scrivener", "knotted_cord", "glyph_warden", "foreordained", "null_sigil"]
 const BRAM_WARDS := ["last_stand"]
 ## The hunter's pack.
 const HUNTER_BOARD := [["cinderpup", "blazehound"], ["cinderpup", "blazehound", "infernal_warg"], ["dreamfox", "veilfox"]]
@@ -52,7 +67,7 @@ static func board() -> Dictionary:
 	return {"first": FIRST, "life": LIFE.duplicate(), "essence_max": ESSENCE.duplicate(),
 		"board": [BRAM_BOARD.duplicate(true), HUNTER_BOARD.duplicate(true)],
 		"hand": [BRAM_HAND.duplicate(), HUNTER_HAND.duplicate()],
-		"deck": [bram_deck(SEED, GRONDMAW_AT), HUNTER_DECK.duplicate()],
+		"deck": [bram_deck(SEED, SUMMON_AT), HUNTER_DECK.duplicate()],
 		"wards": [BRAM_WARDS.duplicate(), HUNTER_WARDS.duplicate()],
 		"no_gift": true, "synergy": ["kin", "side", "react", "chain"]}
 
@@ -65,13 +80,19 @@ static func story_rules() -> Dictionary:
 ## How fast the filmed duel plays (DuelScreen.rate of the duel speed setting).
 const FILM_SPEED := 3.0
 
-## Bram's deck in the order it's drawn: BRAM_DECK with Grondmaw `pos`
+## Bram's deck in the order it's drawn: BRAM_DECK with the Summon `pos`
 ## cards down (the seed shuffles nothing: a set board is written out).
 static func bram_deck(_seed_value: int, pos: int) -> Array:
 	var ids: Array = BRAM_DECK.duplicate()
-	ids.erase("grondmaw")
-	ids.insert(clampi(pos, 0, ids.size()), "grondmaw")
+	ids.erase(SUMMON)
+	ids.insert(clampi(pos, 0, ids.size()), SUMMON)
 	return ids
+
+
+## The Summon's name as the duel's log says it (the film and its probe
+## watch the log for it being called down).
+static func summon_name() -> String:
+	return String(DuelCards.CARDS[SUMMON].name)
 
 
 static func hunter_deck(_seed_value: int) -> Array:

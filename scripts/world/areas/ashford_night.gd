@@ -658,7 +658,8 @@ static func reckoning(w: World) -> void:
 		filmed = await _tam_film(w, KRELL_AT, stand)
 	if not filmed:
 		await _tam_falls(w, KRELL_AT, stand)
-		Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+		var kc := _krell_cam(w, KRELL_AT, krell_cam)
+		Cine.shot(w, kc[0], kc[1], 34.0)
 		await Cine.say(w, "krell", "The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing.")
 		await Cine.say(w, "krell", "If anyone interferes, subdue them. I want the white card, not a heap of ashes.")
 	# ---- the restraint magic, from the distant ridge (the no_roof film, or the 3D)
@@ -669,11 +670,12 @@ static func reckoning(w: World) -> void:
 		filmed = bool(nr.get("played", true))
 	if not filmed:
 		if on_black:
-			Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+			var kc2 := _krell_cam(w, KRELL_AT, krell_cam)
+			Cine.shot(w, kc2[0], kc2[1], 34.0)
 			Cine.fade(w, 0.0, 0.6)
 		await _restraint(w, hunters)
 	await Cine.fade(w, 1.0, 1.0)
-	for id in hunters + ["krell", "hound1", "river_hound"]:
+	for id in hunters + ["krell", "warhorse", "hound1", "river_hound"]:
 		Cine.despawn(w, id)
 	if is_instance_valid(barrel):
 		barrel.queue_free()
@@ -684,6 +686,184 @@ static func reckoning(w: World) -> void:
 		Cine.fig(w, "corin").visible = true
 
 
+# ======================================================= Krell's warhorse ===
+
+## Krell's heavy warhorse (Master Script v7: she rides in on it; 5 November,
+## Gary's model, assets/models/ashford/warhorse.glb: a black horse in a red
+## caparison, Tripo's rig with its own clips: idle, walk, trot, canter, run,
+## gallop, rear, paw_ground, tail_swish, attack_kick, hit_react, victory,
+## defeat, summon). It was made in a unit box: SCALE makes it a heavy horse,
+## 1.75 m at the withers. Its rider's body is put on the saddle every frame
+## (following its back as it rises and dips under her) and faces the way it
+## faces; she sits astride (Figure3D.ride). A Cine extra, "warhorse":
+## Cine.body finds it and Cine.despawn takes it away.
+class Warhorse:
+	extends Node3D
+	const PATH := "res://assets/models/ashford/warhorse.glb"
+	## from the model's units to metres (its withers stand 0.6 high in it)
+	const SCALE := 2.9
+	## the model faces -x: this turns it to face +z, as everyone does
+	const TURN := PI * 0.5
+	## the saddle: over this bone of its spine (behind the withers), this far
+	## above it (m), where the rider's seat is
+	const SADDLE_BONE := "tripo__Spine_2"
+	const SADDLE_UP := 0.2
+	## how much ground each gait covers in a second at the clip's own pace
+	## (m/s, from how far a hoof travels on the ground: Tripo's clips are
+	## slow, so they're played faster to match the speed asked for)
+	const GAIT_PACE := {"walk": 0.65, "trot": 1.55, "canter": 2.3}
+	const LOOPS := ["idle", "walk", "trot", "canter", "run", "gallop", "tail_swish"]
+	var anim: AnimationPlayer
+	var skel: Skeleton3D
+	var rider: Node3D
+	var rider_fig: Figure3D
+	var ground: Callable
+	var _bone := -1
+
+	## A warhorse standing at `at` (on the ground `ground` gives: x, z ->
+	## height), facing `face`; null if the model isn't there.
+	static func make(w: World, at: Vector3, face: Vector3, ground_fn: Callable) -> Warhorse:
+		if not ResourceLoader.exists(PATH):
+			return null
+		var h := Warhorse.new()
+		h.name = "Warhorse"
+		h.ground = ground_fn
+		w.add_child(h)
+		var m: Node3D = (load(PATH) as PackedScene).instantiate()
+		m.scale = Vector3.ONE * SCALE
+		m.rotation.y = TURN
+		h.add_child(m)
+		for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		h.skel = m.find_child("Skeleton3D", true, false) as Skeleton3D
+		h._bone = h.skel.find_bone(SADDLE_BONE) if h.skel != null else -1
+		h.anim = m.find_child("AnimationPlayer", true, false) as AnimationPlayer
+		if h.anim != null:
+			for c in LOOPS:
+				if h.anim.has_animation(c):
+					h.anim.get_animation(c).loop_mode = Animation.LOOP_LINEAR
+			h.anim.play("idle")
+		h.global_position = Vector3(at.x, h._height(at.x, at.z), at.z)
+		h.face(face)
+		var ex: Dictionary = w.get_meta("extras", {}) if w.has_meta("extras") else {}
+		ex["warhorse"] = {"body": h, "doll": null}
+		w.set_meta("extras", ex)
+		h.set_meta("beast", true)
+		return h
+
+	func _height(x: float, z: float) -> float:
+		return float(ground.call(x, z)) if ground.is_valid() else global_position.y
+
+	## The way it faces, flat.
+	func facing() -> Vector3:
+		return Vector3(sin(rotation.y), 0.0, cos(rotation.y))
+
+	func face(dir: Vector3) -> void:
+		if Vector2(dir.x, dir.z).length() > 0.01:
+			rotation.y = atan2(dir.x, dir.z)
+
+	## Turns it to face `dir` over `secs`, stepping round on its walk.
+	func turn_to(dir: Vector3, secs := 1.2) -> void:
+		if Vector2(dir.x, dir.z).length() < 0.01:
+			return
+		var to := rotation.y + wrapf(atan2(dir.x, dir.z) - rotation.y, -PI, PI)
+		play("walk", 0.25, 0.8)
+		var tw := create_tween()
+		tw.tween_property(self, "rotation:y", to, secs).set_trans(Tween.TRANS_SINE)
+		await tw.finished
+		play("idle", 0.4)
+
+	func play(clip: String, blend := 0.3, speed := 1.0) -> void:
+		if anim != null and anim.has_animation(clip):
+			anim.speed_scale = speed
+			anim.play(clip, blend)
+
+	## Plays a one-off clip (paw_ground, rear) through, then stands.
+	func act(clip: String) -> void:
+		if anim == null or not anim.has_animation(clip):
+			return
+		play(clip, 0.25)
+		await get_tree().create_timer(anim.get_animation(clip).length - 0.2, false).timeout
+		if is_instance_valid(self) and anim.current_animation == clip:
+			play("idle", 0.35)
+
+	## Walks it (or `gait`: "trot", "canter") through `points` at `speed`
+	## m/s (the clip sped up to match), over the ground, easing round into
+	## each leg; then it stands.
+	func walk_to(points: Array, speed: float, gait := "walk") -> void:
+		play(gait, 0.4, clampf(speed / float(GAIT_PACE.get(gait, 0.65)), 0.5, 3.0))
+		for p: Vector3 in points:
+			var from := global_position
+			var flat := Vector3(p.x - from.x, 0.0, p.z - from.z)
+			var dist := flat.length()
+			if dist < 0.05:
+				continue
+			var want := rotation.y + wrapf(atan2(flat.x, flat.z) - rotation.y, -PI, PI)
+			var t := 0.0
+			while t < dist / speed and is_inside_tree():
+				await get_tree().process_frame
+				var dt := get_process_delta_time()
+				t += dt
+				var q := from + flat * minf(1.0, t * speed / dist)
+				global_position = Vector3(q.x, _height(q.x, q.z), q.z)
+				rotation.y = lerpf(rotation.y, want, minf(1.0, dt * 2.5))
+		play("idle", 0.5)
+
+	## Puts someone on its back: their body on the saddle from now on, sat
+	## astride, facing the way it faces.
+	func mount(body: Node3D, fig: Figure3D) -> void:
+		rider = body
+		rider_fig = fig
+		_process(0.0)
+		if fig != null:
+			fig.ride(0.0)
+
+	func saddle() -> Vector3:
+		if skel == null or _bone < 0:
+			return global_position + Vector3(0, 1.75, 0)
+		return skel.global_transform * skel.get_bone_global_pose(_bone).origin + Vector3.UP * SADDLE_UP
+
+	func _process(_delta: float) -> void:
+		if rider == null or not is_instance_valid(rider):
+			return
+		rider.global_position = saddle()
+		if rider_fig != null and is_instance_valid(rider_fig):
+			rider_fig.snap_face(facing())
+
+	func _exit_tree() -> void:
+		# (Cine.despawn takes the horse: its rider goes with it)
+		if rider != null and is_instance_valid(rider) and rider.is_inside_tree():
+			rider.visible = false
+
+
+## Krell's horse, if she's riding it.
+static func _warhorse(w: World) -> Warhorse:
+	var b := Cine.body(w, "warhorse")
+	return b as Warhorse if b is Warhorse else null
+
+
+## Where to look at Krell from, for her lines: her own camera when she's on
+## foot (from among the crowd, a little low); mounted, from the side of her
+## horse's head, a little below her, so its head and neck don't stand
+## between her and the camera. [camera, the point it looks at]
+static func _krell_cam(w: World, KRELL_AT: Vector3, krell_cam: Vector3) -> Array:
+	var h := _warhorse(w)
+	if h == null:
+		return [krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0)]
+	var f := h.facing()
+	var side := f.cross(Vector3.UP)
+	var head := Cine.head(w, "krell")
+	# (on the side the crowd is, the green's: towards the Lantern)
+	if side.dot(Vector3(-2, 0, 5) - KRELL_AT) < 0.0:
+		side = -side
+	return [head + f * 2.6 + side * 2.4 - Vector3(0, 0.55, 0), head - Vector3(0, 0.12, 0)]
+
+
+## Krell on her horse: how far before her spot she drops from a canter to a
+## walk (m), and where her ledger is held up there (her own frame: over the
+## horse's withers, in front of her chest).
+const HORSE_WALK_IN := 4.0
+const LEDGER_RIDING := Vector3(0.0, 0.5, 0.34)
 ## Where the bailiffs stand in a line before the green, torches up.
 const BAILIFF_LINE := [Vector3(9.5, 0, 3.4), Vector3(10.2, 0, 5.4), Vector3(10.4, 0, 7.6), Vector3(10.0, 0, 9.8), Vector3(9.2, 0, 11.8), Vector3(11.6, 0, 6.6)]
 
@@ -702,27 +882,52 @@ static func _krell_arrives(w: World, hunters: Array, KRELL_AT: Vector3, stand: V
 		Cine.spawn(w, hunters[i], "hunter", start, "Bailiff")
 		A.call("_torch", v, Cine.body(w, hunters[i]))
 	Cine.spawn(w, "krell", "krell", Vector3(42.0, 0, 11.0), "Krell")
+	# (v7: she rides in on her heavy warhorse, Gary's model: up the road at a
+	# canter with her bailiffs, then a walk onto the green, and a halt; she
+	# runs in on foot, as before, when it isn't there)
+	var horse: Warhorse = null
+	var kf = Cine.fig(w, "krell")
+	if kf is Figure3D:
+		horse = Warhorse.make(w, Vector3(42.0, 0, 11.0), Vector3(-1, 0, 0), v.height)
+		if horse != null:
+			horse.mount(Cine.body(w, "krell"), kf)
 	Cine.beast(w, "hound1", "shieldhound", Vector3(44.0, 0, 13.0), Color(1.0, 0.2, 0.15, 1.0))
 	_tint_beast(w, "hound1", Color(0.06, 0.05, 0.08), 1.0)
 	var ledger: Node3D = A.call("_ledger", w, "krell")
+	if horse != null and ledger != null:
+		ledger.position = LEDGER_RIDING   # (held over the horse's withers, not at a standing woman's waist)
 	Cine.shot(w, Vector3(3.0, 2.0, 12.5), Vector3(36.0, 1.5, 10.5), 32.0)
 	Cine.fade(w, 0.0, 1.0)
 	for i in hunters.size():
 		Cine.path(w, hunters[i], [Vector3(20.0, 0, 11.0 + (i % 3)), line[i]], 6.0, "run")
 	Cine.path(w, "hound1", [Vector3(20.0, 0, 13.0), KRELL_AT + Vector3(1.0, 0, 1.8)], 6.5)
-	await Cine.path(w, "krell", [Vector3(20.0, 0, 10.0), KRELL_AT], 5.6, "run")
+	if horse != null:
+		var on := KRELL_AT + (Vector3(20.0, 0, 10.0) - KRELL_AT).normalized() * HORSE_WALK_IN
+		await horse.walk_to([Vector3(20.0, 0, 10.0), on], 5.6, "canter")
+		await horse.walk_to([KRELL_AT], 1.3, "walk")
+		# the halt: she turns it to face the green, and it paws the ground
+		await horse.turn_to(Vector3(-2, 0, 5) - KRELL_AT, 0.8)
+		horse.act("paw_ground")
+	else:
+		await Cine.path(w, "krell", [Vector3(20.0, 0, 10.0), KRELL_AT], 5.6, "run")
 	for i in hunters.size():
 		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
 	Cine.look(w, "krell", Vector3(-2, 0, 5))
 	await Cine.wait(w, 0.6)
-	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	var kc := _krell_cam(w, KRELL_AT, krell_cam)
+	Cine.shot(w, kc[0], kc[1], 34.0)
 	await Cine.say(w, "krell", "Good evening. I hold the foreclosure notes for twenty-two properties in this valley.")
 	await Cine.say(w, "krell", "By the authority of Caldus Morne and the House of Ironvault, the terms are as follows. Every roof but the inn's is forfeit tonight.")
 	await Cine.say(w, "krell", "Alternatively, you may surrender one card, the white one, and the notes are burned. I will wait five minutes.")
 	# nobody speaks; the silence stretches
 	Music.stop(1.0)
 	var np := Cine.body(w, "nell").global_position
-	Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
+	if horse != null:
+		# (over her shoulder from the saddle's height, behind her head)
+		var hf := horse.facing()
+		Cine.shot(w, Cine.head(w, "krell") - hf * 0.9 + hf.cross(Vector3.UP) * 0.5 + Vector3(0, 0.15, 0), Vector3(-1.4, 1.2, 6.2), 42.0)
+	else:
+		Cine.shot(w, KRELL_AT + Vector3(-1.2, 1.7, 0.6), Vector3(-1.4, 1.2, 6.2), 42.0)
 	await Cine.wait(w, 2.0)
 	Cine.shot(w, np + Vector3(-1.0, 1.6, -3.2), np + Vector3(0.3, 1.2, 0.2), 34.0)
 	await Cine.wait(w, 1.8)
@@ -739,7 +944,16 @@ static func _krell_arrives(w: World, hunters: Array, KRELL_AT: Vector3, stand: V
 	await Cine.say(w, "tam", "The one you're looking for, the Unsworn, they fled over the northern ridge hours ago.")
 	# she looks down at the note, then at Tam, and leans forward with a cold,
 	# almost sympathetic smile, her eyes on where he's planted his boots
-	Cine.shot(w, KRELL_AT + Vector3(-3.0, 1.65, -0.9), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
+	if horse != null:
+		# (her face, up on the horse, from a little below and to its side)
+		var kh := Cine.head(w, "krell")
+		var hf := horse.facing()
+		var hs := hf.cross(Vector3.UP)
+		if hs.dot(Vector3(-2, 0, 5) - KRELL_AT) < 0.0:
+			hs = -hs
+		Cine.shot(w, kh + hf * 1.7 + hs * 2.2 - Vector3(0, 0.35, 0), kh - Vector3(0, 0.08, 0), 26.0)
+	else:
+		Cine.shot(w, KRELL_AT + Vector3(-3.0, 1.65, -0.9), KRELL_AT + Vector3(0, 1.45, 0), 26.0)
 	await Cine.wait(w, 1.6)
 	await Cine.say(w, "krell", "A brave lie, Miller. But you're a terrible card player.")
 	await Cine.say(w, "krell", "You put your body between my hounds and the inn before you even opened your mouth.")
@@ -752,7 +966,8 @@ static func _krell_arrives(w: World, hunters: Array, KRELL_AT: Vector3, stand: V
 	for c in _c(w, "CROWD"):
 		Cine.hop(w, String(c[0]), 0.08)
 	await Cine.say(w, "tam", "I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand.")
-	Cine.shot(w, krell_cam, KRELL_AT + Vector3(0.5, 1.5, 0), 34.0)
+	kc = _krell_cam(w, KRELL_AT, krell_cam)
+	Cine.shot(w, kc[0], kc[1], 34.0)
 	await Cine.say(w, "krell", "Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes.")
 	await Cine.say(w, "krell", "And to deter anyone else from trying it... we fight to the death. Draw your Essence.")
 	A.call("_close_ledger", w, ledger)
@@ -777,6 +992,12 @@ static func _krell_film(w: World, hunters: Array, KRELL_AT: Vector3, stand: Vect
 		Cine.look(w, hunters[i], Vector3(-2, 0, 5))
 	Cine.spawn(w, "krell", "krell", KRELL_AT, "Krell")
 	Cine.look(w, "krell", Vector3(-2, 0, 5))
+	# (on her horse, as the film has her)
+	var kf = Cine.fig(w, "krell")
+	if kf is Figure3D:
+		var horse := Warhorse.make(w, KRELL_AT, Vector3(-2, 0, 5) - KRELL_AT, v.height)
+		if horse != null:
+			horse.mount(Cine.body(w, "krell"), kf)
 	Cine.beast(w, "hound1", "shieldhound", KRELL_AT + Vector3(1.0, 0, 1.8), Color(1.0, 0.2, 0.15, 1.0))
 	_tint_beast(w, "hound1", Color(0.06, 0.05, 0.08), 1.0)
 	Cine.place(w, "tam", stand, KRELL_AT)

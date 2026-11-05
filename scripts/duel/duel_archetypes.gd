@@ -180,15 +180,45 @@ static func chapter_of(id: String) -> int:
 ## their Rank; "" when there's none. `rng` picks among them.
 static func glimpse(codex: Dictionary, chapter: int, rank: int, rng: RandomNumberGenerator) -> String:
 	var opts := []
-	for ch in POOLS:
-		if int(ch) > chapter:
-			continue
-		for id in POOLS[ch]:
-			if codex.has(id) or not DuelCards.CARDS.has(id):
-				continue
-			if int(DuelCards.CARDS[id].get("tier", 1)) > DuelRewards.tier_cap(rank):
-				continue
+	for id in in_reach(chapter, rank):
+		if not codex.has(id):
 			opts.append(id)
 	if opts.is_empty():
 		return ""
 	return String(opts[rng.randi_range(0, opts.size() - 1)])
+
+
+## Every card the story can hand out by now: the pools of this chapter and
+## the ones before, that answer a duellist of this Rank. A won duel's glimpse
+## picks from these, and so does Tamsin's counter (sealed_caches).
+static func in_reach(chapter: int, rank: int) -> Array:
+	var out := []
+	for ch in POOLS:
+		if int(ch) > chapter:
+			continue
+		for id in POOLS[ch]:
+			if not DuelCards.CARDS.has(id):
+				continue
+			if int(DuelCards.CARDS[id].get("tier", 1)) > DuelRewards.tier_cap(rank):
+				continue
+			out.append(id)
+	return out
+
+
+## Tamsin's counter for a day (5 November): up to `n` different cards in
+## reach (in_reach) that the stall may sell (DuelRewards.cache_ok), picked
+## by `rng`. Cards the player hasn't met yet come first, so the counter
+## shows them something new while there's something new to show.
+static func sealed_caches(codex: Dictionary, chapter: int, rank: int, n: int, rng: RandomNumberGenerator) -> Array:
+	var fresh := []
+	var known := []
+	for id in in_reach(chapter, rank):
+		if not DuelRewards.cache_ok(id, chapter - 1):
+			continue
+		(known if codex.has(id) else fresh).append(id)
+	var out := []
+	for list in [fresh, known]:
+		var l: Array = list
+		while out.size() < n and not l.is_empty():
+			out.append(String(l.pop_at(rng.randi_range(0, l.size() - 1))))
+	return out

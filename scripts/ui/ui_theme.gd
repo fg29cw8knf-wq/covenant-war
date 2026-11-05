@@ -73,6 +73,9 @@ static func make() -> Theme:
 	t.set_stylebox("normal", "ChoiceButton", sb(Color(0.08, 0.09, 0.15, 0.96), Color(GOLD_DIM, 0.8), 12, 2, 28))
 	t.set_stylebox("hover", "ChoiceButton", sb(Color(0.13, 0.14, 0.22, 0.98), GOLD, 12, 2, 28))
 	t.set_stylebox("pressed", "ChoiceButton", sb(Color(0.2, 0.17, 0.08, 0.98), GOLD, 12, 2, 28))
+	# an answer that can't be given yet (forty crowns, and fewer in the purse): greyed
+	t.set_stylebox("disabled", "ChoiceButton", sb(Color(0.06, 0.065, 0.1, 0.9), Color(0.35, 0.36, 0.44, 0.5), 12, 2, 28))
+	t.set_color("font_disabled_color", "ChoiceButton", Color(0.52, 0.53, 0.6))
 	t.set_font("font", "ChoiceButton", CardFace.font("bold"))
 	t.set_font_size("font_size", "ChoiceButton", 32)
 

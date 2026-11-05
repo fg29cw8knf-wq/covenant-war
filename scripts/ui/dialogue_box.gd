@@ -56,6 +56,8 @@ func _ready() -> void:
 	_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	_portrait.custom_minimum_size = Vector2(214, 214)
 	_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# the faces are 1024 square (5 November): their mipmaps keep them smooth in a small frame
+	_portrait.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	_portrait_frame.add_child(_portrait)
 
 	var col := VBoxContainer.new()
@@ -222,7 +224,9 @@ static func reach_secs(text: String, phrase: String) -> float:
 	return float(i) / (CHARS_PER_SEC * float(Game.settings.get("text_speed", 1.0)))
 
 
-## Offer choices under the current line; returns the chosen index.
+## Offer choices under the current line; returns the chosen index. An answer
+## the player can't give yet is {"text": ..., "off": true}: shown greyed, and
+## it can't be picked (the forty crowns with too few in the purse).
 func choose(options: Array) -> int:
 	_bark_n += 1
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -238,10 +242,17 @@ func choose(options: Array) -> int:
 	for c in _choices.get_children():
 		_choices.remove_child(c)   # gone now, so the new first answer is child 0
 		c.queue_free()
+	var first: Button = null
 	for i in options.size():
 		var b := Button.new()
 		b.theme_type_variation = "ChoiceButton"
-		b.text = options[i]
+		var opt = options[i]
+		b.text = String(opt.get("text", "")) if opt is Dictionary else String(opt)
+		b.disabled = opt is Dictionary and bool(opt.get("off", false))
+		if b.disabled:
+			b.focus_mode = Control.FOCUS_NONE   # the arrows and the stick pass it by
+		elif first == null:
+			first = b
 		b.custom_minimum_size = Vector2(0, UITheme.TOUCH)
 		b.alignment = HORIZONTAL_ALIGNMENT_LEFT
 		b.pressed.connect(func() -> void: _chosen.emit(i))
@@ -250,8 +261,8 @@ func choose(options: Array) -> int:
 	_choices.visible = true
 	_choices_at = Time.get_ticks_msec()
 	_layout.call_deferred()
-	if _choices.get_child_count() > 0:
-		(_choices.get_child(0) as Button).grab_focus.call_deferred()
+	if first != null:
+		first.grab_focus.call_deferred()
 	var idx: int = await _chosen
 	_choices.visible = false
 	return idx
@@ -311,13 +322,18 @@ func _on_choice_key(e: InputEvent, b: Button, i: int) -> void:
 			and not (e.is_action("ui_up") or e.is_action("ui_down")):
 		b.accept_event()
 		if e.is_pressed() and not e.is_echo():
-			var to := i + (1 if e.is_action("move_down") else -1)
+			var step := 1 if e.is_action("move_down") else -1
+			var to := i + step
+			while to >= 0 and to < _choices.get_child_count() and (_choices.get_child(to) as Button).disabled:
+				to += step   # (past a greyed answer)
 			if to >= 0 and to < _choices.get_child_count():
 				(_choices.get_child(to) as Control).grab_focus()
 		return
 	if not (e.is_action("interact") or e.is_action("ui_accept")):
 		return
 	b.accept_event()
+	if b.disabled:
+		return
 	if not e.is_pressed() or e.is_echo():
 		return
 	if e is InputEventKey and (e.physical_keycode == KEY_SPACE or e.keycode == KEY_SPACE):
@@ -336,7 +352,10 @@ func _refocus_choices(event: InputEvent) -> void:
 		return
 	for a in ["ui_up", "ui_down", "move_up", "move_down", "interact"]:
 		if event.is_action_pressed(a):
-			(_choices.get_child(0) as Control).grab_focus()
+			for c in _choices.get_children():
+				if not (c as Button).disabled:   # the first answer that can be given
+					(c as Control).grab_focus()
+					break
 			get_viewport().set_input_as_handled()
 			return
 

@@ -2182,11 +2182,18 @@ static func _prologue_film(w: World, part: String) -> void:
 ## Sigils falling, everyone gone for their doors but Corin, pinned under the
 ## cart with Tilly by him, and the player back on his feet in the west.
 ## False if the film couldn't play (the 3D version plays instead).
+## (5 November: Gary's film so far runs to Bram's answer to the player's
+## choice, its third part still to make: until it's there the film stops
+## before it, and the 3D carries on from the sky lanterns going up, its
+## camera already on them as the film's last frame dissolves into it.)
 static func _midnight_film(w: World) -> bool:
 	var v := village(w)
 	var r := await StoryFilm.play(w, "midnight")
 	if not r.get("played", true):
 		return false
+	if String(r.get("stopped_at", "")) != "":
+		await _midnight_3d(w, "lanterns", r)
+		return true
 	v.light_great_lantern()
 	v.release_lanterns()
 	v.lantern_t = 1000.0   # (they're up, and hanging)
@@ -2291,10 +2298,52 @@ static func _midnight(w: World) -> void:
 
 
 ## Midnight in the engine's 3D, from the bell to the player getting up after
-## the cart's gone over on Corin (what the midnight film shows).
-static func _midnight_3d(w: World) -> void:
+## the cart's gone over on Corin (what the midnight film shows). From
+## "lanterns": from the sky lanterns going up, after Gary's film of the
+## stretch before it (part 1, the choice, Bram's answer: `film`, what
+## StoryFilm.play returned, still up on its last frame, is let go into it).
+static func _midnight_3d(w: World, from := "start", film := {}) -> void:
 	var v := village(w)
 	var top: Vector3 = v.great_lantern_top if v.great_lantern_top != Vector3.ZERO else Vector3(0, 8.0, 0)
+	if from == "lanterns":
+		_at_the_lanterns(w)
+	else:
+		await _midnight_to_answer(w, v, top)
+	await _midnight_lanterns_on(w, v, top, film)
+
+
+## The green as the 3D has it when Bram has answered, staged at once behind
+## the film's last frame: the Lantern lit, Tam and Nell dancing on the east
+## side (Hob stepped clear of them), the player back on their mark by Corin
+## and Bram, Bram's eyes on the player. The taper was dropped long since.
+static func _at_the_lanterns(w: World) -> void:
+	var v := village(w)
+	# lit half a minute ago, settled (light_great_lantern's flare and sparks
+	# would go off in the hand-off)
+	if v.great_lantern_light != null:
+		v.great_lantern_light.visible = true
+		v.great_lantern_light.light_energy = 6.0
+		v.great_lantern_glow.visible = true
+		v.great_lantern_glow.scale = Vector3.ONE * 1.6
+		if v.festival_light != null:
+			v.festival_light.light_energy = 1.2
+		v.flicker_lights.append([v.great_lantern_light, 7.0])
+	Cine.place(w, "player", MID["player"], Cine.body(w, "corin").global_position)
+	var dance := _dance_spot()
+	Cine.place(w, "tam", dance[0], dance[1])
+	Cine.place(w, "nell", dance[1], dance[0])
+	for who in ["tam", "nell"]:
+		var df = Cine.fig(w, who)
+		if df is Figure3D:
+			(df as Figure3D).hold("dance")
+	var dmid: Vector3 = (dance[0] + dance[1]) * 0.5
+	Cine.place(w, "hob", Vector3(8.6, 0, 4.6), dmid)
+	Cine.look(w, "corin", dmid)
+	Cine.look(w, "bram", Cine.body(w, "player").global_position)
+
+
+## Midnight in the 3D from the bell to Bram's answer to the player's choice.
+static func _midnight_to_answer(w: World, v: AshfordVillage, top: Vector3) -> void:
 	# (1 November, Gary: "make the movie start from the lantern lighting"):
 	# it opens on the taper at the Lantern's steps, the bell counting twelve
 	# over it, rather than on the crowd waiting and the long walk up to it.
@@ -2372,6 +2421,12 @@ static func _midnight_3d(w: World) -> void:
 			(bf0 as Figure3D).talking = true
 		await Cine.wait(w, 0.5)
 		await Cine.say(w, "bram", "Write and tell them. See who writes back.")
+
+
+## Midnight in the 3D from the sky lanterns going up to the cart over
+## Corin. After Gary's film (`film`, StoryFilm.play's answer, up on its last
+## frame) the camera is on the lanterns before the picture dissolves into it.
+static func _midnight_lanterns_on(w: World, v: AshfordVillage, top: Vector3, film := {}) -> void:
 	# the sky lanterns go up, and stop; the fiddle trails off
 	v.release_lanterns()
 	for who in ["tam", "nell"]:
@@ -2381,6 +2436,10 @@ static func _midnight_3d(w: World) -> void:
 	for who in ["bram", "corin", "player", "tam", "tilly", "nell"]:
 		Cine.look(w, who, top)
 	Cine.shot(w, Vector3(1.0, 0.6, 9.0), Vector3(0.0, 6.0, -2.0), 52.0)
+	if not film.is_empty():
+		StoryFilm.let_go(film, 0.4)   # (the film's last frame into this, as they rise)
+	# (the menu music of Gary's film, when it played, carries on under them
+	# and goes here, as the 3D's own music does)
 	await Cine.drift(w, Vector3(1.0, 0.6, 9.0), Vector3(-2.0, 5.5, 14.0), Vector3(0.0, 6.0, -2.0), Vector3(4.0, 22.0, -18.0), 7.0, 52.0)
 	Music.stop(3.0)
 	await Cine.drift(w, Vector3(-2.0, 5.5, 14.0), Vector3(-3.0, 7.0, 16.0), Vector3(4.0, 22.0, -18.0), Vector3(8.0, 30.0, -24.0), 4.0)

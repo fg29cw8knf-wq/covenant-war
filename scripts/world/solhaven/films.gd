@@ -357,7 +357,9 @@ const REFUGEES := [
 	["refugee_c", "child_c", "refugee_c", Vector3(-5.8, 0, 33.4), ""],
 	["ref_1", "farmer", "refugee_b", Vector3(-5.2, 0, 37.0), ""],
 	["ref_2", "refugee", "refugee", Vector3(6.4, 0, 38.6), ""],
-	["ref_3", "child", "tobin", Vector3(-6.4, 0, 40.6), ""],
+	# (5 November: Tobin has his own model now, so this sleeping child further
+	# back is the boy of the green, child_b, not a second Tobin)
+	["ref_3", "child", "child_b", Vector3(-6.4, 0, 40.6), ""],
 	["ref_4", "farmer", "refugee_b", Vector3(5.4, 0, 43.6), ""],
 	["ref_5", "refugee", "refugee", Vector3(-5.6, 0, 46.0), ""],
 	["ref_6", "child_b", "refugee_c", Vector3(6.6, 0, 48.0), ""],

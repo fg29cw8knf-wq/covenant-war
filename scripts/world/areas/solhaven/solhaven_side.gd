@@ -501,7 +501,29 @@ static func _see(w: World, text: String) -> void:
 
 
 static func _choose(w: World, options: Array) -> int:
-	return await w.hud.dialogue.choose(options)
+	while true:
+		var i: int = await w.hud.dialogue.choose(options)
+		# (a greyed answer can't be tapped; anything that picks one anyway is asked again)
+		if not (i < options.size() and options[i] is Dictionary and bool(options[i].get("off", false))):
+			return i
+	return 0
+
+
+## What the Temple's healer and the Sergeant ask: forty crowns from the purse.
+const PRICE := 40
+
+
+## An answer that pays the forty crowns: "I'll pay it. (40 crowns)" while the
+## purse holds them, otherwise greyed with what's in it ("(40 crowns — you
+## have 12)"). Paying takes them (_pay).
+static func _pay_option(words: String) -> Variant:
+	if Game.crowns() >= PRICE:
+		return "%s (%d crowns)" % [words, PRICE]
+	return {"text": "%s (%d crowns — you have %d)" % [words, PRICE, Game.crowns()], "off": true}
+
+
+static func _pay() -> void:
+	Game.spend_crowns(PRICE)
 
 
 static func _name(w: World, who: String) -> String:
@@ -568,7 +590,7 @@ static func duel_spec(id: String) -> Dictionary:
 		"story_rules": {String(wg.rule): 1},
 		"rule": RULES[wg.rule],
 		"bark_on": wg.barks,
-		"rewards": {"opponent": "rival"},
+		"rewards": {"opponent": "rival", "crowns": "normal"},
 		"title": "%s · %s" % [wg.title, wg.opponent],
 	}
 
@@ -670,7 +692,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 	if healer != null:
 		_walk(w, "healer", healer.global_position + Vector3(6.0, 0, 5.0), 1.4)
 	await _say(w, "ysa", "You're the Unsworn. You don't kneel to anyone. So tell me. Should I?")
-	var c := await _choose(w, ["Swear. Your son comes first.", "I'll pay it. (40 crowns)", "Don't. I'll find another way.", "That's yours to decide, not mine."])
+	var c := await _choose(w, ["Swear. Your son comes first.", _pay_option("I'll pay it."), "Don't. I'll find another way.", "That's yours to decide, not mine."])
 	match c:
 		0:
 			await _beat(w, "ysa")
@@ -684,6 +706,7 @@ static func talk_ysa(w: World, _npc = null) -> void:
 			await _say(w, "ysa", "Then I've decided.")
 			await _mercy_sworn(w, "her_choice")
 		1:
+			_pay()
 			await _say(w, "ysa", "I can't pay you back. | I'll not forget it.")
 			await _see(w, "The healer comes back, counts the crowns twice, and heals the boy. Ysa keeps her leaf.")
 			Game.set_flag("paid_temple")
@@ -844,8 +867,9 @@ static func _walk(w: World, who: String, to: Vector3, speed := 1.4) -> Signal:
 
 static func _sergeant_choice(w: World) -> void:
 	while true:
-		var c := await _choose(w, ["Then we settle it in the Circle.", "Pay his fine. (40 crowns)"])
+		var c := await _choose(w, ["Then we settle it in the Circle.", _pay_option("Pay his fine.")])
 		if c == 1:
+			_pay()
 			await _say(w, "sergeant", "Forty crowns.")
 			await _see(w, "He weighs the purse.")
 			await _say(w, "sergeant", "That's what it costs, then.")
@@ -1243,6 +1267,8 @@ static func _pip_after(w: World, won: bool) -> void:
 	if not won:
 		await _say(w, "pip", "Two crowns.")
 		await _see(w, "He holds his hand out.")
+		# the wager's stake, out of your purse (what's in it, if it's less)
+		Game.spend_crowns(mini(2, Game.crowns()))
 		await _say(w, "pip", "Told you.")
 		Game.set_flag("paid_pip")
 		Game.set_flag("side_pip", "delivered")

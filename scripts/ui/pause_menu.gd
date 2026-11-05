@@ -357,7 +357,10 @@ func _hero() -> Control:
 		else ("Your wins make Resonance. Pick a card in the Codex to build it towards." if codex else "Your wins make Resonance, and Resonance makes new cards.")
 	var sh := int(v.get("shards", 0))
 	var sh_t := ("  Shards: %d, to forge cards yourself in the Codex." % sh) if sh > 0 and codex else ""
-	right.add_child(_wrap(res + "  Attunement pool: %d." % int(v.get("pool", 0)) + sh_t, 24, UITheme.TEXT_DIM, true))
+	# the purse, beside the Shards (once the Prologue's done: duels pay crowns from then)
+	var cr := Game.crowns()
+	var cr_t := ("  Purse: %d crown%s." % [cr, "" if cr == 1 else "s"]) if cr > 0 or Game.flag("beat_hunter") else ""
+	right.add_child(_wrap(res + "  Attunement pool: %d." % int(v.get("pool", 0)) + sh_t + cr_t, 24, UITheme.TEXT_DIM, true))
 	return _scroll(hb)
 
 
@@ -1217,6 +1220,9 @@ class Portrait:
 	extends Control
 	var tex: Texture2D
 
+	func _init() -> void:
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # (a 1024 face, smooth when small)
+
 	func _draw() -> void:
 		var r := Rect2(Vector2.ZERO, size)
 		CardFace.box(self, r, 22, Color("10142a"), Color(UITheme.GOLD, 0.8), 3)
@@ -1282,6 +1288,7 @@ class StandingRow:
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_PASS
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # (the faces are 1024 square)
 
 	func _draw() -> void:
 		var h := size.y

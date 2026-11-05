@@ -19,6 +19,7 @@
 #   tools/rig_villager.sh krell     .../Huntmaster_Krel.glb                           (27 Oct)
 #   tools/rig_villager.sh bram_coat    <Bram_Coat.glb, baked>       (4 Nov: the memory's Bram in his coat)
 #   tools/rig_villager.sh shard_hunter <Shadow_Hunter.glb, baked>   (4 Nov: the faceless hunter)
+#   tools/rig_villager.sh tobin        .../Tobin_model.glb             (5 Nov: Ysa's son, at the Golden Gate)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -239,6 +240,20 @@ bram_coat|shard_hunter)
 		--borrow assets/models/characters/bram.glb:lift \
 		--head-up=-12:walk,run
 	;;
+tobin)
+	# Ysa's son (5 November): a refugee boy of about nine at Solhaven's
+	# Golden Gate, in a patched brown jumper, his left wrist bandaged.
+	# Gary's Blender export, a 34-joint rig with the 22 library clips like
+	# Hob's (no turn to bake: its armature stands as it should), 0.9 m tall
+	# as made. It came with a normal map, so he wears it (Figure3D's
+	# character_nm shader, as Player A does).
+	python3 tools/rig_character.py "$src" "$out" --name "Tobin" --height 1.30 \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run \
+		--normal-map
+	;;
 enforcer)
 	# Ironvault's second enforcer (2 November): Gary's Tripo3D woman in
 	# Ironvault grey, a 53-joint Mixamo rig with no clips of its own, so she
@@ -254,7 +269,7 @@ enforcer)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer|bram_coat|shard_hunter <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer|bram_coat|shard_hunter|tobin <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

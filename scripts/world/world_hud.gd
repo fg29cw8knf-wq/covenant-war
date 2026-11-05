@@ -43,6 +43,8 @@ func _ready() -> void:
 	layer = 10
 	# Shards from a side quest finished or a Sigilfall shard picked up
 	Game.shards_gained.connect(_on_shards)
+	# and crowns, the same way
+	Game.crowns_gained.connect(_on_crowns)
 	_root = Control.new()
 	_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -278,6 +280,10 @@ func show_hint(text: String) -> void:
 
 func _on_shards(amount: int, _why: String) -> void:
 	toast("+%d Shard%s" % [amount, "" if amount == 1 else "s"])
+
+
+func _on_crowns(amount: int, _why: String) -> void:
+	toast("+%d crown%s" % [amount, "" if amount == 1 else "s"])
 
 
 func toast(text: String) -> void:

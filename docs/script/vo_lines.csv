@@ -1,8 +1,8 @@
 no,area,speaker,id,words,file,scene,note
 0001,ashford,morrowen,morrowen_attic,"Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.",assets/audio/vo/morrowen_attic.ogg,,recorded already: morrowen_attic
-0002,ashford,bram,b3db9878,"Hush, now. I've got you.",assets/audio/vo/ashford/bram/b3db9878.ogg,,
-0003,ashford,bram,cb5440f1,Not this one.,assets/audio/vo/ashford/bram/cb5440f1.ogg,,
-0004,ashford,morrowen,6ec01c26,"Twenty years later, the debt came due.",assets/audio/vo/ashford/morrowen/6ec01c26.ogg,,
+0002,ashford,bram,b3db9878,"Hush, now. I've got you.",assets/audio/vo/ashford/bram/b3db9878.ogg,,recorded already
+0003,ashford,bram,cb5440f1,Not this one.,assets/audio/vo/ashford/bram/cb5440f1.ogg,,recorded already
+0004,ashford,morrowen,6ec01c26,"Twenty years later, the debt came due.",assets/audio/vo/ashford/morrowen/6ec01c26.ogg,,recorded already
 0005,ashford,narrator,3ce37a3b,[i]{name}. Same as every winter. Bram still calls me Sprout.[/i],assets/audio/vo/ashford/narrator/3ce37a3b.ogg,"Bram and the player, walking",{name} is the player's name
 0006,ashford,narrator,6dbe7635,"[i]Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt for your birth.[/i]",assets/audio/vo/ashford/narrator/6dbe7635.ogg,"Bram and the player, walking",
 0007,ashford,narrator,082baed5,"[i]In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a rarity... and a threat to Aurex Morne's bank.[/i]",assets/audio/vo/ashford/narrator/082baed5.ogg,"Bram and the player, walking",
@@ -216,7 +216,7 @@ no,area,speaker,id,words,file,scene,note
 0215,ashford,tam,d7ac63d9,"I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand.",assets/audio/vo/ashford/tam/d7ac63d9.ogg,,
 0216,ashford,krell,b5b90dc4,"Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes.",assets/audio/vo/ashford/krell/b5b90dc4.ogg,,
 0217,ashford,krell,ed740f10,And to deter anyone else from trying it... we fight to the death. Draw your Essence.,assets/audio/vo/ashford/krell/ed740f10.ogg,,
-0218,ashford,nell,fad059d8,Tam!,assets/audio/vo/ashford/nell/fad059d8.ogg,,
+0218,ashford,nell,fad059d8,Tam!,assets/audio/vo/ashford/nell/fad059d8.ogg,,recorded already
 0219,ashford,krell,b03a2ff7,The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing.,assets/audio/vo/ashford/krell/b03a2ff7.ogg,,
 0220,ashford,krell,23e6dd63,"If anyone interferes, subdue them. I want the white card, not a heap of ashes.",assets/audio/vo/ashford/krell/23e6dd63.ogg,,
 0221,ashford,bram,4f9f7465,Go through Dask's cards when we stop. Swap in what's nastier than what you've got. That's most of duelling.,assets/audio/vo/ashford/bram/4f9f7465.ogg,,

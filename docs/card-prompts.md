@@ -3092,3 +3092,352 @@ Background: a duelling circle at night, softly blurred and tinted to match.
 Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
 Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
 ```
+
+# Round 9: Kaethis, the Hand Before (Bram's god, 5 November)
+
+Bram's old god and its cards, for the Night of the White Sky and later. Kaethis is the god of fate: a tall robed figure in parchment-white, only ever seen from behind, one ink-black hand writing on the air. Its colours are parchment white, ink black and cold starlight silver-blue. Five new Totems (each needs a card painting, a battlefield cut-out and a 3D model; until they come they show as another creature in their own colour), one Summon (a card painting, a cut-out, a sky scene and a 3D model), five small cards (card paintings only), the god's own painting and one piece of music. The name Kaethis is still for your yes: none of the pictures shows a name.
+
+**3D models for this round:** in Tripo3D, image to 3D from the battlefield cut-out (or the card painting if you haven't made the cut-out yet). Rig it with the duel's clips: idle, spawn, attack, hit, defeat, victory and run. Aim for 20,000 to 30,000 triangles and a 4K (4096) texture. Any file name is fine: Claude renames it and puts it in place.
+
+## Kaethis, the Hand Before (round 9, god painting)
+
+**God painting · tall 1536 × 2048 · save as gods/kaethis.jpg** (in the same style as the seven gods' paintings you've made)
+
+```
+Tall portrait image, 3:4 aspect ratio, 1536 x 2048 pixels.
+
+A painted high-fantasy portrait of a god of fate, seen from behind: a tall robed figure in long parchment-white robes and a deep hood, standing with its back to the viewer, its face never seen.
+
+Body and shape: tall and very still, taller than a man, the hood and shoulders in the upper third of the picture, the robes falling to the ground in long heavy folds like the pages of a great book.
+Colours: parchment white and old ivory robes, one hand ink-black as if dipped in ink, cold silver-blue starlight, deep night blue behind, a little pale gold in the stitching.
+Key features: its right hand raised, ink-black, writing on the air with one finger, a line of glowing silver script hanging in the air where the finger has passed and fading at its far end; a closed book on a chain at its hip; a knotted cord of grey wool tied at its waist, seven knots, one of them cut; an hourglass with no sand hanging from its belt, the empty glass faintly starlit.
+Background: a vast night sky full of cold stars, faint lines of light joining some of them like threads on a loom, floating pages drifting far off, softly blurred.
+Composition: the figure in the centre, seen from behind from about the knees up, filling most of the image, the hooded head in the upper third and centred (the game cuts a round seal from there). Keep anything important away from the edges.
+Mood: calm, certain and quietly frightening; courteous, never cruel and never kind; a god who has already written what happens next.
+Style: rich painterly brushwork, luminous high-fantasy portrait, dramatic rim lighting in cold starlight, fine gold filigree, glowing magical particles, high detail, matching the other gods' portraits.
+Do not include any text you can read, letters, numbers, names, card frame, border, logo or watermark (the script in the air should be shapes of light, not words).
+```
+
+## The Scrivener (round 9, totem, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/scrivener.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a tall robed figure in parchment-white with no face under its hood, one ink-black hand holding a quill of cold starlight, writing a name on the air.
+
+Body and shape: a tall, thin, robed figure the height of a man and a half, hood up, the robe hanging straight to the ground with no feet showing.
+Colours: parchment white and old ivory robes, ink-black hands, a quill of cold silver-blue starlight, a deep starfield blue behind.
+Key features: darkness under the hood where a face should be; a line of glowing silver script hanging in the air beside it; ink-black fingers; a long scroll trailing from one sleeve and curling on the ground.
+Pose: half turned towards the viewer, quill raised, in the middle of writing a name.
+Background: a dark copying-house with tall shelves of ledgers, softly blurred and tinted with starfield blue and silver.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: powerful, imposing, ancient; quiet and certain.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark (the script in the air should be shapes of light, not words).
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/scrivener.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same being as in the attached card painting, with exactly the same design and colours: a tall robed figure in parchment-white with no face under its hood, one ink-black hand holding a quill of cold starlight.
+
+Show its whole body, down to the hem of its robe, in a three-quarter view facing to the right, quill raised as if about to write.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the figure, with the hem of its robe near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · Tripo3D · save as models/creatures/scrivener.glb** (from the cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## Loomwarden (round 9, totem, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/loomwarden.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a great standing loom of bone-white wood with a many-armed weaver of grey thread crouched inside it, silver threads strung taut between its hands, starlight caught in the weave.
+
+Body and shape: a hunched, many-armed weaver about the size of a bear, built of wound grey thread, sitting inside the frame of a tall loom as if the loom were its shell.
+Colours: bone-white wood, grey wool, silver threads, cold starlight blue, a little old gold on the loom's pegs.
+Key features: six long thin arms each holding a taut silver thread; small pale eyes like pinheads of starlight; half-woven cloth hanging below it with faint shapes of people in the weave.
+Pose: crouched and watchful inside the loom, threads pulled tight, ready to bind.
+Background: a dim back room of an old weaving house, softly blurred and tinted with starfield blue and silver.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: powerful, imposing, ancient; patient and immovable.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/loomwarden.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design and colours: a great standing loom of bone-white wood with a many-armed weaver of grey thread crouched inside it, silver threads strung taut between its hands.
+
+Show its whole body, including the feet of the loom, in a three-quarter view facing to the right, threads pulled tight.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · Tripo3D · save as models/creatures/loomwarden.glb** (from the cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## The Unspent Hour (round 9, totem, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/unspent_hour.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a slender winged spirit of pale glass shaped like an hourglass, starlit sand drifting upward inside it, a face that is only a suggestion, wings of thin cold light.
+
+Body and shape: a slim floating figure about the height of a child, its body an hourglass of clear glass, narrow at the waist, with long thin arms and no legs.
+Colours: clear pale glass, silver sand glowing with starlight, cold blue-white wings, a deep starfield blue behind.
+Key features: the sand inside it falling upward; a faint face in the upper glass like a reflection; two pairs of wings of thin light like the hands of a clock; a few grains of sand floating loose around it.
+Pose: darting forward through the air, wings swept back, quick and light.
+Background: a dark sickroom at night with a window full of stars, softly blurred and tinted with starfield blue and silver.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: powerful, imposing, ancient; quick, strange and a little sad.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/unspent_hour.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same being as in the attached card painting, with exactly the same design and colours: a slender winged spirit of pale glass shaped like an hourglass, starlit sand drifting upward inside it, wings of thin cold light.
+
+Show its whole body in a three-quarter view facing to the right, hovering with its wings spread.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around it, with the bottom of its glass near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · Tripo3D · save as models/creatures/unspent_hour.glb** (from the cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## The Weft Serpent (round 9, totem, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/weft_serpent.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a vast serpent woven from countless threads of grey, white and starlit silver, every thread a life, its coils passing through one another like cloth on a loom, eyes of ink.
+
+Body and shape: a huge serpent, long enough to coil three times round a crossroads, its body a woven cloth of threads rather than scales, loose threads trailing from its tail.
+Colours: grey, ivory and silver threads, a few threads of faint gold, cold starlight blue, ink-black eyes.
+Key features: coils that pass through each other as if woven; a head like a weaver's shuttle; single bright threads running the whole length of its body and glowing as they cross.
+Pose: rearing up from its coils, head lowered towards the viewer, about to strike.
+Background: an empty crossroads in a starlit waste where four roads meet, softly blurred and tinted with starfield blue and silver.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: legendary, awe-inspiring, cinematic scale.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/weft_serpent.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design and colours: a vast serpent woven from countless threads of grey, white and starlit silver, its coils passing through one another like cloth on a loom, eyes of ink.
+
+Show its whole body, coils and tail included, in a three-quarter view facing to the right, reared up from its coils.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its coils near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · Tripo3D · save as models/creatures/weft_serpent.glb** (from the cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## Glyph Warden (round 9, totem, mystic, Aldrith's)
+
+**Card painting · square 1536 × 1536 · save as cards/glyph_warden.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a tall standing slate of dark stone cut with glowing indigo runes, two arms of carved stone folded across it, a single rune for an eye, standing watch before a closed door.
+
+Body and shape: a slab of dark slate taller than a man, shaped like a gravestone with shoulders, two thick stone arms folded across its front, short stone feet.
+Colours: dark blue-grey slate, deep indigo runes glowing with gold at their edges, a little cold starlight from behind.
+Key features: one bright rune where a face would be, like an eye; lines of runes cut down its whole body; a heavy closed door of old oak and iron behind it.
+Pose: standing square and still in front of the door, arms folded, unhurried.
+Background: a dark stone corridor ending in the closed door, softly blurred and tinted with deep indigo and gold runes.
+Composition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: powerful, imposing, ancient; nothing gets past it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark (the runes should be shapes, not letters).
+```
+
+**Battlefield cut-out · square 1536 × 1536 · save as creatures/glyph_warden.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+The same creature as in the attached card painting, with exactly the same design and colours: a tall standing slate of dark stone cut with glowing indigo runes, two arms of carved stone folded across it, a single rune for an eye.
+
+Show its whole body, including its feet, in a three-quarter view facing to the right, arms folded.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**3D model · Tripo3D · save as models/creatures/glyph_warden.glb** (from the cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## Orlanthe, the Last Page (round 9, summon, astral)
+
+**Card painting · tall 1536 × 2150 · save as cards/orlanthe.png**
+
+```
+Tall portrait image, 5:7 aspect ratio, 1536 x 2150 pixels.
+
+A painted fantasy trading-card illustration of a vast hooded figure in robes of folded parchment, faceless, with ink-black hands, one holding a closed book the size of a house, the sky behind it going white as the book begins to open.
+
+Body and shape: a colossal hooded figure, as tall as a hill, its robes made of great folded sheets of parchment layered like the pages of a book.
+Colours: parchment white and old ivory, ink-black hands, cold silver-blue starlight, and a pure white glare spilling from the book.
+Key features: darkness under the hood and no face at all; the huge closed book held against its chest in one hand, its clasp just coming undone, white light leaking from between the pages; the other hand open and raised.
+Pose: towering over a duelling circle far below, the book just beginning to open.
+Background: a night sky full of cold stars turning white from the centre outwards, tinted with starfield blue and silver.
+Composition: the colossal figure filling the upper two-thirds of the image and towering over everything below. Keep anything important away from the very top and bottom edges.
+Mood: godlike, colossal and epic, bathed in cold white light; the end of something.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+**Summon cut-out · square 2048 × 2048 · save as summons/orlanthe.png** (attach the card painting as a reference, then remove the grey background)
+
+```
+Square image, 1:1 aspect ratio, 2048 x 2048 pixels.
+
+The same being as in the attached card painting, with exactly the same design and colours: a vast hooded figure in robes of folded parchment, faceless, with ink-black hands, holding a closed book the size of a house.
+
+Show the whole figure facing the viewer, the book held against its chest in one hand, the other hand open and raised.
+Place it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects, with a little space around the figure.
+Style: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.
+Do not include any text, letters, numbers, frame or border.
+```
+
+**Summon sky scene · wide 3840 × 2160 · save as summons/orlanthe_scene.jpg** (the picture behind it as it comes down, like Grondmaw's and Pyraxis's)
+
+```
+Wide landscape image, 16:9 aspect ratio, 3840 x 2160 pixels.
+
+A painted fantasy scene of the night sky opening over a great stone duelling circle: high above the circle the stars are drawn together into the shape of an enormous closed book, and a column of pure white light pours down from between its pages onto the centre of the circle.
+
+Colours: deep night blue and cold silver stars, parchment white and pure white light, faint ink-black shadows in the clouds.
+Key features: the circle seen from high up, its stone ring and steps lit white at the centre; thin threads of starlight running from the stars down to the book like the strings of a loom; loose pages drifting in the air around the column of light.
+Composition: the column of light and the circle in the centre, the book of stars in the top third, wide sky and distant mountains in snow on both sides, room in the middle for a figure to stand in front.
+Mood: vast, silent and final, the sky about to go white.
+Style: rich painterly brushwork, dramatic light, glowing magical particles, high detail, matching the other Summons' sky scenes.
+Do not include any text, letters, numbers, names, frame, border, logo or watermark.
+```
+
+**3D model · Tripo3D · save as models/summons/orlanthe.glb** (from the Summon cut-out, rigged with idle, spawn, attack, hit, defeat, victory and run; 20,000 to 30,000 triangles, 4K texture, any file name)
+
+## Cut Thread (round 9, rite, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/cut_thread.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of silver shears closing on a single glowing thread stretched across the dark, starlight along the blades.
+
+Main subject: a pair of old silver shears, open and just closing on one bright thread.
+Colours: silver blades, a thread of warm white light, deep starfield blue and black.
+Key details: starlight running along the edges of the blades; the thread fraying where the blades meet.
+Background: darkness with a few cold stars, softly blurred and tinted with starfield blue and silver.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: quiet and final.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Foreordained (round 9, rite, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/foreordained.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of five cards laid face down on a dark table by a hand that isn't there, a faint ink-black shadow of fingers over the last one.
+
+Main subject: five plain face-down cards in a neat row on a dark wooden table.
+Colours: dark wood, parchment-white card backs edged in silver, a faint ink-black shadow, cold starlight.
+Key details: the shadow of a hand just lifting from the fifth card; a thin trail of starlight dust where the hand has moved along the row.
+Background: a dark room, softly blurred and tinted with starfield blue and silver.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: calm, certain and a little uncanny.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Already Written (round 9, ward, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/already_written.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a page of an old book turning by itself, the words of a spell crossed out in black ink before they were said.
+
+Main subject: one large page of an old book in mid-turn, lifted by no hand.
+Colours: old ivory parchment, ink-black strikes, a fading glow of spell-light under the crossings-out, cold starlight.
+Key details: the spell's glow dying where the black lines cross it out; a few sparks of the spell falling away like ash.
+Background: darkness with drifting pages, softly blurred and tinted with starfield blue and silver.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a striking moment of magic.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any readable text, letters, numbers, names, card frame, border, logo or watermark (the writing on the page should be shapes of ink, not words).
+```
+
+## Hourglass With No Sand (round 9, relic, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/hourglass_no_sand.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of an empty hourglass on a fine chain, nothing in either bulb, the glass faintly starlit from inside.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit coldly from one side with silver starlight.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Knotted Cord (round 9, relic, astral)
+
+**Card painting · square 1536 × 1536 · save as cards/knotted_cord.png**
+
+```
+Square image, 1:1 aspect ratio, 1536 x 1536 pixels.
+
+A painted fantasy trading-card illustration of a cord of grey wool with seven knots along it, one of them cut, laid on dark stone.
+
+Main subject: the object itself, close and detailed, like a treasure in a museum case.
+Background: dark velvet and old stone, softly blurred, lit coldly from one side with silver starlight.
+Composition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.
+Mood: a thing with a history, waiting for a hand to carry it.
+Style: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.
+Do not include any text, letters, numbers, names, card frame, border, logo or watermark.
+```
+
+## Orlanthe's music (round 9, music, for AI Music Lab)
+
+**Summon stinger · about 20 seconds · save as audio/music/summon_orlanthe.ogg** (paste as it is; plays once when Orlanthe is called, so it doesn't need to loop)
+
+```
+Cinematic sacred stinger for a god's servant coming down. A vast old book opening: a soft rush of turning pages and a deep low breath at the start, then a single huge pipe-organ chord that swells and is held, a wordless mixed choir rising into it on one long held chord, high strings joining on a shimmering tremolo, a glassy celesta and bell shimmer on top like starlight, the whole sound going brighter and whiter until it fills everything, then cutting to a soft fading ring. No drums, no percussion, no melody to speak of. 60 BPM, D major chord held over a low D pedal, with a shift to B-flat major at the peak. Mood: vast, calm, final and holy, the sky going white. No vocals with words. Plays once, no loop. Length 0:20.
+```

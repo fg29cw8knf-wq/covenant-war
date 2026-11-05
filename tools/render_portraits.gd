@@ -4,7 +4,13 @@ extends Node3D
 ## (DollArt.portrait picks those up in place of the drawn cut-out faces).
 ##
 ##   xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 \
-##       --resolution 512x512 res://tools/render_portraits.tscn -- [ids...]
+##       --resolution 1024x1024 res://tools/render_portraits.tscn -- [ids...]
+##
+## (5 November: 1024 square, twice what they were. The dialogue box's frame
+## is 220 points, 660 pixels on a 3x phone, so 512 was soft; the framing is
+## the same, only the pixels doubled. They're imported with mipmaps and drawn
+## with the mipmapped filter wherever a face is shown, so they stay smooth
+## small too.)
 
 ## (1 November, Gary: "Tilly's picture is the old one, it's not the new
 ## model": Tilly has been Gary's brown-haired girl, child_c, since 24 October
@@ -13,7 +19,17 @@ extends Node3D
 const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "player_a": "player_a", "player_b": "player_b",
 	"player_c": "player_c", "player_d": "player_d", "tam": "tam", "tilly": "child_c", "nell": "nell", "ned": "ned", "hob": "hob",
 	# (2 November: Gary's Warden Hale and Sun Guard models; the gate warden wears the Sun Guard's)
-	"hale": "hale", "gate_warden": "sun_guard"}
+	"hale": "hale", "gate_warden": "sun_guard",
+	# the costume faces already rendered from their models (anyone in that
+	# look without a face of their own), and Tobin, Ysa's boy (5 November;
+	# the Ledger's People page shows him). Not the refugee, Krell, Corin's
+	# mam or Aldric: theirs are painted, from Gary's sheets.
+	"child_b": "child_b", "child_c": "child_c", "elder": "elder", "tobin": "tobin",
+	# people whose figure is one of Gary's models but who had no face of their
+	# own (the box and the Ledger showed a blank): Wren and Dask wear Player C
+	# and B (Figure3D.MODELS), Pip the boy's (child_b). (Not Tamsin: the
+	# merchant she stands in is a bearded man, and she's a woman.)
+	"wren": "player_c", "dask": "player_b", "pip": "child_b"}
 ## A child's head is smaller: the camera comes in closer so it fills the
 ## frame like everyone else's (and stands back for Tam's, big and capped).
 const CLOSER := {"tilly": 0.88, "tam": 1.08, "gate_warden": 1.08, "hale": 1.04}
@@ -22,9 +38,9 @@ const CLOSER := {"tilly": 0.88, "tam": 1.08, "gate_warden": 1.08, "hale": 1.04}
 ## the face sits like the others'.
 const RAISE := {"player": 0.05, "player_a": 0.05, "player_b": 0.05, "player_c": 0.05, "player_d": 0.05, "corin": 0.05,
 	"tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05, "ned": 0.05,
-	"hale": 0.045, "gate_warden": 0.06}
+	"hale": 0.045, "gate_warden": 0.06, "wren": 0.05, "dask": 0.05}
 const OUT := "res://assets/art/characters/"
-const SIZE := 512
+const SIZE := 1024
 
 var _cam: Camera3D
 

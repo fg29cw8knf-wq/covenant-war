@@ -1135,6 +1135,10 @@ func _rite_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 				v += best
 			"pick_top":
 				v += 18.0 + (8.0 if p.hand.size() <= 3 else 0.0)
+			"rival_top_to_bottom":
+				# (5 November: Foreordained: worth a little, more if they're
+				# nearly out of cards, since their next draw is put off)
+				v += 6.0 + (8.0 if foe.deck.size() <= 3 and foe.deck.size() >= 2 else 0.0)
 	if bool(d.get("continuous", false)):
 		v += _standing_value(game, pi, c)
 		if p.continuous.size() >= DuelRules.continuous_slots:
@@ -1282,6 +1286,12 @@ func _summon_score(game: DuelGame, pi: int, c: DuelCard, target) -> float:
 			for f in foe.totems():
 				if f != target:
 					v += _status_value(game, f, "stun")
+		if mv.get("effects", []).any(func(e): return e.op == "doom_others"):
+			# (5 November: Orlanthe: the rest are Doomed, so aim the blow at
+			# the one that would be worth the most to Doom last)
+			for f in foe.totems():
+				if f != target:
+					v += _status_value(game, f, "doomed")
 	for e in mv.get("effects", []):
 		match e.op:
 			"heal":
@@ -1366,6 +1376,9 @@ func _gift_option(game: DuelGame, pi: int) -> Dictionary:
 			v = v if v >= 40.0 else 0.0
 		"unveil":
 			v = 26.0 + foe.wards.size() * 6.0
+		"foreordained":
+			# (5 November, Kaethis: a card when the hand is thin)
+			v = 24.0 if p.hand.size() <= 3 else 0.0
 	if v <= 0.0:
 		return {}
 	var action := {"type": "gift"}

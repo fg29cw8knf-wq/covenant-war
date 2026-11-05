@@ -1748,6 +1748,9 @@ func gift_problem(pi: int, target = null) -> String:
 				return "Your opponent has no Wards."
 			if law == "nocthra" and blessed(foe.index):
 				return "Nocthra's Blessing hides their Wards."
+		"foreordained":
+			if p.deck.is_empty() and foe.deck.size() < 2:
+				return "There is nothing left to write."
 	return ""
 
 
@@ -2165,9 +2168,15 @@ func demigod_of(pi: int) -> String:
 	var el := favour_element(pi)
 	if el == "":
 		return ""
+	var g: String = (players[pi] as DuelPlayer).patron()
 	for id in DuelCards.CARDS:
 		var d: Dictionary = DuelCards.CARDS[id]
 		if d.kind == "summon" and String(d.get("element", "")) == el:
+			# (5 November: a Summon that answers to another god of the same
+			# element isn't this one's: Kaethis's Orlanthe is Astral, but it
+			# isn't Aster's to send)
+			if DuelSynergy.CARD_GOD.has(id) and String(DuelSynergy.CARD_GOD[id]) != g:
+				continue
 			return id
 	return ""
 
@@ -2709,6 +2718,11 @@ func _summon_strike(pi: int, card: DuelCard, target) -> void:
 			for f in opponent(pi).totems():
 				if f != target:
 					await _apply_status(f, "stun", null, pi)
+		if effects.any(func(e): return e.op == "doom_others"):
+			# (5 November: Orlanthe's Final Entry passes sentence on the rest)
+			for f in opponent(pi).totems():
+				if f != target:
+					await _apply_status(f, "doomed", null, pi)
 	await _apply_effects(pi, null, target, effects, dealt)
 
 
@@ -2819,7 +2833,25 @@ func _act_gift(pi: int, target) -> void:
 					foe.wards.erase(w)
 					foe.discard.append(w)
 					_log("%s burns away." % w.card_name(), pi)
+		"foreordained":
+			# (5 November, Kaethis: a card for you, and theirs put off; a second
+			# one on full Favour)
+			var drawn := await _draw(p, 2 if by_favour else 1)
+			if not drawn.is_empty():
+				await _fx("fx_draw", [pi, drawn])
+			_rival_top_to_bottom(pi)
 	await _resolve_knockouts()
+
+
+## The card on top of `pi`'s rival's deck goes to its bottom (Foreordained,
+## the Rite and the Gift): the top of a deck is the end of the list.
+func _rival_top_to_bottom(pi: int) -> void:
+	var foe := opponent(pi)
+	if foe.deck.size() < 2:
+		return
+	var c: DuelCard = foe.deck.pop_back()
+	foe.deck.push_front(c)
+	_log("The top card of %s deck goes to the bottom." % whose(foe.player_name, true), pi)
 
 
 ## Maerith's Undertow: the Basic goes back to its owner's hand and any
@@ -2904,6 +2936,9 @@ func _apply_effects(pi: int, source: DuelTotem, target, effects: Array, dealt: i
 				var drawn := await _draw(p, int(e.count))
 				if not drawn.is_empty():
 					await _fx("fx_draw", [pi, drawn])
+			"rival_top_to_bottom":
+				# (5 November, Kaethis: what was coming for them was written elsewhere)
+				_rival_top_to_bottom(pi)
 			"essence":
 				p.essence += int(e.amount)
 				_log("%s gains %d Essence." % [p.player_name, e.amount], pi)

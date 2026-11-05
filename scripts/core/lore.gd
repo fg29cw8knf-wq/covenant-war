@@ -85,6 +85,12 @@ const GODS := {
 		"attribute": "intellect", "gift": "forged_guard"},
 	"ysolde": {"name": "Ysolde", "title": "the Unveiling Flame", "element": "fire",
 		"attribute": "presence", "gift": "unveil"},
+	# (5 November) the god Bram served for forty years: fate and destiny, outside
+	# every bloc, no Seat, no Kingdom Law, no arena, no Blessing. Hidden from the
+	# player until the story wants it; its name is for Gary's yes (change it here
+	# only: its cards' backstories take the name and title from here, DuelLore).
+	"kaethis": {"name": "Kaethis", "title": "the Hand Before", "element": "astral",
+		"attribute": "resolve", "gift": "foreordained"},
 }
 
 ## The seven great gods of the opening, in their usual order.
@@ -110,6 +116,7 @@ const GIFTS := {
 	"star_chart": {"name": "Star Chart", "text": "Draw any two of your top 5 cards; +2 on your Fate rolls this turn."},
 	"forged_guard": {"name": "Forged Guard", "text": "Shield each of your Totems for 30, and double your Guard until your next Dawn."},
 	"unveil": {"name": "Unveil", "text": "Turn every enemy Ward face up, then destroy one."},
+	"foreordained": {"name": "Foreordained", "text": "Draw a card; the card on top of your rival's deck goes to its bottom."},
 }
 
 const TIER_NAMES := ["", "Spark", "Glimmer", "Crystal", "Relic", "Legend", "Demigod", "Divine"]

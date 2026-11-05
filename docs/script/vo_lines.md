@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 554 lines, 14 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-02 (502d458); run it again after the words change.
+Every line the game speaks, in the order it's played: 554 lines, 18 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-05 (2149087); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -12,9 +12,9 @@ Every line the game speaks, in the order it's played: 554 lines, 14 of them reco
 | No. | Who | Line | Id |
 |---|---|---|---|
 | 0001 | Morrowen | Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born. *(recorded already: morrowen_attic)* *(said in 2 places: one recording)* | `morrowen_attic` |
-| 0002 | Bram | Hush, now. I've got you. | `b3db9878` |
-| 0003 | Bram | Not this one. | `cb5440f1` |
-| 0004 | Morrowen | Twenty years later, the debt came due. | `6ec01c26` |
+| 0002 | Bram | Hush, now. I've got you. *(recorded already)* | `b3db9878` |
+| 0003 | Bram | Not this one. *(recorded already)* | `cb5440f1` |
+| 0004 | Morrowen | Twenty years later, the debt came due. *(recorded already)* | `6ec01c26` |
 
 ## Ashford: the last morning (the opening)
 
@@ -394,7 +394,7 @@ Every line the game speaks, in the order it's played: 554 lines, 14 of them reco
 | 0215 | Tam | I challenge the debt, Huntmaster! Under the Covenant, you cannot refuse a drawn hand. | `d7ac63d9` |
 | 0216 | Krell | Fair enough, Miller. The law states I cannot refuse a duel. But if you wish to go ahead with this, I have the right to set the stakes. | `b5b90dc4` |
 | 0217 | Krell | And to deter anyone else from trying it... we fight to the death. Draw your Essence. | `ed740f10` |
-| 0218 | Old Nell | Tam! | `fad059d8` |
+| 0218 | Old Nell | Tam! *(recorded already)* | `fad059d8` |
 | 0219 | Krell | The debt is settled. Search every building. Start with the inn. Keep the houses intact; they're worth more standing. | `b03a2ff7` |
 | 0220 | Krell | If anyone interferes, subdue them. I want the white card, not a heap of ashes. | `23e6dd63` |
 | 0221 | Bram | Go through Dask's cards when we stop. Swap in what's nastier than what you've got. That's most of duelling. *(said in 2 places: one recording)* | `4f9f7465` |

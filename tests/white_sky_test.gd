@@ -2,7 +2,8 @@ extends Node
 ## Plays the Night of the White Sky (WhiteSky) on its own, as a player would
 ## (walking on with the up key, tapping to pick up the child, tapping each
 ## line on after a moment) and takes a still every few seconds and at each beat, then checks
-## it ran to the end: the duel was filmed, Grondmaw was called and the memory
+## it ran to the end: the duel was filmed, Bram's Summon (WhiteSkyDuel.SUMMON,
+## Orlanthe since 5 November; Grondmaw before) was called and the memory
 ## finished. Run (stills in <dir>):
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 \
@@ -63,7 +64,7 @@ func _run() -> void:
 		await m.play()
 	await _still("end")
 	var ok := _phase == "done" and (_skip or (_filmed and _called))
-	print("white_sky_test: %s (filmed %s, grondmaw called %s, %d stills, %.1f s of game time)" % [
+	print("white_sky_test: %s (filmed %s, summon called %s, %d stills, %.1f s of game time)" % [
 		"PASS" if ok else "FAIL", str(_filmed), str(_called), _shots, _t])
 	print("real time %.0f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	get_tree().quit(0 if ok else 1)
@@ -104,10 +105,10 @@ func _process(delta: float) -> void:
 		_filmed = true
 		m._screen.game.logged.connect(func(t: String, who: int) -> void:
 			print("  [duel %5.1fs] %s%s" % [_t, "    " if who == 1 else "", t])
-			if who == 0 and t.contains("calls down") and t.contains("Grondmaw"):
+			if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()):
 				_called = true
-				_still_later("grondmaw", 1.5)
-				_still_later("grondmaw_b", 3.5))
+				_still_later("summon", 1.5)
+				_still_later("summon_b", 3.5))
 		_still_later("duel_start", 2.0)
 	if _skip and _t > 8.0 and not m._skipping:
 		m.skip()

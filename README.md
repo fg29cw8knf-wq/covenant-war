@@ -39,9 +39,117 @@ built or published any more; the Mac app and the iPhone app's Xcode project
 rebuild themselves on every push to `main`, from the `mac` and `iphone`
 releases, and are what he plays. `tools/build_web.sh` and
 `tools/publish_web.sh` stay for when he wants the link again.) The look
-pass itself hasn't started (22 October): it's the next big job, and Gary should
-be asked before it's begun, as `docs/handover/2026-10-18.md` says of anything
-big.
+pass started on 5 November (Gary: "Make the game look visually as amazing
+as possible"), below; what's left of it is at its end.
+
+### The look pass (5 November)
+
+Gary (5 November): "Make the game look visually as amazing as possible."
+The first part of the look pass the standing rule asks for. Each change is
+on a switch, and each was seen in stills before and after
+(`tests/look_shot.tscn`, below).
+
+- **Normal and roughness maps from Gary's own paint.** His prop and
+  building models (the inn, the three cottages, the well, the stall, the
+  Great Lantern, the hay cart, the merchant cart, the barrel, the crate, the
+  sacks, the two oaks, the stone wall, the fence, the windmill's tower, the
+  watermill and its wheel, the shelter's shelves) came with one painted
+  colour atlas each and a flat roughness. `tools/derive_maps.py` reads the
+  fine shape back out of the paint (the grain of the planks, the mortar
+  between stones, the bark's ridges, the weave of the thatch and the
+  sacks), with the broad painted shading taken off first so nothing comes
+  out as a false slope (paint with very little in it kept a little
+  shallower, `SPREAD_FLOOR`: the inn's whitewash has faint stone blocks
+  painted in, which come out as whitewashed stone, not lumps), and
+  writes `<id>_normal.png` and `<id>_mr.png`
+  (how rough in green, how metal in blue) beside the model,
+  VRAM-compressed (about 1 MB a 1024 map; the inn's is 2048). The iron of
+  the barrel's hoops, the cart's tyres and the crate's corners is metal
+  (`--metal`: the dark grey swatches; the cart's rust spots stay rust).
+  `LevelKit.dress_models()` puts them on the models' own materials once,
+  before a place is built (`World._build_environment`,
+  `AshfordVillage._build`), so every copy of a model wherever it's loaded
+  has them (the village, the films, the Thornwood, Solhaven's carts and
+  sacks). Normal strength `LevelKit.MAP_NORMAL` 0.6: a touch, not plastic.
+  On the Compatibility renderer only the normal map goes on: there a
+  material with colour, normal, roughness and a glow map (the houses' lit
+  windows) put out every sun shadow in the picture (Godot 4.7.2; each map
+  alone with the glow is fine), `LevelKit._mr_ok`. Off:
+  `LevelKit.maps = false`. A new model: `python3 tools/derive_maps.py
+  assets/models/ashford/<id>.glb [--metal]`, then add its id to
+  `LevelKit.MAPPED`. Not for characters: their atlases are thousands of
+  small islands and would come out with a seam round each; a character's
+  normal map comes from the maker's own file (`tools/add_normal_map.py`,
+  as Player A's).
+- **One colour grade per place and time.** A gentle grade over the
+  finished picture (the environment's colour correction: a curve for each
+  of red, green and blue, one lookup a pixel, on every renderer):
+  Ashford's morning warm gold (the whitewash cream, not blue-white), the
+  festival evening amber, midnight blue-white (blue in the shadows, the
+  lanterns still warm), the morning after smoky rose, the night Ashford
+  burns, the Thornwood green and cold, Solhaven white-gold in its
+  highlights (its shadows left alone, so its night and vaults keep their
+  blue). `AshfordVillage.GRADES`, blended with the sunset as
+  `set_daylight` moves (`set_grade`), set by `set_time`; Solhaven's laid
+  on its own set by `World._grade_place`. By day the glow takes only
+  what's truly bright (`GLOW_DAY_THRESHOLD` 1.6: the sunlit whitewash had a
+  haze round it), at night every lantern blooms (1.0 as built); the sun's
+  shadow edges are softer by day on Forward+ (`SUN_ANGLE` 1.2 degrees, the
+  moon's 0.6). Off: `AshfordVillage.grading = false` before the place is
+  built.
+- **Heads turn to whoever's talking.** A figure near someone talking
+  (`talking`, set by every line in the world and in the films) turns its
+  head to them, and the one talking to whoever's nearest in front of them:
+  the neck and head sharing the turn (`LOOK_NECK`), at most 50 degrees
+  aside and 16 up or down (Bram looks down at Tilly), eased in and out
+  over a third of a second, only within 4.5 m and in front (no owl turns),
+  laid over the clip so they still breathe and gesture. Never in a clip a
+  scene asked for (act, hold, pose), lying down or sat up in bed
+  (`Figure3D._free_to_look`). `Figure3D.HeadTurn`, a skeleton modifier.
+  Off: `Figure3D.looking = false`.
+- **A reflection probe in the inn's rooms** (`AshfordVillage._room_probe`:
+  the taproom of the evening before and of the afternoon after, as
+  InnRooms builds them): one box the size of the room, drawn once, so the
+  pewter, copper and bottles reflect the room rather than the sky. Off:
+  `AshfordVillage.room_probes = false`.
+
+What it costs: the maps two texture reads on those models' pixels (one on
+Compatibility), about 30 MB of pictures on disk and less in memory
+(compressed); the grade one lookup a pixel; the head turn a few sums a
+figure a frame; the probe one small cube of pictures when a room is built.
+Frame times here weren't measurable (software rendering on two cores
+shared with other jobs ran 1.2 to 6 s a frame whatever was on).
+
+```sh
+# stills for the look pass: Ashford by day, at sunset and at midnight (the inn's front, the well, the
+# carts, the hay cart, a cottage, the green), the evening's taproom, the Thornwood, Solhaven's gate;
+# each as <tag>_<name>.png. nomaps / nograde / noprobes turn each part off, for a before and after;
+# only=inn,green picks views; people builds the whole world with its people (more memory).
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 30 \
+    res://tests/look_shot.tscn -- <dir> <tag> [day] [dusk] [night] [taproom] [thornwood] [solhaven] [only=...] [nomaps] [nograde] [noprobes] [people]
+```
+
+Checked (5 November): `load_all` 0 failed; `duel_sim -- 200` 0 invariant
+errors (rules untouched); `village_shot`, `attic_peek -- 14 2` and
+`look_shot` (day, dusk, night, taproom, Thornwood, Solhaven, each with its
+part off and on) on Compatibility, the stills looked at; Forward+ seen
+through software Vulkan (Ashford by day and at dusk, the taproom with and
+without its probe). On Forward+ the maps show most (the plank and barrel
+grain, the inn's whitewashed stone); the probe's change is small.
+
+Still to do in the look pass: baked light (`LightmapGI`) for Ashford; the
+characters' normal maps (Bram's and the rest, from Gary's original Tripo3D
+files, as Player A's: their game atlases can't give one); a reflection probe
+on Solhaven's gold (its set is built in `solhaven_set.gd`); SSAO and
+SDFGI on the Mac judged on the Mac itself (left as they were: SSAO 1.8 and
+SDFGI on at the full level; worth trying SSAO about 1.0 and SDFGI off for
+the frame rate if the Mac struggles); the 3D duel field (the 4 to 5 November
+drama is there; nothing cheap and clear found missing).
+
+Left for later in the look pass: baked lighting (`LightmapGI`) for the villages;
+normal maps for the people (Bram's atlas is thousands of small islands, so it
+needs the maker's own normal map, as Player A's had); a reflection probe on
+Solhaven's gold (`solhaven_set.gd`); SSAO (1.8 now) and SDFGI judged on the Mac.
 
 ## The Duel Lab (duel rules v2)
 
@@ -494,6 +602,12 @@ errors, 25.8 turns, first player 52%; `duel_cine_shot` every part with
 `preview`, problems none, the stills looked at; `duel_film_check` problems
 none; `duel_monkey -- 1 --3d` no script errors. The impact punch and the
 Forward+ look weren't seen here (software GL): worth a look on the Mac.
+
+### Kaethis, the Hand Before: Bram's god and its cards (5 November)
+
+Gary: "top tier totems that will be under his own god"; the name is for his yes. Bram's old god, from the pantheon doc of 4 November: the god of fate and destiny, Astral (shared with Aster, as Pyrrhane and Ysolde share Fire), attribute Resolve, outside every bloc, with no Seat, so no Kingdom Law, no arena and no Blessing (`Lore.GODS.kaethis`; its Divine Gift `foreordained`: draw a card, and the card on top of the rival's deck goes to its bottom, two cards on full Favour; the doc's "look at the top five of both decks and order them" wants a picker, so the Gift's text says what it really does). It isn't in the Duel Lab's patron list or any pool, starter deck or Sigil Cache yet; a 14th god breaks nothing that walks the gods (`GREAT_GODS` stays seven; Standing, the Favour meter, the god seals and the Gift button all go by `Lore.GODS.has` and fall back to the drawn seal while `assets/art/gods/kaethis.jpg` is missing). Its name lives in `Lore.GODS` only: the cards' backstories take `{god}` and `{title}` from there (`DuelLore.backstory`). Eleven cards (`duel_cards.gd`, the KAETHIS section; `DuelSynergy.CARD_GOD` gives ten of them to Kaethis, the Glyph Warden is Aldrith's by its element): the Totems **The Scrivener** (Crystal, 3, 180 HP; Strike the Name pierces Guard), **Loomwarden** (Crystal, 4, 220, Guardian; Tangle Roots), **The Unspent Hour** (Relic tier, 4, 190, Swift; Turn the Glass Staggers), **The Weft Serpent** (Legend, 5, 240; Unravel Marks, Weave Shut +40 on the Marked, `bonus_if_status`) and Aldrith's **Glyph Warden** (Mystic, Relic tier, 3, 180, Guardian and Shelter; Binding Glyph Silences); the Summon **Orlanthe, the Last Page** (Demigod, 7: Final Entry, 140 to one foe through Guard, every other foe Doomed: the new `doom_others` op beside Grondmaw's `stun_others`, in `_summon_strike` and the AI's `_summon_score`); the Rites **Cut Thread** (Dooms a foe) and **Foreordained** (draw, and the new `rival_top_to_bottom` op, scored by the AI's `_rite_score`); the Ward **Already Written** (`foe_rite` → `cancel_rite`, so like the Counter Rune it stops a Summon too); the Relics **Hourglass With No Sand** (a move, The Fixed Hour, 2: 50 and Staggered) and **Knotted Cord** (+30 HP and a card when it falls: `relic_text` now joins a Relic's parts, so one Relic can give two things). Until Gary's paintings and models come each Totem stands as a tinted stand-in (`stand_in` + `stand_in_tint`): the Scrivener a parchment Gilded Sentinel, the Loomwarden a pale Mirewidow, the Unspent Hour a pale-blue Somnowl, the Weft Serpent a parchment Riptide Serpent, the Glyph Warden an indigo Quarry Golem; Orlanthe with no cut-out, scene, model or `summon_orlanthe` stinger falls back as any Summon does (the drawn card in the Summon cinematic, the landing's starlight, the "summon" sound under the duel's music). `DuelGame.demigod_of` now skips a Summon `CARD_GOD` gives to another god, so Aster's sworn aren't offered Orlanthe at full Favour (Aster has no Demigod, as before). Prompts: `docs/card-prompts.md` "Round 9: Kaethis, the Hand Before" (the god's painting, every card, Orlanthe's sky scene, the 3D model lines and the stinger's music prompt). Later, not in this round: the doc's small Kaethis cards (Thread Moth, Spindle Cat, the Written Hound, the Knot-Warden).
+
+The Totem plate's HP figure is fitted to its box since the same day (`DuelViews`: 220 was cut to "22").
 
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
@@ -1090,6 +1204,53 @@ Every story duel is on the v2 duel now; the older rules below (`scripts/core/`, 
 
 ## Story mode
 
+**5 November, Gary's files (`docs/handover/2026-11-05-pm.md`):** Dask's heavy
+crossbow (`ashford/crossbow.glb`, 0.65 m, `split_glb.py`) in his hands on the
+Thornwood road, held low in both (`Thornwood._crossbow`: the butt by his right hip,
+`Figure3D.carry` and `reach` keep both hands on it; the drawn one stands in if the
+file is missing). The second merchant cart (`ashford/merchant_cart_b.glb`) in its
+place by the first (`AshfordVillage` already looked for it), thrown over at midnight
+with it (`shatter_carts`). The Thornwood shelter's stone doorway
+(`ashford/shelter_door.glb`, 3.45 x 2.41 m) where the drawn door stood
+(`ThornwoodShelter`): its oak-and-iron door is cut out of the model and hung on its
+hinge as "Leaf" (`DOORWAY_HINGE`), so Bram pushes it in (`DOOR_OPEN`), the dark of
+the way in behind it; the drawn door and roots stand in if it's missing. Krell's
+warhorse (`ashford/warhorse.glb`, Tripo's rig and clips: idle, walk, trot, canter,
+run, gallop, rear, paw_ground, tail_swish, attack_kick, hit_react, victory, defeat,
+summon; made in a unit box, scaled to 1.75 m at the withers): `AshfordNight.Warhorse`,
+a Cine extra (`"warhorse"`), canters up the road with her bailiffs, walks onto the
+green (`HORSE_WALK_IN`) and halts; Krell sits astride (`Figure3D.ride`: `ASTRIDE_THIGH`,
+`ASTRIDE_SHIN`), her body put on the saddle every frame (`Warhorse.saddle`), her
+ledger held over the withers (`LEDGER_RIDING`), and her lines shot from beside the
+horse's head (`_krell_cam`); with no model she walks in as before. Tobin
+(`characters/tobin.glb`, `tools/rig_villager.sh tobin`: Gary's Blender export, 1.30 m,
+his own normal map) at the Golden Gate and in the side story (`Figure3D.MODELS`,
+walk 1.28 / run 3.24); the sleeping child further back at the gate (`ref_3`) is
+`child_b` now, not a second Tobin. Bram's White Sky lines (0002, 0003) and Nell's
+"Tam!" (0218) are mastered by `vo_master.py --lines` into
+`assets/audio/vo/ashford/bram/b3db9878.ogg`, `cb5440f1.ogg` and
+`assets/audio/vo/ashford/nell/fad059d8.ogg` (`VoiceLines` finds them by the words,
+in the 3D and in the Reckoning film's step). Nell's crying (5.9 s as recorded) is
+`assets/audio/sfx/nell_crying.ogg`: `tools/far_off.sh <rec> <out.wav> nofade` (far
+off and down the hill, no fades), then `tools/sfx_loop.py --pad 3 --fade 2` (a pause
+between the bouts and the start crossfaded out of the quiet: a 7.2 s loop), looped
+by `_nell_crying` under the bell. Tilly's music `tilly_moth` (Gary's 134 s,
+scouted in three-time, looping 15.372 to 96.4 s; `Music.LOOP_START`) plays by the
+well and when she gives her moth (the hooks were in since 2 November).
+
+**5 November, scripts for Gary's yes (nothing built from them yet):**
+`docs/script/v8_interlude_a.md` (Interlude A, The Hunters: between Solhaven and the
+first kingdom, Krell's ambush at the Wend Ford, Dask warning you off it or leading
+it by `dask_kept_hound` / `dask_sent_home`, duels with Dask and Krell, Wren saying
+the name Kaethis), `docs/script/v8_corins_return.md` (Corin as a Notary of the
+House at Gildersgate, the button, "Sprout", and the page you sign or don't) and
+`docs/script/v8_return_to_ashford.md` (Ashford half a year on: Nell's mill, Tilly's
+moth, Tam's stone, the Lantern). Each ends with its Writers' notes, the new things
+it needs and numbered questions; Interlude A's placement changes two small lines
+in Pyreholt v1 (listed in its notes). The map of Veyl's painting prompt, with
+where each kingdom lies and the label positions for the code, is
+`docs/veyl-map-prompt.md`.
+
 **2 November, later (Gary's files; `docs/handover/2026-11-02-pm.md`):**
 Warden Hale (`characters/hale.glb`) and the Sun Guard (`sun_guard.glb`, every
 guard in Chapter 1 and the gate warden) are Gary's Tripo3D models, rigged by
@@ -1635,22 +1796,32 @@ and `DuelField3D.film_mode()` (snow for the mat, the torn sky, cold light,
 driven snow) with `spectral_side` 1, the hunter's Totems drawn as pale Sigil
 light over their own shapes (`DuelField3D.spectral`, a `material_overlay`).
 Bram plays as the god's man he was for many years (4 November, Gary: "a very
-powerful distinguished player", "high tier cards, nothing low tier"; which god
+powerful distinguished player", "high tier cards, nothing low tier"; the god
 stays hidden, no patron or Gift in it): the film cuts in with the duel already
-joined, on a set board (`spec.puzzle`, as the Trial of Light; `WhiteSkyDuel.board()`):
-Cragmaul and the Ironclad Behemoth Ascended and standing, Last Stand set, the
-Quarry Golem, Gilded Sentinels, Relics and Rites in hand and deck (nothing under
-Crystal among his Totems, nothing under Glimmer at all), six Essence a turn,
-every attribute at 10, and the story rule `free_call` (a Crystal costs him no
-tribute, `DuelGame.tributes_needed`); the hunter's pack of Hounds and Foxes
-already standing and Ascended too (`HUNTER_BOARD`), the hunter striking first
-with Doom Sigil (`tests/white_sky_probe.gd` found seed 2: Doom claims his
-Cragmaul, he breaks two of the pack and loses two before he calls Grondmaw on
-turn 8; `FILM_SPEED` 3), both sides the computer;
+joined, on a set board (`spec.puzzle`, as the Trial of Light; `WhiteSkyDuel.board()`).
+**Since 5 November his deck is his god's**, Kaethis, the Hand Before (Duel Lab,
+"Kaethis"): the Scrivener and the Loomwarden standing from the first frame (no
+stacks), Last Stand set, the Unspent Hour, Cut Thread, the Hourglass With No Sand
+and the Knotted Cord in hand, and a deck of Already Written, Glyph Warden, the
+Weft Serpent, Orlanthe, Doom Sigil, Foreordained, Cut Thread, Counter Rune,
+Hushed Counter, the Scrivener, Knotted Cord, Glyph Warden, Foreordained, Null
+Sigil (nothing under Crystal among his Totems, nothing under Glimmer at all), six
+Essence a turn, every attribute at 10, and the story rule `free_call` (a Crystal
+costs him no tribute, `DuelGame.tributes_needed`); the hunter's pack of Hounds and
+Foxes already standing and Ascended (`HUNTER_BOARD`), the hunter striking first
+with Doom Sigil. The Summon is `WhiteSkyDuel.SUMMON` (`orlanthe`, `SUMMON_AT` 3
+cards down; the film, its test and the probe watch the log for
+`WhiteSkyDuel.summon_name()`). `tests/white_sky_probe.gd` found seed 13: the
+hunter Dooms the Scrivener at once; the Unspent Hour and the Loomwarden break the
+Blazehound and the Infernal Warg; the Scrivener and the Unspent Hour fall on the
+hunter's third turn; Bram calls the Weft Serpent and the Glyph Warden into the
+gaps (so all five of his Totems are seen) and calls down Orlanthe on turn 8
+(`FILM_SPEED` 3). The probe's `[pos]` argument now goes into the set board's deck.
+Both sides are the computer;
 Bram and the hunter stand at the ends of the field, Bram with the child in his
 left arm, the play-card clip on each of his plays; the camera cuts between
 `WhiteSky.SHOTS` (all on Bram's side of him or looking away from him). When
-Grondmaw's blow lands the screen burns white; black; Morrowen: "Twenty years
+Orlanthe's blow lands the screen burns white; black; Morrowen: "Twenty years
 later, the debt came due." (line 0004 on the voice sheet, recorded 4 November);
 then the attic caption, and the player wakes with the mark under
 his collar glowing and fading (`SealMark.blaze`). The filmed duel always has a
@@ -1929,7 +2100,7 @@ python3 tools/reskin.py <tripo_model.glb> assets/models/characters/player_a.glb 
 python3 tools/rig_character.py /tmp/pa.glb assets/models/characters/player_a.glb --name "Player A" --height 1.76 \
     --borrow "assets/models/characters/player_a.glb:<every clip of the old model>" --borrow <hob_new.glb>:get_out_of_bed
 godot --headless --import
-xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn -- player
+xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 1024x1024 res://tools/render_portraits.tscn -- player
 godot --headless --script res://tests/clips_check.gd          # everyone can play every clip the story uses, and sit
 python3 tools/arm_weights.py assets/models/characters/player_d.glb [--fix]   # cloth skinned to a hand or finger (it rises with the hand); --fix walks it back onto the body
 xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 \
@@ -2135,8 +2306,27 @@ October sheets (`hale_sheet.jpg`, `sun_guard_sheet.jpg`), the studio grey
 behind them keyed to the blue:
 
 ```sh
-xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 512x512 res://tools/render_portraits.tscn
+xvfb-run -a -s "-screen 0 1024x1024x24" godot --rendering-driver opengl3 --resolution 1024x1024 res://tools/render_portraits.tscn
 ```
+
+Since 5 November the portraits are 1024 square (`tools/render_portraits.gd`
+`SIZE`; run it with `--resolution 1024x1024` in a 1024x1024 screen), twice
+what they were: the dialogue box's 220-point frame is 660 pixels on a 3x
+phone. The framing is unchanged (same `CLOSER` and `RAISE`; compared side by
+side). The tool also knows the costume faces it had rendered before by hand
+(`child_b`, `child_c`, `elder`), Tobin (`tobin.glb`, for the Ledger's People
+page), and three people whose figures were Gary's models but whose faces
+were blank in the box and the Ledger: Wren and Dask (Player C and B, as
+`Figure3D.MODELS` dresses them) and Pip (the boy, `child_b`). The refugee's,
+Krell's, Corin's mam's and Aldric's stay the painted ones from Gary's sheets
+(512). Tamsin has no face yet: the merchant model she stands in is a bearded
+man, so she needs a model of her own. Tilly's is now rendered as the tool frames her
+(`CLOSER` 0.88: her face the size of everyone else's); the old file was a copy
+of `child_c`'s, framed wider. Every place that shows a face (the dialogue box,
+the Hero page, Standing, the Ledger's People page, the swear screen, the pack
+tour, the duel tutor, the mirror, the old battle screen) draws it with the
+mipmapped filter (`TEXTURE_FILTER_LINEAR_WITH_MIPMAPS`; the portraits import
+with mipmaps on and no size limit), so a 1024 face stays smooth in a small frame.
 
 To watch a film part by itself, tapping through every line (`corin`, `midnight`,
 `dawn`, `taproom`, `burning`, `cellar`, `river`, `camp`, `morning`, `road`, `ridge`;
@@ -2244,6 +2434,51 @@ godot --headless --fixed-fps 10 res://tests/props_clear_test.tscn -- /tmp/clear 
 godot --headless res://tests/controls_test.tscn          # every line of the Controls page, pressed for real (keys, pad, mouse, wheel, fingers); also runs under xvfb-run
 ```
 
+- **Crowns and Tamsin's stall** (5 November). The player has a purse: crowns,
+kept in the save beside Shards (`Game.crowns()`, `add_crowns(n, why)`,
+`spend_crowns(n)`; `v2.crowns`, an old save starts with none), shown on the
+Hero page after the Shards ("Purse: 23 crowns."), with a "+N crowns" toast in
+the world when they come from anywhere but a duel (`Game.crowns_gained`,
+`WorldHUD._on_crowns`). A won story duel pays crowns by its kind
+(`DuelRewards.CROWNS`: a lesson 0, early story 3 to 5, normal 6 to 10, big
+moments 15 to 25; the least for a plain win, half the gap more for a Clean win
+and half for a Quick one; a spec names its kind as `"rewards": {"crowns": ...}`,
+else `CROWN_KIND` goes by the opponent), and the result screen says "+N crowns
+(N in your purse)". Nothing in the Prologue (as with Shards), nothing from a
+day's Sigilfall, and the advert that doubles a win doesn't double its crowns.
+Chapter 1: Hale at the gate is early story, Wren in the alley, the Trial of
+Light and the four sworn wagers are normal, Ser Aldric is a big moment; by the
+Golden Knight's duel the main story has paid 19 to 25 crowns, beating him
+makes it 34 to 50. Pip's two crowns a run are his own money: nothing pays the
+player there, but losing his wager ("Two crowns, to Pip") takes two from the
+purse. The two forty-crown choices (the Temple healer's price for Tobin, the
+Sergeant's fine) are offered only with forty in the purse; otherwise they
+read "I'll pay it. (40 crowns — you have 12)" greyed and can't be picked
+(`DialogueBox.choose` takes `{"text", "off": true}` for an answer that can't be
+given yet; `solhaven_side.gd _pay_option`), and paying takes the forty. The
+old flags (`paid_temple`, `paid_fine`) are unchanged.
+  **Tamsin's stall** sells sealed caches: talking to her, after her lines (and
+"(Tamsin's stall sells sealed caches for crowns.)" once, the first time), "What've
+you got?" opens the stall (`scripts/ui/stall_sheet.gd`, `StallSheet.open`):
+three caches on the counter a day, each one card face down with a wax seal,
+from exactly the cards a won duel's "New in your Codex" draws from
+(`DuelArchetypes.in_reach`: the pools the chapter has opened, cards that
+answer the Rank; `sealed_caches` puts cards not yet met first), never a Summon,
+an Ascension, a PvP prize or the comeback card, and no Relic before the first
+Seal (`DuelRewards.cache_ok`). Prices by tier (`CACHE_PRICE`: Spark 8, Glimmer
+15, Crystal 30, Relic 60), half as much again after the Trial (Tamsin's
+"Everything's dearer today": Spark 12, Glimmer 23, Crystal 45). Buying turns
+the card over with the Codex's card face and it's owned, in the collection and
+the Codex ("New in your Codex: Root Toll"; `Game.buy_cache`). The counter is
+stocked afresh each calendar day (`Game.stall_caches`, by
+`Game.calendar_day()`, which the Sigilfall shards use too) and kept in the
+save. The crier's advert is now one free cache off the same counter (the
+stall opens with "Take it" on each; a counter sold out that day gets one more
+first, `Game.stall_one_more`), where it was three random cards.
+`tests/crowns_test.gd` checks all of it headless (and prints the numbers);
+`menu_test` takes the Hero page and the stall (`menu_stall.png`,
+`menu_stall_bought.png`).
+
 ## Solhaven's side stories
 
 Chapter 1's five side stories (Master Script v3, Side Quests; the lines are copied
@@ -2287,6 +2522,24 @@ godot --headless --script res://tests/puzzles_test.gd           # every riddle's
 
 The summary line must report `0 invariant errors`.
 
+### Texture sizes for the store build (5 November)
+
+`tools/texture_sizes.py` sets every texture's import size under assets/ by
+what it's for, from one table and a named profile: `full` (no limits, every
+texture at the size it was made: the repo's state, as Gary wants his 4K models
+in) or `launch` (people and the star creatures 2048, props and scenery 1024;
+a still-lossless model texture to VRAM compression; card paintings and the UI
+left alone). Dry run by default (a table of what would change, and the
+megapixels per class before and after); `--apply` writes the `.import` files.
+Before the store build, if it needs to be smaller: `python3
+tools/texture_sizes.py --profile launch --apply`, then reimport
+(`godot --headless --import`); `--profile full --apply` puts it all back (the
+source pictures are never touched). Today `launch` would take the models from
+608 to 378 megapixels. ASTC on iPhone: `project.godot` has
+`textures/vram_compression/import_etc2_astc=true`, and the iOS preset in
+`export_presets.cfg` keeps it (`texture_format/etc2_astc=true`,
+`s3tc_bptc=false`); nothing overrides it.
+
 ## Rules in brief
 
 - 40-card decks; 4 Prize cards (knocking out a Legend-tier or higher Totem takes 2).
@@ -2325,6 +2578,23 @@ reached since the walk takes 60 to 90 s) and `white_sky_duel` is the piece from
 that cut) until the white cuts it dead; the tail after the climax is never
 played. A piece in `Music.FROM_START` always begins at its start. The seam-check mp3
 is the join as the game plays it, three times, for listening to.
+
+`midnight_choice` (5 November): Gary's 24 s continuation of the Midnight
+film's soundtrack (`Midnight_Choice_Menu_Music_24s_Continuation.wav`),
+played from its first sample (it carries straight on from part 1) and
+looping 5.745 to 20.744 s (16 bars of its 0.9375 s bar; the end refined by
+`tools/music_loop.py`'s `refine_end`, a one-bar crossfade baked in by its
+`bake`), +4.2 dB so that at the default music volume it sits where Gary's
+own preview mix has it under the film, Vorbis q6. Picked from the loop
+scout's candidates by measuring each join against the piece's own
+moments: its join's onset jump (1.75) and change of sound (0.108) are
+below the piece's own typical moments (2.29 and 0.138), so it shouldn't be
+heard. Its last 2 s fade out in Gary's file, so the whole 24 s can't loop.
+It's in `Music.FROM_START` (always from its beginning). Gary's file is kept
+as `assets/audio/source/midnight_choice.wav`; to cut it again,
+`python3 tools/music_loop.py assets/audio/source/midnight_choice.wav <out.ogg> --start 5.745 --end 20.745 --fade 0.9375 --bar 0.9375 --search 0.06`
+makes the same join (that tool writes q4 with no gain: the shipped file
+is the same samples +4.2 dB, written at q6).
 `tools/music_scout.py <mp3>` suggests the pair for a new track: the tempo and
 bar grid, the first downbeat where the intro has settled, and the latest
 bar-aligned end in the body of the piece whose run-in sounds like the run-in to
@@ -2521,7 +2791,7 @@ seven, in the Still to Make doc's "Films for Player A" tab:
 
 | film | where | in place of |
 |---|---|---|
-| `midnight` | the bell to the cart going over on Corin | `Ashford._midnight_3d` (the run and `_the_cart_falls`) |
+| `midnight` | the bell to Bram's answer to the player's choice (Gary's film, in parts; part 3, the lanterns to the cart, still to make) | `Ashford._midnight_3d` up to the lanterns (`_midnight_to_answer`); the 3D plays on from the lanterns until part 3 comes |
 | `white_light` | after the cart, to black | `Ashford._the_white_light` |
 | `herald` | dawn, to Bram stepping between | `Ashford._herald_3d` |
 | `reckoning` | Krell's arrival to her stakes | `AshfordNight._krell_arrives` |
@@ -2555,6 +2825,81 @@ something in it; GitHub Pages has no room left for more 4K streams (the
 opening's take 632 MB of its 1 GB). Gary's step-by-step, with every film's
 shots, where each line falls and which shots show Player A, is
 `docs/script/films_plan.md` (made from `FILMS`).
+
+**Films in parts (midnight, 5 November).** Gary made Midnight in pieces cut
+at the player's choice, so a film in `FILMS` can be a list of `"parts"`
+instead of `"steps"`. Midnight's are: part 1 (`midnight_1`, 34.08 s: the
+bell to Bram's "Wonder who'll be sitting up there tomorrow."; shots
+mid_01 to mid_06, their lengths his film's own cuts, each line set where
+it's spoken); the choice (`"hold": "midnight_choice"`,
+`"music": "midnight_choice"`); Bram's answer for the pick
+(`"file": {0: "midnight_2a", 1: "midnight_2b"}, "by": "mid_choice"`, 3.42 s,
+shot mid_07, `"keep_music": true`); and part 3 (`midnight_3`, mid_08 to
+mid_15, `"optional": true`, not made yet). Each part plays by the usual
+ladder (`<part>_4k.mp4` through the device's player, then
+`assets/movies/<part>.ogv`, then its shots; a later part with none of them
+plays its animatic so the story still goes on), on one native player for
+the whole film. A part's last frame stays up when it ends: the device's
+player pauses on it, the Theora player's picture is copied into a
+`TextureRect` (`_freeze_frame`). At the choice the game shows Gary's own
+last frame (`assets/art/movie/midnight/midnight_choice.jpg`, his PNG at
+1280x720) and only then hides the native player, so nothing changes on
+screen; the menu music starts the moment part 1 ends and loops for as long
+as the player takes; the game's own choice buttons come up as everywhere
+else (`CineOverlay.choose`: tap, keys, pad). On the pick, 2A or 2B opens on
+the same player hidden and is shown only once its first picture is there
+(Theora: the held frame stays over it until its first frame is drawn), so
+it cuts straight in with no black; the music plays on at the same place
+(`"keep_music"`), and the parts' own voices are in the film (`"voiced"`:
+no recordings are played over them). Part 3 isn't there, so the film stops
+before it: `StoryFilm.play` returns `"stopped_at": "midnight_3"` and
+`"film"`, the film still up on 2A/2B's last frame; `Ashford._midnight_film`
+then runs `_midnight_3d(w, "lanterns", r)`, which stages the green as the
+3D has it at Bram's answer (`_at_the_lanterns`: the Lantern lit and
+settled, Tam and Nell dancing, the player on their mark), puts the camera
+on the lanterns shot, and lets the film go (`StoryFilm.let_go`, a 0.4 s
+dissolve from the film's last frame into the 3D as the lanterns start to
+rise); from there it is the 3D as before (the wind stops, "Bram. Is it
+meant to do that?", the tear, the carts, the run, the cart). The menu
+music carries on under the lanterns and stops where the 3D's own music
+stops (`Music.stop(3.0)` as they freeze). When part 3 comes it plays after
+2A/2B with no code change, and fades the menu music out over its first
+second. On the phone link the parts' Theora copies go in the film's pack
+(`tools/web_packs.py`: `assets/movies/<film>_*.ogv`), and the held frames
+(`assets/art/movie/<film>/<film>_*`) stay in the main pack, since the
+streamed film fetches no pack. (`MOVIE_FALLBACK` there now names the
+opening's paintings as `assets/art/movie/shot_*`: its old
+`assets/art/movie/*` also swept every story film's paintings and held
+frames out of the web build once `opening.ogv` existed.)
+
+**The films release** now has `midnight_1_4k.mp4`, `midnight_2a_4k.mp4`
+and `midnight_2b_4k.mp4` (Gary's 1280x720 files; the `_4k` is only the
+name the native player looks for), each with its `.sha256`, published
+through the work branch `wip/midnight-films` and the Films release
+workflow (the session can't upload to a release directly; the branch's
+second commit took the files off it again). **To add part 3:** put
+`midnight_3_4k.mp4` (and its `.sha256`) on the films release the same way,
+and its Theora copy at `assets/movies/midnight_3.ogv` (ffmpeg, libtheora
+`-q:v 8`, 1280x720, Vorbis `-q:a 6`, 48 kHz); set mid_08 to mid_15's
+lengths in `FILMS` to his cuts. Nothing else changes.
+
+A Theora quirk found on the way: with no sound device (the container's
+runs) the Theora player never says it has finished and runs on past its
+end on its last frame; with one, its clock goes back to 0 the moment it
+finishes. `StoryFilm._play_cut` now ends a cut by its own clock as well as
+the player's word, and a shot's line clock counts a finished player as the
+shot's end (before, a cut ending a moment before its shots' total waited
+for ever).
+
+```sh
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 640x360 \
+    --fixed-fps 4 --path . res://tests/midnight_parts_test.tscn -- /tmp/mid 0 every=4 wait=3 after=6
+godot --headless --fixed-fps 4 --path . res://tests/midnight_parts_test.tscn -- /tmp/mid 1 every=0   # quick, no stills
+```
+(`tests/midnight_parts_test`: the Theora way through part 1, the held frame
+and buttons with the music, the pick, 2A or 2B, and into the 3D at the
+lanterns; measures every frame's brightness at the three joins and fails
+on a black frame; stills every `every` frames. About 10 minutes rendered.)
 
 ```sh
 python3 tools/movie_clips.py <folder of clips> --film midnight    # -> assets/movies/midnight/<shot>.ogv

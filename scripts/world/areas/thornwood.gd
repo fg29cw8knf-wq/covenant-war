@@ -1072,7 +1072,27 @@ static func _ridge(w: World) -> void:
 	await Cine.caption(w, "Chapter 1", "The Sun's Court", 2.4)
 
 
-## Dask's heavy crossbow (v7), in his hands: a drawn one until there's a model.
+## Dask's heavy crossbow (v7), in his hands: Gary's model (5 November,
+## assets/models/ashford/crossbow.glb: an oiled oak stock bound in leather
+## at the grip, a steel prod, the stirrup at the front; 0.65 m across, as
+## made) held low and ready in both hands, the way a frightened man holds a
+## loaded one: the butt by his right hip, the prod ahead of him and a little
+## across, pointed at the ground in front of them, his right hand on the
+## leather grip and his left under the fore-stock (Figure3D.carry and
+## reach, so the hands stay on it as he talks and shakes). The drawn one
+## (a box in his right hand) stands in if the model is missing.
+const CROSSBOW := "res://assets/models/ashford/crossbow.glb"
+## The model's grip (the middle of its leather binding, 0.2 m behind its
+## middle; its stock's middle 0.055 m up) and the fore-stock where the left
+## hand goes (0.16 m ahead of the grip), in the model's own frame (front +z).
+const CROSSBOW_GRIP := Vector3(0.0, 0.055, -0.2)
+const CROSSBOW_FORE := 0.16
+## Where the grip is held, in his frame (x to his left, y up from the
+## hold_point at hip height, z ahead), and how the bow is turned: its front
+## tipped down (x) and swung across to his left (y).
+const CROSSBOW_AT := Vector3(-0.1, 0.0, -0.05)
+const CROSSBOW_TURN := Vector3(0.22, 0.38, 0.0)
+
 static func _crossbow(w: World) -> void:
 	var f = Cine.fig(w, "dask")
 	if not (f is Figure3D) or w.has_meta("dask_bow"):
@@ -1080,13 +1100,33 @@ static func _crossbow(w: World) -> void:
 	var v := village(w)
 	var bow := Node3D.new()
 	bow.name = "Crossbow"
-	var wood := StandardMaterial3D.new()
-	wood.albedo_color = Color(0.32, 0.22, 0.13)
-	var iron := StandardMaterial3D.new()
-	iron.albedo_color = Color(0.22, 0.22, 0.24)
-	iron.metallic = 0.7
-	v.box(bow, Vector3(0.06, 0.06, 0.62), Vector3(0, 0, 0.18), wood)
-	v.box(bow, Vector3(0.62, 0.03, 0.04), Vector3(0, 0.02, 0.44), iron)
+	if ResourceLoader.exists(CROSSBOW):
+		var fig := f as Figure3D
+		var m: Node3D = (load(CROSSBOW) as PackedScene).instantiate()
+		bow.add_child(m)
+		m.position = -CROSSBOW_GRIP
+		for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		# the hands' marks: the palms just under the stock
+		for k in [["R", Vector3(0.0, -0.035, 0.0)], ["L", Vector3(0.0, -0.04, CROSSBOW_FORE)]]:
+			var t := Node3D.new()
+			t.name = k[0]
+			t.position = k[1]
+			bow.add_child(t)
+		bow.set_meta("p1_prop", true)
+		fig.carry(bow, fig.hold_point(0.4, 0.8) + CROSSBOW_AT)
+		bow.rotation = CROSSBOW_TURN
+		fig.reach(bow.get_node("L"), bow.get_node("R"), 0.4)
+		w.set_meta("dask_bow", bow)
+		return
+	else:
+		var wood := StandardMaterial3D.new()
+		wood.albedo_color = Color(0.32, 0.22, 0.13)
+		var iron := StandardMaterial3D.new()
+		iron.albedo_color = Color(0.22, 0.22, 0.24)
+		iron.metallic = 0.7
+		v.box(bow, Vector3(0.06, 0.06, 0.62), Vector3(0, 0, 0.18), wood)
+		v.box(bow, Vector3(0.62, 0.03, 0.04), Vector3(0, 0.02, 0.44), iron)
 	bow.set_meta("p1_prop", true)
 	(f as Figure3D).hand_light(bow)
 	w.set_meta("dask_bow", bow)

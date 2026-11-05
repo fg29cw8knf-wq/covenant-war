@@ -36,6 +36,27 @@ const QUEST_SHARDS := {"side_mercy": 20, "side_fen": 15, "side_pip": 15, "side_s
 ## The quest flag values that aren't the end yet (any other value is).
 const QUEST_NOT_DONE := {"side_fen": ["pending"], "side_pip": ["seen", "pending"]}
 
+# --- Crowns ---------------------------------------------------------------------------
+## Crowns are the money in the player's purse (5 November): won story duels
+## pay a few, Tamsin's stall takes them for sealed caches, and two of
+## Solhaven's side stories can be settled with forty. Kept scarce, like the
+## cards they buy. A won story duel pays by its kind, [least, most]: the least
+## for a plain win, half the gap more for a Clean win and half for a Quick one.
+## A lesson (a practice game) pays nothing, and nor does anything in the
+## Prologue (record_win). Gold isn't Resonance: the advert that doubles a win
+## doesn't double its crowns.
+const CROWNS := {"lesson": [0, 0], "early": [3, 5], "normal": [6, 10], "big": [15, 25]}
+## A duel's kind when its spec doesn't name one ("rewards": {"crowns": ...}),
+## from who was beaten.
+const CROWN_KIND := {"village": "early", "kingdom": "normal", "rival": "normal", "champion": "big", "boss": "big"}
+## Tamsin's sealed caches: the price of a card by its tier (1 Spark .. 4 Relic).
+## A Relic is never on the counter before the first Seal (cache_ok).
+const CACHE_PRICE := [0, 8, 15, 30, 60]
+## "Everything's dearer today, love": after the Trial (Ser Aldric beaten).
+const DEARER := 1.5
+## Caches on Tamsin's counter a day (restocked by the device's calendar).
+const CACHES_A_DAY := 3
+
 # --- Attunement ------------------------------------------------------------------
 ## Points one spare copy gives its own Totem's store, by tier.
 const COPY_POINTS := [0, 2, 2, 3, 6]
@@ -138,6 +159,49 @@ static func shard_spill(resonance_total: int) -> int:
 	if resonance_total <= 0:
 		return 0
 	return maxi(1, int(round(resonance_total * SHARD_SPILL)))
+
+
+## The crowns a won story duel pays: its kind's least, and the rest of its
+## range by halves for a Clean win and a Quick win. `kind` is a CROWNS key
+## ("" or an unknown one: from the opponent, CROWN_KIND).
+static func duel_crowns(kind: String, opponent: String, game: DuelGame, winner: int) -> int:
+	if not CROWNS.has(kind):
+		kind = String(CROWN_KIND.get(opponent, "normal"))
+	var r: Array = CROWNS[kind]
+	var lo := int(r[0])
+	var gap := int(r[1]) - lo
+	if gap <= 0 or game == null:
+		return lo
+	var w: DuelPlayer = game.players[winner]
+	var n := lo
+	if w.life * 2 >= w.max_life:
+		n += gap / 2
+	if turns_taken(game, winner) <= QUICK_TURNS:
+		n += gap - gap / 2
+	return n
+
+
+## Can this card be sold at Tamsin's stall? The cards a win could hand out
+## (the picker in DuelArchetypes), never a Summon, an Ascension, a PvP prize
+## or the comeback card, nothing above Relic, and no Relic before the first Seal.
+static func cache_ok(id: String, seals: int) -> bool:
+	if not DuelCards.CARDS.has(id):
+		return false
+	var d: Dictionary = DuelCards.CARDS[id]
+	var tier := int(d.get("tier", 1))
+	if d.kind == "summon" or DuelCards.is_ascension(id) or pvp_only(d) or bool(d.get("granted", false)):
+		return false
+	if tier < 1 or tier >= CACHE_PRICE.size():
+		return false
+	return tier < 4 or seals >= 1
+
+
+## A sealed cache's price at Tamsin's stall: by the card's tier, half as much
+## again once everything's dearer (after the Trial).
+static func cache_price(id: String, dearer := false) -> int:
+	var tier := clampi(int(DuelCards.CARDS.get(id, {}).get("tier", 1)), 1, CACHE_PRICE.size() - 1)
+	var p := int(CACHE_PRICE[tier])
+	return int(ceil(p * DEARER)) if dearer else p
 
 
 ## What a spare copy is worth in Shards once its Totem has nothing left to

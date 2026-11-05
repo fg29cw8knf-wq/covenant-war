@@ -17,7 +17,10 @@ assets/movies/<film>/<shot>.ogv. The film plays in place of the engine's 3D
 scene once every shot has a clip or a painting (assets/art/movie/<film>/<shot>.png).
 Gary's finished 4K film of it (<film>_4k.mp4, on the films release) is better
 still: the apps play it through the device's own player, and the phone link
-streams it (tools/make_hls.sh), as the opening does.
+streams it (tools/make_hls.sh), as the opening does. A film he made in parts
+(midnight: part 1, then 2A or 2B for the pick, then part 3) has a film for
+each part instead (midnight_1_4k.mp4...; StoryFilm's "parts"); its shots
+here are all its parts' shots, in order.
 """
 import os, re, subprocess, sys
 

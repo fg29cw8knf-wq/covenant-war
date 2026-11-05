@@ -58,7 +58,7 @@ static func hale_spec() -> Dictionary:
 			"rival_guardian_ko": "Hm.",
 		},
 		"win_line": "The gate stands.",
-		"rewards": {"opponent": "kingdom"},
+		"rewards": {"opponent": "kingdom", "crowns": "early"},   # (DuelRewards.CROWNS)
 		"title": "The Gate · Warden Hale",
 	}
 
@@ -92,7 +92,7 @@ static func wren_spec() -> Dictionary:
 			"my_lead": "You're getting better. Stop it.",
 		},
 		"win_line": "Dinner's on you. Somewhere with tablecloths.",
-		"rewards": {"opponent": "rival"},
+		"rewards": {"opponent": "rival", "crowns": "normal"},
 		"title": "The Alley · Wren",
 	}
 
@@ -135,7 +135,7 @@ static func aldric_spec() -> Dictionary:
 		"herald_at": Vector3(6.3, 0, -2.9),
 		"herald_scale": 0.85,
 		"win_line": "Well fought. Solhaven keeps its knight.",
-		"rewards": {"opponent": "champion"},
+		"rewards": {"opponent": "champion", "crowns": "big"},
 		"title": "The Trial · Ser Aldric Vane",
 	}
 
@@ -238,6 +238,6 @@ static func trial_spec(deck_id: String = "") -> Dictionary:
 			"Some pilgrims start with the biggest thing they have. Some never do.",
 		],
 		"blank_card": false,
-		"rewards": {"opponent": "village", "thick": true},
+		"rewards": {"opponent": "village", "thick": true, "crowns": "normal"},
 		"title": "The Trial of Light",
 	}

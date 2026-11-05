@@ -57,7 +57,10 @@ WEB_ONLY_OUT = ["assets/audio/music/*"]
 # missing (OpeningMovie): the fallback stays out of the web build once the cut
 # exists. The apps keep both.
 MOVIE_CUT = "assets/movies/opening.ogv"
-MOVIE_FALLBACK = ["assets/art/movie/*", "assets/movies/shots/*", "assets/audio/opening_theme.ogg", "assets/audio/vo/vo_*"]
+# (its paintings are assets/art/movie/shot_*: the story films' folders beside
+# them, assets/art/movie/<film>/, go in their own packs, and a film's held
+# frames in the main one)
+MOVIE_FALLBACK = ["assets/art/movie/shot_*", "assets/movies/shots/*", "assets/audio/opening_theme.ogg", "assets/audio/vo/vo_*"]
 
 PACKS = {
 	"movie": {
@@ -87,7 +90,12 @@ PACKS = {
 }
 for _film, _title in [("midnight", "the Lantern Night"), ("white_light", "the white light"), ("herald", "the Pale Herald"),
 		("reckoning", "the Reckoning"), ("tams_hand", "Tam's hand"), ("no_roof", "the green, from the ridge"), ("ridge", "the road's end")]:
-	PACKS[_film] = {"title": _title, "files": ["assets/movies/%s.ogv" % _film, "assets/movies/%s/*" % _film, "assets/art/movie/%s/*" % _film]}
+	# (a film in parts, StoryFilm's "parts": assets/movies/midnight_1.ogv, _2a, _2b...)
+	# (its held frames at a choice stay in the main pack: the phone link streams
+	# the film and fetches no pack, and still holds the frame under the buttons)
+	PACKS[_film] = {"title": _title, "files": ["assets/movies/%s.ogv" % _film, "assets/movies/%s_*.ogv" % _film,
+		"assets/movies/%s/*" % _film, "assets/art/movie/%s/*" % _film],
+		"keep": ["assets/art/movie/%s/%s_*" % (_film, _film)]}
 
 # Gary's Summon clips (SummonVideo): one pack a card, holding its full and
 # short clips, fetched the first time that card is summoned or called

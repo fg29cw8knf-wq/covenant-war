@@ -84,6 +84,9 @@ func _breath() -> void:
 func _build() -> void:
 	var t0 := Time.get_ticks_msec()
 	quality = Gfx.level()   # phones play the lighter level 1 unless set to Full
+	LevelKit.dress_models()   # normal and roughness maps on Gary's models (once)
+	if room_probes and not child_entered_tree.is_connected(_room_probe):
+		child_entered_tree.connect(_room_probe)
 	args["grass"] = str([9000, 20000, 42000][quality])
 	rng.seed = 1171
 	n_hills.seed = 7; n_hills.frequency = 0.008; n_hills.fractal_octaves = 4
@@ -253,6 +256,12 @@ func build_environment() -> void:
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.08
 	env.adjustment_saturation = 1.12
+	_grade_tex = GradientTexture1D.new()
+	_grade_tex.width = 256
+	_grade_tex.gradient = Gradient.new()
+	if grading:
+		env.adjustment_color_correction = _grade_tex
+	set_grade("thornwood" if self is ThornwoodSet else "night")
 	var we := WorldEnvironment.new()
 	we.environment = env
 	add_child(we)
@@ -276,6 +285,116 @@ func build_environment() -> void:
 	tear.shadow_enabled = false
 	add_child(tear)
 	tear.look_at_from_position(Vector3.ZERO, -Vector3(0.1, 0.7, -0.7), Vector3.UP)
+
+# ------------------------------------------------------------------ the grade
+
+## One colour grade for each place and time of day (5 November, the look
+## pass): the morning warm gold, the festival evening amber, midnight
+## blue-white, the morning after smoky rose, the night Ashford burns with
+## its fires warm in the cold, the Thornwood green and cold. It's laid over
+## the finished picture (after the tonemap, the environment's own colour
+## correction, on every renderer at the cost of one lookup a pixel) as a
+## curve for each of red, green and blue: what the shadows, the middle and
+## the highlights come out as. Gentle: a cinematographer's grade, never a
+## tint over Gary's colours. `AshfordVillage.grading = false` (before the
+## village is built) leaves the picture as it was.
+static var grading := true
+## Each grade: what a dark (0.08), the middle (0.45), a highlight (0.9) and
+## white come out as, in the picture's own (sRGB) values.
+const GRADES := {
+	"day": [Color(0.076, 0.08, 0.09), Color(0.463, 0.452, 0.428), Color(0.918, 0.9, 0.852), Color(1.0, 0.985, 0.94)],
+	"dusk": [Color(0.08, 0.071, 0.092), Color(0.48, 0.444, 0.404), Color(0.94, 0.882, 0.784), Color(1.0, 0.965, 0.885)],
+	"night": [Color(0.068, 0.078, 0.102), Color(0.44, 0.454, 0.482), Color(0.9, 0.91, 0.93), Color(1.0, 1.0, 1.0)],
+	"dawn": [Color(0.08, 0.074, 0.086), Color(0.466, 0.446, 0.432), Color(0.922, 0.882, 0.842), Color(1.0, 0.97, 0.93)],
+	"burning": [Color(0.066, 0.074, 0.1), Color(0.452, 0.448, 0.462), Color(0.925, 0.896, 0.866), Color(1.0, 0.985, 0.96)],
+	"thornwood": [Color(0.07, 0.082, 0.086), Color(0.44, 0.458, 0.452), Color(0.89, 0.91, 0.9), Color(0.98, 1.0, 0.99)],
+	# (Solhaven's own set, World._grade_place: white-gold in its highlights,
+	# its shadows left alone, so its night and its vaults keep their blue)
+	"solhaven": [Color(0.08, 0.08, 0.08), Color(0.456, 0.45, 0.44), Color(0.925, 0.91, 0.866), Color(1.0, 0.99, 0.95)],
+}
+
+
+const GRADE_AT := [0.08, 0.45, 0.9, 1.0]
+## By day the glow takes only what's truly bright (the sun on the whitewash
+## had a haze round it); at night every lantern blooms (the built 1.0).
+const GLOW_DAY_THRESHOLD := 1.6
+## The sun's size in the sky by day (degrees): the softness of the edge of
+## its shadows on Forward+ (the moon's is the built 0.6).
+const SUN_ANGLE := 1.2
+var _grade_tex: GradientTexture1D
+var _grade_now: Array = []
+
+
+## A grade on its own, for a place built without the village (Solhaven).
+static func grade_texture(name: String) -> GradientTexture1D:
+	var cols: Array = GRADES.get(name, GRADES.night)
+	var g := Gradient.new()
+	var offs := PackedFloat32Array([0.0])
+	var c := PackedColorArray([Color.BLACK])
+	for i in GRADE_AT.size():
+		offs.append(GRADE_AT[i])
+		c.append(cols[i])
+	g.offsets = offs
+	g.colors = c
+	var t := GradientTexture1D.new()
+	t.width = 256
+	t.gradient = g
+	return t
+
+
+## Sets the grade to one of GRADES, or between two (`to` by `t`), and on
+## from there towards a third (`then` by `u`: the sunset's amber over the
+## day going into the night).
+func set_grade(from: String, to := "", t := 0.0, then := "", u := 0.0) -> void:
+	if _grade_tex == null:
+		return
+	var a: Array = GRADES.get(from, GRADES.night)
+	var b: Array = GRADES.get(to, a)
+	var c3: Array = GRADES.get(then, a)
+	var cols: Array = []
+	for i in GRADE_AT.size():
+		var col := (a[i] as Color).lerp(b[i], clampf(t, 0.0, 1.0))
+		cols.append(col.lerp(c3[i], clampf(u, 0.0, 1.0)) if then != "" else col)
+	if cols == _grade_now:
+		return
+	_grade_now = cols
+	var offs := PackedFloat32Array([0.0])
+	var c := PackedColorArray([Color.BLACK])
+	for i in GRADE_AT.size():
+		offs.append(GRADE_AT[i])
+		c.append(cols[i])
+	_grade_tex.gradient.offsets = offs
+	_grade_tex.gradient.colors = c
+
+# ------------------------------------------------------------------ the inn's rooms
+
+## The inn's rooms (InnRooms: the taproom of the evening before and the
+## afternoon after, the cellar) each get a reflection probe as they're
+## built (5 November, the look pass): the pewter, the copper and the
+## bottles behind the bar shine with the room's own warm light, not the
+## sky's. One box the size of the room, drawn once when it's made (six small
+## pictures of the room, the moment it's built), then only looked up by the
+## shiny things inside it. [the room's node name: its size, floor to
+## ceiling, centred on the node]
+static var room_probes := true
+const ROOM_PROBES := {"TaproomEve": Vector3(9.0, 3.1, 7.0), "Taproom": Vector3(9.0, 3.1, 7.0), "Cellar": Vector3(6.5, 2.5, 5.5)}
+
+
+func _room_probe(n: Node) -> void:
+	if not ROOM_PROBES.has(String(n.name)) or not (n is Node3D) or n.has_node("RoomProbe"):
+		return
+	var size: Vector3 = ROOM_PROBES[String(n.name)]
+	var p := ReflectionProbe.new()
+	p.name = "RoomProbe"
+	p.size = size + Vector3(0.3, 0.3, 0.3)
+	p.position = Vector3(0.0, size.y * 0.5, 0.0)
+	p.box_projection = true
+	p.interior = true
+	p.ambient_mode = ReflectionProbe.AMBIENT_DISABLED
+	p.max_distance = size.length()
+	p.update_mode = ReflectionProbe.UPDATE_ONCE
+	# (after the room has been furnished: it's built in the same frame)
+	(n as Node3D).add_child.call_deferred(p)
 
 # ------------------------------------------------------------------ paths
 
@@ -2845,6 +2964,7 @@ func set_daylight(k: float) -> void:
 			"lantern": _param(mats.lantern, "energy", 1.0), "bulb": _param(mats.bulb, "energy", 1.0),
 			"lamp_out": (mats.lamp_glass_out as StandardMaterial3D).emission_energy_multiplier,
 			"tear_open": _param(sky_mat, "tear_open", 0.0),
+			"glow_thr": env.glow_hdr_threshold, "moon_ang": moon_light.light_angular_distance,
 			"ll_vis": lantern_lights.map(func(ll) -> bool: return (ll[0] as Node3D).visible)}
 	k = clampf(k, 0.0, 1.0)
 	daylight = k
@@ -2876,6 +2996,13 @@ func set_daylight(k: float) -> void:
 		env.ambient_light_energy = n.amb_e
 	env.fog_light_color = (n.fog_col as Color).lerp(Color(0.72, 0.78, 0.86).lerp(Color(0.95, 0.62, 0.45), dusk), k)
 	env.fog_density = lerpf(float(n.fog_d), 0.0018, k)
+	# the grade: midnight's blue-white into the morning's gold, through the
+	# evening's amber; and by day only what's truly bright blooms (the sunlit
+	# whitewash had a haze round it), at night every lantern does
+	if not (self is ThornwoodSet):
+		set_grade("night", "day", smoothstep(0.0, 0.5, k), "dusk", dusk)
+	env.glow_hdr_threshold = lerpf(float(n.glow_thr), GLOW_DAY_THRESHOLD, smoothstep(0.3, 0.9, k))
+	moon_light.light_angular_distance = lerpf(float(n.moon_ang), SUN_ANGLE, smoothstep(0.0, 0.5, k))
 	# the lanterns and the bunting's bulbs come on as the light goes
 	var lamps := 1.0 - smoothstep(0.15, 0.55, k)
 	mats.lantern.set_shader_parameter("energy", float(n.lantern) * lamps)
@@ -2907,6 +3034,8 @@ func set_time(kind: String) -> void:
 	if kind == "day":
 		set_daylight(1.0)
 		return
+	if not (self is ThornwoodSet):
+		set_grade(kind if GRADES.has(kind) else "night")
 	var dawn := kind == "dawn"
 	sky_mat.set_shader_parameter("dawn", 1.0 if dawn else 0.0)
 	if kind != "festival":

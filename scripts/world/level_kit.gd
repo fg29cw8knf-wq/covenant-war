@@ -136,6 +136,81 @@ static func mat(name: String) -> StandardMaterial3D:
 	return m
 
 
+## Gary's prop and building models that have a normal map and a roughness
+## map made from their own colour atlas beside them (tools/derive_maps.py:
+## <id>_normal.png, and <id>_mr.png with how rough in its green and how metal
+## in its blue), 5 November: the grain of the planks, the mortar between the
+## stones, the bark's ridges and the weave of the thatch catch the light.
+static var maps := true            # false: the models as they come, flat
+const MAPS_DIR := "res://assets/models/ashford/"
+const MAPPED := ["inn", "cottage_a", "cottage_b", "cottage_c", "well", "stall", "great_lantern",
+	"merchant_cart_a", "oak_a", "oak_b", "stone_wall", "fence", "mill_tower", "watermill",
+	"waterwheel", "shelter_shelves", "barrel", "hay_cart", "crate", "sacks"]
+## The few of them Solhaven sets out (its carts, crates and sacks): the rest
+## aren't loaded there for nothing.
+const MAPPED_SOLHAVEN := ["hay_cart", "crate", "sacks", "barrel", "merchant_cart_a"]
+## Those whose dark grey swatches are iron (a barrel's hoops, a cart's tyres,
+## the crate's corners): the map's blue makes them metal.
+const IRON := ["barrel", "hay_cart", "crate"]
+## How strongly the normal maps shape the light: the paint already has the
+## light and dark of the detail in it, so a touch more, never plastic.
+const MAP_NORMAL := 0.6
+static var _dressed := {}   # model path -> its PackedScene, kept loaded so its dressed materials stay
+
+
+## Puts the maps on the models' own materials, once: the materials are shared
+## by every copy of a model wherever it's loaded (the village, the films, the
+## Thornwood, Solhaven), so each of them has the maps without being asked.
+## Called before a place is built (World._build, AshfordVillage._build).
+static func dress_models(ids: Array = MAPPED) -> void:
+	if not maps:
+		return
+	for id in ids:
+		var path := MAPS_DIR + String(id) + ".glb"
+		var npath := MAPS_DIR + String(id) + "_normal.png"
+		if _dressed.has(path) or not ResourceLoader.exists(path) or not ResourceLoader.exists(npath):
+			continue
+		var scene := load(path) as PackedScene
+		if scene == null:
+			continue
+		_dressed[path] = scene
+		var nrm := load(npath) as Texture2D
+		var mpath := MAPS_DIR + String(id) + "_mr.png"
+		var mr: Texture2D = load(mpath) as Texture2D if ResourceLoader.exists(mpath) and _mr_ok() else null
+		var inst := scene.instantiate()
+		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh == null:
+				continue
+			for s in mi.mesh.get_surface_count():
+				var m := mi.get_surface_override_material(s) as BaseMaterial3D
+				if m == null:
+					m = mi.mesh.surface_get_material(s) as BaseMaterial3D
+				# (glass and anything see-through keep their own smooth face)
+				if m == null or m.normal_enabled or m.roughness < 0.3 or m.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA:
+					continue
+				m.normal_enabled = true
+				m.normal_texture = nrm
+				m.normal_scale = MAP_NORMAL
+				if mr != null:
+					m.roughness_texture = mr
+					m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
+					if IRON.has(id) and m.metallic < 0.01:
+						m.metallic = 1.0
+						m.metallic_texture = mr
+						m.metallic_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_BLUE
+		inst.free()
+
+
+## The roughness and metal map only on Forward+ and Mobile (the Mac, the
+## iPhone): on the Compatibility renderer a material with the colour, normal
+## and roughness maps and a glow map too (the houses' lit windows,
+## AshfordVillage.model_house) put out every sun shadow in the picture
+## (seen 5 November on Godot 4.7.2: either map alone with the glow is fine).
+## There they keep the normal map alone.
+static func _mr_ok() -> bool:
+	return RenderingServer.get_current_rendering_method() != "gl_compatibility"
+
+
 static func _world_uv(m: StandardMaterial3D, scale: float) -> void:
 	m.uv1_triplanar = true
 	m.uv1_world_triplanar = true

@@ -225,6 +225,9 @@ class Face:
 	extends Control
 	var tex: Texture2D
 
+	func _init() -> void:
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS   # (a 1024 face in a 112 frame)
+
 	func _draw() -> void:
 		var c := size * 0.5
 		var r := minf(size.x, size.y) * 0.5

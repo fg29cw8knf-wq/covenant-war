@@ -11,6 +11,9 @@ signal feature_unlocked(feature: String)
 ## quest finished, a Sigilfall shard picked up, a spare copy turned in); the
 ## world's HUD says so ("+3 Shards").
 signal shards_gained(amount: int, why: String)
+## Crowns came into the purse from somewhere other than a duel's result screen
+## (the world's HUD says "+5 crowns").
+signal crowns_gained(amount: int, why: String)
 
 const SAVE_PATH := "user://save.json"
 const SETTINGS_PATH := "user://settings.json"
@@ -109,7 +112,7 @@ func new_game(p_name: String, starter_deck: String = "", keep_progress := false)
 static func new_v2(starter_deck: String) -> Dictionary:
 	var v := {"rank": 1, "xp": 0, "points": 0, "seals": [], "convocation": false,
 		"collection": {}, "bonded": {}, "codex": {}, "target": "", "target_chosen": false, "banked": {},
-		"attune": {}, "stage": {}, "pool": 0, "deck": [], "shards": 0}
+		"attune": {}, "stage": {}, "pool": 0, "deck": [], "shards": 0, "crowns": 0}
 	if DuelCards.DECKS.has(starter_deck):
 		v.deck = DuelCards.card_list(starter_deck)
 		for id in v.deck:
@@ -207,9 +210,10 @@ func set_resonance_target(id: String) -> void:
 
 ## Records a won v2 duel: adds the cards seen to the Codex, pours the
 ## Resonance into the target card (crystallising it when full, overflow to
-## the Attunement pool) and adds Rank XP. Returns what happened, for the
-## result screen.
-func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, ad := false) -> Dictionary:
+## the Attunement pool), adds Rank XP and puts the duel's crowns in the purse
+## (`crowns_kind`: a DuelRewards.CROWNS key, "" for the opponent's usual).
+## Returns what happened, for the result screen.
+func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, ad := false, crowns_kind := "") -> Dictionary:
 	var v := _v2()
 	var seen_as := "champion" if opponent_kind in ["champion", "boss"] else "seen"
 	for p in game.players:
@@ -224,6 +228,10 @@ func record_win(game: DuelGame, me: int, opponent_kind: String, thick := false, 
 	var spill := 0 if not flag("beat_hunter") else DuelRewards.shard_spill(int(res.total))
 	v.shards = int(v.get("shards", 0)) + spill
 	out["shards"] = spill
+	# and a few crowns, by the kind of duel (none in the Prologue either)
+	var gold := 0 if not flag("beat_hunter") else DuelRewards.duel_crowns(crowns_kind, opponent_kind, game, me)
+	v["crowns"] = crowns() + gold
+	out["crowns"] = gold
 	# the story hands out the deeper duel's cards (Phase E): one the player
 	# hasn't met comes into the Codex, from the pools this chapter has opened
 	var rng := RandomNumberGenerator.new()
@@ -348,7 +356,7 @@ func forge(id: String) -> Dictionary:
 ## day by the device's calendar.
 func collect_sigilfall(spot: String, amount: int, today := "") -> int:
 	if today == "":
-		today = Time.get_date_string_from_system()
+		today = calendar_day()
 	var v := _v2()
 	var st: Dictionary = v.get("sigilfall", {})
 	if String(st.get("day", "")) != today:
@@ -369,7 +377,7 @@ func collect_sigilfall(spot: String, amount: int, today := "") -> int:
 ## Is the Sigilfall shard at `spot` still there today (and is there room)?
 func sigilfall_here(spot: String, today := "") -> bool:
 	if today == "":
-		today = Time.get_date_string_from_system()
+		today = calendar_day()
 	var st: Dictionary = _v2().get("sigilfall", {})
 	if String(st.get("day", "")) != today:
 		return true
@@ -388,6 +396,115 @@ func _quest_shards(key: String, value) -> void:
 	paid[key] = n
 	v["quest_shards"] = paid
 	add_shards(n, "Story")
+
+
+## The day by the device's calendar ("2026-11-05"): what the Sigilfall shards
+## and Tamsin's counter come back by.
+static func calendar_day() -> String:
+	return Time.get_date_string_from_system()
+
+
+# ------------------------------------------------------------- Crowns ---
+# The money in the player's purse (5 November). Won story duels pay a few
+# (record_win, DuelRewards.CROWNS), Tamsin's stall sells sealed caches for
+# them (stall_caches, buy_cache), and the Temple's price and the Sergeant's
+# fine in Solhaven's side stories are forty each.
+
+func crowns() -> int:
+	return int(_v2().get("crowns", 0))
+
+
+## Puts crowns in the purse. `why` (if any) is said by the world's HUD.
+func add_crowns(amount: int, why := "") -> void:
+	if amount <= 0:
+		return
+	var v := _v2()
+	v["crowns"] = crowns() + amount
+	changed.emit()
+	if why != "":
+		crowns_gained.emit(amount, why)
+
+
+## Takes crowns from the purse; false (and nothing taken) if there aren't enough.
+func spend_crowns(amount: int) -> bool:
+	if amount < 0 or crowns() < amount:
+		return false
+	_v2()["crowns"] = crowns() - amount
+	changed.emit()
+	return true
+
+
+## Tamsin's counter today: [{"id", "sold"}], three sealed caches a day from the
+## cards the story can hand out by now (DuelArchetypes.sealed_caches), stocked
+## afresh each calendar day like the Sigilfall shards. Kept in the save, so the
+## day's caches don't change when the game is closed and opened again.
+func stall_caches(day := "") -> Array:
+	if day == "":
+		day = calendar_day()
+	var v := _v2()
+	var st: Dictionary = v.get("stall", {})
+	if String(st.get("day", "")) != day:
+		var rng := RandomNumberGenerator.new()
+		rng.seed = hash("%s:%s:%d" % [day, player_name, v.codex.size()])
+		var ids := DuelArchetypes.sealed_caches(v.codex, (v.seals as Array).size() + 1, int(v.rank), DuelRewards.CACHES_A_DAY, rng)
+		var caches := []
+		for id in ids:
+			caches.append({"id": id, "sold": false})
+		st = {"day": day, "caches": caches}
+		v["stall"] = st
+	return st.caches
+
+
+## The crier's cache comes off today's counter; if the counter's sold out, one
+## more from the same picker goes on it first (a card not already there).
+func stall_one_more(day := "") -> void:
+	var caches := stall_caches(day)
+	var have := []
+	for c in caches:
+		if not bool(c.sold):
+			return
+		have.append(String(c.id))
+	var v := _v2()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash("%s:%s:more%d" % [String(v.stall.day), player_name, caches.size()])
+	for id in DuelArchetypes.sealed_caches(v.codex, (v.seals as Array).size() + 1, int(v.rank), caches.size() + 1, rng):
+		if not have.has(id):
+			caches.append({"id": id, "sold": false})
+			return
+
+
+## Everything's dearer after the Trial (Tamsin: "Fame has a price, and I've
+## just set it").
+func stall_dearer() -> bool:
+	return bool(flag("c6_done"))
+
+
+## What the cache at `i` on today's counter costs (0 if there's none there).
+func cache_price(i: int, day := "") -> int:
+	var caches := stall_caches(day)
+	if i < 0 or i >= caches.size():
+		return 0
+	return DuelRewards.cache_price(String(caches[i].id), stall_dearer())
+
+
+## Buys the sealed cache at `i` on today's counter (`free`: the crier's cache,
+## no crowns): the crowns come out of the purse and the card goes into the
+## collection and the Codex, owned. Returns the card's id, or "" if it's
+## sold already, not there, or the purse is short.
+func buy_cache(i: int, free := false, day := "") -> String:
+	var caches := stall_caches(day)
+	if i < 0 or i >= caches.size() or bool(caches[i].sold):
+		return ""
+	var id := String(caches[i].id)
+	if not free and not spend_crowns(DuelRewards.cache_price(id, stall_dearer())):
+		return ""
+	caches[i].sold = true
+	var v := _v2()
+	v.collection[id] = int(v.collection.get(id, 0)) + 1
+	if not v.codex.has(id):
+		v.codex[id] = "seen"
+	changed.emit()
+	return id
 
 
 ## Spends an attribute point on one attribute.

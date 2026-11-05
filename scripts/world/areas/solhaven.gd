@@ -237,6 +237,9 @@ static func scene(name: String, w: World) -> void:
 			await _deck(w)
 		"crier":
 			await _crier(w)
+		"stall":
+			w.hud.dialogue.close()
+			await StallSheet.open(w)
 		"pip_grey_coat":
 			await _grey_coat(w)
 		"night":
@@ -285,7 +288,8 @@ static func _deck(w: World) -> void:
 
 
 ## Tamsin's crier, once a day: hear him out (an advert, when the adverts are
-## in) and there's a cache in it: three cards, sealed and certified.
+## in) and there's a cache in it: one of the sealed caches on her counter,
+## free (StallSheet, Game.buy_cache).
 static func _crier(w: World) -> void:
 	var today := Time.get_date_string_from_system()
 	if String(Game.flag("crier_day", "")) == today:
@@ -300,26 +304,8 @@ static func _crier(w: World) -> void:
 		return
 	Game.set_flag("crier_day", today)
 	Game.flags["crier_offer"] = false
-	var cache := _cache_cards(3)
-	for id in cache:
-		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
-		if not Game.v2.codex.has(id):
-			Game.v2.codex[id] = "seen"
 	Game.save_game()
-	await Cine.reveal(w, cache, "A SIGIL CACHE", "sealed and certified, from Tamsin's stall")
-
-
-## Three cards a cache might hold: Sparks and Glimmers, Totems and Rites.
-static func _cache_cards(n: int) -> Array:
-	var pool := []
-	for id in DuelCards.CARDS:
-		var d: Dictionary = DuelCards.CARDS[id]
-		if int(d.get("tier", 1)) <= 2 and d.kind != "summon" and not d.get("granted", false) and not DuelCards.is_ascension(id) and String(d.get("element", "")) != "radiant":
-			pool.append(id)
-	var out := []
-	for i in n:
-		out.append(pool[randi() % pool.size()])
-	return out
+	await StallSheet.open(w, 1)
 
 
 # =============================================================== dialogue ===
@@ -398,10 +384,19 @@ static func _tamsin() -> Array:
 			{"say": "Crowns for caches. Win duels, earn crowns, come back. That's the whole of it.", "who": "tamsin"},
 			{"say": "Hrimmark caravan's a week late. Snow, at harvest. They say the boy-king's goddess has stopped minding the calendar.", "who": "tamsin"},
 		]},
+		# the game's note, once (the bracket rule)
+		{"if": "!stall_taught", "then": [
+			{"say": "(Tamsin's stall sells sealed caches for crowns.)"},
+			{"set": "stall_taught"},
+		]},
 		{"if": "crier_offer", "then": [
 			{"say": "There's a crier pays me to let him talk at my customers. Stand and hear him out, and there's a cache in it for you.", "who": "tamsin"},
 			{"scene": "crier"},
 		]},
+		# the stall itself (5 November): the counter's three sealed caches
+		{"ask": ["What've you got?"], "then": [
+			[{"scene": "stall"}],
+		], "leave": "Maybe later."},
 	]
 
 

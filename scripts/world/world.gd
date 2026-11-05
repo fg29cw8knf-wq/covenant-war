@@ -158,6 +158,7 @@ func _build(spread: bool) -> void:
 		await area.build(self)
 	else:
 		area.build(self)
+	_grade_place()
 	_spawn_player(area.SPAWNS.get(Game.spawn, area.SPAWNS.values()[0]))
 	for def in area.npcs():
 		if spread:
@@ -266,6 +267,9 @@ func _first_step_done(step: int) -> void:
 # ============================================================ building ===
 
 func _build_environment() -> void:
+	# Gary's models' normal and roughness maps, on before anything is built
+	# from them (only the few Solhaven sets out, there)
+	LevelKit.dress_models(LevelKit.MAPPED_SOLHAVEN if area_id == "solhaven" else LevelKit.MAPPED)
 	if area.get_script_constant_map().has("CUSTOM_ENV"):
 		return
 	var e: Dictionary = area.ENV
@@ -317,6 +321,19 @@ func _build_environment() -> void:
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
 	sun.directional_shadow_max_distance = 55.0
 	add_child(sun)
+
+
+## Solhaven's colour grade (white-gold, AshfordVillage.GRADES): its set
+## builds its own light, so the grade is laid on it here, after it's built.
+## Ashford and the Thornwood grade themselves by the time of day.
+func _grade_place() -> void:
+	if area_id != "solhaven" or not AshfordVillage.grading:
+		return
+	for we: WorldEnvironment in find_children("*", "WorldEnvironment", true, false):
+		var e := we.environment
+		if e != null and e.adjustment_color_correction == null:
+			e.adjustment_enabled = true
+			e.adjustment_color_correction = AshfordVillage.grade_texture("solhaven")
 
 
 func _spawn_player(pos: Vector3) -> void:
