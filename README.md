@@ -492,7 +492,7 @@ xvfb-run -a ... res://tests/duel_film_check.tscn -- <dir> [seconds]
 Checked (5 November): `load_all` 0 failed; `duel_sim -- 200` 0 invariant
 errors, 25.8 turns, first player 52%; `duel_cine_shot` every part with
 `preview`, problems none, the stills looked at; `duel_film_check` problems
-none; `duel_monkey -- 2 --3d` (see the handover). The impact punch and the
+none; `duel_monkey -- 1 --3d` no script errors. The impact punch and the
 Forward+ look weren't seen here (software GL): worth a look on the Mac.
 
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
