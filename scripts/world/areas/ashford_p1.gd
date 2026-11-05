@@ -548,6 +548,8 @@ static func mam_spot(v: AshfordVillage) -> Dictionary:
 static func undress(w: World) -> void:
 	if w.has_meta("p1_crowd"):
 		w.remove_meta("p1_crowd")
+	w.remove_meta("life_through_cine")
+	w.remove_meta("corin_coming")
 	for k in KIDS:
 		Cine.despawn(w, String(k[0]))
 	for d in DANCERS:
@@ -713,21 +715,38 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 		_solid(w, false)
 	var fig := f as Figure3D
 	if blend > 0.0:
-		# from just in front of the seat: they sit as they settle back onto
-		# it, the two together (sit() takes the spot they're on as the
-		# seat, and lets a settle of under 0.3 m pass; until 22 October they
-		# glided the whole way standing, then sat: "Bram glides 0.5 m onto
-		# his stool")
+		# the way anyone sits: standing where the feet will be once they're
+		# sat (a shin's length in front of the seat, Figure3D.seat_feet_ahead),
+		# the hips go back and down onto the seat as the knees bend, the feet
+		# staying put (5 November, Gary: "When you go to sit next to old Nell
+		# your legs go through the bench": until then anyone more than a step
+		# off glided standing to the seat's middle, straight legs through the
+		# boards, and sat there). A longer way to the feet's spot is walked;
+		# a short one stepped; then the sit and the shift back are one move
+		# (the spot taken for the seat moves with them: `_seat_at`).
+		var feet := at + fwd * fig.seat_feet_ahead()
+		feet.y = b.global_position.y
+		var off := b.global_position.distance_to(feet)
+		if off > 0.3:
+			await Cine.path(w, who, [feet], 1.1)
+		elif off > 0.03:
+			var step := w.create_tween()
+			step.tween_property(b, "global_position", feet, 0.3).set_trans(Tween.TRANS_SINE)
+			await step.finished
+		if not is_instance_valid(w) or not is_instance_valid(b):
+			return
 		Cine.look(w, who, b.global_position + fwd)
-		var shift := b.global_position.distance_to(at)
+		await Cine.wait(w, 0.3)
+		var from := b.global_position
+		var to := at
+		to.y = from.y
+		fig.sit(height, blend)
 		var tw := w.create_tween()
-		tw.tween_property(b, "global_position", at, blend).set_trans(Tween.TRANS_SINE)
-		if shift < 0.28:
-			fig.sit(height, blend)
-			await tw.finished
-		else:
-			await tw.finished
-			fig.sit(height, blend)
+		tw.tween_method(func(k: float) -> void:
+			if is_instance_valid(b) and is_instance_valid(fig):
+				b.global_position = from.lerp(to, k)
+				fig._seat_at = fig.global_position, 0.0, 1.0, blend).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await tw.finished
 		return
 	Cine.place(w, who, at, at + fwd)
 	b.global_position = at
@@ -909,6 +928,9 @@ class Use:
 ## `stray` is called with a zone's name when the player walks into one of
 ## the room's stray zones (see below), if it takes an argument; a `stray`
 ## that takes none is called for the stairs alone (as before 2 November).
+## How soon the same stray zone speaks again once they've left it (s).
+const STRAY_AGAIN := 3.0
+
 static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callable, follower := "", stray := Callable()) -> void:
 	var root: Node3D = room.root
 	var floor_y := float(room.floor_y)
@@ -927,7 +949,13 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 	for z in room.get("stray_zones", []):
 		zones.append(z)
 	var in_zone := ""
-	var strayed_at := -100.0
+	# when each zone last spoke (by name): a zone speaks again once its
+	# STRAY_AGAIN has passed, and another zone speaks whenever it's entered
+	# (5 November, Gary: "Bram doesn't try and stop you when you approach
+	# the second door to the right of the fireplace": one clock served every
+	# zone, so going from the kitchen's doorway to the passage's within six
+	# seconds, a two-second walk, met silence at the second)
+	var strayed_at := {}
 	var held_until := 0.0   # (no walking while they're being turned back)
 	# the walk's own clock, in game time (frames' deltas), not the wall clock:
 	# the same to a player, but a test run at --fixed-fps in keys mode gets
@@ -1012,8 +1040,8 @@ static func walk_room(w: World, room: Dictionary, cam_at: Vector3, done: Callabl
 					here = String(z.name)
 					hit = z
 					break
-			if here != "" and here != in_zone and clock - strayed_at > 6.0:
-				strayed_at = clock
+			if here != "" and here != in_zone and clock - float(strayed_at.get(here, -100.0)) > STRAY_AGAIN:
+				strayed_at[here] = clock
 				target[0] = null   # (they stop: the way's wrong)
 				held_until = clock + 1.6
 				if stray.get_argument_count() > 0:
@@ -1708,19 +1736,11 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	_glass_shot_done(w)
 	Cine.shot(w, over, glass_at + Vector3(0, -0.02, 0), 40.0)
 	await Cine.wait(w, 0.9)
-	hand.global_position = glass_at + toward + Vector3(0, 0.05, 0.1)
-	if pf is Figure3D:
-		(pf as Figure3D).reach(null, hand, 0.35)
+	# a fingertip to the frost, where the name will start
+	_finger_to_frost(w, a, hand, -0.06, 0.35)
 	var nm := await Cine.overlay(w).ask_name("Write your name in the frost.", "Ash")
 	Game.player_name = nm
-	writing.text = nm
-	var trace := w.create_tween()
-	trace.tween_method(func(u: float) -> void:
-		hand.global_position = glass_at + toward + Vector3(0, 0.05 - u * 0.02, 0.1 - u * 0.2)
-		writing.modulate.a = u * 0.9, 0.0, 1.0, 1.3).set_trans(Tween.TRANS_SINE)
-	await trace.finished
-	if pf is Figure3D:
-		(pf as Figure3D).let_go(0.4)
+	await _write_in_frost(w, a, hand, nm)
 	hand.queue_free()
 	Game.set_flag("named")
 	Game.save_game()
@@ -1748,6 +1768,159 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	w.hud.dialogue.close()
 	await Cine.wait(w, 0.3)
 	await Cine.fade(w, 1.0, 0.7)
+
+
+## Writing in the frost (5 November, Gary: "When you write player's name on
+## mirror can we make that look better, at the moment it looks like they
+## just wave their hand in front"): the hand had slid once across the glass
+## while the whole name faded up at once. Now the hand is turned so its
+## fingers point at the glass and the palm faces in and down, the
+## fingertips on the frost (the palm a finger's length short of it,
+## WRITE_FINGER); each letter comes up in turn under the fingertip as it
+## travels along the line, the finger rising and dipping over each the way
+## a hand writing does, from the left of the name to its right; a letter is
+## the frost cleared dark, the glass showing through it, with a bright rim
+## of pushed frost round it (one Label3D a letter, left-aligned where that
+## letter falls in the name; the name's own label takes over once it's
+## written); and a faint squeak of skin on cold glass with each letter
+## (Sfx "frost_write").
+## A letter of average width takes this long (s); the fingertip's rise and
+## dip over a letter (m); how far the palm's middle stands short of the glass
+## (m: the fingers' length, straight).
+const WRITE_LETTER_SECS := 0.28
+const WRITE_WIGGLE := 0.022
+const WRITE_FINGER := 0.095
+## The letters: the frost cleared to the dark glass, and the frost's rim.
+const WRITE_INK := Color(0.1, 0.12, 0.17)
+const WRITE_RIM := Color(0.93, 0.96, 1.0)
+const WRITE_RIM_SIZE := 7
+
+
+## The hand as a writing hand, its fingertip on the frost `along` the name's
+## line (m from the glass's middle, + to the viewer's right), eased in over
+## `secs`. `hand` is the palm's mark (reached for by the right hand).
+static func _finger_to_frost(w: World, a: Dictionary, hand: Node3D, along: float, secs: float) -> void:
+	var pf = w.player_doll
+	var oval: Node3D = a.mirror_node
+	var writing: Label3D = a.writing
+	var glass_at: Vector3 = a.mirror
+	var to_player := w.player.global_position - glass_at
+	to_player.y = 0.0
+	to_player = to_player.normalized()
+	hand.global_position = _frost_tip(oval, writing, along, 0.0) + to_player * WRITE_FINGER
+	if pf is Figure3D:
+		var fig := pf as Figure3D
+		# the palm in towards the body and down, the fingers at the glass
+		var left := Vector3.UP.cross(-to_player).normalized()
+		fig.palm("right", (Vector3.DOWN * 0.75 + left * 0.65).normalized(), secs, 1.0, false, -to_player)
+		fig.reach(null, hand, secs)
+
+
+## A point on the frost on the name's line: `along` m from the glass's
+## middle (+ to the viewer's right, the way the name reads), `rise` m up.
+## (The hand's mark sits WRITE_HAND_UP over the line: Player A's hand is a
+## loose fist, its fingers kept as he modelled them, and it's the knuckles
+## that touch the glass, a little under the mark.)
+const WRITE_HAND_UP := 0.02
+
+static func _frost_tip(oval: Node3D, writing: Label3D, along: float, rise: float) -> Vector3:
+	# (the name's label runs along the oval's own z; its y is scaled)
+	return oval.to_global(writing.position + Vector3(0.0, 0.0, along)) + Vector3(0, rise + WRITE_HAND_UP, 0)
+
+
+static func _write_in_frost(w: World, a: Dictionary, hand: Node3D, nm: String) -> void:
+	var pf = w.player_doll
+	var oval: Node3D = a.mirror_node
+	var writing: Label3D = a.writing
+	var glass_at: Vector3 = a.mirror
+	var to_player := w.player.global_position - glass_at
+	to_player.y = 0.0
+	to_player = to_player.normalized()
+	var font: Font = writing.font if writing.font != null else ThemeDB.fallback_font
+	var fs := writing.font_size
+	var px := writing.pixel_size
+	# where each letter falls along the line, from the name's middle
+	var total := font.get_string_size(nm, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * px
+	var edges: Array = []   # [left, width] a letter
+	for i in nm.length():
+		var l := font.get_string_size(nm.substr(0, i), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * px
+		var r := font.get_string_size(nm.substr(0, i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x * px
+		edges.append([l - total * 0.5, maxf(0.002, r - l)])
+	var avg := total / maxf(1.0, float(nm.length()))
+	var letters: Array = []
+	for i in nm.length():
+		var lb := Label3D.new()
+		lb.text = nm[i]
+		lb.font = writing.font
+		lb.font_size = fs
+		lb.pixel_size = px
+		# (a Label3D's line is centred on its origin whatever its alignment:
+		# each letter is put at its own middle)
+		lb.modulate = Color(WRITE_INK, 0.0)
+		lb.outline_modulate = Color(WRITE_RIM, 0.0)
+		lb.outline_size = WRITE_RIM_SIZE
+		lb.double_sided = false
+		lb.shaded = false
+		oval.add_child(lb)
+		lb.position = writing.position + Vector3(0.0, 0.0, float(edges[i][0]) + float(edges[i][1]) * 0.5)
+		lb.rotation = writing.rotation
+		lb.scale = writing.scale
+		letters.append(lb)
+	var sfx := Sfx.new()
+	w.add_child(sfx)
+	# to the start of the name
+	var start := _frost_tip(oval, writing, float(edges[0][0]), 0.0) + to_player * WRITE_FINGER
+	var go := w.create_tween()
+	go.tween_property(hand, "global_position", start, 0.25).set_trans(Tween.TRANS_SINE)
+	await go.finished
+	var rng := RandomNumberGenerator.new()
+	rng.seed = nm.hash()
+	for i in nm.length():
+		if not is_instance_valid(w) or not is_instance_valid(hand):
+			break
+		var left := float(edges[i][0])
+		var wd := float(edges[i][1])
+		var lb: Label3D = letters[i]
+		var is_space := nm[i] == " "
+		var secs := WRITE_LETTER_SECS * clampf(0.55 + 0.6 * wd / maxf(avg, 0.001), 0.5, 1.6)
+		if is_space:
+			secs *= 0.5
+		else:
+			sfx.play("frost_write", rng.randf_range(0.9, 1.15))
+		# the stroke: along the letter, up and down over it (a letter has its
+		# own number of ups and downs, two or three)
+		var waves := 2.0 + float(rng.randi_range(0, 1))
+		var phase := rng.randf_range(0.0, TAU)
+		var tw := w.create_tween()
+		tw.tween_method(func(u: float) -> void:
+			if not is_instance_valid(hand) or not is_instance_valid(oval):
+				return
+			var rise := 0.0 if is_space else sin(u * PI * waves + phase) * WRITE_WIGGLE
+			# (off the glass a little between letters)
+			var off := (1.0 - sin(u * PI)) * 0.012
+			hand.global_position = _frost_tip(oval, writing, left + wd * u, rise) + to_player * (WRITE_FINGER + off)
+			if is_instance_valid(lb):
+				var k := clampf(u * 1.5, 0.0, 1.0)
+				lb.modulate.a = 0.94 * k
+				lb.outline_modulate.a = 0.9 * k, 0.0, 1.0, secs)
+		await tw.finished
+	# the name's own label takes over from the letters, the hand comes away
+	writing.text = nm
+	writing.modulate = Color(WRITE_INK, 0.94)
+	writing.outline_modulate = Color(WRITE_RIM, 0.9)
+	writing.outline_size = WRITE_RIM_SIZE
+	for lb in letters:
+		if is_instance_valid(lb):
+			(lb as Node).queue_free()
+	if is_instance_valid(sfx):
+		sfx.queue_free()
+	if pf is Figure3D and is_instance_valid(hand):
+		var fig := pf as Figure3D
+		var away := w.create_tween()
+		away.tween_property(hand, "global_position", hand.global_position + to_player * 0.12 - Vector3(0, 0.08, 0), 0.35).set_trans(Tween.TRANS_SINE)
+		await away.finished
+		fig.let_go(0.4)
+		fig.palm("right", Vector3.ZERO, 0.4)
 
 
 ## His face as the glass shows it, framed by the oval mask: the camera on
@@ -2491,6 +2664,12 @@ static func _street(w: World) -> void:
 	var bf = Cine.fig(w, "bram")
 	if bf is Figure3D:
 		(bf as Figure3D).release(0.0)
+	# the green's people are already at their morning as the door opens, and
+	# go on with it through the opening's own shots, which never have them in
+	# (AshfordLife; 2 November, Gary: Corin and the kids stood "solid" until
+	# the crate was down; 5 November: they "take a while to come to life")
+	w.set_meta("life_through_cine", true)
+	AshfordLife.start(w)
 	# the street opens up: thatched cottages and bunting, and the green beyond
 	Cine.shot(w, door + out * 3.6 + side * 2.2 + Vector3(0, 1.5, 0), door + Vector3(0, 1.4, 0), 40.0)
 	Cine.fade(w, 0.0, 0.8)
@@ -2512,10 +2691,7 @@ static func _street(w: World) -> void:
 		await Cine.path(w, "player", [on], 1.5)
 		behind[0] = false
 	await home(w, 1.2)
-	# the green's people get on with their morning from here (AshfordLife;
-	# 2 November, Gary: Corin and the kids stood "solid" until the crate was
-	# down)
-	AshfordLife.start(w)
+	AshfordLife.start(w)   # (already running from the door; harmless)
 	# their own feet now, Bram behind
 	mute_all_but(w, [], true)
 	coach(w).objective("green_crate")
@@ -2647,6 +2823,11 @@ static func _green(w: World) -> void:
 		t += w.get_process_delta_time()
 	p = w.player.global_position
 	Cine.look(w, "bram", p)
+	# Corin sets off across the green to them as the crate goes down, so he's
+	# there, or nearly, by the time it's theirs to look up (5 November, Gary:
+	# "Can Corin start walking over as we're putting planters down so we're
+	# not waiting so long for him to get to player")
+	corin_sets_off(w)
 	# the crate down on the grass a stride in front of them, from low to the
 	# side so the crate and their feet clear of it are both seen (Gary, 22
 	# October: from behind them their legs hid it)
@@ -2756,11 +2937,13 @@ static func bram_to_stool(w: World) -> void:
 	var v := village(w)
 	var seat := STOOL
 	seat.y = v.height(seat.x, seat.z)
-	var at := seat + BRAM_FACES * 0.22   # just in front of it (he settles back the rest as he sits)
-	at.y = v.height(at.x, at.z)
 	var b := Cine.body(w, "bram")
 	if b == null:
 		return
+	var bf = Cine.fig(w, "bram")
+	# to where his feet will be once sat (he settles back onto it as he sits)
+	var at := seat + BRAM_FACES * ((bf as Figure3D).seat_feet_ahead() if bf is Figure3D else 0.4)
+	at.y = v.height(at.x, at.z)
 	w.set_meta("bram_to_stool", true)
 	await Cine.path(w, "bram", round_lantern(w, b.global_position, at), 1.5)
 	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
@@ -3322,8 +3505,11 @@ static func sit_with_nell(w: World) -> void:
 	Cine.shot(w, seat + fwd * 3.4 + side * 1.3 + Vector3(0, 1.3, 0), seat + Vector3(0, 0.7, 0) - side * 0.4, 38.0)
 	await use(w, mark, "bench", 0.0, Vector3.INF, 0.6)
 	mark.queue_free()
-	await Cine.path(w, "player", [seat + fwd * 0.6], 1.3)
-	await sit_down(w, "player", seat, fwd, BENCH_H, 0.5)
+	# to where the feet will be once sat, then down onto the seat (sit_down)
+	var pf = w.player_doll
+	var ahead := (pf as Figure3D).seat_feet_ahead() if pf is Figure3D else 0.6
+	await Cine.path(w, "player", [seat + fwd * ahead], 1.3)
+	await sit_down(w, "player", seat, fwd, BENCH_H, 0.6)
 	await Cine.wait(w, 0.5)
 	# side by side, from in front of the bench
 	Cine.shot(w, (seat + bench_seat(w)) * 0.5 + fwd * 2.9 + Vector3(0, 1.05, 0), (seat + bench_seat(w)) * 0.5 + Vector3(0, 0.85, 0), 36.0)
@@ -3564,19 +3750,68 @@ static func tilly_card_away(w: World) -> void:
 
 # ----------------------------------------------------------------- Corin ---
 
+## How far short of the player Corin stops to talk (m), and how fast he
+## comes over.
+const CORIN_MEET := 1.7
+const CORIN_WALK := 1.7
+
+
+## Corin sets off across the green towards the player, not waited for (from
+## _green, as the crate goes down: 5 November, Gary), so that corin_calls
+## finds him there or nearly. AshfordLife leaves him be on the way
+## (`life_busy`), and his spot to shift about round becomes where he stops.
+static func corin_sets_off(w: World) -> void:
+	var cb := Cine.body(w, "corin")
+	if cb == null or Game.flag("corin_met") or w.has_meta("corin_coming"):
+		return
+	var c := cb.global_position
+	var dn := w.player.global_position - c
+	dn.y = 0.0
+	if dn.length() < CORIN_MEET + 0.3:
+		return
+	dn = dn.normalized()
+	var meet := w.player.global_position - dn * CORIN_MEET
+	meet.y = village(w).height(meet.x, meet.z)
+	w.set_meta("corin_coming", true)
+	cb.set_meta("life_busy", true)
+	_corin_comes(w, cb, c, meet)
+
+
+static func _corin_comes(w: World, cb: Node3D, from: Vector3, meet: Vector3) -> void:
+	await Cine.path(w, "corin", round_lantern(w, from, meet), CORIN_WALK)
+	if not is_instance_valid(w) or not is_instance_valid(cb):
+		return
+	cb.remove_meta("life_busy")
+	cb.set_meta("life_home", cb.global_position)
+	w.remove_meta("corin_coming")
+	if Cine.body(w, "corin") != null:
+		Cine.look(w, "corin", w.player.global_position)
+
+
 ## Corin calls out and comes over to the player at the Lantern (the
 ## children round him gather to watch): the two of them face to face, from
-## the side.
+## the side. If he's already on his way (corin_sets_off) the walk picks up
+## from where he is.
 static func corin_calls(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null:
 		return
 	w.cine = true
+	# (the green's people keep still for the scene from here: AshfordLife)
+	w.remove_meta("life_through_cine")
+	w.remove_meta("corin_coming")
+	cb.remove_meta("life_busy")
 	var c := cb.global_position
 	var d := w.player.global_position - c
 	d.y = 0.0
 	var dn := d.normalized() if d.length() > 0.01 else Vector3.BACK
-	var to := c + dn * 1.6
+	var p := w.player.global_position
+	# where he'll stand: where he is, or where he's coming to
+	var stand := c
+	if d.length() > CORIN_MEET + 0.2:
+		stand = p - dn * CORIN_MEET
+		stand.y = village(w).height(stand.x, stand.z)
+	var to := stand + dn * 1.6
 	to.y = village(w).height(to.x, to.z)
 	# the children gather behind him to watch, out of everyone's way
 	var aside := dn.cross(Vector3.UP)
@@ -3585,22 +3820,20 @@ static func corin_calls(w: World) -> void:
 		var kb := Cine.body(w, id)
 		if kb == null:
 			continue
-		var at := c - dn * 1.9 + aside * (float(i) - 1.0) * 1.15 - dn * absf(float(i) - 1.0) * 0.3
+		var at := stand - dn * 1.9 + aside * (float(i) - 1.0) * 1.15 - dn * absf(float(i) - 1.0) * 0.3
 		at.y = village(w).height(at.x, at.z)
 		_walk_then_look(w, id, at, to)
-	if d.length() > 1.9:
+	if d.length() > CORIN_MEET + 0.2:
 		# v7: he comes over to them at the Lantern, twirling his card, and
 		# they turn to watch him come
-		var p := w.player.global_position
-		var meet := p - dn * 1.7
-		meet.y = village(w).height(meet.x, meet.z)
 		Cine.look(w, "player", c)
 		var mid := (p + c) * 0.5
 		var sd := dn.cross(Vector3.UP)
 		var look := mid + Vector3(0, 1.2, 0)
 		Cine.shot(w, clear_cam(w, [p + sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0), p - sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0),
-			p + dn * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "corin"]), (p + meet) * 0.5 + Vector3(0, 1.2, 0), 40.0)
-		await Cine.path(w, "corin", round_lantern(w, c, meet), 2.1)
+			p + dn * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "corin"]), (p + stand) * 0.5 + Vector3(0, 1.2, 0), 40.0)
+		await Cine.path(w, "corin", round_lantern(w, c, stand), 2.1)
+		cb.set_meta("life_home", cb.global_position)
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.look(w, "player", Cine.body(w, "corin").global_position)
 	two_shot(w, "player", "corin", 3.6, 1.5, 36.0)

@@ -214,6 +214,7 @@ func _build() -> void:
 	world.add_child(cam)
 	cam.current = true
 	_dof_setup()
+	dress_stage()
 	_place_camera()
 
 
@@ -446,7 +447,7 @@ var _motes_node: CPUParticles3D
 
 func _motes() -> CPUParticles3D:
 	var p := CPUParticles3D.new()
-	p.amount = 80
+	p.amount = maxi(12, int(MOTES * fx_scale()))   # (5 November: fewer on a phone's Smooth and the phone link)
 	p.lifetime = 7.0
 	p.preprocess = 7.0
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
@@ -473,9 +474,16 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _motes_node != null and _motes_node.mesh != null:
 		(_motes_node.mesh as QuadMesh).material.albedo_color = Color(_mote_col, 0.9)
-	# the camera: its target, a slow idle drift, shake and punch
+	if _embers != null and _embers.mesh != null:
+		(_embers.mesh as QuadMesh).material.albedo_color = Color(_mote_col.lightened(0.2), 1.0)
+	# (5 November) the shafts of light sway, slowly, each at its own pace
+	for i in _shafts.size():
+		var sh: Node3D = _shafts[i]
+		sh.rotation.z = deg_to_rad(SHAFT_LEAN) * (1.0 if i % 2 == 0 else -0.6) + sin(_t * (0.21 + 0.07 * i) + i * 2.0) * SHAFT_SWAY
+	# the camera: its target, a slow idle drift, shake, punch and kick
 	_shake = move_toward(_shake, 0.0, delta * 1.2)
 	_punch = move_toward(_punch, 0.0, delta * 0.12)
+	_kick = _kick.lerp(Vector3.ZERO, minf(1.0, delta * KICK_SPRING))
 	_view = lerpf(_view, view_setting(), minf(1.0, delta * 8.0))
 	_place_camera()
 
@@ -485,8 +493,8 @@ func _place_camera() -> void:
 		return
 	var drift := Vector3(sin(_t * 0.23) * 0.08, sin(_t * 0.31) * 0.05, cos(_t * 0.19) * 0.06)
 	var jolt := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake
-	cam.position = cam_pos + drift + jolt
-	cam.look_at(cam_look + jolt * 0.3, Vector3.UP)
+	cam.position = cam_pos + drift + jolt + _kick
+	cam.look_at(cam_look + jolt * 0.3 + _kick * 0.35, Vector3.UP)
 	# This container is centred on the stage's rectangle and _view_k times its
 	# height (see fit_to_stage): the lens is widened to match, so the stage
 	# sees the same field on any screen shape and the rest is extra arena.
@@ -707,7 +715,10 @@ func sync(v) -> void:
 	# the phone another pass over the floor, lit or not; 27 October)
 	s.lamp.visible = s.lamp.light_energy > 0.01
 	s.lamp.light_color = col if v.flash <= 0.0 else col.lerp(v.flash_color, v.flash)
-	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade)
+	# (5 November: the glow on the floor pulses with its lamp, so nothing on
+	# the field is dead still)
+	var pulse := 1.0 - GLOW_PULSE * 0.5 + GLOW_PULSE * 0.5 * sin(_t * 3.0 + v.slot)
+	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade * (pulse if _dressed else 1.0) + v.flash * 0.25)
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
 
 
@@ -954,6 +965,7 @@ static func spectral(inst: Node3D) -> void:
 func film_mode(quality := 2) -> void:
 	if world == null:
 		return
+	_undress()   # (5 November: the stage's rim light, shafts and embers are not the snowfield's)
 	_back.visible = false
 	var snow := StandardMaterial3D.new()
 	var nt := NoiseTexture2D.new()
@@ -1324,6 +1336,10 @@ func _ring_state(s: Slot, h: String, base: Color, a: float) -> void:
 		"ready":
 			col = base.lerp(Color(0.6, 0.85, 1.0), 0.4)
 			a = 0.75 + 0.25 * sin(_t * 2.6)
+		_:
+			if _dressed:
+				# (5 November: the sigils breathe, each at its own moment)
+				a *= 1.0 - RING_BREATHE * 0.5 + RING_BREATHE * 0.5 * sin(_t * 1.7 + s.index * 1.3 + s.side * 2.1)
 	s.ring_mat.albedo_color = Color(col, a * 0.8)
 	s.spin += spin_speed * (1.0 if s.side == 0 else -1.0) * get_process_delta_time()
 	s.ring.rotation_degrees = Vector3(-90, 0, rad_to_deg(s.spin))
@@ -1584,6 +1600,217 @@ func cam_shake(amount: float) -> void:
 
 func cam_punch(amount: float) -> void:
 	_punch = maxf(_punch, amount)
+
+
+# ========================================================= the stage (5 November) ===
+# Gary (5 November, having played the 4 November build): "Make the battle
+# look better. At the moment it looks boring. I want it more dramatic." The
+# camera and the clock were done the day before; this dresses the arena as a
+# stage and gives a blow somewhere to land. The surround darker and the
+# Circle the lit thing in it (a stronger warm key light over it, the
+# scenery painting dimmer), a cool rim light from the far side that edges
+# every Totem, shafts of light hanging over the Circle and swaying, embers of
+# the arena's colour whirling up through the motes, the sigils breathing and
+# the floor glow under a Totem pulsing with its lamp. A blow kicks the camera
+# back (cam_kick) and punches the picture (impact_punch: a radial smear and a
+# chromatic split from where it landed, assets/shaders/duel/impact_punch.gdshader,
+# this container's own material, only at Gfx.level() 2), and a Totem that
+# acts gets a flare of its sigil (act_pulse). All of it with
+# DuelRules.cinematic on, nothing without; a film (film_mode) clears the
+# dressing for its snow and keeps its own light.
+
+const AMBIENT_ENERGY := 0.6       # the Environment's ambient light (was 0.8: the dark beyond the Circle reads darker)
+const CONTRAST := 1.14            # the grade's contrast (was 1.08)
+const HALL_ENERGY := 1.2          # the warm key light over the Circle (was 0.9)
+const BACKDROP_DIM := 0.68        # the scenery painting's brightness (was 0.8: the Circle is the lit thing)
+const RIM_COL := Color(0.55, 0.72, 1.0)   # the cool rim light from the far side...
+const RIM_ENERGY := 0.6           # ...its strength (no shadows: an edge of light on each Totem)...
+const RIM_PITCH := -30.0          # ...pitched down this much (degrees), shining towards the camera
+const SHAFTS := 3                 # shafts of light hanging over the Circle (Gfx.level() 1 and up)
+const SHAFT_ALPHA := 0.28         # how bright each is
+const SHAFT_W := 3.4              # across (m)...
+const SHAFT_H := 12.0             # ...and tall, from this high
+const SHAFT_X := [-5.0, 0.8, 5.6]   # where each hangs, across the field...
+const SHAFT_Z := [-4.2, -1.6, -3.4]   # ...and along it (the far half, over the rival's row)
+const SHAFT_LEAN := 14.0          # leaning this many degrees off upright (every other one the other way)
+const SHAFT_SWAY := 0.05          # the slow sway of each (radians)
+const EMBERS := 50                # embers of the arena's colour whirling up (at fx_scale 1)
+const MOTES := 80                 # the drifting motes (at fx_scale 1; they were 80 on every device)
+const RING_BREATHE := 0.14        # the sigils breathe this much of their brightness
+const GLOW_PULSE := 0.3           # the floor glow under a Totem pulses this much of its brightness
+const KICK_SPRING := 11.0         # how fast a camera kick springs back (per second)
+const KICK_MAX := 0.6             # the furthest a kick moves the camera (m)
+const PUNCH_SECS := 0.24          # the impact punch, from its hardest to nothing
+const ACT_PULSE_SECS := 0.5       # the flare of a sigil under a Totem that acts
+const SIGIL_LIFT := 0.075         # a rune circle drawn under a Totem sits this high, over the card lying in its slot (0.05)
+
+## The quality level the stage is dressed for: the device's own
+## (Gfx.level()), or `preview_level` when a test forces one (software GL here
+## is Compatibility, level 0; the tests set 2 to see the punch).
+static var preview_level := -1
+
+var _dressed := false
+var _rim: DirectionalLight3D = null
+var _shafts: Array = []            # [Node3D]: each shaft's holder (two crossed quads)
+var _embers: CPUParticles3D = null
+var _kick := Vector3.ZERO
+var _punch_mat: ShaderMaterial = null
+var _punch_tw: Tween
+
+
+static func drama_level() -> int:
+	return preview_level if preview_level >= 0 else Gfx.level()
+
+
+## How many particles the device gets of what an effect asks for: all at
+## level 2, 0.7 of them on a phone's Smooth, under half on the phone link.
+static func fx_scale() -> float:
+	return [0.45, 0.7, 1.0][clampi(drama_level(), 0, 2)]
+
+
+## Dresses the arena as a stage (above). Called as the field is built; a
+## film undresses it again.
+func dress_stage() -> void:
+	if world == null or _dressed or not DuelRules.cinematic:
+		return
+	_dressed = true
+	var lvl := drama_level()
+	_env.ambient_light_energy = AMBIENT_ENERGY
+	_env.adjustment_contrast = CONTRAST
+	_hall.light_energy = HALL_ENERGY
+	_back_material.albedo_color = Color(BACKDROP_DIM, BACKDROP_DIM, BACKDROP_DIM * 1.1)
+	if lvl >= 1:
+		_rim = DirectionalLight3D.new()
+		_rim.rotation_degrees = Vector3(RIM_PITCH, 180.0, 0)   # (from the far side, towards the camera and down)
+		_rim.light_color = RIM_COL
+		_rim.light_energy = RIM_ENERGY
+		_rim.shadow_enabled = false
+		world.add_child(_rim)
+		for i in SHAFTS:
+			var holder := Node3D.new()
+			holder.position = Vector3(SHAFT_X[i], SHAFT_H, SHAFT_Z[i])
+			for k in 2:
+				var m := MeshInstance3D.new()
+				var q := QuadMesh.new()
+				q.size = Vector2(SHAFT_W, SHAFT_H)
+				q.center_offset = Vector3(0, -SHAFT_H * 0.5, 0)   # (hangs from the holder)
+				m.mesh = q
+				var mat := DuelStrikeFX.light_mat(Color(1.0, 0.95, 0.8), "shaft", 1.0)
+				mat.albedo_color.a = SHAFT_ALPHA
+				m.material_override = mat
+				m.rotation_degrees.y = 90.0 * k
+				m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				holder.add_child(m)
+			world.add_child(holder)
+			_shafts.append(holder)
+	_embers = CPUParticles3D.new()
+	_embers.amount = maxi(8, int(EMBERS * fx_scale()))
+	_embers.lifetime = 5.0
+	_embers.preprocess = 5.0
+	_embers.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	_embers.emission_box_extents = Vector3(8, 0.2, 7)
+	_embers.direction = Vector3.UP
+	_embers.spread = 40
+	_embers.initial_velocity_min = 0.4
+	_embers.initial_velocity_max = 1.1
+	_embers.gravity = Vector3.ZERO
+	_embers.tangential_accel_min = -0.8
+	_embers.tangential_accel_max = 0.8
+	_embers.damping_min = 0.1
+	_embers.damping_max = 0.3
+	var curve := Curve.new()
+	curve.add_point(Vector2(0, 0.0))
+	curve.add_point(Vector2(0.15, 1.0))
+	curve.add_point(Vector2(1, 0.0))
+	_embers.scale_amount_curve = curve
+	_embers.scale_amount_min = 0.5
+	_embers.scale_amount_max = 1.0
+	var q2 := QuadMesh.new()
+	q2.size = Vector2(0.06, 0.06)
+	var qm := _additive(DuelStrikeFX.tex("star"))
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	qm.albedo_color = Color(_mote_col.lightened(0.2), 1.0)
+	q2.material = qm
+	_embers.mesh = q2
+	world.add_child(_embers)
+	if lvl >= 2:
+		_punch_mat = ShaderMaterial.new()
+		_punch_mat.shader = load("res://assets/shaders/duel/impact_punch.gdshader")
+		_punch_mat.set_shader_parameter("strength", 0.0)
+		material = _punch_mat
+
+
+## The dressing taken off again (a film's snow has its own light): the
+## lights and the grade as the field builds them, the rest gone.
+func _undress() -> void:
+	if not _dressed:
+		return
+	_dressed = false
+	_env.ambient_light_energy = 0.8
+	_env.adjustment_contrast = 1.08
+	_hall.light_energy = 0.9
+	_back_material.albedo_color = Color(0.8, 0.8, 0.9)
+	if _rim != null:
+		_rim.queue_free()
+		_rim = null
+	for sh in _shafts:
+		(sh as Node).queue_free()
+	_shafts = []
+	if _embers != null:
+		_embers.queue_free()
+		_embers = null
+	material = null
+	_punch_mat = null
+
+
+## The camera kicked back from a blow at `from`, by `amount` metres, and
+## springing back.
+func cam_kick(from: Vector3, amount: float) -> void:
+	if not _dressed:
+		return
+	var d := cam.global_position - from
+	d.y *= 0.4   # (mostly back, a little up)
+	if d.length() < 0.01:
+		return
+	_kick += d.normalized() * amount
+	if _kick.length() > KICK_MAX:
+		_kick = _kick.normalized() * KICK_MAX
+
+
+## The picture punched from where a blow landed (`at`): a radial smear and
+## a chromatic split at strength `k` (0-1), gone over PUNCH_SECS. Only where
+## the stage was dressed at level 2 (the shader is the container's material).
+func impact_punch(at: Vector3, k: float) -> void:
+	if _punch_mat == null or cam == null:
+		return
+	var px := cam.unproject_position(at)
+	var sz := Vector2(vp.size)
+	_punch_mat.set_shader_parameter("centre", Vector2(px.x / maxf(1.0, sz.x), px.y / maxf(1.0, sz.y)))
+	var now := float(_punch_mat.get_shader_parameter("strength"))
+	_punch_mat.set_shader_parameter("strength", maxf(now, clampf(k, 0.0, 1.0)))
+	if _punch_tw != null and _punch_tw.is_valid():
+		_punch_tw.kill()
+	_punch_tw = create_tween().set_ignore_time_scale(true)   # (plays through a hit-stop)
+	_punch_tw.tween_method(func(v: float) -> void:
+		if _punch_mat != null:
+			_punch_mat.set_shader_parameter("strength", v), maxf(now, k), 0.0, PUNCH_SECS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+
+
+## A Totem acts: its sigil flares under it, in its colour, and a ring runs
+## out from its feet.
+func act_pulse(foot: Vector3, col: Color) -> void:
+	if not _dressed:
+		return
+	var disc := DuelStrikeFX.floor_disc(self, foot, col, "rune", 3.1)
+	disc.position.y = foot.y + SIGIL_LIFT   # (over the card lying in the slot)
+	disc.scale = Vector3.ONE * 1.05
+	var dm := disc.material_override as StandardMaterial3D
+	dm.albedo_color.a = 0.9
+	var tw := disc.create_tween().set_parallel(true)
+	tw.tween_property(disc, "scale", Vector3.ONE * 1.35, ACT_PULSE_SECS).set_ease(Tween.EASE_OUT)
+	tw.tween_property(dm, "albedo_color:a", 0.0, ACT_PULSE_SECS).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(disc.queue_free)
+	floor_wave(foot, col, 2.6, ACT_PULSE_SECS)
 
 
 # ================================================================ effects ===
@@ -2533,9 +2760,13 @@ func strike_travel(st: Dictionary, a: Vector3, b: Vector3, spd: float = 1.0, k: 
 	await DuelStrikeFX.travel(self, st, a, b, k, maxf(0.1, spd))
 
 
-## A blow landing on a Totem (or a duellist's side): its element's impact.
-func strike_impact(st: Dictionary, body: Vector3, big: bool, k: float = 1.0) -> void:
+## A blow landing on a Totem (or a duellist's side): its element's impact,
+## and with `drama` (5 November, the cinematic touches on) what a heavy blow
+## throws out on top of it and the mark it leaves (DuelStrikeFX.heavy).
+func strike_impact(st: Dictionary, body: Vector3, big: bool, k: float = 1.0, drama: bool = false) -> void:
 	DuelStrikeFX.impact(self, st, body, big, k)
+	if drama:
+		DuelStrikeFX.heavy(self, st, body, big, k)
 
 
 ## A melee blow's lunge: the striker's element trailing off it for `dur`.
@@ -2695,13 +2926,18 @@ func warm_fx() -> void:
 	pit.add_child(sh)
 	var quad := QuadMesh.new()
 	quad.size = Vector2(0.05, 0.05)
-	for tname in ["dot", "glow", "star", "leaf"]:
+	for tname in ["dot", "glow", "star", "leaf", "shard"]:
 		for blend in ["add", "mix"]:
 			for mode in ["face", "streak", "spin"]:
 				var mi2 := MeshInstance3D.new()
 				mi2.mesh = quad
 				mi2.material_override = DuelStrikeFX.pmat(tname, blend, mode)
 				pit.add_child(mi2)
+	# (5 November) the drama's own: a scorch on the floor, a ring of light
+	# standing up at an impact
+	DuelStrikeFX.floor_mark(self, pit.position + Vector3(0, -0.5, 0), Color.WHITE, 0.05, 0.3, true)
+	var ring := DuelStrikeFX.glow(pit, Color.WHITE, 0.05, 1.0, "ring")
+	ring.position = Vector3(0, -0.5, 0)
 	for i in 3:
 		await get_tree().process_frame
 	if is_instance_valid(pit):

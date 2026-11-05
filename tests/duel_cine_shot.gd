@@ -12,9 +12,16 @@ extends Node
 ##   pace     how long a banner, a hit and a call take at Normal, printed
 ##   flat     the same on the flat (2D) field, where only the freeze, the slow
 ##            motion and the bars apply (stills named flat_...)
+##   arena    (5 November) the field at rest, dressed as a stage: both rows
+##            full, the shafts of light, the embers, the rim light
+## and two flags (5 November):
+##   preview  the stage dressed as a Mac or a phone on Full would have it
+##            (DuelField3D.preview_level 2: the impact punch shader, which
+##            software GL here, Compatibility, would otherwise skip)
+##   plain    DuelRules.cinematic off: the field as it is without the touches
 ## Run all, or name the parts:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
-##       res://tests/duel_cine_shot.tscn -- <out_dir> [attack] [ko] [call] [summon] [finish] [pace] [flat]
+##       res://tests/duel_cine_shot.tscn -- <out_dir> [attack] [ko] [call] [summon] [finish] [pace] [arena] [flat] [preview] [plain]
 ## Nothing is drawn between the stills (as duel_notes_shot), so each is caught
 ## at its moment on a slow software renderer. The waits are in real seconds.
 
@@ -28,9 +35,14 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
 	parts = args.slice(1)
-	if parts.is_empty():
-		parts = ["attack", "ko", "call", "summon", "finish", "pace"]
+	var flags := ["flat", "preview", "plain"]
 	var flat := "flat" in parts
+	if not flat and parts.filter(func(p): return not p in flags).is_empty():
+		parts += ["attack", "ko", "call", "summon", "finish", "pace", "arena"]   # (flat alone: just the flat field's own)
+	if "preview" in parts:
+		DuelField3D.preview_level = 2
+	if "plain" in parts:
+		DuelRules.set_value("cinematic", false)
 	get_tree().root.theme = UITheme.make()
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["duel_3d"] = not flat
@@ -50,6 +62,8 @@ func _ready() -> void:
 		await _flat()
 	if "pace" in parts:
 		_pace()
+	if "arena" in parts and not flat:
+		await _arena()
 	if "attack" in parts:
 		await _attack(false)
 		await _attack(true)
@@ -72,11 +86,40 @@ func _ready() -> void:
 
 var _watch_clock := false
 var _slowest := 1.0
+var _punch_peak := 0.0   # the hardest the impact punch got while watched (5 November)
 
 
 func _process(_delta: float) -> void:
 	if _watch_clock:
 		_slowest = minf(_slowest, Engine.time_scale)
+		if ds != null and ds.field != null and ds.field._punch_mat != null:
+			_punch_peak = maxf(_punch_peak, float(ds.field._punch_mat.get_shader_parameter("strength")))
+
+
+## (5 November) The field at rest, dressed as a stage: both rows full, from
+## home, twice a moment apart (the embers and the shafts move).
+func _arena() -> void:
+	await _board(["cinderpup", "ashen_drake", "brookfin"], ["mossling", "elderbark", "pebblit"])
+	ds.mode = "main"
+	ds._set_hint("")
+	await _wait(0.5)
+	await _shot("arena_1_stage")
+	await _wait(1.5)
+	await _shot("arena_2_stage_later")
+	var f := ds.field
+	if DuelRules.cinematic:
+		if not f._dressed:
+			problems.append("arena: the stage wasn't dressed")
+		if DuelField3D.drama_level() >= 1 and (f._rim == null or f._shafts.size() != DuelField3D.SHAFTS):
+			problems.append("arena: no rim light or shafts at level %d" % DuelField3D.drama_level())
+		if DuelField3D.drama_level() >= 2 and f._punch_mat == null:
+			problems.append("arena: no impact punch material at level 2")
+		if DuelField3D.drama_level() < 2 and f._punch_mat != null:
+			problems.append("arena: the impact punch material is on below level 2")
+	elif f._dressed or f._rim != null or f.material != null:
+		problems.append("arena: the stage was dressed with cinematic off")
+	print("CINE SHOT: arena: level %d, fx_scale %.2f, dressed %s, rim %s, shafts %d, punch %s" % [DuelField3D.drama_level(),
+		DuelField3D.fx_scale(), f._dressed, f._rim != null, f._shafts.size(), f._punch_mat != null])
 
 
 func _wait(s: float) -> void:
@@ -180,9 +223,16 @@ func _attack(back: bool) -> void:
 	await ds.fx_attack(att, 0, tg)
 	await _wait(0.1)
 	await _shot("attack_%s_1_pushin" % tag)
-	if ds.field.cam_pos.distance_to(home) < 2.0:
+	if DuelRules.cinematic and ds.field.cam_pos.distance_to(home) < 2.0:
 		problems.append("attack %s: the camera didn't push in (moved %.1f m)" % [tag, ds.field.cam_pos.distance_to(home)])
+	# (5 November) the attacker gathers its power under the push-in
+	var charging: bool = ds._strike.get("charge") is DuelStrikeFX.Charge and is_instance_valid(ds._strike.get("charge"))
+	if DuelRules.cinematic and not charging:
+		problems.append("attack %s: no charge on the attacker" % tag)
+	elif not DuelRules.cinematic and charging:
+		problems.append("attack %s: a charge with cinematic off" % tag)
 	_slowest = 1.0
+	_punch_peak = 0.0
 	_watch_clock = true
 	ds.fx_totem_hit(tg, 60, {"attacker": att, "element": att.element()})
 	await _wait(0.16)
@@ -193,10 +243,21 @@ func _attack(back: bool) -> void:
 	await _shot("attack_%s_4_hitstop" % tag)
 	await _wait(0.5)
 	_watch_clock = false
-	if _slowest > 0.5:
+	if _slowest > 0.5 and DuelRules.cinematic:
 		problems.append("attack %s: time didn't stop on a 60 blow on a weakness (slowest %.2f)" % [tag, _slowest])
+	elif _slowest > 0.5:
+		print("CINE SHOT: attack %s: the clock ran on (cinematic off)" % tag)
 	else:
 		print("CINE SHOT: attack %s: the clock stopped at %.2f" % [tag, _slowest])
+	if ds.field._punch_mat != null:
+		if _punch_peak < 0.5:
+			problems.append("attack %s: the picture wasn't punched on a 60 blow (peak %.2f)" % [tag, _punch_peak])
+		else:
+			print("CINE SHOT: attack %s: the picture was punched to %.2f" % [tag, _punch_peak])
+		if float(ds.field._punch_mat.get_shader_parameter("strength")) > 0.01:
+			problems.append("attack %s: the punch was left on (%.2f)" % [tag, float(ds.field._punch_mat.get_shader_parameter("strength"))])
+	if charging and is_instance_valid(ds._strike.get("charge")) and not (ds._strike.get("charge") as DuelStrikeFX.Charge)._ended:
+		problems.append("attack %s: the charge didn't end with the blow" % tag)
 	await _shot("attack_%s_5_after" % tag)
 	await _wait(0.9)
 	await _shot("attack_%s_6_home" % tag)
@@ -250,7 +311,7 @@ func _ko() -> void:
 		ds.fx_ko(t)
 		await _wait(0.45)
 		await _shot("ko_%s_1_crystal" % who[2])
-		if ds.field.cam_pos.distance_to(home) < 2.0:
+		if DuelRules.cinematic and ds.field.cam_pos.distance_to(home) < 2.0:
 			problems.append("ko %s: no close-up (the camera moved %.1f m)" % [who[2], ds.field.cam_pos.distance_to(home)])
 		await _wait(0.3)
 		await _shot("ko_%s_2_cracked" % who[2])
@@ -266,7 +327,7 @@ func _ko() -> void:
 		await _wait(0.9)
 		await _shot("ko_%s_4_dust" % who[2])
 		_watch_clock = false
-		if not slowed and _slowest > 0.6:
+		if not slowed and _slowest > 0.6 and DuelRules.cinematic:
 			problems.append("ko %s: no slow motion at the burst (slowest %.2f)" % [who[2], _slowest])
 		else:
 			print("CINE SHOT: ko %s: the clock slowed to %.2f" % [who[2], _slowest])
@@ -306,7 +367,7 @@ func _summon() -> void:
 	ds.fx_summon(0, DuelCard.new(9980, "pyraxis", 0))
 	await _wait(0.5)
 	await _shot("summon_1_bars")
-	if ds._letterbox == null or ds._letterbox.amount < 0.9:
+	if DuelRules.cinematic and (ds._letterbox == null or ds._letterbox.amount < 0.9):
 		problems.append("summon: the bars didn't come up")
 	await _wait(3.2)
 	await _shot("summon_2_descends")
@@ -327,7 +388,7 @@ func _finish() -> void:
 	await _shot("finish_1_slow")
 	if Engine.time_scale > 0.9:
 		problems.append("finish: no slow motion")
-	if ds._letterbox == null or ds._letterbox.amount < 0.5:
+	if DuelRules.cinematic and (ds._letterbox == null or ds._letterbox.amount < 0.5):
 		problems.append("finish: the bars didn't come up")
 	await _wait(1.2)
 	await _shot("finish_2_lands")

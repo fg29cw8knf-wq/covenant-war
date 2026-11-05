@@ -88,6 +88,34 @@ func _ready() -> void:
 	for i in 3:
 		await RenderingServer.frame_post_draw
 	get_viewport().get_texture().get_image().save_png("%s/in_glass.png" % out)
+	AshfordP1.mirror_mask(world, false)
+	AshfordP1._glass_shot_done(world)
+	if OS.get_cmdline_user_args().has("write"):
+		# the name written in the frost (AshfordP1._write_in_frost), a still
+		# every fifth of a second from the over-the-shoulder shot and from a
+		# camera close over the hand (5 November)
+		(a.fog_mat as StandardMaterial3D).albedo_color.a = 0.6
+		Cine.shot(world, p + away * 0.7 + aside * 0.55 + Vector3(0, 1.8, 0), glass_at + Vector3(0, -0.02, 0), 40.0)
+		var hand := Node3D.new()
+		hand.name = "WipeHand"
+		world.add_child(hand)
+		AshfordP1._finger_to_frost(world, a, hand, -0.06, 0.35)
+		await get_tree().create_timer(0.6).timeout
+		for i in 3:
+			await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/write_00_ready.png" % out)
+		var writing := func() -> void: await AshfordP1._write_in_frost(world, a, hand, "Gary Mannion")
+		writing.call()
+		for i in 18:
+			await get_tree().create_timer(0.2).timeout
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png("%s/write_%02d.png" % [out, i + 1])
+		# close over the hand, looking at the glass
+		Cine.shot(world, glass_at + away * 0.55 + aside * 0.25 + Vector3(0, 0.22, 0), glass_at + Vector3(0, 0.0, 0), 34.0)
+		for i in 4:
+			await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/write_close.png" % out)
+		hand.queue_free()
 	g.stop()
 	print("MIRROR SHOT: done")
 	get_tree().quit()

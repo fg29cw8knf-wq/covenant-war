@@ -722,14 +722,18 @@ class WayMarker:
 		draw_string(font, lp, words2, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, gold)
 
 
-## A compass in the bottom left corner (4 November, Gary: once Morrowen
+## The way-arrow in the bottom left corner (4 November, Gary: once Morrowen
 ## stops talking "a compass in the bottom left with an arrow pointing
-## direction you need to go, this can become the map later"): a dark dial
-## with a gold rim and its four points, a gold needle that turns to point
-## the way to `target` as the camera turns, and under it the place's name
-## and how far it is. `cam` is the camera the player sees through; `label`
-## the place; show(true/false) fades it in and out. It sits inside the
-## safe area (SafeArea) and is drawn at the player's text size.
+## direction you need to go, this can become the map later"; 5 November:
+## "Compass should be more of an arrow": it was a dial with its four points
+## and a small needle inside, and the needle was lost among the marks). One
+## big gold arrow now, a broad head on a tapered shaft, that turns to point
+## the way to `target` as the camera turns and nudges forward along its own
+## line ("this way"), on a faint dark disc so it reads over snow or sun; under
+## it the place's name and how far it is. `cam` is the camera the player
+## sees through; `label` the place; show_compass(true/false) fades it in and
+## out. It sits inside the safe area (SafeArea) and is drawn at the player's
+## text size. (Still the Compass by name: the world's map can grow from it.)
 class Compass:
 	extends Control
 	var cam: Camera3D
@@ -779,40 +783,49 @@ class Compass:
 		if target == Vector3.INF or cam == null or not is_instance_valid(cam):
 			return
 		var k := SafeArea.ui_scale()
-		var r := 58.0 * k
+		var r := 62.0 * k
 		var c := Vector2(r + 26.0 * k, size.y - r - 70.0 * k)
 		var gold := Color(1.0, 0.82, 0.38)
-		var dark := Color(0.06, 0.04, 0.02, 0.78)
-		# the dial
-		draw_circle(c, r + 4.0 * k, Color(0, 0, 0, 0.35))
+		var bright := Color(1.0, 0.93, 0.7)
+		var dark := Color(0.06, 0.04, 0.02, 0.55)
+		# a faint dark disc behind it, so the arrow reads over snow and sun
+		draw_circle(c, r + 3.0 * k, Color(0, 0, 0, 0.22))
 		draw_circle(c, r, dark)
-		draw_arc(c, r, 0.0, TAU, 72, Color(gold, 0.85), 3.0 * k, true)
-		draw_arc(c, r * 0.78, 0.0, TAU, 72, Color(gold, 0.25), 1.5 * k, true)
-		# the four points of the dial turn with the world, so the top of the
-		# dial is the way the camera looks
-		var north := angle_to(cam.global_position + Vector3.FORWARD) if cam != null else 0.0
-		for i in 4:
-			var a := -north + TAU * i / 4.0 - PI * 0.5
-			var p := c + Vector2(cos(a), sin(a)) * r * 0.9
-			var long := i == 0
-			draw_line(c + Vector2(cos(a), sin(a)) * r * (0.72 if long else 0.8), p, Color(gold, 0.9 if long else 0.5), (3.0 if long else 2.0) * k)
-		for i in 12:
-			if i % 3 == 0:
-				continue
-			var a := -north + TAU * i / 12.0 - PI * 0.5
-			draw_line(c + Vector2(cos(a), sin(a)) * r * 0.84, c + Vector2(cos(a), sin(a)) * r * 0.9, Color(gold, 0.35), 1.5 * k)
-		# the needle: a gold arrow, breathing a little
+		draw_arc(c, r, 0.0, TAU, 72, Color(gold, 0.28), 2.0 * k, true)
+		# the arrow: the way to go, nudging forward along its line
 		var a := _ang - PI * 0.5
 		var d := Vector2(cos(a), sin(a))
 		var perp := Vector2(-d.y, d.x)
-		var pulse := 1.0 + 0.04 * sin(_t * 3.0)
-		var tip := c + d * r * 0.66 * pulse
-		var tail := c - d * r * 0.3
-		draw_colored_polygon(PackedVector2Array([tip, c + perp * r * 0.16, tail, c - perp * r * 0.16]), Color(gold, 0.18))
-		draw_colored_polygon(PackedVector2Array([tip, c + perp * r * 0.11, c - d * r * 0.05, c - perp * r * 0.11]), gold)
-		draw_colored_polygon(PackedVector2Array([c - d * r * 0.05, c + perp * r * 0.11, tail, c - perp * r * 0.11]), Color(0.75, 0.7, 0.62, 0.85))
-		draw_circle(c, 4.0 * k, Color(0.1, 0.07, 0.03))
-		draw_arc(c, 4.0 * k, 0.0, TAU, 16, gold, 1.5 * k, true)
+		var nudge := d * r * 0.06 * (0.5 + 0.5 * sin(_t * 4.2))
+		var o := c + nudge
+		var tip := o + d * r * 0.88
+		var head_w := r * 0.56      # half the head's width
+		var head_back := r * 0.12   # where the head's wings sit, ahead of the middle
+		var shaft_w := r * 0.2      # half the shaft's width at the head
+		var tail_w := r * 0.12      # half the shaft's width at the tail
+		var tail := o - d * r * 0.72
+		var head := PackedVector2Array([tip, o + d * head_back + perp * head_w, o + d * (head_back + r * 0.1), o + d * head_back - perp * head_w])
+		var shaft := PackedVector2Array([o + d * (head_back + r * 0.1) + perp * shaft_w, o + d * (head_back + r * 0.1) - perp * shaft_w, tail - perp * tail_w, tail + perp * tail_w])
+		# a soft glow under it
+		var glow := Color(gold, 0.16 + 0.08 * sin(_t * 4.2))
+		for g in [1.22, 1.1]:
+			var hg := PackedVector2Array()
+			for p in head:
+				hg.append(o + (p - o) * g)
+			var sg := PackedVector2Array()
+			for p in shaft:
+				sg.append(o + (p - o) * g)
+			draw_colored_polygon(hg, glow)
+			draw_colored_polygon(sg, glow)
+		# a dark edge, then the gold, a lighter leading edge on the head
+		var edge := Color(0.12, 0.08, 0.02, 0.9)
+		draw_polyline(PackedVector2Array([head[0], head[1], head[2], head[3], head[0]]), edge, 5.0 * k, true)
+		draw_polyline(PackedVector2Array([shaft[0], shaft[1], shaft[2], shaft[3], shaft[0]]), edge, 5.0 * k, true)
+		draw_colored_polygon(shaft, Color(0.88, 0.7, 0.32))
+		draw_colored_polygon(head, gold)
+		draw_colored_polygon(PackedVector2Array([tip, o + d * head_back + perp * head_w, o + d * (head_back + r * 0.1)]), bright.lerp(gold, 0.45))
+		draw_line(tip, o + d * head_back + perp * head_w, Color(bright, 0.9), 2.0 * k, true)
+		draw_line(tip, o + d * head_back - perp * head_w, Color(bright, 0.9), 2.0 * k, true)
 		# the place and how far
 		var font := CardFace.font("bold")
 		var fs := roundi(26 * k)

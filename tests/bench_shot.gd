@@ -55,11 +55,26 @@ func _ready() -> void:
 		Cine.shot(world, v[1], nseat + Vector3(0, 0.6, 0), 38.0)
 		await _secs(0.3)
 		await _shot("nell_" + String(v[0]))
-	# the player comes and sits beside her
+	# the player comes and sits beside her (as sit_with_nell has it: to where
+	# the feet will be, then down; the legs checked against the bench the
+	# whole way: 5 November, Gary, "your legs go through the bench" sitting)
 	Cine.place(world, "player", seat + fwd * 1.6, seat)
 	await _frames(5)
-	await Cine.path(world, "player", [seat + fwd * 0.6], 1.3)
-	await AshfordP1.sit_down(world, "player", seat, fwd, AshfordP1.BENCH_H, 0.5)
+	Cine.shot(world, seat - side * 2.4 + fwd * 0.5 + Vector3(0, 0.8, 0), seat + fwd * 0.3 + Vector3(0, 0.55, 0), 36.0)
+	var pf0 := Cine.fig(world, "player") as Figure3D
+	var ahead := pf0.seat_feet_ahead() if pf0 != null else 0.6
+	await Cine.path(world, "player", [seat + fwd * ahead], 1.3)
+	_checking = true
+	var down := func() -> void: await AshfordP1.sit_down(world, "player", seat, fwd, AshfordP1.BENCH_H, 0.6)
+	down.call()
+	for i in 10:
+		await _secs(0.12)
+		await _shot("sit_%02d" % i)
+	_checking = false
+	var sat_in := _in_bench
+	var sat_deep := _deepest
+	_in_bench = 0
+	_deepest = 0.0
 	await _secs(0.6)
 	Cine.shot(world, (seat + nseat) * 0.5 + fwd * 2.9 + Vector3(0, 1.05, 0), (seat + nseat) * 0.5 + Vector3(0, 0.85, 0), 36.0)
 	await _secs(0.3)
@@ -75,7 +90,9 @@ func _ready() -> void:
 		await _shot("stand_%02d" % i)
 	_checking = false
 	await _secs(0.8)
-	print("  the player's legs in the bench: %d frames (deepest %.1f cm); Nell's stick through the seat: %d frames" % [_in_bench, _deepest * 100.0, _stick_in])
+	print("  the player's legs in the bench: sitting down %d frames (deepest %.1f cm), getting up %d frames (deepest %.1f cm); Nell's stick through the seat: %d frames" % [sat_in, sat_deep * 100.0, _in_bench, _deepest * 100.0, _stick_in])
+	if sat_in > 0:
+		problems.append("the player's legs went %.1f cm into the bench sitting down (%d frames)" % [sat_deep * 100.0, sat_in])
 	if _in_bench > 0:
 		problems.append("the player's legs went %.1f cm into the bench getting up (%d frames)" % [_deepest * 100.0, _in_bench])
 	if _stick_in > 0:

@@ -1251,9 +1251,13 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		"stairs_zone": Rect2(-1.3, D * 0.5 - 1.95, 2.0, 1.2),
 		# the two open doorways in the east wall (the kitchen's and the back
 		# passage's): heading into either, the player is turned back with a
-		# word (AshfordP1._taproom; 2 November, Gary)
-		"stray_zones": [{"name": "kitchen", "rect": Rect2(3.2, EVE_KITCHEN_Z - 0.75, 0.45, 1.5), "back": Vector2(-1, 0)},
-			{"name": "passage", "rect": Rect2(3.2, EVE_PASSAGE_Z - 0.75, 0.45, 1.5), "back": Vector2(-1, 0)}],
+		# word (AshfordP1._taproom; 2 November, Gary). The zones reach a good
+		# stride into the room (5 November: they began a hand's width short
+		# of where the floor ends, so the passage's was all but unreachable
+		# past the trestle bench)
+		"stray_zones": [{"name": "kitchen", "rect": Rect2(3.0, EVE_KITCHEN_Z - 0.6, 0.7, 1.4), "back": Vector2(-1, 0)},
+			# (turned back north-west, clear of the trestle bench beside it)
+			{"name": "passage", "rect": Rect2(2.9, EVE_PASSAGE_Z - 0.95, 0.8, 1.9), "back": Vector2(-1, -0.6)}],
 		"floor_y": EVE_AT.y}
 	# the street through the doorway: the village itself, from the inn's door
 	var front := inn_front(v)

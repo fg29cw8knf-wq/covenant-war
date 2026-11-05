@@ -124,6 +124,9 @@ static func _synth(sound: String) -> AudioStreamWAV:
 			samples = _tone([[659.3, 0.1], [987.8, 0.1], [1318.5, 0.1], [1975.5, 0.5]], 0.28, "sine")
 		"select":
 			samples = _tone([[1046.5, 0.04]], 0.18, "sine")
+		"frost_write":
+			# a fingertip squeaking over cold glass (the name in the frost)
+			samples = _mix(_sweep(1700.0, 2300.0, 0.16, 0.05, "sine"), _noise(0.16, 0.07, 5000.0))
 		_:
 			samples = _tone([[880.0, 0.05]], 0.2, "sine")
 	var data := PackedByteArray()

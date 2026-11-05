@@ -524,7 +524,15 @@ func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(
 ## pushed forward; his upper back straightens, the shoulders go back and the
 ## neck comes up a little, the face kept level, head_level's -11 still in
 ## the clips.)
+## (5 November, Gary, of the Night of the White Sky: "Bram looks hunched
+## over. Have him stand up straight": Bram in his coat walked with his back
+## rounded from the hips up, the chest sunk and the head carried a hand's
+## width ahead of his body. His back is drawn up straight through the three
+## spine bones, the neck comes up and back, the face kept level, the
+## shoulders back; tests/stance_peek.gd shows a model against a plumb line.)
 const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 0, 0), "Head": Vector3(6, 0, 0),
+	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)},
+	"bram_coat": {"Spine": Vector3(-2, 0, 0), "Spine1": Vector3(-3, 0, 0), "Spine2": Vector3(-3, 0, 0), "Neck": Vector3(-6, 0, 0), "Head": Vector3(5, 0, 0),
 	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)}}
 
 ## Bones kept at rest whatever a clip does to them (4 November, Gary:
@@ -1472,7 +1480,15 @@ func _keep_out_of_solids(delta: float) -> void:
 ## the hands are, so it can't be anywhere but in them:
 ##   "palm":    resting on one hand's palm (`side`), its up the way the palm
 ##              faces, `lift` over the palm's skin (half its height), its
-##              front the way they face, turned `turn` about its up;
+##              front the way they face, turned `turn` about its up, and
+##              `ahead` m along the way they face from the palm's middle
+##              (negative: set back towards the wrist. 5 November, Gary:
+##              "Players fingers still go through box": Player A's fingers
+##              are kept as he modelled them, in a relaxed curl, so a box
+##              centred on his palm had its front half under the curl and
+##              the fingers came up through it; set back a little the box
+##              rests from the heel of the palm to the finger roots and the
+##              fingers curl up in front of it, a cupped hold);
 ##   "between": between the two palms, its x from the right palm to the
 ##              left, its up the world's, `lift` up from their middle.
 ## Until 29 October a held thing was put at a point in front of them and
@@ -1480,8 +1496,8 @@ func _keep_out_of_solids(delta: float) -> void:
 ## hung in the air. detach() lets it go where it is.
 ## `gap` (between): how far apart the palms are kept, its width (the arms
 ## are bent to put each palm on its side, whatever the reach left them).
-func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0) -> void:
-	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap}
+func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0, ahead := 0.0) -> void:
+	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap, "ahead": ahead}
 	if _skel != null and not _skel.has_node("HandsOff"):
 		hands_off(_solids)
 
@@ -1584,7 +1600,7 @@ func _place_held() -> void:
 			z = f.basis.z
 		z = z.normalized()
 		var b := Basis(up.cross(z), up, z) * Basis(Vector3.UP, float(_in_hands.turn))
-		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift)
+		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift + z * float(_in_hands.get("ahead", 0.0)))
 		last_hold = {"palm": f.origin, "up": up}
 
 

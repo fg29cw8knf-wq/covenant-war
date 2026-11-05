@@ -1111,6 +1111,13 @@ const CARD_BOX_SIZE := Vector3(0.16, 0.11, 0.095)
 const BOX_HOLD := Vector3(0.0, 1.02, 0.27)
 ## How far it's held out to be taken: a little forward and up of the hold.
 const BOX_OUT := Vector3(0.0, 0.03, 0.05)
+## How far back on the player's palms the box sits, from the palms' middles
+## towards the wrists (m): the heel of the hand under its back half, the
+## fingers curling up in front of it (5 November, Gary: "Players fingers
+## still go through box when we see player holding box when Bram hands it
+## over": centred on the palm, its front half sat under Player A's curled
+## fingers, which came up through it; Figure3D.attach's `ahead`).
+const BOX_BACK := 0.045
 ## How far apart the giver and the taker stand when it changes hands (m,
 ## between their middles): near enough that it's held out within one man's
 ## reach and taken within the other's (until 28 October Bram stood 1.5 m
@@ -1665,8 +1672,10 @@ static func _first_deck(w: World) -> void:
 		for sd in [["L", 1.0], ["R", -1.0]]:
 			var mk := Node3D.new()
 			mk.name = sd[0]
-			# (a hand's half-width in from the middle, each under its half)
-			mk.position = Vector3(float(sd[1]) * 0.042, 0.0, 0.0)
+			# (a hand's half-width in from the middle, each under its half, the
+			# palms' middles a little ahead of the box's: it sits back on them,
+			# BOX_BACK)
+			mk.position = Vector3(float(sd[1]) * 0.042, 0.0, BOX_BACK)
 			grip.add_child(mk)
 		w.set_meta("box_grip_player", grip)
 		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
@@ -1705,13 +1714,14 @@ static func _first_deck(w: World) -> void:
 		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
 		w.set_meta("box_player", box)
-		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 + 0.004)
+		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 + 0.004, 0.0, 0.0, -BOX_BACK)
 		# (the right hand under the box's other half, wherever the left palm
-		# puts the box: its mark hangs from the box)
+		# puts the box: its mark hangs from the box, as far ahead of its
+		# middle as the left palm's is)
 		var rmark := Node3D.new()
 		rmark.name = "RightUnder"
 		box.add_child(rmark)
-		rmark.position = Vector3(-0.042, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0.0)
+		rmark.position = Vector3(-0.042, -CARD_BOX_SIZE.y * 0.5 - 0.012, BOX_BACK)
 		me.reach(grip.get_node("L"), rmark, 0.1)
 		# in to them, a little up: the hands' marks come in, and the box with
 		# the left hand
@@ -1732,8 +1742,9 @@ static func _first_deck(w: World) -> void:
 		grip.add_child(lh)
 		lh.position = (grip.get_node("L") as Node3D).position
 		# (the left hand to the box's middle under it, so it's balanced on
-		# one hand once the right lets go)
-		var under_at := Vector3(0.0, 0.0, 0.0)
+		# one hand once the right lets go; the palm's middle a little ahead,
+		# BOX_BACK, so the box keeps its place)
+		var under_at := Vector3(0.0, 0.0, BOX_BACK)
 		me.reach(lh, rmark, 0.1)
 		var half := CARD_BOX_SIZE.x * 0.5
 		var centre_under := w.create_tween()

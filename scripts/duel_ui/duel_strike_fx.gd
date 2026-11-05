@@ -23,7 +23,9 @@ static var _tex := {}
 # ============================================================== materials ===
 
 ## A soft texture by name: dot, glow (DuelFX's), star (a four-pointed
-## sparkle), leaf, ring and rune (the field's own rings).
+## sparkle), leaf, shard (a splinter of light), shaft (a beam of light from
+## above, for the arena's light shafts), ring and rune (the field's own
+## rings).
 static func tex(name: String) -> Texture2D:
 	if _tex.has(name):
 		return _tex[name]
@@ -37,6 +39,10 @@ static func tex(name: String) -> Texture2D:
 			t = _star_tex()
 		"leaf":
 			t = _leaf_tex()
+		"shard":
+			t = _shard_tex()
+		"shaft":
+			t = _shaft_tex()
 		"ring":
 			t = load("res://assets/art/fx/ring.png")
 		"rune":
@@ -79,6 +85,41 @@ static func _leaf_tex() -> Texture2D:
 			var a := clampf((w - absf(u)) * 14.0, 0.0, 1.0)
 			var shade := 0.8 + 0.2 * clampf(absf(u) / maxf(0.01, w), 0.0, 1.0)
 			img.set_pixel(x, y, Color(shade, shade, shade, a))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+## A splinter of light: a thin bright sliver, pointed at both ends, with a
+## soft halo (the shards thrown out of a heavy blow, 5 November).
+static func _shard_tex() -> Texture2D:
+	var n := 32
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	for y in n:
+		for x in n:
+			var u := (x + 0.5) / n * 2.0 - 1.0
+			var v := (y + 0.5) / n * 2.0 - 1.0
+			var w := (1.0 - v * v) * 0.22   # half its width at this height: a sliver
+			var core := clampf((w - absf(u)) * 18.0, 0.0, 1.0)
+			var halo := exp(-(u * u * 9.0 + v * v * 2.0)) * 0.3
+			img.set_pixel(x, y, Color(1, 1, 1, clampf(core + halo, 0.0, 1.0)))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
+
+
+## A shaft of light seen from the side: soft across, bright where it comes in
+## at the top and fading away as it falls (the arena's light shafts, 5
+## November). Drawn on a tall quad.
+static func _shaft_tex() -> Texture2D:
+	var w := 32
+	var h := 128
+	var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+	for y in h:
+		for x in w:
+			var u := (x + 0.5) / w * 2.0 - 1.0
+			var v := (y + 0.5) / h   # 0 at the top
+			var across := pow(maxf(0.0, 1.0 - u * u), 1.6)
+			var down := pow(1.0 - v, 1.4) * clampf(v * 14.0, 0.0, 1.0)   # (eased in at the very top, so it has no hard edge)
+			img.set_pixel(x, y, Color(1, 1, 1, across * down))
 	img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)
 
@@ -995,6 +1036,236 @@ static func rocks(f: DuelField3D, at: Vector3, stone: Color, n: int, k: float) -
 		tw.chain().tween_interval(0.35)
 		tw.chain().tween_property(m, "scale", Vector3.ONE * 0.01, 0.35).set_ease(Tween.EASE_IN)
 		tw.chain().tween_callback(m.queue_free)
+
+
+# ================================================== the drama (5 November) ===
+# Gary (5 November, after the 4 November camera pass): "Make the battle look
+# better. At the moment it looks boring. I want it more dramatic." The camera
+# and the clock were done; this is the spectacle itself: an attacker
+# gathering its power, what a heavy blow throws out and the mark it leaves,
+# a called Totem's arrival, and the Demigod's landing. Particle counts are
+# scaled by DuelField3D.fx_scale() (fewer on a phone's Smooth, fewer again on
+# the phone link); the screen plays these only with DuelRules.cinematic on.
+
+## An attacker gathering its power before the blow (the windup, the Fate
+## roll): motes of its element drawn in to its body out of the air, a glow
+## swelling there, a ring of its light tightening on the floor under it, and
+## its lamp swelling. Ends when the blow is sent (Charge.end), or by itself.
+const CHARGE_MAX_SECS := 1.4     # a charge left running ends by itself after this (an attack answered away)
+const CHARGE_MOTES := 48         # motes drawn in a second (at fx_scale 1)
+const CHARGE_RADIUS := 1.7       # from this far out of the air (m)
+const CHARGE_PULL := -16.0       # how hard they're pulled in (m/s², inward)
+const CHARGE_GLOW := 1.5         # the glow at its body swells to this across (m)
+const CHARGE_RING := 1.9         # the floor ring starts this wide (times the slot)...
+const CHARGE_RING_IN := 0.55     # ...and tightens to this
+const CHARGE_LAMP := 2.2         # its lamp's strength at full charge
+
+
+class Charge:
+	extends Node3D
+	var motes: CPUParticles3D
+	var glow: MeshInstance3D
+	var ring: MeshInstance3D
+	var lamp: OmniLight3D
+	var _ended := false
+
+	## The blow is away: the motes stop, the glow bursts out and the ring and
+	## lamp go, all in a blink.
+	func end() -> void:
+		if _ended:
+			return
+		_ended = true
+		if motes != null:
+			motes.emitting = false
+		var tw := create_tween().set_parallel(true)
+		if glow != null:
+			tw.tween_property(glow, "scale", glow.scale * 1.8, 0.12).set_ease(Tween.EASE_OUT)
+			tw.tween_property(glow.material_override, "albedo_color:a", 0.0, 0.12)
+		if ring != null:
+			tw.tween_property(ring.material_override, "albedo_color:a", 0.0, 0.1)
+		if lamp != null:
+			tw.tween_property(lamp, "light_energy", 0.0, 0.15)
+		tw.chain().tween_interval(0.8)
+		tw.chain().tween_callback(queue_free)
+
+
+static func charge(f: DuelField3D, st: Dictionary, body: Vector3, foot: Vector3, secs: float) -> Charge:
+	var col: Color = st.col
+	var hot: Color = st.hot
+	var k := DuelField3D.fx_scale()
+	var c := Charge.new()
+	f._fx_parent().add_child(c)
+	c.motes = emit(f, body, {"parent": c, "emit_for": CHARGE_MAX_SECS, "amount": int(CHARGE_MOTES * k), "life": 0.5, "speed": [0.1, 0.4],
+		"shape": "sphere", "radius": CHARGE_RADIUS, "gravity": Vector3.ZERO, "radial": [CHARGE_PULL, CHARGE_PULL * 0.6],
+		"tex": "star", "size": 0.18, "grow": "grow", "cols": [Color(col, 0.0), hot], "explode": 0.0})
+	c.glow = glow(c, col, CHARGE_GLOW, 1.3)
+	c.glow.position = body
+	c.glow.scale = Vector3.ONE * 0.08
+	var tw := c.glow.create_tween()
+	tw.tween_property(c.glow, "scale", Vector3.ONE, secs).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	c.ring = ring_mesh(col, 1.0, 0.05)
+	c.add_child(c.ring)
+	c.ring.position = foot + Vector3(0, 0.07, 0)
+	c.ring.scale = Vector3.ONE * CHARGE_RING
+	var tw2 := c.ring.create_tween()
+	tw2.tween_property(c.ring, "scale", Vector3.ONE * CHARGE_RING_IN, secs).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+	c.lamp = lamp(c, col, 0.0, 4.0)
+	c.lamp.position = body
+	var tw3 := c.lamp.create_tween()
+	tw3.tween_property(c.lamp, "light_energy", CHARGE_LAMP, secs)
+	# (bound to the charge itself: a timer outliving it calls nothing)
+	f.get_tree().create_timer(CHARGE_MAX_SECS).timeout.connect(c.end)
+	return c
+
+
+## What a heavy blow throws out on top of its element's own impact (impact):
+## a white-hot core, a shockwave ring standing up at the point of impact and
+## facing the camera, splinters of the element's light flung out and
+## falling, and the mark the blow leaves on the floor (a scorch for fire,
+## earth, venom, metal and the dark elements; a pale glow of the element for
+## the rest) that lingers and fades. A small blow gets the core and a few
+## splinters; `big` the lot, bigger.
+const HEAVY_CORE := 0.9          # the white-hot core, across (m, times the blow's k)
+const HEAVY_CORE_SECS := 0.22
+const HEAVY_RING := 3.6          # the standing shockwave ring grows to this across (m)...
+const HEAVY_RING_SECS := 0.38    # ...over this
+const HEAVY_SHARDS := 24         # splinters flung out of a big blow (at fx_scale 1); a small one throws a third
+const HEAVY_SHARD_SPEED := [4.0, 9.0]   # m/s
+const HEAVY_MARK := 2.8          # the mark on the floor, across (m)
+const HEAVY_MARK_SECS := 4.5     # ...and how long it lingers
+const HEAVY_MARK_ALPHA := 0.7    # ...how dark (a scorch) or bright (a glow) it starts
+const DARK_MARK_ELEMENTS := ["fire", "earth", "venom", "metal", "umbral", "void"]
+
+
+static func heavy(f: DuelField3D, st: Dictionary, body: Vector3, big: bool, k: float = 1.0) -> void:
+	var col: Color = st.col
+	var hot: Color = st.hot
+	var el := String(st.get("el", "any"))
+	var foot := Vector3(body.x, 0.0, body.z)
+	var s := k * (1.3 if big else 1.0)
+	var sc := DuelField3D.fx_scale()
+	f.flash_sprite(body, hot.lerp(Color.WHITE, 0.5), HEAVY_CORE * s, HEAVY_CORE_SECS)
+	if big:
+		var r := glow(f._fx_parent(), hot, 1.0, 2.2, "ring")
+		r.position = body
+		r.scale = Vector3.ONE * 0.3
+		var rm := r.material_override as StandardMaterial3D
+		var tw := r.create_tween().set_parallel(true)
+		tw.tween_property(r, "scale", Vector3.ONE * HEAVY_RING * s, HEAVY_RING_SECS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+		tw.tween_property(rm, "albedo_color:a", 0.0, HEAVY_RING_SECS).set_ease(Tween.EASE_IN)
+		tw.chain().tween_callback(r.queue_free)
+	emit(f, body, {"amount": maxi(4, int((HEAVY_SHARDS if big else HEAVY_SHARDS / 3) * sc)), "life": 0.75, "speed": HEAVY_SHARD_SPEED,
+		"gravity": Vector3(0, -12.0, 0), "damp": [1.0, 3.0], "tex": "shard", "mode": "streak", "quad": Vector2(0.09, 0.55) * s,
+		"cols": [Color.WHITE, hot, col]})
+	floor_mark(f, foot, col, HEAVY_MARK * s, HEAVY_MARK_SECS, el in DARK_MARK_ELEMENTS)
+
+
+## A mark left on the floor: a scorch (`dark`: a dark disc, mixed over the
+## ground) or a pale pool of the element's light, lingering and fading away.
+static func floor_mark(f: DuelField3D, at: Vector3, col: Color, size: float, secs: float, dark: bool) -> MeshInstance3D:
+	var m := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	m.mesh = q
+	var mat := StandardMaterial3D.new()
+	mat.albedo_texture = tex("glow")
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if dark:
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
+		mat.albedo_color = Color(0.08, 0.05, 0.03, HEAVY_MARK_ALPHA)
+	else:
+		mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		mat.albedo_color = Color(col, HEAVY_MARK_ALPHA)
+	m.material_override = mat
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	m.rotation = Vector3(-PI * 0.5, randf() * TAU, 0.0)
+	m.position = at + Vector3(0, 0.056, 0)
+	m.scale = Vector3.ONE * 0.5
+	f._fx_parent().add_child(m)
+	var tw := m.create_tween().set_parallel(true)
+	tw.tween_property(m, "scale", Vector3.ONE, 0.15).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat, "albedo_color:a", 0.0, secs).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(m.queue_free)
+	return m
+
+
+## A called Totem's arrival, round the pillar of light the screen raises: a
+## rune circle spinning up under it, halos of its light rising up its body
+## and tightening on it, and splinters of light thrown up. `h` is the Totem's
+## height; a gold `col` is an Ascension's.
+const ARRIVE_RUNE := 3.4         # the rune circle, across (m)
+const ARRIVE_RUNE_SECS := 1.1    # ...up, a turn and gone over this
+const ARRIVE_RUNE_TURN := 2.4    # ...turning this far (radians)
+const ARRIVE_HALOS := 2          # halos rising up the body
+const ARRIVE_HALO_SECS := 0.55   # each one's climb
+const ARRIVE_HALO_R := 1.3       # a halo starts this wide (m, radius) and tightens to a third of it
+const ARRIVE_HALO_THICK := 0.035 # how thick (m)
+const ARRIVE_SHARDS := 26        # splinters thrown up (at fx_scale 1)
+
+
+static func arrival(f: DuelField3D, foot: Vector3, col: Color, h: float, k: float = 1.0) -> void:
+	var hot := col.lightened(0.5)
+	var sc := DuelField3D.fx_scale()
+	var disc := floor_disc(f, foot, col, "rune", ARRIVE_RUNE * k)
+	disc.position.y = foot.y + DuelField3D.SIGIL_LIFT   # (over the card lying in the slot)
+	disc.scale = Vector3.ONE * 0.2
+	var dm := disc.material_override as StandardMaterial3D
+	dm.albedo_color.a = 0.0
+	var tw := disc.create_tween().set_parallel(true)
+	tw.tween_property(disc, "scale", Vector3.ONE, ARRIVE_RUNE_SECS * 0.3).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_BACK)
+	tw.tween_property(dm, "albedo_color:a", 1.0, ARRIVE_RUNE_SECS * 0.15)
+	tw.tween_property(disc, "rotation:y", ARRIVE_RUNE_TURN, ARRIVE_RUNE_SECS).set_ease(Tween.EASE_OUT)
+	tw.tween_property(dm, "albedo_color:a", 0.0, ARRIVE_RUNE_SECS * 0.4).set_delay(ARRIVE_RUNE_SECS * 0.6)
+	tw.chain().tween_callback(disc.queue_free)
+	for i in ARRIVE_HALOS:
+		var r := ring_mesh(col.lightened(0.25) if i == 0 else col, 1.0, ARRIVE_HALO_THICK)
+		f._fx_parent().add_child(r)
+		r.position = foot + Vector3(0, 0.1, 0)
+		r.scale = Vector3.ONE * ARRIVE_HALO_R * k
+		var rm := r.material_override as StandardMaterial3D
+		var tw2 := r.create_tween()
+		tw2.tween_interval(0.12 * i)
+		tw2.tween_property(r, "position:y", foot.y + h * (1.05 + 0.1 * i), ARRIVE_HALO_SECS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_SINE)
+		tw2.parallel().tween_property(r, "scale", Vector3.ONE * ARRIVE_HALO_R / 3.0 * k, ARRIVE_HALO_SECS)
+		tw2.parallel().tween_property(rm, "albedo_color:a", 0.0, ARRIVE_HALO_SECS * 0.5).set_delay(ARRIVE_HALO_SECS * 0.5)
+		tw2.tween_callback(r.queue_free)
+	emit(f, foot + Vector3(0, 0.3, 0), {"amount": int(ARRIVE_SHARDS * sc), "life": 0.8, "speed": [3.0, 6.5], "spread": 50.0, "dir": Vector3.UP,
+		"gravity": Vector3(0, -9.0, 0), "damp": [1.0, 2.0], "tex": "shard", "mode": "streak", "quad": Vector2(0.08, 0.5) * k,
+		"cols": [Color.WHITE, hot, col]})
+
+
+## The Demigod's landing (on top of the pillar, the wave and the burst the
+## screen fires): a shockwave ring standing up at the point of impact, dust
+## rolling out low across the floor, stones thrown up, and a second wave of
+## its light a beat after the first.
+const LAND_RING := 9.0           # the standing shockwave ring grows to this across (m)
+const LAND_RING_SECS := 0.5
+const LAND_DUST := 40            # the dust rolling out (at fx_scale 1)
+const LAND_STONES := 10          # stones thrown up
+const LAND_SECOND_WAVE := 0.18   # the second wave of light comes this long after the first (s)
+
+
+static func landing(f: DuelField3D, at: Vector3, col: Color) -> void:
+	var hot := col.lightened(0.5)
+	var sc := DuelField3D.fx_scale()
+	var foot := Vector3(at.x, 0.0, at.z)
+	var r := glow(f._fx_parent(), hot, 1.0, 2.2, "ring")
+	r.position = at + Vector3(0, 1.2, 0)
+	r.scale = Vector3.ONE * 0.4
+	var rm := r.material_override as StandardMaterial3D
+	var tw := r.create_tween().set_parallel(true)
+	tw.tween_property(r, "scale", Vector3.ONE * LAND_RING, LAND_RING_SECS).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(rm, "albedo_color:a", 0.0, LAND_RING_SECS).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(r.queue_free)
+	emit(f, foot + Vector3(0, 0.2, 0), {"amount": int(LAND_DUST * sc), "life": 1.2, "speed": [0.5, 1.5], "spread": 80.0, "dir": Vector3.UP,
+		"shape": "ring", "radius": 1.2, "gravity": Vector3(0, 0.4, 0), "damp": [2.0, 4.0], "radial": [6.0, 9.0],
+		"tex": "glow", "blend": "mix", "size": 1.1, "cols": [Color(0.55, 0.5, 0.42, 0.6), Color(0.4, 0.37, 0.32, 0.3)], "grow": "grow"})
+	rocks(f, at + Vector3(0, 0.3, 0), Color(0.42, 0.38, 0.33), int(LAND_STONES * sc), 1.6)
+	f.get_tree().create_timer(LAND_SECOND_WAVE).timeout.connect(func() -> void:
+		if is_instance_valid(f):
+			f.floor_wave(foot, hot, 11.0, 0.8))
 
 
 ## A blow's mark on the striker itself as it lunges (a melee move): its

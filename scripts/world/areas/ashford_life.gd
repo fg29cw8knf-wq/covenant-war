@@ -20,14 +20,36 @@ extends RefCounted
 ## Each one's standing clip is started at its own moment, so nobody breathes
 ## in step with anybody else. Started from AshfordDay.watch, and (2 November)
 ## from the opening as the player steps out of the inn (AshfordP1._street).
+##
+## (5 November, Gary: the children round Corin "take a while to come to
+## life and they keep stopping and staring at player". Life began only once
+## the walk out of the inn had ended, and nobody acted for up to four
+## seconds after that; between their runs the children stood still for
+## three or four seconds, and one time in five turned to stare at the
+## player for as long. Now: the green's people may move through the
+## opening's own scenes, which never have them in (`life_through_cine`,
+## set by AshfordP1._street from the moment the inn's door opens and taken
+## off when Corin's scene begins), everyone's first move comes within a
+## second, and the children are hardly ever still: a run, then a hop, a
+## cheer or a shuffle inside two seconds, their eyes on Corin; a glance at
+## the player now and then, no longer than a glance.)
 
 const KIDS := ["p1_kid_a", "p1_kid_b", "p1_kid_c"]
 const ADULTS := ["corin_mam", "hob", "ned"]
+## Those who may carry on through a cutscene that isn't theirs, when the
+## world has `life_through_cine` set.
+const THROUGH_CINE := ["corin", "p1_kid_a", "p1_kid_b", "p1_kid_c", "corin_mam"]
 ## How far the children range round whoever they're with (m).
 const KID_NEAR := 1.3
 const KID_FAR := 2.6
 ## How often the loop looks round (s).
 const TICK := 0.3
+## How soon after life starts everyone has made their first move (s).
+const FIRST_MOVE := 1.0
+## A child's glance at the player: how long it lasts (s), and how likely
+## it is when they're near.
+const KID_GLANCE := Vector2(0.6, 1.1)
+const KID_GLANCE_CHANCE := 0.12
 
 
 static func start(w: World) -> void:
@@ -103,7 +125,9 @@ static func _desync(w: World) -> void:
 
 ## May `id` do something now?
 static func _free(w: World, id: String) -> bool:
-	if w.cine or w.busy or w.hud == null or w.hud.menu_open():
+	if w.hud == null or w.hud.menu_open():
+		return false
+	if (w.cine or w.busy) and not (w.has_meta("life_through_cine") and THROUGH_CINE.has(id)):
 		return false
 	var b := Cine.body(w, id)
 	var f = Cine.fig(w, id)
@@ -125,7 +149,7 @@ static func _run(w: World) -> void:
 	rng.randomize()
 	var next := {}
 	for id in _ids():
-		next[id] = rng.randf_range(0.5, 4.0)
+		next[id] = rng.randf_range(0.0, FIRST_MOVE)
 	var t := 0.0
 	while is_instance_valid(w) and w.is_inside_tree() and w.has_meta("life_on"):
 		await w.get_tree().create_timer(TICK, false).timeout
@@ -142,7 +166,7 @@ static func _run(w: World) -> void:
 			if t < float(next[id]):
 				continue
 			if not _free(w, id):
-				next[id] = t + 0.8
+				next[id] = t + 0.4
 				continue
 			next[id] = t + _act(w, id, rng)
 
@@ -165,10 +189,13 @@ static func _player_near(w: World, b: Node3D, r: float) -> bool:
 static func _corin(w: World, rng: RandomNumberGenerator) -> float:
 	var b := Cine.body(w, "corin")
 	var f = Cine.fig(w, "corin")
-	if _player_near(w, b, 7.0) and rng.randf() < 0.35:
-		Cine.look(w, "corin", w.player.global_position)
-		return rng.randf_range(2.5, 4.0)
 	var kids := _kids_near(w, b.global_position, 5.0)
+	if _player_near(w, b, 7.0) and rng.randf() < 0.3:
+		# eyes the player as they pass, then back to his audience
+		Cine.look(w, "corin", w.player.global_position)
+		if not kids.is_empty():
+			_look_back(w, "corin", (kids[rng.randi_range(0, kids.size() - 1)] as Node3D).global_position, rng.randf_range(1.0, 1.6))
+		return rng.randf_range(1.8, 2.8)
 	var r := rng.randf()
 	if r < 0.5 and not kids.is_empty():
 		# turns to one of them and holds forth, hands going
@@ -190,13 +217,19 @@ static func _corin(w: World, rng: RandomNumberGenerator) -> float:
 	return rng.randf_range(4.0, 6.0)
 
 
-## A child darting about, jumping, cheering, watching.
+## A child darting about, jumping, cheering, watching (and hardly ever
+## still for long: see the note at the top).
 static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 	var b := Cine.body(w, id)
 	var anchor := _kid_anchor(w, id)
 	var r := rng.randf()
 	var cb := Cine.body(w, "corin")
 	var watch_at: Vector3 = cb.global_position if cb != null and not AshfordDay.at_mill(cb.global_position) else anchor
+	# a glance at the player passing, and back to Corin: a glance, no more
+	if _player_near(w, b, 6.0) and rng.randf() < KID_GLANCE_CHANCE:
+		Cine.look(w, id, w.player.global_position)
+		_look_back(w, id, watch_at, rng.randf_range(KID_GLANCE.x, KID_GLANCE.y))
+		return rng.randf_range(KID_GLANCE.y, KID_GLANCE.y + 0.6)
 	if r < 0.45:
 		# off to another spot round whoever they're with, at a run
 		var to := anchor
@@ -212,17 +245,29 @@ static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 		# by the carts)
 		to = Cine.off_blockers(w, to, 0.4)
 		_walk(w, id, to, rng.randf_range(2.6, 3.4), "run", watch_at)
-		return rng.randf_range(2.5, 4.5)
+		# (the next thing follows the run closely: _free waits for the run
+		# itself to end)
+		return rng.randf_range(0.5, 1.4)
 	if r < 0.65:
 		Cine.look(w, id, watch_at)
 		Cine.hop(w, id, 0.2)
-		return rng.randf_range(2.0, 3.5)
-	if r < 0.8:
+		return rng.randf_range(0.9, 1.8)
+	if r < 0.82:
 		Cine.look(w, id, watch_at)
 		Cine.act(w, id, "cheer")
-		return rng.randf_range(3.0, 4.5)
-	Cine.look(w, id, w.player.global_position if _player_near(w, b, 6.0) else watch_at)
-	return rng.randf_range(1.5, 3.0)
+		return rng.randf_range(1.6, 2.6)
+	# a shuffle: a step or two to one side, still watching him
+	var side := rng.randf_range(-0.5, 0.5)
+	var to := b.global_position + (watch_at - b.global_position).normalized().cross(Vector3.UP) * side
+	_walk(w, id, Cine.off_blockers(w, to, 0.4), 1.0, "walk", watch_at)
+	return rng.randf_range(0.8, 1.6)
+
+
+## Eyes back on `at` after `secs`.
+static func _look_back(w: World, id: String, at: Vector3, secs: float) -> void:
+	await w.get_tree().create_timer(secs, false).timeout
+	if is_instance_valid(w) and Cine.body(w, id) != null:
+		Cine.look(w, id, at)
 
 
 ## Where a child keeps to: round Corin while he's on the green (by the drum,

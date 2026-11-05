@@ -12,12 +12,13 @@ extends CanvasLayer
 ##   3. The player walks as Bram, seen from behind and never his face, through
 ##      the storm towards the light of a crater: free to walk about (the pad,
 ##      the keys, a tap on the snow) from the first moment, while Morrowen
-##      speaks; once she stops, a compass in the bottom left corner points
+##      speaks; once she stops the sky tears over him as he walks (nothing
+##      stops him), and an arrow comes up in the bottom left corner pointing
 ##      the way to the light (4 November, Gary: "have him able to walk around
 ##      as Morrowen is talking - once she stops talking ... a compass in the
 ##      bottom left with an arrow pointing direction you need to go, this can
-##      become the map later"). Something stands in the snow off to the side,
-##      and is gone.
+##      become the map later"; 5 November: "Compass should be more of an
+##      arrow"). Something stands in the snow off to the side, and is gone.
 ##   4. In the crater, a crying baby with an ash-grey mark, seen from the rim
 ##      by the light it lies in. The player goes down to it and picks the
 ##      child up (gated): Bram kneels to it, lifts it and stands with it;
@@ -148,6 +149,7 @@ var _cam_yaw := PI               # the camera's heading behind him (eased)
 var _spires: Array = []          # [x, z, radius]: the glass he walks round
 var _landed: Array = []          # the Sigils standing in the snow (the oldest go)
 var _line_over := false
+var _sky_look := 0.0             # 0..1: the roaming camera's eyes lifted to the tear
 
 
 static func seen() -> bool:
@@ -319,19 +321,29 @@ func _say_over(line: Dictionary) -> void:
 
 
 # --- 2. the sky tears ---------------------------------------------------------
-## He stops and looks up as the sky opens; then the compass comes up in the
-## corner, pointing to the light, and the walk is his again.
+## The sky opens over him as he walks (5 November, Gary: "Why does Bram pause
+## after Morrowen finishes talking?": he was stopped here for four seconds,
+## stood still with the camera on the sky, and it read as the game hanging.
+## Nothing takes the walk from him now): the camera behind him lifts its eyes
+## to the tear (SKY_LOOK_UP, held SKY_LOOK_HOLD, down again over
+## SKY_LOOK_DOWN, the picture still following him), the Sigils begin to
+## fall, and if he happens to be standing he looks up himself; then the arrow
+## comes up in the corner pointing to the light.
+const SKY_LOOK_UP := 1.0
+const SKY_LOOK_HOLD := 1.9
+const SKY_LOOK_DOWN := 1.3
+## How long after the tear begins the arrow comes up (s).
+const COMPASS_AT := 2.6
+
 func _sigilfall() -> void:
-	_roam = false
-	_set_walking(_bram, false)
-	_move_target = Vector3.INF
-	_hide_hint()
-	var b := _bram.position
-	var f := _heading()
-	var r := f.cross(Vector3.UP)
-	# up at the sky over him, from low behind his shoulder
-	_shot(b - f * 2.4 + r * 0.7 + Vector3(0, 1.6, 0), b + f * 14.0 + Vector3(0, 9.0, 0), 52.0)
-	await _wait(0.6)
+	# the camera's eyes up to the sky and back, the walk going on under it
+	var look := create_tween()
+	look.tween_property(self, "_sky_look", 1.0, SKY_LOOK_UP).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	look.tween_interval(SKY_LOOK_HOLD)
+	look.tween_property(self, "_sky_look", 0.0, SKY_LOOK_DOWN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(0.5)
+	if _skipping:
+		return
 	var tw := create_tween().set_parallel(true)
 	tw.tween_method(func(k: float) -> void: _sky.set_shader_parameter("tear_open", k), 0.0, 1.25, 3.2).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(_tear_light, "light_energy", 0.55, 3.0)
@@ -342,16 +354,15 @@ func _sigilfall() -> void:
 	fl.tween_property(_white, "modulate:a", 0.55, 0.35)
 	fl.tween_property(_white, "modulate:a", 0.0, 1.6)
 	_strike_burst(6, 0.4)
-	_act(_bram, "look_up")
+	if _bram is Figure3D and not (_bram as Figure3D).walking:
+		_act(_bram, "look_up")
 	_rain_cards(true)
-	await _wait(3.6)
+	await _wait(COMPASS_AT)
 	if _skipping:
 		return
-	# the compass: the way to the light
+	# the arrow: the way to the light
 	_compass.target = CRATER
 	_compass.show_compass(true)
-	_cam_mode = "roam"
-	_roam = true
 
 
 # --- 3. the walk ------------------------------------------------------------------
@@ -1260,8 +1271,25 @@ void fragment() {
 
 
 ## He kneels to the child, his hands go under it where it lies, and he
-## lifts it as he stands: it rises with his hands into his arms (4
-## November, Gary: "he doesn't pick up the baby, it's just in his hands").
+## picks it up the way anyone picks up a baby: gathers it in to his chest
+## first, still on his knee, then stands with it held there (4 November,
+## Gary: "he doesn't pick up the baby, it's just in his hands"; 5 November:
+## "Bram picks up the baby weird, it more levitates into his arms rather
+## than him picking him up": the bundle used to rise on a path of its own
+## while he stood, the hands chasing it, so it led and he followed. Now the
+## bundle is carried relative to his chest bone every frame: as he draws it
+## in and as his chest comes up off the knee, it comes with him, and the
+## hands stay under it.) The hands' marks hang from the bundle, so wherever
+## it is the arms are bent to it.
+## How long he gathers it in to his chest for, on his knee (s), and how long
+## the rise takes.
+const GATHER_SECS := 0.8
+const RISE_SECS := 1.4
+## Where it's held against the chest once gathered: in his own frame, off
+## the chest bone (a little below and ahead of it, to his left side, where
+## the left arm will cradle it).
+const CRADLE := Vector3(0.07, -0.16, 0.2)
+
 func _lift_child() -> void:
 	if not (_bram is Figure3D):
 		_baby.reparent(_bram, false)
@@ -1287,20 +1315,47 @@ func _lift_child() -> void:
 		var ct := create_tween()
 		ct.tween_property(_cry, "volume_db", -40.0, 2.0)
 		ct.tween_callback(_cry.stop)
-	# and up: the bundle goes with the hands, from the snow to his arms, as
-	# he stands (it's carried in his own frame from here, so it turns with him)
+	# carried in his own frame from here, so it turns with him
 	_baby.reparent(fig._pivot, true)
-	var p0 := _baby.position
 	var b0 := _baby.basis
-	var p1 := fig.hold_point(0.38, 0.5)
 	var b1 := Basis(Vector3.UP, PI * 0.5)
-	fig.rise(1.5)
+	# where the bundle sits off his chest bone now (his own frame), and where
+	# it's going: the gather is a lerp between the two, the chest's own
+	# movement added every frame
+	var chest_bone := "Spine2" if fig._skel != null and fig._skel.find_bone("Spine2") >= 0 else "Spine1"
+	var chest0 := fig.to_own(fig.bone_pos(chest_bone))
+	var off0 := fig._pivot.to_local(_baby.global_position) - chest0
+	# the camera rises from its low place behind his shoulder to high over it
+	# as he gathers the child and stands, so the bundle coming in to his
+	# chest is seen over his shoulder instead of lost behind his back
+	var rt := _ad.cross(Vector3.UP)
+	_drift(_cam_pos, _bottom - _ad * 1.0 + rt * 0.6 + Vector3(0, 2.7, 0), _cam_look, _bottom + _ad * 0.25 + Vector3(0, 1.05, 0), GATHER_SECS + RISE_SECS + 0.3)
+	var gather := [0.0]   # (how far it's gathered in, 0..1; an array so the lambdas share it)
+	var carry := func() -> void:
+		if not is_instance_valid(_baby) or not is_instance_valid(fig):
+			return
+		var chest := fig.to_own(fig.bone_pos(chest_bone))
+		var kk := smoothstep(0.0, 1.0, float(gather[0]))
+		_baby.position = chest + off0.lerp(CRADLE, kk)
+		_baby.basis = b0.slerp(b1, kk)
+	# in to his chest, on his knee
 	var tw := create_tween()
 	tw.tween_method(func(u: float) -> void:
-		var kk := smoothstep(0.0, 1.0, u)
-		_baby.position = p0.lerp(p1, kk) + Vector3(0, sin(kk * PI) * 0.08, 0)
-		_baby.basis = b0.slerp(b1, kk), 0.0, 1.0, 1.5)
+		gather[0] = u
+		carry.call(), 0.0, 1.0, GATHER_SECS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
+	if _skipping:
+		return
+	# and up with it held there: the bundle keeps its place on his chest as
+	# the chest rises
+	fig.rise(RISE_SECS)
+	var el := 0.0
+	while el < RISE_SECS + 0.2 and not _skipping:
+		await get_tree().process_frame
+		el += get_process_delta_time()
+		carry.call()
+	# handed on to the fixed hold (where _tuck starts from), a hair's move
+	_baby.position = fig.to_own(fig.bone_pos(chest_bone)) + CRADLE
 
 
 ## Into his coat, against his chest, held in his left arm alone (his right
@@ -1575,16 +1630,21 @@ func _process(delta: float) -> void:
 		_roam_step(delta)
 	if _cam_mode == "roam":
 		# behind him, over his right shoulder, the camera's heading easing
-		# round to his as he turns
+		# round to his as he turns; with _sky_look up, its eyes lifted to the
+		# tear over him (a touch lower and further back, the lens wider), him
+		# still in the foot of the picture
 		var p := _bram.position
 		var h := _heading()
 		var want_yaw := atan2(h.x, h.z)
 		_cam_yaw = lerp_angle(_cam_yaw, want_yaw, minf(1.0, delta * 2.6))
 		var f := Vector3(sin(_cam_yaw), 0, cos(_cam_yaw))
 		var r := f.cross(Vector3.UP)
-		_cam_want = p - f * 2.9 + r * 0.75 + Vector3(0, 1.85, 0)
-		_look_want = p + f * 7.0 + Vector3(0, 1.35, 0)
-		_cam.fov = 50.0
+		var up := smoothstep(0.0, 1.0, _sky_look)
+		_cam_want = p - f * (2.9 + 0.7 * up) + r * 0.75 + Vector3(0, 1.85 - 0.45 * up, 0)
+		# (the tear stands 20 to 40 degrees up the sky: tilted 25 degrees the
+		# wider lens holds the tear and him both)
+		_look_want = (p + f * 7.0 + Vector3(0, 1.35, 0)).lerp(p + f * 9.0 + Vector3(0, 5.5, 0), up)
+		_cam.fov = 50.0 + 10.0 * up
 	if _cam_mode == "follow" or _cam_mode == "roam":
 		var k := 1.0 - exp(-delta * 3.0)
 		if _cam_pos == Vector3.ZERO:

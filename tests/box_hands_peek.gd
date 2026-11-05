@@ -87,27 +87,27 @@ func _run() -> void:
 					for sd in [["L", 1.0], ["R", -1.0]]:
 						var mk := Node3D.new()
 						mk.name = sd[0]
-						mk.position = Vector3(float(sd[1]) * 0.042, 0.0, 0.0)
+						mk.position = Vector3(float(sd[1]) * 0.042, 0.0, Ashford.BOX_BACK)
 						grip.add_child(mk)
 					f.palm("left", Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
 					f.palm("right", Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
 					f.reach(grip.get_node("L"), grip.get_node("R"), 0.0)
 					await _wait(0.5)
-					f.attach(box, "palm", "left", Ashford.CARD_BOX_SIZE.y * 0.5 + 0.004)
+					f.attach(box, "palm", "left", Ashford.CARD_BOX_SIZE.y * 0.5 + 0.004, 0.0, 0.0, -Ashford.BOX_BACK)   # (set back on the palms, BOX_BACK, since 5 November)
 					# (the right hand under the box's other half, wherever the left palm puts it)
 					var rmark := Node3D.new()
 					rmark.name = "RightUnder"
 					box.add_child(rmark)
-					rmark.position = Vector3(-0.042, -Ashford.CARD_BOX_SIZE.y * 0.5 - 0.012, 0.0)
+					rmark.position = Vector3(-0.042, -Ashford.CARD_BOX_SIZE.y * 0.5 - 0.012, Ashford.BOX_BACK)
 					f.reach(grip.get_node("L"), rmark, 0.1)
 				"palm":
 					var lh := Node3D.new()
-					f.carry(lh, f.hold_point(0.5, 0.62) + Vector3(0.0, -Ashford.CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01))
+					f.carry(lh, f.hold_point(0.5, 0.62) + Vector3(0.0, -Ashford.CARD_BOX_SIZE.y * 0.5 - 0.035, 0.01 + Ashford.BOX_BACK))
 					f.palm("left", Vector3.UP, 0.0, 1.0)
 					f.palm("right", Vector3.ZERO, 0.0)
 					f.reach(lh, null, 0.0)
 					await _wait(0.5)
-					f.attach(box, "palm", "left", Ashford.CARD_BOX_SIZE.y * 0.5 + 0.004)
+					f.attach(box, "palm", "left", Ashford.CARD_BOX_SIZE.y * 0.5 + 0.004, 0.0, 0.0, -Ashford.BOX_BACK)
 			await _wait(0.8)
 			print("held: ", mode)
 			var at: Vector3 = box.global_position

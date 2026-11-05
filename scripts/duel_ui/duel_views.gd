@@ -517,6 +517,12 @@ class PlayerPanel:
 	var skill_rect := Rect2()
 	signal skill_tapped(panel)
 	var _t := 0.0
+	## Low Life beats (5 November, Gary: "more dramatic"): under this share
+	## of full Life the number and the bar pulse red like a heart...
+	const LOW_LIFE := 0.34
+	const LOW_BEAT_RATE := 4.0       # ...this fast (radians a second) at the line...
+	const LOW_BEAT_QUICKEN := 14.0   # ...and quicker the lower it falls
+	const LOW_BEAT_ALPHA := 0.55     # ...this strong at the top of a beat
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_STOP
@@ -615,6 +621,10 @@ class PlayerPanel:
 		var frac := clampf(shown_life / maxf(1.0, player.max_life), 0.0, 1.0)
 		var lag := clampf(lag_life / maxf(1.0, player.max_life), 0.0, 1.0)
 		var lcol := Color("ff5d73") if frac > 0.3 else Color("ff2d3d")
+		if frac > 0.0 and frac < LOW_LIFE:
+			# (5 November) low Life beats like a heart, quicker as it falls
+			var beat := pow(maxf(0.0, sin(_t * (LOW_BEAT_RATE + (LOW_LIFE - frac) * LOW_BEAT_QUICKEN))), 5.0)
+			DuelFX.draw_glow(self, Vector2(m.end.x * 0.5 + 60, 120), Vector2(m.end.x * 0.6, 56), Color(lcol, LOW_BEAT_ALPHA * beat))
 		CardFace.text(self, CardFace.font("bold"), Vector2(142, 118), "LIFE", 17, Color(lcol.lightened(0.35), 0.95))
 		CardFace.text(self, fnt, Vector2(190, 124), str(maxi(0, int(round(shown_life)))), 50, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT, m.end.x - 204, 7)
 		var br := Rect2(Vector2(142, 132), Vector2(m.end.x - 156, 11))

@@ -167,6 +167,15 @@ func _ready() -> void:
 	bg.tex = null if use3d else DuelArt.arena(arena_name)
 	bg.mote_col = ARENA_MOTES.get(arena_name, bg.mote_col)
 	add_child(bg)
+	if use3d and DuelRules.cinematic and not bool(spec.get("film", false)):
+		# (5 November) the stage's shade: the screen's edges darkened over the
+		# field and under the HUD, so the lit Circle is the thing in the dark
+		var shade := ColorRect.new()
+		shade.color = Color(0, 0, 0, STAGE_SHADE)
+		shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shade.material = _vignette_material()
+		bg.add_child(shade)
 	stage = Control.new()
 	stage.size = DESIGN
 	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -824,6 +833,27 @@ const KO_SLOW_RAMP_MS := 250     # ...then back up to speed over this
 const HERO_TIER := 3             # a called Totem of this tier and up gets the low hero shot (so does every Ascension)
 const LETTERBOX := 0.08          # the black bars of a Summon and the finishing blow: each this share of the screen's height
 const LETTERBOX_SECS := 0.3      # eased in and out over this (real time)
+# the drama (5 November, Gary: "Make the battle look better. At the moment it
+# looks boring. I want it more dramatic."): the spectacle on the 3D field,
+# with the touches on (DuelRules.cinematic; DuelStrikeFX "the drama" and
+# DuelField3D "the stage" draw it; nothing of this in a film)
+const CHARGE_SECS := 0.5         # an attacker gathers its power over this (under the windup wait and the Fate roll; the blow ends it early)
+const WASH_BIG := 0.5            # the screen's edges flare in the blow's colour on a big hit (0-1)...
+const WASH_SMALL := 0.2          # ...this much on a small one...
+const WASH_KO := 0.45            # ...this much in the glass's colour as a knockout bursts...
+const WASH_LIFE := 0.35          # ...and this much in the blow's colour on the rival's Life (yours stays the red it was, full)
+const WASH_SECS := 0.5           # ...fading over this
+const PUNCH_BIG := 0.9           # the picture's radial punch on a big hit (0-1, the shader's strength)...
+const PUNCH_SMALL := 0.4         # ...and on a small one
+const KICK_BIG := 0.45           # the camera kicked back from a big hit (m)...
+const KICK_SMALL := 0.18         # ...and a small one
+const KNOCKBACK_PX := 22.0       # a struck Totem thrown back this far on the stage (px)...
+const KNOCKBACK_PER_DAMAGE := 0.3   # ...plus this much for every point of damage...
+const KNOCKBACK_MAX := 58.0      # ...up to this
+const HIT_FLASH_COL := Color(1.0, 0.8, 0.72)   # a struck Totem flares this (was a red; white-hot first, the number carries the red)
+const CHARGE_SWELL := 1.07       # an attacker swells to this much of its size as it gathers its power, and snaps back as the blow goes
+const HIT_SQUASH := 0.9          # a struck Totem squashes to this much of its size and springs back
+const STAGE_SHADE := 0.5         # the screen's edges darkened over the 3D field, under the HUD (the finishing blow's vignette shader, held)
 
 var _time_gen := 0        # bumped whenever the clock must be left alone from now on (the duel over, the screen leaving)
 var _time_busy := false   # a hit-stop or a slow motion is running
@@ -3206,6 +3236,13 @@ func fx_call(t: DuelTotem) -> void:
 		if not hidden:
 			# (29 October) a touch of its element as it arrives: embers, a splash, leaves...
 			DuelStrikeFX.flourish(field, _foot3(t) + Vector3(0, 0.6, 0), t.element(), 0.9)
+		if _cine() and not hidden:
+			# (5 November) its arrival: a rune circle spinning up under it, halos
+			# rising up it, splinters of light; a big one punches the picture
+			DuelStrikeFX.arrival(field, _foot3(t), col, field.slots[t.owner][t.slot].creature_h, 1.15 if hero else 1.0)
+			if hero:
+				field.impact_punch(_body3(t), PUNCH_SMALL)
+				_vignette(col, WASH_SMALL)
 		DuelFX.flash(fx_layer, foot, col, 200.0, 0.4 / speed)
 	else:
 		DuelFX.flash(fx_layer, foot, col, 260.0 * v.depth, 0.5 / speed)
@@ -3258,6 +3295,11 @@ func fx_ascend(t: DuelTotem) -> void:
 		field.floor_wave(_foot3(t), UITheme.GOLD, 5.0, 0.7 / speed)
 		field.burst(_body3(t), UITheme.GOLD, 60, 9.0, 1.0, 0.14, 0.0)
 		field.flash_light(_body3(t), Color(1, 0.95, 0.8), 10.0, 0.6 / speed)
+		if _cine():
+			# (5 November) the gold arrival: the rune circle, the halos up its
+			# body, the picture punched and the edges in gold
+			DuelStrikeFX.arrival(field, _foot3(t), UITheme.GOLD, field.slots[t.owner][t.slot].creature_h, 1.3)
+			_blow_lands(_body3(t), UITheme.GOLD, true)
 	else:
 		DuelFX.shockwave(fx_layer, foot, UITheme.GOLD, 300.0 * v.depth, 0.6 / speed, 0.32, 12.0)
 		DuelFX.burst(fx_layer, c, UITheme.GOLD, 50, 700.0, 18.0, 0.9, Vector2(0, 200), 180.0, Vector2.UP, speed)
@@ -3519,6 +3561,18 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		else:
 			field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
 		field.flash_light(_body3(t), col, 4.0, 0.5 / speed, 5.0)
+		if _cine() and hostile:
+			# (5 November) it gathers its power: motes drawn in, a glow swelling,
+			# its sigil flaring under it (the blow ends the charge, _deliver3)
+			field.act_pulse(_foot3(t), col)
+			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), CHARGE_SECS / speed)
+			# (it swells as it gathers, held while the die rolls, and snaps back
+			# as the blow goes, _end_charge; by itself if the attack comes to nothing)
+			var sw := create_tween()
+			sw.tween_property(v, "pop", CHARGE_SWELL, CHARGE_SECS / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+			sw.tween_interval(maxf(0.0, DuelStrikeFX.CHARGE_MAX_SECS - CHARGE_SECS / speed))
+			sw.tween_property(v, "pop", 1.0, 0.1 / speed)
+			_strike["swell"] = sw
 	# the move's name over the rival's Totem; beside your own (29 October:
 	# above it, it sat in the blow's path across the Circle and hid it)
 	var label_off := Vector2(0, -150 * v.depth)
@@ -3630,6 +3684,7 @@ func _deliver3(att: DuelTotem, to: Vector2) -> void:
 	var st: Dictionary = _strike.get("style", {})
 	if st.is_empty():
 		st = DuelFXStyle.attack_style(att.id(), att.element(), {}, 0)
+	_end_charge()
 	if _strike.get("melee", false):
 		sfx.play("melee_whoosh")
 		field.lunge_trail(att.owner, att.slot, st, 0.3 / speed)
@@ -3658,9 +3713,10 @@ func _impact(pos: Vector2, col: Color, amount: int, st: Dictionary = {}) -> void
 		# (29 October) the element's own impact on the field carries the light;
 		# only a soft glow over it here, so the Totem isn't lost in white
 		DuelFX.flash(fx_layer, pos, col, 130.0 if big else 100.0, 0.25 / speed)
-		field.strike_impact(st, _impact3, big, 0.85 if amount <= 20 else 1.0)
+		field.strike_impact(st, _impact3, big, 0.85 if amount <= 20 else 1.0, _cine())
 		field.floor_wave(_impact3 * Vector3(1, 0, 1), col, 3.0 if big else 2.2, 0.45 / speed)
 		shake(5.0 + minf(float(amount), 100.0) * 0.12)
+		_blow_lands(_impact3, col, big)
 		return
 	DuelFX.flash(fx_layer, pos, col, 230.0 if big else 170.0, 0.4 / speed)
 	DuelFX.flash(fx_layer, pos, Color.WHITE, 90.0 if big else 70.0, 0.2 / speed)
@@ -3672,6 +3728,38 @@ func _impact(pos: Vector2, col: Color, amount: int, st: Dictionary = {}) -> void
 		DuelFX.burst(fx_layer, pos, col, 34 if big else 22, 620.0 if big else 480.0, 16.0, 0.65, Vector2(0, 420), 180.0, Vector2.UP, speed)
 		DuelFX.shockwave(fx_layer, pos + Vector2(0, 50), col, 200.0 if big else 150.0, 0.45 / speed, 0.4, 9.0)
 	shake(5.0 + minf(float(amount), 100.0) * 0.12)
+
+
+## (5 November) What every blow does to the whole picture as it lands, on
+## the 3D field with the touches on: the picture punched from where it landed
+## (a radial smear and a chromatic split, DuelField3D.impact_punch), the
+## camera kicked back, and the screen's edges flaring in the blow's colour
+## (`wash` 0 and up sets how much; under 0 the blow's own, big or small).
+func _blow_lands(at: Vector3, col: Color, big: bool, wash: float = -1.0) -> void:
+	if not _cine():
+		return
+	field.impact_punch(at, PUNCH_BIG if big else PUNCH_SMALL)
+	field.cam_kick(at, KICK_BIG if big else KICK_SMALL)
+	if wash < 0.0:
+		wash = WASH_BIG if big else WASH_SMALL
+	if wash > 0.0:
+		_vignette(col, wash)
+
+
+## The attacker's charge ended (its blow is away, or the attack came to
+## nothing): the motes and glow go, and it snaps back to its size.
+func _end_charge() -> void:
+	var c = _strike.get("charge")
+	if c is DuelStrikeFX.Charge and is_instance_valid(c):
+		(c as DuelStrikeFX.Charge).end()
+		var sw = _strike.get("swell")
+		if sw is Tween and (sw as Tween).is_valid():
+			(sw as Tween).kill()
+		var att = _strike.get("attacker")
+		if att is DuelTotem:
+			create_tween().tween_property(_view(att), "pop", 1.0, 0.1 / speed).set_ease(Tween.EASE_OUT)
+	_strike.erase("charge")
+	_strike.erase("swell")
 
 
 func fx_roll(_pi: int, info: Dictionary) -> void:
@@ -3827,7 +3915,7 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		await get_tree().process_frame
 		await _slow_time(HIT_STOP_SCALE, HIT_STOP_MS, HIT_STOP_RAMP_MS)
 	v.flash = 1.0
-	v.flash_color = Color(1, 0.3, 0.25)
+	v.flash_color = HIT_FLASH_COL if _cine() else Color(1, 0.3, 0.25)
 	if weak and att != null and att.owner == me and t.owner != me:
 		_coach("weakness")
 		story_bark("weakness_on_rival")
@@ -3838,16 +3926,23 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 			story_bark("my_big_hit")
 	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80,
 		_read(1.1, "WEAK!" if weak else "") / speed, "WEAK!  ×1.5" if weak else "")
-	# knocked back, then settles
+	# knocked back, then settles (5 November: away from whatever struck it,
+	# and further the harder the blow)
 	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
-	if att != null and _strike.get("melee", false):
-		push = (c - _center(_view(att))).normalized() * 22.0
+	if att != null and (_strike.get("melee", false) or _cine()):
+		var away := c - _center(_view(att))
+		if away.length() > 1.0:
+			push = away.normalized() * (minf(KNOCKBACK_MAX, KNOCKBACK_PX + float(amount) * KNOCKBACK_PER_DAMAGE) if _cine() else 22.0)
 	var tw := create_tween()
 	tw.tween_property(v, "offset", push, 0.05 / speed)
 	for k in 3:
 		tw.tween_property(v, "offset", push * 0.5 + Vector2(randf_range(-10, 10), randf_range(-4, 4)), 0.04 / speed)
 	tw.tween_property(v, "offset", Vector2.ZERO, 0.12 / speed)
 	create_tween().tween_property(v, "flash", 0.0, 0.45 / speed)
+	if _cine() and not t.is_knocked_out():
+		# (5 November) it squashes under the blow and springs back
+		v.pop = HIT_SQUASH
+		create_tween().tween_property(v, "pop", 1.0, 0.4 / speed).set_trans(Tween.TRANS_ELASTIC).set_ease(Tween.EASE_OUT)
 	await pause(HIT_PAUSE)
 	if field != null and att != null:
 		# (4 November: home after the attack, not after each of its blows)
@@ -3887,12 +3982,18 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 		# (29 October) the blow's own element where it lands, and the red of Life lost
 		var lst: Dictionary = _strike.get("style", {}) if (att != null and _strike.get("attacker") == att) else {}
 		if not lst.is_empty() and not info.get("spill", false):
-			field.strike_impact(lst, land3, amount >= 50)
+			field.strike_impact(lst, land3, amount >= 50, 1.0, _cine())
 		else:
 			field.burst(land3, Color(1, 0.35, 0.4), 40, 7.0, 0.7, 0.13, 0.0)
 			field.flash_light(land3, Color(1, 0.3, 0.4), 9.0, 0.5 / speed)
 		field.floor_wave(land3 * Vector3(1, 0, 1), Color(1, 0.35, 0.4), 4.0, 0.5 / speed)
 		field.impact_glow(1.0 if amount >= HIT_STOP_DAMAGE else 0.6)
+		# (5 November) the whole picture takes the blow: the punch, the kick, and
+		# the edges in the blow's colour (the rival's; yours flare red, below)
+		if pi == rival:
+			_blow_lands(land3, lst.col if lst.has("col") else Color(1, 0.35, 0.4), amount >= HIT_STOP_DAMAGE, WASH_LIFE)
+		else:
+			_blow_lands(land3, Color.WHITE, amount >= HIT_STOP_DAMAGE, 0.0)
 	sfx.play("life_hit")
 	p.flash = 1.0
 	p.shake = 10.0
@@ -4210,6 +4311,9 @@ func fx_ko(t: DuelTotem) -> void:
 		punch(at, 0.045)
 		if field != null:
 			field.impact_glow(1.2)
+			# (5 November) the burst punches the picture and kicks the camera, the
+			# edges in the glass's colour
+			_blow_lands(_body3(t), glass, true, WASH_KO)
 		# (4 November) the burst in slow motion, the colour draining for it
 		_slow_time(KO_SLOW, KO_SLOW_MS, KO_SLOW_RAMP_MS)
 		# (higher under the close-up, clear of the toasts in the middle)
@@ -4334,6 +4438,11 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		punch(Vector2(FIELD_CX, 476), 0.05)
 		if field != null:
 			field.impact_glow(1.3)
+			if _cine():
+				# (5 November) the landing: a shockwave standing up, dust rolling
+				# out, stones thrown, the picture punched, the edges in its colour
+				DuelStrikeFX.landing(field, Vector3(0, 0, -0.8), col)
+				_blow_lands(Vector3(0, 1.0, -0.8), col, true, WASH_BIG)
 	if field != null and DuelField3D.has_summon_model(card.id):
 		# the Demigod itself comes down onto the field
 		var hint_was := hint.visible
@@ -4819,13 +4928,21 @@ func _fly_card(id: String, from: Vector2, to: Vector2, dur: float, end_scale := 
 	fc.queue_free()
 
 
-func _vignette(col: Color) -> void:
+## The screen's edges flaring in a colour and fading: full for your Life
+## lost, over everything; `k` under 1 (5 November) a lighter flare in a
+## blow's colour as it lands, over the field but under the HUD, so the Life
+## plates and the hand stay as they are.
+func _vignette(col: Color, k: float = 1.0) -> void:
 	var r := Vignette.new()
 	r.col = col
+	r.k = k
 	r.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	overlay.add_child(r)
+	if k < 1.0 and _arena != null:
+		_arena.add_child(r)
+	else:
+		overlay.add_child(r)
 	var tw := r.create_tween()
-	tw.tween_property(r, "modulate:a", 0.0, 0.6)
+	tw.tween_property(r, "modulate:a", 0.0, 0.6 if k >= 1.0 else WASH_SECS)
 	tw.tween_callback(r.queue_free)
 
 
@@ -5371,6 +5488,7 @@ class Letterbox:
 class Vignette:
 	extends Control
 	var col := Color.RED
+	var k := 1.0   # how strong (5 November: a blow's flare is lighter than Life lost)
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5378,7 +5496,7 @@ class Vignette:
 	func _draw() -> void:
 		var w := size.x * 0.22
 		var h := size.y * 0.3
-		var c0 := Color(col, 0.55)
+		var c0 := Color(col, 0.55 * k)
 		var c1 := Color(col, 0.0)
 		_quad(Rect2(Vector2.ZERO, Vector2(w, size.y)), c0, c1, true)
 		_quad(Rect2(Vector2(size.x - w, 0), Vector2(w, size.y)), c1, c0, true)

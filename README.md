@@ -413,6 +413,88 @@ no problems; `duel_notes_shot -- ko reading` no problems. The Duel Lab's
 tuning panel doesn't list `cinematic` yet (its rows are named in
 `duel_lab.gd`'s `TUNE_LABELS`); `DuelRules.set_value` reaches it.
 
+### A more dramatic duel (5 November)
+
+Gary (5 November, having played the 4 November build): "Make the battle
+look better. At the moment it looks boring. I want it more dramatic." The
+camera and the clock were done the day before; this is the spectacle
+itself, on the 3D field, with `DuelRules.cinematic` on (nothing of it
+without, and nothing of it in a film: `DuelScreen._cine()`,
+`tests/duel_film_check.tscn` plays Bram's filmed duel and checks none of
+it creeps in). Every number is a named constant with a line saying what it
+is: "the stage" at the top of `DuelField3D`, "the drama" in
+`DuelStrikeFX`, and the screen's in `DuelScreen` ("the drama").
+
+- **The arena is a stage** (`DuelField3D.dress_stage`, as the field is
+  built; `_undress` for a film). The surround is darker and the Circle the
+  lit thing in it: the ambient light down (`AMBIENT_ENERGY`), the contrast
+  up, the warm key light over the Circle stronger (`HALL_ENERGY`) and the
+  scenery painting dimmer (`BACKDROP_DIM`); a cool rim light from the far
+  side edges every Totem (`RIM_COL`, `RIM_ENERGY`, `RIM_PITCH`); three
+  shafts of light hang over the far half of the field and sway
+  (`SHAFTS`, `SHAFT_*`; `DuelStrikeFX._shaft_tex`); embers of the arena's
+  colour whirl up through the motes (`EMBERS`); the sigils breathe
+  (`RING_BREATHE`) and the floor glow under a Totem pulses with its lamp
+  (`GLOW_PULSE`); the screen's edges are shaded over the field, under the
+  HUD (`DuelScreen.STAGE_SHADE`). A Totem that acts gets a flare of its
+  sigil and a ring running out from its feet (`act_pulse`).
+- **An attacker gathers its power** before the blow (`DuelStrikeFX.charge`,
+  `DuelScreen.CHARGE_SECS`, under the windup and the Fate roll): motes of
+  its element drawn in to its body out of the air, a glow swelling there,
+  a ring of its light tightening on the floor under it, its lamp swelling,
+  and the Totem itself swelling a little (`CHARGE_SWELL`); the blow ends
+  it in a blink (`Charge.end`, `_end_charge`), or it ends by itself if the
+  attack comes to nothing (`CHARGE_MAX_SECS`).
+- **A heavy blow throws things out** on top of its element's own impact
+  (`DuelStrikeFX.heavy`, from `DuelField3D.strike_impact` with `drama`): a
+  white-hot core, a shockwave ring standing up at the point of impact,
+  splinters of the element's light flung out and falling (`_shard_tex`),
+  and the mark the blow leaves on the floor (`floor_mark`: a scorch for
+  fire, earth, venom, metal and the dark elements, a pale pool of the
+  element's light for the rest, lingering `HEAVY_MARK_SECS`). A small blow
+  gets the core and a few splinters.
+- **The whole picture takes the blow** (`DuelScreen._blow_lands`): the
+  picture is punched from where it landed, a radial smear and a chromatic
+  split for a few frames (`DuelField3D.impact_punch`,
+  `assets/shaders/duel/impact_punch.gdshader`, the field container's own
+  material, only at `Gfx.level()` 2: a Mac, or a phone set to Full), the
+  camera kicked back and springing (`cam_kick`, `KICK_BIG`/`KICK_SMALL`,
+  `KICK_SPRING`), and the screen's edges flaring in the blow's colour
+  (`_vignette` with `k` under 1: `WASH_BIG`, `WASH_SMALL`, `WASH_KO`,
+  `WASH_LIFE`; yours on your own Life stays the full red it was). A struck
+  Totem flares white-hot (`HIT_FLASH_COL`; the number carries the red),
+  squashes and springs back (`HIT_SQUASH`), and is thrown back away from
+  whatever struck it, further the harder the blow (`KNOCKBACK_PX`,
+  `KNOCKBACK_PER_DAMAGE`, `KNOCKBACK_MAX`).
+- **Calls, Ascensions and the Demigod**: a called Totem arrives in a rune
+  circle spinning up under it, halos of its light rising up its body and
+  tightening, splinters thrown up (`DuelStrikeFX.arrival`; an Ascension's
+  is gold, the picture punched and the edges in gold); the Demigod's
+  landing stands a shockwave up, rolls dust out low across the floor,
+  throws stones, and sends a second wave of its light a beat after the
+  first (`DuelStrikeFX.landing`).
+- **Low Life beats like a heart** (`DuelViews`: under `LOW_LIFE` of full
+  Life the number and the bar pulse red, quicker the lower it falls).
+- **By device**: particle counts are scaled by `DuelField3D.fx_scale()`
+  (all at level 2, 0.7 on a phone's Smooth, under half on the phone link),
+  the rim light and the shafts need level 1, the punch shader level 2;
+  `DuelField3D.preview_level` lets a test dress the stage as a Mac would
+  (software GL here is Compatibility).
+
+```sh
+# the stage at rest (both rows full, the shafts and embers), every part of the drama, dressed as a Mac would have it:
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 30 \
+    res://tests/duel_cine_shot.tscn -- <dir> arena attack ko call summon finish preview    # `plain`: cinematic off
+# the film guard: Bram's filmed duel, checked for any of the dressing or the drama having crept in:
+xvfb-run -a ... res://tests/duel_film_check.tscn -- <dir> [seconds]
+```
+
+Checked (5 November): `load_all` 0 failed; `duel_sim -- 200` 0 invariant
+errors, 25.8 turns, first player 52%; `duel_cine_shot` every part with
+`preview`, problems none, the stills looked at; `duel_film_check` problems
+none; `duel_monkey -- 2 --3d` (see the handover). The impact punch and the
+Forward+ look weren't seen here (software GL): worth a look on the Mac.
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about
@@ -1225,6 +1307,102 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 5 November play-through notes (the memory, the opening, the green)
+
+Eleven notes from playing the Mac build, 5 November, and what each became
+(the duel's, "Make the battle look better, at the moment it looks boring, I
+want it more dramatic", is under "A more dramatic duel (5 November)" in the
+Duel Lab section):
+
+- **"Why does Bram pause after Morrowen finishes talking?"** He was being
+  stopped: once her line ended the walk was taken off him for four seconds,
+  the camera cut to the sky over his shoulder, and he stood looking up as it
+  tore, which read as the game hanging. Nothing stops him now
+  (`WhiteSky._sigilfall`): the sky tears over him as he walks, the roaming
+  camera behind him lifts its eyes to the tear for a couple of seconds and
+  comes back down with him still in the foot of the picture (`_sky_look`,
+  `SKY_LOOK_UP`/`HOLD`/`DOWN`), he looks up himself only if he happens to be
+  standing, and the arrow comes up after `COMPASS_AT`.
+- **"Compass should be more of an arrow"**: `WorldHUD.Compass` is one big
+  gold arrow now, a broad head on a tapered shaft with a dark edge and a
+  soft glow, nudging forward along its own line, on a faint dark disc so it
+  reads over snow or sun; the dial's four points and tick marks are gone.
+  Still `Compass` by name, with the same calls, so the map can grow from it.
+- **"Bram looks hunched over. Have him stand up straight"**: his coat
+  model's clips round his back from the hips up and carry his head a hand's
+  width ahead of him. `Figure3D.POSTURE` has a `bram_coat` entry now (the
+  three spine bones drawn up, the neck up and back, the face kept level, the
+  shoulders back); `tests/stance_peek.gd -- <dir> [model] [tag]` shows any
+  model standing and walking against a plumb line. The taproom's own Bram
+  (`bram`) stands well enough as he is.
+- **"Bram picks up the baby weird, it more levitates into his arms rather
+  than him picking him up"**: the bundle rose on a path of its own while he
+  stood, the hands chasing it. `_lift_child` picks it up the way anyone
+  picks up a baby: on his knee he gathers it in to his chest first
+  (`GATHER_SECS`), then stands with it held there (`RISE_SECS`), the bundle
+  carried relative to his chest bone every frame (`CRADLE`) so it comes up
+  with him and the hands stay under it.
+- **"When you write player's name on mirror can we make that look better,
+  at the moment it looks like they just wave their hand in front"**: the
+  hand had slid once across the glass while the whole name faded up at
+  once. `AshfordP1._write_in_frost`: the hand is turned so its fingers point
+  at the glass, palm in and down, the knuckles on the frost
+  (`_finger_to_frost`, `WRITE_FINGER`); each letter comes up in turn under
+  the hand as it travels along the line, rising and dipping over each the
+  way a hand writing does; a letter is the frost cleared dark with a bright
+  rim of pushed frost round it (`WRITE_INK`, `WRITE_RIM`; one Label3D a
+  letter, the name's own label taking over once it's written); a faint
+  squeak of skin on cold glass with each letter (`Sfx` "frost_write").
+  `tests/mirror_shot.tscn -- <dir> a write` takes stills through it. (Player
+  A's hand is a loose fist, his fingers kept as he modelled them, so it's
+  the knuckle that writes; an extended finger waits on his 4K remake.)
+- **"Bram doesn't try and stop you when you approach the second door to the
+  right of the fireplace"**: the taproom's two doorway zones shared one
+  six-second clock, so going from the kitchen's doorway to the passage's (a
+  two-second walk) met silence at the second. Each zone keeps its own clock
+  now (`AshfordP1.walk_room`, `STRAY_AGAIN` 3 s), the zones reach a stride
+  further into the room, and the passage's turns the player back
+  north-west, clear of the trestle bench (`InnRooms.eve`'s `stray_zones`).
+- **"Kids around Corin when you first walk out of the inn take a while to
+  come to life and they keep stopping and staring at player"**: life on the
+  green (`AshfordLife`) began only once the walk out of the inn had ended,
+  and nobody acted for up to four seconds after that; between runs the
+  children stood for three or four seconds and one time in five turned to
+  stare at the player for as long. Now it starts as the inn's door opens
+  (`AshfordP1._street`), the green's people may move through the opening's
+  own shots, which never have them in (`life_through_cine`, taken off when
+  Corin's scene begins), everyone's first move comes within a second
+  (`FIRST_MOVE`), and the children are hardly ever still: a run, then a
+  hop, a cheer or a shuffle inside two seconds, their eyes on Corin, a
+  glance at the player now and then no longer than a glance (`KID_GLANCE`,
+  `KID_GLANCE_CHANCE`). Corin's own look at a passing player goes back to
+  his audience after a second or so.
+- **"Can Corin start walking over as we're putting planters down so we're
+  not waiting so long for him to get to player"**: he sets off across the
+  green the moment the crate starts down (`AshfordP1.corin_sets_off`,
+  `CORIN_MEET`, `CORIN_WALK`), so by the time the camera's home he's there
+  or nearly; `corin_calls` finds him where he is (or picks up his walk) and
+  gathers the children behind where he'll stand.
+- **"Players fingers still go through box when we see player holding box
+  when Bram hands it over"**: Player A's fingers are kept as he modelled
+  them, in a relaxed curl, so a box centred on his palm had its front half
+  under the curl and the fingers came up through it. `Figure3D.attach` takes
+  an `ahead` now, and the box sits back on the palms (`Ashford.BOX_BACK`,
+  4.5 cm towards the wrists; the grip marks, the right hand's mark under the
+  box and the left hand's place under its middle all moved with it): it
+  rests from the heel of the hand to the finger roots and the fingers curl
+  up in front of it, a cupped hold. `tests/box_hands_peek.gd` and
+  `tests/hands_shot.tscn -- <dir> box` show it.
+- **"When you go to sit next to old Nell your legs go through the bench"**:
+  anyone more than a step off the seat glided standing to the seat's middle,
+  straight legs through the boards, and sat there. `AshfordP1.sit_down`
+  sits the way anyone sits now: standing where the feet will be once sat
+  (`Figure3D.seat_feet_ahead`), the hips go back and down onto the seat as
+  the knees bend, the feet staying put, the sit and the shift one move (the
+  spot taken for the seat moving with them); `sit_with_nell` and
+  `bram_to_stool` walk to that spot. `tests/bench_shot.tscn` checks the legs
+  against the bench sitting down as well as getting up.
+
 ### Gary's 4 November play-through notes (the opening, the village, the menu)
 
 Sixteen notes from playing the Mac build, 4 November, and what each became
@@ -1519,11 +1697,13 @@ down onto the snow), the keys or a stick, the way the camera looks being up
 crater, the camera easing round behind him as he turns (`_cam_mode` "roam")
 and his feet matched to the ground (`Figure3D.pace`: until then the clip
 ran at its own 1.62 m/s over a 1.25 m/s walk, and "Bram walks very weird").
-Her line ends on its own or a tap; then he stops and looks up as the sky
-tears, and *a compass comes up in the bottom left corner* pointing the way
-to the light ("The light · 27 m"; `WorldHUD.Compass`, a dial whose points
-turn with the camera and whose needle turns to its `target`, made for the
-world to use as the map later, as Gary asked), gone at the crater's lip
+Her line ends on its own or a tap; then the sky tears over him as he walks
+on (5 November: he used to be stopped for it, and "Why does Bram pause after
+Morrowen finishes talking?"; the camera lifts its eyes to the tear and comes
+back), and *an arrow comes up in the bottom left corner* pointing the way
+to the light ("The light · 27 m"; `WorldHUD.Compass`, one big gold arrow
+since 5 November that turns to its `target` as the camera turns, made for
+the world to use as the map later, as Gary asked), gone at the crater's lip
 (`RIM_AT`). The hunter is glimpsed ahead and to his left on the way
 (`GLIMPSE_AT`). *The Shardlands look like a storm*: the spires come in close
 about his way now, from shards no taller than a man to spires of 22 m, in a
