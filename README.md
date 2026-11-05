@@ -1246,7 +1246,8 @@ the name Kaethis), `docs/script/v8_corins_return.md` (Corin as a Notary of the
 House at Gildersgate, the button, "Sprout", and the page you sign or don't) and
 `docs/script/v8_return_to_ashford.md` (Ashford half a year on: Nell's mill, Tilly's
 moth, Tam's stone, the Lantern). Each ends with its Writers' notes, the new things
-it needs and numbered questions; Interlude A's placement changes two small lines
+it needs and numbered questions (Gary reads them as Claude docs, linked from Still
+to Make 18); Interlude A's placement changes two small lines
 in Pyreholt v1 (listed in its notes). The map of Veyl's painting prompt, with
 where each kingdom lies and the label positions for the code, is
 `docs/veyl-map-prompt.md`.
