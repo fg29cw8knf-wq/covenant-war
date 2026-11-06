@@ -87,8 +87,8 @@ const GODS := {
 		"attribute": "presence", "gift": "unveil"},
 	# (5 November) the god Bram served for forty years: fate and destiny, outside
 	# every bloc, no Seat, no Kingdom Law, no arena, no Blessing. Hidden from the
-	# player until the story wants it; its name is for Gary's yes (change it here
-	# only: its cards' backstories take the name and title from here, DuelLore).
+	# player until the story wants it. Gary said yes to it on 6 November (the name
+	# lives here only: its cards' backstories take the name and title from here, DuelLore).
 	"kaethis": {"name": "Kaethis", "title": "the Hand Before", "element": "astral",
 		"attribute": "resolve", "gift": "foreordained"},
 }

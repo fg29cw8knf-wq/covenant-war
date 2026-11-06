@@ -9,8 +9,8 @@ extends RefCounted
 ## nothing low tier"; 5 November: "top tier totems that will be under his own
 ## god ... cards in league with his god or its allies"), so the film cuts in
 ## with the duel already joined, on a set board (DuelGame.puzzle, as the
-## Trial of Light is). His god is Kaethis, the Hand Before (Lore.GODS, for
-## Gary's yes), and every card is Kaethis's or its allies': the Scrivener and
+## Trial of Light is). His god is Kaethis, the Hand Before (Lore.GODS; Gary's
+## yes, 6 November), and every card is Kaethis's or its allies': the Scrivener and
 ## the Loomwarden standing, Last Stand set, the Unspent Hour, Cut Thread and
 ## two Relics to hand, Aldrith's Glyph Warden and Counter Runes in the deck,
 ## every card of his Crystal tier or above (Rites, Relics and Wards Glimmer
