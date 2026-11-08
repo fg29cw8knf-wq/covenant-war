@@ -2,6 +2,13 @@
 (see the 3D Creature Models Plan doc). Until a model exists the game uses the
 creature's cut-out picture.
 
+A Tripo3D export is readied in three steps (8 November): tools/glb_bake_turn.py
+(the rest turn above the skeleton baked into the mesh), tools/glb_flatten_rig.py
+(the turned nodes above the skeleton set square, so Godot measures the model
+where it draws it; without this a Totem floats half its height off the field),
+then tools/split_creature.py (below). tools/glb_rename_clips.py first if its
+clips aren't named idle, attack, hit/hit_react, defeat, spawn, victory, run, guard, rest.
+
 Each model's colour atlas sits next to it as <card id>_atlas.png (2048x2048),
 referenced from the GLB by file name rather than embedded, so Godot imports
 the texture once with the settings in <card id>_atlas.png.import (lossy, with

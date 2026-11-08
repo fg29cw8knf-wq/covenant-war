@@ -1163,14 +1163,16 @@ const CARDS := {
 	# Bram's god: fate and destiny, Astral, affinity Resolve (the pantheon doc
 	# of 4 November, for Gary's yes). Its Totems are the top tier of Bram's
 	# champion deck in the Night of the White Sky (WhiteSkyDuel); none is in a
-	# starter deck or a pool yet. Each Totem shows as a tinted stand-in until
-	# Gary's paintings and models come. The god's name lives in Lore.GODS only
-	# (DuelLore's backstories take it from there); no card here names it, and
-	# the ids stay whatever it's called.
+	# starter deck or a pool yet. A Totem shows as a tinted stand-in until
+	# Gary's painting and model come: the Scrivener's, Loomwarden's, the
+	# Unspent Hour's and the Weft Serpent's came on 8 November (their
+	# paintings, cut-outs and Tripo3D models); the Glyph Warden's are still to
+	# come. The god's name lives in
+	# Lore.GODS only (DuelLore's backstories take it from there); no card here
+	# names it, and the ids stay whatever it's called.
 	"scrivener": {
 		"kind": "totem", "name": "The Scrivener", "element": "astral", "tier": 3, "stage": 0, "cost": 3,
 		"hp": 180, "affinity": "resolve", "attuned": {"min": 6, "damage": 20},
-		"stand_in": "gilded_sentinel", "stand_in_tint": "ece4cc",
 		"moves": [
 			{"name": "Entry", "cost": 0, "damage": 40},
 			{"name": "Strike the Name", "cost": 3, "damage": 90, "effects": [{"op": "pierce"}]},
@@ -1180,7 +1182,6 @@ const CARDS := {
 	"loomwarden": {
 		"kind": "totem", "name": "Loomwarden", "element": "astral", "tier": 3, "stage": 0, "cost": 4,
 		"hp": 220, "affinity": "resolve", "keywords": ["guardian"], "attuned": {"min": 6, "damage": 20},
-		"stand_in": "mirewidow", "stand_in_tint": "d9d4e8",
 		"moves": [
 			{"name": "Warp", "cost": 0, "damage": 30},
 			{"name": "Tangle", "cost": 2, "damage": 50, "effects": [{"op": "status", "status": "rooted"}]},
@@ -1190,7 +1191,6 @@ const CARDS := {
 	"unspent_hour": {
 		"kind": "totem", "name": "The Unspent Hour", "element": "astral", "tier": 4, "stage": 0, "cost": 4,
 		"hp": 190, "affinity": "resolve", "keywords": ["swift"], "attuned": {"min": 7, "damage": 20},
-		"stand_in": "somnowl", "stand_in_tint": "c9d6ff",
 		"moves": [
 			{"name": "Sandfall", "cost": 0, "damage": 40},
 			{"name": "Turn the Glass", "cost": 3, "damage": 70, "effects": [{"op": "status", "status": "staggered"}]},
@@ -1200,7 +1200,6 @@ const CARDS := {
 	"weft_serpent": {
 		"kind": "totem", "name": "The Weft Serpent", "element": "astral", "tier": 5, "stage": 0, "cost": 5,
 		"hp": 240, "affinity": "resolve", "attuned": {"min": 7, "damage": 20},
-		"stand_in": "riptide_serpent", "stand_in_tint": "e4ddd0",
 		"moves": [
 			{"name": "Unravel", "cost": 0, "damage": 40, "effects": [{"op": "status", "status": "marked"}]},
 			{"name": "Weave Shut", "cost": 4, "damage": 100, "effects": [{"op": "bonus_if_status", "status": "marked", "amount": 40}]},

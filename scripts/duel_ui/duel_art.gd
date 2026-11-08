@@ -14,7 +14,8 @@ extends RefCounted
 static var _cache := {}
 
 ## Creatures that float rather than stand.
-const FLYERS := ["emberwisp", "bloomsprite", "lantern_moth", "sunlance_seraph"]
+## (The Unspent Hour, Gary's 8 November model: a winged hourglass spirit with no feet.)
+const FLYERS := ["emberwisp", "bloomsprite", "lantern_moth", "sunlance_seraph", "unspent_hour"]
 
 ## Which arena each starter deck calls home.
 const DECK_ARENA := {

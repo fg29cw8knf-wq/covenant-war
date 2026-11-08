@@ -1,5 +1,11 @@
 # The map of Veyl: the painting's prompt
 
+**Gary's painting came on 8 November:** `assets/art/map/veyl.jpg` (1672 × 941,
+a 16:9 image with no writing on it; nothing in the game draws it yet). It
+puts every place where the prompt asked, give or take: the table at the end
+now gives each label's position as painted, read off his picture, in place
+of the proposed ones.
+
 For the last beat of Chapter 1, "Next time the game opens": dawn, the wagon
 rolling out of Solhaven, Bram's "Pyreholt's nearest.", and "Choose a kingdom.
 (Tap a banner on the map.)". Paint it whenever you like; the game puts the
@@ -70,22 +76,24 @@ Do not include any text, letters, numbers, names, labels, place names, a title, 
 ## Where the game puts each label (for the code later)
 
 Fractions of the painting's width (x, from the left) and height (y, from the
-top), for the label's centre; the banner goes just above it.
+top), for the label's centre; the banner goes just above it. Read off Gary's
+painting of 8 November (`assets/art/map/veyl.jpg`); the "proposed" column is
+where the prompt had asked for each place.
 
-| Place | x | y | Where it comes from |
-| --- | --- | --- | --- |
-| The Throne (centre of Veyl) | 0.50 | 0.42 | script (centre); look proposed |
-| Solhaven | 0.52 | 0.60 | proposed |
-| The plain | 0.40 | 0.62 | script (west of Solhaven, below the Thornwood) |
-| The Thornwood | 0.29 | 0.64 | script (between Ashford and the plain) |
-| Ashford | 0.17 | 0.68 | script (west of Solhaven) |
-| The Shardlands | 0.15 | 0.44 | script (uphill of Ashford); north-west proposed |
-| Pyreholt | 0.34 | 0.82 | proposed (nearest; steel goes north and east) |
-| Hrimmark | 0.52 | 0.13 | script (north) |
-| Glyphmere | 0.22 | 0.20 | proposed (below mountain passes) |
-| Oriel's kingdom | 0.77 | 0.21 | proposed |
-| Stormreach | 0.86 | 0.48 | proposed (east coast) |
-| Umbravel | 0.80 | 0.81 | proposed (farthest from Ashford) |
+| Place | x | y | On the painting | Proposed (was) |
+| --- | --- | --- | --- | --- |
+| The Throne (centre of Veyl) | 0.51 | 0.33 | the white spire in its gold ring, on the plateau of standing stones | 0.50, 0.42 |
+| Solhaven | 0.55 | 0.64 | the white city with gold domes and the mirror tower, wheat round it | 0.52, 0.60 |
+| The plain | 0.43 | 0.58 | the open hazy ground between the forest and Solhaven's hill | 0.40, 0.62 |
+| The Thornwood | 0.30 | 0.52 | the dark twisted forest | 0.29, 0.64 |
+| Ashford | 0.10 | 0.56 | the village with the mill wheel and the little bridge | 0.17, 0.68 |
+| The Shardlands | 0.20 | 0.30 | the storm-torn waste with the blue crystals and the purple whirl of cloud | 0.15, 0.44 |
+| Pyreholt | 0.22 | 0.79 | the fortress in the volcano's crater, lava in its cracks | 0.34, 0.82 |
+| Hrimmark | 0.55 | 0.11 | the castle of blue ice on the frozen lake | 0.52, 0.13 |
+| Glyphmere | 0.27 | 0.12 | the violet-towered city on its mountain lake | 0.22, 0.20 |
+| Oriel's kingdom | 0.82 | 0.14 | the pale temple with the eye, in the misty highlands | 0.77, 0.21 |
+| Stormreach | 0.86 | 0.43 | the harbour city with the ships, under the lightning | 0.86, 0.48 |
+| Umbravel | 0.85 | 0.81 | the black spired palace in the violet marsh | 0.80, 0.81 |
 
 The six banners of "Choose a kingdom." go over Pyreholt, Hrimmark,
 Glyphmere, Oriel's kingdom, Stormreach and Umbravel (Solhaven's Seat is

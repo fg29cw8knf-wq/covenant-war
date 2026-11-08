@@ -78,6 +78,9 @@ const OWN_GAIT := {
 	# Ned walks and runs on the player's clips, fitted to his height
 	"ned": {"walk": 1.67, "run": 4.23, "sneak": 0.85},
 	"tam": {"walk": 1.63, "run": 4.12},
+	# Kaethis, the Hand Before (8 November, Gary's Tripo3D model of Bram's god,
+	# rigged like Warden Hale; 2.30 m tall, so its long strides)
+	"kaethis": {"walk": 2.42, "run": 6.14, "sneak": 1.24},
 	"tilly": {"walk": 1.00, "run": 2.54},
 	"nell": {"walk": 1.11, "run": 2.81},
 	# the crowd's looks (22 October: the farmer and the trader on Player B's
