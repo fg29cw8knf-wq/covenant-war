@@ -601,7 +601,10 @@ static func to_mill(w: World) -> void:
 		_sit_corin(w)
 	var them: Vector3 = Cine.body(w, who).global_position
 	Cine.place(w, "player", arrive, them)
-	Cine.look(w, who, arrive)
+	if evening:
+		_corin_eyes(w, arrive)
+	else:
+		Cine.look(w, who, arrive)
 	var root: Node3D = m.root
 	var cam := root.to_global(Vector3(-11.5, 4.4, 24.0))
 	Cine.shot(w, cam, arrive + Vector3(0, 1.0, 0), 48.0)
@@ -619,7 +622,10 @@ static func to_mill(w: World) -> void:
 	w.hud.set_objective("")
 	w.hud.set_controls_visible(false)
 	Cine.look(w, "player", them)
-	Cine.look(w, who, w.player.global_position)
+	if evening:
+		_corin_eyes(w, w.player.global_position)
+	else:
+		Cine.look(w, who, w.player.global_position)
 	if evening:
 		_mill_two_shot(w, "corin")
 	else:
@@ -635,6 +641,7 @@ static func to_mill(w: World) -> void:
 	await Cine.fade(w, 1.0, 0.7)
 	MillSet.leave(w)
 	if evening:
+		_corin_up(w)
 		var cf = Cine.fig(w, "corin")
 		if cf is Figure3D:
 			(cf as Figure3D).stand(0.0)
@@ -682,7 +689,9 @@ static func _corin_pond_film(w: World, m: Dictionary) -> void:
 	blue.roughness = 1.0
 	v.box(coat, Vector3(0.36, 0.07, 0.26), Vector3.ZERO, blue)
 	v.box(coat, Vector3(0.34, 0.05, 0.24), Vector3(0.0, 0.055, 0.0), blue, Vector3(0, 0.1, 0))
-	coat.global_position = seat - along * 0.5 + Vector3(0.05, 0.535, 0)
+	# (on the wall's middle, beside him: he sits towards its meadow edge)
+	coat.global_position = seat - along * 0.5 + Vector3(0.0, 0.535, 0)
+	coat.global_position.x = MillSet.spot(RACE_WALL.get_center()).x
 	var cf = Cine.fig(w, "corin")
 	var card := Node3D.new()
 	card.name = "SignedCard"
@@ -759,6 +768,7 @@ static func _corin_pond_film(w: World, m: Dictionary) -> void:
 	if is_instance_valid(coat):
 		coat.queue_free()
 	MillSet.leave(w)
+	_corin_up(w)
 	if cf is Figure3D:
 		(cf as Figure3D).stand(0.0)
 	back_on_green(w)
@@ -810,13 +820,124 @@ static func _pond_shot(w: World, who: String, seat: Vector3, beside: Vector3, fw
 	Cine.drift(w, pos, to, look, look, 6.0, fov)
 
 
-## Corin on the race wall, his back to the water, facing the meadow.
+## The race wall Corin sits on in the evening, in the mill set's own frame
+## (MillSet.build: the low wall along the west bank, its meadow face at x
+## 0.75, its top 0.5 m up), and where his hips sit on it: towards its meadow
+## edge, the way anyone sits on a wall, so the thighs reach out over the
+## edge and the shins hang down clear of its face (6 November, Gary: "his
+## legs also go through the wall"; on the wall's middle the backs of his
+## knees were on its edge and the calves against the stone).
+const RACE_WALL := AABB(Vector3(0.75, 0.0, 4.5), Vector3(0.5, 0.5, 6.0))
+const CORIN_SEAT := Vector3(0.9, 0, 7.0)
+
+
+## Corin on the race wall, his back to the water, facing the meadow, his
+## hands at rest on it (_corin_rests).
 static func _sit_corin(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null or not at_mill(cb.global_position):
 		return
-	var seat := MillSet.spot(Vector3(1.0, 0, 7.0))
+	var seat := MillSet.spot(CORIN_SEAT)
 	AshfordP1.sit_down(w, "corin", seat, Vector3.LEFT, 0.5, 0.0)
+	_corin_rests(w)
+
+
+## The wall in the world (an AABB), for Figure3D.hands_off.
+static func _wall_box() -> AABB:
+	return AABB(MillSet.spot(RACE_WALL.position), RACE_WALL.size)
+
+
+## Corin's hands while he sits on the wall (6 November, Gary: "When you meet
+## Corin in evening his hands look through the wall he is sitting on": his
+## sitting clip's arms hang at his sides, which on a wall top is down into
+## the stone). The hand on the player's side rests flat on the wall's top
+## beside his hip, the other (the card in it) in his lap on his thigh; the
+## wall is a solid to his hands besides (Figure3D.hands_off), so nothing he
+## does with them goes into it. _corin_up gives them back.
+static func _corin_rests(w: World, secs := 0.0) -> void:
+	var cf = Cine.fig(w, "corin")
+	if not (cf is Figure3D):
+		return
+	var fig := cf as Figure3D
+	if fig.seat < 0.0:
+		return
+	var top := MillSet.spot(RACE_WALL.end).y
+	fig.hands_off([_wall_box()])
+	var marks: Array = []
+	for nm in ["CorinRestL", "CorinRestR"]:
+		if w.has_meta("pond_" + nm):
+			var old = w.get_meta("pond_" + nm)
+			if old != null and is_instance_valid(old):
+				(old as Node).queue_free()
+		var mk := Node3D.new()
+		mk.name = nm
+		w.add_child(mk)
+		w.set_meta("pond_" + nm, mk)
+		marks.append(mk)
+	# (their own frame: x their left, z ahead; the player sits on his left)
+	var s := fig.stature()
+	var l: Vector3 = fig.to_world(Vector3(0.24 * s, 0.0, 0.04 * s))
+	l.y = top + 0.035 * s
+	(marks[0] as Node3D).global_position = l
+	var r: Vector3 = fig.to_world(Vector3(-0.07 * s, 0.0, 0.24 * s))
+	r.y = top + 0.15 * s
+	(marks[1] as Node3D).global_position = r
+	fig.palm("left", Vector3.DOWN, maxf(secs, 0.01), 1.0)
+	fig.palm("right", Vector3.UP, maxf(secs, 0.01), 0.4)
+	fig.reach(marks[0], marks[1], maxf(secs, 0.01))
+
+
+## Up off the wall: the hands his own again, the wall no solid to them.
+static func _corin_up(w: World) -> void:
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D:
+		var fig := cf as Figure3D
+		fig.let_go(0.0)
+		fig.palm("left", Vector3.ZERO, 0.0)
+		fig.palm("right", Vector3.ZERO, 0.0)
+		fig.hands_off([])
+		fig.eyes_on(null)
+	for nm in ["CorinRestL", "CorinRestR"]:
+		if not w.has_meta("pond_" + nm):
+			continue
+		var old = w.get_meta("pond_" + nm)
+		if old != null and is_instance_valid(old):
+			(old as Node).queue_free()
+		w.remove_meta("pond_" + nm)
+
+
+## Is Corin sat on the race wall?
+static func _corin_on_wall(w: World) -> bool:
+	var cf = Cine.fig(w, "corin")
+	var cb := Cine.body(w, "corin")
+	return cf is Figure3D and (cf as Figure3D).seat >= 0.0 and cb != null and at_mill(cb.global_position)
+
+
+## Corin looks at something from the wall: with his head, not his whole body
+## (a turn of the body on the seat swung his legs round into the stone: 6
+## November, Gary, "his legs also go through the wall when he turns to you").
+## Standing, he turns as anyone does.
+static func _corin_eyes(w: World, at: Vector3) -> void:
+	if _corin_on_wall(w):
+		(Cine.fig(w, "corin") as Figure3D).eyes_on(at + Vector3(0, 1.1, 0) if at.y < Cine.body(w, "corin").global_position.y + 0.5 else at)
+	else:
+		Cine.look(w, "corin", at)
+
+
+## A beat on the wall: he looks away, out over the meadow on the side away
+## from the player, and back to them, his head turning and his body still.
+static func _corin_beat(w: World) -> void:
+	var fig := Cine.fig(w, "corin") as Figure3D
+	var cb := Cine.body(w, "corin")
+	var to_p := w.player.global_position - cb.global_position
+	to_p.y = 0.0
+	var away := cb.global_position + fig.facing() * 3.0 - to_p.normalized() * 2.0
+	fig.eyes_on(away + Vector3(0, 0.9, 0))
+	await Cine.wait(w, 0.8)
+	fig.eyes_on(Cine.head(w, "player"))
+	await Cine.wait(w, 0.5)
+	# (and his head's his own again: it goes to whoever's talking)
+	fig.eyes_on(null)
 
 
 ## The two of them on the race wall's side of the meadow, from the south
@@ -1027,6 +1148,11 @@ static func _dancing(w: World) -> void:
 ## Corin twists one of the iron-plated buttons off his new coat and holds it
 ## out; it passes into the player's hand.
 const BUTTON_MODEL := "res://assets/models/ashford/corin_button.glb"
+## Where the player's palm comes to take it, from his (m): across towards
+## the player, so the two palms are side by side and not one on the other,
+## and down, so their fingertips pass under his.
+const BUTTON_ACROSS := 0.1
+const BUTTON_UNDER := 0.045
 
 
 static func corin_button(w: World) -> void:
@@ -1073,34 +1199,80 @@ static func corin_button(w: World) -> void:
 	var seated := corin.seat >= 0.0
 	var h := (corin.hold_point(0.0, 0.0).y - corin.arm_reach() * 0.55) if not seated else 0.95 * corin.stature()
 	give.global_position = cb.global_position + to_p * 0.32 + corin.facing() * 0.3 + Vector3(0, h, 0)
-	corin.palm(his_side, Vector3.UP, 0.35)
+	# close on the hands, from in front of them and a little above (the
+	# lines after it go back to the faces: _pond_shot)
+	if seated:
+		var at := give.global_position + to_p * BUTTON_ACROSS * 0.5 + Vector3(0, -0.02, 0)
+		var cam_a := at + corin.facing() * 0.95 + to_p * 0.12 + Vector3(0, 0.32, 0)
+		Cine.drift(w, cam_a, cam_a - corin.facing() * 0.12, at, at, 3.2, 34.0)
+	corin.palm(his_side, Vector3.UP, 0.35, 0.6)
 	corin.reach(give if his_side == "left" else null, give if his_side == "right" else null, 0.45)
 	await Cine.wait(w, 0.2)
 	corin.attach(b, "palm", his_side, 0.008)
-	await Cine.wait(w, 0.7)
+	await Cine.wait(w, 0.6)
 	if pf is Figure3D:
 		var me := pf as Figure3D
 		var my_side := "right" if (-to_p).dot(me.facing().cross(Vector3.UP)) > 0.0 else "left"
+		# (6 November, Gary: "When Corin hands you something your hand goes
+		# through his": their hand came down palm-down onto his, on the spot
+		# his was, and turned palm up there, through it. Now it comes in
+		# under the edge of his, palm up, on its own side and a little lower,
+		# the fingertips just under his; he tips his hand and the button
+		# slides off his fingers into their palm.)
 		var take := Node3D.new()
+		take.name = "ButtonTake"
 		w.add_child(take)
-		take.global_position = give.global_position + Vector3(0, 0.02, 0)
-		me.palm(my_side, Vector3.DOWN, 0.3)
-		me.reach(take if my_side == "left" else null, take if my_side == "right" else null, 0.45)
-		await Cine.wait(w, 0.55)
+		var take_at := give.global_position + to_p * BUTTON_ACROSS + Vector3(0, -BUTTON_UNDER, 0)
+		take.global_position = take_at + to_p * 0.08 + Vector3(0, -0.07, 0)
+		me.palm(my_side, Vector3.UP, 0.3, 0.6)
+		me.reach(take if my_side == "left" else null, take if my_side == "right" else null, 0.4)
+		var come := w.create_tween()
+		come.tween_property(take, "global_position", take_at, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		await come.finished
+		await Cine.wait(w, 0.15)
+		# he tips it towards them, and it slides off into their palm
+		corin.palm(his_side, (Vector3.UP * 0.8 + to_p * 0.6).normalized(), 0.3, 0.6)
+		var tip := w.create_tween()
+		tip.tween_property(give, "global_position", give.global_position + to_p * 0.015 + Vector3(0, -0.01, 0), 0.3).set_trans(Tween.TRANS_SINE)
+		await Cine.wait(w, 0.18)
 		corin.detach(b)
-		corin.let_go(0.35)
-		corin.palm(his_side, Vector3.ZERO, 0.35)
-		me.palm(my_side, Vector3.UP, 0.25)
+		var from := b.global_position
+		var basis0 := b.global_transform.basis
+		var land := take_at + Vector3(0, 0.02, 0)
+		var slide := w.create_tween()
+		slide.tween_method(func(k: float) -> void:
+			if is_instance_valid(b):
+				var at := from.lerp(land, k)
+				at.y = lerpf(from.y, land.y, k * k)   # (it falls the last of the way)
+				b.global_transform = Transform3D(basis0.slerp(Basis.IDENTITY, k).orthonormalized(), at), 0.0, 1.0, 0.28)
+		await slide.finished
 		me.attach(b, "palm", my_side, 0.008)
-		# in to them, and into a pocket (it's in Items)
+		# his hand back to where it rests (on the wall), or down
+		corin.palm(his_side, Vector3.ZERO, 0.35)
+		if _corin_on_wall(w):
+			_corin_rests(w, 0.4)
+		else:
+			corin.let_go(0.35)
+		await Cine.wait(w, 0.3)
+		# in to them, a look at it, and into a pocket (it's in Items)
+		var chest := me.bone_pos("Spine1")
+		var keep := take_at.lerp(chest, 0.45)
+		keep.y = take_at.y + 0.03
 		var tw := w.create_tween()
-		tw.tween_property(take, "global_position", me.to_world(Vector3(0.0, me.hold_point(0.0, 0.0).y - 0.25, 0.22)), 0.6).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(take, "global_position", keep, 0.6).set_trans(Tween.TRANS_SINE)
 		await tw.finished
 		await Cine.wait(w, 0.4)
 		me.detach(b)
 		me.let_go(0.35)
 		me.palm(my_side, Vector3.ZERO, 0.35)
 		take.queue_free()
+	else:
+		corin.detach(b)
+		corin.palm(his_side, Vector3.ZERO, 0.35)
+		if _corin_on_wall(w):
+			_corin_rests(w, 0.4)
+		else:
+			corin.let_go(0.35)
 	if is_instance_valid(b):
 		b.queue_free()
 	give.queue_free()
@@ -1226,6 +1398,11 @@ static func scene(name: String, w: World) -> bool:
 			await tam_to_nell(w)
 		"corin_button":
 			await corin_button(w)
+		"beat":
+			# (Corin's beats: on the race wall his head turns, not his body)
+			if not _corin_on_wall(w):
+				return false
+			await _corin_beat(w)
 		"beat_bram":
 			await AshfordP1.beat(w, "bram")
 		"beat_tam":

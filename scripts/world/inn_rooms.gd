@@ -374,7 +374,7 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	fill.position = Vector3(1.2, 2.2, 0.8)
 	root.add_child(fill)
 	# a chest at the bed's foot, a coat on a peg
-	v.box(root, Vector3(0.75, 0.46, 0.46), Vector3(0.75, 0.23, -2.05), v.mats.wood)
+	v.box(root, Vector3(0.75, 0.46, 0.46), Vector3(0.75 + BED_FOOT, 0.23, -2.05), v.mats.wood)
 	v.box(root, Vector3(0.12, 0.05, 0.05), Vector3(-1.4, 0.85, D * 0.5 - 0.03), v.mats.beam)
 	v.box(root, Vector3(0.42, 0.62, 0.08), Vector3(-1.4, 0.55, D * 0.5 - 0.08), v.mats.cloth_blue)
 	# the washbasin on its stand against the east gable, an oval mirror over
@@ -874,6 +874,17 @@ const EDGE_SINK := 0.02
 ## Gary's own bed model takes the built one's place the moment it exists, by
 ## either name (2.05 m long, 1 m wide, its origin at the middle of its base,
 ## the head at -x), as the crate and the Great Lantern are picked up.
+## How much longer the in-engine bed is at its foot than it was (its head
+## where it was): Player A lying in it, crown on the pillow, had his boots
+## out past the blanket's end and into the footboard (6 November, Gary:
+## "When you wake up in bed after the white card you're not under the
+## covers, your body is half way through them"). The chest at its foot
+## moves along with it.
+const BED_FOOT := 0.15
+## The blanket's length: from the chest (0.35 m to the head side of the
+## bed's middle, as before) down over the boots to the mattress's foot,
+## where it falls to the mattress (_blanket_points).
+const BLANKET_L := 1.42
 const BED_MODELS := ["res://assets/models/ashford/bed.glb", "res://assets/models/ashford/attic_bed.glb"]
 
 
@@ -891,7 +902,7 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	var wool := v.shader_mat("cloth", {"col_a": Color(0.3, 0.1, 0.07), "col_b": Color(0.16, 0.15, 0.11), "stripes": 3.0})
 	var oak: Material = v.mats.wood_h
 	var post: Material = v.mats.beam_v
-	var L := 2.05
+	var L := 2.05 + BED_FOOT
 	var W := 1.0
 	var rail_y := 0.3      # the side rails' middle
 	var model_path := ""
@@ -907,12 +918,14 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 		for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
 			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 	else:
+		# (the frame's middle: BED_FOOT longer than it was, at the foot)
+		var c := at + Vector3(BED_FOOT * 0.5, 0, 0)
 		# four posts, the head pair tall for the headboard, each with a
 		# turned knob on top
 		for sx in [-1.0, 1.0]:
 			for sz in [-1.0, 1.0]:
 				var h := 1.0 if sx < 0.0 else 0.66
-				var px := at + Vector3(sx * (L * 0.5 - 0.045), 0, sz * (W * 0.5 - 0.045))
+				var px := c + Vector3(sx * (L * 0.5 - 0.045), 0, sz * (W * 0.5 - 0.045))
 				v.box(root, Vector3(0.09, h, 0.09), px + Vector3(0, h * 0.5, 0), post)
 				v.cyl(root, 0.03, 0.055, 0.05, px + Vector3(0, h + 0.025, 0), oak, 12)
 				var knob := SphereMesh.new()
@@ -921,37 +934,37 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 				v.add_mesh(root, knob, oak, Transform3D(Basis.IDENTITY, px + Vector3(0, h + 0.09, 0)))
 		# side and end rails, and the slats across them
 		for sz in [-1.0, 1.0]:
-			v.box(root, Vector3(L - 0.18, 0.12, 0.05), at + Vector3(0, rail_y, sz * (W * 0.5 - 0.07)), oak)
+			v.box(root, Vector3(L - 0.18, 0.12, 0.05), c + Vector3(0, rail_y, sz * (W * 0.5 - 0.07)), oak)
 		for sx in [-1.0, 1.0]:
-			v.box(root, Vector3(0.05, 0.12, W - 0.18), at + Vector3(sx * (L * 0.5 - 0.07), rail_y, 0), v.mats.wood)
+			v.box(root, Vector3(0.05, 0.12, W - 0.18), c + Vector3(sx * (L * 0.5 - 0.07), rail_y, 0), v.mats.wood)
 		for i in 7:
-			v.box(root, Vector3(0.1, 0.03, W - 0.14), at + Vector3(-L * 0.5 + 0.2 + i * (L - 0.4) / 6.0, rail_y + 0.075, 0), oak)
+			v.box(root, Vector3(0.1, 0.03, W - 0.14), c + Vector3(-L * 0.5 + 0.2 + i * (L - 0.4) / 6.0, rail_y + 0.075, 0), oak)
 		# the headboard: a top rail with a rounded cap, a lower rail, and
 		# five uprights between the tall posts
-		v.box(root, Vector3(0.06, 0.07, W - 0.18), at + Vector3(-L * 0.5 + 0.045, 0.58, 0), v.mats.wood)
-		v.box(root, Vector3(0.07, 0.09, W - 0.18), at + Vector3(-L * 0.5 + 0.045, 0.9, 0), v.mats.wood)
-		v.cyl(root, 0.045, 0.045, W - 0.18, at + Vector3(-L * 0.5 + 0.045, 0.945, 0), oak, 12, Vector3(PI * 0.5, 0, 0))
+		v.box(root, Vector3(0.06, 0.07, W - 0.18), c + Vector3(-L * 0.5 + 0.045, 0.58, 0), v.mats.wood)
+		v.box(root, Vector3(0.07, 0.09, W - 0.18), c + Vector3(-L * 0.5 + 0.045, 0.9, 0), v.mats.wood)
+		v.cyl(root, 0.045, 0.045, W - 0.18, c + Vector3(-L * 0.5 + 0.045, 0.945, 0), oak, 12, Vector3(PI * 0.5, 0, 0))
 		for i in 5:
-			v.box(root, Vector3(0.04, 0.26, 0.05), at + Vector3(-L * 0.5 + 0.045, 0.73, -W * 0.5 + 0.17 + i * (W - 0.34) / 4.0), v.mats.wood)
+			v.box(root, Vector3(0.04, 0.26, 0.05), c + Vector3(-L * 0.5 + 0.045, 0.73, -W * 0.5 + 0.17 + i * (W - 0.34) / 4.0), v.mats.wood)
 		# the footboard: a top rail and three uprights down to the end rail
-		v.box(root, Vector3(0.06, 0.08, W - 0.18), at + Vector3(L * 0.5 - 0.045, 0.58, 0), v.mats.wood)
+		v.box(root, Vector3(0.06, 0.08, W - 0.18), c + Vector3(L * 0.5 - 0.045, 0.58, 0), v.mats.wood)
 		for i in 3:
-			v.box(root, Vector3(0.04, 0.2, 0.05), at + Vector3(L * 0.5 - 0.045, 0.46, -W * 0.5 + 0.25 + i * (W - 0.5) / 2.0), v.mats.wood)
+			v.box(root, Vector3(0.04, 0.2, 0.05), c + Vector3(L * 0.5 - 0.045, 0.46, -W * 0.5 + 0.25 + i * (W - 0.5) / 2.0), v.mats.wood)
 		# the straw, poking out under the ticking, and the mattress: a
 		# stuffed slab, rolled at the edges, that sags where a body lies
-		v.box(root, Vector3(L - 0.12, 0.07, W - 0.1), at + Vector3(0, rail_y + 0.12, 0), v.mats.hay)
+		v.box(root, Vector3(L - 0.12, 0.07, W - 0.1), c + Vector3(0, rail_y + 0.12, 0), v.mats.hay)
 		var mat_h := BED_TOP - 0.4
-		v.add_mesh(root, _mattress_mesh(L - 0.2, W - 0.16, mat_h), ticking, Transform3D(Basis.IDENTITY, at + Vector3(0, 0.4, 0)))
+		v.add_mesh(root, _mattress_mesh(L - 0.2, W - 0.16, mat_h), ticking, Transform3D(Basis.IDENTITY, c + Vector3(0, 0.4, 0)))
 		# the pillow at the head: plump linen with the dent of a head in it,
 		# sat on the mattress where it stands at the head end
 		var px := -L * 0.5 + 0.34
 		var py := BED_TOP - _sag(px, 0.0, L - 0.2, W - 0.16) - 0.015
-		v.add_mesh(root, _pillow_mesh(0.46, 0.64, 0.15), linen, Transform3D(Basis.IDENTITY, at + Vector3(px, py, 0)))
+		v.add_mesh(root, _pillow_mesh(0.46, 0.64, 0.15), linen, Transform3D(Basis.IDENTITY, c + Vector3(px, py, 0)))
 	# the blanket: draped over the sleeper from the chest down, high over
 	# the chest, lower over the legs, falling to the mattress at the sides,
 	# rumpled, and the hem turned back over the chest
-	var rows := _blanket_points(1.3, W - 0.04)
-	var blanket := v.add_mesh(root, _blanket_mesh_of(rows), wool, Transform3D(Basis.IDENTITY, at + Vector3(0.3, BED_TOP, 0)))
+	var rows := _blanket_points(BLANKET_L, W - 0.04)
+	var blanket := v.add_mesh(root, _blanket_mesh_of(rows), wool, Transform3D(Basis.IDENTITY, at + Vector3(-0.35 + BLANKET_L * 0.5, BED_TOP, 0)))
 	blanket.name = "Blanket"
 	# (its points and its mesh as laid, for BlanketThrow and for putting it
 	# back over the sleeper)
@@ -1057,6 +1070,10 @@ static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 	_tri(st, a, Vector2(0, 0), c, Vector2(1, 1), d, Vector2(0, 1))
 
 
+## (the length of the blanket that lies over the body, head end first)
+const BLANKET_BODY := 1.3
+
+
 ## A blanket lying over someone on their back: `L` long (x, the head at -x)
 ## and `W` wide (z), its origin at the mattress's edge height under its head
 ## end's middle. Highest over the chest, lower down the legs, flat over the
@@ -1070,8 +1087,11 @@ static func _blanket_points(L: float, W: float) -> Array:
 	for i in nx + 1:
 		var u := float(i) / nx
 		# the body under it: chest, hips, knees, feet (the boots lift it a
-		# little again at the end)
-		var h := 0.25 - 0.14 * u + 0.03 * sin(u * PI) + 0.09 * smoothstep(0.65, 1.0, u)
+		# little again at the end), over the first BLANKET_BODY metres; then
+		# over the toes of the boots and down to the mattress at its end
+		var ub := minf(u * L / BLANKET_BODY, 1.0)
+		var h := 0.25 - 0.14 * ub + 0.03 * sin(ub * PI) + 0.09 * smoothstep(0.65, 1.0, ub)
+		h *= smoothstep(L, BLANKET_BODY + 0.03, u * L)
 		var row: Array = []
 		for j in nz + 1:
 			var vv := float(j) / nz * 2.0 - 1.0
@@ -1080,8 +1100,10 @@ static func _blanket_points(L: float, W: float) -> Array:
 			var dip := BED_SAG * smoothstep(1.0, 0.25, absf(vv)) * smoothstep(1.0, 0.3, absf(u * L - 0.4) / 0.95)
 			# loose folds across and along it, and the roll of the turned hem
 			var fold := 0.012 * sin(u * 19.0 + vv * 2.5) * cos(vv * 7.0 + u * 3.0) + 0.008 * sin(vv * 11.0 + u * 5.0)
-			var hem := 0.035 * smoothstep(0.1, 0.0, u) * smoothstep(1.0, 0.7, absf(vv))
-			row.append(Vector3(-L * 0.5 + u * L, h * over + 0.015 - dip + fold * (0.4 + 0.6 * over) + hem, vv * W * 0.5))
+			var hem := 0.035 * smoothstep(0.1, 0.0, ub) * smoothstep(1.0, 0.7, absf(vv))
+			# (and its end over the mattress's rolled edge at the foot)
+			var tuck := 0.06 * smoothstep(L - 0.08, L, u * L)
+			row.append(Vector3(-L * 0.5 + u * L, h * over + 0.015 - dip + fold * (0.4 + 0.6 * over) + hem - tuck, vv * W * 0.5))
 		pts.append(row)
 	return pts
 

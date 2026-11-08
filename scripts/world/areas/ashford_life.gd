@@ -133,6 +133,8 @@ static func _free(w: World, id: String) -> bool:
 	var f = Cine.fig(w, id)
 	if b == null or f == null or b.has_meta("life_busy"):
 		return false
+	if id == "corin" and w.has_meta("corin_coming"):
+		return false   # (on his way over to the player: AshfordP1.corin_sets_off)
 	if AshfordDay.at_mill(b.global_position):
 		return false
 	if w._talk_target != null and w._npc_by_id(id) == w._talk_target:
@@ -267,6 +269,11 @@ static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 static func _look_back(w: World, id: String, at: Vector3, secs: float) -> void:
 	await w.get_tree().create_timer(secs, false).timeout
 	if is_instance_valid(w) and Cine.body(w, id) != null:
+		# (not if a scene has them walking somewhere by now: they'd turn back
+		# and walk on facing where they'd been, 6 November)
+		var f = Cine.fig(w, id)
+		if f != null and f.walking:
+			return
 		Cine.look(w, id, at)
 
 

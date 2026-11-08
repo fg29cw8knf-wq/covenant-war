@@ -545,6 +545,8 @@ func _ashford_prop(id: String, pos: Vector3, yaw: float, parent: Node3D = null) 
 		var root := Node3D.new()
 		root.position = pos
 		root.rotation.y = deg_to_rad(yaw)
+		if id == "hay_cart":
+			root.scale = AshfordVillage.HAY_CART_SCALE   # (Ashford's size)
 		into.add_child(root)
 		var inst: Node3D = (load(path) as PackedScene).instantiate()
 		root.add_child(inst)

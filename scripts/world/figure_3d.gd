@@ -105,12 +105,20 @@ const OWN_GAIT := {
 	# twenty years ago, and the faceless hunter (WhiteSky.Hunter plays its
 	# idle itself; the gait is for completeness), Gary's Tripo3D models on
 	# the 22 library clips, cut as Hale's were
-	"bram_coat": {"walk": 1.62, "run": 4.10, "sneak": 0.83},
+	# (his walk is the taproom Bram's since 6 November, OWN_CLIPS: 1.69 m/s
+	# on Bram, scaled to the coat model's longer legs)
+	"bram_coat": {"walk": 1.76, "run": 4.10, "sneak": 0.83},
 	"shard_hunter": {"walk": 2.41, "run": 6.10, "sneak": 1.23},
 	# Tobin, Ysa's son at the Golden Gate (5 November), a boy of nine on his
 	# own 22 library clips
 	"tobin": {"walk": 1.28, "run": 3.24, "sneak": 0.65},
 }
+## Clips a model takes from another in place of its own (6 November, Gary:
+## "Bram still walks very weird at start of game": the coat model's library
+## walk put each foot down on the line of the other, the left arm swinging
+## wide, and its feet slid a third of the pace; the taproom Bram's own walk,
+## the same man, fits it: tests/gait_probe.gd).
+const OWN_CLIPS := {"bram_coat": {"walk": "bram"}}
 ## A grown-up's hip height (m), the measure for the above.
 const ADULT_HIPS := 0.884
 const TURN_RATE := 9.0
@@ -170,6 +178,8 @@ var _look_at: Figure3D = null   # who they're turning their head to (look_round(
 var _look_point := Vector3.ZERO
 var _look_w := 0.0               # how far into the turn (0..1, eased)
 var _look_scan := 0.0
+## A point a scene has them look at with the head alone (eyes_on()), or null.
+var _eyes_on = null
 
 static var _donor_cache := {}
 
@@ -286,6 +296,15 @@ func _ready() -> void:
 		# borrowed clip that moves a bone the model's own clips never do
 		# (the fall's drop to the ground) leaves it there for good
 		anim.deterministic = true
+		for c: String in OWN_CLIPS.get(_model_name, {}):
+			var d := _donor_clip(String(OWN_CLIPS[_model_name][c]), c)
+			if not d.is_empty() and anim.has_animation_library(""):
+				var a := (d.clip as Animation).duplicate(true)
+				_fit(a, float(d.hips))
+				var lib := anim.get_animation_library("")
+				if lib.has_animation(c):
+					lib.remove_animation(c)
+				lib.add_animation(c, a)
 		for c in LOOPS:
 			if anim.has_animation(c):
 				anim.get_animation(c).loop_mode = Animation.LOOP_LINEAR
@@ -545,10 +564,18 @@ func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(
 ## width ahead of his body. His back is drawn up straight through the three
 ## spine bones, the neck comes up and back, the face kept level, the
 ## shoulders back; tests/stance_peek.gd shows a model against a plumb line.)
+## (6 November, Gary: "Bram still walks very weird": that went too far: his
+## back leant 7 degrees behind upright as he walked and his face was turned
+## 14 degrees up at the sky. Now the lower back comes a little forward over
+## the hips, as a man walks into the wind, the upper back upright, the head
+## drawn back over the shoulders with the face level, and the arms (the
+## coat model holds them out from his sides, the left most) brought in to
+## hang: walking he leans 3 degrees forward, the face 5 down, the arms 17 to
+## 19 degrees out as the taproom Bram's are. tests/gait_probe.gd measures it.)
 const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 0, 0), "Head": Vector3(6, 0, 0),
 	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)},
-	"bram_coat": {"Spine": Vector3(-2, 0, 0), "Spine1": Vector3(-3, 0, 0), "Spine2": Vector3(-3, 0, 0), "Neck": Vector3(-6, 0, 0), "Head": Vector3(5, 0, 0),
-	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)}}
+	"bram_coat": {"Spine": Vector3(6, 0, 0), "Spine1": Vector3(2, 0, 0), "Neck": Vector3(-8, 0, 0), "Head": Vector3(10, 0, 0),
+		"LeftArm": Vector3(-10, 0, -14), "RightArm": Vector3(-10, 0, 4)}}
 
 ## Bones kept at rest whatever a clip does to them (4 November, Gary:
 ## "Players right hand the baby finger looks deformed"): Player A's finger
@@ -1309,17 +1336,16 @@ func _turn_hands() -> void:
 			continue
 		var pre := "Left" if side == "left" else "Right"
 		var h := _skel.find_bone(pre + "Hand")
-		var m := _skel.find_bone(pre + "HandMiddle1")
 		var i := _skel.find_bone(pre + "HandIndex1")
 		var p := _skel.find_bone(pre + "HandPinky1")
 		if p < 0:
 			p = _skel.find_bone(pre + "HandRing1")
-		if h < 0 or m < 0 or i < 0 or p < 0:
+		if h < 0 or i < 0 or p < 0 or _knuckle_rest(pre) == Vector3.INF:
 			continue
 		# the hand's own frame as it was made (every rest is square to the
 		# world): the fingers' way, and the palm's (index to pinky across)
 		var r0 := _skel.get_bone_global_rest(h).origin
-		var f_b := (_skel.get_bone_global_rest(m).origin - r0).normalized()
+		var f_b := (_knuckle_rest(pre) - r0).normalized()
 		var across := _skel.get_bone_global_rest(i).origin - _skel.get_bone_global_rest(p).origin
 		var p_b := across.cross(f_b) if side == "right" else f_b.cross(across)
 		p_b = (p_b - f_b * p_b.dot(f_b)).normalized()
@@ -1548,8 +1574,11 @@ func _keep_out_of_solids(delta: float) -> void:
 ## hung in the air. detach() lets it go where it is.
 ## `gap` (between): how far apart the palms are kept, its width (the arms
 ## are bent to put each palm on its side, whatever the reach left them).
-func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0, ahead := 0.0) -> void:
-	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap, "ahead": ahead}
+## `aside` (palm): m across to their left from the palm's middle (negative:
+## to their right; 6 November: a box held on two hands sits off the left
+## palm towards the right, so the left thumb is clear of it).
+func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0, ahead := 0.0, aside := 0.0) -> void:
+	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap, "ahead": ahead, "aside": aside}
 	if _skel != null and not _skel.has_node("HandsOff"):
 		hands_off(_solids)
 
@@ -1652,8 +1681,24 @@ func _place_held() -> void:
 			z = f.basis.z
 		z = z.normalized()
 		var b := Basis(up.cross(z), up, z) * Basis(Vector3.UP, float(_in_hands.turn))
-		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift + z * float(_in_hands.get("ahead", 0.0)))
+		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift + z * float(_in_hands.get("ahead", 0.0)) + up.cross(z) * float(_in_hands.get("aside", 0.0)))
 		last_hold = {"palm": f.origin, "up": up}
+
+
+## The middle finger's root at rest (the skeleton's frame), the way the hand
+## points; a hand rigged without a middle finger (Player C's: index, ring and
+## thumb) takes the middle of the index's and the ring's. INF: neither.
+## (6 November: without it Player C's hands were never turned, and a box
+## "on the palm" stood on its end against his bracer.)
+func _knuckle_rest(pre: String) -> Vector3:
+	var m := _skel.find_bone(pre + "HandMiddle1")
+	if m >= 0:
+		return _skel.get_bone_global_rest(m).origin
+	var i := _skel.find_bone(pre + "HandIndex1")
+	var r := _skel.find_bone(pre + "HandRing1")
+	if i >= 0 and r >= 0:
+		return (_skel.get_bone_global_rest(i).origin + _skel.get_bone_global_rest(r).origin) * 0.5
+	return Vector3.INF
 
 
 ## A palm, as drawn this frame (world): its origin on the palm's skin at its
@@ -1667,17 +1712,16 @@ func palm_frame(side: String) -> Transform3D:
 	if h < 0:
 		return Transform3D(global_transform.basis, global_position + Vector3(0, 1.0, 0))
 	var gp := _skel.get_bone_global_pose(h)
-	var m := _skel.find_bone(pre + "HandMiddle1")
 	var i := _skel.find_bone(pre + "HandIndex1")
 	var p := _skel.find_bone(pre + "HandPinky1")
 	if p < 0:
 		p = _skel.find_bone(pre + "HandRing1")
-	if m < 0 or i < 0 or p < 0:
+	if i < 0 or p < 0 or _knuckle_rest(pre) == Vector3.INF:
 		var fb := (gp.basis * Vector3.DOWN)
 		var o := xf * (gp.origin + fb * 0.06 * stature())
 		return Transform3D((xf.basis * gp.basis).orthonormalized(), o)
 	var r0 := _skel.get_bone_global_rest(h).origin
-	var f_b := _skel.get_bone_global_rest(m).origin - r0
+	var f_b := _knuckle_rest(pre) - r0
 	var plen := f_b.length()
 	f_b = f_b.normalized()
 	var across := _skel.get_bone_global_rest(i).origin - _skel.get_bone_global_rest(p).origin
@@ -2011,6 +2055,11 @@ const LOOK_PITCH := deg_to_rad(16.0)     # ...and up or down
 const LOOK_NECK := 0.4                   # the neck's share of the turn
 const LOOK_EASE := 3.0                   # how fast it comes in and goes (a third of a second)
 static var _figures: Array = []          # every figure standing in a scene
+## How much of that turn this one takes (1 all of it, 0 none): a scene can
+## keep a face to its camera (6 November: Bram sat on the attic bed beside
+## the player turned his head half round to them, and his painted eyes,
+## seen from the side, looked "weird" to Gary).
+var look_turn := 1.0
 
 
 func _add_head_turn() -> void:
@@ -2027,6 +2076,15 @@ func _add_head_turn() -> void:
 	ht.neck = _skel.find_bone("Neck")
 	ht.head = _skel.find_bone("Head")
 	_skel.add_child(ht)
+
+
+## Turns the head (the neck and head, as far as LOOK_YAW) to `point` and keeps
+## it there, the body left as it is; null gives the head back to whoever's
+## talking. For someone sat where a turn of the whole body would swing their
+## legs into what they sit on (6 November, Gary: Corin on the race wall, "his
+## legs also go through the wall when he turns to you").
+func eyes_on(point) -> void:
+	_eyes_on = point if point is Vector3 else null
 
 
 ## Free to turn their head of their own accord: nothing a scene asked for is
@@ -2067,6 +2125,9 @@ func _look_round(delta: float) -> void:
 	var on := _look_at != null and is_instance_valid(_look_at) and _free_to_look()
 	if on:
 		_look_point = _look_at.bone_pos("Head") + Vector3(0, 0.06, 0)
+	if _eyes_on is Vector3 and _free_to_look():
+		on = true
+		_look_point = _eyes_on
 	_look_w = move_toward(_look_w, 1.0 if on else 0.0, delta * LOOK_EASE)
 
 
@@ -2084,8 +2145,8 @@ func _turn_head(sk: Skeleton3D, neck: int, head: int) -> void:
 	if flat.length() < 0.05:
 		return
 	var fwd := facing()
-	var yaw := clampf(fwd.signed_angle_to(flat.normalized(), Vector3.UP), -LOOK_YAW, LOOK_YAW) * w
-	var pitch := clampf(atan2(to.y, flat.length()), -LOOK_PITCH, LOOK_PITCH) * w
+	var yaw := clampf(fwd.signed_angle_to(flat.normalized(), Vector3.UP), -LOOK_YAW, LOOK_YAW) * w * look_turn
+	var pitch := clampf(atan2(to.y, flat.length()), -LOOK_PITCH, LOOK_PITCH) * w * look_turn
 	var side := Vector3.UP.cross(fwd).normalized()   # their left (a turn about it by -pitch lifts the face)
 	var b := sx.basis.orthonormalized()
 	var bi := b.inverse()

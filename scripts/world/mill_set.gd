@@ -222,6 +222,8 @@ static func build(v: AshfordVillage) -> Dictionary:
 			n.rotation.y = p[2]
 			if p[0] == "crate":
 				n.scale = Vector3.ONE * 0.55
+			elif p[0] == "hay_cart":
+				n.scale = AshfordVillage.HAY_CART_SCALE
 	var b := v.make_barrel()
 	root.add_child(b)
 	b.position = Vector3(-2.9, AshfordVillage.BARREL_HALF, 3.3)

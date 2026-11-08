@@ -12,7 +12,8 @@ extends Node
 ## Forward+ (the Mac's look): --rendering-driver vulkan --rendering-method forward_plus,
 ## with VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json on a machine with no GPU.
 ## "skip" presses Skip a few seconds in, to check skipping; "duel" plays only
-## the filmed duel and the end; "max=<s>" stops after that much game time (a
+## the filmed duel and the end; "skip_at=<s>" presses Skip then (32: in the
+## crater, the duel built and waiting behind it); "max=<s>" stops after that much game time (a
 ## look at the walk in Forward+, where a frame takes seconds).
 
 var out_dir := "/tmp/white_sky"
@@ -29,6 +30,7 @@ var _skip := false
 var _hold_hint := 0.0
 var _duel_only := false
 var _max := 0.0
+var _skip_at := 8.0
 
 
 func _ready() -> void:
@@ -42,6 +44,9 @@ func _ready() -> void:
 	for a in args:
 		if String(a).begins_with("max="):
 			_max = float(String(a).substr(4))
+		if String(a).begins_with("skip_at="):
+			_skip = true
+			_skip_at = float(String(a).substr(8))
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	get_window().size = Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
@@ -110,7 +115,7 @@ func _process(delta: float) -> void:
 				_still_later("summon", 1.5)
 				_still_later("summon_b", 3.5))
 		_still_later("duel_start", 2.0)
-	if _skip and _t > 8.0 and not m._skipping:
+	if _skip and _t > _skip_at and not m._skipping:
 		m.skip()
 	if _t >= _next_still:
 		_next_still = _t + every
@@ -123,6 +128,8 @@ func _still_later(label: String, secs: float) -> void:
 
 
 func _still(label: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return   # (nothing's drawn headless: frame_post_draw never comes, and the run would wait on it for ever)
 	await RenderingServer.frame_post_draw
 	_shots += 1
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))

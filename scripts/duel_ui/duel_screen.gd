@@ -12,6 +12,11 @@ extends Control
 ## Emits finished("won" | "lost" | "draw" | "again" | "quit").
 
 signal finished(result: String)
+## spec.hold (6 November, the Night of the White Sky): the screen, its field
+## and its models are built and warmed, and the duel waits for go() to begin
+## (WhiteSky builds it behind the memory, so the cut to it is quick).
+signal _go
+var _held_start := false
 
 const DESIGN := Vector2(1920, 1080)
 const SLOT_SIZE := Vector2(340, 330)
@@ -727,6 +732,10 @@ func _start() -> void:
 				ids[String(kid)] = true
 		field.warm_models(ids.keys())
 		field.warm_fx()   # (29 October: the new effects' shaders, drawn once now)
+	if bool(spec.get("hold", false)):
+		_held_start = true
+		await _go
+		_held_start = false
 	sfx.play("shuffle")
 	# a story duel can name its own music (spec.music: tracks to try first)
 	Music.play((spec.get("music", ["arena_" + _arena_name]) as Array) + Music.duel_theme())
@@ -766,6 +775,13 @@ func _start() -> void:
 		r = "lost"
 	var choice: String = await _show_result(r)
 	finished.emit(choice if choice != "" else r)
+
+
+## Begins a duel built with spec.hold (at once if it isn't waiting yet).
+func go() -> void:
+	spec["hold"] = false
+	if _held_start:
+		_go.emit()
 
 
 func pause(sec: float) -> void:
@@ -1312,7 +1328,7 @@ func _set_hint(t: String) -> void:
 ## Keyboard and mouse on a computer: Esc or right-click cancels what's
 ## selected (or opens the duel menu), Space ends the turn.
 func _unhandled_input(e: InputEvent) -> void:
-	if mode == "over" or not is_visible_in_tree():
+	if mode == "over" or not is_visible_in_tree() or _held_start:
 		return
 	if banner_waiting:
 		# the Law or the rule is up to be read: the interact key moves it on
@@ -1363,7 +1379,7 @@ var _view_save := 0.0    # the zoom is saved once it has stopped changing for th
 ## trackpad, or two fingers pinching. Not over the duel log or menu (they
 ## scroll), nor while a question or a card picker is up.
 func _zoom_input(e: InputEvent) -> void:
-	if field == null or not is_visible_in_tree():
+	if field == null or not is_visible_in_tree() or _held_start:
 		return
 	if e is InputEventScreenTouch:
 		if e.pressed:

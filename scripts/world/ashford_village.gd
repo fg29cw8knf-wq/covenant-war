@@ -45,7 +45,16 @@ var tam_barrel: Node3D
 var barrel_spot := Vector3.ZERO
 ## Tam's hay cart, and how it stands before the Sigilfall knocks it over.
 const HAY_CART_YAW := 2.07
-const HAY_CART_HALF_WIDTH := 1.25   # centre to the outside of a wheel
+const HAY_CART_HALF_WIDTH := 1.25   # centre to the outside of a wheel (the model's own metres)
+## Gary's hay cart model came 2.5 m across its wheels, 2.46 m to the top of
+## its load and 4.6 m long with the shafts (wheels a metre across): beside
+## the merchant carts (1.6 m across) and the people it looked a giant's cart,
+## and lying over on Corin it stood a wall higher than the player (6
+## November, Gary: "The hay cart that falls on Corin seems really big").
+## Drawn at this size everywhere it's used (Ashford, the mill, Solhaven): 1.9
+## m across the wheels, 2 m to the top of the hay, wheels 0.8 m, a cart a
+## pony draws. (x across, y up, z along.)
+const HAY_CART_SCALE := Vector3(0.76, 0.8, 0.8)
 var hay_cart: Node3D
 var hay_cart_rest := Transform3D.IDENTITY
 var hay_cart_tip := 0.0
@@ -1179,7 +1188,7 @@ func build_green() -> void:
 	# Tam's hay cart (Gary's model), its shafts down on the grass pointing up
 	# the lane to the mill: the cart that goes over on Corin at the Sigilfall
 	var cp := Vector3(9.0, height(9, -5), -5.0)
-	hay_cart = prop_model("hay_cart", g, cp, HAY_CART_YAW)
+	hay_cart = prop_model("hay_cart", g, cp, HAY_CART_YAW, HAY_CART_SCALE)
 	if hay_cart == null:
 		var cart := Node3D.new(); cart.position = cp; cart.rotation.y = 0.6; g.add_child(cart)
 		box(cart, Vector3(2.6, 0.5, 1.5), Vector3(0, 0.9, 0), mats.wood_h)
@@ -1197,7 +1206,7 @@ func build_green() -> void:
 ## One of Gary's props (assets/models/ashford/<id>.glb, +Y up, front +Z) set
 ## down at `pos` turned by `yaw`, with shadows, a footprint and a solid body.
 ## Returns its node, or null when the model isn't there yet.
-func prop_model(id: String, parent: Node3D, pos: Vector3, yaw: float) -> Node3D:
+func prop_model(id: String, parent: Node3D, pos: Vector3, yaw: float, size := Vector3.ONE) -> Node3D:
 	var path := "res://assets/models/ashford/%s.glb" % id
 	if not ResourceLoader.exists(path):
 		return null
@@ -1206,6 +1215,7 @@ func prop_model(id: String, parent: Node3D, pos: Vector3, yaw: float) -> Node3D:
 	pos.y = height(pos.x, pos.z) - 0.03
 	root.position = pos
 	root.rotation.y = yaw
+	root.scale = size
 	root.set_meta("model", true)
 	parent.add_child(root)
 	var inst: Node3D = load(path).instantiate()
@@ -1217,6 +1227,7 @@ func prop_model(id: String, parent: Node3D, pos: Vector3, yaw: float) -> Node3D:
 		var b := (root.global_transform.affine_inverse() * mi.global_transform) * mi.get_aabb()
 		box_ = b if first else box_.merge(b)
 		first = false
+	box_ = AABB(box_.position * size, box_.size * size)   # (measured in the model's own metres)
 	var c := box_.get_center()
 	var flat := Vector2(c.x, c.z).rotated(-yaw)
 	var centre := Vector3(pos.x + flat.x, 0.0, pos.z + flat.y)
@@ -2753,10 +2764,14 @@ func set_cart_tip(amount: float) -> void:
 	hay_cart_tip = amount
 	if hay_cart == null:
 		return
-	var edge := Vector3(-HAY_CART_HALF_WIDTH, 0.0, 0.0)
+	# (turned about the wheel in the cart's drawn size, then drawn at it, so
+	# HAY_CART_SCALE's x and y don't shear it as it goes over)
+	var sc := hay_cart_rest.basis.get_scale()
+	var unscaled := Transform3D(hay_cart_rest.basis.orthonormalized(), hay_cart_rest.origin)
+	var edge := Vector3(-HAY_CART_HALF_WIDTH * sc.x, 0.0, 0.0)
 	# a little past flat so the hay rests on the grass rather than the wheel rim
 	var r := Basis(Vector3(0, 0, 1), amount * deg_to_rad(88.0))
-	hay_cart.transform = hay_cart_rest * Transform3D(Basis(), edge) * Transform3D(r, Vector3.ZERO) * Transform3D(Basis(), -edge)
+	hay_cart.transform = unscaled * Transform3D(Basis(), edge) * Transform3D(r, Vector3.ZERO) * Transform3D(Basis(), -edge) * Transform3D(Basis.from_scale(sc), Vector3.ZERO)
 
 
 func tip_cart(to: float, secs: float, trans := Tween.TRANS_QUAD, ease := Tween.EASE_IN) -> void:

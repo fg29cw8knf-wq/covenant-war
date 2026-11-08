@@ -1469,6 +1469,115 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 6 November play-through notes (the memory, the first day, midnight)
+
+Twelve notes from playing the Mac build, 6 November, and what each became
+(`docs/handover/2026-11-08.md`). Since Master Script v7 every look plays as
+Player A in the game (`DollArt.player_look()`), so the four-look stills
+check A in the game and the others only in the plain-stage probes.
+
+**The Night of the White Sky**
+
+- **"Bram still walks very weird at start of game"**: the 5 November posture
+  had gone too far: walking, his back leant 7 degrees behind upright and his
+  face was turned 14 degrees up at the sky, and the coat model's own walk put
+  each foot down on the line of the other, swung the left arm out wide and
+  slid his feet a quarter of his pace. He walks on the taproom Bram's own walk
+  now (`Figure3D.OWN_CLIPS`, `OWN_GAIT` 1.76), and `POSTURE`'s `bram_coat`
+  entry brings his back a little forward over the hips, keeps his face level
+  and his arms hanging: 3 degrees forward, arms 16 degrees out, feet a hip's
+  width apart and still on the snow. `tests/gait_probe.gd -- <model> [pace]`
+  measures it on the pose as drawn; `tests/coat_walk_peek.gd` takes stills.
+- **"Can we make the whole scene like the shards of ice and the cards look
+  much better"**: the spires were plain cones of near-black glass. They're
+  clusters of six-sided ice crystals now, pointed, faceted, their feet sunk in
+  the snow (`WhiteSky._crystal_mesh`, `_low_ground`), in the `ICE` shader:
+  deep blue ice you see into, thin cracks and drifting specks of light inside
+  (`ICE_LAYERS` by Gfx level), the edges and points catching the light, frost
+  on top and snow at the foot; the crater's are paler and lit from within, and
+  the filmed duel has a ring of them (`_ice_round_duel`). The Sigils are real
+  cards (`sigil_card`, the `CARD` shader): rounded corners, the card back one
+  side, a painting of their colour (`CARD_FACES`) with a pulsing rune ring the
+  other, a line of light round the edge; they flutter down (`_flutter`) with a
+  ribbon of light (`TRAIL_LEN`) and on a Mac sparks, flare as they land with a
+  round pool of light on the snow (`POOL`), never on the child or at Bram's
+  feet (`CARD_CLEAR_CHILD`, `CARD_CLEAR_HIM`). `tests/white_sky_peek.tscn --
+  <dir> ice|cards`.
+- **"Baby still levitates off ground into Bram's hands"**: on one knee his
+  straight arms ended 15 cm over the bundle, so it rose to meet them. He
+  kneels square on to it (`_kneel_dir`, `_kneel_spot`) and bends right over it
+  from the hips (`Stoop`, `STOOP`); it doesn't move until both hands are on it
+  (`lift_gap`, `HANDS_ON`, measured on the pose as drawn), then comes up with
+  his back (`LIFT_SECS`). Filmed low on his right; "Hush, now" over his left
+  shoulder (`_held_shot`). `tests/white_sky_peek.tscn -- <dir> lift [side]`.
+- **"When Bram's battle happens in the beginning it stays on a white screen
+  for ages"**: the whole duel was built and drawn for the first time in the
+  white. It's built behind the memory while the pick-up prompt waits now
+  (`WhiteSky._prepare_duel`, `DuelScreen` `spec.hold` and `go()`), warmed and
+  then not drawn until the cut (`DUEL_WARM_SECS`, `DUEL_WARM_MAX`); the white is
+  a short flash (`WHITE_HOLD`); the duel is ended before its screen goes
+  (`_end_screen`). Nothing of the inn was found showing or playing behind it.
+
+**The first day**
+
+- **"Corin starts walking up when you put down lanterns but then it cuts to
+  him back where he was and walks up again"**: his talk started a second walk
+  while the first was under way, and the green's life could take him back to
+  his old spot. One walk now (`AshfordP1.corin_sets_off` keeps `corin_meet`;
+  `corin_calls` lets it finish, walks only the rest if he was stopped short,
+  and the camera glides instead of cutting); `AshfordLife` leaves him alone
+  while he's `corin_coming`. `tests/notes_1106_shot.tscn -- <dir> walk`.
+- **"Bram's card box now goes through player's arm while he's holding it"**:
+  Player C's hands have no middle or little finger bones, so they never turned
+  palm up (`Figure3D._knuckle_rest` now); Player A's kept thumbs came up
+  through the box's side and lid; Player D's box floated 3 cm over the palm
+  (`Ashford.BOX_FIT`, `_box_lift`, `_box_aside`). The box sits halfway between
+  the hands as it's taken (`BOX_ASIDE`, `Figure3D.attach`'s `aside`), the left
+  hand slides under its middle with the box kept still, the right drops away
+  below it. `tests/box_hold_probe.gd -- <dir> <look>`; `tests/notes_1106_shot.tscn
+  -- <dir> deck look=<a|b|c|d>`.
+- **"When you meet Corin in evening his hands look through the wall he is
+  sitting on; his legs also go through the wall when he turns to you"**: he
+  sits towards the wall's meadow edge so his shins hang clear
+  (`AshfordDay.RACE_WALL`, `CORIN_SEAT`), one hand flat on the wall top, the
+  other in his lap, the wall solid to his hands (`_corin_rests`; `_corin_up`
+  undoes it), and he turns his head alone (`_corin_eyes`, `_corin_beat`,
+  `Figure3D.eyes_on`). `tests/notes_1106_shot.tscn -- <dir> pond|wall` checks
+  legs and hands against the wall every frame.
+- **"When Corin hands you something your hand goes through his"**: the
+  player's hand comes in under the edge of his, palm up, beside and a little
+  lower (`BUTTON_ACROSS`, `BUTTON_UNDER`); he tips his hand and the button
+  slides into their palm; a close shot of the hands.
+
+**Midnight and the waking**
+
+- **"When you're doing the heave pull with the cart the players aren't doing
+  anything"**: the player crouches at the cart's tail and takes the tail board
+  in both hands (`HEAVE_GRIPS` on the slats, `HEAVE_STAND`); each HEAVE is a
+  strain up out of the crouch with the cart coming up in their hands
+  (`HEAVE_TIP`); on the PULL they stand with it (`HEAVE_PULL`) and Tilly, by
+  Corin's head (`TILLY_AT_HEAD`), drops down (`TILLY_CROUCH`), takes him under
+  the arms and drags him clear; the player comes round the tail to him
+  (`HEAVE_TO`). `tests/night_close.tscn -- <dir> heave`.
+- **"The hay cart that falls on Corin seems really big"**: it was 2.5 m across
+  the wheels and 2.46 m to the top of the hay. `AshfordVillage.HAY_CART_SCALE`
+  everywhere it's used (Ashford, the mill, Solhaven): 1.9 m across, 2 m high;
+  Corin lies at `Ashford.CART_PIN`; `set_cart_tip` turns before it scales so it
+  doesn't skew.
+- **"When you wake up in bed after the white card you're not under the
+  covers, your body is half way through them"**: his own hand throws the
+  blanket back before he sits up, after the white light as in the morning
+  (`AshfordP1.throw_blanket`); the attic bed is `InnRooms.BED_FOOT` longer at
+  the foot and the blanket (`BLANKET_L`, `_blanket_points`) covers him to his
+  boots, where they had stuck out through its end.
+- **"When Bram sits down on the bed his arm goes through the player and his
+  eyes are weird"**: he sits `AshfordNight.WAKE_BESIDE` along from them, his
+  near hand palm-down on their shoulder (`WAKE_ELBOW`, `palm`), back to his
+  knee as they look at their hands (`_bram_hand_back`); he only glances their
+  way (`look_turn`, `WAKE_LOOK_TURN`) and the shots keep his face to the
+  camera. His eyes are painted on the texture, so side-on they still look odd:
+  a Bram model with modelled open eyes would settle it.
+
 ### Gary's 5 November play-through notes (the memory, the opening, the green)
 
 Eleven notes from playing the Mac build, 5 November, and what each became

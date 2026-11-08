@@ -48,6 +48,25 @@ static func _c(w: World, name: String) -> Variant:
 
 # ========================================================== the awakening ===
 
+## Where the player sits on the bed's edge, from the bed's own spot
+## (`edge_at`), a little towards its head, and how far along it from them
+## Bram sits (hip to hip: room for his shoulders and his arm); how much of a
+## head turn he takes sat there (Figure3D.look_turn).
+const WAKE_EDGE := Vector3(-0.18, 0, 0)
+const WAKE_BESIDE := 0.72
+const WAKE_LOOK_TURN := 0.3
+## Where his reaching arm's elbow is drawn to, sat there (his own frame: x
+## to his left, y up from the floor, z ahead; Figure3D.elbow).
+const WAKE_ELBOW := Vector3(-0.35, 0.6, 0.2)
+
+
+## Bram's hand off the player's shoulder, the arm given back to his clip.
+static func _bram_hand_back(f: Figure3D) -> void:
+	f.let_go(0.4)
+	f.palm("right", Vector3.ZERO, 0.4)
+	f.elbow("right", Vector3.INF, 0.4)
+
+
 ## P3 · The Awakening (v7): the attic, the sun not quite up; Bram on a stool
 ## beside the cot with a damp cloth. "Thank the Courts." His confession; how
 ## the player takes it (remembered: temper_angry / temper_afraid /
@@ -134,9 +153,19 @@ static func awakening(w: World) -> void:
 	var foot_a := lie + Vector3(2.0, 1.15, 0.85)
 	Cine.drift(w, foot_a, foot_a + Vector3(-0.45, -0.08, -0.12), (bh + lie + Vector3(0, 0.6, 0)) * 0.5, bh + Vector3(0, -0.08, 0), 5.0, 40.0)
 	await Cine.say(w, "bram", "Thank the Courts. You gave me quite a scare out there, Sprout.")
-	# up onto an elbow (sat up in the bed), Bram leaning in
+	# the blanket thrown back (his own hand takes its hem and throws it to
+	# the wall), and up onto an elbow, sat up in the bed, Bram leaning in
+	# (6 November, Gary: "When you wake up in bed after the white card you're
+	# not under the covers, your body is half way through them": he sat up,
+	# and later swung his legs out, through a blanket that never moved)
 	if pf is Figure3D:
-		(pf as Figure3D).sit_long(a.lie_top, 1.4)
+		var bhand := Node3D.new()
+		bhand.name = "WakeHand"
+		w.add_child(bhand)
+		await AshfordP1.throw_blanket(w, pf as Figure3D, a, bhand, 0.7)
+		(pf as Figure3D).let_go(0.4)
+		(pf as Figure3D).sit_long(a.lie_top, 1.2)
+		bhand.queue_free()
 	await Cine.wait(w, 1.0)
 	var mid := (lie + stool) * 0.5
 	Cine.drift(w, mid + side * 2.0 + Vector3(0, 1.2, 0), mid + side * 1.75 + Vector3(0.0, 1.15, 0) - into * 0.1, mid + Vector3(0, 0.85, 0), mid + Vector3(0, 0.88, 0), 7.0, 40.0)
@@ -160,7 +189,7 @@ static func awakening(w: World) -> void:
 	# the player swings their legs out and sits on the bed's edge
 	if pf is Figure3D:
 		var fig := pf as Figure3D
-		await fig.shift_seat(a.edge_at, Vector3.BACK, 0.9, 0.05)
+		await fig.shift_seat(a.edge_at + WAKE_EDGE, Vector3.BACK, 0.9, 0.05)
 		fig.sit(a.edge_top, 0.6)
 		await Cine.wait(w, 0.4)
 		fig.look_toward(bram_win, w.cam)
@@ -231,8 +260,12 @@ static func awakening(w: World) -> void:
 	await Cine.wait(w, 1.6)
 	if bf is Figure3D:
 		(bf as Figure3D).release(0.5)
-	# he comes back to the bed and sits on its end, by them
-	var bed_end := w.player.global_position + Vector3(0.62, 0, 0.0)
+	# he comes back to the bed and sits on its end, by them: a body's width
+	# off (6 November, Gary: "When Bram sits down on the bed his arm goes
+	# through the player and his eyes are weird": he sat 0.62 m from them,
+	# his talking arm in their lap, and turned his head half round to them,
+	# where his painted eyes read as smears from the side)
+	var bed_end := w.player.global_position + Vector3(WAKE_BESIDE, 0, 0.0)
 	bed_end.y = fy
 	var end_way := root.to_global(Vector3(-1.2, 0, 0.1))
 	var two := (w.player.global_position + bed_end) * 0.5
@@ -240,6 +273,19 @@ static func awakening(w: World) -> void:
 	if Cine.body(w, "bram").global_position.distance_to(bed_end) > 0.3:
 		await Cine.path(w, "bram", [end_way, bed_end + Vector3(0, 0, 0.35)], 1.05)
 	await AshfordP1.sit_down(w, "bram", bed_end, Vector3.BACK, a.edge_top, 0.5)
+	# his face kept to the room (a glance their way, not his head turned
+	# round to them), and his near hand comes to rest on their shoulder
+	if bf is Figure3D:
+		(bf as Figure3D).look_turn = WAKE_LOOK_TURN
+	var bed_sh = w.area.call("_shoulder_point", w, "player", Cine.body(w, "bram").global_position)
+	if bf is Figure3D and bed_sh != null:
+		# (the elbow down and in front of him, so the arm comes up to the
+		# shoulder bent, not held straight out at it level)
+		(bf as Figure3D).elbow("right", WAKE_ELBOW * (bf as Figure3D).stature(), 0.01)
+		(bf as Figure3D).reach(null, bed_sh, 0.6)
+		# (palm down on it, the fingers over the top: left as the clip has
+		# it, the hand stood up on its edge beside their shoulder)
+		(bf as Figure3D).palm("right", Vector3.DOWN, 0.6, 0.5)
 	await Cine.say(w, "bram", "I kept you away from magic because magic [i]wants[/i] you. A deck in the cellar, Sparks so spent they'd barely answer, and my hand over yours. Never the deep draw.")
 	await Cine.say(w, "bram", "Channelling Essence properly would wake you up and light a beacon for every god in Veyl.")
 	# side by side on the bed's edge, from in front, a slow drift
@@ -257,8 +303,9 @@ static func awakening(w: World) -> void:
 	if asked[0]:
 		var more := await Cine.choose(w, ["And what does a blank space at the bottom of a loan do?", "But my chest was on fire. I thought it was going to kill me."])
 		if more == 0:
-			# he looks at you a moment too long
-			Cine.look(w, "bram", w.player.global_position)
+			# he looks at you a moment too long (sat as he is, his hand on
+			# their shoulder: turning his whole body round to them on the
+			# bed took his hand off it and left his arm held out in the air)
 			await Cine.wait(w, 1.2)
 			await Cine.say(w, "bram", "Enough that every god in Veyl will want it, and every bank that lends to them. That's all you need tonight.")
 			Game.set_flag("bram_holds_back")
@@ -270,7 +317,10 @@ static func awakening(w: World) -> void:
 	await Cine.say(w, "bram", "I thought so too. The resonance should have stopped your heart, but it didn't. Tell me, how do you feel now? Is the mark burning?")
 	await Cine.say(w, "player", "No... I feel fine. Actually... I feel better than I ever have.")
 	# they look at their hands: the exhaustion gone, a strange vitality, the
-	# mark under the collar
+	# mark under the collar (his hand comes off their shoulder, back to his
+	# knee, as they lean forward over their hands)
+	if bf is Figure3D:
+		_bram_hand_back(bf as Figure3D)
 	if pf is Figure3D:
 		(pf as Figure3D).pose("play_card", 0.4, 0.6)
 	var neck: Vector3 = (pf as Figure3D).bone_pos("Neck") if pf is Figure3D else w.player.global_position + Vector3(0, 1.0, 0)
@@ -279,12 +329,19 @@ static func awakening(w: World) -> void:
 	await Cine.wait(w, 2.0)
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.5)
-	Cine.drift(w, two + side * 2.3 + Vector3(0, 1.25, 0), two + side * 2.1 + Vector3(0, 1.2, 0), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.95, 0), 6.0, 40.0)
+	# (from in front of the two of them, a little to his side: from along
+	# the bed's edge he hid the player and showed his painted eyes side on)
+	Cine.drift(w, two + Vector3(0.55, 1.12, 2.05), two + Vector3(0.35, 1.08, 1.85), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.93, 0), 6.0, 40.0)
 	await Cine.say(w, "bram", "I was afraid of that. The seal isn't just a piece of paper, Sprout. It's a lock. And last night something turned the key.")
 	# the chapel bell, frantic, through the cold morning air: both up, and to
 	# the window
 	Music.stop(1.0)
 	w.area.call("_bell", w, 6)
+	if bf is Figure3D:
+		_bram_hand_back(bf as Figure3D)
+		(bf as Figure3D).look_turn = 1.0
+	if bed_sh != null:
+		w.area.call("_free_tracker", bed_sh)
 	await Cine.wait(w, 0.6)
 	Cine.look(w, "bram", win)
 	Cine.look(w, "player", win)

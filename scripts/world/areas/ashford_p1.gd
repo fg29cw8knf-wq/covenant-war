@@ -1477,17 +1477,7 @@ static func _attic(w: World) -> void:
 			# hand now goes only as far as the arm reaches from the shoulder
 			# he's lying on, low across his chest, and the cloth follows the
 			# hand as far as it goes and settles the rest of the way itself)
-			var corner := _hand_can(fig, "right", BlanketThrow.corner_of(bl))
-			hand.global_position = corner
-			fig.reach(null, hand, 0.35)
-			await Cine.wait(w, 0.3)
-			var bt := BlanketThrow.start(bl, a.blanket_off, hand, 0.8)
-			var to := _hand_can(fig, "right", BlanketThrow.corner_in_heap(bl, a.blanket_off))
-			var sweep := w.create_tween()
-			sweep.tween_method(func(u: float) -> void:
-				hand.global_position = _hand_can(fig, "right", corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.1, 0)), 0.0, 1.0, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-			await sweep.finished
-			bt.let_go()
+			await throw_blanket(w, fig, a, hand)
 			if not rise_clip:
 				var down := w.create_tween()
 				down.tween_property(hand, "global_position", on_mattress, 0.3).set_trans(Tween.TRANS_SINE)
@@ -1550,6 +1540,29 @@ static func _attic(w: World) -> void:
 	await _at_the_glass(w, a)
 
 
+## The sleeper's right hand takes the blanket's hem by them and throws it
+## back across them to the wall, the cloth following the hand (BlanketThrow),
+## the hand kept within the arm's reach. `hand` is the hand's target, left
+## where the throw ends and still reached for (let_go() to give the arm
+## back). Used by the morning's rise and by the wake after the white light
+## (6 November, Gary: "When you wake up in bed after the white card you're
+## not under the covers, your body is half way through them": there he sat
+## up and swung his legs out through a blanket that never moved).
+static func throw_blanket(w: World, fig: Figure3D, a: Dictionary, hand: Node3D, secs := 0.8) -> void:
+	var bl: Node3D = a.blanket
+	if not (bl is MeshInstance3D and bl.has_meta("rows")):
+		return
+	var corner := _hand_can(fig, "right", BlanketThrow.corner_of(bl))
+	hand.global_position = corner
+	fig.reach(null, hand, 0.35)
+	await Cine.wait(w, 0.3)
+	var bt := BlanketThrow.start(bl, a.blanket_off, hand, secs)
+	var to := _hand_can(fig, "right", BlanketThrow.corner_in_heap(bl, a.blanket_off))
+	var sweep := w.create_tween()
+	sweep.tween_method(func(u: float) -> void:
+		hand.global_position = _hand_can(fig, "right", corner.lerp(to, u) + Vector3(0, sin(u * PI) * 0.1, 0)), 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await sweep.finished
+	bt.let_go()
 
 
 ## `to` pulled back towards a hand's own shoulder (the upper arm bone, wherever
@@ -2809,6 +2822,10 @@ static func _green(w: World) -> void:
 	var wide := spot - to_c * 6.5 + side * 1.5 + Vector3(0, 3.2, 0)
 	Cine.shot(w, clear_cam(w, [wide, spot - to_c * 6.5 - side * 1.5 + Vector3(0, 3.6, 0), spot - to_c * 4.0 + Vector3(0, 5.0, 0)],
 		spot + Vector3(0, 1.2, 0)), spot + to_c * 1.5 + Vector3(0, 1.6, 0), 44.0)
+	# (a game picked up here starts on black, Ashford.starts_black, and the
+	# street's fade in, which brings the picture up, isn't played: up it comes)
+	if Cine.overlay(w)._black.modulate.a > 0.5:
+		Cine.fade(w, 0.0, 0.8)
 	# Bram sets off a beat after them and swings wide on his own side on
 	# the way, so his line never crosses theirs (Gary, 23 October)
 	Cine.path(w, "player", round_lantern(w, p, spot), 1.4)
@@ -3759,7 +3776,12 @@ const CORIN_WALK := 1.7
 ## Corin sets off across the green towards the player, not waited for (from
 ## _green, as the crate goes down: 5 November, Gary), so that corin_calls
 ## finds him there or nearly. AshfordLife leaves him be on the way
-## (`life_busy`), and his spot to shift about round becomes where he stops.
+## (`corin_coming`, `life_busy`), and his spot to shift about round becomes
+## where he stops. The walk is his one walk over (6 November, Gary: "Corin
+## starts walking up when you put down lanterns but then it cuts to him
+## back where he was and walks up again"): corin_calls lets it run on from
+## wherever he's got to, and only walks him the rest of the way if it's
+## been cut short; where he's coming to is kept (`corin_meet`).
 static func corin_sets_off(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null or Game.flag("corin_met") or w.has_meta("corin_coming"):
@@ -3773,7 +3795,13 @@ static func corin_sets_off(w: World) -> void:
 	var meet := w.player.global_position - dn * CORIN_MEET
 	meet.y = village(w).height(meet.x, meet.z)
 	w.set_meta("corin_coming", true)
+	w.set_meta("corin_meet", meet)
 	cb.set_meta("life_busy", true)
+	# (whatever he was doing for the children stops: a show-off clip played
+	# on under the walk, and he slid across the grass in his fight stance)
+	var cf = Cine.fig(w, "corin")
+	if cf is Figure3D and (cf as Figure3D)._action != "":
+		(cf as Figure3D).release(0.2)
 	_corin_comes(w, cb, c, meet)
 
 
@@ -3781,17 +3809,20 @@ static func _corin_comes(w: World, cb: Node3D, from: Vector3, meet: Vector3) -> 
 	await Cine.path(w, "corin", round_lantern(w, from, meet), CORIN_WALK)
 	if not is_instance_valid(w) or not is_instance_valid(cb):
 		return
+	w.remove_meta("corin_coming")
+	if cb.get_meta("corin_called", false):
+		return   # (corin_calls has him from here)
 	cb.remove_meta("life_busy")
 	cb.set_meta("life_home", cb.global_position)
-	w.remove_meta("corin_coming")
 	if Cine.body(w, "corin") != null:
 		Cine.look(w, "corin", w.player.global_position)
 
 
 ## Corin calls out and comes over to the player at the Lantern (the
 ## children round him gather to watch): the two of them face to face, from
-## the side. If he's already on his way (corin_sets_off) the walk picks up
-## from where he is.
+## the side. If he's already on his way (corin_sets_off) that walk carries
+## on from wherever he's got to: no second walk, and the camera glides round
+## to the two of them rather than cutting, so it's one walk seen through.
 static func corin_calls(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null:
@@ -3799,18 +3830,22 @@ static func corin_calls(w: World) -> void:
 	w.cine = true
 	# (the green's people keep still for the scene from here: AshfordLife)
 	w.remove_meta("life_through_cine")
-	w.remove_meta("corin_coming")
-	cb.remove_meta("life_busy")
+	cb.set_meta("corin_called", true)
+	var coming := w.has_meta("corin_coming")
 	var c := cb.global_position
-	var d := w.player.global_position - c
-	d.y = 0.0
-	var dn := d.normalized() if d.length() > 0.01 else Vector3.BACK
 	var p := w.player.global_position
-	# where he'll stand: where he is, or where he's coming to
+	# where he'll stand: where he's coming to, or where he is
 	var stand := c
-	if d.length() > CORIN_MEET + 0.2:
-		stand = p - dn * CORIN_MEET
+	var d := p - c
+	d.y = 0.0
+	if coming:
+		stand = w.get_meta("corin_meet", p - d.normalized() * CORIN_MEET)
+	elif d.length() > CORIN_MEET + 0.2:
+		stand = p - d.normalized() * CORIN_MEET
 		stand.y = village(w).height(stand.x, stand.z)
+	var dn := p - stand
+	dn.y = 0.0
+	dn = dn.normalized() if dn.length() > 0.01 else Vector3.BACK
 	var to := stand + dn * 1.6
 	to.y = village(w).height(to.x, to.z)
 	# the children gather behind him to watch, out of everyone's way
@@ -3823,17 +3858,33 @@ static func corin_calls(w: World) -> void:
 		var at := stand - dn * 1.9 + aside * (float(i) - 1.0) * 1.15 - dn * absf(float(i) - 1.0) * 0.3
 		at.y = village(w).height(at.x, at.z)
 		_walk_then_look(w, id, at, to)
-	if d.length() > CORIN_MEET + 0.2:
+	var far := Vector2(stand.x - c.x, stand.z - c.z).length() > 0.25
+	if far:
 		# v7: he comes over to them at the Lantern, twirling his card, and
-		# they turn to watch him come
+		# they turn to watch him come; the camera glides from behind them to
+		# the side of the two of them as he comes
 		Cine.look(w, "player", c)
 		var mid := (p + c) * 0.5
 		var sd := dn.cross(Vector3.UP)
 		var look := mid + Vector3(0, 1.2, 0)
-		Cine.shot(w, clear_cam(w, [p + sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0), p - sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0),
-			p + dn * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "corin"]), (p + stand) * 0.5 + Vector3(0, 1.2, 0), 40.0)
-		await Cine.path(w, "corin", round_lantern(w, c, stand), 2.1)
-		cb.set_meta("life_home", cb.global_position)
+		Cine.move(w, clear_cam(w, [p + sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0), p - sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0),
+			p + dn * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "corin"]), (p + stand) * 0.5 + Vector3(0, 1.2, 0), 0.9, 40.0)
+		if coming:
+			# (his walk from the crate carries on: wait for it)
+			var t := 0.0
+			while w.has_meta("corin_coming") and t < 12.0:
+				await w.get_tree().process_frame
+				t += w.get_process_delta_time()
+				Cine.look(w, "player", cb.global_position)
+		# the rest of the way, only if he isn't there (cut short, or none yet)
+		var left := cb.global_position - stand
+		left.y = 0.0
+		if left.length() > 0.3:
+			await Cine.path(w, "corin", round_lantern(w, cb.global_position, stand), 2.1)
+	cb.remove_meta("corin_called")
+	cb.remove_meta("life_busy")
+	w.remove_meta("corin_meet")
+	cb.set_meta("life_home", cb.global_position)
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.look(w, "player", Cine.body(w, "corin").global_position)
 	two_shot(w, "player", "corin", 3.6, 1.5, 36.0)

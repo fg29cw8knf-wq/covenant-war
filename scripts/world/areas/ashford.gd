@@ -1118,6 +1118,38 @@ const BOX_OUT := Vector3(0.0, 0.03, 0.05)
 ## over": centred on the palm, its front half sat under Player A's curled
 ## fingers, which came up through it; Figure3D.attach's `ahead`).
 const BOX_BACK := 0.045
+## Where the box sits on the player's palms (6 November, Gary: "Bram's card
+## box now goes through player's arm while he's holding it": set back the
+## same 4.5 cm on every hand, its back half hung out over the wrists and the
+## forearms came up through it; the four looks' hands aren't one length,
+## Player A's palm a good deal shorter than the rest). Now it's worked out
+## for each hand (_box_back): its back face a little ahead of the wrist, at
+## the heel of the hand (BOX_HEEL), so it rests from the heel to the finger
+## roots with nothing of the forearm under it, and the fingers in front of
+## it; lifted BOX_RISE over the palm, so it rests on the pads of the hand
+## and clear of fingers kept as modelled. (BOX_BACK stays the cut-outs'.)
+const BOX_HEEL := 0.012
+## The right elbow's hint while that hand's under the box (their own frame,
+## from the shoulder's height): lower than the left's, so the forearm runs
+## back from the wrist below the box's bottom (6 November: level with the
+## hand it came up into the box's back corner on the longer-handed looks).
+const BOX_RIGHT_ELBOW := Vector3(-0.46, -0.5, 0.1)
+const BOX_RIGHT_BACK := 0.02
+const BOX_RISE := 0.006
+## How each look's hands differ under the box (6 November, Gary: "Bram's
+## card box now goes through player's arm while he's holding it"), by
+## Figure3D's model name: `thumb`, how far across the box sits off the left
+## palm so the left thumb is clear of its side (Player A's thumbs are kept as
+## he modelled them, standing up off the palm, and came up through the box's
+## side and lid); `sink`, how much lower than the palm's middle as reckoned
+## from the bones (Player D's palm, as skinned, lies a good way under his
+## hand's bones, and the box stood 3 cm clear of it); `heel`, more room ahead
+## of the wrist (none needs it now).
+const BOX_FIT := {"player_a": {"thumb": 0.035}, "player_d": {"sink": 0.03}}
+## How far off the left palm's middle the box sits towards the right hand
+## while both hands are under it (m): its middle between the two hands, so it
+## doesn't shift across as it's taken.
+const BOX_ASIDE := 0.042
 ## How far apart the giver and the taker stand when it changes hands (m,
 ## between their middles): near enough that it's held out within one man's
 ## reach and taken within the other's (until 28 October Bram stood 1.5 m
@@ -1127,6 +1159,53 @@ const BOX_GIVE_GAP := 0.64
 const BOX_LID := 0.024   # the lid's own height, of CARD_BOX_SIZE.y
 ## Where Bram's apron pocket is, in his own frame (the box comes out of it).
 const BOX_POCKET := Vector3(-0.15, 0.95, 0.16)
+
+
+## How far back from the middle of `f`'s left palm the box sits (m, towards
+## the wrist; negative: ahead of it): its back face BOX_HEEL ahead of the
+## wrist (Figure3D.palm_frame's middle is its own distance along the hand on
+## each model).
+static func _box_back(f) -> float:
+	if not (f is Figure3D):
+		return BOX_BACK
+	var fig := f as Figure3D
+	var fr := fig.palm_frame("left")
+	var wrist := fig.bone_pos("LeftHand")
+	# (the palm's middle stands a skin's width off the bones: along the hand
+	# is the rest of the way)
+	var skin := Figure3D.SKIN * 0.6 * fig.stature()
+	var along := sqrt(maxf(0.0, fr.origin.distance_squared_to(wrist) - skin * skin))
+	return along - CARD_BOX_SIZE.z * 0.5 - BOX_HEEL - float(_box_fit(f).get("heel", 0.0))
+
+
+## How far over the left palm's middle (Figure3D.palm_frame) the box's own
+## middle sits (m): half its height and BOX_RISE, less a look's `sink`.
+static func _box_lift(f) -> float:
+	return CARD_BOX_SIZE.y * 0.5 + BOX_RISE - float(_box_fit(f).get("sink", 0.0))
+
+
+static func _box_fit(f) -> Dictionary:
+	return BOX_FIT.get((f as Figure3D)._model_name, {}) if f is Figure3D else {}
+
+
+## How far the box sits off the middle of the left palm towards their right
+## (m): `both` while both hands are under it, else on the left hand alone.
+static func _box_aside(f, both := true) -> float:
+	var th := float(_box_fit(f).get("thumb", 0.0))
+	return maxf(BOX_ASIDE if both else 0.0, th)
+
+
+## Where the left palm's mark sits under the box as it's taken (the grip's
+## frame, the box's bottom middle: x across to their left, z ahead).
+static func _box_left_at(f, back: float) -> Vector3:
+	return Vector3(_box_aside(f), 0.0, back)
+
+
+## Where the right palm sits under the box's other half (the box's frame):
+## as far to the right of its middle as the left palm is to the left, a
+## little further back (BOX_RIGHT_BACK).
+static func _box_right_at(f, back: float) -> Vector3:
+	return Vector3(-minf(_box_aside(f), 0.05), -CARD_BOX_SIZE.y * 0.5 - 0.012, back - BOX_RIGHT_BACK)
 
 
 ## Where Bram's right hand holds the box out on its palm, in his own frame:
@@ -1664,6 +1743,8 @@ static func _first_deck(w: World) -> void:
 		# hands slide in under it, palms up, flat, fingers forward, side by
 		# side, and it's lifted off his hand onto them.) The hands' marks
 		# hang from a carried frame (BoxGrip): where they go, the box goes.
+		# (how far back on the palms the box sits, for these hands: _box_back)
+		var back := _box_back(me)
 		var grip := Node3D.new()
 		grip.name = "BoxGrip"
 		me.carry(grip, Vector3.ZERO)
@@ -1674,8 +1755,8 @@ static func _first_deck(w: World) -> void:
 			mk.name = sd[0]
 			# (a hand's half-width in from the middle, each under its half, the
 			# palms' middles a little ahead of the box's: it sits back on them,
-			# BOX_BACK)
-			mk.position = Vector3(float(sd[1]) * 0.042, 0.0, BOX_BACK)
+			# _box_back)
+			mk.position = _box_left_at(me, back) if sd[0] == "L" else _box_right_at(me, back) * Vector3(1, 0, 1)
 			grip.add_child(mk)
 		w.set_meta("box_grip_player", grip)
 		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
@@ -1687,7 +1768,7 @@ static func _first_deck(w: World) -> void:
 		# them back past the flanks and the forearms ran in through the sides
 		# of the body to the hands); _drop_box gives them back
 		me.elbow("left", Vector3(0.46, me._shoulder - 0.38, 0.14), 0.4)
-		me.elbow("right", Vector3(-0.46, me._shoulder - 0.38, 0.14), 0.4)
+		me.elbow("right", BOX_RIGHT_ELBOW + Vector3(0, me._shoulder, 0), 0.4)
 		# in from below and in front, so the hands don't come through his
 		var way_l := Node3D.new()
 		var way_r := Node3D.new()
@@ -1714,14 +1795,18 @@ static func _first_deck(w: World) -> void:
 		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
 		w.set_meta("box_player", box)
-		me.attach(box, "palm", "left", CARD_BOX_SIZE.y * 0.5 + 0.004, 0.0, 0.0, -BOX_BACK)
+		me.attach(box, "palm", "left", _box_lift(me), 0.0, 0.0, -back, -_box_aside(me))
 		# (the right hand under the box's other half, wherever the left palm
 		# puts the box: its mark hangs from the box, as far ahead of its
 		# middle as the left palm's is)
 		var rmark := Node3D.new()
 		rmark.name = "RightUnder"
 		box.add_child(rmark)
-		rmark.position = Vector3(-0.042, -CARD_BOX_SIZE.y * 0.5 - 0.012, BOX_BACK)
+		# (its palm a little further back than the left's, so its wrist is
+		# clear behind the box's back edge: the forearm rises steeply from the
+		# wrist to the elbow, and from under the box it came up through its
+		# back corner on the longer-handed looks, B's and D's, 6 November)
+		rmark.position = _box_right_at(me, back)
 		me.reach(grip.get_node("L"), rmark, 0.1)
 		# in to them, a little up: the hands' marks come in, and the box with
 		# the left hand
@@ -1743,12 +1828,20 @@ static func _first_deck(w: World) -> void:
 		lh.position = (grip.get_node("L") as Node3D).position
 		# (the left hand to the box's middle under it, so it's balanced on
 		# one hand once the right lets go; the palm's middle a little ahead,
-		# BOX_BACK, so the box keeps its place)
-		var under_at := Vector3(0.0, 0.0, BOX_BACK)
+		# _box_back, so the box keeps its place)
+		# (the hand slides across under it and the box stays put: Figure3D's
+		# `aside`, how far the box sits off the palm, goes as the hand goes;
+		# Player A's stays off it, his thumb clear: BOX_FIT)
+		var aside0 := _box_aside(me)
+		var aside1 := _box_aside(me, false)
+		var lh0 := lh.position
 		me.reach(lh, rmark, 0.1)
 		var half := CARD_BOX_SIZE.x * 0.5
 		var centre_under := w.create_tween()
-		centre_under.tween_property(lh, "position", under_at, 0.3).set_trans(Tween.TRANS_SINE)
+		centre_under.tween_method(func(k: float) -> void:
+			var a := lerpf(aside0, aside1, k)
+			lh.position = lh0 + Vector3(a - aside0, 0.0, 0.0)
+			me.attach(box, "palm", "left", _box_lift(me), 0.0, 0.0, -back, -a), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 		await centre_under.finished
 		_into_box_shot(w, box)
 		var lid := box.get_node_or_null("Lid") as Node3D
@@ -1767,12 +1860,28 @@ static func _first_deck(w: World) -> void:
 		w.add_child(rh)
 		rh.global_position = rmark.global_position
 		me.reach(lh, rh, 0.1)
-		var side_out := box.to_global(Vector3(-half - 0.07, -CARD_BOX_SIZE.y * 0.3, 0.0))
-		var side_up := box.to_global(Vector3(-half - 0.05, CARD_BOX_SIZE.y * 0.5 + 0.07, 0.0))
-		var over_edge := edge.global_position + Vector3(0, 0.06, 0)
-		me.palm("right", Vector3.DOWN, 0.3, 0.3)
+		# (a forearm's width out from the box's side on the way up, so the wrist
+		# clears its top edge: 6 November)
+		var side_out := box.to_global(Vector3(-half - 0.09, -CARD_BOX_SIZE.y * 0.3, 0.0))
+		var side_up := box.to_global(Vector3(-half - 0.08, CARD_BOX_SIZE.y * 0.5 + 0.1, 0.0))
+		var over_edge := edge.global_position + Vector3(0, 0.08, 0)
+		# (down from under it first, then out, so the fingers don't come up
+		# through its bottom edge on the way; and the right elbow up and out
+		# while the hand's over the lid, so the forearm comes down to it from
+		# above instead of across the box's top: 6 November)
+		var under_out := box.to_global(Vector3(-half - 0.02, -CARD_BOX_SIZE.y * 0.5 - 0.06, 0.0))
+		me.elbow("right", Vector3(-0.44, me._shoulder - 0.2, 0.1), 0.4)
+		# (down off it first, and a touch forward: going down and out at once,
+		# the fingers curled up in front of it scraped its front face, 6
+		# November)
+		var drop := box.to_global(rmark.position + Vector3(0.0, -0.05, 0.015))
 		var round_over := w.create_tween()
-		round_over.tween_property(rh, "global_position", side_out, 0.16).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", drop, 0.12).set_trans(Tween.TRANS_SINE)
+		round_over.tween_property(rh, "global_position", under_out, 0.1).set_trans(Tween.TRANS_SINE)
+		# (and turned palm down to go over the lid only once it's out from
+		# under: turned under the box, its fingers swung up into it)
+		round_over.tween_callback(func() -> void: me.palm("right", Vector3.DOWN, 0.25, 0.3))
+		round_over.tween_property(rh, "global_position", side_out, 0.14).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", side_up, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", edge.global_position, 0.12).set_trans(Tween.TRANS_SINE)
@@ -1787,6 +1896,7 @@ static func _first_deck(w: World) -> void:
 		w.add_child(away)
 		away.global_position = edge.global_position + Vector3(0, 0.12, 0)
 		me.reach(lh, away, 0.3)
+		me.elbow("right", BOX_RIGHT_ELBOW + Vector3(0, me._shoulder, 0), 0.4)
 		w.set_meta("box_right_away", away)
 		me.palm("right", Vector3.ZERO, 0.35)
 		await Cine.wait(w, 0.35)
@@ -1808,6 +1918,14 @@ static func _first_deck(w: World) -> void:
 	if w.has_meta("box_right_away"):
 		var ra = w.get_meta("box_right_away")
 		if ra != null and is_instance_valid(ra):
+			# the right hand out past the box's side and down before it's let
+			# go to hang (6 November: let go from over the lid, it dropped
+			# straight down through the box's side to the hip)
+			if box != null and is_instance_valid(box):
+				var by := w.create_tween()
+				by.tween_property(ra, "global_position", box.to_global(Vector3(-CARD_BOX_SIZE.x * 0.5 - 0.12, CARD_BOX_SIZE.y * 0.5 + 0.1, 0.0)), 0.2).set_trans(Tween.TRANS_SINE)
+				by.tween_property(ra, "global_position", box.to_global(Vector3(-CARD_BOX_SIZE.x * 0.5 - 0.12, -0.02, -0.05)), 0.2).set_trans(Tween.TRANS_SINE)
+				await by.finished
 			(ra as Node).queue_free()
 		w.remove_meta("box_right_away")
 	if pf is Figure3D:
@@ -2207,12 +2325,12 @@ static func _midnight_film(w: World) -> bool:
 	var fd := v.cart_fall_dir()
 	var al := v.cart_along()
 	v.set_cart_tip(1.0)
-	var corin_at := cc + fd * 2.7
+	var corin_at := cc + fd * CART_PIN
 	Cine.place(w, "corin", corin_at, cc)
 	var cf = Cine.fig(w, "corin")
 	if cf is Figure3D:
 		(cf as Figure3D).pose("fall", CORIN_DOWN, 0.0)
-	Cine.place(w, "tilly", cc + fd * 2.6 + al * 1.7 + Vector3(0.5, 0, 0.6), corin_at)
+	Cine.place(w, "tilly", cc + fd * (CART_PIN + 0.1) + al * 1.7 + Vector3(0.5, 0, 0.6), corin_at)
 	Cine.place(w, "player", RUN_END, cc)
 	Music.play(["sigilfall"], 0.5, true)
 	Cine.shot(w, RUN_END + Vector3(-3.0, 1.4, 3.0), RUN_END + Vector3(0, 1.0, 0), 40.0)
@@ -2602,8 +2720,8 @@ static func _the_run(w: World) -> void:
 	var cc := v.cart_centre()
 	var fd := v.cart_fall_dir()
 	var al := v.cart_along()
-	var lane_a := cc + fd * 2.6 - al * 3.5
-	var lane_b := cc + fd * 2.6 + al * 0.1
+	var lane_a := cc + fd * (CART_PIN - 0.1) - al * 3.5
+	var lane_b := cc + fd * (CART_PIN - 0.1) + al * 0.1
 	w.set_meta("corin_pinned_at", lane_b)
 	_corin_and_tilly(w, lane_a, lane_b)
 	# the player runs west for the inn
@@ -2659,6 +2777,82 @@ static func _corin_and_tilly(w: World, lane_a: Vector3, lane_b: Vector3) -> void
 ## where Corin is held while he's pinned, and where his getting up starts.
 const CORIN_DOWN := 0.26
 const CORIN_UP := 0.51
+## How far from the hay cart's middle Corin lies pinned (his hips), out on
+## the side it falls to: his legs under the bed's side, his body out under
+## the hay's edge (at AshfordVillage.HAY_CART_SCALE: 2.7 at the model's own
+## size, 6 November).
+const CART_PIN := 2.15
+## The heave (6 November): where the hands take the cart, in the hay cart
+## model's own metres (x across, y up, z along; the tail board's slats
+## face back at z -1.15 to -1.3 between x -0.9 and 0.9, y 1.1 to 2.0, the
+## wheel it goes over on at x -1.25): on the tail board by its bottom edge,
+## which lies just off the grass when the cart's over, a shoulder's width
+## apart along it. (At z -1.33 they had been a hand's breadth off the
+## wood, in the air behind it.)
+const HEAVE_GRIPS := [Vector3(-0.72, 1.3, -1.22), Vector3(-0.72, 1.68, -1.22)]
+## How far behind the grips (along the cart) the player crouches.
+const HEAVE_STAND := 0.26
+## The crouch and the stand, as moments of the sit clip (its first second
+## is the way down): down low with the hands on the edge, and up with it.
+const HEAVE_LOW := 0.3
+const HEAVE_HIGH := 0.08
+## How far the heave brings the cart back up (a share of its fall: 0.3 is
+## about 26 degrees, enough to free his leg), and the PULL's last heave.
+const HEAVE_TIP := 0.3
+const HEAVE_PULL := 1.25
+## Where Tilly waits for the PULL: this far beyond Corin's head, out from
+## the cart, and how far down into the sit clip she crouches to take his
+## hands and drag him clear.
+const TILLY_AT_HEAD := 0.42
+const TILLY_CROUCH := 0.3
+## Where the player goes from the tail board when it's over, to Corin
+## (out from the cart's middle, along it): round the tail onto the open side.
+const HEAVE_TO := Vector2(3.9, -1.45)
+
+
+## Which of the two grips is on the player's left (0 or 1).
+static func _heave_left(f: Figure3D, grips: Array) -> int:
+	var left := Vector3.UP.cross(f.facing())
+	var a: Vector3 = (grips[0] as Node3D).global_position
+	var b: Vector3 = (grips[1] as Node3D).global_position
+	return 0 if (a - b).dot(left) > 0.0 else 1
+
+
+## Every frame of the heave: the cart's lift as shown eases after the
+## meter's (`st.qte`, or `st.lift` once it's closed), each press a strain
+## (down a touch into the legs, then up), the body rising out of the crouch
+## as the cart comes up, a tremor in the arms while they hold it; the cart
+## tipped back by it, and the hands, on the grips on the cart, go with it.
+static func _heave_drive(w: World, v: AshfordVillage, me, st: Dictionary) -> void:
+	var mf: Figure3D = me if me is Figure3D else null
+	var sit_len := 0.0
+	if mf != null and mf.anim != null and mf.anim.has_animation("sit"):
+		sit_len = mf.anim.get_animation("sit").length
+	await Cine.wait(w, 0.5)   # (the crouch's blend)
+	var t := 0.0
+	while st.run and is_instance_valid(w) and w.is_inside_tree():
+		var dt := w.get_process_delta_time()
+		t += dt
+		var q = st.qte
+		if q != null and is_instance_valid(q):
+			st["lift"] = (q as CartHeave).lift
+		var target: float = st.lift
+		if target > float(st.last) + 0.01:
+			st["pulse"] = 1.0   # a press: a strain
+		st["last"] = target
+		st["shown"] = lerpf(float(st.shown), target, minf(1.0, dt * 7.0))
+		st["pulse"] = maxf(0.0, float(st.pulse) - dt * 3.0)
+		var strain := sin(float(st.pulse) * PI)
+		var shown: float = st.shown
+		v.set_cart_tip(1.0 - HEAVE_TIP * shown)
+		if mf != null and is_instance_valid(mf) and sit_len > 0.0 and mf.anim.assigned_animation == "sit":
+			var k := lerpf(HEAVE_LOW, HEAVE_HIGH, clampf(shown, 0.0, 1.1)) + 0.03 * strain
+			mf.anim.seek(sit_len * clampf(k, 0.02, 0.4), true)
+			# the effort: a fine tremor through them while they hold it up
+			mf.rotation.z = sin(t * 53.0) * 0.006 * clampf(shown * 1.5, 0.0, 1.0)
+		await w.get_tree().process_frame
+	if mf != null and is_instance_valid(mf):
+		mf.rotation.z = 0.0
 
 
 ## The cart goes over: a strike lands beside it, it comes down on Corin, and
@@ -2671,7 +2865,7 @@ static func _the_cart_falls(w: World) -> void:
 	var al := v.cart_along()
 	# wait for Corin to come level with the cart
 	var corin := Cine.body(w, "corin")
-	var pin: Vector3 = w.get_meta("corin_pinned_at", cc + fd * 2.6)
+	var pin: Vector3 = w.get_meta("corin_pinned_at", cc + fd * (CART_PIN - 0.1))
 	Cine.shot(w, cc + fd * 7.5 - al * 4.0 + Vector3(0, 2.2, 0), cc + fd * 1.5 + Vector3(0, 1.0, 0), 44.0)
 	var guard := 0.0
 	while corin.global_position.distance_to(pin) > 0.4 and guard < 4.0:
@@ -2691,19 +2885,19 @@ static func _the_cart_falls(w: World) -> void:
 	v.tip_cart(1.0, 0.55)
 	await Cine.wait(w, 0.3)
 	var cf = Cine.fig(w, "corin")
-	Cine.place(w, "corin", cc + fd * 2.7)
+	Cine.place(w, "corin", cc + fd * CART_PIN)
 	if cf is Figure3D:
 		(cf as Figure3D).pose("fall", CORIN_DOWN, 0.45)
 	else:
-		Cine.place(w, "corin", cc + fd * 2.7, cc)
+		Cine.place(w, "corin", cc + fd * CART_PIN, cc)
 	await Cine.wait(w, 0.3)
-	v.dust_puff(cc + fd * 2.8)
-	v.dust_puff(cc + fd * 3.4 + al * 0.8)
+	v.dust_puff(cc + fd * (CART_PIN + 0.1))
+	v.dust_puff(cc + fd * (CART_PIN + 0.6) + al * 0.8)
 	_sfx(w, "cart_crash")
 	await Cine.hop(w, "tilly", 0.25)
 	# from behind Tilly (where her run ends): Corin under the cart, beyond her
 	var tb := Cine.body(w, "tilly")
-	Cine.place(w, "tilly", cc + fd * 2.6 + al * 1.7 + Vector3(0.5, 0, 0.6), corin.global_position)
+	Cine.place(w, "tilly", cc + fd * (CART_PIN + 0.1) + al * 1.7 + Vector3(0.5, 0, 0.6), corin.global_position)
 	var to_c := corin.global_position - tb.global_position
 	to_c.y = 0.0
 	to_c = to_c.normalized() if to_c.length() > 0.1 else -fd
@@ -2722,9 +2916,15 @@ static func _the_cart_falls(w: World) -> void:
 
 
 ## The cart, from "Find Corin" (after its fall, the 3D version's or the
-## midnight film's): the player runs to it and takes its edge, Corin's cry,
-## and the heave (CartHeave: v7 has him alone, Bram across the green); Corin
-## dragged clear as the sky lets go a second pulse, on his feet, shaking.
+## midnight film's): the player runs to its tail, crouches and takes the
+## bottom edge of its tail board in both hands, Corin's cry, and the heave
+## (CartHeave: v7 has him alone, Bram across the green), the cart coming up
+## in their hands a heave at a time; on the PULL they stand up with it,
+## Tilly drags Corin clear by his hands, and they let it drop as the sky
+## lets go a second pulse. Corin on his feet, shaking.
+## (6 November, Gary: "When you're doing the heave pull with the cart the
+## players aren't doing anything": they had stood a stride off the hay with
+## their arms at their sides while the cart rocked a little on its own.)
 static func _the_heave(w: World) -> void:
 	var v := village(w)
 	var cc := v.cart_centre()
@@ -2732,43 +2932,111 @@ static func _the_heave(w: World) -> void:
 	var al := v.cart_along()
 	var corin := Cine.body(w, "corin")
 	var cf = Cine.fig(w, "corin")
-	# "The ground is buckling. Find Corin." The player runs to the cart and
-	# takes hold of its top edge beside him (v7: alone; Bram is across the green)
-	w.hud.set_objective("The ground is buckling. Find Corin.")
-	var lift_p := cc + fd * 4.05 + al * 1.05
-	Cine.follow(w, "player", Vector3(-3.5, 2.6, 4.0), Vector3(1.5, 1.0, -1.0), 3.0, 2.2)
-	await Cine.path(w, "player", [Vector3(-1.0, 0, 6.0), cc + fd * 6.5 + al * 2.0, lift_p], 5.4, "run")
-	Cine.place(w, "player", lift_p, cc)
-	w.hud.set_objective("")
-	await Cine.wait(w, 0.3)
-	# Tilly steps back out of the way
-	Cine.place(w, "tilly", cc + fd * 3.0 + al * 3.1, corin.global_position)
-	# under the cart: from the open side, the cart, Corin and the player
-	Cine.shot(w, cc + fd * 7.6 + al * 0.6 + Vector3(0, 1.6, 0), cc + fd * 3.3 + Vector3(0, 0.8, 0), 40.0)
-	await Cine.say(w, "corin", "Sprout! My leg—it's caught on the axle! I can't shift it, it's crushing the bone!")
-	# the heave: mash to lift it, then pull him clear at the right moment
 	var me = Cine.fig(w, "player")
+	# where the hands go: the bottom edge of the tail board, either side of
+	# the middle of its width, on the cart (so they go up with it)
+	var grips: Array = []
+	for g in HEAVE_GRIPS:
+		var n := Node3D.new()
+		n.name = "HeaveGrip%d" % grips.size()
+		if v.hay_cart != null:
+			v.hay_cart.add_child(n)
+			n.position = g
+		else:
+			w.add_child(n)
+			n.global_position = cc + fd * 2.0 - al * 1.2 + Vector3(0, 0.45, 0)
+		grips.append(n)
+	var gmid: Vector3 = ((grips[0] as Node3D).global_position + (grips[1] as Node3D).global_position) * 0.5
+	# where they crouch to it: behind the tail, facing along the cart
+	var lift_p := gmid - al * HEAVE_STAND
+	lift_p.y = Cine.ground(w, lift_p)
+	# "The ground is buckling. Find Corin." The player runs to the cart's
+	# tail (v7: alone; Bram is across the green)
+	w.hud.set_objective("The ground is buckling. Find Corin.")
+	Cine.follow(w, "player", Vector3(-3.5, 2.6, 4.0), Vector3(1.5, 1.0, -1.0), 3.0, 2.2)
+	await Cine.path(w, "player", [Vector3(-1.0, 0, 6.0), cc + fd * 5.0 - al * 2.6, lift_p], 5.4, "run")
+	Cine.place(w, "player", lift_p, lift_p + al)
+	w.hud.set_objective("")
+	# Tilly steps back out of the way, to Corin's head (beyond it, facing him
+	# and the cart: there to take his hands when it comes up)
+	var t_at := cc + fd * (CART_PIN + 1.5) + al * 0.9
+	if cf is Figure3D:
+		var hd := (cf as Figure3D).bone_pos("Head")
+		t_at = Vector3(hd.x, 0.0, hd.z) + fd * TILLY_AT_HEAD
+	Cine.place(w, "tilly", t_at, corin.global_position)
+	# under the cart: from the open side, the cart's tail, the player at it and Corin
+	Cine.shot(w, cc + fd * 6.4 - al * 1.4 + Vector3(0, 1.5, 0), cc + fd * 1.9 - al * 0.55 + Vector3(0, 0.55, 0), 44.0)
+	# down into a crouch, the hands onto the edge, under it
 	if me is Figure3D:
-		(me as Figure3D).hold("lift", 0.9)
-	var qte := CartHeave.open(Cine.overlay(w)._root, WorldCoach.of(w.hud).device(), func(k: float) -> void:
-		v.set_cart_tip(1.0 - 0.24 * k))
+		var mf := me as Figure3D
+		mf.pose("sit", HEAVE_LOW, 0.5)
+		mf.reach(grips[_heave_left(mf, grips)], grips[1 - _heave_left(mf, grips)], 0.5)
+	await Cine.say(w, "corin", "Sprout! My leg—it's caught on the axle! I can't shift it, it's crushing the bone!")
+	# the heave: mash to lift it, then pull him clear at the right moment;
+	# each heave a strain up out of the crouch, the cart coming up with the
+	# hands (_heave_drive)
+	var qte := CartHeave.open(Cine.overlay(w)._root, WorldCoach.of(w.hud).device())
+	var st := {"lift": 0.0, "shown": 0.0, "last": 0.0, "pulse": 0.0, "run": true, "qte": qte}
+	_heave_drive(w, v, me, st)
 	await qte.done
-	# he's dragged clear, just as the sky lets go a second, blinding pulse
+	# the PULL: they stand right up with it, the cart up off him, and Tilly
+	# drags him clear by his hands; then it drops as the sky lets go a second,
+	# blinding pulse
+	st["qte"] = null
+	_sfx(w, "cart_crash", 1.4)
+	var up := w.create_tween()
+	up.tween_method(func(k: float) -> void: st["lift"] = k, 1.0, HEAVE_PULL, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	await Cine.wait(w, 0.3)
+	var tf = Cine.fig(w, "tilly")
+	var tb := Cine.body(w, "tilly")
+	var wrists: Array = []
+	if tf is Figure3D and cf is Figure3D:
+		# (under his arms, at his shoulders: lying back, his hands are on
+		# his chest, beyond her)
+		for bone in ["LeftArm", "RightArm"]:
+			var wn := Node3D.new()
+			w.add_child(wn)
+			wn.global_position = (cf as Figure3D).bone_pos(bone) + fd * 0.04
+			wrists.append(wn)
+		Cine.look(w, "tilly", corin.global_position)
+		# down on her haunches to take them
+		(tf as Figure3D).pose("sit", TILLY_CROUCH, 0.25)
+		(tf as Figure3D).reach(wrists[0], wrists[1], 0.25)
+		await Cine.wait(w, 0.3)
 	var drag := w.create_tween()
-	drag.tween_property(corin, "global_position", corin.global_position + fd * 1.1, 0.7).set_trans(Tween.TRANS_SINE)
+	drag.set_parallel(true)
+	drag.tween_property(corin, "global_position", corin.global_position + fd * 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+	if tb != null:
+		drag.tween_property(tb, "global_position", tb.global_position + fd * 1.0, 0.8).set_trans(Tween.TRANS_SINE)
+	for wn in wrists:
+		drag.tween_property(wn, "global_position", (wn as Node3D).global_position + fd * 1.0, 0.8).set_trans(Tween.TRANS_SINE)
 	await drag.finished
+	if tf is Figure3D:
+		(tf as Figure3D).let_go(0.3)
+		(tf as Figure3D).release(0.5)
+	for wn in wrists:
+		(wn as Node).queue_free()
+	# they let go, and it comes down where he was
+	st["run"] = false
+	if me is Figure3D:
+		(me as Figure3D).let_go(0.15)
 	await v.tip_cart(1.0, 0.22, Tween.TRANS_QUAD, Tween.EASE_IN)
-	v.dust_puff(cc + fd * 3.0)
+	for g in grips:
+		(g as Node).queue_free()
+	v.dust_puff(cc + fd * (CART_PIN + 0.3))
 	_sfx(w, "cart_crash")
 	if me is Figure3D:
-		(me as Figure3D).release()
+		(me as Figure3D).release(0.5)
 	_sfx(w, "sigil_strike", 0.8)
 	w.shake(0.5)
 	await w.flash(Color(1, 1, 1), 0.06, 1.0)
+	# the player comes round the cart's tail to him, out on the open side
+	# (from the tail board, the way to him straight on lay through the cart)
+	Cine.path(w, "player", [cc + fd * HEAVE_TO.x + al * HEAVE_TO.y], 1.2)
 	if cf is Figure3D:
 		await (cf as Figure3D).resume(CORIN_UP, 1.5)   # the fall's own getting up
 	Cine.look(w, "corin", w.player.global_position)
-	Cine.place(w, "tilly", corin.global_position - al * 1.1 - fd * 0.45, corin.global_position)
+	Cine.place(w, "tilly", corin.global_position + al * 1.0 + fd * 0.3, corin.global_position)
 	var mid := (corin.global_position + w.player.global_position) * 0.5
 	Cine.shot(w, mid + fd * 3.4 + al * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
 	var to_p := w.player.global_position - corin.global_position
