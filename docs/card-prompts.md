@@ -2,6 +2,8 @@
 
 One prompt per picture. Paste each block into your image tool as it is.
 
+<!-- For Claude: Gary reads these prompts in the Card Prompt Kit page, not here. After adding or changing a round, run `python3 tools/prompt_kit.py` and republish build/prompt_kit.html to the Card Prompt Kit artifact (slug 0bcd5063-2337-4b92-9c71-625a00c4a325). -->
+
 ## Cinderpup (round 1, totem, fire)
 
 **Card painting · square 1536 × 1536 · save as cards/cinderpup.png**

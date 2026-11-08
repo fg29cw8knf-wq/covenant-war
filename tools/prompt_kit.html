@@ -1,0 +1,358 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Card Prompt Kit</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Source+Sans+3:wght@400;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a status answer up top, then a filterable column of card tickets (two columns on wide screens). One dark world, like the game. */
+:root {
+  --bg: #0b0d15;
+  --panel: #141827;
+  --panel-2: #1a2036;
+  --line: #2a3150;
+  --ink: #ece7da;
+  --dim: #a3a1ae;
+  --gold: #f2c96b;
+  --essence: #7fe3ff;
+  --done: #7ee08a;
+  --done-ink: #0b2210;
+  --gold-ink: #1a1405;
+  --code-bg: #0e111c;
+  --code-ink: #d8d3c6;
+  --f-display: "Cinzel", "Trajan Pro", Georgia, serif;
+  --f-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5; margin: 0; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-block: 28px 64px; }
+header h1 { font-family: var(--f-display); font-weight: 700; color: var(--gold); font-size: clamp(30px, 6vw, 46px); line-height: 1.05; margin: 0; letter-spacing: .02em; text-wrap: balance; }
+header .sub { color: var(--dim); margin: 8px 0 0; max-width: 64ch; }
+.answer { margin: 22px 0 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.tally { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tally b { font-family: var(--f-display); font-size: 30px; color: var(--done); font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tally.todo b { color: var(--gold); }
+.tally span { color: var(--ink); font-size: 15px; }
+.tally small { color: var(--dim); font-size: 13px; }
+.steps { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); margin: 14px 0 6px; padding: 0; list-style: none; counter-reset: s; }
+.steps li { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px 12px 48px; position: relative; min-width: 0; }
+.steps li::before { counter-increment: s; content: counter(s); position: absolute; left: 14px; top: 11px; width: 24px; height: 24px; border-radius: 50%; background: var(--gold); color: var(--gold-ink); font-weight: 700; font-size: 14px; display: grid; place-items: center; }
+.steps b { color: var(--gold); font-weight: 600; }
+.bar { z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(8px); padding-block: 12px; margin: 14px 0 6px; border-bottom: 1px solid var(--line); display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+@media (min-width: 700px) { .bar { position: sticky; top: env(safe-area-inset-top, 0px); } }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: 600 14px var(--f-body); color: var(--dim); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; min-height: 36px; }
+.seg button[aria-pressed="true"] { color: var(--gold-ink); background: var(--gold); border-color: var(--gold); }
+.seg button:focus-visible, .copy:focus-visible, .more:focus-visible, .made input:focus-visible + span, .reveal:focus-visible { outline: 2px solid var(--essence); outline-offset: 2px; }
+.progress { margin-left: auto; display: flex; align-items: center; gap: 10px; font-variant-numeric: tabular-nums; color: var(--dim); font-size: 14px; }
+.progress .meter { width: 120px; height: 8px; border-radius: 4px; background: var(--panel-2); overflow: hidden; }
+.progress .meter i { display: block; height: 100%; width: 0; background: var(--done); transition: width .3s; }
+.list { display: grid; gap: 14px; grid-template-columns: 1fr; margin-top: 12px; }
+@media (min-width: 900px) { .list { grid-template-columns: 1fr 1fr; } }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.card.is-ingame { background: color-mix(in srgb, var(--panel) 70%, var(--bg)); }
+.top { display: flex; gap: 12px; align-items: flex-start; }
+.orb { width: 34px; height: 34px; border-radius: 50%; flex: none; margin-top: 2px; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--el) 40%, white) 0 18%, var(--el) 55%, color-mix(in srgb, var(--el) 55%, black) 100%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--el) 50%, black); }
+.title { min-width: 0; flex: 1; }
+.title h2 { font-family: var(--f-display); font-weight: 700; font-size: 21px; margin: 0; line-height: 1.2; color: var(--ink); }
+.meta { color: var(--dim); font-size: 14px; display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; margin-top: 3px; }
+.gems { display: inline-flex; gap: 3px; vertical-align: middle; }
+.gems i { width: 8px; height: 8px; transform: rotate(45deg); background: var(--gem); display: inline-block; }
+.first { font-weight: 700; color: var(--gold); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-size: 13px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+.chip.ok { color: var(--done-ink); background: var(--done); border-color: var(--done); }
+.chip.need { color: var(--gold); border-color: var(--gold); }
+.made { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px; color: var(--dim); flex: none; user-select: none; }
+.made input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.made span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); min-height: 36px; }
+.made input:checked + span { color: var(--done-ink); background: var(--done); border-color: var(--done); font-weight: 600; }
+.ref { font-size: 14px; color: var(--essence); background: color-mix(in srgb, var(--essence) 9%, transparent); border: 1px solid color-mix(in srgb, var(--essence) 30%, transparent); border-radius: 10px; padding: 7px 10px; }
+.prompt { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.phead { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; justify-content: space-between; }
+.phead strong { font-size: 15px; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); font-weight: 700; }
+.spec { font-family: var(--f-mono); font-size: 13px; color: var(--dim); overflow-wrap: anywhere; }
+.spec b { color: var(--ink); font-weight: 500; }
+pre { margin: 0; font-family: var(--f-mono); font-size: 13px; line-height: 1.55; color: var(--code-ink); background: var(--code-bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 9.5em; overflow: hidden; position: relative; min-width: 0; }
+pre.open { max-height: none; }
+pre:not(.open)::after { content: ""; position: absolute; inset: auto 0 0 0; height: 3em; background: linear-gradient(transparent, var(--code-bg)); }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.copy { font: 700 15px var(--f-body); color: var(--gold-ink); background: var(--gold); border: 0; border-radius: 10px; padding: 10px 18px; cursor: pointer; min-height: 44px; flex: 1 1 auto; }
+.copy.ok { background: var(--done); color: var(--done-ink); }
+.more, .reveal { font: 600 14px var(--f-body); color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; cursor: pointer; min-height: 44px; }
+.reveal { align-self: flex-start; color: var(--dim); }
+.note { font-size: 13px; color: var(--dim); }
+.empty { color: var(--dim); padding: 30px 0; text-align: center; grid-column: 1 / -1; }
+footer { margin-top: 28px; color: var(--dim); font-size: 14px; max-width: 70ch; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<style>
+body { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pick { display: flex; align-items: center; gap: 8px; color: var(--dim); font-size: 14px; }
+.pick select { font: 600 14px var(--f-body); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 7px 10px; min-height: 36px; max-width: 100%; }
+.pick select:focus-visible { outline: 2px solid var(--essence); outline-offset: 2px; }
+.group { grid-column: 1 / -1; margin: 18px 0 0; display: flex; flex-direction: column; gap: 4px; }
+.group:first-child { margin-top: 4px; }
+.group h2 { font-family: var(--f-display); font-weight: 700; color: var(--gold); font-size: 22px; margin: 0; line-height: 1.2; display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: baseline; }
+.group h2 .new { font: 700 12px var(--f-body); letter-spacing: .08em; text-transform: uppercase; color: var(--gold-ink); background: var(--essence); border-radius: 999px; padding: 3px 9px; }
+.group p { margin: 0; color: var(--dim); font-size: 15px; max-width: 80ch; }
+.group .left { color: var(--ink); font-size: 14px; }
+.step-only { font-size: 14px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+</style>
+</head><body>
+<div class="wrap">
+  <header>
+    <h1>Card Prompt Kit</h1>
+    <p class="sub">Every card in The Covenant War, round by round: what's already in the game, and a ready-to-paste prompt for each picture, model and piece of music still to make.</p>
+    <div class="answer" id="answer"></div>
+    <ol class="steps">
+      <li>Tap <b>Copy</b> and paste it into your tool. Where a prompt says to attach a finished painting, attach it, so the look matches.</li>
+      <li>Save it at the <b>size and file name shown</b> on each prompt, and send it over. Any file name is fine: Claude renames it.</li>
+      <li>Tap <b>Mark sent</b> to keep track. Your ticks stay in this browser; a job turns green once it's in the game.</li>
+    </ol>
+  </header>
+
+  <div class="bar" role="toolbar" aria-label="Filter cards">
+    <div class="seg" id="views"></div>
+    <label class="pick">Round <select id="groups"></select></label>
+    <div class="seg" id="kinds"></div>
+    <div class="progress"><span id="count"></span><span class="meter"><i id="meter"></i></span></div>
+  </div>
+
+  <main class="list" id="list"></main>
+
+  <footer>Rites, Wards and Relics only need a card painting. Totems need a card painting, a battlefield cut-out and a 3D model. Summons need a card painting, a Summon cut-out and a 3D model, and the newest ones also a sky scene and their own music. Until a picture or model comes, the game shows a stand-in, so nothing breaks while you work through the list. The Chapter 1 cards are also in <a href="https://claude.ai/artifact/57eGYiTd3VYp9ciNaCRQd2" style="color:var(--essence)">Solhaven: Your Step-by-Step</a>.</footer>
+</div>
+
+<script>
+const CARDS = /*CARDS*/[];
+const GROUPS = /*GROUPS*/[];
+const CHECKED = "/*CHECKED*/";
+const ELEMENT = {fire:"#e9552d", storm:"#f0bd24", tide:"#2f86dd", verdant:"#3aa647", earth:"#b07843", metal:"#9aa4b3", psychic:"#e0569b", venom:"#9a5bb3", spirit:"#5fc4b2", mystic:"#5d63d9", frost:"#8fd3f4", wind:"#9fdcb8", radiant:"#f6cf5a", astral:"#a9bcff", umbral:"#7a64a8", any:"#b4b4c3"};
+const ELNAME = {fire:"Fire", storm:"Storm", tide:"Tide", verdant:"Verdant", earth:"Earth", metal:"Metal", psychic:"Psychic", venom:"Venom", spirit:"Spirit", mystic:"Mystic", frost:"Frost", wind:"Wind", radiant:"Radiant", astral:"Astral", umbral:"Umbral", any:"No element"};
+const GEM = ["", "#c9ccd6", "#f4f6fb", "#c8fbff", "#f3cf9a", "#fff2b0", "#ffd6f2", "#ffffff"];
+const KINDNAME = {totem: "Totem", summon: "Summon", rite: "Rite", ward: "Ward", relic: "Relic", god: "God painting", music: "Music"};
+const PARTS = {painting: "Card painting", god: "God painting", cutout: "Cut-out", scene: "Sky scene", model: "3D model", music: "Music"};
+const KEY = "cw-prompt-kit-sent";
+let sent = {};
+try { sent = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch (e) { sent = {}; }
+const ingame = c => Object.values(c.status).every(Boolean);
+const left = c => Object.values(c.status).filter(v => !v).length;
+const state = { view: "todo", kind: "all", group: "all" };
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(sent)); } catch (e) {} }
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c])); }
+function inGroup(c) { return state.group === "all" || c.group === state.group; }
+
+function views() {
+  const pool = CARDS.filter(inGroup);
+  const todo = pool.filter(c => !ingame(c)).length;
+  return [["todo", `Still to make (${todo})`], ["done", `In the game (${pool.length - todo})`], ["all", `All ${pool.length}`]];
+}
+
+function kinds() {
+  const have = new Set(CARDS.filter(inGroup).map(c => c.kind));
+  const all = [["totem", "Totems"], ["summon", "Summons"], ["rite", "Rites"], ["ward", "Wards"], ["relic", "Relics"], ["god", "God paintings"], ["music", "Music"]];
+  return [["all", "All kinds"]].concat(all.filter(([k]) => have.has(k)));
+}
+
+function seg(el, items, key) {
+  el.innerHTML = "";
+  for (const [v, label] of items) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = label;
+    b.setAttribute("aria-pressed", String(state[key] == v));
+    b.addEventListener("click", () => { state[key] = v; refresh(); });
+    el.appendChild(b);
+  }
+}
+
+function groupSelect() {
+  const sel = document.getElementById("groups");
+  sel.innerHTML = "";
+  const opts = [["all", "Every round"]].concat(GROUPS.map(g => [g.key, g.title + (g.isNew ? " (new)" : "")]));
+  for (const [v, label] of opts) {
+    const o = document.createElement("option");
+    o.value = v; o.textContent = label; o.selected = state.group === v;
+    sel.appendChild(o);
+  }
+  sel.onchange = () => {
+    state.group = sel.value;
+    try { history.replaceState(null, "", state.group === "all" ? location.pathname + location.search : "#" + state.group); } catch (e) {}
+    refresh();
+  };
+}
+
+async function copyText(text, btn, pre) {
+  let ok = false;
+  try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select(); ok = document.execCommand("copy"); ta.remove();
+    } catch (e2) { ok = false; }
+  }
+  if (ok) {
+    btn.classList.add("ok"); btn.textContent = "Copied";
+    setTimeout(() => { btn.classList.remove("ok"); btn.textContent = btn.dataset.label; }, 1600);
+  } else {
+    pre.classList.add("open");
+    const r = document.createRange(); r.selectNodeContents(pre);
+    const s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    btn.textContent = "Selected: now press Copy";
+    setTimeout(() => { btn.textContent = btn.dataset.label; }, 2600);
+  }
+}
+
+function promptBlock(b) {
+  const wrap = document.createElement("div");
+  wrap.className = "prompt";
+  const spec = [b.size, b.file ? `<b>${esc(b.file)}</b>` : ""].filter(Boolean);
+  wrap.innerHTML = `<div class="phead"><strong>${esc(b.label)}</strong><span class="spec">${spec.map(s => s.startsWith("<b>") ? s : esc(s)).join(" · ")}</span></div>`;
+  if (b.text) {
+    const pre = document.createElement("pre");
+    pre.textContent = b.text;
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const copy = document.createElement("button");
+    copy.type = "button"; copy.className = "copy"; copy.dataset.label = "Copy " + b.label.toLowerCase() + " prompt"; copy.textContent = copy.dataset.label;
+    copy.addEventListener("click", () => copyText(b.text, copy, pre));
+    const more = document.createElement("button");
+    more.type = "button"; more.className = "more"; more.textContent = "Show all";
+    more.addEventListener("click", () => { pre.classList.toggle("open"); more.textContent = pre.classList.contains("open") ? "Show less" : "Show all"; });
+    acts.append(copy, more);
+    wrap.append(pre, acts);
+    if (b.note) { const n = document.createElement("div"); n.className = "note"; n.textContent = b.note; wrap.append(n); }
+  } else if (b.note) {
+    const n = document.createElement("div"); n.className = "step-only"; n.textContent = b.note; wrap.append(n);
+  }
+  return wrap;
+}
+
+function prompts(c) {
+  const frag = document.createDocumentFragment();
+  if (c.prev) {
+    const r = document.createElement("div");
+    r.className = "ref";
+    r.textContent = `Evolves from ${c.prev}: attach ${c.prev}'s card painting to this prompt so the colours and markings match.`;
+    frag.append(r);
+  }
+  if (c.refNote) {
+    const r = document.createElement("div");
+    r.className = "ref";
+    r.textContent = c.refNote;
+    frag.append(r);
+  }
+  for (const b of c.blocks) frag.append(promptBlock(b));
+  return frag;
+}
+
+function cardEl(c) {
+  const done = ingame(c);
+  const art = document.createElement("article");
+  art.className = "card" + (done ? " is-ingame" : "");
+  art.style.setProperty("--el", ELEMENT[c.el] || ELEMENT.any);
+  const gems = c.tier ? Array.from({length: c.tier}, () => `<i style="--gem:${GEM[c.tier]}"></i>`).join("") : "";
+  const stage = c.stage === 1 ? " · Ascended" : c.stage === 2 ? " · Exalted" : "";
+  const tick = done ? "" : `<label class="made"><input type="checkbox" id="sent-${c.id}" ${sent[c.id] ? "checked" : ""}><span>${sent[c.id] ? "Sent" : "Mark sent"}</span></label>`;
+  const chips = Object.entries(c.status).map(([k, ok]) => `<span class="chip ${ok ? "ok" : "need"}">${PARTS[k] || k}${ok ? " ✓ in game" : ": to make"}</span>`).join("");
+  const tierBits = c.tier ? `<span class="gems" title="${esc(c.tierName)}">${gems}</span><span>${esc(c.tierName)}</span>` : "";
+  art.innerHTML = `<div class="top"><span class="orb" aria-hidden="true"></span>
+    <div class="title"><h2>${esc(c.name)}</h2>
+    <div class="meta">${c.first && !done ? '<span class="first">Make first</span>' : ""}<span>${KINDNAME[c.kind] || c.kind}${stage} · ${ELNAME[c.el] || "No element"}</span>${tierBits}</div></div>${tick}</div>
+    <div class="chips">${chips}</div>`;
+  if (done) {
+    const btn = document.createElement("button");
+    btn.type = "button"; btn.className = "reveal"; btn.textContent = "Show the prompts used";
+    const holder = document.createElement("div");
+    holder.hidden = true;
+    btn.addEventListener("click", () => {
+      if (!holder.childElementCount) holder.append(prompts(c));
+      holder.hidden = !holder.hidden;
+      btn.textContent = holder.hidden ? "Show the prompts used" : "Hide the prompts";
+    });
+    art.append(btn, holder);
+  } else {
+    art.append(prompts(c));
+    const box = art.querySelector(`#sent-${c.id}`);
+    box.addEventListener("change", () => {
+      if (box.checked) sent[c.id] = true; else delete sent[c.id];
+      save();
+      box.nextElementSibling.textContent = box.checked ? "Sent" : "Mark sent";
+    });
+  }
+  return art;
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  let shown = 0;
+  for (const g of GROUPS) {
+    if (state.group !== "all" && state.group !== g.key) continue;
+    const cards = CARDS.filter(c => c.group === g.key).filter(c => {
+      const done = ingame(c);
+      if (state.view === "todo" && done) return false;
+      if (state.view === "done" && !done) return false;
+      return state.kind === "all" || c.kind === state.kind;
+    });
+    if (!cards.length) continue;
+    const all = CARDS.filter(c => c.group === g.key);
+    const jobs = all.reduce((n, c) => n + left(c), 0);
+    const head = document.createElement("section");
+    head.className = "group";
+    head.id = "g-" + g.key;
+    head.innerHTML = `<h2>${esc(g.title)}${g.isNew ? '<span class="new">New</span>' : ""}</h2>${g.intro ? `<p>${esc(g.intro)}</p>` : ""}<p class="left">${jobs ? `${jobs} ${jobs === 1 ? "job" : "jobs"} still to make in this round.` : "Everything in this round is in the game."}</p>`;
+    list.appendChild(head);
+    for (const c of cards) { list.appendChild(cardEl(c)); shown++; }
+  }
+  if (!shown) list.innerHTML = `<p class="empty">Nothing here. Everything in this filter is already in the game.</p>`;
+}
+
+function summary() {
+  const fighters = CARDS.filter(c => c.kind === "totem" || c.kind === "summon");
+  const fightersDone = fighters.filter(ingame).length;
+  const todo = CARDS.filter(c => !ingame(c));
+  const jobs = todo.reduce((n, c) => n + left(c), 0);
+  const newest = GROUPS.find(g => g.isNew);
+  let first = "";
+  if (newest) {
+    const ng = CARDS.filter(c => c.group === newest.key);
+    const nleft = ng.reduce((n, c) => n + left(c), 0);
+    const ntotal = ng.reduce((n, c) => n + Object.keys(c.status).length, 0);
+    first = `<div class="tally todo"><b>${nleft} of ${ntotal}</b><span>${esc(newest.title)}: jobs left</span><small>The newest round, at the top of the list. <a href="#${newest.key}" id="jump" style="color:var(--essence)">Show only this round</a>.</small></div>`;
+  }
+  document.getElementById("answer").innerHTML = first + `
+    <div class="tally todo"><b>${jobs}</b><span>Jobs left to make in every round</span><small>Across ${todo.length} cards. ${fighters.length - fightersDone} of them are Totems or Summons, which need more than a painting.</small></div>
+    <div class="tally"><b>${CARDS.length - todo.length} of ${CARDS.length}</b><span>Cards fully in the game</span><small>Checked against the game's files on ${esc(CHECKED)}.</small></div>`;
+  const jump = document.getElementById("jump");
+  if (jump && newest) jump.addEventListener("click", e => { e.preventDefault(); state.group = newest.key; try { history.replaceState(null, "", "#" + newest.key); } catch (er) {} refresh(); });
+  const pool = CARDS.filter(inGroup);
+  const n = pool.filter(ingame).length;
+  document.getElementById("count").textContent = `${n} of ${pool.length} in the game`;
+  document.getElementById("meter").style.width = (pool.length ? 100 * n / pool.length : 0) + "%";
+}
+
+function refresh() {
+  if (!kinds().some(([k]) => k === state.kind)) state.kind = "all";
+  seg(document.getElementById("views"), views(), "view");
+  seg(document.getElementById("kinds"), kinds(), "kind");
+  groupSelect();
+  summary();
+  render();
+}
+
+function fromHash() {
+  const h = (location.hash || "").slice(1);
+  state.group = GROUPS.some(g => g.key === h) ? h : "all";
+}
+window.addEventListener("hashchange", () => { fromHash(); refresh(); });
+fromHash();
+refresh();
+</script>
+
+</body></html>

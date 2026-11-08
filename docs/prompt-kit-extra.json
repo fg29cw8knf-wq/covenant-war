@@ -1,0 +1,691 @@
+[
+ {
+  "prev": "",
+  "id": "river_hound",
+  "name": "River Hound",
+  "kind": "totem",
+  "el": "tide",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 1,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a lean grey-blue hound made of running river water, a mill-race foam ruff at its neck, droplets flying as it lopes through reeds.\n\nBody and shape: a lean, long-legged hound the size of a big working dog, shaped like a real hound but made of clear running water.\nColours: grey-blue and teal water, darker blue along the back, a white foam ruff at the neck and pale silver eyes.\nKey features: water streaming along her flanks like a mill race, a ruff of white foam round her neck, droplets flying off her paws and tail.\nPose: loping through reeds at the water's edge, head up, eager.\nBackground: a mill stream at dawn with a wooden waterwheel far behind, softly blurred and tinted with deep ocean blue and teal.\nComposition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: loyal, eager and brave, a working dog that comes when she's called.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nThe same creature as in the attached card painting, with exactly the same design, colours and markings: a lean grey-blue hound made of running river water, a mill-race foam ruff at its neck, droplets flying as it lopes through reeds.\n\nShow its whole body, including its feet and tail, in a three-quarter view facing to the right, standing alert with its head up and its foam ruff flaring.\nPlace it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.\nStyle: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.\nDo not include any text, letters, numbers, frame or border.",
+  "model": "Create a 3D model of River Hound: a lean grey-blue hound made of running river water, with a ruff of white mill-race foam at her neck.\n\nBody and shape: a lean, long-legged hound standing on four legs with her head up, a deep chest, a long tail and ears half raised.\n\nColours and surface: glossy grey-blue and teal water with flowing ripples along the body, darker blue along the back, and a ruff of white foam round the neck.\n\nMagic: the water glows faintly from within and is emissive; a few droplets hang in the air around her paws and tail.\n\nFace: pale silver eyes and a keen, loyal expression, mouth closed.\n\nStyle: painted, high-detail fantasy creature art with soft, realistic texture and glowing magical parts. Rich and premium, like a collectable fantasy trading card. Not a low-poly, cartoon, plastic or toy look.\n\nPose and setup: standing on flat ground, facing forward, feet at ground level, whole body visible. Symmetrical, neutral standing pose ready for auto-rigging. Clean, watertight mesh, about 20,000 triangles, one 4096 x 4096 colour texture with the glowing parts emissive.",
+  "modelNote": "Attach this card's painting and paste the prompt into your 3D tool, as in 3D Model Prompts. Attack: bite. Clips: idle, attack, hit, defeat, spawn, and run and victory if the tool offers them.",
+  "refNote": "Tam's Totem, in the Prologue: you meet her in his friendly game in the afternoon, and see her torn apart at the Reckoning that night. Until she's made, a Shieldhound tinted river blue plays her.",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/river_hound.png",
+   "Battlefield cut-out · square 1536 × 1536 · save as creatures/river_hound.png",
+   "3D model · about 20,000 triangles · save as river_hound.glb"
+  ],
+  "first": true,
+  "status": {
+   "painting": false,
+   "cutout": false,
+   "model": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "lantern_moth",
+  "name": "Lantern Moth",
+  "kind": "totem",
+  "el": "spirit",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a plump spirit moth whose round furry body glows warm amber like a paper festival lantern, translucent teal and silver wings patterned like lantern ribs.\n\nMain subject: a plump spirit moth whose round furry body glows warm amber like a paper festival lantern, translucent teal and silver wings patterned like lantern ribs.\nBackground: a barley field at dusk with festival lanterns, softly blurred and tinted with ghostly teal and silver.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/lantern_moth.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true,
+   "model": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "frostbind",
+  "name": "Frostbind",
+  "kind": "rite",
+  "el": "frost",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a creature caught mid-leap inside a block of blue glacial ice, frost runes spiralling across the surface.\n\nMain subject: a creature caught mid-leap inside a block of blue glacial ice, frost runes spiralling across the surface.\nBackground: a frozen mountain pass, softly blurred and tinted with icy blue and white.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/frostbind.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "gust_shove",
+  "name": "Gust Shove",
+  "kind": "rite",
+  "el": "wind",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a fist of swirling pale-green wind slamming into a creature's flank, leaves and dust whipping past.\n\nMain subject: a fist of swirling pale-green wind slamming into a creature's flank, leaves and dust whipping past.\nBackground: a windswept hilltop, softly blurred and tinted with pale green and silver.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/gust_shove.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "corrosive_spit",
+  "name": "Corrosive Spit",
+  "kind": "rite",
+  "el": "venom",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a gob of glowing yellow-green acid hissing as it eats through a metal plate, smoke curling up.\n\nMain subject: a gob of glowing yellow-green acid hissing as it eats through a metal plate, smoke curling up.\nBackground: a ruined forge, softly blurred and tinted with sickly violet and acid green.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/corrosive_spit.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "jagged_shards",
+  "name": "Jagged Shards",
+  "kind": "rite",
+  "el": "metal",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a burst of razor-edged steel shards flying through the air, glinting red in firelight.\n\nMain subject: a burst of razor-edged steel shards flying through the air, glinting red in firelight.\nBackground: a dark battlefield lit by fire, softly blurred and tinted with polished steel and brass.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/jagged_shards.png"
+  ],
+  "first": true,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "drowning_rain",
+  "name": "Drowning Rain",
+  "kind": "rite",
+  "el": "tide",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a heavy sheet of blue-green rain pouring onto a duelling circle, water pooling between the runes.\n\nMain subject: a heavy sheet of blue-green rain pouring onto a duelling circle, water pooling between the runes.\nBackground: a stone duelling circle under storm clouds, softly blurred and tinted with deep ocean blue and teal.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/drowning_rain.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "strangling_roots",
+  "name": "Strangling Roots",
+  "kind": "rite",
+  "el": "verdant",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of thick green roots bursting from the earth and coiling around a creature's legs, pinning it in place.\n\nMain subject: thick green roots bursting from the earth and coiling around a creature's legs, pinning it in place.\nBackground: an ancient forest floor, softly blurred and tinted with fresh leaf green and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/strangling_roots.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "stone_gaze",
+  "name": "Stone Gaze",
+  "kind": "rite",
+  "el": "earth",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of an ancient carved stone eye glowing amber, a creature before it slowly turning to grey stone from the feet up.\n\nMain subject: an ancient carved stone eye glowing amber, a creature before it slowly turning to grey stone from the feet up.\nBackground: a crumbling temple, softly blurred and tinted with warm ochre and stone brown.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/stone_gaze.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "blinding_flare",
+  "name": "Blinding Flare",
+  "kind": "rite",
+  "el": "fire",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a white-gold flash of fire exploding in a creature's face, it reels back with eyes shut tight.\n\nMain subject: a white-gold flash of fire exploding in a creature's face, it reels back with eyes shut tight.\nBackground: a night duelling circle, softly blurred and tinted with ember orange and crimson.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/blinding_flare.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "goading_ember",
+  "name": "Goading Ember",
+  "kind": "rite",
+  "el": "fire",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a single taunting ember flicked at a beast, the beast snarling with red rage lines around it.\n\nMain subject: a single taunting ember flicked at a beast, the beast snarling with red rage lines around it.\nBackground: a smoky arena at night, softly blurred and tinted with ember orange and crimson.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/goading_ember.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "confounding_chime",
+  "name": "Confounding Chime",
+  "kind": "rite",
+  "el": "psychic",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a crystal chime ringing out rippling pink-violet sound rings, a creature spinning dizzily in them.\n\nMain subject: a crystal chime ringing out rippling pink-violet sound rings, a creature spinning dizzily in them.\nBackground: a dreamlike crystal cavern, softly blurred and tinted with soft pink and lavender.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/confounding_chime.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "heart_lure",
+  "name": "Heart Lure",
+  "kind": "rite",
+  "el": "psychic",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a floating rose-pink heart of light on a silver thread, drawing a fierce beast forward in a daze.\n\nMain subject: a floating rose-pink heart of light on a silver thread, drawing a fierce beast forward in a daze.\nBackground: a moonlit glade, softly blurred and tinted with soft pink and lavender.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/heart_lure.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "dread_howl",
+  "name": "Dread Howl",
+  "kind": "rite",
+  "el": "spirit",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a spectral teal wolf throwing back its head in a howl, shadowy creatures cowering before the sound.\n\nMain subject: a spectral teal wolf throwing back its head in a howl, shadowy creatures cowering before the sound.\nBackground: a misty moor at night, softly blurred and tinted with ghostly teal and silver.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/dread_howl.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "silence_rune",
+  "name": "Silence Rune",
+  "kind": "rite",
+  "el": "mystic",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of an indigo rune seal pressed over a creature's mouth like a glowing gag, its power muffled.\n\nMain subject: an indigo rune seal pressed over a creature's mouth like a glowing gag, its power muffled.\nBackground: a rune-carved shrine, softly blurred and tinted with deep indigo and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/silence_rune.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "puppet_rune",
+  "name": "Puppet Rune",
+  "kind": "rite",
+  "el": "mystic",
+  "tier": 3,
+  "tierName": "Crystal",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of glowing violet threads of rune-light hooked into a creature's limbs, a ghostly hand above working them like a puppet.\n\nMain subject: glowing violet threads of rune-light hooked into a creature's limbs, a ghostly hand above working them like a puppet.\nBackground: a dark ritual chamber, softly blurred and tinted with deep indigo and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/puppet_rune.png"
+  ],
+  "first": true,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "hex_mark",
+  "name": "Hex Mark",
+  "kind": "rite",
+  "el": "mystic",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a crooked violet sigil burning onto a creature's hide, chains of tiny runes trailing from it.\n\nMain subject: a crooked violet sigil burning onto a creature's hide, chains of tiny runes trailing from it.\nBackground: a witch's glade at dusk, softly blurred and tinted with deep indigo and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/hex_mark.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "grave_curse",
+  "name": "Grave Curse",
+  "kind": "rite",
+  "el": "spirit",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a cold grey-green hand of mist rising from a grave, its finger touching a creature's brow.\n\nMain subject: a cold grey-green hand of mist rising from a grave, its finger touching a creature's brow.\nBackground: a foggy graveyard, softly blurred and tinted with ghostly teal and silver.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/grave_curse.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "hunters_mark",
+  "name": "Hunter's Mark",
+  "kind": "rite",
+  "el": "any",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a glowing red target sigil painted on a creature's shoulder, a hunter's arrow fletching in the foreground.\n\nMain subject: a glowing red target sigil painted on a creature's shoulder, a hunter's arrow fletching in the foreground.\nBackground: a shadowy forest at dusk, softly blurred and tinted with warm candlelight and deep blue shadow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/hunters_mark.png"
+  ],
+  "first": true,
+  "status": {
+   "painting": true
+  }
+ },
+ {
+  "prev": "",
+  "id": "soul_siphon",
+  "name": "Soul Siphon",
+  "kind": "rite",
+  "el": "spirit",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a ribbon of pale teal soul-light being drawn out of a creature into an open hand.\n\nMain subject: a ribbon of pale teal soul-light being drawn out of a creature into an open hand.\nBackground: a haunted crypt, softly blurred and tinted with ghostly teal and silver.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/soul_siphon.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "doom_sigil",
+  "name": "Doom Sigil",
+  "kind": "rite",
+  "el": "mystic",
+  "tier": 4,
+  "tierName": "Relic",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a black sigil like a slowly closing eye hanging over a creature, three candles beneath it, one already out.\n\nMain subject: a black sigil like a slowly closing eye hanging over a creature, three candles beneath it, one already out.\nBackground: a black void with faint stars, softly blurred and tinted with deep indigo and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/doom_sigil.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "clarity_tonic",
+  "name": "Clarity Tonic",
+  "kind": "rite",
+  "el": "any",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a slim blue glass vial of clear sparkling water, a soft halo of light around it.\n\nMain subject: a slim blue glass vial of clear sparkling water, a soft halo of light around it.\nBackground: an alchemist's table, softly blurred and tinted with warm candlelight and deep blue shadow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/clarity_tonic.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "cleansing_bell",
+  "name": "Cleansing Bell",
+  "kind": "rite",
+  "el": "any",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a silver temple bell ringing, rings of white light washing away dark smoke.\n\nMain subject: a silver temple bell ringing, rings of white light washing away dark smoke.\nBackground: a temple courtyard, softly blurred and tinted with warm candlelight and deep blue shadow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/cleansing_bell.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "war_paint",
+  "name": "War Paint",
+  "kind": "rite",
+  "el": "any",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a clay pot of glowing red-ochre war paint, three fingers of paint smeared across a beast's brow.\n\nMain subject: a clay pot of glowing red-ochre war paint, three fingers of paint smeared across a beast's brow.\nBackground: a tribal camp by firelight, softly blurred and tinted with warm candlelight and deep blue shadow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/war_paint.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "verdant_balm",
+  "name": "Verdant Balm",
+  "kind": "rite",
+  "el": "verdant",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a wooden bowl of green moss balm glowing softly, tiny leaves sprouting from it.\n\nMain subject: a wooden bowl of green moss balm glowing softly, tiny leaves sprouting from it.\nBackground: a herbalist's hut, softly blurred and tinted with fresh leaf green and gold.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/verdant_balm.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "shadow_cloak",
+  "name": "Shadow Cloak",
+  "kind": "rite",
+  "el": "psychic",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a cloak of shimmering violet mist settling over a creature until only its eyes show.\n\nMain subject: a cloak of shimmering violet mist settling over a creature until only its eyes show.\nBackground: a moonlit alley, softly blurred and tinted with soft pink and lavender.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/shadow_cloak.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "sanctify",
+  "name": "Sanctify",
+  "kind": "rite",
+  "el": "any",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a ring of golden sunlight descending onto a creature, motes of light settling on it like snow.\n\nMain subject: a ring of golden sunlight descending onto a creature, motes of light settling on it like snow.\nBackground: a sunlit temple, softly blurred and tinted with warm candlelight and deep blue shadow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/sanctify.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "quicken",
+  "name": "Quicken",
+  "kind": "rite",
+  "el": "storm",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of crackling yellow lightning streaks wrapping a creature's legs, after-images trailing behind it.\n\nMain subject: crackling yellow lightning streaks wrapping a creature's legs, after-images trailing behind it.\nBackground: a storm-swept plain, softly blurred and tinted with electric indigo and yellow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/quicken.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "static_field",
+  "name": "Static Field",
+  "kind": "ward",
+  "el": "storm",
+  "tier": 1,
+  "tierName": "Spark",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a dome of crackling static over a duelling circle, a lunging beast jolted rigid by sparks.\n\nMain subject: a dome of crackling static over a duelling circle, a lunging beast jolted rigid by sparks.\nBackground: a duelling circle at night, softly blurred and tinted with electric indigo and yellow.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/static_field.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "frost_snare",
+  "name": "Frost Snare",
+  "kind": "ward",
+  "el": "frost",
+  "tier": 2,
+  "tierName": "Glimmer",
+  "stage": 0,
+  "round": 3,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of frost runes flashing up from the ground and freezing a newly summoned creature's feet to the stone.\n\nMain subject: frost runes flashing up from the ground and freezing a newly summoned creature's feet to the stone.\nBackground: a frozen duelling circle, softly blurred and tinted with icy blue and white.\nComposition: the main subject in the centre, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: a striking moment of magic.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art. Match the style of the attached finished card painting.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/frost_snare.png"
+  ],
+  "first": false,
+  "status": {
+   "painting": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "sunlance_seraph",
+  "name": "Sunlance Seraph",
+  "kind": "totem",
+  "el": "radiant",
+  "tier": 5,
+  "tierName": "Legend",
+  "stage": 0,
+  "round": 4,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a radiant winged warrior spirit in white-gold armour, six wings of light, a lance of pure sunlight, halo blazing.\n\nBody and shape: a tall armoured warrior spirit, taller than a man, hovering just above the ground.\nColours: white-gold armour, six wings of pale gold light and a lance of white sunlight.\nKey features: a blazing halo, six wings spread in three pairs, and a serene golden visor in place of a face.\nPose: hovering, levelling the lance towards the viewer.\nBackground: a bright sky above white towers and gold domes, softly blurred and tinted with radiant gold and white.\nComposition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: powerful, imposing and ancient.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nThe same creature as in the attached card painting, with exactly the same design, colours and markings: a radiant winged warrior spirit in white-gold armour, six wings of light, a lance of pure sunlight, halo blazing.\n\nShow its whole body, in a three-quarter view facing to the right, hovering with its lance levelled and its wings spread.\nPlace it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature.\nStyle: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.\nDo not include any text, letters, numbers, frame or border.",
+  "model": "Create a 3D model of Sunlance Seraph: a radiant winged warrior spirit in white-gold armour, with six wings of light and a lance of pure sunlight.\n\nBody and shape: a tall humanoid warrior in full plate armour, hovering upright, with six feathered wings spread behind it in three pairs and a halo ring behind the head. It holds a long lance level in both hands.\n\nColours and surface: polished white-gold armour engraved with sun patterns, wings of layered pale gold feathers, and a white-gold lance.\n\nMagic: the wings, the halo and the lance glow white-gold and are emissive; motes of light drift from the wing tips.\n\nFace: a smooth golden visor shaped like a calm face, with glowing white eye slits. Stern and serene.\n\nStyle: painted, high-detail fantasy creature art with soft, realistic texture and glowing magical parts. Rich and premium, like a collectable fantasy trading card. Not a low-poly, cartoon, plastic or toy look.\n\nPose and setup: hovering upright, facing forward, the lowest point of the body at ground level, whole body visible. Symmetrical, neutral pose ready for auto-rigging. Clean, watertight mesh, about 20,000 triangles, one 4096 x 4096 colour texture with the glowing parts emissive.",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/sunlance_seraph.png",
+   "Battlefield cut-out · square 1536 × 1536 · save as creatures/sunlance_seraph.png",
+   "3D model · about 20,000 triangles · save as sunlance_seraph.glb"
+  ],
+  "modelNote": "Attach this card's painting and paste the prompt into your 3D tool, as in 3D Model Prompts. Attack: lance thrust (a flyer). Clips: idle, attack, hit, defeat, spawn.",
+  "refNote": "New for Chapter 1: the heirloom Legend in Ser Aldric's deck on the Sunspire.",
+  "first": false,
+  "status": {
+   "painting": false,
+   "model": false,
+   "cutout": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "dawnmane",
+  "name": "Dawnmane, the Sun Lion",
+  "kind": "summon",
+  "el": "radiant",
+  "tier": 6,
+  "tierName": "Demigod",
+  "stage": 0,
+  "round": 4,
+  "card": "Tall portrait image, 5:7 aspect ratio, 1536 x 2150 pixels.\n\nA painted fantasy trading-card illustration of a colossal lion of living sunlight descending from the sky, a mane of solar flares, roaring as dawn breaks behind it.\n\nBody and shape: a colossal lion, enormous in scale.\nColours: a body of white-gold sunlight and a mane of orange and gold solar flares.\nKey features: a mane of solar flares and eyes like two small suns.\nPose: descending from the sky, roaring.\nBackground: dawn breaking over white towers and gold domes far below, tinted with radiant gold and white.\nComposition: the colossal figure filling the upper two-thirds of the image and towering over everything below. Keep anything important away from the very top and bottom edges.\nMood: godlike, colossal and epic, bathed in heavenly light.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "Square image, 1:1 aspect ratio, 2048 x 2048 pixels.\n\nThe same being as in the attached card painting, with exactly the same design and colours: a colossal lion of living sunlight descending from the sky, a mane of solar flares, roaring as dawn breaks behind it.\n\nShow the whole figure facing the viewer, leaping down with its forepaws reaching and its mane blazing.\nPlace it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects, with a little space around the figure.\nStyle: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.\nDo not include any text, letters, numbers, frame or border.",
+  "model": "Create a 3D model of Dawnmane, the Sun Lion: a colossal lion of living sunlight with a mane of solar flares.\n\nBody and shape: a huge, powerful lion standing on four legs with its head raised mid-roar, a vast flowing mane and a long tail ending in a tuft of flame.\n\nColours and surface: a body of white-gold light with a soft, sun-warm glow; the mane layered in gold, orange and white like solar flares.\n\nMagic: the whole body glows, the mane most strongly; the eyes and the mane are emissive, with sparks of sunlight drifting off it.\n\nFace: a noble lion's face, jaws open in a roar, eyes like two small white suns. Radiant and divine.\n\nStyle: painted, high-detail fantasy creature art with soft, realistic texture and glowing magical parts. Rich and premium, like a collectable fantasy trading card. Not a low-poly, cartoon, plastic or toy look.\n\nPose and setup: standing on flat ground, facing forward, paws at ground level, whole body visible. Symmetrical, neutral standing pose ready for auto-rigging. Clean, watertight mesh, about 50,000 triangles, one 4096 x 4096 colour texture with the glowing parts emissive.",
+  "spec": [
+   "Card painting · tall 1536 × 2150 · save as cards/dawnmane.png",
+   "Summon cut-out · square 2048 × 2048 · save as summons/dawnmane.png",
+   "3D model · about 50,000 triangles · save as summons/dawnmane.glb"
+  ],
+  "modelNote": "Attach this card's painting and paste the prompt into your 3D tool, as in 3D Model Prompts. It goes with the other gods in summons/. Attack: leap and roar, 1.5 to 2 seconds. Clips: idle, attack, hit, defeat, spawn.",
+  "refNote": "New for Chapter 1: Ser Aldric's Summon, the lion on his banners. Make it before Sunmane Lion, which uses this painting as its reference.",
+  "first": false,
+  "status": {
+   "painting": false,
+   "model": false,
+   "cutout": false
+  }
+ },
+ {
+  "prev": "",
+  "id": "sunmane_lion",
+  "name": "Sunmane Lion",
+  "kind": "totem",
+  "el": "radiant",
+  "tier": 4,
+  "tierName": "Relic",
+  "stage": 0,
+  "round": 4,
+  "card": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nA painted fantasy trading-card illustration of a young lion whose mane is morning light, pale gold and white, standing on a sunlit stone with its head raised.\nThis is the small kin of a greater creature: use the attached Dawnmane card painting as a reference and keep the same colours and the same kind of mane.\n\nBody and shape: a lean, strong young lion, the size of a real lion.\nColours: a pale gold coat and a mane of white and gold light.\nKey features: a mane that glows like morning light, and bright gold eyes.\nPose: standing on a sunlit stone with its head raised.\nBackground: a sunrise over white rooftops, softly blurred and tinted with radiant gold and white.\nComposition: the creature in the centre with its whole body visible, filling about 60% of the image, with clear space on every side. Keep anything important away from the edges.\nMood: proud and noble, the promise of something greater.\nStyle: rich painterly brushwork, dramatic rim lighting, glowing magical particles, high detail, premium fantasy trading-card art.\nDo not include any text, letters, numbers, names, card frame, border, logo or watermark.",
+  "cut": "Square image, 1:1 aspect ratio, 1536 x 1536 pixels.\n\nThe same creature as in the attached card painting, with exactly the same design, colours and markings: a young lion whose mane is morning light, pale gold and white, standing on a sunlit stone with its head raised.\n\nShow its whole body, including its feet and tail, in a three-quarter view facing to the right, standing proud with its head raised.\nPlace it on a plain, flat, light-grey background with no ground, no shadow, no scenery and no other objects. Leave a little space around the creature, with its feet near the bottom edge.\nStyle: painted fantasy illustration with rich painterly brushwork and rim lighting, matching the card painting.\nDo not include any text, letters, numbers, frame or border.",
+  "model": "Create a 3D model of Sunmane Lion: a young lion whose mane is morning light, pale gold and white.\n\nBody and shape: a lean, strong young lion standing on four legs with its head raised, a short mane and a long tail with a tuft at the end.\n\nColours and surface: a pale gold coat, a white and gold mane, and a darker gold tuft on the tail.\n\nMagic: the mane glows softly with morning light and is emissive; a few motes of light drift from it.\n\nFace: bright gold eyes and a calm, proud expression, mouth closed.\n\nStyle: painted, high-detail fantasy creature art with soft, realistic texture and glowing magical parts. Rich and premium, like a collectable fantasy trading card. Not a low-poly, cartoon, plastic or toy look.\n\nPose and setup: standing on flat ground, facing forward, feet at ground level, whole body visible. Symmetrical, neutral standing pose ready for auto-rigging. Clean, watertight mesh, about 20,000 triangles, one 4096 x 4096 colour texture with the glowing parts emissive.",
+  "spec": [
+   "Card painting · square 1536 × 1536 · save as cards/sunmane_lion.png",
+   "Battlefield cut-out · square 1536 × 1536 · save as creatures/sunmane_lion.png",
+   "3D model · about 20,000 triangles · save as sunmane_lion.glb"
+  ],
+  "modelNote": "Attach this card's painting and paste the prompt into your 3D tool, as in 3D Model Prompts. Attack: pounce. Clips: idle, attack, hit, defeat, spawn, and run and victory if the tool offers them.",
+  "refNote": "New for Chapter 1: the card you win from Ser Aldric, Dawnmane made small. Attach Dawnmane's finished card painting to its card painting prompt.",
+  "first": false,
+  "status": {
+   "painting": false,
+   "model": false,
+   "cutout": false
+  }
+ }
+]
