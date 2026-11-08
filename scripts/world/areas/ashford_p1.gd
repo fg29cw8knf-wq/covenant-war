@@ -1438,7 +1438,9 @@ static func _attic(w: World) -> void:
 			Music.play(w.music, 4.0, true)
 	# (25 October, Gary: getting out of bed "a little bit faster": the whole
 	# rise, from the fade-up to standing, is about seven seconds now where
-	# it was twelve; each movement is the same, just brisker)
+	# it was twelve; each movement is the same, just brisker. 8 November,
+	# Gary: "Bed scene looks much better, can we now make it slightly faster":
+	# a quarter off again, RISE_STIR to STRETCH_SECS, every movement the same)
 	await Cine.wait(w, 0.2)
 	if memory:
 		# the mark under his collar still glowing from the dream, fading as
@@ -1453,7 +1455,7 @@ static func _attic(w: World) -> void:
 	Cine.fade(w, 0.0, 1.0)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
 		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
-	await Cine.wait(w, 1.4)
+	await Cine.wait(w, RISE_STIR)
 	# wakes to the drum: sits up, throws the blanket back, swings his legs
 	# over the side of the bed, sits there a breath, then stands up off it
 	var side: Vector3 = a.bed_side
@@ -1477,15 +1479,15 @@ static func _attic(w: World) -> void:
 			# hand now goes only as far as the arm reaches from the shoulder
 			# he's lying on, low across his chest, and the cloth follows the
 			# hand as far as it goes and settles the rest of the way itself)
-			await throw_blanket(w, fig, a, hand)
+			await throw_blanket(w, fig, a, hand, BLANKET_SECS)
 			if not rise_clip:
 				var down := w.create_tween()
-				down.tween_property(hand, "global_position", on_mattress, 0.3).set_trans(Tween.TRANS_SINE)
+				down.tween_property(hand, "global_position", on_mattress, 0.25).set_trans(Tween.TRANS_SINE)
 				await down.finished
 		elif not rise_clip:
 			hand.global_position = on_mattress
-			fig.reach(null, hand, 0.35)
-			await Cine.wait(w, 0.25)
+			fig.reach(null, hand, 0.3)
+			await Cine.wait(w, 0.2)
 		if rise_clip:
 			await _rise_from_bed(w, fig, a)
 			if is_instance_valid(hand):
@@ -1493,7 +1495,7 @@ static func _attic(w: World) -> void:
 			# a step on from the bed, to where he turns to the window
 			var step := w.player.global_position.lerp(side, 0.5)
 			step.y = (a.bed_side as Vector3).y
-			await Cine.path(w, "player", [step], 0.6)
+			await Cine.path(w, "player", [step], 0.8)
 		if not rise_clip:
 			await _rise_by_poses(w, fig, a, side)
 		if is_instance_valid(hand):
@@ -1509,8 +1511,8 @@ static func _attic(w: World) -> void:
 	# does first thing (2 November: the arms turned at the shoulders by a
 	# clip of their own, Figure3D.stretch, not reached up after targets)
 	if pf is Figure3D:
-		await (pf as Figure3D).stretch(2.8)
-	await Cine.wait(w, 0.3)
+		await (pf as Figure3D).stretch(STRETCH_SECS)
+	await Cine.wait(w, 0.2)
 	# the first lesson: walking, to the washbasin, on their own feet
 	controls_on(w)
 	w.hud._menu_btn.visible = false   # (the pause square is taught at the door)
@@ -1554,8 +1556,10 @@ static func throw_blanket(w: World, fig: Figure3D, a: Dictionary, hand: Node3D, 
 		return
 	var corner := _hand_can(fig, "right", BlanketThrow.corner_of(bl))
 	hand.global_position = corner
-	fig.reach(null, hand, 0.35)
-	await Cine.wait(w, 0.3)
+	# (8 November: the hand finds the hem a little quicker, morning and
+	# midnight both; the throw's own `secs` is each scene's)
+	fig.reach(null, hand, 0.3)
+	await Cine.wait(w, 0.2)
 	var bt := BlanketThrow.start(bl, a.blanket_off, hand, secs)
 	var to := _hand_can(fig, "right", BlanketThrow.corner_in_heap(bl, a.blanket_off))
 	var sweep := w.create_tween()
@@ -1621,22 +1625,22 @@ static func _dream(w: World, ov: CineOverlay) -> void:
 
 
 static func _rise_by_poses(w: World, fig: Figure3D, a: Dictionary, side: Vector3) -> void:
-	fig.sit_long(a.lie_top, 1.0)
-	await Cine.wait(w, 1.05)
+	fig.sit_long(a.lie_top, 0.8)
+	await Cine.wait(w, 0.85)
 	# sat up: a breath, then he slides to the edge and turns to face it,
 	# his legs still out along the mattress (they swing down only once
 	# they're over the edge: nothing goes through the bed), the hand
 	# coming off the mattress as he does
-	await Cine.wait(w, 0.2)
-	await fig.shift_seat(a.edge_at, Vector3.BACK, 0.8, 0.05)
-	fig.sit(a.edge_top, 0.6)
-	fig.let_go(0.6)
-	await Cine.wait(w, 0.5)
-	# a moment on the edge, then up and away from it
 	await Cine.wait(w, 0.15)
-	fig.stand(0.7)
+	await fig.shift_seat(a.edge_at, Vector3.BACK, 0.65, 0.05)
+	fig.sit(a.edge_top, 0.5)
+	fig.let_go(0.5)
+	await Cine.wait(w, 0.4)
+	# a moment on the edge, then up and away from it
+	await Cine.wait(w, 0.1)
+	fig.stand(0.6)
 	var tw := w.create_tween()
-	tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_property(w.player, "global_position", Vector3(side.x, side.y, side.z), 0.65).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await tw.finished
 
 
@@ -1674,18 +1678,36 @@ static func _rise_from_bed(w: World, fig: Figure3D, a: Dictionary) -> void:
 	var blend := 0.35
 	var extra := func(t: float) -> Vector3:
 		var slide := smoothstep(1.3, 2.5, t)
-		var y := lerpf(lie_off * smoothstep(0.0, blend, t), edge_off, slide)
+		# (the lift over LIFT_IN seconds of the world's time: `t` is the
+		# clip's own seconds, so it's scaled to the clip's pace; a shade
+		# under the blend-in, so the hips never dip as the lying pose gives
+		# way to the clip's lower one)
+		var y := lerpf(lie_off * smoothstep(0.0, LIFT_IN * RISE_SPEED, t), edge_off, slide)
 		y += SWING_LIFT * sin(PI * clampf((t - 1.45) / 1.05, 0.0, 1.0))
 		y = lerpf(y, 0.0, smoothstep(3.1, 4.0, t))
 		return to_edge * slide + Vector3(0, y, 0)
-	await fig.play_rooted("get_out_of_bed", true, 1.15, extra, blend)
-	fig.release(0.4)
+	await fig.play_rooted("get_out_of_bed", true, RISE_SPEED, extra, blend)
+	fig.release(0.3)
 
 
 ## How far the seat rises as the legs swing round over the bed's side (m):
 ## enough for the feet to clear the rail and the straw at the mattress's
 ## edge, most as they cross it.
 const SWING_LIFT := 0.13
+## The rise's pace (8 November, Gary: "Bed scene looks much better, can we
+## now make it slightly faster"): a quarter off the whole, from the fade-up
+## to the controls coming on (tests/bed_probe.gd times it: 9.8 s before,
+## 7.3 after), each movement kept and only brisker. From the fade-up to his
+## hand going to the blanket's hem (s; was 1.4); the blanket's throw (s; was
+## 0.8: the midnight waking's is its own, AshfordNight.awakening); the
+## get_out_of_bed clip's speed (was 1.15); the stretch on his feet (s; was
+## 2.8).
+const RISE_STIR := 0.9
+const BLANKET_SECS := 0.6
+const RISE_SPEED := 1.6
+const STRETCH_SECS := 2.0
+## How long the lift onto the mattress takes as the clip comes in (s).
+const LIFT_IN := 0.28
 ## Master Script v7 (with Gary's 24 October change to Q0): at the washbasin
 ## he wipes the frost off the oval glass with his palm and sees the ash-grey
 ## mark on his collarbone; the frost creeps back and he writes his name in it
@@ -2121,7 +2143,21 @@ static func _taproom(w: World) -> void:
 		oats.albedo_color = Color(0.86, 0.8, 0.66)
 		oats.roughness = 0.9
 		v.cyl(bowl, 0.08, 0.08, 0.005, Vector3(0, 0.058, 0), oats, 14).name = "Oats"
-		v.box(bowl, Vector3(0.015, 0.008, 0.16), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15)).name = "Spoon"
+		var sp := v.box(bowl, Vector3(0.015, 0.008, SPOON_LEN), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15))
+		sp.name = "Spoon"
+		# its bowl: a flat oval at the +z end, the end that goes to the mouth
+		# (8 November: a bare stick read as nothing in the hand)
+		var sb := MeshInstance3D.new()
+		var sm := SphereMesh.new()
+		sm.radius = 0.017
+		sm.height = 0.011
+		sm.radial_segments = 12
+		sm.rings = 6
+		sb.mesh = sm
+		sb.material_override = v.mats.wood
+		sb.position = Vector3(0, 0.002, SPOON_LEN * 0.5 - 0.014)
+		sb.scale = Vector3(1.0, 1.0, 1.35)
+		sp.add_child(sb)
 		e["porridge"] = bowl
 	# Bram in the walkway behind the counter, the player a step off its front
 	# (25 October: he stood inside the counter, his back in the shelves)
@@ -2209,28 +2245,61 @@ static func _taproom(w: World) -> void:
 	w.hud._menu_btn.visible = false
 	coach(w).objective("green_crate")
 	var door_in: Vector3 = e.door_in
+	# (8 November, Gary: "Door passes through player when it opens before
+	# leaving inn": the walk ended anywhere within a stride of the door, and
+	# the leaf, hung on the east jamb and opening into the room, swung
+	# through them and the crate. The walk ends within a stride of the door
+	# or at the stand's circle; they're walked the last step to door_stand,
+	# back out of the leaf's swing, and only step off once the leaf is past
+	# square to the wall)
+	var door_stand: Vector3 = e.door_stand
 	await walk_room(w, e, root.to_global(Vector3(-0.6, 2.7, 2.6)), func(p: Vector3) -> bool:
-		return Vector2(p.x - door_in.x, p.z - door_in.z).length() < 0.85, "", stray)
+		# (within a stride of the door as before, or near the stand: coming
+		# up the room they reach the stand's circle first and walk the last
+		# half step on to it. Both are small: the crate's corner is a stride
+		# east of the door, and a patch across the door's front ended the
+		# walk as they set off from it towards the stairs)
+		return Vector2(p.x - door_in.x, p.z - door_in.z).length() < 0.85 \
+			or Vector2(p.x - door_stand.x, p.z - door_stand.z).length() < 0.45, "", stray)
 	if not is_instance_valid(w) or not w.is_inside_tree():
 		return
-	# at the door: the menu, in brackets, as the pause square glows
+	# at the door: the camera comes round to the door's side of the room as
+	# they take the last step to the stand; then the menu, in brackets, as
+	# the pause square glows
 	w.hud.set_controls_visible(false)
+	Cine.move(w, root.to_global(DOOR_CAM), door_stand + Vector3(0, 1.25, 0), 0.8, 44.0)
+	if Vector2(w.player.global_position.x - door_stand.x, w.player.global_position.z - door_stand.z).length() > 0.08:
+		await Cine.path(w, "player", [door_stand], 1.2)
+	if not is_instance_valid(w) or not w.is_inside_tree():
+		return
 	w.hud._menu_btn.visible = true
 	Cine.look(w, "player", door_in + Vector3(0, 0, -1.0))
-	Cine.move(w, root.to_global(Vector3(0.6, 1.7, -1.2)), w.player.global_position + Vector3(0, 1.3, 0), 0.8, 42.0)
 	coach(w).light("menu", 3.2)
 	await w.run_steps(AT_DOOR, null)
 	w.hud.dialogue.close()
 	coach(w).light("")
-	# out into the morning
+	# out into the morning: the leaf swings open (DOOR_SWING), and they step
+	# off once it's past square to the wall (DOOR_STEP_OFF), so they're
+	# through the doorway with it open
 	var door: Node3D = e.door
 	var sw := w.create_tween()
-	sw.tween_property(door, "rotation:y", deg_to_rad(100.0), 0.7).set_trans(Tween.TRANS_SINE)
-	await Cine.wait(w, 0.4)
+	sw.tween_property(door, "rotation:y", deg_to_rad(100.0), DOOR_SWING).set_trans(Tween.TRANS_SINE)
+	await Cine.wait(w, DOOR_STEP_OFF)
 	Cine.path(w, "player", [e.door_out], 1.4)
-	await Cine.wait(w, 0.6)
+	await Cine.wait(w, 0.9)
 	await Cine.fade(w, 1.0, 0.7)
 	door.rotation.y = 0.0
+
+
+## The camera for the menu at the door and the way out (the room's frame):
+## on the door's side of the table, the player at the stand and the door
+## beyond them, the leaf swinging in towards it.
+const DOOR_CAM := Vector3(0.1, 1.72, 0.25)
+## The front door's swing (s), and how long after it starts they step off
+## for the doorway (the leaf is square to the wall at 0.5 and clear of
+## their way; they reach the doorway over a second later).
+const DOOR_SWING := 0.7
+const DOOR_STEP_OFF := 0.55
 
 
 ## Breakfast at the bar (2 November, Gary: "have character eat if they
@@ -2252,10 +2321,12 @@ static func _eat(w: World, e: Dictionary) -> void:
 		await Cine.path(w, "player", [stand], 1.0)
 	var at_bowl: Vector3 = bowl.global_position
 	Cine.look(w, "player", at_bowl)
-	# from the room's north side, the player's right hand and the bowl in
-	# view, Bram behind the counter beyond (the raised flap at the counter's
-	# south end filled a shot from the south)
-	Cine.move(w, root.to_global(Vector3(InnRooms.BAR_X + 2.1, 1.5, -0.95)), root.to_global(Vector3(InnRooms.BAR_X + 0.4, 1.2, 0.5)), 0.8, 38.0)
+	# from over the counter's north end, his face and the spoon coming up
+	# to it in three-quarter, the bowl below (8 November: from the room's
+	# north side the shot had his back and the hand at the back of his head,
+	# so the eating couldn't be seen; the raised flap at the counter's south
+	# end fills a shot from the south)
+	Cine.move(w, root.to_global(Vector3(InnRooms.BAR_X - 0.3, 1.52, -0.75)), root.to_global(Vector3(InnRooms.BAR_X + 0.6, 1.4, 0.55)), 0.8, 36.0)
 	await Cine.wait(w, 0.45)
 	if pf is Figure3D:
 		var me := pf as Figure3D
@@ -2263,42 +2334,117 @@ static func _eat(w: World, e: Dictionary) -> void:
 		# through himself": the palm was sent to the mouth itself, with the
 		# spoon hanging off it, and the elbow's usual hint, out and back,
 		# folded the arm back past the shoulder so the forearm came forward
-		# through the chest. Now the hand stops a spoon's length short of
-		# the mouth, off to his right, the spoon lies in the palm with its
-		# bowl end towards him, and the elbow is kept down in front of the
-		# ribs; the targets are in his own frame, so they go with him.)
+		# through the chest: the elbow is kept down in front of the ribs, and
+		# the targets are in his own frame, so they go with him.
+		# 8 November, Gary: "When eating the porridge the spoon doesn't go
+		# all the way to the mouth, it only gets to about chest level": the
+		# hand was sent to a point at the head bone's height a hand ahead of
+		# his middle, under and in front of the lips; the palm as drawn fell
+		# a hand's length short of even that (the arm's IK puts the end of
+		# the hand bone at the target, and the hand is then turned to hold
+		# the spoon, which swings the palm away from it); and the spoon lay
+		# centred on the palm along the fingers, so it was inside the cupped
+		# hand and never seen. Now the spoon is held by its handle's end in
+		# the fist and points from there at where its bowl end is wanted
+		# (SpoonHold, in the skeleton's own pass so it's drawn where the
+		# hand is): in the bowl, slanting down into it (SPOON_DIP), and at
+		# the mouth, read off the model each frame (mouth_of: the Head bone
+		# as it stands and the lips' offset on it), the bowl end just under
+		# and in front of the lips (SPOON_AT_MOUTH), rising to them from in
+		# front and below (SPOON_UP); the fist is sent a spoon's length back
+		# along that line, and the fist as drawn is read back each frame
+		# and the target corrected by what it fell short, so the spoon's
+		# end gets there, not the hand's target. tests/eat_probe.gd measures
+		# it.)
 		var hand := Node3D.new()
 		hand.name = "SpoonHand"
 		var spoon: Node3D = bowl.get_node_or_null("Spoon")
-		var over := me.to_own(at_bowl + Vector3(0, 0.09, 0))
-		over.x = minf(over.x, -0.04)   # (the right hand: never across the body)
-		over.z = minf(over.z, me.arm_reach() * 0.92)
-		me.carry(hand, over)
+		# which way the spoon points (his own frame), bowl end first: pitched
+		# SPOON_DIP down into the bowl, up and over to SPOON_UP at the lips
+		var spoon_dir := func(k: float) -> Vector3:
+			var a := deg_to_rad(lerpf(SPOON_DIP, SPOON_UP, k))
+			return Vector3(SPOON_ASIDE * k, sin(a), cos(a)).normalized()
+		var in_bowl := me.to_own(at_bowl + Vector3(0, SPOON_IN_BOWL, 0))
+		var grip_bowl: Vector3 = in_bowl - spoon_dir.call(0.0) * SPOON_LEN
+		grip_bowl.x = minf(grip_bowl.x, -0.03)   # (the right hand: never across the body)
+		me.carry(hand, grip_bowl)
 		me.elbow("right", Vector3(-0.34, me._top - 0.5, 0.1), 0.45)
-		me.palm("right", Vector3(0.7, 0.72, 0.0), 0.45, 0.0, true, Vector3(0.25, 0.1, 0.96))
+		me.palm("right", SPOON_PALM_BOWL, 0.45, 0.0, true, Vector3(0, 0, 1))
 		me.reach(null, hand, 0.45)
+		# his eyes on the bowl: the head dips to it (Figure3D.eyes_on, as far
+		# as a head dips), and so meets the spoon as it comes up
+		me.eyes_on(at_bowl)
+		var hold := SpoonHold.new()
+		hold.name = "SpoonHold"
+		hold.fig = me
+		me._skel.add_child(hold)
+		me._skel.move_child(hold, -1)
+		# the fist's target: `want` on its way, plus the correction learnt at
+		# each end (the bowl's and the mouth's), blended by how far up it is
+		var want := [grip_bowl, 0.0]
+		var corr := [Vector3.ZERO, Vector3.ZERO]
+		var feeding := [true]
+		var place := func() -> void:
+			var k := float(want[1])
+			hand.position = (want[0] as Vector3) + (corr[0] as Vector3) * (1.0 - k) + (corr[1] as Vector3) * k
+		var feedback := func() -> void:
+			while feeding[0] and is_instance_valid(hand) and is_instance_valid(me):
+				await w.get_tree().process_frame
+				if not feeding[0] or not is_instance_valid(hand) or hold.grip == Vector3.INF:
+					continue
+				var k := float(want[1])
+				var drawn: Vector3 = me.to_own(hold.grip)
+				var err: Vector3 = (want[0] as Vector3) - drawn
+				if k < 0.01:
+					corr[0] = ((corr[0] as Vector3) + err * SPOON_FEEDBACK).limit_length(SPOON_CORR_MOST)
+				elif k > 0.99:
+					corr[1] = ((corr[1] as Vector3) + err * SPOON_FEEDBACK).limit_length(SPOON_CORR_MOST)
+				place.call()
+		feedback.call()
+		var mouth_end := func() -> Vector3:
+			# (the lips as drawn, read in the hold's pass: from here the head
+			# is read before its dip to the bowl, a few cm higher)
+			return me.to_own(hold.mouth if hold.mouth != Vector3.INF else mouth_of(me)) + SPOON_AT_MOUTH
+		var aim := func(k: float) -> void:
+			# where the spoon's bowl end is wanted now, and the fist for it
+			var end: Vector3 = in_bowl.lerp(mouth_end.call(), k)
+			var dir: Vector3 = spoon_dir.call(k)
+			want[0] = end - dir * SPOON_LEN
+			want[1] = k
+			hold.aim = me.to_world(end)
+			# the fist turned with it, the spoon out past the thumb: the palm's
+			# way is the nearest to SPOON_PALM_BOWL (down, scooping) or
+			# SPOON_PALM (in and up, at the lips) that's square to the spoon,
+			# and the fingers across both (Figure3D.palm's own frame and
+			# fingers, written straight in each frame)
+			var n: Vector3 = SPOON_PALM_BOWL.lerp(SPOON_PALM, k)
+			n = (n - dir * n.dot(dir)).normalized()
+			if me._palms.has("right"):
+				me._palms["right"][0] = n
+				me._palms["right"][4] = dir.cross(n).normalized()
+			place.call()
+		aim.call(0.0)
 		await Cine.wait(w, 0.5)
-		if spoon != null:
-			me.attach(spoon, "palm", "right", 0.012, PI)
-		# the mouth: a little up from the head bone's root and a hand ahead of
-		# it; the palm a spoon's length in front of that, off to the right
-		var mouth := Vector3(-0.05, me._top + 0.01, 0.2)
-		for k in 3:
+		hold.spoon = spoon   # (off the bar and into the fist, now the hand's down at the bowl)
+		for mouthful in 3:
 			var up := w.create_tween()
-			up.tween_property(hand, "position", mouth, 0.42).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			up.tween_method(func(u: float) -> void: aim.call(smoothstep(0.0, 1.0, u)), 0.0, 1.0, 0.42)
 			await up.finished
 			await Cine.wait(w, 0.3)
 			var down := w.create_tween()
-			down.tween_property(hand, "position", over, 0.38).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			down.tween_method(func(u: float) -> void: aim.call(1.0 - smoothstep(0.0, 1.0, u)), 0.0, 1.0, 0.38)
 			await down.finished
 			await Cine.wait(w, 0.15)
+		feeding[0] = false
+		hold.aim = Vector3.INF
+		hold.queue_free()
 		var oats: Node3D = bowl.get_node_or_null("Oats")
 		if oats != null:
 			oats.visible = false
 		if spoon != null:
-			me.detach(spoon)
 			spoon.position = Vector3(0.05, 0.065, 0.02)
 			spoon.rotation = Vector3(0, 0.4, 0.15)
+		me.eyes_on(null)
 		me.let_go(0.4)
 		me.palm("right", Vector3.ZERO, 0.4)
 		me.elbow("right", Vector3.INF, 0.4)
@@ -2315,6 +2461,91 @@ static func _eat(w: World, e: Dictionary) -> void:
 
 ## Bram, once the bowl's empty.
 const ATE := [{"who": "bram", "say": "That's more like it. Now the crate."}]
+## The spoon: a stick of a spoon SPOON_LEN long, held by its handle's end in
+## the fist, SPOON_LIFT over the palm's skin (SpoonHold), out past the thumb.
+## The fist's palm (his own frame): SPOON_PALM at the lips (in towards his
+## face and up), SPOON_PALM_BOWL scooping (down); the wrist turns between.
+const SPOON_LEN := 0.16
+const SPOON_LIFT := 0.012
+const SPOON_PALM := Vector3(0.75, 0.5, -0.3)
+const SPOON_PALM_BOWL := Vector3(0.3, -0.9, 0.3)
+## The spoon's bowl end in the porridge: this far up from the bowl's base at
+## its middle (the oats' top is 0.06 up).
+const SPOON_IN_BOWL := 0.055
+## The spoon's pitch, bowl end first (degrees, his own frame: 0 level and
+## ahead, up through 90): dipping down into the bowl, and up and over to
+## the lips, which it comes to from below and a little in front (the fist
+## under the chin, the elbow down and bent: his forearm is short, and a
+## fist held out level with the lips had the arm straight); SPOON_ASIDE is how
+## far it leans out to his left by the top (the bowl end a little across
+## towards the mouth's middle).
+const SPOON_DIP := -30.0
+const SPOON_UP := 118.0
+const SPOON_ASIDE := 0.1
+## Where the spoon's bowl end stops at each mouthful, from the lips (his own
+## frame: a little to his right, just under and in front of them).
+const SPOON_AT_MOUTH := Vector3(-0.01, -0.012, 0.02)
+## The feedback on the fist's target: how much of the drawn fist's shortfall
+## is added to the target each frame, and the most the target is moved by
+## it (m).
+const SPOON_FEEDBACK := 0.6
+const SPOON_CORR_MOST := 0.22
+
+
+## The spoon in the fist, drawn where the hand is this frame (a modifier at
+## the end of the skeleton's list, after the arm's reach, the hand's turn and
+## the hands kept off the counter): the handle's end on the palm's skin at
+## its middle (Figure3D.palm_frame), the spoon pointing from there at `aim`
+## (world; INF leaves it be), its flat the palm's way, its bowl end SPOON_LEN
+## along. `grip` and `tip` are where they were drawn, for the feedback and
+## the tests.
+class SpoonHold:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+	var spoon: Node3D
+	var aim := Vector3.INF
+	var grip := Vector3.INF
+	var tip := Vector3.INF
+	var mouth := Vector3.INF   # the lips as drawn (after the head's own turn and dip)
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		if not is_instance_valid(fig) or fig._skel == null:
+			return
+		mouth = AshfordP1.mouth_of(fig)
+		var f := fig.palm_frame("right")
+		grip = f.origin + f.basis.y * AshfordP1.SPOON_LIFT
+		if aim == Vector3.INF or not is_instance_valid(spoon) or not spoon.is_inside_tree():
+			return
+		var d := aim - grip
+		if d.length() < 0.01:
+			return
+		d = d.normalized()
+		var up := f.basis.y - d * f.basis.y.dot(d)
+		if up.length() < 0.05:
+			up = Vector3.UP - d * d.y
+		up = up.normalized()
+		spoon.global_transform = Transform3D(Basis(up.cross(d), up, d).orthonormalized(), grip + d * AshfordP1.SPOON_LEN * 0.5)
+		tip = grip + d * AshfordP1.SPOON_LEN
+## Where the lips are on each model, from the Head bone in the bone's own
+## frame (m): tests/mouth_find.gd profiles the face off the mesh (Player A's:
+## the chin's front 0 to 3 cm over the bone, the lips at 4 to 5, the nose's
+## tip at 6 to 7, 19 cm ahead; checked against a still of his face with
+## the point marked). The default is Player A's, which every look plays in
+## the game (DollArt.player_look).
+const MOUTH := {"player_a": Vector3(0.0, 0.045, 0.17)}
+const MOUTH_DEFAULT := Vector3(0.0, 0.045, 0.17)
+
+
+## The mouth, in the world, on the pose as it stands now: the Head bone's
+## pose (as drawn, read inside the skeleton's pass; the clip's, read from a
+## scene) and the model's MOUTH offset.
+static func mouth_of(f: Figure3D) -> Vector3:
+	var sk: Skeleton3D = f._skel
+	var hb := sk.find_bone("Head") if sk != null else -1
+	if hb < 0:
+		return f.global_position + Vector3(0, f._top + 0.05, 0)
+	var off: Vector3 = MOUTH.get(f._model_name, MOUTH_DEFAULT)
+	return sk.global_transform * (sk.get_bone_global_pose(hb) * off)
 
 
 ## Bram's rag going over the counter until `state[0]` goes false (v7:
@@ -2833,18 +3064,31 @@ static func _green(w: World) -> void:
 	var bp := Cine.body(w, "bram").global_position
 	var wide_way := (bp + bram_to) * 0.5 + side * 1.5
 	wide_way.y = v.height(wide_way.x, wide_way.z)
-	await Cine.path(w, "bram", round_lantern(w, bp, wide_way) + round_lantern(w, wide_way, bram_to), 1.6)
+	var bram_there := [false]
+	var bram_walk := func() -> void:
+		await Cine.path(w, "bram", round_lantern(w, bp, wide_way) + round_lantern(w, wide_way, bram_to), 1.6)
+		bram_there[0] = true
+	bram_walk.call()
 	var t := 0.0
 	while t < 8.0 and Vector2(w.player.global_position.x - spot.x, w.player.global_position.z - spot.z).length() > 0.15:
 		await w.get_tree().process_frame
 		t += w.get_process_delta_time()
 	p = w.player.global_position
-	Cine.look(w, "bram", p)
-	# Corin sets off across the green to them as the crate goes down, so he's
-	# there, or nearly, by the time it's theirs to look up (5 November, Gary:
-	# "Can Corin start walking over as we're putting planters down so we're
-	# not waiting so long for him to get to player")
+	# Corin sets off across the green to them the moment they're at the
+	# Lantern with the crate, in the wide shot, so he's there as it's set
+	# down (5 November, Gary: "Can Corin start walking over as we're putting
+	# planters down so we're not waiting so long for him to get to player";
+	# 8 November: "Corin is back to taking ages to walk over to you instead
+	# of as soon as you put crates down": he set off as the crate started
+	# down, after the wait for Bram to come up, and was still four seconds
+	# off when it was on the grass)
 	corin_sets_off(w)
+	# Bram up beside them
+	t = 0.0
+	while t < 8.0 and not bram_there[0]:
+		await w.get_tree().process_frame
+		t += w.get_process_delta_time()
+	Cine.look(w, "bram", p)
 	# the crate down on the grass a stride in front of them, from low to the
 	# side so the crate and their feet clear of it are both seen (Gary, 22
 	# October: from behind them their legs hid it)
@@ -2875,11 +3119,22 @@ static func _green(w: World) -> void:
 	await Cine.wait(w, 0.25)
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.6)
-	await Cine.wait(w, 0.5)
 	Game.set_flag("p1_crate_down")
-	# Bram back to his stool by the Lantern, and the camera behind the player
-	await bram_to_stool(w)
-	await home(w, 0.8)
+	# Bram back to his stool by the Lantern while the camera comes up behind
+	# the player, who straightens and looks up to Corin coming across the
+	# green (8 November, Gary: "Corin is back to taking ages to walk over to
+	# you instead of as soon as you put crates down": the low shot of the
+	# crate was held for the three and a half seconds Bram took to walk off
+	# and sit, with Corin behind the player and the Lantern's foot the whole
+	# time, so his walk wasn't seen until the camera came home with him
+	# nearly there; now his walk is in view from the moment the crate's down,
+	# and the talk starts two seconds sooner)
+	bram_to_stool(w)
+	var cb := Cine.body(w, "corin")
+	if cb != null and (w.has_meta("corin_coming") or Vector2(cb.global_position.x - p.x, cb.global_position.z - p.z).length() < CORIN_MEET + 1.0):
+		Cine.look(w, "player", cb.global_position)
+	await Cine.wait(w, 0.3)
+	await home(w, 0.9)
 
 
 ## The player hangs the lantern on the hook and hauls it up to the top hook.
@@ -2963,8 +3218,15 @@ static func bram_to_stool(w: World) -> void:
 	at.y = v.height(at.x, at.z)
 	w.set_meta("bram_to_stool", true)
 	await Cine.path(w, "bram", round_lantern(w, b.global_position, at), 1.5)
-	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
+	if not is_instance_valid(w) or not is_instance_valid(b):
+		return
 	w.remove_meta("bram_to_stool")
+	# (8 November: not waited for from the green any more, so a scene may
+	# have taken his walk over before he got there, Ashford._bram_sets_off:
+	# then he isn't sat down onto the stool from wherever he is)
+	if Vector2(b.global_position.x - at.x, b.global_position.z - at.z).length() > 0.3:
+		return
+	await sit_down(w, "bram", seat, BRAM_FACES, STOOL_H, 0.5)
 	w.set_meta("bram_seated", true)
 
 
@@ -3036,16 +3298,24 @@ static func _home_after_talk(w: World) -> void:
 
 ## Cine.two_shot from whichever side of the pair has nothing solid in the way.
 static func two_shot(w: World, a_who: String, b_who: String, dist: float, height: float, fov: float) -> void:
-	var a := Cine.body(w, a_who).global_position
-	var b := Cine.body(w, b_who).global_position
+	var cam := two_shot_cam(w, Cine.body(w, a_who).global_position, Cine.body(w, b_who).global_position, dist, height, [a_who, b_who])
+	Cine.shot(w, cam[0], cam[1], fov)
+
+
+## The two-shot's camera for two people standing at `a` and `b`: [where it
+## stands, what it looks at], from whichever side of the pair has nothing
+## solid in the way (a glide can be aimed at it before the second of them
+## has got there: corin_calls).
+static func two_shot_cam(w: World, a: Vector3, b: Vector3, dist: float, height: float, people: Array) -> Array:
 	var mid := (a + b) * 0.5
 	var d := b - a
 	d.y = 0.0
 	var perp := d.normalized().cross(Vector3.UP).normalized()
+	var look := mid + Vector3(0, 1.3, 0)
 	var at := clear_cam(w, [mid + perp * dist + Vector3(0, height, 0), mid - perp * dist + Vector3(0, height, 0),
 		mid + perp * dist * 0.8 + Vector3(0, height + 0.8, 0), mid - perp * dist * 0.8 + Vector3(0, height + 0.8, 0)],
-		mid + Vector3(0, 1.3, 0), [a_who, b_who])
-	Cine.shot(w, at, mid + Vector3(0, 1.3, 0), fov)
+		look, people)
+	return [at, look]
 
 
 ## Puts someone on a spot, on the ground there (out of a room below the
@@ -3768,20 +4038,24 @@ static func tilly_card_away(w: World) -> void:
 # ----------------------------------------------------------------- Corin ---
 
 ## How far short of the player Corin stops to talk (m), and how fast he
-## comes over.
+## comes over: a brisk walk (his own walk goes at 1.7; 8 November, Gary:
+## "Corin is back to taking ages to walk over to you": ten metres across the
+## green at a stroll was six seconds).
 const CORIN_MEET := 1.7
-const CORIN_WALK := 1.7
+const CORIN_WALK := 2.0
 
 
 ## Corin sets off across the green towards the player, not waited for (from
-## _green, as the crate goes down: 5 November, Gary), so that corin_calls
-## finds him there or nearly. AshfordLife leaves him be on the way
-## (`corin_coming`, `life_busy`), and his spot to shift about round becomes
-## where he stops. The walk is his one walk over (6 November, Gary: "Corin
-## starts walking up when you put down lanterns but then it cuts to him
-## back where he was and walks up again"): corin_calls lets it run on from
-## wherever he's got to, and only walks him the rest of the way if it's
-## been cut short; where he's coming to is kept (`corin_meet`).
+## _green, the moment they're at the Lantern with the crate: 5 November,
+## Gary; since 8 November before Bram's come up, not as the crate starts
+## down), so that corin_calls finds him there or nearly. AshfordLife leaves
+## him be on the way (`corin_coming`, `life_busy`), and his spot to shift
+## about round becomes where he stops. The walk is his one walk over (6
+## November, Gary: "Corin starts walking up when you put down lanterns but
+## then it cuts to him back where he was and walks up again"): corin_calls
+## lets it run on from wherever he's got to, and only walks him the rest of
+## the way if it's been cut short; where he's coming to is kept
+## (`corin_meet`).
 static func corin_sets_off(w: World) -> void:
 	var cb := Cine.body(w, "corin")
 	if cb == null or Game.flag("corin_met") or w.has_meta("corin_coming"):
@@ -3812,7 +4086,10 @@ static func _corin_comes(w: World, cb: Node3D, from: Vector3, meet: Vector3) -> 
 	w.remove_meta("corin_coming")
 	if cb.get_meta("corin_called", false):
 		return   # (corin_calls has him from here)
-	cb.remove_meta("life_busy")
+	# (there before them: he stands waiting, eyes on them, until his talk
+	# begins and corin_calls lets the green's life have him back; left to
+	# it he showed off or shifted a step off his mark while they set the
+	# crate down, 8 November)
 	cb.set_meta("life_home", cb.global_position)
 	if Cine.body(w, "corin") != null:
 		Cine.look(w, "corin", w.player.global_position)
@@ -3862,13 +4139,13 @@ static func corin_calls(w: World) -> void:
 	if far:
 		# v7: he comes over to them at the Lantern, twirling his card, and
 		# they turn to watch him come; the camera glides from behind them to
-		# the side of the two of them as he comes
+		# the side of the two of them as he comes: straight to the talk's own
+		# framing (two_shot_cam, for where he'll stop), so when he stops
+		# there's no cut (8 November; until then it glided to a shot of its
+		# own and cut to the two-shot as he arrived)
 		Cine.look(w, "player", c)
-		var mid := (p + c) * 0.5
-		var sd := dn.cross(Vector3.UP)
-		var look := mid + Vector3(0, 1.2, 0)
-		Cine.move(w, clear_cam(w, [p + sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0), p - sd * 3.4 - dn * 0.6 + Vector3(0, 1.8, 0),
-			p + dn * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "corin"]), (p + stand) * 0.5 + Vector3(0, 1.2, 0), 0.9, 40.0)
+		var cam := two_shot_cam(w, p, stand, 3.6, 1.5, ["player", "corin"])
+		Cine.move(w, cam[0], cam[1], 1.1, 36.0)
 		if coming:
 			# (his walk from the crate carries on: wait for it)
 			var t := 0.0
@@ -3887,7 +4164,11 @@ static func corin_calls(w: World) -> void:
 	cb.set_meta("life_home", cb.global_position)
 	Cine.look(w, "corin", w.player.global_position)
 	Cine.look(w, "player", Cine.body(w, "corin").global_position)
-	two_shot(w, "player", "corin", 3.6, 1.5, 36.0)
+	if not far:
+		# (he was there already, waiting for them to look up: the camera
+		# glides round from behind them to the talk's shot)
+		var cam := two_shot_cam(w, w.player.global_position, cb.global_position, 3.6, 1.5, ["player", "corin"])
+		await Cine.move(w, cam[0], cam[1], 0.8, 36.0)
 
 
 ## Someone walks to `at` and then turns to look at `look` (not waited for).

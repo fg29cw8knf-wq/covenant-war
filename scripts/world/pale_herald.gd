@@ -142,13 +142,24 @@ var fade := 1.0:
 			_mist.amount_ratio = clampf(v, 0.0, 1.0)
 
 
+## One compiled copy of each shader for every Herald (8 November: a second
+## Herald, or the warm-up's one and the scene's, compiled them again).
+static var _shaders := {}
+
+
+static func shader_for(kind: String) -> Shader:
+	if not _shaders.has(kind):
+		var s := Shader.new()
+		s.code = {"cloth": CLOTH_SHADER, "rider": SHADER, "void": VOID_SHADER}[kind]
+		_shaders[kind] = s
+	return _shaders[kind]
+
+
 func _ready() -> void:
 	_mat = ShaderMaterial.new()
-	_mat.shader = Shader.new()
-	_mat.shader.code = CLOTH_SHADER if form == "shroud" else SHADER
+	_mat.shader = shader_for("cloth" if form == "shroud" else "rider")
 	_void = ShaderMaterial.new()
-	_void.shader = Shader.new()
-	_void.shader.code = VOID_SHADER
+	_void.shader = shader_for("void")
 	_body = Node3D.new()
 	add_child(_body)
 	if form == "shroud":

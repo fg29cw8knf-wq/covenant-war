@@ -6,10 +6,21 @@ extends Node
 ##           line ("Corin starts walking up when you put down lanterns but then
 ##           it cuts to him back where he was and walks up again"): Corin's
 ##           place every frame, any jump over 15 cm in a frame is a problem,
-##           and his walk must not start over.
+##           and his walk must not start over. The moments are timed (8
+##           November, "Corin is back to taking ages to walk over to you
+##           instead of as soon as you put crates down"): when he's sent and
+##           first moves, when the crate's on the grass, when he's at his
+##           mark, when his first line shows; he must be on his way within
+##           half a second of the crate touching the grass, and there (or
+##           nearly, and not walking) when his line comes.
 ##   deck:   Bram's box out and the player taking it, the reveal, the low hold
 ##           ("Bram's card box now goes through player's arm while he's
-##           holding it"): the forearms' bones against the box every frame.
+##           holding it"): the forearms' bones against the box every frame;
+##           since 8 November ("Left hand still goes through box as you're
+##           holding it when you open it to reveal cards") each hand's skin,
+##           every vertex of it, against the box's body as modelled and its
+##           lid wherever it's swung, every frame (tests/hand_skin.gd), and
+##           the thumbs' bones printed.
 ##   pond:   the evening on the mill-race wall, the talk to its end with
 ##           Corin's beats and his button ("his hands look through the wall
 ##           he is sitting on; his legs also go through the wall when he turns
@@ -155,6 +166,19 @@ func _walk() -> void:
 	var t := 0.0
 	var next_shot := 0.0
 	var f := 0
+	# the moments, timed from the green part's start (8 November, Gary: "Corin
+	# is back to taking ages to walk over to you instead of as soon as you put
+	# crates down"): when he's sent, when he first moves, when the crate
+	# touches the grass, when he arrives at his meeting point, when his
+	# first line shows
+	var when := {}
+	var mark := func(key: String, at: float, note := "") -> void:
+		if not when.has(key):
+			when[key] = snappedf(at, 0.1)
+			print("  @ %.1f s: %s%s (Corin %s, %.2f m from the player)" % [at, key, (" " + note) if note != "" else "", Vector2(cb.global_position.x, cb.global_position.z).snapped(Vector2(0.01, 0.01)), Vector2(cb.global_position.x - world.player.global_position.x, cb.global_position.z - world.player.global_position.z).length()])
+	var had_crate := world.has_meta("p1_crate")
+	var arrived := false
+	var sent_at := 0
 	# until his first line is up (or long enough)
 	while t < 60.0:
 		await get_tree().process_frame
@@ -162,6 +186,27 @@ func _walk() -> void:
 		t += get_process_delta_time()
 		if not is_instance_valid(cb):
 			break
+		if world.has_meta("corin_coming"):
+			if not when.has("corin sent"):
+				sent_at = trail.size()
+			mark.call("corin sent", t, "(corin_sets_off)")
+		if had_crate and not world.has_meta("p1_crate"):
+			mark.call("crate on the grass", t)
+		if Game.flag("p1_crate_down"):
+			mark.call("p1_crate_down", t)
+		if world.get_meta("bram_seated", false):
+			mark.call("Bram seated", t)
+		if String(Game.flag("p1_stage", "")) == "done":
+			mark.call("opening done", t)
+		if world._talk_target != null:
+			mark.call("talk started", t)
+		if cb.has_meta("corin_called"):
+			mark.call("corin_calls", t)
+		if world.has_meta("corin_meet") and not arrived:
+			var mt: Vector3 = world.get_meta("corin_meet")
+			if Vector2(cb.global_position.x - mt.x, cb.global_position.z - mt.z).length() < 0.3:
+				arrived = true
+				mark.call("Corin at his meeting point", t)
 		var p := cb.global_position
 		var step := Vector2(p.x - last.x, p.z - last.z).length()
 		# walking one way and facing another (turned back to look at
@@ -180,6 +225,9 @@ func _walk() -> void:
 		if step > 0.01 and started_at < 0:
 			started_at = f
 			print("  Corin sets off at %.1f s from %s" % [t, last])
+			mark.call("Corin first moves", t)
+		if step > 0.01 and world.has_meta("corin_coming"):
+			mark.call("Corin walks over", t, "(his first step on the way)")
 		last = p
 		trail.append(p)
 		if f % 3 == 0:
@@ -191,10 +239,23 @@ func _walk() -> void:
 			await _shot("walk_%.1f" % t)
 		if hud.dialogue._waiting and hud.dialogue._name.text == "Corin":
 			print("  first line at %.1f s: %s" % [t, hud.dialogue._text.text.left(60)])
+			mark.call("Corin's first line", t)
 			break
+	print("  times (s from the green's start): %s" % str(when))
+	if when.has("crate on the grass") and when.has("Corin walks over") and float(when["Corin walks over"]) > float(when["crate on the grass"]) + 0.5:
+		problems.append("Corin only set off %.1f s after the crate was on the grass" % (float(when["Corin walks over"]) - float(when["crate on the grass"])))
+	elif when.has("crate on the grass") and not when.has("Corin walks over"):
+		problems.append("Corin never set off on his own (corin_sets_off)")
+	if when.has("Corin's first line"):
+		var cfl = Cine.fig(world, "corin")
+		var gap := Vector2(cb.global_position.x - world.player.global_position.x, cb.global_position.z - world.player.global_position.z).length()
+		if gap > AshfordP1.CORIN_MEET + 0.5 or (cfl != null and cfl.walking):
+			problems.append("Corin's first line came with him still on his way (%.2f m off%s)" % [gap, ", walking" if cfl != null and cfl.walking else ""])
 	# did he turn back on himself (a second walk from where he started)?
+	# (from when he's sent: before that the green's life has him shift a
+	# step about his spot, any way it likes)
 	var back := 0
-	for i in range(10, trail.size()):
+	for i in range(sent_at + 10, trail.size()):
 		var a: Vector3 = trail[i - 10]
 		var b: Vector3 = trail[i]
 		var pl := world.player.global_position
@@ -245,7 +306,7 @@ func _deck() -> void:
 	await Ashford._bram_comes(world)
 	await _secs(0.6)
 	await Ashford._box_out_scene(world)
-	print("  look %s: the box sits %.1f cm back from the middle of the left palm" % [look, Ashford._box_back(Cine.fig(world, "player")) * 100.0])
+	print("  look %s: the box sits %.1f cm back from the middle of the left palm" % [look, Ashford._box_back(Cine.fig(world, "player"), Ashford.box_size(world.get_meta("box_bram", null))) * 100.0])
 	_t0 = Time.get_ticks_msec() * 0.001
 	_watch_box_arms(Cine.fig(world, "player") as Figure3D)
 	var going := [true]
@@ -279,6 +340,16 @@ func _deck() -> void:
 	print("  deepest forearm point: ", _arm_where)
 	print("  deepest finger point: ", _finger_where)
 	print("  forearm hits at %s; finger hits at %s (of the frames it's held)" % [str(_arm_when.slice(0, 12)), str(_finger_when.slice(0, 12))])
+	print("  thumb bones in the box %d frames (deepest %.1f cm)" % [_thumb_hits, _thumb_deep * 100.0])
+	for side in ["left", "right"]:
+		var s: Array = _skin[side]
+		var l: Array = _lid_skin[side]
+		print("  %s hand's skin in the box's body %d frames (deepest %.1f cm, %s; frames %s); in the lid %d frames (deepest %.1f cm, %s; frames %s)" % [
+			side, s[0], float(s[1]) * 100.0, s[2], str((s[3] as Array).slice(0, 16)), l[0], float(l[1]) * 100.0, l[2], str((l[3] as Array).slice(0, 16))])
+		if int(s[0]) > 0:
+			problems.append("the player's %s hand's skin went %.1f cm into the box in %d frames" % [side, float(s[1]) * 100.0, s[0]])
+		if int(l[0]) > 0:
+			problems.append("the player's %s hand's skin went %.1f cm into the lid in %d frames" % [side, float(l[1]) * 100.0, l[0]])
 	if _arm_hits > 0:
 		problems.append("the player's forearm went %.1f cm into the box in %d frames" % [_arm_deep * 100.0, _arm_hits])
 	# (Player A's finger joints, as his rig placed them, lie jumbled within a
@@ -297,20 +368,132 @@ const FOREARM_WRIST_R := 0.022
 const FINGER_R := 0.009
 
 
+## And (8 November, Gary: "Left hand still goes through box as you're holding
+## it when you open it to reveal cards") each hand's skin itself, every vertex
+## of it (tests/hand_skin.gd: Player A's finger bones say nothing about where
+## his fingers are), against the box's body as modelled and against its lid,
+## wherever the lid has swung to, every frame it's held.
+var _skin := {}         # side -> [frames in the body, deepest, where, when]
+var _lid_skin := {}     # side -> [frames in the lid, deepest, where, when]
+var _thumb_hits := 0
+var _thumb_deep := 0.0
+var _body_aabb := AABB()
+var _lid_aabb := AABB()
+var _lid_node: Node3D = null
+var _hs = null
+
+
+## The box's body (not its lid, not the deck in it) as modelled, in the box's
+## own frame; and the lid's, in the lid's frame.
+func _box_extents(box: Node3D) -> void:
+	_lid_node = box.get_node_or_null("Lid") as Node3D
+	if _lid_node == null:
+		_lid_node = box.find_child("Lid", true, false) as Node3D
+	var first_b := true
+	var first_l := true
+	for mi: MeshInstance3D in box.find_children("*", "MeshInstance3D", true, false):
+		if mi.name in ["Deck", "TopCard"]:
+			continue
+		var in_lid := _lid_node != null and (mi == _lid_node or _lid_node.is_ancestor_of(mi))
+		var root: Node3D = _lid_node if in_lid else box
+		var xf := root.global_transform.affine_inverse() * mi.global_transform
+		var ab := xf * mi.get_aabb()
+		if in_lid:
+			_lid_aabb = ab if first_l else _lid_aabb.merge(ab)
+			first_l = false
+		else:
+			_body_aabb = ab if first_b else _body_aabb.merge(ab)
+			first_b = false
+	print("  the box's body as modelled: %s (CARD_BOX_SIZE %s); its lid: %s" % [_body_aabb, Ashford.CARD_BOX_SIZE, _lid_aabb])
+
+
+func _in_aabb(q: Vector3, ab: AABB) -> float:
+	# how deep inside (m), 0 outside
+	if not ab.has_point(q):
+		return 0.0
+	return minf(minf(q.x - ab.position.x, ab.end.x - q.x), minf(minf(q.y - ab.position.y, ab.end.y - q.y), minf(q.z - ab.position.z, ab.end.z - q.z)))
+
+
 func _watch_box_arms(fig: Figure3D) -> void:
 	if fig == null:
 		return
 	var sk: Skeleton3D = fig._skel
+	_hs = preload("res://tests/hand_skin.gd").new()
+	var nv: int = _hs.setup(fig)
+	print("  the hands' skin: %d vertices (left %d, right %d)" % [nv, _hs.count("left"), _hs.count("right")])
+	for side in ["left", "right"]:
+		_skin[side] = [0, 0.0, "", []]
+		_lid_skin[side] = [0, 0.0, "", []]
 	sk.skeleton_updated.connect(func() -> void:
 		var box = world.get_meta("box_player") if world.has_meta("box_player") else null
 		if box == null or not is_instance_valid(box) or not (box as Node3D).is_inside_tree() or fig.holding() != box:
 			return
 		_seen_frames += 1
+		if _body_aabb.size == Vector3.ZERO:
+			_box_extents(box)
 		var bx := (box as Node3D).global_transform.affine_inverse()
-		var half := Ashford.CARD_BOX_SIZE * 0.5
+		var half: Vector3 = Ashford.box_size(box) * 0.5
 		var xf := sk.global_transform
+		# the skin of each hand against the body and the lid
+		var skin_pts := {}
+		for side in ["left", "right"]:
+			var pts: PackedVector3Array = _hs.points(side)
+			skin_pts[side] = pts
+			var deep_b := 0.0
+			var where_b := Vector3.ZERO
+			var deep_l := 0.0
+			var where_l := Vector3.ZERO
+			var lx: Transform3D = _lid_node.global_transform.affine_inverse() if _lid_node != null else Transform3D.IDENTITY
+			for p in pts:
+				var q: Vector3 = bx * p
+				var d := _in_aabb(q, _body_aabb)
+				if d > deep_b:
+					deep_b = d
+					where_b = q
+				if _lid_node != null:
+					var ql: Vector3 = lx * p
+					var dl := _in_aabb(ql, _lid_aabb)
+					if dl > deep_l:
+						deep_l = dl
+						where_l = ql
+			if deep_b > 0.002:
+				_skin[side][0] += 1
+				if deep_b > float(_skin[side][1]):
+					_skin[side][1] = deep_b
+					_skin[side][2] = "%s in the box's frame, frame %d" % [where_b.snapped(Vector3(0.001, 0.001, 0.001)), _seen_frames]
+				(_skin[side][3] as Array).append(_seen_frames)
+				# (where the hand is, for finding the moment: its wrist in the
+				# box's frame, and what the hand's reaching for)
+				var pre := "Left" if side == "left" else "Right"
+				var wr := bx * (xf * sk.get_bone_global_pose(sk.find_bone(pre + "Hand")).origin)
+				var ik = fig._ik.get(side)
+				var tgt := ""
+				if ik != null and is_instance_valid(ik) and ik.has_meta("target"):
+					var tn = ik.get_meta("target")
+					tgt = String((tn as Node).name) if tn != null and is_instance_valid(tn) else "?"
+				print("    frame %d: the %s hand's skin %.1f cm in at %s; its wrist at %s in the box's frame, reaching for '%s' (%.1f s)" % [_seen_frames, side, deep_b * 100.0, where_b.snapped(Vector3(0.001, 0.001, 0.001)), wr.snapped(Vector3(0.001, 0.001, 0.001)), tgt, Time.get_ticks_msec() * 0.001 - _t0])
+			if deep_l > 0.002:
+				_lid_skin[side][0] += 1
+				if deep_l > float(_lid_skin[side][1]):
+					_lid_skin[side][1] = deep_l
+					_lid_skin[side][2] = "%s in the lid's frame (lid at %.0f deg), frame %d" % [where_l.snapped(Vector3(0.001, 0.001, 0.001)), rad_to_deg(_lid_node.rotation.x), _seen_frames]
+				(_lid_skin[side][3] as Array).append(_seen_frames)
 		var deep_arm := 0.0
 		var deep_f := 0.0
+		# the thumbs' bones too (printed: Player A's lie off the thumb)
+		var thumb_in := false
+		for pre in ["Left", "Right"]:
+			for j in [1, 2, 3]:
+				var tb := sk.find_bone(pre + "HandThumb" + str(j))
+				if tb < 0:
+					continue
+				var tp := xf * sk.get_bone_global_pose(tb).origin
+				var td := _depth(bx * tp, half, FINGER_R)
+				if td > 0.004:
+					_thumb_deep = maxf(_thumb_deep, td)
+					thumb_in = true
+		if thumb_in:
+			_thumb_hits += 1
 		for pre in ["Left", "Right"]:
 			var e := xf * sk.get_bone_global_pose(sk.find_bone(pre + "ForeArm")).origin
 			var wr := xf * sk.get_bone_global_pose(sk.find_bone(pre + "Hand")).origin
@@ -366,7 +549,7 @@ func _aim_box(i: int) -> void:
 	var at := (bx as Node3D).global_position
 	var fwd := pf.facing()
 	var left := Vector3.UP.cross(fwd).normalized()
-	match i % 3:
+	match i % 4:
 		0:   # from their left side, level with the box: the forearms under it
 			close_cam.global_position = at + left * 0.75 + Vector3(0, 0.05, 0)
 		1:   # from in front of them, to their left and a little below, up at
@@ -375,6 +558,9 @@ func _aim_box(i: int) -> void:
 		2:   # from above, to their left and a little ahead (down onto the
 			# hands, clear of their head and Bram's)
 			close_cam.global_position = at + fwd * 0.15 + left * 0.42 + Vector3(0, 0.5, 0)
+		3:   # the reveal's own view, nearer: from their left, ahead and over
+			# it, down into the box (the left hand under its middle, the lid)
+			close_cam.global_position = at + left * 0.32 + fwd * 0.12 + Vector3(0, 0.3, 0)
 	close_cam.look_at(at)
 	close_cam.fov = 30.0
 

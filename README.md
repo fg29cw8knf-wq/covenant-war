@@ -1469,6 +1469,253 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 8 November play-through notes (the memory, the morning, the green, the waking, the dawn, the cellar)
+
+Thirteen notes from playing the Mac build, 8 November, and what each became
+(`docs/handover/2026-11-08-pm.md`). Every look plays as Player A in the game
+(`DollArt.player_look()`), so the game's stills check A.
+
+**The Night of the White Sky**
+
+- **"After Morrowen speaks at the beginning it glitches for a bit"**: the
+  moment her line ended, `_sigilfall` made everything the tear and the Sigils
+  are drawn with for the first time, spread over the next seconds: each
+  colour's card read its painting off disk and compiled its own copy of the
+  `CARD` shader (eight compiles of the same code), each colour's pool its own
+  `POOL`, every strike its own streak material, the first ribbon, the first
+  sparks and the first strike's sparks their particle shaders, and each landed
+  as a hitch (the first card frame took up to 0.9 s more than its neighbours,
+  the first impact frame up to 0.6 s). The picture itself never jumped. Now
+  `WhiteSky._warm_sigils` builds it all under the caption, on black (a pit
+  `"Warm"` at `WARM_AT`, in the camera's view behind his back: a ribbon, a
+  streak, a strike's sparks, a small light, then one colour a frame — its card,
+  its sparks, its pool — the hunter faded and whole, the look-up clip and the
+  strike sound; freed two frames later; `warm_sigils = false` turns it off),
+  and there is one `Shader` per kind shared by every colour (`_shared_shader`,
+  `_streak`, `_pool_mesh`, `_streak_mesh`, `_impact_sparks`, `_trail_mesh`).
+  After: no frame after the line stands out from its neighbours. Found on
+  the way: if he stood still as the sky opened, the look-up clip held and
+  setting off he slid over the snow in it for two seconds before his legs
+  began; `_roam_step` releases it the moment he moves.
+  `tests/white_sky_hitch.tscn -- <dir> [nowarm|stand|stills]` prints the
+  frame times round the end of her line.
+- **"Bram's hands twist when he picks up the baby"**: `reach()` fixed each
+  hand's place and left its turn to the arm's IK: on the way down both palms
+  faced away from the bundle (112 and 129 degrees off it), on it the hands
+  were edge-on with the fingers across its ends, and standing with it the
+  right palm faced away the whole hold; the marks were under the bundle's
+  axis, which with any palm-up turn put the palm on top of it; and the carry
+  turned the bundle to one fixed yaw, so coming at the child the way he walks
+  it swung half round in his hands and his arms crossed. Now `_lift_child`
+  turns each hand as it reaches (`Figure3D.palm`: palm up and in towards the
+  bundle's middle, `LIFT_PALM`; fingers on under it, `LIFT_FINGERS`; a little
+  cupped, `LIFT_FLAT`), the elbows out to his sides and low (`LIFT_ELBOW`),
+  the marks set from where the palms should lie (`PALM_AT`, `MARK_OFF`), the
+  cradle's yaw so the end his left hand holds stays on his left, and wrists
+  and elbows given back at `_tuck`. After: no frame with a palm turned away
+  (was 31 of 102), the palms 4 to 9 cm under the axis, elbows never in past a
+  shoulder, hands uncrossed standing. `tests/white_sky_peek.tscn -- <dir>
+  lift [side] [nowrists]` measures the wrists and elbows each frame.
+
+**The morning**
+
+- **"Bed scene looks much better, can we now make it slightly faster"**:
+  nothing was wrong with it, it was long: from the fade-up to standing still
+  after the stretch took 9.5 s (the get-out-of-bed clip 4.8 s at 1.15x, the
+  stretch 2.8 s). Each movement is kept and brisker (`AshfordP1`, by
+  `SWING_LIFT`): `RISE_STIR` 0.9 s from the fade-up to the hand going to the
+  hem (was 1.4), `BLANKET_SECS` 0.6 for the morning's throw (was 0.8; the
+  hand finding the hem inside `throw_blanket` is quicker for the midnight
+  waking too, which keeps its own 0.7), `RISE_SPEED` 1.6 for the clip (was
+  1.15) with the lift onto the mattress on its own `LIFT_IN` 0.28 s (timed off
+  the blend at the new speed the hips dipped 4 cm), `STRETCH_SECS` 2.0 (was
+  2.8), the step off the bed at 0.8 m/s. After: 6.7 s to standing, 6.9 s to
+  the controls (was 9.8) — 29% shorter, the hips never dipping, no jump over
+  the blend's 3 cm. `tests/bed_probe.tscn -- from=0 to=16` prints the
+  timeline; `tests/attic_peek.tscn -- <dir> seconds=14.5 every=0.5 tap` takes
+  the game's stills.
+- **"When eating the porridge the spoon doesn't go all the way to the mouth,
+  it only gets to about chest level"**: three things. The hand's target was a
+  fixed point already under and in front of the lips (on Player A the lips are
+  4.5 cm above and 17 cm ahead of the Head bone, measured off the mesh by
+  `tests/mouth_find.gd`); the arm's IK puts the end of the hand bone on its
+  target and the turn of the hand to hold the spoon swung the palm 7 to 14 cm
+  short of even that; and the spoon lay centred along the fingers, entirely
+  inside the cupped hand, so no still showed a spoon at all. Now `_eat` reads
+  the lips as drawn (`mouth_of`, `MOUTH`), a `SpoonHold` modifier last in the
+  skeleton's list holds the spoon by its handle's end in the fist and points
+  it (`SPOON_LIFT`), its pitch going from `SPOON_DIP` down into the bowl up
+  and over to `SPOON_UP` at the lips, the fist under the chin and the wrist
+  turning with it (`SPOON_PALM_BOWL`, `SPOON_PALM`), the drawn fist read back
+  each frame and the target corrected by what it fell short
+  (`SPOON_FEEDBACK`, `SPOON_CORR_MOST`), the bowl end stopping at
+  `SPOON_AT_MOUTH` (a centimetre right of and under the lips, 2 cm in front),
+  his eyes on the bowl so the head dips to meet it; the spoon has a flat oval
+  bowl, and the camera is over the counter's north end looking back at his
+  face. After: the bowl end comes to 2.3, 1.5 and 1.3 cm from the lips on the
+  three mouthfuls, pauses, and goes back to the bowl. `tests/eat_probe.tscn --
+  <dir>` measures it and takes the stills.
+- **"Door passes through player when it opens before leaving inn"**: the leaf
+  (1.15 m, hinged on the east jamb, opening into the room to 100 degrees) was
+  right; the player stood in its swing, the walk ending anywhere within
+  0.85 m of `door_in`, 0.9 m from the hinge, and stepping off 0.4 s into the
+  0.7 s swing, with the crate reaching 0.6 m further. `InnRooms.eve` has a
+  `door_stand` now, the leaf's width and 0.7 m back from the wall (2 m from
+  the hinge, the crate's near corner 1.29 m from it); `_taproom`'s walk ends
+  at the stand or at the door as before, the camera glides to `DOOR_CAM` (the
+  door's side of the table, player and door in frame) as they take the last
+  step, the menu, then the leaf swings (`DOOR_SWING` 0.7) and they step off
+  at `DOOR_STEP_OFF` 0.55 s, once it's past square, reaching the doorway with
+  it fully open. After: the leaf into the player's capsule 0 cm and into the
+  crate 0 cm every frame, through the doorway at 2.0 s with the leaf at 100
+  degrees. `tests/door_swing_test.tscn -- <dir>` checks it every frame;
+  `tests/taproom_walk_test.tscn` takes the crate itself now (it waited on an
+  objective that no longer exists).
+
+**The green**
+
+- **"Corin is back to taking ages to walk over to you instead of as soon as
+  you put crates down"**: his walk was one walk and did start, but late and
+  out of sight. The player stood at the Lantern holding the crate for four
+  seconds while Bram's wide swing round was waited for, Corin was only sent
+  as the crouch began, his 10.6 m round the Lantern's foot took 5.3 s at
+  `CORIN_WALK` 1.7, and from the crate's low shot (held 3.5 s for
+  `bram_to_stool` and `home`) he was behind the player and then the Lantern
+  the whole way; his first line came 4.8 s after the crate touched the grass,
+  most of it spent looking at the crate. Now `_green` sends him
+  (`corin_sets_off`) the moment the player stops at the Lantern, in the wide
+  shot where he's seen setting off by the drum, and waits for Bram after;
+  `CORIN_WALK` is 2.0 (his own clip at 1.18x, no slide); once the crate's
+  down `bram_to_stool` runs un-awaited, the player looks up to Corin and
+  `home` glides the camera up behind them at once; if he arrives before his
+  talk begins he stands waiting with his eyes on the player
+  (`_corin_comes` keeps `life_busy`) instead of the green's life shuffling
+  him; `corin_calls` glides straight into the talk's own framing
+  (`two_shot_cam`) with no cut, and when he's already there it glides round
+  from behind the player. After: sent at 5.0 s, at his mark at 9.8 s, the
+  crate down at 10.8 s, his first line at 13.3 s — 2.5 s after the crate
+  touched (was 4.8), one walk, no jump, no cut back. `tests/notes_1106_shot.tscn
+  -- <dir> walk` times the moments and fails if he's sent more than half a
+  second after the crate touches or speaks while still walking.
+- **"Left hand still goes through box as you're holding it when you open it
+  to reveal cards"**: three things the 6 November bone checks couldn't see,
+  found by checking the hands' skin (`tests/hand_skin.gd`). Gary's box model
+  isn't `CARD_BOX_SIZE`: `_card_box` sized it by its width alone, and it's
+  16 x 6.3 x 12.4 cm, not 16 x 11 x 9.5, so every hand placement had its
+  bottom 2.3 cm lower than meant and its back 1.4 cm further over the wrist
+  (`Ashford.box_size` reads the model's own size now, and `_box_back`,
+  `_box_lift`, `_box_right_at`, the grip marks, the lid edge, the right hand's
+  way round and Bram's palm hold all use it). The palms are thicker than a
+  skin's width (2 to 3 cm of heel and thumb mound over `palm_frame`), so the
+  palms sat 1.3 to 2.3 cm inside the box: `BOX_FIT` now has each look's
+  `bottom` from its skin profile (A 2.8, B 3.2, C 2.5, D 2.2, Bram 2.7 cm) and
+  the rigged thumbs' `thumb` aside, `sink` is gone (`_box_bottom`), and the
+  right palm's mark sits `BOX_RIGHT_UNDER` further under. And Player A's hands
+  are modelled as loose fists (`FROZEN`): his fingers stand 10 cm up from the
+  knuckles and his thumb 6 to 9 cm, so a 12.4 cm box on a 6.6 cm palm had the
+  fingers up through its front half and the thumb through its side whatever
+  was done with it — the open-box view Gary saw. `Figure3D.OPEN_FLAT`: when a
+  flat hand is asked for (`palm(..., flat)`) a hand modelled closed opens, A's
+  fingers turned 70 degrees out of the curl at their roots about the knuckle
+  line, the thumb 60 degrees down along the hand's side (`_turn_hands`,
+  `_turn_bone_about`). In `_first_deck` the right hand is laid flat over the
+  lid with its fingers kept pointing ahead as it turns, and as the lid swings
+  open the hand turns with it, palm to the lid's face (`lid_follow`). After:
+  in the game (`notes_1106_shot deck look=a`, 92 frames from the hand-over
+  through the reveal to the box going down) no hand's skin in the box or the
+  lid, no bone either (before: 200 to 223 left-hand vertices in the box, 3 cm
+  deep, 63 to 77 in the lid); `box_hold_probe` A, C and D clear, B's skin
+  clear with the bone test's extrapolated right-pinky tip 0.9 cm at the box's
+  front edge (probe only). `tests/box_hold_probe.gd -- <dir> <look>
+  [open=<deg> thumb=<deg>]` measures the skin and prints the palm profiles
+  `BOX_FIT` comes from.
+
+**The waking, the dawn and the cellar**
+
+One cause under three of these (8, 9 and 13): a per-frame "palm correction"
+that read `Figure3D._palm_point()` between frames, where a bone has only the
+clip's pose (white_sky.gd notes the same), so it saw Bram's hand at his knee
+and drove the target away to its clamp. The palm and the shoulder joint are
+read at `skeleton_updated` now (`Ashford._palm_watch`, `_palm_unwatch`), the
+target is capped at `SHOULDER_REACH` (0.96 of the arm) so an out-of-reach
+point can't wind it up, and a hand comes to a shoulder from above and outside
+and leaves the same way (`SHOULDER_FROM`, `SHOULDER_GLIDE`,
+`_shoulder_leave`).
+
+- **"When Bram puts his hand on player shoulder it goes through it when you're
+  both sitting on the bed"**: his hand was 11.4 cm into the player in 105 of
+  107 reaching frames, the target 7 cm over the Arm joint where Player A's
+  shoulder top is 10 cm over it, the elbow in front so the hand came up on
+  its edge from the side. Now `_shoulder_point` (`side`, `reacher`, `hand`)
+  puts the palm's middle `SHOULDER_TOP` 12 cm over the joint and
+  `SHOULDER_OUT` 2 cm outboard, rolled `WAKE_ROLL` 25 degrees in towards the
+  neck with the fingers forward over the front, the elbow round behind them
+  (`WAKE_ELBOW`), his thumb (modelled folded 7 cm under his palm) opened by
+  `Figure3D.OPEN_FLAT["bram"]`; the elbow 57 to 123 degrees, never locked,
+  the two bodies never overlapping. Left: the index and little fingertips
+  drape 2.6 to 3.4 cm inside the test's 10 cm sphere round the joint (the
+  real shoulder is flatter than a sphere there) and a frame or two of
+  transients as the hand arrives and leaves.
+- **"After it mentions about the Herald, Bram's arm distorts"**: the shoulder
+  was picked before either had turned — the far one, 0.90 m from his own
+  shoulder against an arm of 0.56 — so the arm locked straight and twisted to
+  point at it. Face to face the near shoulders are 12 cm further apart than
+  the hips (both idles hold the shoulders back), so the two now stand
+  `WIN_APART` 0.46 at the window, and as he turns Bram steps in `WIN_STEP`
+  0.12 and turns `WIN_OPEN` 30 degrees past them so his right shoulder swings
+  forward (`eyes_on` keeps his eyes on their face), waits for the turn, then
+  his right hand goes to their left shoulder (`WIN_ELBOW`, palm down), and
+  comes off (`_bram_hand_back`) before the walk to the hatch. After: the
+  target 0.48 m, elbow 93 to 137 degrees, never locked, settled frames 0 to
+  0.9 cm. Left: as the hand comes in (half a second) the forearm passes 5 to
+  9 cm through the player's upper arm on its way up.
+- **"Dawn, after Hob's line, it takes a while to load"**: the Herald was built
+  after his line, and the frame that first drew it compiled its burial
+  cloth's shader, its mist's and the visions' (a 3.6 s frame with 176 nodes
+  built). `Ashford._warm_herald` builds the Herald, its mist and a vision with
+  every Champion's name while the screen is black at the start of `_dawn`,
+  before the caption (checked: the black at alpha 1.0, every warm-up still's
+  brightest pixel 0), `_herald_ready` takes it from there, `PaleHerald.shader_for`
+  shares one compiled shader per kind, the Champions' pictures are held
+  (`_faces`). After: nothing built after Hob's line, the longest frame there
+  1.6 times an ordinary one (the close two-shot of the kneel, rendering load).
+- **"After the Herald, when it cuts to Bram he is crouched and distorted
+  while talking"**: the village knelt in the way down of the sit clip (a
+  squat with the back bent), and Bram's arm reached straight out of it to the
+  shoulder tracker, which was left alive to the hub's end. `_kneel` is the
+  one-knee kneel now (`Figure3D.kneel(..., upright)`, `KNEEL_LEAN`), the
+  tracker is freed as soon as his hand is off. Measuring everyone's kneel
+  found `Figure3D._kneel_pose` itself wrong: the Hips offset the wrong way
+  (hips 12 cm low, the kneeling knee 2 to 5 cm under the grass, the planted
+  foot's ankle 6 to 16 cm under and its toes pointing on down), so `upright`
+  is the one-knee kneel at its right height, the planted shin from the
+  figure's own lengths, feet flat (`KNEEL_TOES`); the default kneel is left as
+  it was because the White Sky's lift has his stoop and hands tuned to it.
+  After: from the Herald's going to his hub line, 126 frames, crouched while
+  walking 0, arm still reaching 0; knee joints 6 to 9 cm up, toes on the
+  grass, everyone.
+- **"Then in the next scene his body is going through the stairs"**: the
+  cellar's `stairs` point is the staircase's middle, and the player packed
+  half a metre west of it, stood in its bottom two steps (the left foot 16.6
+  cm in for 197 frames). They kneel on both knees now (`Figure3D.kneel` with
+  `both`) 1.5 m west of it, palms flat on the satchel's flap (`PACK_AT`,
+  `SATCHEL_AT`, `PACK_HANDS`, `PACK_FLAP`, `Figure3D.press`); 0 frames in the
+  steps, knees and toes on the floor. And Bram's marks (note 13, found while
+  there): he knelt a metre off the marks with the cask between and reached
+  for them through it, arm locked straight 64 frames, hand through the cask.
+  Now on both knees 0.26 m off the timber (`MARKS_KNEEL`, `MARKS_LEAN`), palm
+  tipped 30 degrees off it (`MARKS_TIP`), one point glided mark to mark
+  (`_press_mark`, `MARKS_IN`, `_marks_done`), the three nearest then the last
+  (`MARKS_PRESSED`), turned 45 degrees not square to the player for the line;
+  palm 0.30 to 0.44 m from his shoulder, never locked, feet clear of the
+  timber (left: the wrist 1.2 cm in for two frames at the lowest mark).
+
+`tests/after_midnight_shot.tscn -- <dir> bed|dawn|cellar|warmonly [every=N]
+[choice=N] [nomesh]` measures all of it: Bram's hand bones and skin against
+the player's mesh (skinned on the CPU), the reach against his arm, the elbow,
+the frame times through the dawn, everyone's kneel, both figures against the
+steps, the timber and the cask.
+
 ### Gary's 6 November play-through notes (the memory, the first day, midnight)
 
 Twelve notes from playing the Mac build, 6 November, and what each became

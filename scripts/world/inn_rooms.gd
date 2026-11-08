@@ -1249,6 +1249,12 @@ static func eve(v: AshfordVillage) -> Dictionary:
 		"bram": root.to_global(t + Vector3(0.0, 0, -1.05)), "player": root.to_global(t + Vector3(-0.15, 0, 1.15)),
 		"stairs_foot": root.to_global(Vector3(0.35, 0, D * 0.5 - 0.6)), "stairs_top": root.to_global(Vector3(-3.4, 2.9, D * 0.5 - 0.5)),
 		"door_in": root.to_global(Vector3(dx, 0, -D * 0.5 + 0.75)), "door_out": root.to_global(Vector3(dx, 0, -D * 0.5 - 0.7)),
+		# where they stand while the door opens: the leaf swings into the room
+		# on its east hinge, so the stand is its width and more back from the
+		# wall, a little west of the door's middle, with room for the crate
+		# held out in front (8 November, Gary: "Door passes through player
+		# when it opens before leaving inn"; AshfordP1._taproom)
+		"door_stand": root.to_global(Vector3(dx - 0.2, 0, -D * 0.5 + 0.02 + dw + 0.7)),
 		"bar": root.to_global(Vector3(BAR_X + 0.75, 0, -0.3)), "bar_behind": root.to_global(BAR_BEHIND),
 		"hearth": root.to_global(Vector3(W * 0.5 - 0.8, 0, 0.9)),
 		# where the player may walk (in the room's own x/z: east of the bar's

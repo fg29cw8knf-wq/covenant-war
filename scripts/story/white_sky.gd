@@ -303,6 +303,8 @@ func _open() -> void:
 	_cam_mode = "roam"
 	_cam_pos = Vector3.ZERO   # (snaps to its place behind him on the first frame)
 	_cam.fov = 50.0
+	if warm_sigils:
+		_warm_sigils()   # (under the caption's black, a few frames; not waited for)
 	await _ov.caption(CAPTION[0], CAPTION[1], 2.6)
 	if _skipping:
 		return
@@ -321,6 +323,108 @@ func _open() -> void:
 func _say_over(line: Dictionary) -> void:
 	await _say(line)
 	_line_over = true
+
+
+## What the tear first brings, drawn once under the caption's black and
+## freed (8 November, Gary: "After Morrowen speaks at the beginning it
+## glitches for a bit": the moment her line ended the Sigils began, and
+## everything they're made of was made then, for the first time, in the
+## seconds after it: a card of each new colour read its painting off the
+## disk (eight paintings of 1536 pixels) and compiled its own copy of the
+## card shader, each colour's pool its own copy of the pool's, the first
+## ribbon the streak shader, the first sparks and the first strike's sparks
+## their particle shaders. Each came as a hitch, spread over the first
+## seconds of the tear). Now, while the caption is still on black, a pit
+## stands small in front of the camera for a few frames with a card of every
+## colour, each with its sparks and its pool, a ribbon, a streak and a
+## strike's sparks (one colour a frame, so no frame does it all), the hunter
+## is drawn once faded and once whole (its first showing is the glimpse on
+## the way), and his look-up clip is made sure of (his own model has it; a
+## stand-in would borrow it from another file here, not as the sky opens);
+## then the pit goes. Nothing of it is seen: the screen is black, and the
+## pit is a twentieth of its size. `warm_sigils` false leaves it out (the
+## hitch test's before).
+var warm_sigils := true
+## Where the pit stands, from him (m): in front of his chest, in the
+## camera's view but behind his back from where it stands over his right
+## shoulder, so even with the caption tapped through early nothing of it
+## shows.
+const WARM_AT := Vector3(-0.3, 1.0, -1.2)
+
+func _warm_sigils() -> void:
+	if not is_inside_tree() or _set == null:
+		return
+	var pit := Node3D.new()
+	pit.name = "Warm"
+	pit.position = _bram.position + WARM_AT
+	pit.scale = Vector3.ONE * 0.05
+	_set.add_child(pit)
+	# the ribbon, a streak and a strike's sparks (one of each: their shaders
+	# are shared by every colour)
+	var col0: Color = SIGIL_COLS[0]
+	var trail := _trail_mesh(col0)
+	trail.transform = Transform3D(Basis(Vector3(1.3, 0, 0), Vector3(0, -0.8, 0), Vector3(0, 0, 1)), Vector3(0.3, 0.4, 0))
+	pit.add_child(trail)
+	var streak := _streak_mesh(col0)
+	streak.transform = Transform3D(Basis(Vector3(0.9, 0, 0), Vector3(0, 2.0, 0), Vector3(0, 0, 1)), Vector3(-0.3, 1.0, 0))
+	pit.add_child(streak)
+	var burst := _impact_sparks(col0)
+	burst.one_shot = false
+	pit.add_child(burst)
+	burst.emitting = true
+	# a strike's light on it all (the Compatibility renderer makes another
+	# variant of a shader for things an omni light falls on, the first time)
+	var glow := OmniLight3D.new()
+	glow.light_color = col0.lerp(Color.WHITE, 0.4)
+	glow.light_energy = 1.0
+	glow.omni_range = 0.5   # (the pit only: not the snow a metre under it)
+	glow.position = pit.position + Vector3(0, 0.1, 0)
+	_set.add_child(glow)
+	pit.tree_exiting.connect(glow.queue_free)
+	# the hunter: drawn faded (the glimpse fades it in) and then whole, small
+	# in the pit's place, and put back as it was (hidden, its size)
+	var hunter_was := [_hunter.visible, _hunter.scale, _hunter.position, _hunter._fade]
+	_hunter.position = pit.position + Vector3(0.1, -0.1, 0)
+	_hunter.scale = Vector3.ONE * 0.05
+	_hunter.visible = true
+	_hunter._set_fade(0.5)
+	# his look up at the tear (borrowed from another model's file if his
+	# hasn't it: fetched now, not as the sky opens), and the strikes' sound
+	if _bram is Figure3D:
+		(_bram as Figure3D)._ensure("look_up")
+	if ResourceLoader.exists(STRIKE_SFX):
+		load(STRIKE_SFX)
+	await get_tree().process_frame
+	# a card of each colour with its sparks and its pool, one colour a frame
+	for i in SIGIL_COLS.size():
+		if not is_instance_valid(pit) or not pit.is_inside_tree() or _done:
+			break
+		var col: Color = SIGIL_COLS[i]
+		var card := sigil_card(col)
+		card.position = Vector3(-0.7 + 0.2 * i, 0.4, 0.0)
+		card.rotation = Vector3(-0.3, 0.4 * i, 0.1)
+		pit.add_child(card)
+		if quality >= 1:
+			var sparks := _card_sparks(col)
+			card.add_child(sparks)
+			sparks.emitting = true
+		var pool := _pool_mesh(col)
+		pool.position = Vector3(-0.7 + 0.2 * i, -0.2, 0.0)
+		pool.rotation = Vector3(-PI * 0.5, 0, 0)
+		pit.add_child(pool)
+		if i == SIGIL_COLS.size() / 2 and is_instance_valid(_hunter):
+			_hunter._set_fade(1.0)
+		await get_tree().process_frame
+	# two more drawn frames for the last of them, then it all goes
+	for k in 2:
+		await get_tree().process_frame
+	if is_instance_valid(_hunter):
+		_hunter._set_fade(float(hunter_was[3]))
+		_hunter.visible = bool(hunter_was[0])
+		_hunter.scale = hunter_was[1]
+		_hunter.position = hunter_was[2]
+	if is_instance_valid(pit):
+		pit.queue_free()
 
 
 # --- 2. the sky tears ---------------------------------------------------------
@@ -1543,6 +1647,40 @@ const CRADLE := Vector3(0.07, -0.16, 0.2)
 ## Hands this near their marks (m, the hand bone to the mark: the palm is a
 ## few centimetres on) are on it.
 const HANDS_ON := 0.13
+## The wrists (8 November, Gary: "Bram's hands twist when he picks up the
+## baby": the reach put each hand's place and left its turn to the arm's own
+## solution, so the hands came down edge-on to the bundle's ends, the palms
+## facing sideways and the fingers down its ends, and standing with it his
+## right palm faced away from it). Now each hand is turned as it comes down
+## (Figure3D.palm, HandTurn): the palm up and in towards the bundle's middle,
+## at 45 degrees, under its end (LIFT_PALM), the fingers on under it towards
+## the middle (LIFT_FINGERS), the hand a little cupped (LIFT_FLAT); held so
+## through the lift and the rise, and given back to the clip at _tuck. The
+## left hand's, in his own frame (x to his left, y up, z ahead); the right's
+## is its mirror.
+const LIFT_PALM := Vector3(-0.7, 0.7, 0.0)
+const LIFT_FINGERS := Vector3(-0.75, -0.5, 0.2)
+const LIFT_FLAT := 0.2
+## Where the hands take it (the bundle's own frame: z along it, y up, the
+## origin its middle): the middle of each palm on the lower, inner part of
+## its end, 7 cm under the axis and 15 cm out from the middle (PALM_AT). The
+## reach aims the forearm's line 7.5 cm past the wrist (Figure3D._reach),
+## not the palm: with the hand turned, the palm's middle sits a hand's
+## half-length on from the wrist along the fingers, so the mark each arm
+## reaches for is set off from the palm's place by MARK_OFF (his way ahead,
+## down, out along the bundle), where the forearm's line ends once the palm
+## is on it.
+const PALM_AT := Vector3(0.0, -0.07, 0.15)
+const MARK_OFF := Vector3(0.04, -0.03, 0.03)
+## (false leaves the wrists and elbows to the reach alone, and the marks
+## where they were, 2 cm under the axis at the ends: the peek's before)
+var turn_wrists := true
+## Where the elbows bend towards while he reaches down and lifts (his own
+## frame, scaled to his size): out to his sides and a little forward, low,
+## as arms do reaching down in front of the knees (the usual hint, up and
+## behind the shoulders, bent them back and swung the forearms in). The
+## left's; the right's is its mirror.
+const LIFT_ELBOW := Vector3(0.6, 0.5, 0.1)
 
 func _lift_child() -> void:
 	if not (_bram is Figure3D):
@@ -1556,11 +1694,19 @@ func _lift_child() -> void:
 	var r := Node3D.new()
 	_baby.add_child(l)
 	_baby.add_child(r)
-	# (one round each end, low on it, each hand to the end on its own side
-	# of him: kneeling on one knee his hands come down to the bundle's sides
-	# a little under its middle, not right under it on the snow)
+	# (one under each end, each hand to the end on its own side of him; the
+	# marks where the forearms' lines end with the palms on it, PALM_AT and
+	# MARK_OFF: until 8 November they were 2 cm under the axis at the ends,
+	# which with the hands turned put the palms on top of the bundle)
 	var end_a := Vector3(0.0, -0.02, 0.19)
 	var end_b := Vector3(0.0, -0.02, -0.18)
+	if turn_wrists:
+		var inv := _baby.global_basis.orthonormalized().inverse()
+		var fwd := inv * fig.facing()   # (his way ahead, in the bundle's frame)
+		fwd.y = 0.0
+		fwd = fwd.normalized()
+		end_a = Vector3(0.0, PALM_AT.y + MARK_OFF.y, PALM_AT.z + MARK_OFF.z) + fwd * MARK_OFF.x
+		end_b = Vector3(0.0, PALM_AT.y + MARK_OFF.y, -(PALM_AT.z + MARK_OFF.z)) + fwd * MARK_OFF.x
 	var left_way := fig.to_world(Vector3(1, 0, 0)) - fig.to_world(Vector3.ZERO)
 	if (_baby.global_basis * end_a).dot(left_way) < 0.0:
 		var sw := end_a
@@ -1575,7 +1721,15 @@ func _lift_child() -> void:
 	if stoop != null:
 		create_tween().tween_property(stoop, "amount", 1.0, KNEEL_SECS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _wait(KNEEL_SECS * 0.45)
+	var mirror := Vector3(-1, 1, 1)
+	var s := fig.stature()
+	if turn_wrists:
+		fig.elbow("left", LIFT_ELBOW * s, REACH_SECS)
+		fig.elbow("right", LIFT_ELBOW * mirror * s, REACH_SECS)
 	fig.reach(l, r, REACH_SECS)
+	if turn_wrists:
+		fig.palm("left", LIFT_PALM, REACH_SECS, LIFT_FLAT, true, LIFT_FINGERS)
+		fig.palm("right", LIFT_PALM * mirror, REACH_SECS, LIFT_FLAT, true, LIFT_FINGERS * mirror)
 	# the bundle doesn't move till both hands are under it (their places as
 	# the skeleton finishes each frame, the reach included)
 	# (and the chest bone's, which the bundle is carried by: read between
@@ -1621,7 +1775,11 @@ func _lift_child() -> void:
 		return sk.global_transform * sk.get_bone_global_pose(ci)
 	# where the bundle is in his hands, off his chest bone as it is now
 	var in_hands: Transform3D = (chest_xf.call() as Transform3D).affine_inverse() * _baby.global_transform
-	var b1 := Basis(Vector3.UP, PI * 0.5)
+	# across his chest, the end his left hand holds to his left (8 November:
+	# it was always turned the one way, so coming at the child from the way
+	# he walks the carry swung it half round in his hands, his arms crossed
+	# as he rose and he stood with his right elbow across his chest)
+	var b1 := Basis(Vector3.UP, PI * 0.5 if l.position.z > 0.0 else -PI * 0.5)
 	# the held place against his chest, in the world (his own frame turned)
 	var cradle_xf := func() -> Transform3D:
 		var at := fig.to_world(fig.to_own((chest_xf.call() as Transform3D).origin) + CRADLE)
@@ -1710,6 +1868,12 @@ func _tuck() -> void:
 		_baby.add_child(l)
 		l.position = Vector3(0.0, -0.08, 0.05)
 		fig.reach(l, null, 0.4)
+		# the wrists and the elbows' hints back to the clip's (the lift's turn
+		# of them, LIFT_PALM, LIFT_ELBOW, ends here)
+		fig.palm("left", Vector3.ZERO, 0.4)
+		fig.palm("right", Vector3.ZERO, 0.4)
+		fig.elbow("left", Vector3.INF, 0.4)
+		fig.elbow("right", Vector3.INF, 0.4)
 	var glow := _baby.get_node_or_null("MarkGlow") as OmniLight3D
 	if glow != null:
 		create_tween().tween_property(glow, "light_energy", 0.15, 1.5)
@@ -1738,14 +1902,7 @@ func _strike_random() -> void:
 func _strike(at: Vector3, col: Color) -> void:
 	var fall := Vector3(0.22, -1.0, 0.3).normalized()
 	var start := at - fall * 80.0
-	var mi := MeshInstance3D.new()
-	mi.mesh = QuadMesh.new()
-	var mat := ShaderMaterial.new()
-	mat.shader = load("res://assets/shaders/village/streak.gdshader")
-	mi.material_override = mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.set_instance_shader_parameter("col", col)
-	mi.set_instance_shader_parameter("intensity", 7.0)
+	var mi := _streak_mesh(col)
 	_set.add_child(mi)
 	var length := 14.0
 	var secs := _rng.randf_range(0.45, 0.7)
@@ -1768,12 +1925,44 @@ func _impact(at: Vector3, col: Color) -> void:
 	var lt := create_tween()
 	lt.tween_property(l, "light_energy", 0.0, 1.1)
 	lt.tween_callback(l.queue_free)
+	var sp := _impact_sparks(col)
+	sp.position = at + Vector3(0, 0.2, 0)
+	_set.add_child(sp)
+	sp.emitting = true
+	get_tree().create_timer(2.0, false).timeout.connect(sp.queue_free)
+	var card := _card_mesh(col)
+	card.position = at
+	_set.add_child(card)
+	_card_lands(card, col)
+	_play_strike()
+
+
+## The streak of a Sigil falling out of the tear: a camera-facing ribbon in
+## the streak shader (one material for all of them: the colour and the
+## brightness are instance uniforms; until 8 November each strike made its
+## own).
+static var _streak: ShaderMaterial
+
+static func _streak_mesh(col: Color) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = QuadMesh.new()
+	if _streak == null:
+		_streak = ShaderMaterial.new()
+		_streak.shader = load("res://assets/shaders/village/streak.gdshader")
+	mi.material_override = _streak
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_instance_shader_parameter("col", col)
+	mi.set_instance_shader_parameter("intensity", 7.0)
+	return mi
+
+
+## The sparks thrown up where a Sigil strikes the snow (not yet emitting).
+func _impact_sparks(col: Color) -> GPUParticles3D:
 	var sp := GPUParticles3D.new()
 	sp.amount = [20, 40, 70][clampi(quality, 0, 2)]
 	sp.lifetime = 1.1
 	sp.one_shot = true
 	sp.explosiveness = 0.95
-	sp.position = at + Vector3(0, 0.2, 0)
 	var pm := ParticleProcessMaterial.new()
 	pm.direction = Vector3.UP
 	pm.spread = 70.0
@@ -1795,18 +1984,13 @@ func _impact(at: Vector3, col: Color) -> void:
 	q.material = qm
 	q.size = Vector2(0.6, 0.6)
 	sp.draw_pass_1 = q
-	_set.add_child(sp)
-	sp.emitting = true
-	get_tree().create_timer(2.0, false).timeout.connect(sp.queue_free)
-	var card := _card_mesh(col)
-	card.position = at
-	_set.add_child(card)
-	_card_lands(card, col)
-	_play_strike()
+	return sp
 
+
+const STRIKE_SFX := "res://assets/sfx/sigil_strike.ogg"
 
 func _play_strike() -> void:
-	var p := "res://assets/sfx/sigil_strike.ogg"
+	var p := STRIKE_SFX
 	if not ResourceLoader.exists(p):
 		return
 	var a := AudioStreamPlayer.new()
@@ -1861,6 +2045,25 @@ const CARD_FACES := ["blazehound", "cinderpup", "gilded_sentinel", "riptide_serp
 const CARD_SIZE := Vector2(0.3, 0.42)
 static var _card_shape: ArrayMesh
 static var _card_mats := {}
+## One Shader each for the cards and their pools, shared by every colour's
+## material (8 November: each colour made its own copy of the same code, so
+## the renderer compiled the card shader eight times over and the pool's
+## eight more, one each time a new colour first fell, in the seconds after
+## Morrowen's line).
+static var _card_shader: Shader
+static var _pool_shader: Shader
+
+
+static func _shared_shader(which: String) -> Shader:
+	if which == "card":
+		if _card_shader == null:
+			_card_shader = Shader.new()
+			_card_shader.code = CARD
+		return _card_shader
+	if _pool_shader == null:
+		_pool_shader = Shader.new()
+		_pool_shader.code = POOL
+	return _pool_shader
 
 
 ## A Sigil card of light in `col` (shared mesh; one material per colour).
@@ -1870,9 +2073,7 @@ static func sigil_card(col: Color, face := "") -> MeshInstance3D:
 	var key := col.to_html() + face
 	if not _card_mats.has(key):
 		var m := ShaderMaterial.new()
-		var sh := Shader.new()
-		sh.code = CARD
-		m.shader = sh
+		m.shader = _shared_shader("card")
 		m.set_shader_parameter("col", col)
 		m.set_shader_parameter("back_tex", DuelArt.card_back())
 		var i := SIGIL_COLS.find(col)
@@ -1959,21 +2160,7 @@ func _card_lands(c: MeshInstance3D, col: Color) -> void:
 	heat.tween_method(func(k: float) -> void:
 		if is_instance_valid(c):
 			c.set_instance_shader_parameter("heat", k), 1.6, 0.8, 0.9).set_trans(Tween.TRANS_SINE)
-	var pool := MeshInstance3D.new()
-	var qm := QuadMesh.new()
-	qm.size = Vector2(1.3, 1.3)
-	pool.mesh = qm
-	var key := "pool" + col.to_html()
-	if not _card_mats.has(key):
-		# (6 November: drawn round in its own shader: the soft-dot texture
-		# left the whole square faintly lit on the Compatibility renderer)
-		var pmat := ShaderMaterial.new()
-		var psh := Shader.new()
-		psh.code = POOL
-		pmat.shader = psh
-		pmat.set_shader_parameter("col", col * 0.45)
-		_card_mats[key] = pmat
-	pool.material_override = _card_mats[key]
+	var pool := _pool_mesh(col)
 	# laid on the slope of the snow, a little over it (flat, its far side
 	# went under a drift and cut it off along a line)
 	var e := 0.3
@@ -1990,6 +2177,26 @@ func _card_lands(c: MeshInstance3D, col: Color) -> void:
 		for n in old:
 			if is_instance_valid(n):
 				(n as Node).queue_free()
+
+
+## A pool of a card's light for the snow: a quad in the POOL shader, one
+## material a colour (6 November: drawn round in its own shader: the
+## soft-dot texture left the whole square faintly lit on the Compatibility
+## renderer).
+static func _pool_mesh(col: Color) -> MeshInstance3D:
+	var pool := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(1.3, 1.3)
+	pool.mesh = qm
+	var key := "pool" + col.to_html()
+	if not _card_mats.has(key):
+		var pmat := ShaderMaterial.new()
+		pmat.shader = _shared_shader("pool")
+		pmat.set_shader_parameter("col", col * 0.45)
+		_card_mats[key] = pmat
+	pool.material_override = _card_mats[key]
+	pool.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return pool
 
 
 ## Cards drifting down through the snow round him as Sigils (on: keep them
@@ -2169,6 +2376,12 @@ func _roam_step(delta: float) -> void:
 		if _bram is PaperDoll:
 			(_bram as PaperDoll).face(dir, _cam)
 	_set_walking(_bram, speed > 0.05)
+	# his look up at the tear (standing as the sky opened) gives way to the
+	# walk the moment he sets off (8 November: a clip played with act() holds
+	# until it ends, so he slid over the snow in the look-up pose for its
+	# length before his legs began)
+	if speed > 0.05 and _bram is Figure3D and (_bram as Figure3D)._action == "look_up":
+		(_bram as Figure3D).release(0.3)
 	if _bram is Figure3D:
 		(_bram as Figure3D).pace = speed
 
@@ -2201,12 +2414,7 @@ func _drop_card() -> void:
 	c.position = start
 	_set.add_child(c)
 	# its ribbon of light behind it, and on a Mac a few sparks shed off it
-	var trail := MeshInstance3D.new()
-	trail.mesh = QuadMesh.new()
-	trail.material_override = _trail_mat()
-	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	trail.set_instance_shader_parameter("col", col)
-	trail.set_instance_shader_parameter("intensity", TRAIL_GLOW)
+	var trail := _trail_mesh(col)
 	trail.visible = false
 	_set.add_child(trail)
 	var sparks: GPUParticles3D = null
@@ -2273,6 +2481,17 @@ static func _trail_mat() -> ShaderMaterial:
 		_trail.shader = load("res://assets/shaders/village/streak.gdshader")
 		_trail.set_shader_parameter("width", 0.07)
 	return _trail
+
+
+## A falling card's ribbon of light, in `col` (laid along its path by _flutter).
+static func _trail_mesh(col: Color) -> MeshInstance3D:
+	var trail := MeshInstance3D.new()
+	trail.mesh = QuadMesh.new()
+	trail.material_override = _trail_mat()
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	trail.set_instance_shader_parameter("col", col)
+	trail.set_instance_shader_parameter("intensity", TRAIL_GLOW)
+	return trail
 
 
 ## A few sparks of its colour shed off a falling card, left behind in the air.

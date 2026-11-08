@@ -1135,17 +1135,31 @@ const BOX_HEEL := 0.012
 ## hand it came up into the box's back corner on the longer-handed looks).
 const BOX_RIGHT_ELBOW := Vector3(-0.46, -0.5, 0.1)
 const BOX_RIGHT_BACK := 0.02
+## How much further under the box the right palm's mark sits than the
+## left's (m): reaching from its lower elbow the right hand lands a little
+## high of its mark, and its palm came 1 to 2 cm up into the box's bottom on
+## looks B, C and D (8 November, measured on the skin).
+const BOX_RIGHT_UNDER := 0.04
 const BOX_RISE := 0.006
 ## How each look's hands differ under the box (6 November, Gary: "Bram's
 ## card box now goes through player's arm while he's holding it"), by
 ## Figure3D's model name: `thumb`, how far across the box sits off the left
 ## palm so the left thumb is clear of its side (Player A's thumbs are kept as
 ## he modelled them, standing up off the palm, and came up through the box's
-## side and lid); `sink`, how much lower than the palm's middle as reckoned
-## from the bones (Player D's palm, as skinned, lies a good way under his
-## hand's bones, and the box stood 3 cm clear of it); `heel`, more room ahead
-## of the wrist (none needs it now).
-const BOX_FIT := {"player_a": {"thumb": 0.035}, "player_d": {"sink": 0.03}}
+## side and lid); `bottom`, how far over the palm's middle (Figure3D.
+## palm_frame's origin, a skin's width off the bones) the box's bottom sits:
+## the highest point of the hand's own skin under it, measured on the mesh
+## as drawn by tests/box_hold_probe.gd (8 November, Gary: "Left hand still
+## goes through box as you're holding it when you open it to reveal cards":
+## the palms as modelled are thicker than a skin's width, their heels and
+## the mounds of the thumb standing 2 to 3 cm over that middle, so a box set
+## BOX_RISE over it sat in the flesh; `sink`, the old way round, is gone);
+## `heel`, more room ahead of the wrist.
+const BOX_FIT := {"player_a": {"bottom": 0.028}, "player_b": {"bottom": 0.032, "thumb": 0.05},
+	"player_c": {"bottom": 0.025, "thumb": 0.06}, "player_d": {"bottom": 0.022, "thumb": 0.03},
+	# (Bram's, holding it out on his palm: where the drawn box's half-height
+	# had it, which looked right on 6 November's stills)
+	"bram": {"bottom": 0.027}}
 ## How far off the left palm's middle the box sits towards the right hand
 ## while both hands are under it (m): its middle between the two hands, so it
 ## doesn't shift across as it's taken.
@@ -1161,11 +1175,25 @@ const BOX_LID := 0.024   # the lid's own height, of CARD_BOX_SIZE.y
 const BOX_POCKET := Vector3(-0.15, 0.95, 0.16)
 
 
+## The box's own size (m): Gary's model's, as _card_box sized it (width
+## CARD_BOX_SIZE.x; its height and depth its own: 6.3 cm tall and 12.4 cm
+## deep, where the drawn box is 11 by 9.5), or the drawn box's. 8 November,
+## Gary: "Left hand still goes through box as you're holding it when you
+## open it to reveal cards": every place the hands were put under and round
+## the box went by CARD_BOX_SIZE, so on his model the box hung 2.3 cm over
+## the palm and reached 1.4 cm further back over the wrist and further out
+## over the fingers than the hands were set for.
+static func box_size(box) -> Vector3:
+	if box != null and is_instance_valid(box) and (box as Node).has_meta("size"):
+		return (box as Node).get_meta("size")
+	return CARD_BOX_SIZE
+
+
 ## How far back from the middle of `f`'s left palm the box sits (m, towards
 ## the wrist; negative: ahead of it): its back face BOX_HEEL ahead of the
 ## wrist (Figure3D.palm_frame's middle is its own distance along the hand on
-## each model).
-static func _box_back(f) -> float:
+## each model). `size`: the box's (box_size).
+static func _box_back(f, size := CARD_BOX_SIZE) -> float:
 	if not (f is Figure3D):
 		return BOX_BACK
 	var fig := f as Figure3D
@@ -1175,13 +1203,21 @@ static func _box_back(f) -> float:
 	# is the rest of the way)
 	var skin := Figure3D.SKIN * 0.6 * fig.stature()
 	var along := sqrt(maxf(0.0, fr.origin.distance_squared_to(wrist) - skin * skin))
-	return along - CARD_BOX_SIZE.z * 0.5 - BOX_HEEL - float(_box_fit(f).get("heel", 0.0))
+	return along - size.z * 0.5 - BOX_HEEL - float(_box_fit(f).get("heel", 0.0))
 
 
 ## How far over the left palm's middle (Figure3D.palm_frame) the box's own
-## middle sits (m): half its height and BOX_RISE, less a look's `sink`.
-static func _box_lift(f) -> float:
-	return CARD_BOX_SIZE.y * 0.5 + BOX_RISE - float(_box_fit(f).get("sink", 0.0))
+## middle sits (m): half its height over where its bottom sits (_box_bottom).
+static func _box_lift(f, size := CARD_BOX_SIZE) -> float:
+	return size.y * 0.5 + _box_bottom(f)
+
+
+## How far over the palm's middle the box's bottom sits (m): the look's
+## `bottom` (BOX_FIT), else BOX_RISE. The right palm, and the palm marks at
+## the hand-over, keep the same distance under it, so it doesn't shift when
+## the left hand takes it.
+static func _box_bottom(f) -> float:
+	return float(_box_fit(f).get("bottom", BOX_RISE))
 
 
 static func _box_fit(f) -> Dictionary:
@@ -1204,8 +1240,8 @@ static func _box_left_at(f, back: float) -> Vector3:
 ## Where the right palm sits under the box's other half (the box's frame):
 ## as far to the right of its middle as the left palm is to the left, a
 ## little further back (BOX_RIGHT_BACK).
-static func _box_right_at(f, back: float) -> Vector3:
-	return Vector3(-minf(_box_aside(f), 0.05), -CARD_BOX_SIZE.y * 0.5 - 0.012, back - BOX_RIGHT_BACK)
+static func _box_right_at(f, back: float, size := CARD_BOX_SIZE) -> Vector3:
+	return Vector3(-minf(_box_aside(f) + 0.005, 0.05), -size.y * 0.5 - _box_bottom(f) - BOX_RIGHT_UNDER, back - BOX_RIGHT_BACK)
 
 
 ## Where Bram's right hand holds the box out on its palm, in his own frame:
@@ -1243,6 +1279,8 @@ static func _card_box() -> Node3D:
 		if not first and box.size.x > 0.001:
 			inst.scale = Vector3.ONE * (W / box.size.x)
 			inst.position = -box.get_center() * inst.scale.x
+			# (its own size, for the hands: box_size)
+			n.set_meta("size", box.size * inst.scale.x)
 		var glid := inst.find_child("*Lid*", true, false) as Node3D
 		if glid != null:
 			glid.name = "Lid"
@@ -1707,7 +1745,7 @@ static func _box_out_scene(w: World) -> void:
 			fig.reach(null, hand, 0.35)
 			box.visible = false
 			await Cine.wait(w, 0.35)
-			fig.attach(box, "palm", "right", CARD_BOX_SIZE.y * 0.5 + 0.004, PI)
+			fig.attach(box, "palm", "right", box_size(box).y * 0.5 + _box_bottom(fig), PI)
 			await w.get_tree().process_frame
 			box.visible = true
 			var up := w.create_tween()
@@ -1743,12 +1781,14 @@ static func _first_deck(w: World) -> void:
 		# hands slide in under it, palms up, flat, fingers forward, side by
 		# side, and it's lifted off his hand onto them.) The hands' marks
 		# hang from a carried frame (BoxGrip): where they go, the box goes.
-		# (how far back on the palms the box sits, for these hands: _box_back)
-		var back := _box_back(me)
+		# (how far back on the palms the box sits, for these hands: _box_back;
+		# the box's own size, box_size: 8 November)
+		var size := box_size(box)
+		var back := _box_back(me, size)
 		var grip := Node3D.new()
 		grip.name = "BoxGrip"
 		me.carry(grip, Vector3.ZERO)
-		grip.global_position = box.global_position + Vector3(0, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0)
+		grip.global_position = box.global_position + Vector3(0, -size.y * 0.5 - _box_bottom(me), 0)
 		grip.rotation = Vector3.ZERO
 		for sd in [["L", 1.0], ["R", -1.0]]:
 			var mk := Node3D.new()
@@ -1756,7 +1796,7 @@ static func _first_deck(w: World) -> void:
 			# (a hand's half-width in from the middle, each under its half, the
 			# palms' middles a little ahead of the box's: it sits back on them,
 			# _box_back)
-			mk.position = _box_left_at(me, back) if sd[0] == "L" else _box_right_at(me, back) * Vector3(1, 0, 1)
+			mk.position = _box_left_at(me, back) if sd[0] == "L" else _box_right_at(me, back, size) * Vector3(1, 0, 1) + Vector3(0, -BOX_RIGHT_UNDER, 0)
 			grip.add_child(mk)
 		w.set_meta("box_grip_player", grip)
 		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
@@ -1795,7 +1835,7 @@ static func _first_deck(w: World) -> void:
 		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
 		w.set_meta("box_player", box)
-		me.attach(box, "palm", "left", _box_lift(me), 0.0, 0.0, -back, -_box_aside(me))
+		me.attach(box, "palm", "left", _box_lift(me, size), 0.0, 0.0, -back, -_box_aside(me))
 		# (the right hand under the box's other half, wherever the left palm
 		# puts the box: its mark hangs from the box, as far ahead of its
 		# middle as the left palm's is)
@@ -1806,11 +1846,11 @@ static func _first_deck(w: World) -> void:
 		# clear behind the box's back edge: the forearm rises steeply from the
 		# wrist to the elbow, and from under the box it came up through its
 		# back corner on the longer-handed looks, B's and D's, 6 November)
-		rmark.position = _box_right_at(me, back)
+		rmark.position = _box_right_at(me, back, size)
 		me.reach(grip.get_node("L"), rmark, 0.1)
 		# in to them, a little up: the hands' marks come in, and the box with
 		# the left hand
-		var hold := me.hold_point(0.5, 0.62) + Vector3(0.0, -CARD_BOX_SIZE.y * 0.5 - 0.012, 0.0)
+		var hold := me.hold_point(0.5, 0.62) + Vector3(0.0, -size.y * 0.5 - _box_bottom(me), 0.0)
 		var bring := w.create_tween()
 		bring.tween_property(grip, "position", hold, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await bring.finished
@@ -1836,12 +1876,12 @@ static func _first_deck(w: World) -> void:
 		var aside1 := _box_aside(me, false)
 		var lh0 := lh.position
 		me.reach(lh, rmark, 0.1)
-		var half := CARD_BOX_SIZE.x * 0.5
+		var half := size.x * 0.5
 		var centre_under := w.create_tween()
 		centre_under.tween_method(func(k: float) -> void:
 			var a := lerpf(aside0, aside1, k)
 			lh.position = lh0 + Vector3(a - aside0, 0.0, 0.0)
-			me.attach(box, "palm", "left", _box_lift(me), 0.0, 0.0, -back, -a), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
+			me.attach(box, "palm", "left", _box_lift(me, size), 0.0, 0.0, -back, -a), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 		await centre_under.finished
 		_into_box_shot(w, box)
 		var lid := box.get_node_or_null("Lid") as Node3D
@@ -1850,7 +1890,10 @@ static func _first_deck(w: World) -> void:
 		var edge := Node3D.new()
 		edge.name = "LidEdge"
 		box.add_child(edge)
-		edge.position = Vector3(0.0, CARD_BOX_SIZE.y * 0.5 + 0.01, CARD_BOX_SIZE.z * 0.5)
+		# (the hand's own thickness over the lid, as under the box, _box_bottom,
+		# and a finger's width more: the fingertips curl over the edge as it
+		# swings up)
+		edge.position = Vector3(0.0, size.y * 0.5 + _box_bottom(me) + 0.01, size.z * 0.5)
 		if lid != null:
 			edge.reparent(lid, true)
 		# the right hand up off the box's side, over its top and along to the
@@ -1862,14 +1905,14 @@ static func _first_deck(w: World) -> void:
 		me.reach(lh, rh, 0.1)
 		# (a forearm's width out from the box's side on the way up, so the wrist
 		# clears its top edge: 6 November)
-		var side_out := box.to_global(Vector3(-half - 0.09, -CARD_BOX_SIZE.y * 0.3, 0.0))
-		var side_up := box.to_global(Vector3(-half - 0.08, CARD_BOX_SIZE.y * 0.5 + 0.1, 0.0))
+		var side_out := box.to_global(Vector3(-half - 0.09, -size.y * 0.3, 0.0))
+		var side_up := box.to_global(Vector3(-half - 0.08, size.y * 0.5 + 0.1, 0.0))
 		var over_edge := edge.global_position + Vector3(0, 0.08, 0)
 		# (down from under it first, then out, so the fingers don't come up
 		# through its bottom edge on the way; and the right elbow up and out
 		# while the hand's over the lid, so the forearm comes down to it from
 		# above instead of across the box's top: 6 November)
-		var under_out := box.to_global(Vector3(-half - 0.02, -CARD_BOX_SIZE.y * 0.5 - 0.06, 0.0))
+		var under_out := box.to_global(Vector3(-half - 0.02, -size.y * 0.5 - 0.06, 0.0))
 		me.elbow("right", Vector3(-0.44, me._shoulder - 0.2, 0.1), 0.4)
 		# (down off it first, and a touch forward: going down and out at once,
 		# the fingers curled up in front of it scraped its front face, 6
@@ -1879,8 +1922,14 @@ static func _first_deck(w: World) -> void:
 		round_over.tween_property(rh, "global_position", drop, 0.12).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", under_out, 0.1).set_trans(Tween.TRANS_SINE)
 		# (and turned palm down to go over the lid only once it's out from
-		# under: turned under the box, its fingers swung up into it)
-		round_over.tween_callback(func() -> void: me.palm("right", Vector3.DOWN, 0.25, 0.3))
+		# under: turned under the box, its fingers swung up into it; flat, so
+		# the fingers lie along the lid rather than curl down into it: 8
+		# November, Player A's open only when a flat hand's asked for,
+		# Figure3D.OPEN_FLAT)
+		# (its fingers kept pointing ahead as it turns: left to point along the
+		# forearm they pointed in at the box and, Player A's being long,
+		# swept through its side on the way up, 8 November)
+		round_over.tween_callback(func() -> void: me.palm("right", Vector3.DOWN, 0.25, 1.0, true, Vector3.BACK))
 		round_over.tween_property(rh, "global_position", side_out, 0.14).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", side_up, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
@@ -1889,7 +1938,19 @@ static func _first_deck(w: World) -> void:
 		me.reach(lh, edge, 0.08)
 		rh.queue_free()
 		await Cine.wait(w, 0.15)
-		# the lid up, and the deck comes out of it
+		# the lid up, and the deck comes out of it: the hand on its edge turns
+		# with it, palm to the lid's face and fingers along it to the edge (8
+		# November: held palm down as the lid came up past level, the palm
+		# lay through the lid)
+		var lid_follow := w.create_tween()
+		lid_follow.tween_method(func(_u: float) -> void:
+			if lid != null and is_instance_valid(lid) and lid.is_inside_tree():
+				# (the hand pitched a little nose-up off the lid's face, so the
+				# fingertips ride clear of its edge as it swings: Player A's
+				# long fingers hooked a centimetre into it)
+				var ly := lid.global_transform.basis.y
+				var lz := lid.global_transform.basis.z
+				me.palm("right", (-ly + lz * 0.4).normalized(), 0.01, 1.0, false, lz), 0.0, 1.0, 0.6)
 		await open_box_lid(w, box, true, 0.6)
 		var away := Node3D.new()
 		away.name = "RightAway"
@@ -1923,8 +1984,9 @@ static func _first_deck(w: World) -> void:
 			# straight down through the box's side to the hip)
 			if box != null and is_instance_valid(box):
 				var by := w.create_tween()
-				by.tween_property(ra, "global_position", box.to_global(Vector3(-CARD_BOX_SIZE.x * 0.5 - 0.12, CARD_BOX_SIZE.y * 0.5 + 0.1, 0.0)), 0.2).set_trans(Tween.TRANS_SINE)
-				by.tween_property(ra, "global_position", box.to_global(Vector3(-CARD_BOX_SIZE.x * 0.5 - 0.12, -0.02, -0.05)), 0.2).set_trans(Tween.TRANS_SINE)
+				var bs := box_size(box)
+				by.tween_property(ra, "global_position", box.to_global(Vector3(-bs.x * 0.5 - 0.12, bs.y * 0.5 + 0.1, 0.0)), 0.2).set_trans(Tween.TRANS_SINE)
+				by.tween_property(ra, "global_position", box.to_global(Vector3(-bs.x * 0.5 - 0.12, -0.02, -0.05)), 0.2).set_trans(Tween.TRANS_SINE)
 				await by.finished
 			(ra as Node).queue_free()
 		w.remove_meta("box_right_away")
@@ -3359,11 +3421,13 @@ static func _coat_on(w: World, who: String, coat: Node3D) -> void:
 # ------------------------------------------------------- P3 · dawn ---
 
 ## Where everyone stands on the green at dawn, looking up the road. Bram is
-## at the player's right shoulder, close enough to put a hand on it, and
-## far enough that the two of them crouched don't run into each other (at
-## 0.7 m their shoulders went into each other as they knelt).
+## behind the player's right shoulder, close enough to put a hand on it with
+## his arm bent (8 November: at 0.9 m his left shoulder was 0.56 m from the
+## player's right one, the length of his arm, and his arm stuck out straight
+## to it; 0.41 m now), and far enough that the two of them on one knee don't
+## run into each other.
 const DAWN := {
-	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(0.35, 0, 11.86), "corin": Vector3(-1.0, 0, 10.4),
+	"player": Vector3(0.6, 0, 11.0), "bram": Vector3(0.37, 0, 11.71), "corin": Vector3(-1.0, 0, 10.4),
 	"tilly": Vector3(-3.2, 0, 13.0), "nell": Vector3(-2.2, 0, 9.4), "tam": Vector3(3.2, 0, 9.6),
 	"hob": Vector3(2.4, 0, 15.8), "ned": Vector3(-4.6, 0, 10.6),
 }
@@ -3409,6 +3473,10 @@ static func _dawn(w: World) -> void:
 	var with_film := StoryFilm.available("herald")
 	if not with_film:
 		Music.play(["dawn_after"], 2.0, true)
+		# the Herald, its mist and a vision built and drawn now, behind the
+		# black, not after Hob's line (8 November, Gary: "it takes a while to
+		# load" there)
+		await _warm_herald(w)
 	await Cine.caption(w, "Dawn")
 	var left := {}
 	var filmed := false
@@ -3487,22 +3555,16 @@ static func _herald_3d(w: World) -> Dictionary:
 	# road, chains dragging, and glides down past the last cottages to its
 	# mark, the village going down on its knees as it passes, Bram's hand
 	# bringing the player down with him.
-	var herald := PaleHerald.new()
-	herald.name = "PaleHerald"
-	herald.form = "shroud"
-	w.add_child(herald)
+	# (8 November: the Herald and its mist were built here, after Hob's line,
+	# and the first frame to draw them compiled their shaders: _warm_herald
+	# built and drew them in the black before the caption, and they're taken
+	# from there.)
+	var herald := _herald_ready(w)
 	Cine.call_by(w, "herald", "The Pale Herald")
-	var road: Array = []
-	for rp in HERALD_ROAD:
-		var q: Vector3 = rp
-		q.y = v.height(q.x, q.z)
-		road.append(q)
+	var road := _herald_road(v)
 	var hat: Vector3 = road[road.size() - 1]
-	herald.global_position = road[1]
-	herald.snap_dir((road[2] as Vector3) - (road[1] as Vector3))
-	herald.fade = 0.0
-	var mist := _mist_bank(v, herald)
-	var shoulder := _shoulder_point(w, "player")
+	var mist: Node3D = herald.get_meta("mist")
+	var shoulder := _shoulder_point(w, "player", Vector3.INF, "right", "bram", "left")
 	var bf = Cine.fig(w, "bram")
 	var pp := w.player.global_position
 	# the cold: the green from the west, everyone still, breath showing
@@ -3553,6 +3615,10 @@ static func _herald_3d(w: World) -> Dictionary:
 	Cine.drift(w, pp + Vector3(2.4, 1.15, -0.6), pp + Vector3(2.2, 0.95, -0.5), pp + Vector3(0.0, 1.05, 0.35), pp + Vector3(0.0, 0.8, 0.35), 2.0, 34.0)
 	if bf is Figure3D:
 		(bf as Figure3D).reach(shoulder, null, 0.5)   # his left hand, on your right shoulder
+		# (palm flat on top of it, the fingers forward over its front: the
+		# point is where the palm's middle goes, 8 November)
+		var pfig = w.player_doll
+		(bf as Figure3D).palm("left", Vector3.DOWN, 0.5, 0.5, false, (pfig as Figure3D).facing() if pfig is Figure3D else Vector3.RIGHT)
 	await Cine.wait(w, 0.5)
 	_kneel(w, "bram", 0.8)
 	_kneel(w, "player", 0.9)
@@ -3650,12 +3716,21 @@ static func _herald_3d(w: World) -> Dictionary:
 	await Cine.wait(w, 3.4)
 	# the silence on the green. Tam looks at the ground. Nell quietly pulls
 	# Tilly away. They are stepping away from you, for pure, primal survival.
+	# (Bram's hand comes off their shoulder first, and the point it rested on
+	# goes as soon as it's off: left alive to the hub's end, with his arm
+	# given back, it was one thing more for the walk to trip on)
+	_shoulder_leave(shoulder)
+	await Cine.wait(w, 0.45)
 	if bf is Figure3D:
 		(bf as Figure3D).let_go(0.5)
+		(bf as Figure3D).palm("left", Vector3.ZERO, 0.5)
 	Cine.shot(w, p + Vector3(-1.6, 1.7, 4.8), p + Vector3(0.4, 1.1, -2.0), 40.0)
 	var tf = Cine.fig(w, "tam")
 	if tf is Figure3D:
 		(tf as Figure3D).pose("defeat", 0.3, 0.6)
+	await Cine.wait(w, 0.55)
+	_free_tracker(shoulder)
+	shoulder = null
 	# up off their knees, slowly, and back: each away from the player along
 	# their own line, one after another, so nobody walks into anybody (1
 	# November, Gary: "characters going through each other and items"),
@@ -3726,6 +3801,7 @@ static func _dawn_hub(w: World, left: Dictionary) -> void:
 		_stand(w, who, 0.01)
 	if left.get("shoulder") != null:
 		_free_tracker(left.shoulder)
+	_faces.clear()
 	Cine.despawn(w, "kid")
 
 
@@ -3742,18 +3818,24 @@ static func _hand_tightens(w: World, shoulder: Node3D, after: float) -> void:
 	_tremble(w, "bram", 0.6, 0.012)
 
 
-## Kneeling: the 3D cast go down low, heads bowed (the way down of the sit
-## clip, held: there is no kneel among the shared clips); a cut-out crouches,
-## squashed down onto its feet as far as a kneeling figure would go (sunk
-## into the ground instead, it stood waist deep in the grass).
-const KNEEL := ["sit", 0.3]
+## Kneeling: the 3D cast go down on one knee, heads bowed (Figure3D.kneel
+## with `upright`, KNEEL_LEAN how far they bend over it. 8 November, Gary:
+## "when it cuts to Bram he is crouched and distorted": until then they held
+## the way down of the sit clip, a squat with the back bent, Bram's arm out
+## straight from it to the shoulder); a cut-out crouches, squashed down onto
+## its feet as far as a kneeling figure would go (sunk into the ground
+## instead, it stood waist deep in the grass).
+const KNEEL_LEAN := 0.45
 const CUTOUT_KNEEL := 0.76
 
 
 static func _kneel(w: World, who: String, secs := 0.6) -> void:
 	var f = Cine.fig(w, who)
 	if f is Figure3D:
-		(f as Figure3D).pose(String(KNEEL[0]), float(KNEEL[1]), secs)
+		# (`upright`: at the kneel's right height, the planted foot flat on
+		# the grass; without it the knee joint was 2 to 5 cm under the grass
+		# and the planted foot's toes 15 to 30 cm, everyone's)
+		(f as Figure3D).kneel(secs, KNEEL_LEAN, false, true)
 	elif f != null and not (f as Node3D).has_meta("knelt"):
 		var n: Node3D = f
 		n.set_meta("knelt", true)
@@ -3770,29 +3852,142 @@ static func _stand(w: World, who: String, secs := 0.6) -> void:
 		n.remove_meta("knelt")
 
 
-## A point on top of someone's right shoulder that stays there as they move
-## and kneel (for a hand to rest on). _free_tracker() lets it go.
-static func _shoulder_point(w: World, who: String, from := Vector3.INF) -> Node3D:
+## A point on top of someone's shoulder for a hand to rest on, that stays
+## there as they move and kneel (_free_tracker() lets it go): SHOULDER_TOP
+## over the Arm joint, which is the top of the shoulder as Player A's mesh
+## has it (10 cm over the joint) plus half a palm's thickness, so the palm's
+## skin rests on the shoulder's (8 November, Gary: "When Bram puts his hand
+## on player shoulder it goes through it": at 7 cm the middle of the palm was
+## 3 cm inside the shoulder); and SHOULDER_BACK back of the joint. `side`
+## says which shoulder ("left"/"right"); else the one nearer whoever reaches,
+## from `from` (Bram beside the player reaches for the near one); else the
+## right. `reacher` (and which of their hands, `hand`) is whose hand rests
+## on it: a reach puts the end of the forearm on the point, and the hand
+## then turned palm down swings the palm off it by up to a palm's length
+## (onto the side of the shoulder, into it); so each frame the middle of
+## that palm as drawn (_palm_watch: read as the skeleton finishes its frame,
+## since between frames a bone has only the clip's pose, the reach and the
+## turn of the hand put on and taken off within the frame; read between
+## frames it was the clip's hand at his knee, and the point climbed away
+## from the shoulder to its limit) is measured against the point, and the
+## point is moved by the difference, until the palm lies on the shoulder;
+## never further from the reacher's own shoulder than SHOULDER_REACH of
+## their arm, so a shoulder just out of reach doesn't draw the point away
+## and the arm out straight after it. The joint is read as drawn too (the
+## player's posture tilts the shoulder bones). SHOULDER_OUT: a little out
+## from the joint, over the top of the shoulder's ball rather than the slope
+## up to the neck (the hand's inner edge went into the slope). The hand
+## comes to the point from above and outside it (SHOULDER_FROM, blended in
+## there and glided onto the shoulder over SHOULDER_GLIDE seconds: blended
+## in straight from his side, it swept up through the player's arm), and
+## goes the same way when _shoulder_leave() is called before the hand is
+## let go.
+const SHOULDER_TOP := 0.12
+const SHOULDER_OUT := 0.02
+const SHOULDER_BACK := 0.02
+const SHOULDER_CORR_MAX := 0.2
+const SHOULDER_REACH := 0.96
+const SHOULDER_FROM := Vector3(0.14, 0.08, 0.0)   # (out from the body, up)
+const SHOULDER_GLIDE := 0.45
+
+
+## Where the middle of `f`'s palm (`hand` "left"/"right") is drawn each
+## frame, under [0] (Vector3.INF until its reach is fully on, or when it's
+## off): read as the skeleton finishes its frame, the reach and the hand's
+## turn included. _palm_unwatch() stops it.
+static func _palm_watch(f: Figure3D, hand: String) -> Array:
+	var seen := [Vector3.INF, null, null]
+	if f == null or f._skel == null:
+		return seen
+	var pre := "Right" if hand == "right" else "Left"
+	var sk: Skeleton3D = f._skel
+	var watch := func() -> void:
+		if not is_instance_valid(f) or f._skel == null:
+			return
+		var ik = f._ik.get(hand)
+		if ik != null and is_instance_valid(ik) and (ik as TwoBoneIK3D).active and (ik as TwoBoneIK3D).influence > 0.95:
+			seen[0] = f._palm_point(pre)
+		else:
+			seen[0] = Vector3.INF
+	sk.skeleton_updated.connect(watch)
+	seen[1] = sk
+	seen[2] = watch
+	return seen
+
+
+static func _palm_unwatch(seen: Array) -> void:
+	if seen.size() > 2 and seen[1] is Skeleton3D and is_instance_valid(seen[1]) and seen[2] is Callable:
+		var sk: Skeleton3D = seen[1]
+		if sk.skeleton_updated.is_connected(seen[2]):
+			sk.skeleton_updated.disconnect(seen[2])
+	seen[0] = Vector3.INF
+
+
+static func _shoulder_point(w: World, who: String, from := Vector3.INF, side := "", reacher := "", hand := "right") -> Node3D:
 	var n := Node3D.new()
 	w.add_child(n)
 	var f = Cine.fig(w, who)
 	var b := Cine.body(w, who)
-	# (the shoulder nearer whoever reaches for it, from `from`: Bram beside
-	# the player on their left reached across them for the right one)
+	var rf = Cine.fig(w, reacher) if reacher != "" else null
 	var bone := "RightArm"
-	if f is Figure3D and from != Vector3.INF:
+	if side != "":
+		bone = "LeftArm" if side == "left" else "RightArm"
+	elif f is Figure3D and from != Vector3.INF:
 		var fl := (f as Figure3D).bone_pos("LeftArm")
 		var fr := (f as Figure3D).bone_pos("RightArm")
 		if Vector2(fl.x - from.x, fl.z - from.z).length() < Vector2(fr.x - from.x, fr.z - from.z).length():
 			bone = "LeftArm"
+	# the joint as drawn (read as the skeleton finishes its frame)
+	var joint := [Vector3.INF]
+	var joint_watch = null
+	if f is Figure3D and (f as Figure3D)._skel != null:
+		var sk: Skeleton3D = (f as Figure3D)._skel
+		var bi := sk.find_bone(bone)
+		if bi >= 0:
+			joint_watch = func() -> void:
+				if is_instance_valid(sk):
+					joint[0] = sk.global_transform * sk.get_bone_global_pose(bi).origin
+			sk.skeleton_updated.connect(joint_watch)
+	# and the reacher's palm as drawn
+	var seen: Array = _palm_watch(rf as Figure3D, hand) if rf is Figure3D else [Vector3.INF]
+	var corr := [Vector3.ZERO]
+	var away := [1.0]   # how far the point still stands off the shoulder (1: SHOULDER_FROM; 0: on it)
 	var track := func() -> void:
 		while is_instance_valid(n) and is_instance_valid(b):
+			var want: Vector3
+			var out := Vector3.ZERO
 			if f is Figure3D:
 				var fwd: Vector3 = (f as Figure3D).facing()
-				n.global_position = (f as Figure3D).bone_pos(bone) + Vector3(0, 0.07, 0) - fwd * 0.02
+				var at: Vector3 = joint[0] if joint[0] != Vector3.INF else (f as Figure3D).bone_pos(bone)
+				out = at - b.global_position
+				out.y = 0.0
+				out = out.normalized() if out.length() > 0.01 else Vector3.ZERO
+				want = at + Vector3(0, SHOULDER_TOP, 0) + out * SHOULDER_OUT - fwd * SHOULDER_BACK
 			else:
-				n.global_position = b.global_position + Vector3(0, 1.45, 0)
+				want = b.global_position + Vector3(0, 1.45, 0)
+			var dt := w.get_process_delta_time()
+			if n.has_meta("leave"):
+				away[0] = move_toward(away[0], 1.0, dt / SHOULDER_GLIDE)
+			elif seen[0] != Vector3.INF:
+				away[0] = move_toward(away[0], 0.0, dt / SHOULDER_GLIDE)
+			var off: Vector3 = (out * SHOULDER_FROM.x + Vector3.UP * SHOULDER_FROM.y) * (0.5 - 0.5 * cos(away[0] * PI))
+			if seen[0] != Vector3.INF and away[0] < 0.001:
+				corr[0] = ((corr[0] as Vector3) + (want - (seen[0] as Vector3)) * 0.7).limit_length(SHOULDER_CORR_MAX)
+			elif rf != null and seen[0] == Vector3.INF:
+				corr[0] = (corr[0] as Vector3).lerp(Vector3.ZERO, 0.2)
+			var at_p: Vector3 = want + corr[0] + off
+			if rf is Figure3D and is_instance_valid(rf):
+				var sh: Vector3 = (rf as Figure3D).bone_pos(("Right" if hand == "right" else "Left") + "Arm")
+				var most: float = (rf as Figure3D).arm_reach() * SHOULDER_REACH
+				if at_p.distance_to(sh) > most:
+					at_p = sh + (at_p - sh).normalized() * most
+			n.global_position = at_p
 			await w.get_tree().process_frame
+		if joint_watch is Callable and f is Figure3D and is_instance_valid(f) and (f as Figure3D)._skel != null:
+			var sk2: Skeleton3D = (f as Figure3D)._skel
+			if sk2.skeleton_updated.is_connected(joint_watch):
+				sk2.skeleton_updated.disconnect(joint_watch)
+		_palm_unwatch(seen)
 	track.call()
 	return n
 
@@ -3800,6 +3995,15 @@ static func _shoulder_point(w: World, who: String, from := Vector3.INF) -> Node3
 static func _free_tracker(n: Node3D) -> void:
 	if is_instance_valid(n):
 		n.queue_free()
+
+
+## The hand is about to come off the shoulder: the point glides back up and
+## out to where the hand came from (SHOULDER_FROM, SHOULDER_GLIDE seconds),
+## the hand with it, so the arm goes back to its clip from clear of the
+## body. Wait that long, then let go.
+static func _shoulder_leave(n: Node3D) -> void:
+	if is_instance_valid(n):
+		n.set_meta("leave", true)
 
 
 ## One of the Herald's lines; its recorded voice plays with it once Gary
@@ -3921,6 +4125,11 @@ static func _vision_out(w: World, root: Node3D, secs := 0.5) -> void:
 		root.queue_free()
 
 
+## The Champions' pictures, held from the dawn's warm-up to its hub's end
+## (loaded once, in the black, not one by one as the lantern shows them).
+static var _faces: Array = []
+
+
 ## A Champion's picture for the Herald's lantern: Gary's portrait when there is
 ## one, else the sign of the Seat's god.
 static func _champion_tex(i: int) -> Texture2D:
@@ -3943,6 +4152,83 @@ static func _char_mill(v: AshfordVillage) -> void:
 	soot.roughness = 1.0
 	for mi in v.mill_root.find_children("*", "MeshInstance3D", true, false):
 		(mi as MeshInstance3D).material_overlay = soot
+
+
+## The Herald's road down to its mark, on the ground.
+static func _herald_road(v: AshfordVillage) -> Array:
+	var road: Array = []
+	for rp in HERALD_ROAD:
+		var q: Vector3 = rp
+		q.y = v.height(q.x, q.z)
+		road.append(q)
+	return road
+
+
+## The Herald on its road at the far end, faded right out, with its bank of
+## mist (under its meta "mist"): built here, or taken from the warm-up
+## (_warm_herald) when that made one.
+static func _herald_ready(w: World) -> PaleHerald:
+	var v := village(w)
+	var herald: PaleHerald = null
+	if w.has_meta("herald_warm"):
+		var hw = w.get_meta("herald_warm")
+		if hw is PaleHerald and is_instance_valid(hw) and (hw as Node).is_inside_tree():
+			herald = hw
+		w.remove_meta("herald_warm")
+	if herald == null:
+		herald = PaleHerald.new()
+		herald.name = "PaleHerald"
+		herald.form = "shroud"
+		w.add_child(herald)
+	var road := _herald_road(v)
+	herald.global_position = road[1]
+	herald.snap_dir((road[2] as Vector3) - (road[1] as Vector3))
+	herald.fade = 0.0
+	if not herald.has_meta("mist") or not is_instance_valid(herald.get_meta("mist")):
+		herald.set_meta("mist", _mist_bank(v, herald))
+	return herald
+
+
+## Everything the Herald's coming draws for the first time, built and drawn
+## while the screen is black at the start of the dawn (8 November, Gary:
+## "Dawn, after Hob's line, it takes a while to load": the Herald was built
+## after his line, and its burial cloth's shader, its mist's, its bank of
+## mist's and the visions' were compiled on the frame each was first drawn,
+## which held the picture for seconds the first time on a Mac). The Herald
+## stands on its road at fade 0 (not a pixel of it drawn) under the world's
+## "herald_warm" for _herald_ready to take; a vision with every Champion's
+## name under it is shown to the camera a moment and taken away; the
+## Champions' pictures are loaded and kept (_champion_tex). Done only when the
+## 3D Herald is to play (Gary's film has nothing to warm).
+static func _warm_herald(w: World) -> void:
+	var herald := _herald_ready(w)
+	w.set_meta("herald_warm", herald)
+	_faces.clear()
+	for i in CHAMPIONS.size():
+		_faces.append(_champion_tex(i))   # (held, so the loads aren't done again at the lantern)
+	var road := _herald_road(village(w))
+	Cine.shot(w, Vector3(4.6, 1.75, 12.4), (road[1] as Vector3) + Vector3(0, 2.0, 0), 30.0)
+	var vis := _vision(w, herald, -1, 0.01)
+	var names := Label3D.new()
+	var all := PackedStringArray()
+	for c in CHAMPIONS:
+		all.append(String(c[2]))
+	names.text = " ".join(all)
+	names.font = CardFace.font("display")
+	names.font_size = 72
+	names.pixel_size = 0.0028
+	names.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	names.no_depth_test = true
+	names.outline_size = 10
+	names.modulate = Color(0.86, 0.9, 1.0, 0.01)
+	names.outline_modulate = Color(0.0, 0.02, 0.06, 0.01)
+	names.position = Vector3(0, -1.12, 0)
+	vis.add_child(names)
+	for k in 3:
+		if not is_instance_valid(w) or not w.is_inside_tree():
+			return
+		await w.get_tree().process_frame
+	_vision_out(w, vis, 0.01)
 
 
 ## Walks the Herald down a road (each point in turn). The returned node has

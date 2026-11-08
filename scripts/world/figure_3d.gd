@@ -594,6 +594,26 @@ const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb
 	"RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3"]}
 
 
+## How a hand modelled closed opens when a flat hand is asked for
+## (palm(..., flat): a box on the open hand), by model: the fingers turned
+## at their roots about the knuckle line (degrees, out of the curl), and the
+## thumb at its root about the fingers' line (degrees, down along the side
+## of the hand). Player A's hands as he modelled them are loose fists, the
+## fingers standing up off the palm and the thumb with them (8 November,
+## Gary: "Left hand still goes through box as you're holding it when you
+## open it to reveal cards": with the fingers kept as modelled, FROZEN, a box
+## on his palm had them up through its front half and the thumb through its
+## side whatever was done with it; tests/box_hold_probe.gd -- <dir> a
+## open=<deg> thumb=<deg> tries other angles). The whole finger turns as
+## one about its root, so the rig's jumbled joints don't pull the skin.
+## Bram's (8 November, his hand on the player's shoulder and flat on the
+## cellar's timber): his fingers lie well enough, but his thumb rests folded
+## in under the palm, its tip 7 cm below it, so a palm laid on anything had
+## the thumb in that thing (3 cm into the shoulder); turned 60 degrees about
+## the fingers' line it lies along the hand's side.
+const OPEN_FLAT := {"player_a": {"fingers": 70.0, "thumb": -60.0}, "bram": {"fingers": 0.0, "thumb": -60.0}}
+
+
 class Posture:
 	extends SkeletonModifier3D
 	var turns: Array = []   # [bone index, Quaternion]
@@ -753,18 +773,30 @@ func stretch(secs := 2.8) -> void:
 ## seated ones are, so they still breathe) until rise(). The hands are put
 ## on the thing with reach(); `lean` (0..1) is how far the back comes down
 ## over it. The directions are of the thighs and shins, as _seated_pose
-## gives them (the bones rest square to the world).
+## gives them (the bones rest square to the world). `both` (8 November):
+## both knees down, the shins back along the ground, nothing planted ahead
+## (Bram on his knees at the cellar's timber, pressing the marks: a foot
+## planted ahead went into it). `upright` (8 November, the dawn's village on
+## its knees): the one-knee kneel at its right height, the hips the thigh's
+## length and the knee's depth over the ground, the planted shin down to a
+## foot flat on the ground (counted with the Hips bone's offset the wrong
+## way the hips sat 12 cm low, the kneeling knee's joint 2 to 5 cm under
+## the ground and the planted foot's ankle 6 to 16 cm under it, its toes,
+## pointing on down, 15 to 30 cm). Without it the kneel is as it was,
+## which the White Sky's lift of the child has his stoop and hands tuned
+## to: to be moved over with that scene re-tuned.
 const KNEEL_PAD := 0.07   # the knee's own depth, off the ground (m)
+const KNEEL_TOES := deg_to_rad(165.0)   # the kneeling foot's turn from straight ahead to back along the ground (toes down to it)
 
-func kneel(blend := 0.9, lean := 1.0) -> void:
+func kneel(blend := 0.9, lean := 1.0, both := false, upright := false) -> void:
 	if _skel == null or anim == null or not anim.has_animation("idle"):
 		return
 	seat = -1.0
-	var nm := "kneel_%d" % roundi(lean * 100.0)
+	var nm := "%s_%d" % ["kneel2" if both else ("kneel1" if upright else "kneel"), roundi(lean * 100.0)]
 	if not anim.has_animation(nm):
 		var a := (anim.get_animation("idle") as Animation).duplicate(true) as Animation
 		var prefix := ""
-		var pose := _kneel_pose(lean)
+		var pose := _kneel_pose(lean, both, upright)
 		var bent: Dictionary = pose.bend
 		var done := {}
 		for t in range(a.get_track_count() - 1, -1, -1):
@@ -811,10 +843,11 @@ func rise(blend := 0.8) -> void:
 	release(blend)
 
 
-## The hips and legs down on the right knee: {"pos", "rot"} as _seated_pose
-## gives them, and "bend": the turns put over the idle's own for the back,
-## neck and head, bent forward over what's in front of them.
-func _kneel_pose(lean: float) -> Dictionary:
+## The hips and legs down on the right knee (or both, `both`; `upright`, the
+## one-knee kneel at its right height): {"pos", "rot"} as _seated_pose gives
+## them, and "bend": the turns put over the idle's own for the back, neck
+## and head, bent forward over what's in front of them.
+func _kneel_pose(lean: float, both := false, upright := false) -> Dictionary:
 	var rot := {}
 	var pos := {}
 	var hb := _skel.find_bone("Hips")
@@ -838,12 +871,45 @@ func _kneel_pose(lean: float) -> Dictionary:
 		var side_x := thigh.x / lt * 0.6
 		var t_dir: Vector3
 		var s_dir: Vector3
-		if side == "Right":
+		if side == "Right" or both:
 			# the knee on the ground a little behind, the shin flat along it
 			t_dir = Vector3(side_x, -cos(tilt), -sin(tilt))
 			s_dir = Vector3(side_x * 0.5, -0.06, -1.0)
-			hip_joint = lt * cos(tilt) + KNEEL_PAD * stature() + (pu.y - hips_g.y)
-			rot[side + "Foot"] = Quaternion(Vector3.RIGHT, deg_to_rad(28.0))   # toes back
+			# (8 November, measured at the cellar's timber: the foot turned 28
+			# degrees from its rest, which points forward and down, pointed
+			# down into the floor, the toes 26 cm under it; now it lies on back
+			# along the ground from the ankle, the toes just touching it,
+			# KNEEL_TOES, from wherever the foot rests. And counted with the
+			# Hips bone's offset the wrong way, the hips sat 12 cm low, the knee
+			# joint 5 cm under the floor: on both knees they're the thigh's
+			# length and the knee's depth over the ground from the hip joint.
+			# The one-knee kneel's height is left as it was, the knee joint 2
+			# to 5 cm under the ground and the planted foot's ankle 6 to 16 cm
+			# under it: the White Sky's lift of the child has his stoop and his
+			# hands tuned to it, and must be re-tuned with it.)
+			var tb := _skel.find_bone(side + "ToeBase")
+			hip_joint = lt * cos(tilt) + KNEEL_PAD * stature() + ((hips_g.y - pu.y) if (both or upright) else (pu.y - hips_g.y))
+			if tb >= 0:
+				var fd := _skel.get_bone_global_rest(tb).origin - pf
+				rot[side + "Foot"] = Quaternion(Vector3.RIGHT, atan2(fd.y, fd.z) + KNEEL_TOES)
+			else:
+				rot[side + "Foot"] = Quaternion(Vector3.RIGHT, deg_to_rad(28.0))   # toes back
+		elif upright:
+			# the foot planted ahead, flat on the ground, the shin down to it
+			# and the thigh out to the knee, a little below level (the knee
+			# about as high as the shin is long)
+			var tb := _skel.find_bone(side + "ToeBase")
+			t_dir = Vector3(side_x, -0.1, 0.99)
+			# (the shin's drop from the knee to a heel on the ground, from this
+			# figure's own lengths: one slope for all left the shorter ones'
+			# toes 3 cm under the grass)
+			var knee_h := lt * cos(tilt) + KNEEL_PAD * stature() - 0.1 * lt
+			var drop := clampf((knee_h - 0.05 * stature()) / maxf(ls, 0.01), 0.6, 0.98)
+			s_dir = Vector3(0.0, -drop, sqrt(1.0 - drop * drop))
+			rot[side + "Foot"] = Quaternion.IDENTITY
+			if tb >= 0:
+				var fd := _skel.get_bone_global_rest(tb).origin - pf
+				rot[side + "Foot"] = Quaternion(Vector3.RIGHT, atan2(fd.y, fd.z) - atan2(-0.05, 1.0))
 		else:
 			# the foot planted ahead, the thigh out level and the shin down
 			t_dir = Vector3(side_x, -0.26, 0.97)
@@ -1383,6 +1449,34 @@ func _turn_hands() -> void:
 					var rr := _skel.get_bone_rest(fb).basis.get_rotation_quaternion()
 					var cr := _skel.get_bone_pose_rotation(fb)
 					_skel.set_bone_pose_rotation(fb, cr.slerp(rr, clampf(k * flat * (0.6 if fn == "Thumb" else 1.0), 0.0, 1.0)))
+			# (a hand modelled closed opens from its rest: OPEN_FLAT)
+			var op: Dictionary = OPEN_FLAT.get(_model_name, {})
+			if not op.is_empty():
+				var kk := clampf(k * flat, 0.0, 1.0)
+				var rest_b := _skel.get_bone_global_rest(h).basis.orthonormalized()
+				# (the hand as just turned: the knuckle line goes with it)
+				var turn := _skel.get_bone_global_pose(h).basis.orthonormalized() * rest_b.inverse()
+				var a_b := (turn * p_b.cross(f_b).normalized()).normalized()
+				var fz := (turn * f_b).normalized()
+				var fa := deg_to_rad(float(op.get("fingers", 0.0))) * kk
+				var ta := deg_to_rad(float(op.get("thumb", 0.0))) * kk * (1.0 if side == "left" else -1.0)
+				for fn in ["Index", "Middle", "Ring", "Pinky"]:
+					var fb := _skel.find_bone(pre + "Hand" + fn + "1")
+					if fb >= 0 and fa != 0.0:
+						_turn_bone_about(fb, a_b, fa)
+				var tb := _skel.find_bone(pre + "HandThumb1")
+				if tb >= 0 and ta != 0.0:
+					_turn_bone_about(tb, fz, ta)
+
+
+## Turns a bone's pose about `axis` (the skeleton's frame) by `ang`, its
+## children with it (OPEN_FLAT).
+func _turn_bone_about(b: int, axis: Vector3, ang: float) -> void:
+	var g := _skel.get_bone_global_pose(b)
+	var par := _skel.get_bone_parent(b)
+	var pg := _skel.get_bone_global_pose(par).basis.orthonormalized() if par >= 0 else Basis()
+	var ng := Basis(axis, ang) * g.basis.orthonormalized()
+	_skel.set_bone_pose_rotation(b, (pg.inverse() * ng).orthonormalized().get_rotation_quaternion())
 
 
 ## Things their hands can't go into (29 October, Gary: when Bram talks

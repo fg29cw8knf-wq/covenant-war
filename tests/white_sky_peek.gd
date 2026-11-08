@@ -6,7 +6,9 @@ extends Node
 ##   ice    the ice spires near and far, the crater's shards from the rim
 ##   cards  Sigils falling round him and standing in the snow, close
 ##   lift   the pick-up of the child, a still every 0.1 s, as filmed and from
-##          the side (the hands under the bundle while it's on the snow)
+##          the side (the hands under the bundle while it's on the snow); the
+##          wrists and elbows measured each frame ("nowrists": left to the
+##          reach alone, the 8 November before)
 ##   duel   the cut from the hunter's raised cards to the filmed duel: how long
 ##          the white holds, and what's seen in it (a still every 0.1 s)
 ##
@@ -245,6 +247,8 @@ func _lift() -> void:
 	if side:
 		var c := m._bottom + m._ad * 0.3
 		_peek_at(c + rt * 2.4 + Vector3(0, 0.7, 0), c + Vector3(0, 0.55, 0))
+	if OS.get_cmdline_user_args().has("nowrists"):
+		m.turn_wrists = false   # (the wrists left to the reach: the 8 November before)
 	m._lift_child()
 	var fig := m._bram as Figure3D
 	var sk := fig._skel
@@ -263,14 +267,57 @@ func _lift() -> void:
 			if c is Node3D and not (c is MeshInstance3D) and not (c is OmniLight3D) and c.get_child_count() == 0:
 				print("  mark ", fig.to_own((c as Node3D).global_position)))
 	get_tree().create_timer(1.6, false).timeout.connect(func() -> void: dump[0] = true)
+	get_tree().create_timer(4.5, false).timeout.connect(func() -> void: dump[0] = true)   # (standing with it)
+	# the wrists (8 November, Gary: "Bram's hands twist when he picks up the
+	# baby"): on the pose as drawn each frame, how far each palm faces off
+	# the way it should under its end of the bundle (up and in towards the
+	# bundle's middle, at 45 degrees: 0 is just so, past 90 is turned away
+	# from the bundle), how far the fingers are off the bundle's length (0
+	# along it), how far the palm's middle is under the bundle's axis (m),
+	# and the elbows: each one's distance out from its own shoulder, across
+	# him (+ out, - in past it). Frames with the hands on the bundle and a
+	# palm turned away from it are flagged.
+	var wr := [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]   # L palm off up-and-in, L fingers off length, R palm, R fingers, L elbow out, R elbow out, L palm under axis (m), R
+	sk.skeleton_updated.connect(func() -> void:
+		var bx := m._baby.global_transform
+		var along := bx.basis.z.normalized()
+		var bup := bx.basis.y.normalized()
+		for s in 2:
+			var sd := "left" if s == 0 else "right"
+			var pf := fig.palm_frame(sd)
+			var d := pf.origin - bx.origin
+			# the way a palm under this end should face: up and in towards the
+			# bundle's middle, at 45 degrees (WhiteSky.LIFT_PALM)
+			var inward := -along if d.dot(along) > 0.0 else along
+			var want := (bup + inward).normalized()
+			wr[s * 2] = rad_to_deg(acos(clampf(pf.basis.y.dot(want), -1.0, 1.0)))
+			wr[s * 2 + 1] = rad_to_deg(acos(clampf(absf(pf.basis.z.dot(along)), 0.0, 1.0)))
+			wr[6 + s] = -d.dot(bup)   # (+ under the bundle's axis)
+			var pre := "Left" if s == 0 else "Right"
+			var sh := fig.to_own(sk.global_transform * sk.get_bone_global_pose(sk.find_bone(pre + "Arm")).origin)
+			var el := fig.to_own(sk.global_transform * sk.get_bone_global_pose(sk.find_bone(pre + "ForeArm")).origin)
+			wr[4 + s] = (el.x - sh.x) * (1.0 if s == 0 else -1.0))
 	var tag := "side" if side else "film"
 	var t := 0.0
-	var told := false
+	var away := 0
+	var near_frames := 0
+	var worst := [0.0, 0.0]
 	while t < 6.0:
+		var flag := ""
+		for s in 2:
+			if m.lift_gap < 0.2:   # (the hands on it: the reach, the lift, the rise)
+				near_frames += 1
+				worst[s] = maxf(worst[s], wr[s * 2])
+				if wr[s * 2] > 90.0:
+					away += 1
+					flag += " AWAY-" + ("L" if s == 0 else "R")
+		print("  wrist %4.1f  gap %.2f | L palm off up-and-in %5.1f fingers off length %5.1f elbow out %+.2f under %+.2f | R palm %5.1f fingers %5.1f elbow %+.2f under %+.2f%s" % [
+			t, m.lift_gap, wr[0], wr[1], wr[4], wr[6], wr[2], wr[3], wr[5], wr[7], flag])
 		await _shot("%s_%04.1f_gap%.2f" % [tag, t, m.lift_gap])
 		await get_tree().create_timer(0.1, false).timeout
 		t += 0.1
 	print("LIFT: hands' gap at the lift %.3f m (left %.3f, right %.3f)" % [m.lift_gap, m.lift_gaps[0], m.lift_gaps[1]])
+	print("WRISTS: %d hand-frames with the hands on the bundle, %d with a palm turned away from it (past 90 degrees off up-and-in); the palm's worst angle off up-and-in left %.0f, right %.0f" % [near_frames, away, worst[0], worst[1]])
 
 
 func _duel() -> void:
