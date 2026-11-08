@@ -53,7 +53,9 @@ const FESTIVAL_TAM := "Explore Ashford and help prepare for the festival.\nFind 
 ## (1 November, Gary: "it says find Bram at the green lantern but he's still
 ## sat next to the pole": the Great Lantern is the pole, and Bram is on his
 ## stool beside it; the words say so now, and the arrow points at him)
-const EVENING_CORIN := "Enjoy the festival. Before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green).\nCorin's gone off on his own, down by the mill race. (Follow the arrow, or the light: the lane by the signpost, east of the green.)"
+## (8 November, Gary: Corin's evening can't be missed; until it's done Bram
+## sends the player to him, so the words put Corin first.)
+const EVENING_CORIN := "Enjoy the festival. Corin's gone off on his own, down by the mill race: find him. (Follow the arrow, or the light: the lane by the signpost, east of the green.)\nThen, before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green)."
 const SUN_GOING := "The sun's going down. Go back to Bram, on his stool by the Great Lantern (the tall lantern pole in the middle of the green)."
 const EVENING := "Enjoy the festival. Before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green)."
 
@@ -123,8 +125,10 @@ static func at_mill(p: Vector3) -> bool:
 # ============================================================ the light ===
 
 ## Everyone and the light as this time of day has them (on arrival, after a
-## game is loaded part-way through the day; again is harmless).
-static func stage(w: World) -> void:
+## game is loaded part-way through the day; again is harmless). `place`
+## false keeps everyone where they are (straight after the opening:
+## Ashford.resume).
+static func stage(w: World, place := true) -> void:
 	var v := village(w)
 	if v == null or Game.flag("ash_lantern_duel"):
 		return
@@ -132,8 +136,9 @@ static func stage(w: World) -> void:
 	v.set_daylight(0.0 if ph == "evening" else 1.0)
 	if not Game.flag("ash_started"):
 		return
-	for id in ["corin", "tilly", "tam"]:
-		_to_spot(w, id)
+	if place:
+		for id in ["corin", "tilly", "tam"]:
+			_to_spot(w, id)
 	if ph == "evening":
 		_sit_corin(w)
 		if Game.flag("tam_dances"):
@@ -737,7 +742,12 @@ static func _corin_pond_film(w: World, m: Dictionary) -> void:
 	# a two-shot as they sit: the pair on the wall, the race and the lit
 	# mill behind them
 	_pond_shot(w, "", seat, beside, fwd, along)
-	await AshfordP1.sit_down(w, "player", beside, fwd, 0.5, 0.6)
+	# (8 November: their hands at rest on their thighs, and the wall solid to
+	# them, as Corin's are: the sat clip's arms hang, down into the stone)
+	var pfig = w.player_doll
+	if pfig is Figure3D:
+		(pfig as Figure3D).hands_off([_wall_box()])
+	await AshfordP1.sit_down(w, "player", beside, fwd, 0.5, 0.6, true)
 	await Cine.wait(w, 0.5)
 	turning[0] = false
 	var n = w._npc_by_id("corin")
@@ -760,6 +770,8 @@ static func _corin_pond_film(w: World, m: Dictionary) -> void:
 	_pond_shot(w, "", seat, beside, fwd, along)
 	await Cine.wait(w, 0.8)
 	await AshfordP1.stand_up(w, "player", 0.5)
+	if pfig is Figure3D and is_instance_valid(pfig):
+		(pfig as Figure3D).hands_off([])
 	Cine.path(w, "player", [beside + fwd * 1.4 + along * 1.2, arrive], 1.3)
 	Cine.drift(w, seat + fwd * 3.6 - along * 1.0 + Vector3(0, 1.1, 0), seat + fwd * 4.4 - along * 1.6 + Vector3(0, 1.6, 0),
 		seat + Vector3(0, 0.8, 0), seat + Vector3(0, 0.9, 0), 3.5, 38.0)
@@ -993,7 +1005,9 @@ static func sunset(w: World) -> void:
 	lane_sign(w)
 	AshfordP1.put(w, "player", Vector3(1.2, 0, 6.2), Vector3.ZERO)
 	w.cam.fov = World.CAM_FOV
-	_set_objective(w, EVENING)
+	# (Corin first: he's down at the mill race, and the evening's words say so
+	# from the start, not only after a reload as stage() had them)
+	_set_objective(w, EVENING_CORIN if lane_wanted() else EVENING)
 	await Cine.overlay(w).bars(false)
 	w.end_cine()
 	w._focus = w._cam_focus_target()
@@ -1225,7 +1239,8 @@ static func corin_button(w: World) -> void:
 		var take_at := give.global_position + to_p * BUTTON_ACROSS + Vector3(0, -BUTTON_UNDER, 0)
 		take.global_position = take_at + to_p * 0.08 + Vector3(0, -0.07, 0)
 		me.palm(my_side, Vector3.UP, 0.3, 0.6)
-		me.reach(take if my_side == "left" else null, take if my_side == "right" else null, 0.4)
+		# (that hand alone: the other stays where it rests, in their lap)
+		me._reach(my_side, take, 0.4)
 		var come := w.create_tween()
 		come.tween_property(take, "global_position", take_at, 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		await come.finished
@@ -1263,8 +1278,14 @@ static func corin_button(w: World) -> void:
 		await tw.finished
 		await Cine.wait(w, 0.4)
 		me.detach(b)
-		me.let_go(0.35)
-		me.palm(my_side, Vector3.ZERO, 0.35)
+		if me.seat >= 0.0 and AshfordP1.lap_rest:
+			# back to rest on their thigh (sat on the wall: hanging, it went
+			# into the stone)
+			AshfordP1.lap_hands(w, "player", [my_side], 0.45)
+			await Cine.wait(w, 0.45)
+		else:
+			me._reach(my_side, null, 0.35)
+			me.palm(my_side, Vector3.ZERO, 0.35)
 		take.queue_free()
 	else:
 		corin.detach(b)

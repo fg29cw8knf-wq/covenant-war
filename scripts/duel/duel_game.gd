@@ -47,6 +47,10 @@ extends RefCounted
 
 signal logged(text: String, who: int)
 signal state_changed
+## Every beat the presenter is told of (its fx_ method's name and what it's
+## given), as it's told, before the presenter plays it: for a watcher that
+## directs a camera (the Night of the White Sky's filmed duel, WhiteSky).
+signal beat(method: String, args: Array)
 
 const LIFE := "life"      # the attack target that means "their Life"
 const NONE := "none"      # a move that needs no target
@@ -4186,6 +4190,7 @@ func _shuffle(arr: Array) -> void:
 
 
 func _fx(method: String, args: Array) -> Variant:
+	beat.emit(method, args)
 	if presenter != null and presenter.has_method(method):
 		return await Callable(presenter, method).callv(args)
 	return null

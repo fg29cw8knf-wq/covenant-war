@@ -614,7 +614,15 @@ const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb
 ## in under the palm, its tip 7 cm below it, so a palm laid on anything had
 ## the thumb in that thing (3 cm into the shoulder); turned 60 degrees about
 ## the fingers' line it lies along the hand's side.
-const OPEN_FLAT := {"player_a": {"fingers": 70.0, "thumb": -60.0}, "bram": {"fingers": 0.0, "thumb": -60.0}}
+## Player A's is gone (9 November, Gary: "Players hand distort really bad when
+## Bram hands you box"): his rig can't open his hands cleanly (his finger
+## joints sit 3 to 4 cm back in the palm from the knuckles, his palm is
+## weighted to the thumb's bones and his thumb to the fingers'), and opened
+## 70 and -60 degrees the skin stretched to 3.7 times its length, the palm
+## twisted and the wristband's charm tore. His hands stay as he modelled
+## them; the card box sits on his right hand, which is near flat
+## (Ashford.BOX_FIT `carry`), and tools/hand_weights.py has what was tried.
+const OPEN_FLAT := {"bram": {"fingers": 0.0, "thumb": -60.0}}
 
 
 class Posture:
@@ -1674,8 +1682,11 @@ func _keep_out_of_solids(delta: float) -> void:
 ## `aside` (palm): m across to their left from the palm's middle (negative:
 ## to their right; 6 November: a box held on two hands sits off the left
 ## palm towards the right, so the left thumb is clear of it).
-func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0, ahead := 0.0, aside := 0.0) -> void:
-	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap, "ahead": ahead, "aside": aside}
+## `tilt` (palm, radians, 9 November): pitched about its own across axis, its
+## front down, off the palm's way (a box kept level on a hand tipped back so
+## it rests on the palm's middle and not on the curled fingertips).
+func attach(node: Node3D, mode := "palm", side := "right", lift := 0.0, turn := 0.0, gap := 0.0, ahead := 0.0, aside := 0.0, tilt := 0.0) -> void:
+	_in_hands = {"node": node, "mode": mode, "side": side, "lift": lift, "turn": turn, "gap": gap, "ahead": ahead, "aside": aside, "tilt": tilt}
 	if _skel != null and not _skel.has_node("HandsOff"):
 		hands_off(_solids)
 
@@ -1777,7 +1788,7 @@ func _place_held() -> void:
 		if z.length() < 0.05:
 			z = f.basis.z
 		z = z.normalized()
-		var b := Basis(up.cross(z), up, z) * Basis(Vector3.UP, float(_in_hands.turn))
+		var b := Basis(up.cross(z), up, z) * Basis(Vector3.UP, float(_in_hands.turn)) * Basis(Vector3.RIGHT, float(_in_hands.get("tilt", 0.0)))
 		node.global_transform = Transform3D(b.orthonormalized(), f.origin + up * lift + z * float(_in_hands.get("ahead", 0.0)) + up.cross(z) * float(_in_hands.get("aside", 0.0)))
 		last_hold = {"palm": f.origin, "up": up}
 

@@ -603,6 +603,79 @@ errors, 25.8 turns, first player 52%; `duel_cine_shot` every part with
 none; `duel_monkey -- 1 --3d` no script errors. The impact punch and the
 Forward+ look weren't seen here (software GL): worth a look on the Mac.
 
+### The moving duel camera (8 November)
+
+Gary (8 November): "During battle can we have the camera pan around the
+playing board so we can watch whats happening from all angles and have a
+button at the top if players would rather have it locked like it is now."
+
+**Moving (the new default).** On the 3D field the camera's home stops being
+one place and becomes a path (`DuelField3D`, "the moving camera"): it
+travels slowly round the Circle, a lap in about 80 seconds
+(`ROAM_SPEED` 4.5 degrees a second, a little quicker and slower as it goes,
+`ROAM_SPEED_SWAY`), looking down from 28 to 40 degrees (`ROAM_PITCH`,
+`ROAM_PITCH_SWAY`; never under `ROAM_PITCH_MIN` 20 on the path) and coming
+in and out a little (`ROAM_DIST` 13.4 m, `ROAM_DIST_SWAY`), lens 34
+(`ROAM_FOV`), looking a little short of the middle towards itself
+(`ROAM_NEAR`) so the Circle sits up clear of the hand. Every side of the
+board is seen in a lap, the rival's end included. What the duel does still
+takes it where things happen: the attack shots, the knockout close-up, the
+hero shot of a big call and a Summon's descent are the 4 November shots as
+they were; a Totem called (below tier 3, which has the hero shot) is now
+watched from round in front of it as it arrives (`roam_view`: as near its
+front as `VIEW_ROUND` 70 degrees, never more of a swing than `VIEW_SWING` 60
+from where the camera is, 21 degrees above it, about 9 to 10 m off, for
+`VIEW_SECS` 2.6); and a lean (`cam_focus`: a Rite on a Totem, an answer
+being chosen) leans in from the path rather than from home (`roam_lean`).
+When a shot ends the camera flows on from wherever the shot left it
+(`_roam_from_here`), not back to home.
+
+**The player's choices are never harder.** Whenever the player has
+something to choose on the field (their turn's choosing, a slot to pick,
+an answer, a lesson from Bram's memory up: `DuelScreen._choosing()`, set on
+the field every frame as `roam_hold`), the path is the true home view, and
+once settled it is exactly home (`_at_home`; `roam_home()`), so every slot
+and tap target is where the locked camera has it. It comes home in about
+two seconds (`ROAM_HOLD_SMOOTH`); a Totem just called is watched at least
+`VIEW_HELD` 1.1 s first. It moves on again as soon as the action plays out,
+and all through the rival's turn. Fast and Fastest move it quicker
+(`pace`).
+
+**How it moves.** Nothing on the path is a tween: its turn round the
+middle, its height, its distance, what it looks at and its lens each follow
+their goal on a critically damped spring (`_smooth`, `_smooth3`;
+`ROAM_SMOOTH` 1.5 s, quicker out of a shot but never quicker than
+`ROAM_QUICKEST` 0.3 s, which is gentler than the locked camera's own
+cubic way home), so it eases off and in and never jerks. Moving, the lens
+is kept clear of every Totem's body and above the mat (`_clearance`:
+`CLEAR_R`, `CLEAR_SOFT`, `CLEAR_ABOVE`, `MAT_CLEAR`), eased in as the path
+takes over (`FOLLOW_IN`). The Totems' name plates keep the size their slot
+looks from where the camera is (`depth_k`; 1 at home and when locked). The
+idle drift, the shake, the kick and the punch are laid over it as before.
+Cost: a few sums a frame.
+
+**The button.** At the top, left of the Speed button: "Camera: Moving" /
+"Camera: Locked" (`DuelScreen.cam_btn`, `_set_camera`), kept in
+`Game.settings.duel_camera` ("moving" by default, or "locked") and saved at
+once; Options has it too ("Duel camera", Moving / Locked, under Battle
+speed). **Locked is exactly the camera as it was** (`roam_on` false: none of
+the above runs, the plates keep their row sizes).
+
+**Untouched:** a filmed duel (the White Sky's, `spec.film`) never moves on
+its own (`set_roam` is never called for one, so its `set_home`/`cam_home`
+work as before); the flat 2D field has no camera and no button; Summon
+videos, puzzles and lesson duels play as before (a lesson up holds the
+camera home).
+
+```sh
+# the moving camera: a lap of the path (stills every `every` s), the player's choosing (exactly home),
+# a call on each side, an attack's shots and back onto the path, the button (locked and saved, moving again):
+xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
+    res://tests/duel_camera_shot.tscn -- <dir> [path] [choose] [call] [attack] [button] [every=12] [nostills]
+```
+`tests/duel_cine_shot` now sets the camera to locked, since its checks are
+the locked camera's.
+
 ### Kaethis, the Hand Before: Bram's god and its cards (5 November)
 
 Gary: "top tier totems that will be under his own god"; he said yes to Kaethis on 6 November (the name, Astral shared with Aster, and the faceless hunter being Kaethis's, kept secret until Interlude A or Part 3). Bram's old god, from the pantheon doc of 4 November: the god of fate and destiny, Astral (shared with Aster, as Pyrrhane and Ysolde share Fire), attribute Resolve, outside every bloc, with no Seat, so no Kingdom Law, no arena and no Blessing (`Lore.GODS.kaethis`; its Divine Gift `foreordained`: draw a card, and the card on top of the rival's deck goes to its bottom, two cards on full Favour; the doc's "look at the top five of both decks and order them" wants a picker, so the Gift's text says what it really does). It isn't in the Duel Lab's patron list or any pool, starter deck or Sigil Cache yet; a 14th god breaks nothing that walks the gods (`GREAT_GODS` stays seven; Standing, the Favour meter, the god seals and the Gift button all go by `Lore.GODS.has` and fall back to the drawn seal while `assets/art/gods/kaethis.jpg` is missing). Its name lives in `Lore.GODS` only: the cards' backstories take `{god}` and `{title}` from there (`DuelLore.backstory`). Eleven cards (`duel_cards.gd`, the KAETHIS section; `DuelSynergy.CARD_GOD` gives ten of them to Kaethis, the Glyph Warden is Aldrith's by its element): the Totems **The Scrivener** (Crystal, 3, 180 HP; Strike the Name pierces Guard), **Loomwarden** (Crystal, 4, 220, Guardian; Tangle Roots), **The Unspent Hour** (Relic tier, 4, 190, Swift; Turn the Glass Staggers), **The Weft Serpent** (Legend, 5, 240; Unravel Marks, Weave Shut +40 on the Marked, `bonus_if_status`) and Aldrith's **Glyph Warden** (Mystic, Relic tier, 3, 180, Guardian and Shelter; Binding Glyph Silences); the Summon **Orlanthe, the Last Page** (Demigod, 7: Final Entry, 140 to one foe through Guard, every other foe Doomed: the new `doom_others` op beside Grondmaw's `stun_others`, in `_summon_strike` and the AI's `_summon_score`); the Rites **Cut Thread** (Dooms a foe) and **Foreordained** (draw, and the new `rival_top_to_bottom` op, scored by the AI's `_rite_score`); the Ward **Already Written** (`foe_rite` → `cancel_rite`, so like the Counter Rune it stops a Summon too); the Relics **Hourglass With No Sand** (a move, The Fixed Hour, 2: 50 and Staggered) and **Knotted Cord** (+30 HP and a card when it falls: `relic_text` now joins a Relic's parts, so one Relic can give two things). Until Gary's paintings and models come each Totem stands as a tinted stand-in (`stand_in` + `stand_in_tint`): the Scrivener a parchment Gilded Sentinel, the Loomwarden a pale Mirewidow, the Unspent Hour a pale-blue Somnowl, the Weft Serpent a parchment Riptide Serpent, the Glyph Warden an indigo Quarry Golem; Orlanthe with no cut-out, scene, model or `summon_orlanthe` stinger falls back as any Summon does (the drawn card in the Summon cinematic, the landing's starlight, the "summon" sound under the duel's music). `DuelGame.demigod_of` now skips a Summon `CARD_GOD` gives to another god, so Aster's sworn aren't offered Orlanthe at full Favour (Aster has no Demigod, as before). Prompts: `docs/card-prompts.md` "Round 9: Kaethis, the Hand Before" (the god's painting, every card, Orlanthe's sky scene, the 3D model lines and the stinger's music prompt). Later, not in this round: the doc's small Kaethis cards (Thread Moth, Spindle Cat, the Written Hound, the Knot-Warden).
@@ -1470,6 +1543,498 @@ v7 wins; the parts it changed:
   duel's lines `rival_ward_springs` and `my_ascends`), the morning, Dask by
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
+
+### Gary's 8 November evening notes (the memory, the morning, the green, the evening)
+
+Gary's notes from playing the Mac build on the evening of 8 November, and
+what each became (`docs/handover/2026-11-08-eve.md`). The moving duel
+camera he asked for the same evening is in the Duel Lab ("The moving duel
+camera"); his Weft Serpent file that evening was the same file as the
+morning's (the colour picture identical pixel for pixel), so nothing
+changed there. Morrowen's opening line is to be recorded again (Still to
+Make, before the attic). Every look plays as Player A in the game.
+
+**The Night of the White Sky**
+
+- **"Make it so you can't skip Bram's bit at the beginning"**: a tap skipped
+  the filmed duel, and once the memory had been seen
+  (`Game.settings.seen_white_sky`) a Skip button at the top right skipped
+  the lot. Both are gone (`WhiteSky._ready`, `play`, `_duel`, `_close`):
+  nothing in the memory can be skipped now, first time or any time after;
+  taps still move the lines on as everywhere else. `WhiteSky.skip()` stays
+  for the tests (`white_sky_test ... skip`), with nothing in the game
+  calling it.
+
+- **"Think there needs to be more of a pause or action before hooded figure
+  shows up"**: both times it appears.
+  - *On the walk* (`_glimpse`): it used to fade in the moment he came
+    within `GLIMPSE_AT` of the crater, with nothing to say anything was
+    there. Now the storm drops first: the wind falls away (`_wind_to`,
+    `WIND_HUSH_DB`) and the music dips under it (`Music.duck`), the Sigils
+    stop coming down and the snow thins and slows (`_storm_to`, the snow's
+    `amount_ratio` and `speed_scale`) over `GLIMPSE_HUSH` 1.6 s; the
+    camera's eyes are drawn off to the side of the way ahead
+    (`_glimpse_look`, `GLIMPSE_EYES` 0.5 of the way to it, the roaming
+    camera still following him) and his head turns with them
+    (`Figure3D.eyes_on`); a gust lifts the snow there and it takes form in
+    it (`GLIMPSE_FORM` 1.8 s), watching him (`GLIMPSE_HOLD` 3 s); then the
+    wind comes back with a gust and it's gone, his eyes and the camera's
+    back to the way ahead, the Sigils falling again. The walk stays his the
+    whole time (his 5 November note: nothing takes it from him).
+  - *On the rim* (`_the_hunter`): a heartbeat after the child was tucked in
+    his coat it was simply on the rim. Now the night goes still first: his
+    eyes on the child in his coat, the wind falls away to almost nothing,
+    the Sigils stop and the snow all but hangs in the air, the crater's
+    light sinks (`_crater_k` to 0.32) and the music dips; cut wide and low
+    behind him, small in the bottom of the bowl under the empty rim, the
+    camera creeping in (`RIM_HUSH` 3.4 s). Then a sound up there in the
+    dark, a hound's whine, low and far off (`_far_whine`: Gary's
+    `hound_whine` pitched down, the hunter's pack); his head comes up to
+    the rim (`RIM_SOUND`). Snow lifts off the lip in a gust and the shape of
+    something stands in it, half there (`RIM_FORM_HALF`, faded to 0.4),
+    then whole (`RIM_FORM`), and it walks the last `RIM_BACK` 1.6 m to the
+    edge on its own walk clip (`Hunter.walk_to`, `RIM_STEP` 1.2 s, the
+    clip's pace from `Figure3D.OWN_GAIT` shard_hunter, so its feet don't
+    slide) and stops, looking down at him. As it forms a cold light finds
+    it (`RIM_LIGHT`: dark on the dark sky it was all but lost), and it's
+    seen on a long lens over his shoulder (`RIM_LENS` 26 degrees, the
+    camera more nearly behind him than before so no edge of his cheek shows
+    past his hair as his head comes up). Coming up over the lip from behind
+    it, its feet are hidden by the lip until it walks to the edge. "Not this
+    one." The cards rise and the white comes as before. From the tuck to the
+    white is about 11 seconds now (was about 5). Every shot is from behind
+    him.
+
+- **"Can we make the battle more movie like or give me images and prompt
+  and I'll make it a movie"**: both.
+  - *More like a film* (`WhiteSky._duel`, `_on_beat`): the camera used to
+    cycle through five fixed wide shots every 6.5 s while the duel played
+    in the middle distance. Now every beat the duel's presenter is told of
+    chooses the shot (`DuelGame.beat`, a new signal sent with each `fx_`
+    call, connected deferred so the film's shot comes after the duel
+    screen's own camera calls and stands). A Totem called rises in a low
+    hero shot (`_beat_call`); an attack is seen from behind the attacker
+    across at what it's going for (`_beat_attack`), and a big blow cuts to
+    where it lands with the camera shaken by it (`_beat_hit`, `BIG_BLOW`
+    60; a small one just shakes the shot that's up); a Totem broken is held
+    close (`_beat_ko`); a blow on Bram is seen over his shoulder as he takes
+    it, and he flinches (`_beat_life`, his `hit_react`); the hunter's Doom
+    on the Scrivener is held close (`_beat_close`); each turn opens on
+    whoever's turn it is, over his shoulder or the hunter across the Circle
+    on a long lens, creeping in (`_beat_turn`, `_creep`); a Rite or a Ward
+    shows who cast it (`_beat_rite`); when nothing's happened for
+    `IDLE_WIDE` 3.8 s, one of the wide shots drifts into place (`WIDES`).
+    Black bars of a widescreen film over it all (`_film_bars`:
+    `FILM_ASPECT` 2.35 where the screen's narrower, each bar 4 to 10% of
+    the height, a little deeper for the Last Page). No ordinary cut sooner
+    than `MIN_HOLD` 1.3 s after the last. Called down, the Last Page has the
+    picture to itself: tight over his shoulder looking up, pulling back low
+    to `CLIMAX` as it comes down (`_climax_shot`), the camera shaken as its
+    blow lands, and held a second on it (`CLIMAX_HOLD` 1.0, was 0.5) before
+    the white comes over 1.5 s (was 1.2). The Totems' cards lying on the
+    field under them, with their names and numbers, are kept out of the film
+    (`_hide_plates`; the rune rings still mark the Circle's places). The
+    hunter's hounds lost the white rectangles that stood off them: the smoke
+    (`DuelField3D.spectral`) was laid over each model's whole mesh, and the
+    Blazehound's flames and the foxes' glows are flat cards with a picture
+    cut out of them, so each card showed as a white sheet; a creature of
+    smoke has no flames, so those parts are taken out of a spectral model's
+    mesh (`DuelField3D._drop_see_through`; only the hunter's side in the
+    White Sky is ever spectral). The duel plays a little slower so each beat has its moment
+    (`WhiteSkyDuel.FILM_SPEED` 2.2, was 3.0; the same duel, beat for beat:
+    the seed decides it, not the speed).
+    *Bram's face is never seen*: every shot is checked first
+    (`_face_seen`: his head in the picture, with room to spare for the
+    duel's widened picture and its drift, with the camera anywhere but
+    behind his shoulders; side-on counts), and a shot that fails gives way
+    to the next of its kind. That check threw out two of the old five wide
+    shots (from out at the sides of the Circle, his face three-quarters on
+    in the corner of the picture), so the wides are `WIDES` now. His own
+    Totems' hero shots come from low behind them (from in front the picture
+    looked back into his face); the hunter's attacks are seen from behind
+    what they're going for (from behind the hounds it looked into his face,
+    and stood the camera inside the hunter, `_in_the_way`).
+    *The duel's own camera in a film*: the duel screen still sends the
+    field's camera home, and leans it at what's happening, in a film (only
+    its cinematic shots, the bars and the slow motion are off,
+    `DuelScreen._filmed`), so each film shot is made the field's home as
+    it's taken (`_home_on`: `DuelField3D.set_home` with the camera left
+    where it is), and the screen's home and leans keep to it. The film
+    relies on `DuelField3D.cam_shot`, `set_home`, `cam_home`, `cam_shake`,
+    `shot_hero`, `shot_behind`, `shot_close`, `shot_ko`, `body_world`,
+    `foot_world`, `life_world`, `ahead_of` and `cam_moves`, and on no other
+    camera motion being added to a field in film mode (the new moving duel
+    camera must stay off when `spec.film`).
+  - *Gary's own film of it* (`StoryFilm.FILMS["white_sky_duel"]`,
+    `WhiteSky._duel_film`): sixteen shots, `wsd_01` to `wsd_16`, 61 s, each
+    a beat of the duel in its order (the shot list below), no lines over
+    it, Bram's face never in it, no Player A. When his film is there
+    (`white_sky_duel_4k.mp4` through the device's own player, from the
+    films release as the others; else `assets/movies/white_sky_duel.ogv`;
+    else a clip or painting for every shot, `tools/movie_clips.py --film
+    white_sky_duel`) it plays in the duel's place: the hunter's white flash
+    as before, then his film, then the white again and the close to black
+    and Morrowen's last line, as after the 3D duel. So his film should open
+    out of white (the hunter's cards) and end on white (the book opening).
+    If it can't play after all (`"played": false`), the 3D duel plays.
+    Until it comes, nothing changes: the 3D duel, filmed as above.
+
+`tests/white_sky_film_peek.tscn -- <dir> duel|rim|glimpse|refs [every=s]
+[nostills]`: `duel` stills a moment into every film shot, named for the beat
+that chose it, and counts the frames with Bram's head in the real camera's
+picture from in front (fails nothing; prints it); `rim` and `glimpse` a still
+every `every` s through the build-ups; `refs` reference pictures (Bram from
+behind, the hunter full length, the bundle, the ice field).
+
+**What was checked** (8 November): `load_all` 0 failed; `white_sky_test`
+headless PASS (filmed, Orlanthe called, no script errors; the whole memory
+121 s of game time, was about 95: the two build-ups and the slower duel);
+`white_sky_film_peek duel` headless and rendered: the same duel beat for
+beat as at the old speed (its log compared line by line), 68.5 s, 37 cuts
+(one every 1.9 s on average; 58 before the cutting was calmed), **Bram's
+head in the real camera's picture from in front of his shoulders: 0
+frames**; `rim` and `glimpse` stills looked at (the hush, the eyes drawn,
+the figure in the gust; the wide in the bowl, the whine, the head coming
+up, the figure rising over the lip and walking to the edge on the long
+lens); `white_sky_world -- --story-films` (the memory in the world with the
+film path forced on, its animatic cards): `story film: white_sky_duel
+(shots)`, the white back after it and the close to Morrowen's line.
+
+**Left / worth knowing**
+- Orlanthe has no model in the game yet (Gary's Round 9 list), so the Last
+  Page shows as its column of light; the climax shot is framed for the
+  figure coming down and will show it once it's in. The Glyph Warden is
+  still the drawn stand-in (a purple block).
+- The film relies on the new moving duel camera staying off in film mode
+  (`spec.film` / `DuelScreen._filmed()`), and on `DuelField3D.set_home`,
+  `cam_shot`, `cam_home` and `cam_moves` working as they did.
+- `tests/white_sky_world.gd`: `_shot` now returns at once when headless
+  (it waited for ever on a frame that never comes).
+
+**Gary's film of the duel: the shot list** (`StoryFilm.FILMS["white_sky_duel"]`,
+63 s; the moment is when it happens in the game's own filmed duel, seconds
+from the cut out of the white; the still
+of each, rendered from the game by `tests/white_sky_film_peek.tscn -- <dir> duel`,
+is under its shot in Gary's doc "Films for Player A: Your Step-by-Step",
+Film 8 (https://claude.ai/artifact/4YMbd8HD1gBzrCDM7437ie), with every shot's
+picture and movement prompts)
+
+| Shot | Length | What's seen | Moment in the duel | Still |
+|---|---|---|---|---|
+| wsd_01 | 4.5 s | Out of the white: the Circle in the Shardlands, a ring of trampled snow among towering crystals of blue ice, the torn sky white overhead, snow driving across it. From high behind him: Bram, the child a bulge in his coat under his left arm, cards in his right hand; across the Circle the hunter, its hood empty; on his side the Scrivener and the Loomwarden, on its side the pack (a Blazehound, the Infernal Warg and a Veilfox) made of pale smoke and Sigil light. | 0 to 2 s | wsd_01.png |
+| wsd_02 | 3.5 s | The hunter, close, on a long lens from Bram's side: one long grey hand turns over a card of white light (the Doom Sigil). | 2 to 3.5 s | wsd_02.png |
+| wsd_03 | 4.0 s | The Scrivener (a tall faceless scribe in parchment robes, quill of starlight raised): a black sigil of doom closes round it like a noose of ink; it looks up from its writing. | 3.5 to 5.7 s | wsd_03.png (from behind it: the game never looks back towards Bram) |
+| wsd_04 | 3.5 s | Bram from behind, his right hand up with a card: the Unspent Hour, a winged hourglass of glass and starlit sand, darts out of the light over his shoulder. | 7.3 s | wsd_04.png |
+| wsd_05 | 4.0 s | The Unspent Hour turns its glass on the Infernal Warg and the Warg reels; but a trap springs in the snow under it and green poison mist clings to its glass. | 8 to 11.5 s | wsd_05.png |
+| wsd_06 | 4.0 s | The Scrivener writes a line of silver script at the Blazehound; the Loomwarden (a many-armed weaver of grey thread in a loom of bone-white wood) pulls its silver threads taut through it: the hound bursts into smoke. | 12.3 to 14.1 s | wsd_06.png (the hound breaking) |
+| wsd_07 | 2.5 s | Where it stood, a River Hound of white smoke comes up out of the snow. | 15.0 s | wsd_07.png |
+| wsd_08 | 4.5 s | The pack turns on the Scrivener: the Veilfox's mirage, the Warg's charge of pale fire, the River Hound's bite; steam bursts off it, and it staggers, blinded. | 17.3 to 24.5 s | wsd_08.png |
+| wsd_09 | 3.5 s | The hunter's hand lifts to call more of its kin; Bram's face-down Ward flips at his feet and lines of silver script close over the hunter's card. It comes to nothing. | 25 to 31.7 s | wsd_09.png (over his shoulder as it springs) |
+| wsd_10 | 4.0 s | The Unspent Hour and the Loomwarden break the Infernal Warg: it bursts into smoke and white sparks. A Shieldhound rises in its place. | 33.3 to 36.2 s | wsd_10.png |
+| wsd_11 | 4.0 s | The River Hound's bite takes the Scrivener: it comes apart into pages that blow away, and the blow carries on into Bram; over his shoulder he staggers, his arm going round the child. | 43.8 to 46.3 s | wsd_11.png (the game breaks its Totems into crystal) |
+| wsd_12 | 3.0 s | The hounds drag the Unspent Hour down; its glass cracks and its sand pours out. | 47.5 to 49.2 s | wsd_12.png |
+| wsd_13 | 4.5 s | The Weft Serpent rises out of the snow into the gap, a vast serpent woven of grey and silver thread, rearing over the pack; the Glyph Warden takes the other gap, runes lighting across it. | 51.5 and 53.5 s | wsd_13.png, wsd_13b.png (the Glyph Warden is still the drawn stand-in) |
+| wsd_14 | 3.5 s | Wide, high over Bram's back: the hunter's poison mist rolls over his side of the Circle and his Totems sicken in it. The Circle nearly lost. | 60.3 to 63 s | wsd_14.png |
+| wsd_15 | 6.0 s | The Last Page: the stars draw together into a closed book and Orlanthe comes down out of it, a hooded figure the size of a hill in robes of folded parchment, faceless, the book in one hand. Low behind Bram, up past the hunter at it. | 65.0 s | wsd_15.png (only its column of light: no Orlanthe model yet) |
+| wsd_16 | 4.0 s | The clasp comes undone; the book opens and white light pours out over the Circle, the pack and the hunter, until there is nothing but white. (End on the white: the game takes it to black.) | 66 to 68.5 s | wsd_16.png |
+
+References (`white_sky_film_peek refs`): Bram in his coat from behind, the
+hunter full length and with its white cards raised, the child's bundle, the
+crater, the Shardlands' ice under the torn sky; four of them are in the doc.
+
+Things Gary's film must keep, for the brief: Bram's face never seen (always
+from behind or beside-behind); no words or numbers on screen; open out of
+white, end on white; nobody sees who won. The game's music for it is his own
+`white_sky_duel` (the hush, then the climax) and `summon_orlanthe` for the
+Last Page, if he wants them in the film.
+
+Files: `scripts/story/white_sky.gd`, `scripts/story/white_sky_duel.gd`
+(`FILM_SPEED`), `scripts/story/story_film.gd` (the film and its header),
+`scripts/duel/duel_game.gd` (`signal beat`, sent from `_fx`),
+`scripts/duel_ui/duel_field3d.gd` (`spectral`, `_drop_see_through`),
+`tests/white_sky_film_peek.gd/.tscn` (new), `tests/white_sky_world.gd`.
+
+**The morning**
+
+- **"When eating porridge hand moves in an unnatural way"**: measured on the
+  8 November eating (`tests/eat_probe`, which now prints the arm: how far the
+  wrist bends off the line of the forearm, past the bend the hand is modelled
+  with, how bent the elbow is, and how the hand's speed changes frame to
+  frame, while the hand's on the spoon): reaching to the bowl the arm went
+  out dead straight (elbow 0 to 1 degrees: the bowl was 22 cm in from the
+  counter's edge and he stood 24 cm off it, 52 cm from his shoulder for an
+  arm of 45); at the mouth the wrist was folded 134 to 141 degrees, the fist
+  under his chin with the spoon standing near upright (`SPOON_UP` 118
+  degrees) like a lolly stick; the palm was turned from facing down to
+  facing in and up whatever the forearm did; the rise took 0.42 s; and the
+  correction for the fist's shortfall was learnt only at the two ends, 60%
+  a frame, so the hand lurched at the top of each rise as it caught up (its
+  speed changing by up to 2.3 m/s from one frame to the next, 30 frames
+  over half a metre a second).
+  Now (`AshfordP1._eat`): the bowl's rim is a hand's width in from the
+  counter's edge (`BOWL_IN`, its middle 15 cm in) and he stands up to the
+  edge (`EAT_STAND`, 16 cm off it); he takes the spoon by its handle's end
+  off the bowl's rim (`SPOON_PICK_LIFT`), the handle lying in the curl of
+  his fingers (`SPOON_GRIP`: held 1.2 cm over the palm's middle it hung
+  under his open hand and read as nothing held), and each mouthful goes as one
+  does: the spoon dips into the oats and draws through them towards him
+  (`SPOON_SCOOP`), lifts straight up off the bowl and comes up in an arc to
+  the mouth (`_bezier`, `SPOON_ARC_UP`, `SPOON_ARC_IN`), carried near level
+  and coming in at the lips from in front and to his right
+  (`SPOON_DIR_BOWL` to `SPOON_DIR_MOUTH`: the fist out by the side of his
+  chin), the elbow lifting out as it rises (`SPOON_ELBOW_BOWL`,
+  `SPOON_ELBOW_MOUTH`), the lips take it (in a centimetre, the bowl end
+  tipping up 16 degrees, back out: `SPOON_TAKE`), and down the way it came;
+  2.7 s a mouthful (`SPOON_SECS`). The hand is always turned square to the
+  forearm as drawn round the handle (the hammer grip a hand modelled as a
+  loose fist has: a straight wrist, the spoon out past the thumb;
+  `SpoonHold.fore`), and the shortfall is corrected every frame against what
+  was asked the frame before, a third of it a frame, at most 10 cm, and not
+  while the arm's at full stretch (`SPOON_FEEDBACK`, `SPOON_CORR_MOST`). At
+  the end the spoon goes back on the bowl's rim where it was, instead of
+  jumping there. The spoon's hold (`SpoonHold`) is put after the arm's reach
+  and the hand's turn in the skeleton's list (before them it read the arm as
+  the clip had it, the hand by his hip).
+  After (`eat_probe`, Player A, 10 frames a second): the wrist bent at most
+  16 degrees (was 141), the elbow 54 to 115 degrees, never straight (was
+  locked at 0 reaching for the bowl), the spoon's bowl 2.6 to 2.7 cm from the
+  lips at each of the three mouthfuls (it stops 2 cm in front of them by
+  design, `SPOON_AT_MOUTH`), the hand's speed changing by at most 0.9 m/s
+  from one frame to the next (was 2.3; 0 frames over the probe's 1.0, was
+  30 over 0.5). Stills looked at: the handle through his fingers, the bowl
+  down in the oats, the hand by the side of his mouth as it goes in.
+  `tests/eat_probe.gd` now measures and fails on a wrist past 70 degrees, a
+  locked elbow and a jerk, while the hand's on the spoon, and counts the
+  lips' in and out as one mouthful.
+
+**The green**
+
+- **"I like Corin walking over while you put lantern down but then he
+  disappears and walks over again"**: the walk itself was right; it was
+  undone afterwards, and only on a New Game. There World plays the opening
+  through `Ashford.intro()` and then calls `Ashford.resume()`, and resume
+  staged the green for the time of day (`AshfordDay.stage`); by then the
+  opening had set `ash_started`, so `_to_spot` put Corin straight back on
+  his morning spot by the drum, 8.9 m away, the moment the opening ended,
+  and his talk (`corin_calls`) walked him all the way over again (his
+  first line 17.2 s into the green instead of 13.3). `pose()` there could
+  also have sat Bram down onto his stool from wherever he was. The probes
+  came in through a saved game, where resume runs before the opening and
+  moves nobody, so they never saw it. Now the opening marks the world
+  (`p1_opened`) and resume, straight after it, neither poses nor moves
+  anyone (`AshfordDay.stage(w, place)`); a game loaded later is staged as
+  before. `tests/notes_1106_shot.tscn -- <dir> walk newgame` comes in as a
+  New Game does; `restage` puts the old behaviour back for the probe's
+  own check. Before (restage): Corin jumped 8.87 m in a frame at the
+  opening's end and walked away from the player and back, first line at
+  17.2 s. After: 0 jumps, never hidden, one walk, at his mark at 9.9 s, the
+  crate down at 10.8 s, his first line at 13.3 s, both ways in (New Game
+  and from a save).
+- **"Talking with Corin can't have 'enough, let's settle this with a
+  duel' as the player knows he doesn't have any cards"**: the player's
+  last pick in Corin's hub was "Enough talking. Let's settle the Lantern
+  Duel.", straight before "I would, but I don't have a deck." Now the
+  player only asks, "You were serious about the Lantern Duel?", and it's
+  Corin who throws it down: "Last Lantern Night before I'm off to the
+  city, and I'm not going out on a win over Hob and his cabbage-patch
+  Sparks. You and me, in front of the whole green. Deck out, Sprout."
+  (worded to stand on its own, since the hub ends by itself when the
+  questions run out). Then "I would, but I don't have a deck." and Bram's
+  "You do now." as before (`Ashford._corin_morning`; the Master Script v7
+  doc, `docs/script/v7_prologue.md`, and the voice sheet, `vo_lines.csv`,
+  where it's a new line for Corin to record).
+- **"Corin's letter has moved from his pocket to his chest"**: since 25
+  October the clerkship letter, full size (14 x 9.5 cm), stood inside the
+  vest's neck, a big white sheet up by his collar (`COAT_LETTER` on
+  Spine2). His vest has two patch pockets on its right side, painted in his
+  picture; the upper one stands a little proud of the vest at its top edge.
+  The letter is folded small now (`COAT_LETTER_SCALE` 0.45: 6.3 x 4.3 cm)
+  and stands on end in that pocket (`COAT_LETTER_BONE` Spine1, nearer the
+  pocket than Spine2, so it moves with it), its top two centimetres out of
+  the pocket and leant 17 degrees out from him at the top, the rest down
+  in the pocket (`COAT_LETTER`, `COAT_LETTER_ROT`). The question about it
+  stays "What's that letter tucked into your coat?". After, through his
+  idle, walk, talking, cheer, fight stance and the slump: only the
+  letter's top shows (its top fifth in every frame, a little more in a
+  tenth of the cheer's, the rest never), it stands at most 1.4 cm off his
+  vest, and no arm or hand touches it (in the old place the top two
+  fifths stood out over his collar, up to 5.3 cm off him, and his arm went
+  0.4 cm into it in the fight stance).
+  `tests/corin_letter_probe.tscn` (new) finds the two pockets in his
+  picture by where they're painted, measures the letter against his skin
+  each frame (rays from the letter out through his coat's triangles, and
+  his arms' vertices against it), `fit` searches a placement, `stills=`
+  takes close-ups; `tests/corin_props_shot.tscn`'s chest still now looks
+  at the pocket.
+
+Checked: `load_all` 0 failed; `notes_1106_shot walk newgame` and `walk`
+(from a save) ok, 0 jumps, never hidden, first line at 13.3 s both ways;
+`walk newgame restage` fails as it should (the 8.87 m jump);
+`corin_letter_probe` ok; stills of the pocket (`corin_letter_probe
+stills=`, `corin_props_shot`) looked at. The voice sheet was regenerated
+for Corin's new line (`tools/vo_sheet.py`); rerun it once everyone's lines
+are in, since it reads every script.
+
+- **"Players hand distort really bad when Bram hands you box"**: since 8
+  November (Gary: "Left hand still goes through box...") a flat hand asked of
+  Player A opened his fingers 70 degrees at their roots and turned his thumb
+  60 degrees (`Figure3D.OPEN_FLAT`), and his rig can't take it: Tripo3D put
+  his finger joints 3 to 4 cm back in the palm from his knuckles, weighted
+  his palm to his thumb's bones and his thumb to his fingers'. Measured on
+  the mesh (`tools/hand_weights.py`, which simulates the opening on the bind
+  pose): the left hand's skin stretched to 3.7 times its length, 132 of its
+  1214 triangles over 1.6 times (the right 2.9, 50), the palm twisted with
+  the thumb's turn and the wristband's charm torn. Re-weighting the fingers
+  as one block opened about the true knuckle line (tried at 30 to 90
+  degrees) still tore them where the curled fingers meet the thumb (2.5
+  times at the 99th percentile), since the modelled fist joins them. So his
+  hands are kept as he modelled them (`OPEN_FLAT` has no Player A now) and
+  the hold suits them: his left hand is a loose claw (fingers standing 10 to
+  12 cm up off the palm, the thumb across it), his right near flat (its
+  fingers curl 4 cm up at most). The box goes on his right hand
+  (`Ashford.BOX_FIT` `carry`, `carry_side`, `other_side`, `_box_mirror`:
+  every mark of the hold mirrored), resting on the thumb's mound and the
+  curl of his fingers, a cupped hold (`bottom` 3.5 cm, `heel` 3 cm forward);
+  only that hand goes in under it as Bram holds it out (`one_hand`), and his
+  left, with its curled fingers, comes up round the box's side to the lid's
+  edge and lifts it (the path the right hand took, mirrored); after the
+  reveal the box stays on his right hand at the waist. Looks B, C and D keep
+  the two-handed hold on the left hand as tuned on 8 November.
+  `_box_left_at`/`_box_right_at` are `_box_carry_at`/`_box_other_at`;
+  `tests/box_hold_probe.gd` follows the carrying hand. The right palm is
+  cupped (its middle 2.4 cm up, the thumb's ridge 3.2, the curled fingertips
+  3.7), so a box laid flat on the highest of it stood 1 to 3 cm clear of the
+  palm and looked to float: it's tipped 6 degrees front up on the hand
+  (`Figure3D.attach`'s new `tilt`; `BOX_FIT` `tilt`, `_box_tilt`,
+  `_box_lift`), resting along the thumb's ridge and the fingers' curl, the
+  fingertips up in front of it; held level in Bram's hand it's clear of the
+  thumb (`level`, `_box_level_bottom`) and settles to the tip as it's brought
+  in. The left hand lifts the lid with its palm held 13 cm over it and 6 cm
+  in from the far edge (`lid_over`, `lid_back`), so the curled fingers come
+  down onto the lid, not through it (at the bottom's height they went 2.1 cm
+  into the box).
+  After: `box_hold_probe a`: no skin of either hand in the box or the lid
+  at any stage (taken, centred, on the one hand, lid up). In the game
+  (`notes_1106_shot deck look=a`, 92 frames): the right hand clear of box and
+  lid every frame; the left at the lid: its curled fingertips over the lid's
+  far edge 1.1 cm deep for 6 frames as it swings up, and 0.7 cm into the
+  box's far rim for 2 frames as it starts (was 2.1 cm with the palm at the
+  bottom's height; raising it and moving it in from the edge didn't shift
+  these: they're the fingertips wrapped on the edge doing the lifting, which
+  reads right in the stills). No hand stretched or twisted in any still.
+  Still open: a box on a cupped palm has a hollow under its middle, seen from
+  the little finger's side at the box's own height; looks B, C and D weren't
+  re-run (their hold is unchanged).
+- Tam's letter (found on the way): the player's hands at its sides were
+  opened by `OPEN_FLAT` too (flat 1.0), with the same stretching (the left
+  hand twisted and its charm torn in the stills); with it gone his hands are
+  as modelled there, curled, no skin in the letter before or after
+  (`tests/letter_hold_peek.gd`, new). Left as it was: his palms sit 3 to 4 cm
+  out from the letter's edges, not on them (the palm frame is offset from
+  Player A's mesh), both before and after.
+
+**The afternoon and the evening**
+
+- **"You can miss talk with Corin by talking to Bram first in the evening. I
+  don't want that to be possible: if you talk to Bram first have him say Corin
+  was looking for you over by the mill"**: Bram's evening talk
+  (`Ashford._bram_evening`) only offers "It's nearly midnight." once Corin's
+  evening on the mill-race wall is done (`corin_pond`). Before that, after his
+  "Look at them" lines the first time, he says: "Corin came looking for you
+  while they were lighting the lanterns. Wouldn't say what for. He's gone off
+  down by the mill, sat on the race wall on his own." / "Go and find him,
+  Sprout. He's leaving soon enough, and he's too proud to come looking
+  twice." (`bram_sent_corin`), and any time after that before Corin: "He's
+  still down at the mill race, Sprout. Go on. Midnight'll keep." The evening's
+  words put Corin first from the moment the sun's down
+  (`AshfordDay.EVENING_CORIN`: "Enjoy the festival. Corin's gone off on his
+  own, down by the mill race: find him. (Follow the arrow...) Then, before
+  midnight, find Bram..."; `sunset` set the old Bram-only line, and Corin
+  only came into it after a reload), and the arrow points down the lane to
+  "Corin, at the mill race" until he's seen, then to Bram. Master Script v7
+  (`docs/script/v7_prologue.md`) has the new lines and the rule. The rest of
+  the evening: Tilly's thanks can't be missed (she runs up the moment the
+  player's near her, and the sunset leaves them 2.4 m from her); Tam's bread
+  and Nell's dance can, as the script has them (optional; nothing later
+  depends on them but Tam dancing at midnight). `tests/evening_order_test.tscn`
+  talks to Bram before Corin (twice) and after, and checks the words, the
+  arrow and that midnight starts only after Corin.
+- **"You can run through the villagers next to Ned"**: the dancers by Ned's
+  fiddle, the children round Corin and his mam at the bakery door were
+  extras with no body at all (`Cine.spawn` stands them in a bare node), so
+  the player ran straight through them; the talking villagers (Ned, Hob,
+  Bram, Tam...) had World's own and were solid already. Each has one now,
+  `AshfordLife.solid` (an upright cylinder under their feet, 0.28 m across
+  the shoulders, a child's 0.21, in the node they stand in, so it goes where
+  they go), made with them in `AshfordP1.crowd`. Only the player is stopped by
+  it: staged walks set positions and already go round people
+  (`Cine.route`), and `Cine.blockers` leaves an extra's body out (it's a
+  person, not a thing in the set; `tests/p1_v7_test`'s solids check too).
+  So nobody dances or runs into a player who's standing still, the reel
+  makes way (`AshfordP1._dance`: when a step in the next `DANCE_LOOK` 0.35 s
+  would bring a dancer into the player, the couples' turning eases to a stop,
+  `DANCE_EASE`, and they dance on the spot until the player moves on; the two
+  couples keep their places opposite each other), a child's run or a
+  shuffle, and Corin's step about, never ends where the player stands
+  (`AshfordLife._on_player`). `tests/green_bodies_test.tscn` runs at each of
+  them from eight sides: before, straight through every one of them; now
+  the player stops at their body (0.0 cm in, every one) and is never left
+  stuck (0 of 55 runs), stands in the reel's way without a dancer coming into
+  them (the reel stops and starts again when they walk off), and Bram's walk
+  past the dancers to Ned and the player's staged walk past the children
+  aren't held up.
+- **(found on the way) the player's hands in the race wall**: sat beside
+  Corin on the mill-race wall the player's hanging arms went 9.6 cm into the
+  stone (56 frames of the quick wall run), as Corin's had before 6 November.
+  The pond film sits them with their hands in their lap (below) and the wall
+  solid to their hands (`Figure3D.hands_off`, as Corin's), and the button's
+  hand-over takes only the hand it needs and puts it back on the thigh after
+  (`AshfordDay.corin_button`): 0 frames in the wall, the two palms still not
+  into each other (`tests/notes_1106_shot.tscn wall`, which now watches the
+  player's hands too).
+- **"Hand goes through bench when you sit down with Nell"**: a sat figure's
+  arms are its standing clip's, hanging at its sides, and on the bench that's
+  straight down through the seat beside the hips: the player's hands went
+  right through the boards (3.5 cm, the seat's whole depth to its middle)
+  sitting down, sat and talking (14, 51 and 47 frames), and Nell's free left
+  hand the same all the time she sat there (and her pat on the seat beside
+  her went 1.5 cm under its top). Now the hands have somewhere to rest
+  (`AshfordP1.lap_hands`, `LapMarks`): the player's on their thighs, a little
+  over half way to the knee, palm down, fingers on towards the knee (each
+  hand's mark rides its own thigh, read off the thigh's bones as they're
+  posed each frame, so as they sit down the hands go onto the thighs as the
+  thighs come forward, and stay there through the talk; standing up they push
+  off the thighs as the legs straighten, then go back to the clip by
+  themselves, `LAP_LET_GO`); Nell's free hand over the other on her stick (her
+  skirt stands well off her thighs, so a hand "on the thigh" was inside the
+  cloth and down on the seat; an old woman's two hands on her stick), back
+  there after her pat, which now lays her palm flat on the boards and stops
+  at their top (`PAT_REST`, `PAT_LIFT`). `sit_down(..., lap)` asks for it;
+  `sit_with_nell` and the mill-race wall use it. Measured on the hands' skin
+  (every vertex) against the bench as built (the seat, the backrest, the two
+  legs, the lantern post) every frame (`tests/bench_hands_probe.tscn`, `nolap`
+  for before): the player's hands 0 frames in it (was through it), Nell's 0
+  (was every frame she sat), her pat 0. Left as it was: sat, the hips and
+  thighs press up to 3.5 cm into the seat's top (both of them, before and
+  after: `Figure3D.SEAT_PAD`), under the thighs where it isn't seen.
+  `lap_rest = false` turns it all off.
+
+- **(found on the way) a child running through Nell's bench**: the
+  New Game walk-through (`p1_v7_test`) caught the third child running
+  through the bench as Corin's talk began. With Corin met nearer the crate
+  now, that child's place behind him (`AshfordP1`, "the children gather
+  behind him") fell on the bench, and a walk that ends on a thing goes
+  straight through it: the places are moved off anything solid now
+  (`Cine.off_blockers`). And since a staged walk that starts inside a
+  thing's circle is let through it (`Cine._keep_off`; a long thin bench's
+  circle reaches well past its seat), the children's own runs and shuffles
+  check the straight line against the set's real solids first
+  (`AshfordLife._clear_run`: rays at a child's knee and chest, a body's
+  width either side; people and the ground don't count) and hop on the spot
+  instead when it's blocked.
+- **(found on the way) the voice sheet's scenes**: a line after a lambda
+  (`func(...)`) was filed under the scene "("; `tools/vo_sheet.py` skips
+  those now.
 
 ### Gary's 8 November play-through notes (the memory, the morning, the green, the waking, the dawn, the cellar)
 
@@ -3157,6 +3722,7 @@ seven, in the Still to Make doc's "Films for Player A" tab:
 | `tams_hand` | Tam's duel, his fall, Nell, Krell's orders | `AshfordNight._tam_falls` and her two lines |
 | `no_roof` | the wide shot from the ridge | `AshfordNight._restraint` |
 | `ridge` | the Thornwood's last ridge, Solhaven below | `Thornwood._ridge`'s 3D |
+| `white_sky_duel` | Bram's duel in the Night of the White Sky (8 November: Gary's choice to film it himself; 16 shots, no Player A) | `WhiteSky._duel`'s filmed 3D duel (`WhiteSky._duel_film`) |
 
 What the player does stays in the game between them (the cart heave, the
 tunnel, the look back, the conversations). `scripts/story/story_film.gd`

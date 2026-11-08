@@ -25,7 +25,9 @@ extends CanvasLayer
 ##      he tucks it into his coat ("Hush, now. I've got you."), and turns:
 ##      the faceless hunter on the crater's rim. "Not this one."
 ##   5. Bram's duel, filmed: the real duel engine (DuelScreen, spec.film) with
-##      no HUD and the camera directed, out in the snow; Bram's deck of his
+##      no HUD and the camera directed by its beats like a film (8 November:
+##      _on_beat; Gary's own film of it, StoryFilm "white_sky_duel", plays in
+##      its place once he's made it), out in the snow; Bram's deck of his
 ##      god's cards (Kaethis, the Hand Before, never named here: WhiteSkyDuel)
 ##      against the hunter's pale hounds of Sigil light. Bram plays one-handed,
 ##      the child in his coat; he is losing; he calls down Orlanthe, the Last
@@ -34,8 +36,10 @@ extends CanvasLayer
 ##   6. Black. Morrowen: "Twenty years later, the debt came due." Then the attic
 ##      (AshfordP1._attic): the player wakes, the mark under his collar fading.
 ##
-## A tap skips the filmed duel; once the memory has been seen (Game.settings
-## seen_white_sky, kept across saves) a Skip button skips all of it. The gate
+## None of it can be skipped (8 November, Gary: "Make it so you can't skip
+## Bram's bit at the beginning": a tap skipped the filmed duel, and once the
+## memory had been seen, Game.settings seen_white_sky, a Skip button skipped
+## the lot). Taps move the lines on as everywhere else. The gate
 ## at dawn and the clerk counting the crowns are kept back for the Reckoning
 ## (the reckoning film's shot rk_02b), so the opening doesn't say where Bram's
 ## gold came from.
@@ -82,6 +86,22 @@ const SHOTS := [
 	[Vector3(-9.0, 2.8, 0.6), Vector3(1.2, 0.8, -1.0), 40.0],
 ]
 const SHOT_SECS := 6.5
+## The filmed duel's wide shots, for when nothing has happened for a while
+## (8 November: SHOTS' two from out at the sides of the Circle had him
+## three-quarters on, his face in the corner of a widened picture, so the
+## director keeps to these, each checked by _face_seen): behind him high,
+## behind and low on his left, low behind him up at the hunter, a crane
+## high over his back, the pack's two flanks from between the rows (looking
+## away from him), and behind him on his right.
+const WIDES := [
+	[Vector3(1.9, 3.4, 12.4), Vector3(0.0, 1.0, -1.6), 42.0],
+	[Vector3(6.2, 2.0, 0.4), Vector3(-1.2, 1.0, -4.8), 40.0],
+	[Vector3(-3.6, 1.5, 9.6), Vector3(0.4, 1.4, -3.0), 36.0],
+	[Vector3(0.0, 8.0, 14.5), Vector3(0.0, 0.2, -2.5), 38.0],
+	[Vector3(-6.4, 2.4, -0.2), Vector3(1.4, 1.0, -4.6), 40.0],
+	[Vector3(0.6, 1.0, 10.2), Vector3(0.0, 2.4, -7.4), 32.0],
+	[Vector3(4.8, 1.2, 8.6), Vector3(-0.8, 1.2, -2.0), 34.0],
+]
 ## When his Summon is called: low behind Bram, up past the hunter.
 const CLIMAX := [Vector3(1.2, 0.9, 10.6), Vector3(0.0, 3.6, -6.0), 46.0]
 ## The longest the duel may run before the white comes anyway (s).
@@ -127,7 +147,6 @@ var _ov: CineOverlay
 var _black: ColorRect
 var _white: ColorRect
 var _hint: Label
-var _skip: Button
 var _screen: DuelScreen
 var _wind: AudioStreamPlayer
 var _cry: AudioStreamPlayer
@@ -182,7 +201,7 @@ func _ready() -> void:
 	Gfx.apply(_vp)
 	_build_set()
 	# the touch pad (drag: a joystick; a tap: walk there), under everything
-	# else drawn over the picture, so the Skip button still takes its taps
+	# else drawn over the picture
 	_pad = WorldHUD.TouchPad.new()
 	_pad.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_pad.tapped.connect(_tap_snow)
@@ -203,24 +222,13 @@ func _ready() -> void:
 	_hint.modulate.a = 0.0
 	_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_root.add_child(_hint)
-	_skip = Button.new()
-	_skip.text = "Skip  ▸▸"
-	_skip.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
-	_skip.offset_left = -230
-	_skip.offset_right = -36
-	_skip.offset_top = 36
-	_skip.offset_bottom = 36 + UITheme.TOUCH
-	_skip.visible = false
-	_skip.focus_mode = Control.FOCUS_NONE
-	_skip.pressed.connect(skip)
-	_root.add_child(_skip)
 	_compass = WorldHUD.Compass.new()
 	_compass.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_compass.cam = _cam
 	_compass.label = COMPASS_LABEL
 	_root.add_child(_compass)
 	SafeArea.fit(_compass)
-	_wind = _sound("storm_wind", -14.0, true)
+	_wind = _sound("storm_wind", WIND_DB, true)
 	_cry = _sound("baby_cry", -6.0, true)
 
 
@@ -256,7 +264,6 @@ func _sound(nm: String, db: float, loop: bool) -> AudioStreamPlayer:
 ## Plays the whole memory; returns once it has ended on black.
 func play() -> void:
 	_ov = Cine.overlay(w) if w != null else _own_overlay()
-	_skip.visible = seen()
 	if w != null:
 		_ov.black(false)
 	Music.play(["white_sky", "sigilfall"], 2.0)
@@ -282,10 +289,11 @@ func _own_overlay() -> CineOverlay:
 	return ov
 
 
-## Skips the rest: the white, then the last line and the attic.
+## Skips the rest: the white, then the last line and the attic. (Nothing in
+## the game calls it since 8 November: the memory can't be skipped. The
+## tests use it.)
 func skip() -> void:
 	_skipping = true
-	_skip.visible = false
 	if _ov != null and _ov._waiting:
 		_ov._next.emit()
 	_tapped = true
@@ -533,19 +541,82 @@ func _tap_snow(pos: Vector2) -> void:
 
 
 ## The hunter, off to the side in the snow ahead, for a few seconds: then a
-## gust and it's gone.
+## gust and it's gone. (8 November, Gary: "Think there needs to be more of a
+## pause or action before hooded figure shows up": it faded in the moment he
+## came within GLIMPSE_AT, with nothing to say anything was there.) Now the
+## storm drops first: the wind falls away and the music dips under it, the
+## Sigils stop coming down and the snow thins (GLIMPSE_HUSH); the camera's
+## eyes are drawn off to the side of the way ahead (GLIMPSE_EYES of the way
+## to it, the picture still following him) and his head turns with them; a
+## gust lifts the snow there, and as it thins the figure is standing in it,
+## watching him (GLIMPSE_FORM), held (GLIMPSE_HOLD); then the wind comes
+## back with a gust, and it's gone. The walk stays his the whole time
+## (5 November, Gary: nothing should take it from him).
+const GLIMPSE_HUSH := 1.6
+const GLIMPSE_EYES := 0.5
+const GLIMPSE_FORM := 1.8
+const GLIMPSE_HOLD := 3.0
+## How loud the wind is at its height, and in a hush (dB).
+const WIND_DB := -14.0
+const WIND_HUSH_DB := -32.0
+var _glimpse_at := Vector3.INF   # where the roaming camera's eyes are drawn
+var _glimpse_look := 0.0         # 0..1: how far they're drawn there
+
 func _glimpse() -> void:
 	var f := _heading()
 	var at := _bram.position + f * 9.0 - f.cross(Vector3.UP) * 7.5
-	_hunter.position = Vector3(at.x, height(at.x, at.z), at.z)
+	at.y = height(at.x, at.z)
+	_glimpse_at = at + Vector3(0, 1.3, 0)
+	# the hush: the wind falls away, the music dips, the Sigils stop and the
+	# snow thins
+	_wind_to(WIND_HUSH_DB, GLIMPSE_HUSH)
+	Music.duck(GLIMPSE_HUSH + GLIMPSE_FORM + GLIMPSE_HOLD + 0.6, 9.0)
+	_raining = false
+	_storm_to(0.35, 0.45, GLIMPSE_HUSH)
+	await _wait(GLIMPSE_HUSH * 0.55)
+	# the eyes drawn off to it, his head turning with them
+	create_tween().tween_property(self, "_glimpse_look", 1.0, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(_glimpse_at + Vector3(0, 0.6, 0))
+	await _wait(GLIMPSE_HUSH * 0.45)
+	# a gust lifts the snow there, and it's standing in it
+	_gust(at)
+	_hunter.position = at
 	_hunter.look_at_dir(_bram.position - _hunter.position)
 	_hunter.visible = true
-	_hunter.fade_to(1.0, 1.2)
-	await _wait(3.4)
+	_hunter.fade_to(1.0, GLIMPSE_FORM)
+	await _wait(GLIMPSE_FORM + GLIMPSE_HOLD)
+	# the storm back with a gust over it, and it's gone
 	if is_instance_valid(_hunter):
+		_wind_to(WIND_DB, 0.7)
+		_storm_to(1.0, 1.0, 0.7)
 		_gust(_hunter.position)
+		if _bram is Figure3D:
+			(_bram as Figure3D).eyes_on(null)
+		create_tween().tween_property(self, "_glimpse_look", 0.0, 1.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await _hunter.fade_to(0.0, 0.9)
 		_hunter.visible = false
+	_raining = true
+
+
+## The wind's loudness to `db` over `secs`.
+func _wind_to(db: float, secs: float) -> void:
+	if _wind != null:
+		create_tween().tween_property(_wind, "volume_db", db, secs).set_trans(Tween.TRANS_SINE)
+
+
+## The storm's snow to `blown` of its driven sheets and `fall` of its flakes
+## (0..1 of how many there are, and how fast they go: at the hunter's coming
+## the snow all but hangs in the air), over `secs`.
+func _storm_to(blown: float, fall: float, secs: float) -> void:
+	var tw := create_tween().set_parallel(true)
+	for pair in [[_blown, blown], [_snow, fall], [_near_snow, fall]]:
+		var p := pair[0] as GPUParticles3D
+		if p == null or not is_instance_valid(p):
+			continue
+		var k := float(pair[1])
+		tw.tween_property(p, "amount_ratio", clampf(0.25 + 0.75 * k, 0.0, 1.0), secs)
+		tw.tween_property(p, "speed_scale", clampf(k, 0.08, 1.0), secs)
 
 
 # --- 4. the crater --------------------------------------------------------------
@@ -677,30 +748,132 @@ func _kneel_spot(kd: Vector3) -> Vector3:
 
 
 # --- the hunter on the rim ----------------------------------------------------
+## (8 November, Gary: "Think there needs to be more of a pause or action
+## before hooded figure shows up": a heartbeat after the child was tucked into
+## his coat it was simply there on the rim.) Now the night goes still first.
+## The child is quiet in his coat; the wind falls away, the Sigils stop
+## coming down and the snow all but hangs in the air (_storm_to), the
+## crater's light sinks (_crater_k) and the music dips; cut wide and low
+## behind him, small at the bottom of the bowl with the empty rim above him,
+## the camera creeping in (RIM_HUSH). Then a sound up there in the dark: a
+## hound's whine, far off and low (RIM_SOUND). His head comes up from the
+## child to the rim. Snow lifts off the lip in a gust and the shape of
+## something stands in it, half there (RIM_FORM_HALF), then whole
+## (RIM_FORM), and walks to the edge on its long legs (RIM_STEP) and stops,
+## looking down at him. "Not this one." The cards rise. His face is never
+## seen: every shot here is from behind him.
+const RIM_HUSH := 3.4
+const RIM_SOUND := 1.3
+const RIM_FORM_HALF := 1.6
+const RIM_FORM := 1.3
+const RIM_STEP := 1.2
+## How far back from the lip it takes form, and how far it walks to it (m).
+const RIM_BACK := 1.6
+## The lens on it as it forms and walks to the edge (degrees), and the cold
+## light that finds it.
+const RIM_LENS := 26.0
+const RIM_LIGHT := 1.1
+var _hunter_light: OmniLight3D
+var _crater_k := 1.0   # the crater's light, 0..1 of its own
+
 func _the_hunter() -> void:
 	var rim := CRATER + _ad * RIM_AT
 	var rt := _ad.cross(Vector3.UP)
-	_gust(rim)
-	_hunter.position = Vector3(rim.x, height(rim.x, rim.z), rim.z)
+	var b := _bram.position
+	# the stillness: the child quiet in the high shot a moment longer, as the
+	# storm falls away round them
+	_wind_to(WIND_HUSH_DB - 4.0, RIM_HUSH)
+	_raining = false
+	_storm_to(0.15, 0.12, RIM_HUSH)
+	create_tween().tween_property(self, "_crater_k", 0.32, RIM_HUSH).set_trans(Tween.TRANS_SINE)
+	Music.duck(RIM_HUSH + RIM_SOUND + RIM_FORM_HALF + RIM_FORM + RIM_STEP + 1.5, 12.0)
+	# his eyes on the child in his coat (so his head coming up reads)
+	if _bram is Figure3D and is_instance_valid(_baby):
+		(_bram as Figure3D).eyes_on(_baby.global_position)
+	await _wait(1.2)
+	if _skipping:
+		return
+	# wide and low behind him: small in the bottom of the bowl, the empty
+	# rim up the slope ahead, the snow hanging; creeping in
+	var w0 := b - _ad * 6.2 + rt * 2.2 + Vector3(0, 0.9, 0)
+	var w1 := b - _ad * 4.9 + rt * 1.7 + Vector3(0, 1.05, 0)
+	var rim_look := Vector3(rim.x, height(rim.x, rim.z) + 1.1, rim.z)
+	_shot(w0, rim_look.lerp(b + Vector3(0, 1.2, 0), 0.35), 34.0)
+	_drift(w0, w1, rim_look.lerp(b + Vector3(0, 1.2, 0), 0.35), rim_look.lerp(b + Vector3(0, 1.2, 0), 0.25), RIM_HUSH + RIM_SOUND + 1.0)
+	await _wait(RIM_HUSH - 1.2)
+	if _skipping:
+		return
+	# a sound up there in the dark; his head comes up to the rim
+	_far_whine()
+	await _wait(0.5)
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(rim_look + Vector3(0, 0.9, 0))
+	await _wait(RIM_SOUND - 0.5)
+	if _skipping:
+		return
+	# the snow lifts off the lip, and the shape of it stands in the gust,
+	# a little back from the edge
+	var form := rim + _ad * RIM_BACK
+	form.y = height(form.x, form.z)
+	_gust(form)
+	_hunter.position = form
 	_hunter.look_at_dir(_bram.position - _hunter.position)
 	_hunter.visible = true
-	_hunter.fade_to(1.0, 0.8)
-	var b := _bram.position
-	# low behind his right shoulder, up at the rim
-	var c0 := b - _ad * 2.6 + rt * 0.9 + Vector3(0, 1.0, 0)
-	var c1 := b - _ad * 2.0 + rt * 0.6 + Vector3(0, 1.2, 0)
-	_shot(c0, _hunter.position + Vector3(0, 2.2, 0), 38.0)
-	await _wait(1.6)
-	_drift(c0, c1, _hunter.position + Vector3(0, 2.2, 0), _hunter.position + Vector3(0, 2.0, 0), 6.0)
+	_hunter.fade_to(0.4, RIM_FORM_HALF)
+	# a cold light finds it as it forms (dark on the dark sky, it was all
+	# but lost at that distance)
+	_hunter_light = OmniLight3D.new()
+	_hunter_light.light_color = Color(0.72, 0.8, 1.0)
+	_hunter_light.light_energy = 0.0
+	_hunter_light.omni_range = 4.5
+	_hunter_light.position = Vector3(0.0, 2.0, 1.6)
+	_hunter.add_child(_hunter_light)
+	create_tween().tween_property(_hunter_light, "light_energy", RIM_LIGHT, RIM_FORM_HALF + RIM_FORM)
+	# low behind his right shoulder, up at the rim on a long lens (he's a
+	# shoulder in the corner of it)
+	# (more nearly behind him than the old 0.9 m aside: on the long lens, with
+	# his head up, the edge of his cheek showed past his hair)
+	var c0 := b - _ad * 2.6 + rt * 0.6 + Vector3(0, 1.0, 0)
+	var c1 := b - _ad * 2.0 + rt * 0.45 + Vector3(0, 1.2, 0)
+	_shot(c0, form + Vector3(0, 1.8, 0), RIM_LENS)
+	await _wait(RIM_FORM_HALF)
+	if _skipping:
+		return
+	await _hunter.fade_to(1.0, RIM_FORM)
+	# it walks to the edge, slowly, and stops, looking down at him
+	rim.y = height(rim.x, rim.z)
+	_hunter.walk_to(rim, RIM_STEP)
+	_drift(c0, c1, form + Vector3(0, 1.8, 0), rim + Vector3(0, 1.9, 0), RIM_STEP + 4.0)
+	await _wait(RIM_STEP + 0.6)
+	_hunter.look_at_dir(_bram.position - _hunter.position)
 	await _say(NOT_THIS)
 	if _skipping:
 		return
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(null)
 	# it lifts a hand: cards rise from the snow about it, white
 	_hunter.raise_cards()
 	await _wait(1.6)
 	var fl := create_tween()
 	fl.tween_property(_white, "modulate:a", 1.0, 0.5)
 	await fl.finished
+
+
+## A hound's whine far off in the dark: the hunter's pack, before anything
+## is seen (quiet, low and slow, as heard from down in the bowl).
+func _far_whine() -> void:
+	var path := "res://assets/sfx/hound_whine.wav"
+	if not ResourceLoader.exists(path):
+		return
+	# (a plain player: the memory's picture is drawn in its own viewport,
+	# which has no listener of its own for a sound placed in it)
+	var a := AudioStreamPlayer.new()
+	a.stream = load(path)
+	a.volume_db = -17.0
+	a.pitch_scale = 0.72
+	add_child(a)
+	a.play()
+	a.finished.connect(a.queue_free)
 
 
 # --- 5. the duel, filmed ----------------------------------------------------------
@@ -789,13 +962,41 @@ func _ice_round_duel(f: DuelField3D) -> void:
 		mi.rotation = Vector3(r.randf_range(-0.2, 0.2), r.randf() * TAU, r.randf_range(-0.2, 0.2))
 		f.world.add_child(mi)
 
+## The duel, filmed (8 November, Gary: "Can we make the battle more movie
+## like or give me images and prompt and I'll make it a movie"): both. When
+## his film of it is there (FILM, StoryFilm's ladder: white_sky_duel_4k.mp4
+## through the device's own player, then assets/movies/white_sky_duel.ogv,
+## then a clip or painting for every shot) it plays in the duel's place
+## (_duel_film). Until then the real duel plays as before, directed like a
+## film (_on_beat): every beat the duel's presenter is told of
+## (DuelGame.beat) chooses its shot. A Totem called rises in a low hero
+## shot; an attack is seen from behind the attacker, and a big blow cuts to
+## where it lands, the camera shaken by it (a small one shakes the shot
+## that's up); a Totem broken is held close; a blow on Bram is seen over his
+## shoulder as he takes it; each turn opens on whoever's turn it is (over
+## his shoulder, or the hunter across the Circle on a long lens), creeping
+## in; the black bars of a widescreen film over it all (_film_bars); and
+## when nothing has happened for a while, one of the WIDES, drifting; no
+## ordinary cut sooner than MIN_HOLD after the last. Every shot is
+## checked against Bram's face (_face_seen): a shot that would show it is
+## passed over for the next of its kind, so it's never seen. Called down,
+## the Last Page has the picture to itself: over his shoulder, low, rising
+## to CLIMAX as it comes down. (The duel's own cinematic shots stay off in a
+## film, DuelScreen._filmed: the camera here is the film's alone, through
+## DuelField3D.cam_shot, set_home and cam_home.)
+const FILM := "white_sky_duel"
+
 func _duel() -> void:
-	_skip.visible = true          # a filmed duel can always be skipped
+	if w != null and StoryFilm.available(FILM):
+		if await _duel_film():
+			return
 	if _prep == null:
 		_prepare_duel()
 	_screen = _prep
 	_prep = null
 	_screen_live = true
+	if is_instance_valid(_hunter_light):
+		_hunter_light.queue_free()
 	_root.move_child(_screen, _vpc.get_index() + 1)
 	if _screen.field != null and _screen.field.vp != null:
 		_screen.field.vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -810,57 +1011,504 @@ func _duel() -> void:
 		_face(_bram, Vector3.FORWARD)
 		_hunter.reparent(f.world, false)
 		_hunter.position = HUNTER_AT
-		_hunter.scale = Vector3.ONE * 1.15
+		_hunter.scale = Vector3.ONE * HUNTER_SCALE
 		_hunter.look_at_dir(Vector3.BACK)
 		_hunter.lower_cards()
 		_hunter.visible = true
 		_hunter._set_fade(1.0)
+	_dir_f = f
+	_film_bars(true)
 	var st := {"called": -1.0, "struck": -1.0, "over": false}
 	_screen.game.logged.connect(func(t: String, who: int) -> void:
-		if who == 0 and is_instance_valid(_bram) and (t.contains(" plays ") or t.contains(" calls ") or t.contains(" sets ")):
+		if who == 0 and is_instance_valid(_bram) and (t.contains(" plays ") or t.contains(" calls ") or t.contains(" sets ") or t.contains(" casts ")):
 			_act(_bram, "play_card")
 		if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()) and st.called < 0.0:
 			st.called = _t
 		# the Last Page's blow landing on the hunter's side
 		if st.called >= 0.0 and st.struck < 0.0 and who == 1 and t.contains(" takes "):
-			st.struck = _t)
+			st.struck = _t
+			if _dir_f != null and is_instance_valid(_dir_f):
+				_dir_f.cam_shake(14.0))
+	# (deferred: after the screen's own camera calls for the same beat, its
+	# home and its lean, so the film's shot is the one that stands)
+	_screen.game.beat.connect(_on_beat, CONNECT_DEFERRED)
 	_screen.finished.connect(func(_r) -> void: st.over = true)
 	_screen.go()
+	_wind_to(WIND_DB, 1.2)   # (the storm's back round the Circle after the hush on the rim)
 	var fade := create_tween()
 	fade.tween_interval(WHITE_HOLD)
 	fade.tween_property(_white, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	var start := _t
-	var shot_i := 0
-	var next_shot := 0.0
-	var climax := false
+	_cut_at = _t
+	_free_at = _t + 1.6
+	_wide_i = 0
 	while not _skipping and not st.over and _t - start < FILM_MAX:
-		if f != null and st.called >= 0.0 and not climax:
-			# the Last Page: low behind him, looking up past the hunter at
-			# what's coming down
-			climax = true
-			var c: Array = CLIMAX
-			f.cam_fov = float(c[2])
-			f.set_home(c[0], c[1])
-			f.cam_home(1.4)
-		if f != null and _t >= next_shot and st.called < 0.0:
-			var s: Array = SHOTS[shot_i % SHOTS.size()]
-			f.cam_fov = float(s[2])
-			f.set_home(s[0], s[1])
-			f.cam_home(2.4)
-			shot_i += 1
-			next_shot = _t + SHOT_SECS
-		if st.called >= 0.0 and ((st.struck >= 0.0 and _t - st.struck > 0.5) or _t - st.called > 9.0):
-			break
-		if _tapped and not _skip.visible:
+		if f != null:
+			_hide_plates(f)
+		if f != null and st.called >= 0.0 and not _climax:
+			_climax = true
+			_climax_shot()
+		if f != null and not _climax and _t - _cut_at > IDLE_WIDE:
+			_wide_shot()
+		if st.called >= 0.0 and ((st.struck >= 0.0 and _t - st.struck > CLIMAX_HOLD) or _t - st.called > 10.0):
 			break
 		await get_tree().process_frame
 	# the white: the book opening on the Last Page's blow, or the end of the film; the
 	# music (Gary's white_sky_duel, its climax looping under the duel) stops
 	# dead with it
 	var wt := create_tween()
-	wt.tween_property(_white, "modulate:a", 1.0, 1.2 if not _skipping else 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	wt.tween_property(_white, "modulate:a", 1.0, 1.5 if not _skipping else 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await wt.finished
+	_dir_f = null
+	_film_bars(false, 0.0)
 	Music.stop(0.12)
+
+
+## Gary's film of the duel in its place: the memory's picture and sounds
+## stepped aside (the white of the hunter's cards still up as it starts),
+## the film over everything, and after it the white again, which the close
+## takes to black as after the 3D duel (so his film should end on the white
+## of the book opening: docs/script/films_plan.md). False if it couldn't
+## play after all (StoryFilm's "played": false): the 3D duel then plays.
+var _film_played := false
+
+func _duel_film() -> bool:
+	Music.stop(0.4)
+	_wind_to(-60.0, 0.5)
+	_vpc.visible = false
+	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_white.modulate.a = 0.0
+	var was := layer
+	layer = 11   # (under the film: StoryFilm is 12, the subtitles 14)
+	var r: Dictionary = await StoryFilm.play(w, FILM)
+	if not bool(r.get("played", true)):
+		layer = was
+		_white.modulate.a = 1.0
+		_vpc.visible = true
+		_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+		_ov.black(false)
+		Music.play(["white_sky_duel", "white_sky", "sigilfall"], 0.3)
+		return false
+	_film_played = true
+	_end_screen(_prep)
+	_prep = null
+	# (the same frame the film ends on black: the white over it before
+	# anything's drawn, and the close takes it from there)
+	_white.modulate.a = 1.0
+	layer = was
+	_ov.black(false)
+	return true
+
+
+# --- the filmed duel's camera (8 November) --------------------------------------
+## How the film cuts: no new cut sooner than this after the last, unless a
+## blow lands (s of the memory's clock); a turn's opening and a Rite held
+## this long; with nothing happening for IDLE_WIDE, a wide shot drifting.
+const MIN_HOLD := 1.3
+const TURN_HOLD := 1.8
+const CALL_HOLD := 2.2
+const HIT_HOLD := 1.1
+const KO_HOLD := 1.6
+const IDLE_WIDE := 3.8
+## The hero shot's rise up a Totem just called (s), and a turn's creep in.
+const HERO_RISE_SECS := 1.7
+const CREEP_SECS := 4.0
+## How big the hunter stands on the duel's field (its scale).
+const HUNTER_SCALE := 1.15
+## A blow this big shakes the camera harder.
+const BIG_BLOW := 60
+## The black bars of a widescreen film: the picture kept to FILM_ASPECT
+## where the screen is narrower, each bar between BAR_MIN and BAR_MAX of
+## the height (a phone's wide screen needs little, a Mac's more); a little
+## more for the Last Page.
+const FILM_ASPECT := 2.35
+const BAR_MIN := 0.04
+const BAR_MAX := 0.1
+const BAR_CLIMAX := 0.025
+## How long the Last Page's blow is held before the white comes (s; 0.5
+## until 8 November, when the Last Page was barely seen before the white).
+const CLIMAX_HOLD := 1.0
+
+var _dir_f: DuelField3D = null
+var _cut_at := 0.0        # when the last cut came
+var _free_at := 0.0       # no ordinary cut before this
+var _wide_i := 0
+var _climax := false
+var _attacker: DuelTotem = null
+var _bars: Array = []     # [top, bottom]
+
+
+func _on_beat(method: String, args: Array) -> void:
+	if _dir_f == null or not is_instance_valid(_dir_f) or _climax or _skipping:
+		return
+	match method:
+		"fx_turn":
+			_beat_turn(int(args[0]))
+		"fx_call", "fx_ascend", "fx_revive":
+			var t = args[0] if not args.is_empty() else null
+			if t is DuelTotem:
+				_beat_call(t)
+		"fx_attack":
+			if args[0] is DuelTotem:
+				_beat_attack(args[0], args[2] if args.size() > 2 else null)
+		"fx_totem_hit":
+			if args[0] is DuelTotem:
+				_beat_hit(args[0], int(args[1]))
+		"fx_life_hit":
+			_beat_life(int(args[0]), int(args[1]))
+		"fx_ko":
+			if args[0] is DuelTotem:
+				_beat_ko(args[0])
+		"fx_rite":
+			_beat_rite(int(args[0]), args[2] if args.size() > 2 else null)
+		"fx_status":
+			# (only a Doom: the rest come thick and fast and would chop the film up)
+			if args[0] is DuelTotem and String(args[1]) == "doomed":
+				_beat_close(args[0], MIN_HOLD + 0.6)
+		"fx_ward_spring":
+			_beat_rite(int(args[0]), null)
+
+
+## A shot: [camera, looking at, lens]; cut to it (glide 0) or glide over
+## `glide` s, held `hold` s before an ordinary cut may follow; then, if
+## `creep`, a slow creep in over CREEP_SECS unless something else has
+## moved the camera meanwhile.
+func _take(c: Array, glide: float, hold: float, creep := false) -> void:
+	var f := _dir_f
+	if c.is_empty() or f == null:
+		return
+	_home_on(c)
+	f.cam_shot(c[0], c[1], glide, float(c[2]), glide <= 0.0)
+	_cut_at = _t
+	_free_at = _t + maxf(hold, MIN_HOLD)
+	if creep:
+		_creep(c, maxf(glide, 0.05))
+
+
+## The field's home made this shot (the duel screen still sends the camera
+## home, and leans it a little towards what's happening, in a film too: so
+## it goes home to the shot it's in, not back to the wide), without moving
+## the camera.
+func _home_on(c: Array) -> void:
+	var f := _dir_f
+	var p := f.cam_pos
+	var l := f.cam_look
+	var was := f.cam_fov
+	f.cam_fov = float(c[2])
+	f.set_home(c[0], c[1])
+	f.cam_pos = p
+	f.cam_look = l
+	f.cam_fov = was
+
+
+func _creep(c: Array, after: float) -> void:
+	var f := _dir_f
+	var moves := f.cam_moves
+	await get_tree().create_timer(after, false).timeout
+	if _dir_f != f or f == null or not is_instance_valid(f) or f.cam_moves != moves or _climax:
+		return
+	var p: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, 0.14)
+	if _face_seen(p, c[1], float(c[2]) - 3.0):
+		return
+	_home_on([p, c[1], float(c[2]) - 3.0])
+	f.cam_shot(p, c[1], CREEP_SECS, float(c[2]) - 3.0)
+
+
+## The first of `cands` that keeps Bram's face out of the picture and the
+## camera out of the hunter (empty if none does: the camera stays put).
+func _pick(cands: Array) -> Array:
+	for c in cands:
+		if c.is_empty():
+			continue
+		if not _face_seen(c[0], c[1], float(c[2])) and not _in_the_way(c[0]):
+			return c
+	return []
+
+
+## Would Bram's face be in this shot? His head in the picture (with room to
+## spare: the duel's picture is widened past the lens on wide screens, and
+## the drift and shake move it) with the camera anywhere but behind his
+## shoulders. (Side-on counts: a profile is a face.)
+func _face_seen(pos: Vector3, look: Vector3, fov: float) -> bool:
+	var head := BRAM_AT + Vector3(0, 1.68, 0)
+	var fwd := Vector3.FORWARD
+	if is_instance_valid(_bram) and _bram is PaperDoll:
+		fwd = (_bram as PaperDoll).facing()
+		fwd.y = 0.0
+		fwd = fwd.normalized() if fwd.length() > 0.01 else Vector3.FORWARD
+	var to_cam := pos - head
+	if to_cam.length() < 0.01:
+		return true
+	if to_cam.normalized().dot(fwd) < -0.3:
+		return false   # behind him: the back of his head
+	var z := (look - pos).normalized()
+	if z.length() < 0.5:
+		return true
+	var x := z.cross(Vector3.UP).normalized()
+	var y := x.cross(z)
+	var h := head - pos
+	var depth := h.dot(z)
+	if depth <= 0.05:
+		return false   # behind the camera
+	var tv := tan(deg_to_rad(fov) * 0.5) * 1.45 + 0.08
+	var th := tv * 2.25 + 0.08
+	return absf(h.dot(x) / depth) < th and absf(h.dot(y) / depth) < tv
+
+
+## A camera standing in the hunter (or under the snow) is no shot.
+func _in_the_way(pos: Vector3) -> bool:
+	if pos.y < 0.25:
+		return true
+	return Vector2(pos.x - HUNTER_AT.x, pos.z - HUNTER_AT.z).length() < 1.3 and pos.y < 3.2
+
+
+## Over Bram's right shoulder, past him at `at`: [camera, look, lens].
+func _over_bram(at: Vector3, fov := 36.0, back := 2.4, side := 0.9, up := 0.5) -> Array:
+	var head := BRAM_AT + Vector3(0, 1.68, 0)
+	var d := Vector3(at.x - head.x, 0, at.z - head.z)
+	d = d.normalized() if d.length() > 0.01 else Vector3.FORWARD
+	var r := d.cross(Vector3.UP)
+	return [head - d * back + r * side + Vector3(0, up, 0), at, fov]
+
+
+## The hunter across the Circle from Bram's side, on a long lens.
+func _on_hunter(fov := 19.0, near := 0.0) -> Array:
+	var h := HUNTER_AT + Vector3(0, 1.75 * HUNTER_SCALE, 0)
+	# (high enough to look over its pack: from lower the hounds' flames and
+	# cards stood between)
+	var off := Vector3(1.5, 1.2, 7.6).lerp(Vector3(1.1, 0.9, 4.6), near)
+	return [h + off, h + Vector3(0, 0.15, 0), fov]
+
+
+func _body(t: DuelTotem) -> Vector3:
+	return _dir_f.body_world(t.owner, t.slot)
+
+
+func _foot(t: DuelTotem) -> Vector3:
+	return _dir_f.foot_world(t.owner, t.slot)
+
+
+func _height(t: DuelTotem) -> float:
+	var s = _dir_f.slots[t.owner][t.slot]
+	return float(s.creature_h) if s != null and String(s.card_id) != "" else 2.0
+
+
+## From low behind a Totem and out to its side, over its shoulder at what
+## it faces across the Circle (Bram's own Totems from his side of them: from
+## in front the picture would look back into his face).
+func _behind_low(t: DuelTotem, k := 1.0, fov := 40.0) -> Array:
+	var foot := _foot(t)
+	var hgt := _height(t)
+	var d := _dir_f.ahead_of(t.owner)
+	var out := Vector3(signf(foot.x) if absf(foot.x) > 0.5 else 1.0, 0, 0)
+	var pos := foot - d * 3.4 + out * 2.0 + Vector3(0, lerpf(0.6, hgt * 0.8, k), 0)
+	return [pos, foot + d * 3.0 + Vector3(0, hgt * 0.5, 0), fov]
+
+
+## From out to the side of the Circle, low, across at a Totem (a long lens).
+func _side_on(t: DuelTotem, k := 1.0, fov := 28.0) -> Array:
+	var foot := _foot(t)
+	var hgt := _height(t)
+	var out := Vector3(signf(foot.x) if absf(foot.x) > 0.5 else 1.0, 0, 0)
+	var pos := foot + out * 5.2 + _dir_f.ahead_of(t.owner) * 1.0 + Vector3(0, lerpf(0.6, hgt * 0.8, k), 0)
+	return [pos, foot + Vector3(0, hgt * 0.55, 0), fov]
+
+
+func _beat_turn(pi: int) -> void:
+	if _t < _free_at:
+		return
+	var c: Array
+	if pi == 0:
+		c = _pick([_over_bram(Vector3(0, 1.0, -1.5), 40.0, 3.0, 1.2, 0.8), SHOTS[0]])
+	else:
+		c = _pick([_on_hunter(19.0), SHOTS[3]])
+	_take(c, 0.0, TURN_HOLD, true)
+
+
+## A Totem called (or ascended, or back from the dead): the low hero shot,
+## rising up it as it comes.
+func _beat_call(t: DuelTotem) -> void:
+	var f := _dir_f
+	var lo: Array = f.shot_hero(t.owner, t.slot, 0.0)
+	var hi: Array = f.shot_hero(t.owner, t.slot, 1.0)
+	var cands_lo: Array = [[lo[0], lo[1], DuelField3D.SHOT_FOV_HERO], _side_on(t, 0.0), _behind_low(t, 0.0)]
+	var cands_hi: Array = [[hi[0], hi[1], DuelField3D.SHOT_FOV_HERO - 4.0], _side_on(t, 1.0, 25.0), _behind_low(t, 1.0, 36.0)]
+	for i in cands_lo.size():
+		var a: Array = cands_lo[i]
+		var b: Array = cands_hi[i]
+		if not _face_seen(a[0], a[1], float(a[2])) and not _face_seen(b[0], b[1], float(b[2])) and not _in_the_way(a[0]) and not _in_the_way(b[0]):
+			_take(a, 0.0, CALL_HOLD)
+			_home_on(b)
+			f.cam_shot(b[0], b[1], HERO_RISE_SECS, float(b[2]))
+			return
+
+
+## An attack: from behind the attacker, across at what it's going for; the
+## hunter's seen coming from behind what they're going for (from behind
+## his hounds the picture would look back into Bram's face).
+func _beat_attack(t: DuelTotem, target) -> void:
+	_attacker = t
+	_struck = false
+	if _t < _free_at:
+		return   # (a flurry: seen in the shot already up)
+	var f := _dir_f
+	var aim: Vector3
+	if target is DuelTotem:
+		aim = _body(target)
+	elif target is String and target == DuelGame.LIFE:
+		aim = f.life_world(1 - t.owner)
+	else:
+		aim = _body(t) + f.ahead_of(t.owner) * 4.6
+	var me := _body(t)
+	var b: Array = f.shot_behind(me, aim, t.owner)
+	var cands: Array = [[b[0], b[1], DuelField3D.SHOT_FOV_BEHIND]]
+	if target is DuelTotem:
+		var r: Array = f.shot_behind(aim, me, (target as DuelTotem).owner)
+		cands.append([r[0], r[1], DuelField3D.SHOT_FOV_BEHIND])
+	elif t.owner == 1:
+		cands.append(_over_bram(me, 34.0, 2.2, 1.0, 0.55))
+	cands.append(_side_on(t, 0.8, 32.0))
+	if t.owner == 0:
+		# (his own, going across the Circle on a slant: over his shoulder,
+		# watching it go)
+		cands.append(_over_bram(aim, 38.0, 2.6, 1.0, 0.6))
+	_take(_pick(cands), 0.3, MIN_HOLD)
+
+
+## A blow landing on a Totem: a big one cut to and the camera shaken by it;
+## a small one only shakes the shot that's up (8 November: a cut to every
+## blow had the film cutting every second).
+var _struck := false
+
+func _beat_hit(t: DuelTotem, amount: int) -> void:
+	var f := _dir_f
+	if amount < BIG_BLOW or _struck:
+		f.cam_shake(4.5)
+		return
+	_struck = true
+	var land := _body(t)
+	var from := _body(_attacker) if _attacker != null and is_instance_valid(_attacker) and _attacker.owner != t.owner else land - f.ahead_of(t.owner) * 5.0
+	var cl: Array = f.shot_close(land, from, 1 - t.owner)
+	var cands: Array = [[cl[0], cl[1], DuelField3D.SHOT_FOV_CLOSE]]
+	if t.owner == 0:
+		# Bram's own, struck: from behind it, the blow coming at it
+		var d := f.ahead_of(0)
+		var out := Vector3(signf(land.x) if absf(land.x) > 0.5 else 1.0, 0, 0)
+		cands.append([land - d * 3.4 + out * 1.5 + Vector3(0, 1.1, 0), land + d * 0.8, 36.0])
+	cands.append(_side_on(t, 0.7, 30.0))
+	_take(_pick(cands), 0.0, HIT_HOLD)
+	f.cam_shake(9.0 if amount >= BIG_BLOW else 4.5)
+
+
+## A blow on a duellist: on Bram, over his shoulder as he takes it (he
+## flinches); on the hunter, the hunter close.
+func _beat_life(pi: int, amount: int) -> void:
+	var f := _dir_f
+	var c: Array
+	if pi == 0:
+		var from := _body(_attacker) if _attacker != null and is_instance_valid(_attacker) else HUNTER_AT
+		c = _pick([_over_bram(from, 32.0, 1.7, 0.75, 0.4), SHOTS[3]])
+		_act(_bram, "hit_react")
+	else:
+		c = _pick([_on_hunter(28.0, 0.6), _on_hunter(24.0)])
+	_take(c, 0.0, HIT_HOLD)
+	f.cam_shake(10.0 if amount >= BIG_BLOW else 5.0)
+
+
+## A Totem broken: held close as it goes.
+func _beat_ko(t: DuelTotem) -> void:
+	var f := _dir_f
+	var k: Array = f.shot_ko(t.owner, t.slot)
+	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO], _behind_low(t, 0.8, 36.0), _side_on(t, 0.6, 28.0)]), 0.0, KO_HOLD)
+	f.cam_shake(6.0)
+
+
+## Close on a Totem something has happened to (a Doom, a curse).
+func _beat_close(t: DuelTotem, hold: float) -> void:
+	var f := _dir_f
+	var k: Array = f.shot_ko(t.owner, t.slot)
+	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO + 4.0], _side_on(t, 0.7, 30.0), _behind_low(t, 0.9, 38.0)]), 0.35, hold)
+
+
+## A Rite cast: whoever casts it (Bram over his shoulder, his hand up with
+## the card; the hunter across the Circle).
+func _beat_rite(pi: int, target) -> void:
+	if _t < _free_at:
+		return
+	var at := Vector3(0, 1.0, -1.0)
+	if target is DuelTotem:
+		at = _body(target)
+	var c: Array = _pick([_over_bram(at, 36.0, 2.2, 0.9, 0.5), SHOTS[0]]) if pi == 0 else _pick([_on_hunter(21.0, 0.3), SHOTS[3]])
+	_take(c, 0.25, MIN_HOLD + 0.4)
+
+
+## Nothing for a while: one of the wide shots, drifting into place.
+func _wide_shot() -> void:
+	for k in WIDES.size():
+		var s: Array = WIDES[_wide_i % WIDES.size()]
+		_wide_i += 1
+		if not _face_seen(s[0], s[1], float(s[2])):
+			_take([s[0], s[1], s[2]], 2.4, MIN_HOLD, true)
+			return
+	_cut_at = _t
+
+
+## The Last Page called down: low over his shoulder, then rising to
+## CLIMAX, looking up past the hunter at what's coming down; the bars a
+## little deeper.
+func _climax_shot() -> void:
+	var f := _dir_f
+	var c: Array = CLIMAX
+	var start := _over_bram(Vector3(0.0, 3.0, -6.0), 40.0, 1.6, 0.7, 0.15)
+	if not _face_seen(start[0], start[1], float(start[2])):
+		f.cam_shot(start[0], start[1], 0.0, float(start[2]), true)
+	_home_on(c)
+	f.cam_shot(c[0], c[1], 2.6, float(c[2]))
+	_film_bars(true, 0.8, BAR_CLIMAX)
+
+
+## The Totems' cards lying under them on the field, with their names and
+## numbers, kept out of the film (8 November: a film, not a game; the rune
+## rings still mark the Circle's places).
+func _hide_plates(f: DuelField3D) -> void:
+	for side in f.slots:
+		for i in f.slots[side]:
+			var s = f.slots[side][i]
+			if s != null and s.card != null and s.card.visible:
+				s.card.visible = false
+
+
+## The film's black bars over the duel (on), or gone.
+func _film_bars(on: bool, secs := 0.6, extra := 0.0) -> void:
+	if _bars.is_empty():
+		if not on:
+			return
+		for i in 2:
+			var r := ColorRect.new()
+			r.color = Color.BLACK
+			r.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			r.anchor_right = 1.0
+			if i == 1:
+				r.anchor_top = 1.0
+				r.anchor_bottom = 1.0
+			_root.add_child(r)
+			_bars.append(r)
+	var sz := _root.size
+	var k := 0.0
+	if on and sz.y > 1.0:
+		k = clampf((1.0 - (sz.x / sz.y) / FILM_ASPECT) * 0.5, BAR_MIN, BAR_MAX) + extra
+	var hgt := sz.y * k
+	for i in 2:
+		var r: ColorRect = _bars[i]
+		# over the duel, under the white and the black
+		var at := _white.get_index()
+		if r.get_index() > at:
+			_root.move_child(r, at)
+		var tw := create_tween().set_parallel(true)
+		if i == 0:
+			tw.tween_property(r, "offset_bottom", hgt, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+		else:
+			tw.tween_property(r, "offset_top", -hgt, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
 
 
 ## The filmed duel's spec for DuelScreen (tests read it too).
@@ -876,16 +1524,18 @@ static func duel_spec() -> Dictionary:
 
 # --- 6. the end ---------------------------------------------------------------------
 func _close() -> void:
-	_skip.visible = false
 	_hide_hint()
 	_roam = false
+	_dir_f = null
 	if _compass != null:
 		_compass.show_compass(false, 0.3)
 	if _white.modulate.a < 0.99:
 		var wt := create_tween()
 		wt.tween_property(_white, "modulate:a", 1.0, 0.5)
 		await wt.finished
-	await _wait(0.6)
+	# (after Gary's film, the white it ended on held a breath less: his
+	# film has had its moment of it)
+	await _wait(0.3 if _film_played else 0.6)
 	_end_screen(_screen)
 	_end_screen(_prep)   # (skipped before the duel: never shown)
 	_black.modulate.a = 0.0
@@ -2290,6 +2940,10 @@ func _process(delta: float) -> void:
 		# (the tear stands 20 to 40 degrees up the sky: tilted 25 degrees the
 		# wider lens holds the tear and him both)
 		_look_want = (p + f * 7.0 + Vector3(0, 1.35, 0)).lerp(p + f * 9.0 + Vector3(0, 5.5, 0), up)
+		# drawn off towards what's glimpsed in the snow (_glimpse), him kept
+		# in the picture
+		if _glimpse_look > 0.001 and _glimpse_at != Vector3.INF:
+			_look_want = _look_want.lerp(_glimpse_at, smoothstep(0.0, 1.0, _glimpse_look) * GLIMPSE_EYES)
 		_cam.fov = 50.0 + 10.0 * up
 	if _cam_mode == "follow" or _cam_mode == "roam":
 		var k := 1.0 - exp(-delta * 3.0)
@@ -2320,9 +2974,9 @@ func _process(delta: float) -> void:
 			_card_lands(n as MeshInstance3D, f[3])
 	# the crater breathes its light
 	if _crater_light != null:
-		_crater_light.light_energy = 2.4 + sin(_t * 1.7) * 0.35 + sin(_t * 4.1) * 0.12
+		_crater_light.light_energy = (2.4 + sin(_t * 1.7) * 0.35 + sin(_t * 4.1) * 0.12) * _crater_k
 	if _ground_mat != null:
-		_ground_mat.set_shader_parameter("glow", 0.6 + sin(_t * 1.7) * 0.1)
+		_ground_mat.set_shader_parameter("glow", (0.6 + sin(_t * 1.7) * 0.1) * lerpf(0.4, 1.0, _crater_k))
 
 
 ## His walking, a frame of it: the pad or the keys (the way the camera
@@ -2865,6 +3519,8 @@ class Hunter:
 	var _fade := 0.0
 	## Gary's model's meshes, for the fade; empty with the drawn hunter.
 	var _geometry: Array = []
+	## Gary's model's clips (null with the drawn hunter).
+	var _ap: AnimationPlayer
 	## How high the cards fan: by the hood of the drawn hunter (2.76 m) or
 	## of Gary's (2.29 m, tools/rig_villager.sh shard_hunter).
 	var _card_top := 2.6
@@ -2878,9 +3534,12 @@ class Hunter:
 			var m := (load(MODEL) as PackedScene).instantiate() as Node3D
 			body.add_child(m)
 			var ap := m.find_child("AnimationPlayer", true, false) as AnimationPlayer
+			_ap = ap
 			if ap != null and ap.has_animation("idle"):
 				ap.get_animation("idle").loop_mode = Animation.LOOP_LINEAR
 				ap.play("idle")
+			if ap != null and ap.has_animation("walk"):
+				ap.get_animation("walk").loop_mode = Animation.LOOP_LINEAR
 			for g in m.find_children("*", "GeometryInstance3D", true, false):
 				_geometry.append(g)
 			_card_top = 2.2
@@ -2992,6 +3651,24 @@ class Hunter:
 		p.position.y = 1.1
 		p.name = "Smoke"
 		add_child(p)
+
+	## Walks to `to` (on the snow) over `secs` on its own walk clip, its feet
+	## kept to the ground (the clip's pace, Figure3D.OWN_GAIT shard_hunter,
+	## by how far it goes and how fast), then stands; the drawn hunter glides.
+	func walk_to(to: Vector3, secs: float) -> void:
+		var from := position
+		var dist := Vector3(to.x - from.x, 0, to.z - from.z).length()
+		if dist < 0.01:
+			return
+		look_at_dir(to - from)
+		var pace: float = Figure3D.OWN_GAIT.get("shard_hunter", {}).get("walk", 2.41) * scale.x
+		if _ap != null and _ap.has_animation("walk"):
+			_ap.play("walk", 0.35, clampf(dist / maxf(0.1, secs) / pace, 0.3, 1.2))
+		var tw := create_tween()
+		tw.tween_property(self, "position", to, secs)
+		await tw.finished
+		if _ap != null and _ap.has_animation("idle"):
+			_ap.play("idle", 0.45)
 
 	func look_at_dir(dir: Vector3) -> void:
 		dir.y = 0.0

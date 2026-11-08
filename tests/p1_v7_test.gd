@@ -312,8 +312,8 @@ func _read_solids() -> void:
 		pass   # (warms Cine's own cache: the same things it walks round)
 	for n in world.find_children("*", "StaticBody3D", true, false):
 		var sb := n as StaticBody3D
-		if sb.has_meta("npc") or sb.has_meta("beast") or not sb.is_visible_in_tree():
-			continue
+		if sb.has_meta("npc") or sb.has_meta("beast") or sb.has_meta("extra_body") or not sb.is_visible_in_tree():
+			continue   # (people: the villagers, a beast, an extra's body)
 		for c in sb.get_children():
 			var cs := c as CollisionShape3D
 			if cs == null or cs.shape == null or cs.disabled:

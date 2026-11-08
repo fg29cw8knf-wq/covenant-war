@@ -313,9 +313,15 @@ func shake(amount: float) -> void:
 func _sync_field() -> void:
 	if game == null:
 		return
+	# (8 November) the moving camera: home while the player chooses, and at
+	# the duel's own pace
+	field.roam_hold = _choosing()
+	field.pace = speed
 	for side in 2:
 		for v in views[side]:
 			field.sync(v)
+			# (the plates keep the size their slot looks from where the moving camera is)
+			v.depth = (1.0 if side == me else RIVAL_DEPTH) * field.depth_k(side, v.slot)
 			var foot: Vector2 = field.foot_stage(side, v.slot)
 			v.position = foot - Vector2(v.size.x * 0.5, v.size.y * 0.6)
 			v.body_rect_3d = Rect2(field.body_stage(side, v.slot) - Vector2(90, 110), Vector2(180, 220)) if v.totem != null else Rect2()
@@ -435,6 +441,19 @@ func _build() -> void:
 				i = k
 		_set_speed(float(steps[(i + 1) % steps.size()])))
 	stage.add_child(speed_btn)
+	# the camera (8 November, Gary: "have the camera pan around the playing
+	# board ... and have a button at the top if players would rather have it
+	# locked like it is now"): Moving or Locked, kept in Game.settings
+	if field != null and not _filmed():
+		cam_btn = UITheme.button(_cam_text(), false, 0)
+		cam_btn.custom_minimum_size = Vector2(250, 74)
+		cam_btn.size = Vector2(250, 74)
+		cam_btn.add_theme_font_size_override("font_size", 24)
+		_pin(cam_btn, Vector2(1318, 10), true)
+		cam_btn.pressed.connect(func() -> void:
+			sfx.play("ui_tap")
+			_set_camera(not DuelField3D.camera_moving()))
+		stage.add_child(cam_btn)
 	var menu := DuelViews.IconButton.new()
 	_pin(menu, Vector2(1838, 10), true)
 	menu.size = Vector2(74, 74)
@@ -449,6 +468,32 @@ func _build() -> void:
 
 
 var speed_btn: Button
+var cam_btn: Button
+
+
+func _cam_text() -> String:
+	return "Camera: Moving" if DuelField3D.camera_moving() else "Camera: Locked"
+
+
+## The camera moving round the board, or locked where it always was; saved.
+func _set_camera(moving: bool) -> void:
+	Game.settings["duel_camera"] = "moving" if moving else "locked"
+	Game.save_settings()
+	if field != null and not _filmed() and game != null:
+		field.set_roam(moving)
+	if cam_btn != null:
+		cam_btn.text = _cam_text()
+
+
+## Whether the player has a choice to make on the field now (the moving
+## camera goes home for it, so everything is where they expect): their own
+## turn's choosing, a slot to pick, an answer to give, or a lesson up.
+func _choosing() -> bool:
+	if _watching():
+		return false
+	if tutor != null and tutor.box != null and tutor.box.visible:
+		return true
+	return mode == "main" or mode == "pick_slot" or mode == "respond"
 
 ## How fast Normal plays (2 November, Gary: "make normal mode in the card
 ## battle slightly faster"): the setting's 1x is this much faster than the
@@ -748,6 +793,10 @@ func _start() -> void:
 			v.position = _slot_pos(side, v.slot)
 	if field != null:
 		field.set_rows(me)
+		# (8 November) the camera travels round the board unless the player
+		# has locked it (the Camera button at the top, Options); never in a film
+		if not _filmed():
+			field.set_roam(DuelField3D.camera_moving())
 	_pin(panels[rival], Vector2(6, 6), false)
 	_pin(panels[me], Vector2(6, 822), false)
 	if phase_band != null:
@@ -3245,6 +3294,9 @@ func fx_call(t: DuelTotem) -> void:
 	sfx.play("call_totem")
 	if hero:
 		_hero_shot(t.owner, t.slot, CALL_WAIT_MAX)
+	elif field != null and field.roam_on and not hidden:
+		# (8 November) the moving camera swings round in front of it to watch it arrive
+		field.roam_view(t.owner, t.slot)
 	if field != null:
 		field.pillar(_foot3(t), col, 5.5, 1.8, 0.9 / speed)
 		field.floor_wave(_foot3(t), col, 3.6, 0.6 / speed)

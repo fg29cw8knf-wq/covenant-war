@@ -129,10 +129,10 @@ func _check(f: Figure3D, box: Node3D, mode: String) -> void:
 			print("    %s hand's skin: %d vertices in the box's body (deepest %.1f cm at %s:%s); %d in the lid (deepest %.1f cm)" % [side, r[1], float(r[0]) * 100.0, (r[2] as Vector3).snapped(Vector3(0.001, 0.001, 0.001)), parts, lid_r[1], float(lid_r[0]) * 100.0])
 			if float(r[0]) > 0.002 or float(lid_r[0]) > 0.002:
 				problems += 1
-		# the left hand's skin under the box's footprint, in the palm's own
+		# the carrying hand's skin under the box's footprint, in the palm's own
 		# frame (y up off the palm): how high the palm, the fingers and the
 		# thumb each come under it, against the box's bottom
-		var pf := f.palm_frame("left")
+		var pf := f.palm_frame(cs)
 		var pinv := pf.affine_inverse()
 		var bq := pinv * box.global_position
 		var bottom := bq.y - _body_half.y
@@ -140,22 +140,23 @@ func _check(f: Figure3D, box: Node3D, mode: String) -> void:
 		for part in [["palm", 0], ["fingers", 1], ["thumb", 2]]:
 			var top := -INF
 			var n := 0
-			for p in _hs.points("left", int(part[1])):
+			for p in _hs.points(cs, int(part[1])):
 				var q: Vector3 = pinv * p
 				if absf(q.x - bq.x) < _body_half.x and absf(q.z - bq.z) < _body_half.z:
 					n += 1
 					top = maxf(top, q.y)
 			tops += " %s %s (%d)" % [part[0], ("%.1f cm" % (top * 100.0)) if n > 0 else "none", n]
-		print("    under the box (the left palm's frame, y off the palm): the box's bottom at %.1f cm, its middle %s; the skin's top:%s" % [bottom * 100.0, bq.snapped(Vector3(0.001, 0.001, 0.001)), tops])
+		print("    under the box (the " + cs + " palm's frame, y off the palm): the box's bottom at %.1f cm, its middle %s; the skin's top:%s" % [bottom * 100.0, bq.snapped(Vector3(0.001, 0.001, 0.001)), tops])
 		if mode == "left":
-			print("    the left hand's profile within the box's width (x %.1f to %.1f cm), the box from z %.1f to %.1f cm:" % [(bq.x - _body_half.x) * 100.0, (bq.x + _body_half.x) * 100.0, (bq.z - _body_half.z) * 100.0, (bq.z + _body_half.z) * 100.0])
-			print(_hs.profile("left", pf, bq.x - _body_half.x, bq.x + _body_half.x, -0.12, 0.14))
+			print("    the " + cs + " hand's profile within the box's width (x %.1f to %.1f cm), the box from z %.1f to %.1f cm:" % [(bq.x - _body_half.x) * 100.0, (bq.x + _body_half.x) * 100.0, (bq.z - _body_half.z) * 100.0, (bq.z + _body_half.z) * 100.0])
+			print(_hs.profile(cs, pf, bq.x - _body_half.x, bq.x + _body_half.x, -0.12, 0.14))
 			print("    and across (x to their left), within z -12 to 14 cm:")
-			print(_hs.profile_x("left", pf, -0.14, 0.10, -0.12, 0.14))
+			print(_hs.profile_x(cs, pf, -0.14, 0.10, -0.12, 0.14))
 
 
 var _hs = null
 var _body_half := Vector3.ZERO
+var cs := "left"   # the hand the box is carried on (Ashford.carry_side)
 
 
 ## (8 November) Player A's fingers as he modelled them stand up in a loose
@@ -288,55 +289,67 @@ func _run() -> void:
 	stage.add_child(box)
 	var size: Vector3 = Ashford.box_size(box)
 	var back: float = Ashford._box_back(f, size)
-	print("  %s: the box %.1f cm back from the left palm's middle" % [look, back * 100.0])
+	# (9 November: the hand it's carried on, BOX_FIT `carry`; the other goes
+	# to the lid, and with `one_hand` isn't put under it at all)
+	cs = Ashford.carry_side(f)
+	var os: String = Ashford.other_side(f)
+	var sx: float = Ashford._box_mirror(f)
+	var one: bool = Ashford._box_one_hand(f)
+	print("  %s: the box on the %s hand%s, %.1f cm back from its palm's middle" % [look, cs, " alone" if one else "", back * 100.0])
 	_measure_box(box)
 	_hs = load("res://tests/hand_skin.gd").new()
 	print("  the hands' skin: %d vertices (left %d, right %d)" % [_hs.setup(f), _hs.count("left"), _hs.count("right")])
-	print("  ", _hs.rest_check("left"))
+	print("  ", _hs.rest_check(cs))
 	# (and the palm frame itself about the wrist, and the knuckles: the hand's
 	# own measure, for the skin's numbers to be read against)
-	var pfr0 := f.palm_frame("left")
+	var pre: String = "Left" if cs == "left" else "Right"
+	var pfr0 := f.palm_frame(cs)
 	var pinv0 := pfr0.affine_inverse()
-	var wr0: Vector3 = pinv0 * f.bone_pos("LeftHand")
-	var kn0: Vector3 = pinv0 * f.bone_pos("LeftHandIndex1")
+	var wr0: Vector3 = pinv0 * f.bone_pos(pre + "Hand")
+	var kn0: Vector3 = pinv0 * f.bone_pos(pre + "HandIndex1")
 	var skin_box := AABB()
 	var first0 := true
-	for sp in _hs.points("left"):
+	for sp in _hs.points(cs):
 		var q0: Vector3 = pinv0 * sp
 		skin_box = AABB(q0, Vector3.ZERO) if first0 else skin_box.expand(q0)
 		first0 = false
-	print("  in the left palm's frame (x across, y off the palm, z along the fingers): the wrist bone at %s, the index knuckle at %s; the hand's skin from %s to %s" % [wr0.snapped(Vector3(0.001, 0.001, 0.001)), kn0.snapped(Vector3(0.001, 0.001, 0.001)), skin_box.position.snapped(Vector3(0.001, 0.001, 0.001)), skin_box.end.snapped(Vector3(0.001, 0.001, 0.001))])
-	# as _first_deck: the grip in front of them, the left palm under the box
+	print("  in the %s palm's frame (x across, y off the palm, z along the fingers): the wrist bone at %s, the index knuckle at %s; the hand's skin from %s to %s" % [cs, wr0.snapped(Vector3(0.001, 0.001, 0.001)), kn0.snapped(Vector3(0.001, 0.001, 0.001)), skin_box.position.snapped(Vector3(0.001, 0.001, 0.001)), skin_box.end.snapped(Vector3(0.001, 0.001, 0.001))])
+	# as _first_deck: the grip in front of them, the carrying palm under the box
+	var both_reach := func(c: Node3D, o: Node3D, secs: float) -> void:
+		if cs == "left":
+			f.reach(c, o, secs)
+		else:
+			f.reach(o, c, secs)
 	var grip := Node3D.new()
-	f.carry(grip, f.hold_point(0.5, 0.62) + Vector3(0.0, -size.y * 0.5 - Ashford._box_bottom(f), 0.0))
+	f.carry(grip, f.hold_point(0.5, 0.62) + Vector3((0.0 if not one else 0.06 * sx), -size.y * 0.5 - Ashford._box_bottom(f), 0.0))
 	var lmark := Node3D.new()
 	grip.add_child(lmark)
-	lmark.position = Ashford._box_left_at(f, back)
-	f.palm("left", Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
-	f.palm("right", Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
-	f.elbow("left", Vector3(0.46, f._shoulder - 0.38, 0.14), 0.0)
-	f.elbow("right", Ashford.BOX_RIGHT_ELBOW + Vector3(0, f._shoulder, 0), 0.0)
-	f.reach(lmark, null, 0.0)
+	lmark.position = Ashford._box_carry_at(f, back)
+	f.palm(cs, Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
+	if not one:
+		f.palm(os, Vector3.UP, 0.0, 1.0, true, Vector3.BACK)
+	f.elbow(cs, Vector3(0.46 * sx, f._shoulder - 0.38, 0.14), 0.0)
+	if not one:
+		f.elbow(os, Ashford.BOX_RIGHT_ELBOW * Vector3(sx, 1, 1) + Vector3(0, f._shoulder, 0), 0.0)
+	both_reach.call(lmark, null, 0.0)
 	await _wait(0.4)
-	f.attach(box, "palm", "left", Ashford._box_lift(f, size), 0.0, 0.0, -back, -Ashford._box_aside(f))
+	f.attach(box, "palm", cs, Ashford._box_lift(f, size, back), 0.0, 0.0, -back, -Ashford._box_aside(f) * sx, Ashford._box_tilt(f))
 	var rmark := Node3D.new()
 	box.add_child(rmark)
-	rmark.position = Ashford._box_right_at(f, back, size)
-	f.reach(lmark, rmark, 0.0)
+	rmark.position = Ashford._box_other_at(f, back, size)
+	both_reach.call(lmark, null if one else rmark, 0.0)
 	for mode in ["both", "centred", "left", "open"]:
 		match mode:
 			"centred":
-				# (as _first_deck: the left hand slides across under it, the box
-				# kept where it is)
+				# (as _first_deck: the carrying hand slides across under it, the
+				# box kept where it is)
 				var a1: float = Ashford._box_aside(f, false)
-				lmark.position += Vector3(a1 - Ashford._box_aside(f), 0.0, 0.0)
-				f.attach(box, "palm", "left", Ashford._box_lift(f, size), 0.0, 0.0, -back, -a1)
+				lmark.position += Vector3((a1 - Ashford._box_aside(f)) * sx, 0.0, 0.0)
+				f.attach(box, "palm", cs, Ashford._box_lift(f, size, back), 0.0, 0.0, -back, -a1 * sx, Ashford._box_tilt(f))
 			"left":
-				var away := Node3D.new()
-				stage.add_child(away)
-				away.global_position = box.to_global(Vector3(-size.x * 0.5 - 0.12, -0.02, -0.05))
-				f.reach(lmark, null, 0.3)
-				f.palm("right", Vector3.ZERO, 0.0)
+				# (the box on the carrying hand alone)
+				both_reach.call(lmark, null, 0.3)
+				f.palm(os, Vector3.ZERO, 0.0)
 			"open":
 				# (the lid up, as the deck comes out: the lid against the hand
 				# and the forearm under it)

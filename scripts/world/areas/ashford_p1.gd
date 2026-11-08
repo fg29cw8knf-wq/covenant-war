@@ -471,12 +471,15 @@ static func crowd(w: World) -> void:
 		var l := paper_lantern(v)
 		(Cine.body(w, String(k[0]))).add_child(l)
 		l.position = Vector3(0.28, 1.0, 0.12)
+		AshfordLife.solid(w, String(k[0]), AshfordLife.KID_BODY_R, 1.15)
 	var mam := mam_spot(v)
 	var md := Cine.spawn(w, "corin_mam", "refugee", mam.at)
 	md.look_toward(mam.at + mam.out, w.cam)
+	AshfordLife.solid(w, "corin_mam")
 	for i in DANCERS.size():
 		var a := TAU * i / DANCERS.size()
 		Cine.spawn(w, String(DANCERS[i][0]), String(DANCERS[i][1]), DANCE + Vector3(cos(a), 0, sin(a)) * 1.5)
+		AshfordLife.solid(w, String(DANCERS[i][0]))
 	_dance(w)
 
 
@@ -486,25 +489,75 @@ static func crowd(w: World) -> void:
 ## dancing (their own dance clip, each at its own moment), turning about
 ## each other as they go, and the two couples slowly changing places round
 ## the dancing ground.
+## (8 November, Gary: "You can run through the villagers next to Ned": each
+## dancer has a body now, AshfordLife.solid, and the reel makes way for the
+## player: when a step would bring a dancer into them, the couples' turning
+## eases to a stop and they dance on the spot until the player moves, so
+## nobody dances through them and nobody shoves them.)
+## How far ahead the reel looks for the player (s), and how quickly it eases
+## to a stop and back to its pace (1/s).
+static var dance_gives_way := true
+const DANCE_LOOK := 0.35
+const DANCE_EASE := 8.0
+
+static func _dance_at(i: int, t: float) -> Vector3:
+	var pair := i / 2
+	var side := 1.0 if i % 2 == 0 else -1.0
+	var ca := PI * pair + t * 0.16
+	var c := DANCE + Vector3(cos(ca), 0, sin(ca)) * 1.35
+	var sa := t * 0.7 + pair * 1.3
+	return c + Vector3(cos(sa), 0, sin(sa)) * 0.43 * side
+
+
+static func _dance_mid(i: int, t: float) -> Vector3:
+	var ca := PI * (i / 2) + t * 0.16
+	return DANCE + Vector3(cos(ca), 0, sin(ca)) * 1.35
+
+
+## Would the reel, `ahead` s on at its full pace, bring a dancer into the
+## player (on the green, not in a room built under it)?
+static func _dance_blocked(w: World, t: float, ahead: float) -> bool:
+	if w.player == null or not w.player.is_inside_tree():
+		return false
+	var pp := w.player.global_position
+	var clear := 0.35 + AshfordLife.BODY_R + 0.04   # (the player's capsule, a dancer's body, a little)
+	for i in DANCERS.size():
+		var b := Cine.body(w, String(DANCERS[i][0]))
+		if b == null or absf(b.global_position.y - pp.y) > 1.5:
+			continue
+		for k in 3:
+			var q := _dance_at(i, t + ahead * (k + 1) / 3.0)
+			if Vector2(q.x - pp.x, q.z - pp.z).length() < clear:
+				return true
+	return false
+
+
 static func _dance(w: World) -> void:
 	var t := 0.0
+	var pace := 1.0
 	var started := false
 	var v := village(w)
 	while is_instance_valid(w) and w.is_inside_tree() and w.has_meta("p1_crowd"):
 		var dt := w.get_process_delta_time()
-		t += dt
+		var want := 0.0 if dance_gives_way and _dance_blocked(w, t, DANCE_LOOK) else 1.0
+		pace = lerpf(pace, want, 1.0 - exp(-dt * DANCE_EASE))
+		if want == 0.0 and pace < 0.02:
+			pace = 0.0
+		var step := dt * pace
+		# (never a step into them, whatever the easing has left)
+		if dance_gives_way and step > 0.0 and _dance_blocked(w, t, step):
+			step = 0.0
+			pace = 0.0
+		t += step
+		w.set_meta("dance_pace", pace)
 		for i in DANCERS.size():
 			var id := String(DANCERS[i][0])
 			var b := Cine.body(w, id)
 			var f = Cine.fig(w, id)
 			if b == null or f == null:
 				continue
-			var pair := i / 2
-			var side := 1.0 if i % 2 == 0 else -1.0
-			var ca := PI * pair + t * 0.16
-			var c := DANCE + Vector3(cos(ca), 0, sin(ca)) * 1.35
-			var sa := t * 0.7 + pair * 1.3
-			var p := c + Vector3(cos(sa), 0, sin(sa)) * 0.43 * side
+			var c := _dance_mid(i, t)
+			var p := _dance_at(i, t)
 			if v != null:
 				p.y = v.height(p.x, p.z)
 			b.global_position = p
@@ -602,12 +655,13 @@ static func pose(w: World) -> void:
 		var corin = Cine.fig(w, "corin")
 		if corin is Figure3D:
 			# his card boxes on their strap at his hip, and the clerkship
-			# letter tucked into his coat ("What's that letter tucked into
+			# letter in his vest pocket ("What's that letter tucked into
 			# your coat?"): until 25 October both sat on his hand bones and
 			# stuck out of his arms (Gary)
 			attach(corin, "Hips", card_boxes(v), HIP_BOXES, HIP_BOXES_ROT)
 			var cl := letter(v)
-			attach(corin, "Spine2", cl, COAT_LETTER, COAT_LETTER_ROT)
+			cl.scale = Vector3.ONE * COAT_LETTER_SCALE
+			attach(corin, COAT_LETTER_BONE, cl, COAT_LETTER, COAT_LETTER_ROT)
 			w.set_meta("corin_letter", cl)
 	nell_sit(w)
 	if Game.flag("ash_started") and not w.get_meta("bram_seated", false) and not w.has_meta("bram_stop") and not w.has_meta("bram_to_stool"):
@@ -621,11 +675,19 @@ const POCKET_ROT := Vector3(-0.2, 0.0, 1.45)
 ## turned to lie flat against the hip.
 const HIP_BOXES := Vector3(0.22, -0.06, 0.03)
 const HIP_BOXES_ROT := Vector3(0.0, PI * 0.5, 0.0)
-## Where his clerkship letter is tucked into his vest, in the chest bone's
-## space: inside the vest's right panel, standing, leaning back into him, so
-## only its top corner shows above the vest's edge (tests/corin_props_shot.tscn).
-const COAT_LETTER := Vector3(-0.075, 0.02, 0.095)
-const COAT_LETTER_ROT := Vector3(0.35, 0.0, -1.45)
+## Where his clerkship letter is, folded small, in the upper patch pocket on
+## the right of his vest, in the Spine1 bone's own space (x to his left, y
+## up, z ahead): stood on end, its top edge two centimetres out of the
+## pocket and leant a little out from him, the rest of it down in the
+## pocket. (8 November, Gary: "Corin's letter has moved from his pocket to
+## his chest": since 25 October it stood inside the vest's neck, a big
+## white sheet up by his collar. The pocket's top edge is at y 0.018, where
+## the patch stands proud of the vest; tests/corin_letter_probe.tscn finds
+## the pocket in his picture and measures the letter through his clips.)
+const COAT_LETTER := Vector3(-0.077, 0.006, 0.12)
+const COAT_LETTER_ROT := Vector3(0.3, 0.0, -PI * 0.5)
+const COAT_LETTER_BONE := "Spine1"
+const COAT_LETTER_SCALE := 0.45
 
 
 ## Bram on his stool by the Lantern, facing the green's south side.
@@ -676,6 +738,9 @@ static func nell_sit(w: World) -> void:
 		var foot := bench_seat(w) + fwd * NELL_STICK.y + fwd.cross(Vector3.UP).normalized() * NELL_STICK.x
 		foot.y = Cine.ground(w, foot)
 		(f as Figure3D).plant_stick(foot, 0.0)
+		# her free hand flat on the bench beside her, not hanging down
+		# through the seat
+		lap_hands(w, "nell", ["left"], 0.0, "at", nell_rest(w))
 	else:
 		# a cut-out can't sit: she stands at the bench's end
 		var bn: Node3D = meta(village(w), "p1_bench")
@@ -701,7 +766,9 @@ const BENCH_H := 0.475
 ## `at` (the ground under the middle of the seat), facing `fwd`. While the
 ## player sits they don't collide (the bench is solid, and Nell is beside
 ## them). A cut-out can't sit: it stands beside the seat.
-static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45) -> void:
+## `lap`: their hands come to rest on their thighs as they sit (lap_hands:
+## a bench, a wall, where hanging arms would go into the seat).
+static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: float, blend := 0.45, lap := false) -> void:
 	var b := Cine.body(w, who)
 	var f = Cine.fig(w, who)
 	if b == null:
@@ -741,6 +808,8 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 		var to := at
 		to.y = from.y
 		fig.sit(height, blend)
+		if lap:
+			lap_hands(w, who, ["left", "right"], blend)
 		var tw := w.create_tween()
 		tw.tween_method(func(k: float) -> void:
 			if is_instance_valid(b) and is_instance_valid(fig):
@@ -752,6 +821,8 @@ static func sit_down(w: World, who: String, at: Vector3, fwd: Vector3, height: f
 	b.global_position = at
 	fig.snap_face(fwd)
 	fig.sit(height, 0.0)
+	if lap:
+		lap_hands(w, who, ["left", "right"], 0.0)
 
 
 ## Up off a seat, onto their feet where their feet are: in front of it, the
@@ -1386,6 +1457,9 @@ static func opening(w: World) -> void:
 	Game.set_flag("p1_stage", "done")
 	Game.set_flag("ash_started")
 	Game.save_game()
+	# (the green as the opening left it: Ashford.resume, which World calls
+	# straight after intro() on a New Game, mustn't stage it again)
+	w.set_meta("p1_opened", true)
 	mute_all_but(w, ["corin"])
 	w.end_cine()
 	controls_on(w)
@@ -2136,8 +2210,10 @@ static func _taproom(w: World) -> void:
 		bowl.name = "Porridge"
 		root.add_child(bowl)
 		# (near the counter's front edge, where a hand reaches it from the
-		# room: 2 November, it's eaten)
-		bowl.position = Vector3(InnRooms.BAR_X + 0.2, 1.13, 0.55)
+		# room: 2 November, it's eaten; 9 November, its rim a hand's width
+		# in from the edge, BOWL_IN: 22 cm in, it was out of Player A's reach
+		# and his arm went out straight to it)
+		bowl.position = Vector3(InnRooms.BAR_X + 0.425 - BOWL_IN, 1.13, 0.55)
 		v.cyl(bowl, 0.09, 0.06, 0.06, Vector3(0, 0.03, 0), v.mats.wood_h, 14)
 		var oats := StandardMaterial3D.new()
 		oats.albedo_color = Color(0.86, 0.8, 0.66)
@@ -2315,8 +2391,10 @@ static func _eat(w: World, e: Dictionary) -> void:
 	w.cine = true
 	w.hud.set_controls_visible(false)
 	coach(w).objective("")
-	# (a step from the counter's edge, the bowl within the arm's reach)
-	var stand := root.to_global(Vector3(InnRooms.BAR_X + 0.66, 0, 0.55))
+	# (up to the counter's edge, the bowl within the arm's reach: EAT_STAND
+	# from it, 9 November; a step further off, 0.24, his arm was straight
+	# reaching for it)
+	var stand := root.to_global(Vector3(InnRooms.BAR_X + 0.425 + EAT_STAND, 0, 0.55))
 	if w.player.global_position.distance_to(stand) > 0.1:
 		await Cine.path(w, "player", [stand], 1.0)
 	var at_bowl: Vector3 = bowl.global_position
@@ -2337,104 +2415,174 @@ static func _eat(w: World, e: Dictionary) -> void:
 		# through the chest: the elbow is kept down in front of the ribs, and
 		# the targets are in his own frame, so they go with him.
 		# 8 November, Gary: "When eating the porridge the spoon doesn't go
-		# all the way to the mouth, it only gets to about chest level": the
-		# hand was sent to a point at the head bone's height a hand ahead of
-		# his middle, under and in front of the lips; the palm as drawn fell
-		# a hand's length short of even that (the arm's IK puts the end of
-		# the hand bone at the target, and the hand is then turned to hold
-		# the spoon, which swings the palm away from it); and the spoon lay
-		# centred on the palm along the fingers, so it was inside the cupped
-		# hand and never seen. Now the spoon is held by its handle's end in
-		# the fist and points from there at where its bowl end is wanted
-		# (SpoonHold, in the skeleton's own pass so it's drawn where the
-		# hand is): in the bowl, slanting down into it (SPOON_DIP), and at
-		# the mouth, read off the model each frame (mouth_of: the Head bone
-		# as it stands and the lips' offset on it), the bowl end just under
-		# and in front of the lips (SPOON_AT_MOUTH), rising to them from in
-		# front and below (SPOON_UP); the fist is sent a spoon's length back
-		# along that line, and the fist as drawn is read back each frame
-		# and the target corrected by what it fell short, so the spoon's
-		# end gets there, not the hand's target. tests/eat_probe.gd measures
-		# it.)
+		# all the way to the mouth": the spoon is held by its handle's end in
+		# the fist (SpoonHold, in the skeleton's own pass) and points from
+		# there at where its bowl end is wanted, the lips read off the model
+		# each frame (mouth_of); the fist as drawn is read back and the arm's
+		# target corrected by what it fell short.
+		# 9 November, Gary: "When eating porridge hand moves in an unnatural
+		# way": the spoon came up from under the chin standing almost upright
+		# (SPOON_UP 118 degrees: the fist under the chin, the bowl end poked up
+		# at the lips like a lolly stick), in 0.42 s; the palm was turned from
+		# down to in-and-up whatever the forearm was doing, so the wrist bent
+		# back and twisted; and the correction for the fist's shortfall was
+		# learnt only at the two ends, 60% a frame, so the hand lurched at the
+		# top of each rise as it caught up. Now it goes as a spoonful does:
+		# the spoon dips into the oats and drags a little through them
+		# (SPOON_SCOOP), lifts straight up off the bowl, and comes up in an
+		# arc to the mouth, carried near level and coming in at the lips from
+		# in front and to his right (SPOON_DIR_MOUTH: the fist out at the side
+		# of the chin, the elbow lifting out, SPOON_ELBOW_*), the lips take it
+		# (in a little, the bowl end tipping up, SPOON_TAKE), and it goes
+		# back down the way it came; over 2.3 s a mouthful (SPOON_SECS). The
+		# fist is always turned square to the forearm round the handle (the
+		# hammer grip a hand modelled as a loose fist has: a straight wrist,
+		# the spoon out past the thumb), and the shortfall is corrected every
+		# frame against what was asked the frame before, a third of it a
+		# frame, so the hand never jumps. tests/eat_probe.gd measures the
+		# wrist and the elbow and the hand's speed frame to frame.
 		var hand := Node3D.new()
 		hand.name = "SpoonHand"
 		var spoon: Node3D = bowl.get_node_or_null("Spoon")
-		# which way the spoon points (his own frame), bowl end first: pitched
-		# SPOON_DIP down into the bowl, up and over to SPOON_UP at the lips
-		var spoon_dir := func(k: float) -> Vector3:
-			var a := deg_to_rad(lerpf(SPOON_DIP, SPOON_UP, k))
-			return Vector3(SPOON_ASIDE * k, sin(a), cos(a)).normalized()
 		var in_bowl := me.to_own(at_bowl + Vector3(0, SPOON_IN_BOWL, 0))
-		var grip_bowl: Vector3 = in_bowl - spoon_dir.call(0.0) * SPOON_LEN
-		grip_bowl.x = minf(grip_bowl.x, -0.03)   # (the right hand: never across the body)
-		me.carry(hand, grip_bowl)
-		me.elbow("right", Vector3(-0.34, me._top - 0.5, 0.1), 0.45)
-		me.palm("right", SPOON_PALM_BOWL, 0.45, 0.0, true, Vector3(0, 0, 1))
-		me.reach(null, hand, 0.45)
-		# his eyes on the bowl: the head dips to it (Figure3D.eyes_on, as far
-		# as a head dips), and so meets the spoon as it comes up
-		me.eyes_on(at_bowl)
+		var over_bowl := in_bowl + Vector3(0, SPOON_OVER_BOWL, 0)
+		var dir_bowl := SPOON_DIR_BOWL.normalized()
+		var dir_mouth := SPOON_DIR_MOUTH.normalized()
+		# where the spoon is wanted (his own frame): its bowl end, which way
+		# it points (from the handle to the bowl), how far up the arm is (0 at
+		# the bowl, 1 at the mouth: the elbow)
+		var st := {"end": over_bowl, "dir": dir_bowl, "k": 0.0}
+		# first to the spoon where it lies on the bowl's rim, its handle's end
+		# lifted in the fist and its bowl end left where it is
+		var rest_end := Vector3.ZERO
+		var rest_dir := Vector3.ZERO
+		if spoon != null:
+			var s_bowl := me.to_own(spoon.to_global(Vector3(0, 0, SPOON_LEN * 0.5)))
+			var s_handle := me.to_own(spoon.to_global(Vector3(0, 0, -SPOON_LEN * 0.5)))
+			rest_end = s_bowl
+			rest_dir = (s_bowl - s_handle).normalized()
+			st.end = s_bowl
+			st.dir = (s_bowl - s_handle - Vector3(0, SPOON_PICK_LIFT, 0)).normalized()
+		me.carry(hand, (st.end as Vector3) - (st.dir as Vector3) * SPOON_LEN)
+		me.elbow("right", SPOON_ELBOW_BOWL + Vector3(0, me._shoulder, 0), 0.7)
+		me.palm("right", Vector3.DOWN, 0.7, 0.0, false, me.facing())
+		me.reach(null, hand, 0.7)
+		# (the spoon's hold last in the skeleton's list, after the arm's reach
+		# and the hand's turn that reach() and palm() have just put there: before
+		# them it read the arm as the clip had it, the hand down by his hip)
 		var hold := SpoonHold.new()
 		hold.name = "SpoonHold"
 		hold.fig = me
 		me._skel.add_child(hold)
 		me._skel.move_child(hold, -1)
-		# the fist's target: `want` on its way, plus the correction learnt at
-		# each end (the bowl's and the mouth's), blended by how far up it is
-		var want := [grip_bowl, 0.0]
-		var corr := [Vector3.ZERO, Vector3.ZERO]
+		# his eyes on the bowl: the head dips to it (Figure3D.eyes_on, as far
+		# as a head dips), and so meets the spoon as it comes up
+		me.eyes_on(at_bowl)
+		var corr := [Vector3.ZERO]
+		var asked := [Vector3.INF]
 		var feeding := [true]
-		var place := func() -> void:
-			var k := float(want[1])
-			hand.position = (want[0] as Vector3) + (corr[0] as Vector3) * (1.0 - k) + (corr[1] as Vector3) * k
-		var feedback := func() -> void:
+		var apply := func() -> void:
+			var dir: Vector3 = (st.dir as Vector3).normalized()
+			var end: Vector3 = st.end
+			var want: Vector3 = end - dir * SPOON_LEN
+			asked[0] = want
+			hand.position = want + (corr[0] as Vector3)
+			hold.aim = me.to_world(end)
+			var pole := me._pivot.get_node_or_null("RightElbow") as Node3D
+			if pole != null:
+				pole.position = SPOON_ELBOW_BOWL.lerp(SPOON_ELBOW_MOUTH, float(st.k)) + Vector3(0, me._shoulder, 0)
+			# the fist round the handle, square to the forearm as drawn: the
+			# fingers on along the forearm, the spoon out past the thumb
+			if hold.fore != Vector3.ZERO and me._palms.has("right"):
+				var sw := (me.to_world(end) - me.to_world(want)).normalized()
+				var fo: Vector3 = hold.fore
+				var fw := fo - sw * fo.dot(sw)
+				if fw.length() > 0.05:
+					fw = fw.normalized()
+					me._palms["right"][0] = sw.cross(fw).normalized() * SPOON_PALM_SIDE
+					me._palms["right"][3] = false
+					me._palms["right"][4] = fw
+		var drive := func() -> void:
 			while feeding[0] and is_instance_valid(hand) and is_instance_valid(me):
 				await w.get_tree().process_frame
-				if not feeding[0] or not is_instance_valid(hand) or hold.grip == Vector3.INF:
-					continue
-				var k := float(want[1])
-				var drawn: Vector3 = me.to_own(hold.grip)
-				var err: Vector3 = (want[0] as Vector3) - drawn
-				if k < 0.01:
+				if not feeding[0] or not is_instance_valid(hand) or not is_instance_valid(hold):
+					break
+				# (what was drawn last frame against what was asked for it)
+				# (not while the arm's at full stretch: there the shortfall is
+				# the arm's, and learning it only sends the target further off)
+				var reach_ok := (hand.position - me.to_own(me.bone_pos("RightArm"))).length() < me._arm * 0.95
+				if hold.grip != Vector3.INF and asked[0] != Vector3.INF and reach_ok:
+					var err: Vector3 = (asked[0] as Vector3) - me.to_own(hold.grip)
 					corr[0] = ((corr[0] as Vector3) + err * SPOON_FEEDBACK).limit_length(SPOON_CORR_MOST)
-				elif k > 0.99:
-					corr[1] = ((corr[1] as Vector3) + err * SPOON_FEEDBACK).limit_length(SPOON_CORR_MOST)
-				place.call()
-		feedback.call()
-		var mouth_end := func() -> Vector3:
-			# (the lips as drawn, read in the hold's pass: from here the head
-			# is read before its dip to the bowl, a few cm higher)
-			return me.to_own(hold.mouth if hold.mouth != Vector3.INF else mouth_of(me)) + SPOON_AT_MOUTH
-		var aim := func(k: float) -> void:
-			# where the spoon's bowl end is wanted now, and the fist for it
-			var end: Vector3 = in_bowl.lerp(mouth_end.call(), k)
-			var dir: Vector3 = spoon_dir.call(k)
-			want[0] = end - dir * SPOON_LEN
-			want[1] = k
-			hold.aim = me.to_world(end)
-			# the fist turned with it, the spoon out past the thumb: the palm's
-			# way is the nearest to SPOON_PALM_BOWL (down, scooping) or
-			# SPOON_PALM (in and up, at the lips) that's square to the spoon,
-			# and the fingers across both (Figure3D.palm's own frame and
-			# fingers, written straight in each frame)
-			var n: Vector3 = SPOON_PALM_BOWL.lerp(SPOON_PALM, k)
-			n = (n - dir * n.dot(dir)).normalized()
-			if me._palms.has("right"):
-				me._palms["right"][0] = n
-				me._palms["right"][4] = dir.cross(n).normalized()
-			place.call()
-		aim.call(0.0)
-		await Cine.wait(w, 0.5)
-		hold.spoon = spoon   # (off the bar and into the fist, now the hand's down at the bowl)
+				apply.call()
+		apply.call()
+		drive.call()
+		await Cine.wait(w, 0.8)
+		hold.spoon = spoon   # (in the fist, by its handle's end)
+		# the bowl end over the bowl, the spoon turned down into it
+		var to_bowl := func(from_end: Vector3, from_dir: Vector3, secs: float) -> void:
+			var tw := w.create_tween()
+			tw.tween_method(func(u: float) -> void:
+				var ez := smoothstep(0.0, 1.0, u)
+				st.end = from_end.lerp(over_bowl, ez) + Vector3(0, sin(ez * PI) * 0.04, 0)
+				st.dir = from_dir.slerp(dir_bowl, ez)
+				st.k = 0.0, 0.0, 1.0, secs)
+			await tw.finished
+		await to_bowl.call(st.end, st.dir, 0.45)
 		for mouthful in 3:
+			# into the oats and through them towards him, and up off the bowl
+			var sc := w.create_tween()
+			var dip := in_bowl + Vector3(0, -SPOON_SCOOP.y, SPOON_SCOOP.z * 0.3)
+			var drag := in_bowl + Vector3(0, 0.004, -SPOON_SCOOP.z)
+			var clear := drag + Vector3(0, SPOON_OVER_BOWL, 0)
+			sc.tween_method(func(u: float) -> void:
+				st.end = over_bowl.lerp(dip, smoothstep(0.0, 1.0, u)), 0.0, 1.0, SPOON_SECS[0] * 0.35)
+			sc.tween_method(func(u: float) -> void:
+				st.end = dip.lerp(drag, smoothstep(0.0, 1.0, u)), 0.0, 1.0, SPOON_SECS[0] * 0.35)
+			sc.tween_method(func(u: float) -> void:
+				st.end = drag.lerp(clear, smoothstep(0.0, 1.0, u)), 0.0, 1.0, SPOON_SECS[0] * 0.3)
+			await sc.finished
+			# up in an arc to the lips: straight up off the bowl first, coming
+			# in to the mouth from in front and to his right, carried level
 			var up := w.create_tween()
-			up.tween_method(func(u: float) -> void: aim.call(smoothstep(0.0, 1.0, u)), 0.0, 1.0, 0.42)
+			up.tween_method(func(u: float) -> void:
+				var ez := smoothstep(0.0, 1.0, u)
+				var m: Vector3 = mouth_end(me, hold)
+				st.end = _bezier(clear, clear + Vector3(0, SPOON_ARC_UP, 0), m + SPOON_ARC_IN, m, ez)
+				st.dir = dir_bowl.slerp(dir_mouth, smoothstep(0.0, 0.7, u))
+				st.k = ez, 0.0, 1.0, SPOON_SECS[1])
 			await up.finished
-			await Cine.wait(w, 0.3)
+			# the lips take it: in a little, the bowl end tipping up, and out
+			var take := w.create_tween()
+			take.tween_method(func(u: float) -> void:
+				var m: Vector3 = mouth_end(me, hold)
+				var a := sin(u * PI)
+				st.end = m + dir_mouth * SPOON_TAKE.x * a - dir_mouth * SPOON_TAKE.y * smoothstep(0.55, 1.0, u)
+				st.dir = dir_mouth.rotated(dir_mouth.cross(Vector3.UP).normalized(), deg_to_rad(SPOON_TAKE.z) * smoothstep(0.2, 0.7, u))
+				st.k = 1.0, 0.0, 1.0, SPOON_SECS[2])
+			await take.finished
+			# and back down the way it came, to over the bowl
+			var from_end: Vector3 = st.end
+			var from_dir: Vector3 = st.dir
 			var down := w.create_tween()
-			down.tween_method(func(u: float) -> void: aim.call(1.0 - smoothstep(0.0, 1.0, u)), 0.0, 1.0, 0.38)
+			down.tween_method(func(u: float) -> void:
+				var ez := smoothstep(0.0, 1.0, u)
+				st.end = _bezier(from_end, from_end + SPOON_ARC_IN, over_bowl + Vector3(0, SPOON_ARC_UP, 0), over_bowl, ez)
+				st.dir = from_dir.slerp(dir_bowl, smoothstep(0.3, 1.0, u))
+				st.k = 1.0 - ez, 0.0, 1.0, SPOON_SECS[3])
 			await down.finished
-			await Cine.wait(w, 0.15)
+			await Cine.wait(w, SPOON_SECS[4])
+		# the spoon back on the bowl's rim where it was, and let go
+		if spoon != null:
+			var from_end: Vector3 = st.end
+			var from_dir: Vector3 = st.dir
+			var back := w.create_tween()
+			back.tween_method(func(u: float) -> void:
+				var ez := smoothstep(0.0, 1.0, u)
+				st.end = from_end.lerp(rest_end, ez) + Vector3(0, sin(ez * PI) * 0.03, 0)
+				st.dir = from_dir.slerp(rest_dir, ez), 0.0, 1.0, 0.5)
+			await back.finished
+			await Cine.wait(w, 0.1)
 		feeding[0] = false
 		hold.aim = Vector3.INF
 		hold.queue_free()
@@ -2459,37 +2607,78 @@ static func _eat(w: World, e: Dictionary) -> void:
 	Cine.move(w, root.to_global(Vector3(0.2, 2.6, 2.6)), w.player.global_position + Vector3(0, 1.0, 0), 0.7, 50.0)
 
 
+## Where the bowl sits, from the counter's front edge to its middle (m), and
+## where the player stands to eat, from the edge to their middle.
+const BOWL_IN := 0.15
+const EAT_STAND := 0.16
 ## Bram, once the bowl's empty.
 const ATE := [{"who": "bram", "say": "That's more like it. Now the crate."}]
 ## The spoon: a stick of a spoon SPOON_LEN long, held by its handle's end in
-## the fist, SPOON_LIFT over the palm's skin (SpoonHold), out past the thumb.
-## The fist's palm (his own frame): SPOON_PALM at the lips (in towards his
-## face and up), SPOON_PALM_BOWL scooping (down); the wrist turns between.
+## the curl of the fingers (SpoonHold; SPOON_GRIP in the palm's own frame,
+## Figure3D.palm_frame: x across to the little finger's side, y up off the
+## palm, z along the fingers), across the fingers and out past the thumb.
+## (9 November: held 1.2 cm over the palm's middle, it hung under an open
+## hand and read as nothing held; Player A's right hand is modelled near
+## open, its fingers curling up 2 to 4 cm from 7 cm along, so the handle lies
+## along the fingers' roots with their curl closing over it.)
 const SPOON_LEN := 0.16
-const SPOON_LIFT := 0.012
-const SPOON_PALM := Vector3(0.75, 0.5, -0.3)
-const SPOON_PALM_BOWL := Vector3(0.3, -0.9, 0.3)
+const SPOON_GRIP := Vector3(0.02, 0.006, 0.06)
 ## The spoon's bowl end in the porridge: this far up from the bowl's base at
-## its middle (the oats' top is 0.06 up).
+## its middle (the oats' top is 0.06 up); over the bowl between mouthfuls,
+## this much higher.
 const SPOON_IN_BOWL := 0.055
-## The spoon's pitch, bowl end first (degrees, his own frame: 0 level and
-## ahead, up through 90): dipping down into the bowl, and up and over to
-## the lips, which it comes to from below and a little in front (the fist
-## under the chin, the elbow down and bent: his forearm is short, and a
-## fist held out level with the lips had the arm straight); SPOON_ASIDE is how
-## far it leans out to his left by the top (the bowl end a little across
-## towards the mouth's middle).
-const SPOON_DIP := -30.0
-const SPOON_UP := 118.0
-const SPOON_ASIDE := 0.1
+const SPOON_OVER_BOWL := 0.035
+## How high the fist lifts the handle's end off the bowl's rim as it takes
+## the spoon up (m).
+const SPOON_PICK_LIFT := 0.05
+## Which way the spoon points (handle to bowl end; his own frame: x to his
+## left, y up, z ahead): in the bowl, down into it from the fist over it on
+## his right; at the lips, near level, coming in from in front and to his
+## right (9 November: it was near upright, the fist under the chin).
+const SPOON_DIR_BOWL := Vector3(0.18, -0.85, 0.45)
+const SPOON_DIR_MOUTH := Vector3(0.55, 0.12, -0.83)
+## The scoop: how deep the bowl end goes into the oats (y) and how far it's
+## drawn through them towards him (z), m.
+const SPOON_SCOOP := Vector3(0.0, 0.012, 0.035)
+## The way up: straight up off the bowl this far before it turns towards the
+## mouth, and coming in to the lips from this far in front, to his right and
+## below (his own frame); the same arc back down.
+const SPOON_ARC_UP := 0.12
+const SPOON_ARC_IN := Vector3(-0.05, -0.04, 0.09)
+## At the lips: in this far along the spoon (x), back out this far as they
+## let it go (y), the bowl end tipping up this many degrees (z).
+const SPOON_TAKE := Vector3(0.012, 0.03, 16.0)
+## A mouthful's parts (s): the scoop, the way up, at the lips, the way down,
+## the pause over the bowl.
+const SPOON_SECS := [0.5, 0.8, 0.55, 0.65, 0.18]
+## Where the right elbow bends towards (his own frame, from the shoulders'
+## height): down at his side over the bowl, lifting out as the spoon comes up.
+const SPOON_ELBOW_BOWL := Vector3(-0.32, -0.42, 0.02)
+const SPOON_ELBOW_MOUTH := Vector3(-0.44, -0.24, 0.08)
+## The palm's way round the handle: 1 if the model's palm is where
+## Figure3D.palm_frame says, -1 if it's the back of the hand.
+const SPOON_PALM_SIDE := 1.0
+## The feedback on the fist's target: how much of the drawn fist's shortfall
+## (against the frame before's asking) is added to the target each frame,
+## and the most the target is moved by it (m).
+const SPOON_FEEDBACK := 0.35
+const SPOON_CORR_MOST := 0.1
+
+
+## Where the spoon's bowl end is wanted at the mouth (his own frame): the lips
+## as drawn (read in the hold's pass, after the head's own turn and dip) and
+## SPOON_AT_MOUTH off them.
+static func mouth_end(me: Figure3D, hold: SpoonHold) -> Vector3:
+	return me.to_own(hold.mouth if hold != null and hold.mouth != Vector3.INF else mouth_of(me)) + SPOON_AT_MOUTH
 ## Where the spoon's bowl end stops at each mouthful, from the lips (his own
 ## frame: a little to his right, just under and in front of them).
 const SPOON_AT_MOUTH := Vector3(-0.01, -0.012, 0.02)
-## The feedback on the fist's target: how much of the drawn fist's shortfall
-## is added to the target each frame, and the most the target is moved by
-## it (m).
-const SPOON_FEEDBACK := 0.6
-const SPOON_CORR_MOST := 0.22
+
+
+## A cubic Bezier from a to d, by b and c, at t.
+static func _bezier(a: Vector3, b: Vector3, c: Vector3, d: Vector3, t: float) -> Vector3:
+	var u := 1.0 - t
+	return a * (u * u * u) + b * (3.0 * u * u * t) + c * (3.0 * u * t * t) + d * (t * t * t)
 
 
 ## The spoon in the fist, drawn where the hand is this frame (a modifier at
@@ -2507,13 +2696,19 @@ class SpoonHold:
 	var grip := Vector3.INF
 	var tip := Vector3.INF
 	var mouth := Vector3.INF   # the lips as drawn (after the head's own turn and dip)
+	var fore := Vector3.ZERO   # the right forearm's way as drawn, elbow to wrist (world)
 
 	func _process_modification_with_delta(_delta: float) -> void:
 		if not is_instance_valid(fig) or fig._skel == null:
 			return
 		mouth = AshfordP1.mouth_of(fig)
+		var sk := fig._skel
+		var fa := sk.find_bone("RightForeArm")
+		var hb := sk.find_bone("RightHand")
+		if fa >= 0 and hb >= 0:
+			fore = (sk.global_transform.basis * (sk.get_bone_global_pose(hb).origin - sk.get_bone_global_pose(fa).origin)).normalized()
 		var f := fig.palm_frame("right")
-		grip = f.origin + f.basis.y * AshfordP1.SPOON_LIFT
+		grip = f.origin + f.basis * AshfordP1.SPOON_GRIP
 		if aim == Vector3.INF or not is_instance_valid(spoon) or not spoon.is_inside_tree():
 			return
 		var d := aim - grip
@@ -3757,6 +3952,183 @@ static func tam_pockets(w: World, folded: bool) -> void:
 
 # -------------------------------------------------------------- Nell's bench ---
 
+## Hands at rest on the thighs, sat on Nell's bench (8 November, Gary: "Hand
+## goes through bench when you sit down with Nell"). A sat figure's arms
+## are its standing clip's, hanging at its sides, and on the bench that's
+## down through the seat beside the hips (and Nell's free hand, after her
+## pat, the same). Now the hands come to rest on the tops of the thighs, a
+## little over half way to the knee, palm down, fingers on towards the
+## knee: each hand's mark rides its own thigh, read off the thigh's bones as
+## they're posed each frame (LapMarks, a skeleton modifier before the
+## reaches), so as someone sits down their hands go onto their thighs as the
+## thighs come forward, and stay there through the talk. When they stand up
+## the hands stay on the thighs a moment as the legs straighten, pushing
+## off, then go back to the clip (LapMarks lets them go by itself, however
+## they're stood up: nell_stand, the dance, midnight). `lap_rest = false`
+## turns it off.
+static var lap_rest := true
+const LAP_ALONG := 0.6       # of the way from the hip joint to the knee
+const LAP_UP := 0.095        # over the thigh's bone (a grown-up's m): its top, and the palm's depth
+const LAP_OUT := 0.012       # out from the thigh's middle line, to their side
+const LAP_LET_GO := Vector2(0.3, 0.35)   # stood up: how long the hands stay, and how long they take to go (s)
+const STICK_REST := 0.065    # a hand on the stick hand: over its middle (a grown-up's m)
+## Nell's pat on the seat: where the hand's middle rests over the seat's top
+## (the palm's skin under it) and how high it lifts between pats (m).
+const PAT_REST := 0.03
+const PAT_LIFT := 0.04
+
+
+## `on`: "thigh" (the hand on its own thigh), "stick" (on the back of the
+## other hand where it holds a walking stick), or "at" (flat on whatever's
+## at `at`, a point in the world: Nell's free hand on the bench beside her,
+## where her pat leaves it; her skirt stands well off her thighs, so a hand
+## "on the thigh" was inside the cloth and down on the seat, and her stick's
+## out by her other knee, past her reach).
+static func lap_hands(w: World, who: String, sides: Array, secs := 0.5, on := "thigh", at := Vector3.INF) -> void:
+	var f = Cine.fig(w, who)
+	if not lap_rest or not (f is Figure3D):
+		return
+	var fig := f as Figure3D
+	if fig._skel == null:
+		return
+	var lm := fig._skel.get_node_or_null("LapMarks") as LapMarks
+	if lm == null:
+		lm = LapMarks.new()
+		lm.name = "LapMarks"
+		lm.fig = fig
+		fig._skel.add_child(lm)
+		fig._skel.skeleton_updated.connect(lm._drawn)
+	lm.up_for = 0.0
+	for side in sides:
+		lm.on[side] = on
+		var mk: Node3D = lm.marks.get(side, null)
+		if mk == null or not is_instance_valid(mk):
+			mk = Node3D.new()
+			mk.name = "Lap_" + String(side)
+			fig.add_child(mk)
+			lm.marks[side] = mk
+		if on == "at":
+			lm.fixed[side] = at
+			mk.global_position = at
+		fig._reach(String(side), mk, secs)
+		if on == "at":
+			# (flat, the fingers on along the forearm, as her pat lays it)
+			fig.palm(String(side), Vector3.DOWN, secs, 0.5)
+		else:
+			fig.palm(String(side), Vector3.DOWN, secs, 0.0, true, Vector3(0, 0, 1))
+	# (before the reaches, which read the marks; after Posture, which the
+	# thighs hang from)
+	fig._skel.move_child(lm, 0)
+	if fig._skel.has_node("Posture"):
+		fig._skel.move_child(fig._skel.get_node("Posture"), 0)
+
+
+class LapMarks:
+	extends SkeletonModifier3D
+	var fig: Figure3D
+	var marks := {}        # side -> Node3D (the reach's target)
+	var on := {}           # side -> "thigh", "stick" or "at"
+	var fixed := {}        # side -> the world point an "at" hand rests on
+	var up_for := 0.0      # how long they've been stood up (s)
+	## Where each hand's middle was as last drawn, every modifier done (the
+	## stick hand is put on its stick last of all, after these marks are read).
+	var seen := {}
+
+	func _drawn() -> void:
+		var sk := get_skeleton()
+		if sk == null:
+			return
+		for pre in ["Left", "Right"]:
+			var h := sk.find_bone(pre + "Hand")
+			var m := sk.find_bone(pre + "HandMiddle1")
+			if h < 0:
+				continue
+			var wr := sk.global_transform * sk.get_bone_global_pose(h).origin
+			seen[pre] = (wr + sk.global_transform * sk.get_bone_global_pose(m).origin) * 0.5 if m >= 0 else wr
+
+	func _process_modification_with_delta(delta: float) -> void:
+		if not is_instance_valid(fig) or marks.is_empty():
+			return
+		var sk := get_skeleton()
+		if sk == null:
+			return
+		if fig.seat < 0.0:
+			up_for += delta
+			if up_for >= AshfordP1.LAP_LET_GO.x:
+				_let_go()
+				return
+		else:
+			up_for = 0.0
+		var xf := sk.global_transform
+		var s := fig.stature()
+		var o := fig.to_world(Vector3.ZERO)
+		var fwd := (fig.to_world(Vector3(0, 0, 1)) - o).normalized()
+		var left := (fig.to_world(Vector3(1, 0, 0)) - o).normalized()
+		for side in marks:
+			var mk = marks[side]
+			if not is_instance_valid(mk):
+				continue
+			var pre := "Left" if side == "left" else "Right"
+			if String(on.get(side, "thigh")) == "at":
+				# (where it rests in the world, whichever way they've turned:
+				# the mark is in their node)
+				(mk as Node3D).global_position = fixed.get(side, (mk as Node3D).global_position)
+				continue
+			if String(on.get(side, "thigh")) == "stick":
+				# on the back of the other hand, which holds the stick
+				var other := "Right" if pre == "Left" else "Left"
+				if seen.has(other):
+					(mk as Node3D).global_position = (seen[other] as Vector3) + Vector3.UP * AshfordP1.STICK_REST * s
+				elif sk.find_bone(pre + "Hand") >= 0:
+					# (its first frame: where the hand is now)
+					(mk as Node3D).global_position = xf * sk.get_bone_global_pose(sk.find_bone(pre + "Hand")).origin
+				continue
+			var up := sk.find_bone(pre + "UpLeg")
+			var kn := sk.find_bone(pre + "Leg")
+			if up < 0 or kn < 0:
+				continue
+			var a := xf * sk.get_bone_global_pose(up).origin
+			var b := xf * sk.get_bone_global_pose(kn).origin
+			var t := (b - a).normalized()
+			# the thigh's top: up from it, or (stood, the thigh upright) its front
+			var v := Vector3.UP + fwd * 0.25
+			var n := (v - t * v.dot(t)).normalized()
+			var out := left if side == "left" else -left
+			(mk as Node3D).global_position = a.lerp(b, AshfordP1.LAP_ALONG) + n * AshfordP1.LAP_UP * s + out * AshfordP1.LAP_OUT * s
+
+	## The hands back to the clip (only those still on their marks: a scene
+	## may have reached them for something else since).
+	func _let_go() -> void:
+		var secs: float = AshfordP1.LAP_LET_GO.y
+		for side in marks:
+			var mk = marks[side]
+			var ik = fig._ik.get(side)
+			if ik != null and is_instance_valid(ik) and ik.has_meta("target") and ik.get_meta("target") == mk:
+				fig.call_deferred("_reach", String(side), null, secs)
+				fig.call_deferred("palm", String(side), Vector3.ZERO, secs)
+			if is_instance_valid(mk):
+				# (kept where it was till the hand has let go of it)
+				AshfordP1._free_after.call_deferred(mk, secs + 0.1)
+		marks.clear()
+
+
+static func _free_after(n: Node, secs: float) -> void:
+	if not is_instance_valid(n) or not n.is_inside_tree():
+		return
+	await n.get_tree().create_timer(secs, false).timeout
+	if is_instance_valid(n):
+		n.queue_free()
+
+
+## Where Nell's free hand rests flat on the bench beside her (her left, on
+## the side of the seat the player sits on): its middle, over the boards.
+const NELL_REST := 0.24     # m from the middle of her half of the seat, towards the other half
+
+static func nell_rest(w: World) -> Vector3:
+	var p := bench_seat(w).lerp(bench_seat(w, true), NELL_REST / 0.8)
+	return p + Vector3(0, BENCH_H + PAT_REST, 0) + bench_facing(w) * 0.02
+
+
 ## She pats the bench beside her (a 3D Nell's hand on the seat, twice): her
 ## left hand, across her lap to the near half of the free seat, since her
 ## right holds her stick (rigid in her hand since 23 October: a right-hand
@@ -3769,14 +4141,20 @@ static func nell_pats(w: World) -> void:
 	var pat := Node3D.new()
 	w.add_child(pat)
 	var seat := bench_seat(w, true).lerp(bench_seat(w), 0.3)
+	# (8 November: palm down on the boards, its skin coming to the seat's
+	# top and no further: the mark was the hand's middle 2.5 cm over the
+	# seat and the pat took it 1.5 cm under, the palm's skin lower still)
+	f.palm("left", Vector3.DOWN, 0.3, 0.5)
 	for k in 2:
-		pat.global_position = seat + Vector3(0, 0.5, 0) + bench_facing(w) * 0.05
-		f.reach(pat, null, 0.3)
+		pat.global_position = seat + Vector3(0, BENCH_H + PAT_REST + PAT_LIFT, 0) + bench_facing(w) * 0.05
+		f._reach("left", pat, 0.3)
 		await Cine.wait(w, 0.35)
 		var tw := w.create_tween()
-		tw.tween_property(pat, "global_position:y", pat.global_position.y - 0.04, 0.12)
+		tw.tween_property(pat, "global_position:y", pat.global_position.y - PAT_LIFT, 0.12)
 		await tw.finished
-	f.let_go(0.4)
+	# and it stays on the bench, nearer her
+	lap_hands(w, "nell", ["left"], 0.4, "at", nell_rest(w))
+	await Cine.wait(w, 0.4)
 	pat.queue_free()
 
 
@@ -3796,7 +4174,7 @@ static func sit_with_nell(w: World) -> void:
 	var pf = w.player_doll
 	var ahead := (pf as Figure3D).seat_feet_ahead() if pf is Figure3D else 0.6
 	await Cine.path(w, "player", [seat + fwd * ahead], 1.3)
-	await sit_down(w, "player", seat, fwd, BENCH_H, 0.6)
+	await sit_down(w, "player", seat, fwd, BENCH_H, 0.6, true)
 	await Cine.wait(w, 0.5)
 	# side by side, from in front of the bench
 	Cine.shot(w, (seat + bench_seat(w)) * 0.5 + fwd * 2.9 + Vector3(0, 1.05, 0), (seat + bench_seat(w)) * 0.5 + Vector3(0, 0.85, 0), 36.0)
@@ -4133,6 +4511,11 @@ static func corin_calls(w: World) -> void:
 		if kb == null:
 			continue
 		var at := stand - dn * 1.9 + aside * (float(i) - 1.0) * 1.15 - dn * absf(float(i) - 1.0) * 0.3
+		# (off anything solid there: with Corin met nearer the crate, the
+		# third child's place behind him fell on Nell's bench, and a walk
+		# that ends on a thing goes straight through it; 8 November,
+		# p1_v7_test)
+		at = Cine.off_blockers(w, at, 0.4)
 		at.y = village(w).height(at.x, at.z)
 		_walk_then_look(w, id, at, to)
 	var far := Vector2(stand.x - c.x, stand.z - c.z).length() > 0.25

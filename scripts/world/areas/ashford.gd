@@ -232,7 +232,8 @@ static func arrival() -> Array:
 
 ## Master Script v7: Bram. The afternoon: where to go next (he sends the
 ## player to whoever's still to see). The evening: "Bram, by the Great
-## Lantern", whose last question starts midnight.
+## Lantern", whose last question starts midnight (once Corin's been found on
+## the mill-race wall: until then Bram sends the player to him).
 static func _bram() -> Array:
 	return [
 		{"if": "ash_evening", "then": _bram_evening(), "else": [
@@ -267,19 +268,35 @@ static func _bram_evening() -> Array:
 			{"who": "bram", "say": "Every roof on this green is written down in Morne's book, and not one soul here is thinking about it tonight."},
 			{"who": "bram", "say": "That's what a festival's for. One night a year when nobody owes anybody anything."},
 		]},
-		{"ask": ["Are you all right?", "Why do you keep looking at the sky?", "It's nearly midnight."], "ends": [2],
-			"leave": "I'll have a last look round.", "then": [
-			[{"who": "bram", "say": "I'm old, Sprout. Old men go quiet at parties. It's not a mood. It's a hobby."}],
-			[
-				{"who": "bram", "say": "Habit."},
-				{"scene": "bram_stars"},
-				{"who": "bram", "say": "The Shards had a bad night two weeks back. I like to know where the weather is."},
-			],
-			[
-				{"who": "bram", "say": "So it is. Go on, then. Winner lights the Lantern. Make it a good one."},
-				{"set": "ash_lantern_duel"},
-				{"scene": "midnight"},
-			],
+		# (8 November, Gary: "You can miss talk with Corin by talking to Bram
+		# first in the evening. I don't want that to be possible: if you talk
+		# to Bram first have him say Corin was looking for you over by the
+		# mill." Until Corin's evening on the race wall is done, Bram sends
+		# the player to him and midnight waits; after it, his hub as before.)
+		{"if": "corin_pond", "then": [
+			{"ask": ["Are you all right?", "Why do you keep looking at the sky?", "It's nearly midnight."], "ends": [2],
+				"leave": "I'll have a last look round.", "then": [
+				[{"who": "bram", "say": "I'm old, Sprout. Old men go quiet at parties. It's not a mood. It's a hobby."}],
+				[
+					{"who": "bram", "say": "Habit."},
+					{"scene": "bram_stars"},
+					{"who": "bram", "say": "The Shards had a bad night two weeks back. I like to know where the weather is."},
+				],
+				[
+					{"who": "bram", "say": "So it is. Go on, then. Winner lights the Lantern. Make it a good one."},
+					{"set": "ash_lantern_duel"},
+					{"scene": "midnight"},
+				],
+			]},
+		], "else": [
+			{"if": "bram_sent_corin", "then": [
+				{"who": "bram", "say": "He's still down at the mill race, Sprout. Go on. Midnight'll keep."},
+			], "else": [
+				{"set": "bram_sent_corin"},
+				{"who": "bram", "say": "Corin came looking for you while they were lighting the lanterns. Wouldn't say what for. He's gone off down by the mill, sat on the race wall on his own."},
+				{"who": "bram", "say": "Go and find him, Sprout. He's leaving soon enough, and he's too proud to come looking twice."},
+			]},
+			{"objective": AshfordDay.EVENING_CORIN},
 		]},
 		{"if": "ash_lantern_duel", "then": [], "else": [{"theme": "back"}]},
 	]
@@ -582,7 +599,11 @@ static func _corin_morning() -> Array:
 				{"who": "corin", "say": "They calculate the interest on the world, Sprout. They sit in warm rooms while the rest of Veyl freezes, deciding whose fields get watered and whose roofs get taken."},
 				{"who": "corin", "say": "It's better to hold the pen than the plough."},
 			]]},
-			"leave": "Enough talking. Let's settle the Lantern Duel.", "then": [
+			# (8 November, Gary: "Let's settle the Lantern Duel" from the
+			# player, who knows he has no cards, made no sense before "I
+			# would, but I don't have a deck." Now the player only asks, and
+			# it's Corin who throws down the challenge.)
+			"leave": "You were serious about the Lantern Duel?", "then": [
 			[
 				{"set": "corin_letter"},
 				{"who": "corin", "say": "My ticket out of this mud-hole! A clerkship offer from the Ironvault Notary Guild."},
@@ -593,6 +614,8 @@ static func _corin_morning() -> Array:
 				{"who": "corin", "say": "The Turning year starts at midnight. Every Seat in Veyl is up for grabs! I'm not staying in a village dying on credit."},
 			],
 		]},
+		# (said whether or not they asked: the questions can run out first)
+		{"who": "corin", "say": "Last Lantern Night before I'm off to the city, and I'm not going out on a win over Hob and his cabbage-patch Sparks. You and me, in front of the whole green. Deck out, Sprout."},
 		{"who": "player", "say": "I would, but I don't have a deck."},
 		# a heavy hand lands on the player's shoulder: Bram, pulling a worn
 		# leather deck-box from his coat
@@ -931,9 +954,20 @@ static func starts_black() -> bool:
 ## part it was in.
 static func resume(w: World) -> void:
 	if not Game.flag("ash_lantern_duel"):
-		AshfordP1.pose(w)
+		# (8 November, Gary: "I like Corin walking over while you put lantern
+		# down but then he disappears and walks over again". On a New Game
+		# World plays the opening through intro() and then calls this; the
+		# opening has set ash_started by then, so the staging below put Corin
+		# back on his morning spot by the drum in the middle of his walk over,
+		# and his talk walked him across the green a second time; Bram could
+		# be snapped onto his stool by pose() too. The probes came in through
+		# a saved game, where this runs before the opening and moves nobody.
+		# Straight after the opening, everyone is where it left them.)
+		var opened := w.has_meta("p1_opened")
+		if not opened:
+			AshfordP1.pose(w)
 		# the light and everyone's places for the time of day (Master Script v7)
-		AshfordDay.stage(w)
+		AshfordDay.stage(w, not opened)
 		if in_opening():
 			await AshfordP1.opening(w)
 		AshfordDay.watch(w)
@@ -1154,8 +1188,37 @@ const BOX_RISE := 0.006
 ## the palms as modelled are thicker than a skin's width, their heels and
 ## the mounds of the thumb standing 2 to 3 cm over that middle, so a box set
 ## BOX_RISE over it sat in the flesh; `sink`, the old way round, is gone);
-## `heel`, more room ahead of the wrist.
-const BOX_FIT := {"player_a": {"bottom": 0.028}, "player_b": {"bottom": 0.032, "thumb": 0.05},
+## `heel`, more room ahead of the wrist. `carry` (9 November): which hand the
+## box sits on, "left" unless it says (carry_side); `one_hand`: the other
+## hand isn't put under it as it's taken, only to the lid. `tilt` (degrees,
+## negative: its front up): the box pitched off the palm, `bottom` then where
+## its bottom is over the palm's middle (_box_lift); `level`, where it is
+## while the box is still level in the giver's hand (clear of the highest of
+## the palm under it), the tip coming as it's brought in. `lid_over` and
+## `lid_back`: where the other hand's palm is put to lift the lid, over its
+## top (m, else the bottom's and a centimetre) and in from its far edge
+## (Player A's left is a claw: its palm is held 13 cm up so the curled
+## fingers come down onto the lid, not through it into the box).
+## Player A's is his right hand, as modelled, the other to the lid (9
+## November, Gary: "Players hand distort really bad when Bram hands you
+## box"): his left hand is modelled as a loose claw, its fingers standing
+## 10 to 12 cm up off the palm and the thumb lying across it, and the rig
+## Tripo3D gave it can't open it cleanly: the finger joints sit 3 to 4 cm
+## back in the palm from the knuckles, the palm itself is weighted to the
+## thumb's bones and the thumb to the fingers'. Opened flat under the box
+## (Figure3D.OPEN_FLAT, 70 and -60 degrees) its skin stretched to 3.7 times
+## its length, 132 triangles over 1.6 times, the palm twisted and the
+## wristband's charm torn; re-weighted and opened about the true knuckle
+## line it still tore where the curled fingers meet the thumb
+## (tools/hand_weights.py). His right hand is near flat as modelled (its
+## fingers curl 4 cm up at most), so the box sits on that, nothing opened,
+## and the left's curled fingers hook the lid up. The right palm is cupped
+## (its middle 2.4 cm up, the thumb's ridge 3.2 and the curled fingertips 3.7
+## under where the box goes), so a box laid flat on the highest of it stood
+## 1 to 3 cm clear of the palm and looked to float: tipped 6 degrees, front
+## up, it rests along the thumb's ridge and the curl of the fingers, the
+## fingertips up in front of it (tests/box_hold_probe.gd prints the profile).
+const BOX_FIT := {"player_a": {"bottom": 0.027, "tilt": -6.0, "level": 0.034, "carry": "right", "one_hand": true, "lid_over": 0.13, "lid_back": 0.06}, "player_b": {"bottom": 0.032, "thumb": 0.05},
 	"player_c": {"bottom": 0.025, "thumb": 0.06}, "player_d": {"bottom": 0.022, "thumb": 0.03},
 	# (Bram's, holding it out on his palm: where the drawn box's half-height
 	# had it, which looked right on 6 November's stills)
@@ -1189,16 +1252,17 @@ static func box_size(box) -> Vector3:
 	return CARD_BOX_SIZE
 
 
-## How far back from the middle of `f`'s left palm the box sits (m, towards
-## the wrist; negative: ahead of it): its back face BOX_HEEL ahead of the
-## wrist (Figure3D.palm_frame's middle is its own distance along the hand on
-## each model). `size`: the box's (box_size).
+## How far back from the middle of `f`'s carrying palm (carry_side) the box
+## sits (m, towards the wrist; negative: ahead of it): its back face BOX_HEEL
+## ahead of the wrist (Figure3D.palm_frame's middle is its own distance along
+## the hand on each model). `size`: the box's (box_size).
 static func _box_back(f, size := CARD_BOX_SIZE) -> float:
 	if not (f is Figure3D):
 		return BOX_BACK
 	var fig := f as Figure3D
-	var fr := fig.palm_frame("left")
-	var wrist := fig.bone_pos("LeftHand")
+	var cs := carry_side(f)
+	var fr := fig.palm_frame(cs)
+	var wrist := fig.bone_pos("LeftHand" if cs == "left" else "RightHand")
 	# (the palm's middle stands a skin's width off the bones: along the hand
 	# is the rest of the way)
 	var skin := Figure3D.SKIN * 0.6 * fig.stature()
@@ -1206,10 +1270,25 @@ static func _box_back(f, size := CARD_BOX_SIZE) -> float:
 	return along - size.z * 0.5 - BOX_HEEL - float(_box_fit(f).get("heel", 0.0))
 
 
-## How far over the left palm's middle (Figure3D.palm_frame) the box's own
-## middle sits (m): half its height over where its bottom sits (_box_bottom).
-static func _box_lift(f, size := CARD_BOX_SIZE) -> float:
-	return size.y * 0.5 + _box_bottom(f)
+## How far over the carrying palm's middle (Figure3D.palm_frame) the box's
+## own middle sits (m): half its height over where its bottom sits
+## (_box_bottom), and for a box tipped on the palm (_box_tilt) its bottom
+## that much higher or lower where its middle is, `back` behind the palm's.
+static func _box_lift(f, size := CARD_BOX_SIZE, back := 0.0, k := 1.0) -> float:
+	var t := _box_tilt(f) * k
+	return size.y * 0.5 / cos(t) + lerpf(_box_level_bottom(f), _box_bottom(f), k) + tan(-t) * -back
+
+
+## Where the box's bottom is over the palm while it's still level (BOX_FIT
+## `level`, else `bottom`).
+static func _box_level_bottom(f) -> float:
+	return float(_box_fit(f).get("level", _box_bottom(f)))
+
+
+## How far the box is pitched on the carrying palm (radians, negative: its
+## front up; BOX_FIT `tilt`, degrees), for Figure3D.attach.
+static func _box_tilt(f) -> float:
+	return deg_to_rad(float(_box_fit(f).get("tilt", 0.0)))
 
 
 ## How far over the palm's middle the box's bottom sits (m): the look's
@@ -1224,24 +1303,48 @@ static func _box_fit(f) -> Dictionary:
 	return BOX_FIT.get((f as Figure3D)._model_name, {}) if f is Figure3D else {}
 
 
-## How far the box sits off the middle of the left palm towards their right
-## (m): `both` while both hands are under it, else on the left hand alone.
+## The hand the box sits on ("left" or "right"; BOX_FIT `carry`), and the
+## other one (it goes to the lid).
+static func carry_side(f) -> String:
+	return String(_box_fit(f).get("carry", "left"))
+
+
+static func other_side(f) -> String:
+	return "right" if carry_side(f) == "left" else "left"
+
+
+## 1 for a box carried on the left hand, -1 on the right: every mark's x
+## below is to their left as for the left hand, and a box carried on the
+## right is the same hold mirrored.
+static func _box_mirror(f) -> float:
+	return 1.0 if carry_side(f) == "left" else -1.0
+
+
+## The other hand stays out from under the box as it's taken (BOX_FIT
+## `one_hand`).
+static func _box_one_hand(f) -> bool:
+	return bool(_box_fit(f).get("one_hand", false))
+
+
+## How far the box sits off the middle of the carrying palm towards the
+## other hand (m): `both` while both hands are under it (or the carrying hand
+## comes in beside the giver's), else on the one hand alone.
 static func _box_aside(f, both := true) -> float:
 	var th := float(_box_fit(f).get("thumb", 0.0))
 	return maxf(BOX_ASIDE if both else 0.0, th)
 
 
-## Where the left palm's mark sits under the box as it's taken (the grip's
-## frame, the box's bottom middle: x across to their left, z ahead).
-static func _box_left_at(f, back: float) -> Vector3:
-	return Vector3(_box_aside(f), 0.0, back)
+## Where the carrying palm's mark sits under the box as it's taken (the
+## grip's frame, the box's bottom middle: x across to their left, z ahead).
+static func _box_carry_at(f, back: float) -> Vector3:
+	return Vector3(_box_aside(f) * _box_mirror(f), 0.0, back)
 
 
-## Where the right palm sits under the box's other half (the box's frame):
-## as far to the right of its middle as the left palm is to the left, a
-## little further back (BOX_RIGHT_BACK).
-static func _box_right_at(f, back: float, size := CARD_BOX_SIZE) -> Vector3:
-	return Vector3(-minf(_box_aside(f) + 0.005, 0.05), -size.y * 0.5 - _box_bottom(f) - BOX_RIGHT_UNDER, back - BOX_RIGHT_BACK)
+## Where the other palm sits under the box's other half (the box's frame):
+## as far to the other side of its middle as the carrying palm is, a little
+## further back (BOX_RIGHT_BACK).
+static func _box_other_at(f, back: float, size := CARD_BOX_SIZE) -> Vector3:
+	return Vector3(-minf(_box_aside(f) + 0.005, 0.05) * _box_mirror(f), -size.y * 0.5 - _box_bottom(f) - BOX_RIGHT_UNDER, back - BOX_RIGHT_BACK)
 
 
 ## Where Bram's right hand holds the box out on its palm, in his own frame:
@@ -1785,10 +1888,24 @@ static func _first_deck(w: World) -> void:
 		# the box's own size, box_size: 8 November)
 		var size := box_size(box)
 		var back := _box_back(me, size)
+		# (9 November: which hand carries it, BOX_FIT `carry`; every mark's x
+		# goes by `sx`, so a box on the right hand is the same hold mirrored.
+		# Player A's is on his right, his left a claw as modelled; that left
+		# hand isn't put under it, `one_hand`, and lifts the lid)
+		var cs := carry_side(me)
+		var os := other_side(me)
+		var sx := _box_mirror(me)
+		var one := _box_one_hand(me)
+		# (both hands' reaches at once, by which carries)
+		var both_reach := func(carry_t: Node3D, other_t: Node3D, secs: float) -> void:
+			if cs == "left":
+				me.reach(carry_t, other_t, secs)
+			else:
+				me.reach(other_t, carry_t, secs)
 		var grip := Node3D.new()
 		grip.name = "BoxGrip"
 		me.carry(grip, Vector3.ZERO)
-		grip.global_position = box.global_position + Vector3(0, -size.y * 0.5 - _box_bottom(me), 0)
+		grip.global_position = box.global_position + Vector3(0, -size.y * 0.5 - _box_level_bottom(me), 0)
 		grip.rotation = Vector3.ZERO
 		for sd in [["L", 1.0], ["R", -1.0]]:
 			var mk := Node3D.new()
@@ -1796,32 +1913,35 @@ static func _first_deck(w: World) -> void:
 			# (a hand's half-width in from the middle, each under its half, the
 			# palms' middles a little ahead of the box's: it sits back on them,
 			# _box_back)
-			mk.position = _box_left_at(me, back) if sd[0] == "L" else _box_right_at(me, back, size) * Vector3(1, 0, 1) + Vector3(0, -BOX_RIGHT_UNDER, 0)
+			# ("L" the carrying hand's, "R" the other's, whichever side)
+			mk.position = _box_carry_at(me, back) if sd[0] == "L" else _box_other_at(me, back, size) * Vector3(1, 0, 1) + Vector3(0, -BOX_RIGHT_UNDER, 0)
 			grip.add_child(mk)
 		w.set_meta("box_grip_player", grip)
-		me.palm("left", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
-		me.palm("right", Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
+		me.palm(cs, Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
+		if not one:
+			me.palm(os, Vector3.UP, 0.4, 1.0, true, Vector3.BACK)
 		# the elbows out to the sides and a touch forward, at the ribs, for as
 		# long as the box is held (4 November, Gary: "when you take box from
 		# Bram arms go into body": with the hands side by side under the box
 		# in front of the belly, the elbows' usual hint, out and back, bent
 		# them back past the flanks and the forearms ran in through the sides
 		# of the body to the hands); _drop_box gives them back
-		me.elbow("left", Vector3(0.46, me._shoulder - 0.38, 0.14), 0.4)
-		me.elbow("right", BOX_RIGHT_ELBOW + Vector3(0, me._shoulder, 0), 0.4)
+		me.elbow(cs, Vector3(0.46 * sx, me._shoulder - 0.38, 0.14), 0.4)
+		if not one:
+			me.elbow(os, BOX_RIGHT_ELBOW * Vector3(sx, 1, 1) + Vector3(0, me._shoulder, 0), 0.4)
 		# in from below and in front, so the hands don't come through his
 		var way_l := Node3D.new()
 		var way_r := Node3D.new()
 		for way in [way_l, way_r]:
 			grip.add_child(way)
-		way_l.position = (grip.get_node("L") as Node3D).position + Vector3(0.03, -0.1, -0.14)
-		way_r.position = (grip.get_node("R") as Node3D).position + Vector3(-0.03, -0.1, -0.14)
-		me.reach(way_l, way_r, 0.3)
+		way_l.position = (grip.get_node("L") as Node3D).position + Vector3(0.03 * sx, -0.1, -0.14)
+		way_r.position = (grip.get_node("R") as Node3D).position + Vector3(-0.03 * sx, -0.1, -0.14)
+		both_reach.call(way_l, null if one else way_r, 0.3)
 		var under := w.create_tween().set_parallel(true)
 		under.tween_property(way_l, "position", (grip.get_node("L") as Node3D).position, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		under.tween_property(way_r, "position", (grip.get_node("R") as Node3D).position, 0.45).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 		await under.finished
-		me.reach(grip.get_node("L"), grip.get_node("R"), 0.1)
+		both_reach.call(grip.get_node("L"), null if one else grip.get_node("R"), 0.1)
 		way_l.queue_free()
 		way_r.queue_free()
 		await Cine.wait(w, 0.15)
@@ -1835,7 +1955,7 @@ static func _first_deck(w: World) -> void:
 		_free_box_hand(w, "bram")
 		w.remove_meta("box_bram")
 		w.set_meta("box_player", box)
-		me.attach(box, "palm", "left", _box_lift(me, size), 0.0, 0.0, -back, -_box_aside(me))
+		me.attach(box, "palm", cs, _box_lift(me, size, back, 0.0), 0.0, 0.0, -back, -_box_aside(me) * sx)
 		# (the right hand under the box's other half, wherever the left palm
 		# puts the box: its mark hangs from the box, as far ahead of its
 		# middle as the left palm's is)
@@ -1846,13 +1966,20 @@ static func _first_deck(w: World) -> void:
 		# clear behind the box's back edge: the forearm rises steeply from the
 		# wrist to the elbow, and from under the box it came up through its
 		# back corner on the longer-handed looks, B's and D's, 6 November)
-		rmark.position = _box_right_at(me, back, size)
-		me.reach(grip.get_node("L"), rmark, 0.1)
+		rmark.position = _box_other_at(me, back, size)
+		both_reach.call(grip.get_node("L"), null if one else rmark, 0.1)
 		# in to them, a little up: the hands' marks come in, and the box with
 		# the left hand
-		var hold := me.hold_point(0.5, 0.62) + Vector3(0.0, -size.y * 0.5 - _box_bottom(me), 0.0)
+		# (a box carried on one hand comes in a hand's width to that side)
+		var hold := me.hold_point(0.5, 0.62) + Vector3((0.0 if not one else 0.06 * sx), -size.y * 0.5 - _box_bottom(me), 0.0)
 		var bring := w.create_tween()
 		bring.tween_property(grip, "position", hold, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		# (and settling to its tip on the hand, BOX_FIT `tilt`, as it comes:
+		# Bram held it level)
+		if _box_tilt(me) != 0.0:
+			var a0 := _box_aside(me)
+			bring.parallel().tween_method(func(k: float) -> void:
+				me.attach(box, "palm", cs, _box_lift(me, size, back, k), 0.0, 0.0, -back, -a0 * sx, _box_tilt(me) * k), 0.0, 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 		await bring.finished
 		# to open it (29 October, Gary: "his hands are in the way when he
 		# opens it"): the box stays on the flat of the left hand, the right
@@ -1875,13 +2002,13 @@ static func _first_deck(w: World) -> void:
 		var aside0 := _box_aside(me)
 		var aside1 := _box_aside(me, false)
 		var lh0 := lh.position
-		me.reach(lh, rmark, 0.1)
+		both_reach.call(lh, null if one else rmark, 0.1)
 		var half := size.x * 0.5
 		var centre_under := w.create_tween()
 		centre_under.tween_method(func(k: float) -> void:
 			var a := lerpf(aside0, aside1, k)
-			lh.position = lh0 + Vector3(a - aside0, 0.0, 0.0)
-			me.attach(box, "palm", "left", _box_lift(me, size), 0.0, 0.0, -back, -a), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
+			lh.position = lh0 + Vector3((a - aside0) * sx, 0.0, 0.0)
+			me.attach(box, "palm", cs, _box_lift(me, size, back), 0.0, 0.0, -back, -a * sx, _box_tilt(me)), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 		await centre_under.finished
 		_into_box_shot(w, box)
 		var lid := box.get_node_or_null("Lid") as Node3D
@@ -1893,7 +2020,8 @@ static func _first_deck(w: World) -> void:
 		# (the hand's own thickness over the lid, as under the box, _box_bottom,
 		# and a finger's width more: the fingertips curl over the edge as it
 		# swings up)
-		edge.position = Vector3(0.0, size.y * 0.5 + _box_bottom(me) + 0.01, size.z * 0.5)
+		var lid_over := float(_box_fit(me).get("lid_over", _box_bottom(me) + 0.01))
+		edge.position = Vector3(0.0, size.y * 0.5 + lid_over, size.z * 0.5 - float(_box_fit(me).get("lid_back", 0.0)))
 		if lid != null:
 			edge.reparent(lid, true)
 		# the right hand up off the box's side, over its top and along to the
@@ -1901,26 +2029,28 @@ static func _first_deck(w: World) -> void:
 		var rh := Node3D.new()
 		rh.name = "RightWay"
 		w.add_child(rh)
-		rh.global_position = rmark.global_position
-		me.reach(lh, rh, 0.1)
+		# (a hand that wasn't under it comes from where it hangs)
+		rh.global_position = rmark.global_position if not one else me.palm_frame(os).origin
+		both_reach.call(lh, rh, 0.1 if not one else 0.3)
 		# (a forearm's width out from the box's side on the way up, so the wrist
 		# clears its top edge: 6 November)
-		var side_out := box.to_global(Vector3(-half - 0.09, -size.y * 0.3, 0.0))
-		var side_up := box.to_global(Vector3(-half - 0.08, size.y * 0.5 + 0.1, 0.0))
+		var side_out := box.to_global(Vector3((-half - 0.09) * sx, -size.y * 0.3, 0.0))
+		var side_up := box.to_global(Vector3((-half - 0.08) * sx, size.y * 0.5 + maxf(0.1, lid_over), 0.0))
 		var over_edge := edge.global_position + Vector3(0, 0.08, 0)
 		# (down from under it first, then out, so the fingers don't come up
 		# through its bottom edge on the way; and the right elbow up and out
 		# while the hand's over the lid, so the forearm comes down to it from
 		# above instead of across the box's top: 6 November)
-		var under_out := box.to_global(Vector3(-half - 0.02, -size.y * 0.5 - 0.06, 0.0))
-		me.elbow("right", Vector3(-0.44, me._shoulder - 0.2, 0.1), 0.4)
+		var under_out := box.to_global(Vector3((-half - 0.02) * sx, -size.y * 0.5 - 0.06, 0.0))
+		me.elbow(os, Vector3(-0.44 * sx, me._shoulder - 0.2, 0.1), 0.4)
 		# (down off it first, and a touch forward: going down and out at once,
 		# the fingers curled up in front of it scraped its front face, 6
 		# November)
 		var drop := box.to_global(rmark.position + Vector3(0.0, -0.05, 0.015))
 		var round_over := w.create_tween()
-		round_over.tween_property(rh, "global_position", drop, 0.12).set_trans(Tween.TRANS_SINE)
-		round_over.tween_property(rh, "global_position", under_out, 0.1).set_trans(Tween.TRANS_SINE)
+		if not one:
+			round_over.tween_property(rh, "global_position", drop, 0.12).set_trans(Tween.TRANS_SINE)
+			round_over.tween_property(rh, "global_position", under_out, 0.1).set_trans(Tween.TRANS_SINE)
 		# (and turned palm down to go over the lid only once it's out from
 		# under: turned under the box, its fingers swung up into it; flat, so
 		# the fingers lie along the lid rather than curl down into it: 8
@@ -1929,13 +2059,13 @@ static func _first_deck(w: World) -> void:
 		# (its fingers kept pointing ahead as it turns: left to point along the
 		# forearm they pointed in at the box and, Player A's being long,
 		# swept through its side on the way up, 8 November)
-		round_over.tween_callback(func() -> void: me.palm("right", Vector3.DOWN, 0.25, 1.0, true, Vector3.BACK))
-		round_over.tween_property(rh, "global_position", side_out, 0.14).set_trans(Tween.TRANS_SINE)
+		round_over.tween_callback(func() -> void: me.palm(os, Vector3.DOWN, 0.25, 1.0, true, Vector3.BACK))
+		round_over.tween_property(rh, "global_position", side_out, 0.14 if not one else 0.3).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", side_up, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", edge.global_position, 0.12).set_trans(Tween.TRANS_SINE)
 		await round_over.finished
-		me.reach(lh, edge, 0.08)
+		both_reach.call(lh, edge, 0.08)
 		rh.queue_free()
 		await Cine.wait(w, 0.15)
 		# the lid up, and the deck comes out of it: the hand on its edge turns
@@ -1950,16 +2080,16 @@ static func _first_deck(w: World) -> void:
 				# long fingers hooked a centimetre into it)
 				var ly := lid.global_transform.basis.y
 				var lz := lid.global_transform.basis.z
-				me.palm("right", (-ly + lz * 0.4).normalized(), 0.01, 1.0, false, lz), 0.0, 1.0, 0.6)
+				me.palm(os, (-ly + lz * 0.4).normalized(), 0.01, 1.0, false, lz), 0.0, 1.0, 0.6)
 		await open_box_lid(w, box, true, 0.6)
 		var away := Node3D.new()
 		away.name = "RightAway"
 		w.add_child(away)
 		away.global_position = edge.global_position + Vector3(0, 0.12, 0)
-		me.reach(lh, away, 0.3)
-		me.elbow("right", BOX_RIGHT_ELBOW + Vector3(0, me._shoulder, 0), 0.4)
+		both_reach.call(lh, away, 0.3)
+		me.elbow(os, BOX_RIGHT_ELBOW * Vector3(sx, 1, 1) + Vector3(0, me._shoulder, 0), 0.4)
 		w.set_meta("box_right_away", away)
-		me.palm("right", Vector3.ZERO, 0.35)
+		me.palm(os, Vector3.ZERO, 0.35)
 		await Cine.wait(w, 0.35)
 	else:
 		_drop_box(w, "bram")
@@ -1985,8 +2115,9 @@ static func _first_deck(w: World) -> void:
 			if box != null and is_instance_valid(box):
 				var by := w.create_tween()
 				var bs := box_size(box)
-				by.tween_property(ra, "global_position", box.to_global(Vector3(-bs.x * 0.5 - 0.12, bs.y * 0.5 + 0.1, 0.0)), 0.2).set_trans(Tween.TRANS_SINE)
-				by.tween_property(ra, "global_position", box.to_global(Vector3(-bs.x * 0.5 - 0.12, -0.02, -0.05)), 0.2).set_trans(Tween.TRANS_SINE)
+				var bsx := _box_mirror(Cine.fig(w, "player"))
+				by.tween_property(ra, "global_position", box.to_global(Vector3((-bs.x * 0.5 - 0.12) * bsx, bs.y * 0.5 + 0.1, 0.0)), 0.2).set_trans(Tween.TRANS_SINE)
+				by.tween_property(ra, "global_position", box.to_global(Vector3((-bs.x * 0.5 - 0.12) * bsx, -0.02, -0.05)), 0.2).set_trans(Tween.TRANS_SINE)
 				await by.finished
 			(ra as Node).queue_free()
 		w.remove_meta("box_right_away")
@@ -1995,8 +2126,11 @@ static func _first_deck(w: World) -> void:
 		var gw = AshfordP1.meta(w, "box_grip_player")
 		var lh2: Node3D = (gw as Node3D).get_node_or_null("LeftWay") if gw != null and is_instance_valid(gw) else null
 		if lh2 != null:
-			me2.reach(lh2, null, 0.4)
-			me2.palm("right", Vector3.ZERO, 0.3)
+			if carry_side(me2) == "left":
+				me2.reach(lh2, null, 0.4)
+			else:
+				me2.reach(null, lh2, 0.4)
+			me2.palm(other_side(me2), Vector3.ZERO, 0.3)
 			var low := w.create_tween()
 			# (held out from the belly, not against it: the forearms stay
 			# clear of the body, 4 November)

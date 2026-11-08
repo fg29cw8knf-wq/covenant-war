@@ -228,7 +228,13 @@ roofs get taken. It's better to hold the pen than the plough."
 **[CORIN]:** "The Turning year starts at midnight. Every Seat in Veyl is up for
 grabs! I'm not staying in a village dying on credit."
 
-**Option 3:** "Enough talking. Let's settle the Lantern Duel." _(Progress)_
+**Option 3 (changed, 8 November, Gary: "Let's settle the Lantern Duel" made no
+sense from a player who knows he has no cards):** "You were serious about the
+Lantern Duel?" _(Progress)_
+**[CORIN] (new, 8 November; also said if the questions run out first):** "Last
+Lantern Night before I'm off to the city, and I'm not going out on a win over Hob
+and his cabbage-patch Sparks. You and me, in front of the whole green. Deck out,
+Sprout."
 **[PROTAGONIST]:** "I would, but I don't have a deck."
 _(A heavy hand lands on the protagonist's shoulder. Bram steps into the lantern
 light, pulling a worn leather deck-box from his coat.)_
@@ -418,8 +424,7 @@ _(new) The sun drops behind the mill. The lanterns are lit one by one along the
 eaves. Ned's fiddle starts up properly. For an hour the green belongs to the
 player: walk anywhere, talk to anyone. Nobody here owes anybody anything tonight._
 
-[GAME] The objective is the same: meet Bram at the Great Lantern before midnight. Each of the four below is optional, but each is marked on the green; the
-midnight objective lights only once the player has spoken to Bram.
+[GAME] The objective is the same: meet Bram at the Great Lantern before midnight. Tilly's thanks, Tam's bread and Nell's dance are optional, but each is marked on the green; Corin at the millpond is not optional (8 November, Gary): until the player has been to him, the objective puts him first, the arrow points down the lane, and Bram sends the player to him (below). The midnight objective lights only once the player has spoken to Bram.
 
 ### Tilly's thanks (new)
 
@@ -503,7 +508,17 @@ Morne's book, and not one soul here is thinking about it tonight."
 **[BRAM]:** "That's what a festival's for. One night a year when nobody owes
 anybody anything."
 
-**Hub:**
+_(If the player hasn't been to Corin at the millpond yet, Bram sends them
+there and midnight waits; 8 November, Gary.)_
+**[BRAM]:** "Corin came looking for you while they were lighting the lanterns.
+Wouldn't say what for. He's gone off down by the mill, sat on the race wall on
+his own."
+**[BRAM]:** "Go and find him, Sprout. He's leaving soon enough, and he's too
+proud to come looking twice."
+_(Talking to him again before then:)_ **[BRAM]:** "He's still down at the mill
+race, Sprout. Go on. Midnight'll keep."
+
+**Hub** _(once the player has been to Corin)_:
 "Are you all right?" → **[BRAM]:** "I'm old, Sprout. Old men go quiet at parties.
 It's not a mood. It's a hobby."
 "Why do you keep looking at the sky?" → **[BRAM]:** "Habit." _(beat)_ "The Shards
@@ -1179,7 +1194,7 @@ While building v7 the game needed a few short lines the script doesn't have. The
 - **Nell**, dancing: "Hush. He's nearly in time."
 - **Tilly**, after the moth: "It's gone grey again. It always goes grey again." In the evening, after: "Every day. You promised."
 - **Bram's evening hub** has a way out that isn't midnight: "I'll have a last look round."
-- **On screen:** "Find Corin by the mill race." / "The sun's going down. Go back to Bram, on his stool by the Great Lantern (the tall lantern pole in the middle of the green)." / "A friendly game: no experience is won or lost." / "The Lantern Duel is the village's game: nothing is won but the Lantern." / "Bram's lesson: no experience is won or lost." / Run to Ground: "Dask's hounds hit 10 harder for every round that passes."
+- **On screen:** "Enjoy the festival. Corin's gone off on his own, down by the mill race: find him. (Follow the arrow, or the light: the lane by the signpost, east of the green.) Then, before midnight, find Bram on his stool by the Great Lantern (the tall lantern pole in the middle of the green)." (the evening until Corin's been found; 8 November) / "Find Corin by the mill race." / "The sun's going down. Go back to Bram, on his stool by the Great Lantern (the tall lantern pole in the middle of the green)." / "A friendly game: no experience is won or lost." / "The Lantern Duel is the village's game: nothing is won but the Lantern." / "Bram's lesson: no experience is won or lost." / Run to Ground: "Dask's hounds hit 10 harder for every round that passes."
 
 **Kept from v3 (nothing in v7 clashes):** Corin's "It's a good village, this." and "Bram. Is it meant to do that?", Bram's lantern line and "Two thousand years..." with its choice; Corin's "I'm all right. I'm all right." at the cart and "It came to you. It just came to you."; Bram's "A Pale Herald. Morrowen's own. Head down. Hand in your pocket."; Hob's "Lost half the barley. Found nine cards in the cabbages."; Dask's lines after his duel and Bram's "Morne."; the ridge.
 

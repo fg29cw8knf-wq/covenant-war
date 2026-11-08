@@ -26,6 +26,14 @@ var _n := 0
 var _wait := 0
 
 const WALL_CAP_MS := 420000
+## What's natural (9 November): a wrist bends about 70 degrees back or down at
+## most, and less sideways; an elbow bent under 15 degrees is all but locked;
+## a hand reaching briskly and easing in and out accelerates at up to 6 to 8
+## m/s/s, so at 10 frames a second its speed changes by under a metre a second
+## from one frame to the next (the 8 November eating's lurches were 2.3).
+const WRIST_MOST := 70.0
+const ELBOW_STRAIGHT := 15.0
+const EAT_JUMP := 1.0
 
 
 ## Reads the pose at the end of the skeleton's modifier pass (after the
@@ -40,6 +48,12 @@ class Recorder:
 	var tip := Vector3.INF
 	var mouth := Vector3.INF
 	var frames := 0
+	## (9 November, Gary: "When eating porridge hand moves in an unnatural
+	## way"): the right arm as drawn, for how bent the wrist and the elbow are
+	var wrist_bend := 0.0    # degrees between the forearm and the hand's own line
+	var elbow_bend := 0.0    # degrees the elbow is bent (0 straight)
+	var grip := Vector3.INF  # the palm's middle (where the spoon's held)
+	var rest_wrist := -1.0   # the same angle as modelled (the rest pose), taken off
 
 	func _process_modification_with_delta(_delta: float) -> void:
 		if not is_instance_valid(fig):
@@ -49,7 +63,28 @@ class Recorder:
 		if hb >= 0:
 			head = sk.global_transform * sk.get_bone_global_pose(hb).origin
 			mouth = AshfordP1.mouth_of(fig)
-		palm = fig.palm_frame("right").origin
+		var pf := fig.palm_frame("right")
+		palm = pf.origin
+		grip = pf.origin
+		var ua := sk.find_bone("RightArm")
+		var fa := sk.find_bone("RightForeArm")
+		var hd := sk.find_bone("RightHand")
+		if ua >= 0 and fa >= 0 and hd >= 0:
+			var xf := sk.global_transform
+			var s0 := xf * sk.get_bone_global_pose(ua).origin
+			var e0 := xf * sk.get_bone_global_pose(fa).origin
+			var w0 := xf * sk.get_bone_global_pose(hd).origin
+			var fore := (w0 - e0).normalized()
+			elbow_bend = rad_to_deg((e0 - s0).normalized().angle_to(fore))
+			if rest_wrist < 0.0:
+				var mid := sk.find_bone("RightHandMiddle1")
+				if mid >= 0:
+					var r_e := sk.get_bone_global_rest(fa).origin
+					var r_w := sk.get_bone_global_rest(hd).origin
+					rest_wrist = rad_to_deg((r_w - r_e).normalized().angle_to((sk.get_bone_global_rest(mid).origin - r_w).normalized()))
+				else:
+					rest_wrist = 0.0
+			wrist_bend = maxf(0.0, rad_to_deg(fore.angle_to(pf.basis.z)) - rest_wrist)
 		if is_instance_valid(spoon) and spoon.is_inside_tree():
 			tip = spoon.to_global(Vector3(0, 0, AshfordP1.SPOON_LEN * 0.5))
 		frames += 1
@@ -153,10 +188,24 @@ func _run() -> void:
 	var worst_palm := 0.0
 	var mouthfuls: Array = []
 	var rising := false
+	var mouthful_t := -1.0   # (the lips' in and out at one mouthful is one)
 	var last_d := INF
 	var shot_due := 0
 	var hand: Node3D = null
 	var head_pitch_seen := 0.0
+	# the arm (9 November): the wrist's bend and the elbow's, and how the hand
+	# moves frame to frame (a sudden change of speed is a jerk on screen)
+	var wrist_most := 0.0
+	var elbow_most := 0.0
+	var elbow_least := 999.0
+	var last_grip := Vector3.INF
+	var last_v := Vector3.ZERO
+	var jerk_most := 0.0
+	var jerk_at := 0.0
+	var speed_most := 0.0
+	var jumps := 0
+	var jump_at: Array = []
+	var path_len := 0.0
 	while not Game.flag("p1_ate") and t < 20.0:
 		await get_tree().process_frame
 		me._skel.move_child(rec, -1)   # (after the hands, whatever moved them)
@@ -168,6 +217,31 @@ func _run() -> void:
 			continue
 		var d := rec.tip.distance_to(rec.mouth)
 		var to_own := me.to_own(rec.tip) - me.to_own(rec.mouth)
+		var ik0 = me._ik.get("right")
+		var held := ik0 != null and is_instance_valid(ik0) and (ik0 as TwoBoneIK3D).active and float((ik0 as TwoBoneIK3D).influence) > 0.9
+		# (only while the hand's on the spoon: not as it comes or goes)
+		if hand != null and rec.grip != Vector3.INF and held:
+			wrist_most = maxf(wrist_most, rec.wrist_bend)
+			elbow_most = maxf(elbow_most, rec.elbow_bend)
+			elbow_least = minf(elbow_least, rec.elbow_bend)
+			var dt := maxf(get_process_delta_time(), 0.001)
+			if last_grip != Vector3.INF:
+				var v := (me.to_own(rec.grip) - last_grip) / dt
+				path_len += v.length() * dt
+				speed_most = maxf(speed_most, v.length())
+				# a change of velocity in one frame bigger than a hand's easing allows
+				var dv := (v - last_v).length()
+				if dv > jerk_most:
+					jerk_most = dv
+					jerk_at = t
+				if dv > EAT_JUMP:
+					jumps += 1
+					jump_at.append("%.1f s %.2f" % [t, dv])
+				last_v = v
+			last_grip = me.to_own(rec.grip)
+		elif not held:
+			last_grip = Vector3.INF
+			last_v = Vector3.ZERO
 		var palm_err := 0.0
 		if hand != null and is_instance_valid(hand):
 			palm_err = rec.palm.distance_to(hand.global_position)
@@ -175,14 +249,15 @@ func _run() -> void:
 		var ik = me._ik.get("right")
 		var infl := float((ik as TwoBoneIK3D).influence) if ik != null and is_instance_valid(ik) else 0.0
 		if f % 2 == 0 or d < 0.08:
-			print("  t %5.2f tip-mouth %5.1f cm (own: %+.3f left %+.3f up %+.3f ahead)  palm-target %4.1f cm  ik %.2f  target(own) %s" % [
-				t, d * 100.0, to_own.x, to_own.y, to_own.z, palm_err * 100.0, infl,
+			print("  t %5.2f tip-mouth %5.1f cm (own: %+.3f left %+.3f up %+.3f ahead)  palm-target %4.1f cm  wrist %3.0f elbow %3.0f deg  ik %.2f  target(own) %s" % [
+				t, d * 100.0, to_own.x, to_own.y, to_own.z, palm_err * 100.0, rec.wrist_bend, rec.elbow_bend, infl,
 				(hand.position.snapped(Vector3(0.001, 0.001, 0.001)) if hand != null and is_instance_valid(hand) else Vector3.INF)])
 		# the nearest point of each mouthful (the distance turning back up)
 		if d < last_d - 0.0005:
 			rising = true
-		elif rising and d > last_d + 0.0005 and last_d < 0.2:
+		elif rising and d > last_d + 0.0005 and last_d < 0.2 and not (mouthful_t >= 0.0 and t - mouthful_t < 0.8):
 			rising = false
+			mouthful_t = t
 			mouthfuls.append(last_d)
 			print("  mouthful %d: nearest %.1f cm at %.2f s" % [mouthfuls.size(), last_d * 100.0, t])
 			await _shot("mouthful_%d" % mouthfuls.size(), rec.mouth, rec.tip)
@@ -196,8 +271,18 @@ func _run() -> void:
 		shot_due -= 1
 	await _shot("done", rec.mouth, rec.tip)
 	print("  nearest the spoon's end came to the mouth: %.1f cm at %.2f s; the palm at most %.1f cm off the arm's IK target" % [best * 100.0, best_t, worst_palm * 100.0])
+	print("  the arm: wrist bent at most %.0f degrees; elbow bent %.0f to %.0f degrees; the hand at most %.2f m/s, %.2f m of path; its speed changing by at most %.2f m/s in a frame (at %.2f s), %d frames over %.2f" % [
+		wrist_most, elbow_least, elbow_most, speed_most, path_len, jerk_most, jerk_at, jumps, EAT_JUMP])
+	if not jump_at.is_empty():
+		print("  the jerks (when, the change of speed in m/s): ", ", ".join(jump_at))
 	if mouthfuls.is_empty():
 		problems.append("no mouthful seen (the spoon never came up and went down)")
+	if wrist_most > WRIST_MOST:
+		problems.append("the wrist bent %.0f degrees (a wrist goes to about %.0f)" % [wrist_most, WRIST_MOST])
+	if elbow_least < ELBOW_STRAIGHT:
+		problems.append("the elbow straightened to %.0f degrees (locked)" % elbow_least)
+	if jumps > 0:
+		problems.append("the hand jerked in %d frames (its speed changed by up to %.2f m/s in one frame)" % [jumps, jerk_most])
 	for i in mouthfuls.size():
 		if float(mouthfuls[i]) > near:
 			problems.append("mouthful %d stopped %.1f cm from the mouth" % [i + 1, float(mouthfuls[i]) * 100.0])

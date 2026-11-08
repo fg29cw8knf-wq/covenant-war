@@ -29,7 +29,11 @@ extends Node
 ##           two hands at the button.
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 960x540 --fixed-fps 10 --path . res://tests/notes_1106_shot.tscn -- <out_dir> walk|deck|pond [look=a|b|c|d]
+##       --resolution 960x540 --fixed-fps 10 --path . res://tests/notes_1106_shot.tscn -- <out_dir> walk|deck|pond [look=a|b|c|d] [newgame]
+## (walk newgame: in as a New Game is, World's intro() then resume(); walk
+## alone: in from a save at the street part. Both must pass. restage: the
+## green staged again as the opening ends, as resume() did after a New
+## Game's opening until 8 November; must fail, with Corin's jump.)
 ## Ends with "NOTES SHOT: ok" or the problems.
 
 const Ashford := preload("res://scripts/world/areas/ashford.gd")
@@ -62,7 +66,12 @@ func _ready() -> void:
 	Game.new_game("Sprout", "")
 	Game.set_flag("look", look)
 	Game.settings["first_steps"] = 2
-	Game.set_flag("arrived_ashford")
+	# newgame: Ashford not arrived in yet, so World plays the opening through
+	# intro() and then calls resume(), as a New Game does (8 November: Corin
+	# "disappears and walks over again" only came that way; picked up from a
+	# save, resume() stages the green before the opening, which moved nobody)
+	if not "newgame" in OS.get_cmdline_user_args():
+		Game.set_flag("arrived_ashford")
 	match mode:
 		"walk":
 			# a game picked up at the opening's street part: out of the inn's
@@ -124,6 +133,10 @@ func _force_look() -> void:
 # ================================================================ walk ===
 
 var _backwards := 0
+var _hid := false
+## A frame's move bigger than this is a jump (m: his brisk walk is 0.2 m a
+## frame at the probe's 10 frames a second).
+const JUMP := 0.35
 
 
 func _walk() -> void:
@@ -197,6 +210,11 @@ func _walk() -> void:
 		if world.get_meta("bram_seated", false):
 			mark.call("Bram seated", t)
 		if String(Game.flag("p1_stage", "")) == "done":
+			if not when.has("opening done") and "restage" in OS.get_cmdline_user_args():
+				# (as Ashford.resume did straight after a New Game's opening
+				# until 8 November: the probe's own check that it would catch it)
+				AshfordP1.pose(world)
+				AshfordDay.stage(world)
 			mark.call("opening done", t)
 		if world._talk_target != null:
 			mark.call("talk started", t)
@@ -209,6 +227,15 @@ func _walk() -> void:
 				mark.call("Corin at his meeting point", t)
 		var p := cb.global_position
 		var step := Vector2(p.x - last.x, p.z - last.z).length()
+		# hidden and shown again (his body, or his model under it)
+		var cvis: bool = cb.is_visible_in_tree()
+		var cfv = Cine.fig(world, "corin")
+		if cfv is Figure3D and (cfv as Figure3D).model != null:
+			cvis = cvis and (cfv as Figure3D).model.is_visible_in_tree()
+		if not cvis and not _hid:
+			_hid = true
+			problems.append("Corin was hidden at %.1f s" % t)
+			print("  PROBLEM: Corin hidden at %.1f s" % t)
 		# walking one way and facing another (turned back to look at
 		# where he was, mid-walk)
 		var cfw = Cine.fig(world, "corin")
@@ -216,7 +243,7 @@ func _walk() -> void:
 			var mv := Vector3(p.x - last.x, 0, p.z - last.z).normalized()
 			if (cfw as Figure3D).facing().dot(mv) < 0.3:
 				_backwards += 1
-		if step > 0.5:
+		if step > JUMP:
 			jumps += 1
 			var msg := "Corin jumped %.2f m in a frame at %.1f s (%s -> %s)" % [step, t, last, p]
 			problems.append(msg)
@@ -548,7 +575,9 @@ func _aim_box(i: int) -> void:
 		return
 	var at := (bx as Node3D).global_position
 	var fwd := pf.facing()
-	var left := Vector3.UP.cross(fwd).normalized()
+	# (from the side of the hand it's carried on: their left, or for Player A
+	# their right, 9 November, Ashford.carry_side)
+	var left := Vector3.UP.cross(fwd).normalized() * Ashford._box_mirror(pf)
 	match i % 4:
 		0:   # from their left side, level with the box: the forearms under it
 			close_cam.global_position = at + left * 0.75 + Vector3(0, 0.05, 0)
@@ -637,11 +666,17 @@ func _wall_quick() -> void:
 	var fwd := Vector3.LEFT
 	var along := Vector3.BACK
 	var beside := seat + along * 0.78
-	AshfordP1.sit_down(world, "player", beside, fwd, 0.5, 0.0)
+	# (as the film sits them since 8 November: their hands in their lap, the
+	# wall solid to them; "old": the clip's hanging arms)
+	if not old and world.player_doll is Figure3D:
+		(world.player_doll as Figure3D).hands_off([AshfordDay._wall_box()])
+	AshfordP1.lap_rest = not old
+	AshfordP1.sit_down(world, "player", beside, fwd, 0.5, 0.0, not old)
 	await _frames(10)
 	var mid := (seat + beside) * 0.5
 	Cine.shot(world, mid + fwd * 2.6 + Vector3(0, 1.05, 0), mid + Vector3(0, 0.85, 0), 40.0)
 	_watch_corin(Cine.fig(world, "corin") as Figure3D)
+	_watch_player_hands(world.player_doll as Figure3D)
 	_watch_button()
 	var going := [true]
 	var stills := func() -> void:
@@ -668,7 +703,7 @@ func _wall_quick() -> void:
 	if old:
 		going[0] = false
 		await _secs(0.4)
-		print("  old: legs in the wall %d frames (deepest %.1f cm); hands in it %d frames (deepest %.1f cm)" % [_leg_hits, _leg_deep * 100.0, _hand_hits, _hand_deep * 100.0])
+		print("  old: legs in the wall %d frames (deepest %.1f cm); hands in it %d frames (deepest %.1f cm); the player's hands in it %d frames (deepest %.1f cm)" % [_leg_hits, _leg_deep * 100.0, _hand_hits, _hand_deep * 100.0, _p_hand_hits, _p_hand_deep * 100.0])
 		return
 	print("  the button")
 	await AshfordDay.corin_button(world)
@@ -678,8 +713,10 @@ func _wall_quick() -> void:
 	await _secs(0.8)
 	going[0] = false
 	await _secs(0.4)
-	print("  wall: %d frames; Corin's legs in the wall %d frames (deepest %.1f cm); hands in it %d frames (deepest %.1f cm); the two palms into each other %d frames (deepest %.1f cm)" % [
-		_pond_frames, _leg_hits, _leg_deep * 100.0, _hand_hits, _hand_deep * 100.0, _palm_hits, _palm_deep * 100.0])
+	print("  wall: %d frames; Corin's legs in the wall %d frames (deepest %.1f cm); hands in it %d frames (deepest %.1f cm); the two palms into each other %d frames (deepest %.1f cm); the player's hands in it %d frames (deepest %.1f cm)" % [
+		_pond_frames, _leg_hits, _leg_deep * 100.0, _hand_hits, _hand_deep * 100.0, _palm_hits, _palm_deep * 100.0, _p_hand_hits, _p_hand_deep * 100.0])
+	if _p_hand_hits > 0:
+		problems.append("the player's hands went %.1f cm into the wall in %d frames" % [_p_hand_deep * 100.0, _p_hand_hits])
 	if _leg_hits > 0:
 		problems.append("Corin's legs went %.1f cm into the wall in %d frames" % [_leg_deep * 100.0, _leg_hits])
 	if _hand_hits > 0:
@@ -720,6 +757,31 @@ func _watch_corin(fig: Figure3D) -> void:
 		if deep_h > 0.006:
 			_hand_hits += 1
 			_hand_deep = maxf(_hand_deep, deep_h))
+
+
+## The player sat on the wall beside him (8 November): their hands' bones
+## against it every frame, as Corin's are.
+var _p_hand_hits := 0
+var _p_hand_deep := 0.0
+
+func _watch_player_hands(fig: Figure3D) -> void:
+	if fig == null:
+		return
+	var sk: Skeleton3D = fig._skel
+	sk.skeleton_updated.connect(func() -> void:
+		if fig.seat < 0.0 or not AshfordDay.at_mill(fig.global_position):
+			return
+		var xf := sk.global_transform
+		var deep_h := 0.0
+		for pre in ["Left", "Right"]:
+			for bn in ["Hand", "HandIndex1", "HandIndex3", "HandMiddle1", "HandMiddle3", "HandPinky1", "HandPinky3", "HandThumb3"]:
+				var b := sk.find_bone(pre + bn)
+				if b < 0:
+					continue
+				deep_h = maxf(deep_h, _in_wall(xf * sk.get_bone_global_pose(b).origin, HAND_R))
+		if deep_h > 0.006:
+			_p_hand_hits += 1
+			_p_hand_deep = maxf(_p_hand_deep, deep_h))
 
 
 func _in_wall(p: Vector3, r: float) -> float:

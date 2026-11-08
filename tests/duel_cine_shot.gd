@@ -46,6 +46,7 @@ func _ready() -> void:
 	get_tree().root.theme = UITheme.make()
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["duel_3d"] = not flat
+	Game.settings["duel_camera"] = "locked"   # (8 November: these checks are the locked camera's; tests/duel_camera_shot has the moving one)
 	SummonVideo.set_mode("off")   # (the drawn Summon scene, not Gary's clip: the bars are what's looked at)
 	RenderingServer.render_loop_enabled = false
 	ds = DuelScreen.new().configure({"decks": ["emberstorm", "tidegrove"], "names": ["You", "Rival"],

@@ -260,8 +260,8 @@ def lines_of(path, is_film_data):
 
 	while i < len(toks):
 		k, v, _ = toks[i]
-		if k == "w" and v == "func" and i + 1 < len(toks):
-			fn = toks[i + 1][1]
+		if k == "w" and v == "func" and i + 1 < len(toks) and toks[i + 1][0] == "w":
+			fn = toks[i + 1][1]   # (a lambda, func(...), isn't a scene)
 		elif k == "w" and v == "Cine" and i + 3 < len(toks) and toks[i + 1][1] == "." and toks[i + 2][1] == "say" and toks[i + 3][1] == "(":
 			a = args_of(toks, match, i + 3)
 			if len(a) >= 3 and literal(a[1]) is not None:

@@ -968,6 +968,31 @@ func _options() -> Control:
 		speed_btns.append(sb)
 		speeds.add_child(sb)
 	v.add_child(speeds)
+	# the duel's camera (8 November; the duel's own Camera button too):
+	# travelling round the board, or locked where it always was
+	var cams := HBoxContainer.new()
+	cams.add_theme_constant_override("separation", 24)
+	var cml := UITheme.label("Duel camera", 30, UITheme.TEXT, "bold")
+	cml.custom_minimum_size = Vector2(300, 0)
+	cams.add_child(cml)
+	var cam_btns := []
+	for m in [["moving", "Moving"], ["locked", "Locked"]]:
+		var cb := UITheme.button(String(m[1]), false, 200)
+		cb.toggle_mode = true
+		cb.button_pressed = (DuelField3D.camera_moving() == (m[0] == "moving"))
+		cb.custom_minimum_size = Vector2(200, 64)
+		cb.add_theme_font_size_override("font_size", 26)
+		cb.pressed.connect(func() -> void:
+			Game.settings["duel_camera"] = String(m[0])
+			Game.save_settings()
+			for o in cam_btns:
+				(o as Button).button_pressed = o == cb)
+		cam_btns.append(cb)
+		cams.add_child(cb)
+	var cmn := UITheme.label("moving travels round the board between your choices", 22, UITheme.TEXT_DIM)
+	cmn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	cams.add_child(cmn)
+	v.add_child(cams)
 	# how long the words in a duel stay up (29 October, Gary: "The text in the
 	# battles goes by very quickly"; DuelReading): Normal is the new, longer default
 	var reading := HBoxContainer.new()

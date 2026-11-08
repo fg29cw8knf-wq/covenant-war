@@ -7,9 +7,10 @@ extends CanvasLayer
 ## for the opening movie?"; 24 October: the cutscenes as videos built round
 ## one hero, Player A). Master Script v7 has seven (the Still to Make doc,
 ## the "Films for Player A" tab): midnight, white_light, herald, reckoning,
-## tams_hand, no_roof and ridge. Conversations, choices and the things the
-## player does (the cart, the tunnel, the look back) stay in the game
-## between them.
+## tams_hand, no_roof and ridge; and since 8 November white_sky_duel, Bram's
+## duel in the Night of the White Sky (WhiteSky._duel). Conversations,
+## choices and the things the player does (the cart, the tunnel, the look
+## back) stay in the game between them.
 ##
 ## A film plays, best first:
 ##   1. Gary's 4K film, `<film>_4k.mp4`, through the device's own player
@@ -75,7 +76,8 @@ signal finished
 ## scripts/world/areas/ashford.gd (_midnight_film, _white_light_film,
 ## _herald_film), reckoning, tams_hand and no_roof in
 ## scripts/world/areas/ashford_night.gd, ridge in
-## scripts/world/areas/thornwood.gd. The lines are the 3D scene's own, word
+## scripts/world/areas/thornwood.gd, white_sky_duel in
+## scripts/story/white_sky.gd (_duel_film). The lines are the 3D scene's own, word
 ## for word; Master Script v7 (docs/script/v7_prologue.md) has them in order.
 const FILMS := {
 	# (5 November: Gary's film comes in parts, cut at the player's choice.
@@ -215,6 +217,36 @@ const FILMS := {
 		"title": "No Roof Burns",
 		"steps": [
 			{"id": "nr_01", "len": 12.0, "see": "From a distant ridge, the moonlit green: two enforcers draw cards. One summons a controlled line of fire that stops the villagers passing and touches no house; the other binds a resisting villager in glowing strands and forces them to their knees. Behind them, soldiers search the houses."},
+		],
+	},
+	# (8 November, Gary: "Can we make the battle more movie like or give me
+	# images and prompt and I'll make it a movie": Bram's duel in the Night of
+	# the White Sky, WhiteSky._duel, as his own film. It opens from the white
+	# of the hunter's cards and ends on the white of the book opening, which
+	# the game takes to black for Morrowen's last line. No lines over it;
+	# Bram's face never seen; nobody sees who won. Until it's there the
+	# real duel plays, filmed by WhiteSky's director. Each shot is a beat of
+	# that duel, in its order, the reference stills Claude rendered of each
+	# beat sent with the brief.)
+	"white_sky_duel": {
+		"title": "The Night of the White Sky: Bram's Duel",
+		"steps": [
+			{"id": "wsd_01", "len": 4.5, "see": "Out of the white: the Circle in the Shardlands, a ring of trampled snow among towering crystals of blue ice, the torn sky white overhead, snow driving across it. From high behind him: Bram, the child a bulge in his coat under his left arm, cards in his right hand; across the Circle the hunter, seven and a half feet tall, its hood empty; between them, on his side the Scrivener and the Loomwarden, on its side the pack, a Blazehound, the Infernal Warg and a Veilfox, made of pale smoke and Sigil light."},
+			{"id": "wsd_02", "len": 3.5, "see": "The hunter, close, on a long lens from Bram's side of the Circle: one long grey hand turns over a card of white light."},
+			{"id": "wsd_03", "len": 4.0, "see": "The Scrivener, Bram's: a tall faceless scribe in parchment robes, its quill of starlight raised. A black sigil of doom closes round it like a noose of ink, and it looks up from its writing."},
+			{"id": "wsd_04", "len": 3.5, "see": "Bram from behind, his right hand up with a card: the Unspent Hour, a winged hourglass of glass and starlit sand, darts out of the light over his shoulder."},
+			{"id": "wsd_05", "len": 4.0, "see": "The Unspent Hour turns its glass on the Infernal Warg, the biggest of the pack, and the Warg reels; but a trap springs in the snow under it and a green mist of poison clings to its glass."},
+			{"id": "wsd_06", "len": 4.0, "see": "The Scrivener writes a line of silver script in the air at the Blazehound, and the Loomwarden, a many-armed weaver of grey thread inside a loom of bone-white wood, pulls its silver threads taut through it: the hound bursts into smoke."},
+			{"id": "wsd_07", "len": 2.5, "see": "Where it stood, a River Hound of white smoke comes up out of the snow."},
+			{"id": "wsd_08", "len": 4.5, "see": "The pack turns on the Scrivener: the Veilfox's mirage, the Warg's charge of pale fire, the River Hound's bite; steam bursts off it, and it staggers, blinded."},
+			{"id": "wsd_09", "len": 3.5, "see": "The hunter's hand lifts to call more of its kin; Bram's face-down Ward flips over at his feet and lines of silver script close over the hunter's card. It comes to nothing."},
+			{"id": "wsd_10", "len": 4.0, "see": "The Unspent Hour and the Loomwarden break the Infernal Warg: it bursts into smoke and white sparks. A Shieldhound rises in its place."},
+			{"id": "wsd_11", "len": 4.0, "see": "The River Hound's bite takes the Scrivener: it comes apart into pages that blow away on the wind, and the blow carries on into Bram. Over his shoulder: he staggers, his arm going round the child in his coat."},
+			{"id": "wsd_12", "len": 3.0, "see": "The hounds drag the Unspent Hour down; its glass cracks and its sand pours out."},
+			{"id": "wsd_13", "len": 4.5, "see": "The Weft Serpent rises out of the snow into the gap, a vast serpent woven of grey and silver thread, rearing over the pack; the Glyph Warden takes the other gap, runes lighting across it."},
+			{"id": "wsd_14", "len": 3.5, "see": "Wide, high over Bram's back: the hunter's poison mist rolls over his side of the Circle and his Totems sicken in it. The Circle nearly lost."},
+			{"id": "wsd_15", "len": 6.0, "see": "The Last Page: the sky over the Circle goes still, the stars draw together into a closed book, and Orlanthe comes down out of it, a hooded figure the size of a hill in robes of folded parchment, faceless, the book in one hand. Low behind Bram, up past the hunter at it."},
+			{"id": "wsd_16", "len": 4.0, "see": "The clasp comes undone. The book opens, and white light pours out of it over the Circle, the pack and the hunter, until there is nothing but white. (End on the white: the game takes it to black.)"},
 		],
 	},
 	"ridge": {

@@ -465,7 +465,9 @@ static func blockers(w: World) -> Array:
 	var out: Array = []
 	for n in w.find_children("*", "StaticBody3D", true, false):
 		var sb := n as StaticBody3D
-		if sb.has_meta("npc") or sb.has_meta("beast") or not sb.is_inside_tree() or not sb.is_visible_in_tree():
+		# (people aren't things in the set: the villagers, a beast, an extra's
+		# body, AshfordLife.solid; Cine.people has them where they are now)
+		if sb.has_meta("npc") or sb.has_meta("beast") or sb.has_meta("extra_body") or not sb.is_inside_tree() or not sb.is_visible_in_tree():
 			continue
 		for c in sb.get_children():
 			var cs := c as CollisionShape3D

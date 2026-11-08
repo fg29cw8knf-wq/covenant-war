@@ -485,6 +485,7 @@ func _process(delta: float) -> void:
 	_punch = move_toward(_punch, 0.0, delta * 0.12)
 	_kick = _kick.lerp(Vector3.ZERO, minf(1.0, delta * KICK_SPRING))
 	_view = lerpf(_view, view_setting(), minf(1.0, delta * 8.0))
+	_roam_step(delta)
 	_place_camera()
 
 
@@ -494,6 +495,10 @@ func _place_camera() -> void:
 	var drift := Vector3(sin(_t * 0.23) * 0.08, sin(_t * 0.31) * 0.05, cos(_t * 0.19) * 0.06)
 	var jolt := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * _shake
 	cam.position = cam_pos + drift + jolt + _kick
+	if _follow_k > 0.0:
+		# (8 November) the moving camera keeps clear of the Totems' bodies
+		# and above the mat; nothing of this when it's locked
+		cam.position += _clearance(cam.position) * _follow_k
 	cam.look_at(cam_look + jolt * 0.3 + _kick * 0.35, Vector3.UP)
 	# This container is centred on the stage's rectangle and _view_k times its
 	# height (see fit_to_stage): the lens is widened to match, so the stage
@@ -954,8 +959,39 @@ static func spectral(inst: Node3D) -> void:
 		_spectral_mat = ShaderMaterial.new()
 		_spectral_mat.shader = sh
 	for mi: MeshInstance3D in inst.find_children("*", "MeshInstance3D", true, false):
+		_drop_see_through(mi)
 		mi.material_overlay = _spectral_mat
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## A spectral model's see-through parts taken out of its mesh (8 November:
+## the Blazehound's flames and the foxes' glows are flat cards with a
+## picture cut out of them, and the smoke laid over the whole mesh stood
+## off the hounds as white rectangles; a creature of smoke has no flames).
+## The rest of the mesh is copied as it is, skin weights and all.
+static func _drop_see_through(mi: MeshInstance3D) -> void:
+	var src := mi.mesh as ArrayMesh
+	if src == null:
+		return
+	var keep: Array = []
+	for i in src.get_surface_count():
+		var m := mi.get_active_material(i)
+		if not (m is BaseMaterial3D and (m as BaseMaterial3D).transparency != BaseMaterial3D.TRANSPARENCY_DISABLED):
+			keep.append(i)
+	if keep.is_empty() or keep.size() == src.get_surface_count():
+		return
+	var out := ArrayMesh.new()
+	out.blend_shape_mode = src.blend_shape_mode
+	for k in src.get_blend_shape_count():
+		out.add_blend_shape(src.get_blend_shape_name(k))
+	for i in keep:
+		var flags := src.surface_get_format(i) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+		out.add_surface_from_arrays(src.surface_get_primitive_type(i), src.surface_get_arrays(i),
+			src.surface_get_blend_shape_arrays(i), {}, flags)
+		out.surface_set_material(out.get_surface_count() - 1, mi.get_active_material(i))
+	for i in src.get_surface_count():
+		mi.set_surface_override_material(i, null)
+	mi.mesh = out
 
 
 ## The field as a film of a duel in a snowstorm under the torn sky: the
@@ -1413,6 +1449,13 @@ func set_home(pos: Vector3, look: Vector3) -> void:
 
 
 func cam_home(dur: float = 0.6) -> void:
+	if roam_on:
+		# (8 November) home is wherever the moving camera is on its way round
+		# (or the true home while the player is choosing): it flows out of
+		# the shot onto that path, from where it is
+		_roam_from_here(dur)
+		dof_off(dur)
+		return
 	_cam_to(_home_pos, _home_look, dur, _home_fov)
 	dof_off(dur)
 
@@ -1421,6 +1464,10 @@ func cam_home(dur: float = 0.6) -> void:
 ## rows stay on screen under the HUD. (With the far blur on, what lies well
 ## beyond the point softens.)
 func cam_focus(target: Vector3, amount: float = 0.35, dur: float = 0.35) -> void:
+	if roam_on:
+		# (the moving camera leans in from its own path, not from home)
+		roam_lean(target, amount, dur)
+		return
 	var lean := Vector3(target.x * 0.25, -1.2, (target.z - _home_look.z) * 0.25 - 0.9) * amount
 	var to_pos := _home_pos + lean
 	var to_look := _home_look + Vector3(target.x * 0.3, 0.0, (target.z - _home_look.z) * 0.3) * amount
@@ -1436,6 +1483,8 @@ func cam_shot(pos: Vector3, look: Vector3, dur: float, fov: float = -1.0, cut: b
 	if cut:
 		if _cam_tw != null and _cam_tw.is_valid():
 			_cam_tw.kill()
+		_following = false
+		_r_view = {}
 		cam_pos = pos
 		cam_look = look
 		if fov > 0.0:
@@ -1519,6 +1568,8 @@ func _flat_dir(a: Vector3, b: Vector3, side: int) -> Vector3:
 
 func _cam_to(pos: Vector3, look: Vector3, dur: float, fov: float = -1.0) -> void:
 	cam_moves += 1
+	_following = false   # (a shot takes the camera off the moving path until cam_home...)
+	_r_view = {}         # (...and ends any Totem being watched from the path)
 	if _cam_tw != null and _cam_tw.is_valid():
 		_cam_tw.kill()
 	_cam_tw = create_tween().set_parallel(true)
@@ -1526,6 +1577,328 @@ func _cam_to(pos: Vector3, look: Vector3, dur: float, fov: float = -1.0) -> void
 	_cam_tw.tween_property(self, "cam_look", look, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
 	if fov > 0.0 and absf(fov - cam_fov) > 0.01:
 		_cam_tw.tween_property(self, "cam_fov", fov, dur).set_ease(Tween.EASE_IN_OUT).set_trans(Tween.TRANS_CUBIC)
+
+
+# --- the moving camera (8 November) ------------------------------------------
+# Gary (8 November): "During battle can we have the camera pan around the
+# playing board so we can watch whats happening from all angles and have a
+# button at the top if players would rather have it locked like it is now".
+# With roam_on (DuelScreen sets it from Game.settings.duel_camera: "moving",
+# the default, or "locked"; never in a film) home stops being one place and
+# becomes a path: the camera travels slowly round the Circle, high enough
+# to see both rows, rising and falling and coming in and out a little as it
+# goes. What the duel does still takes it where things happen: the attack
+# shots, the knockout close-up, the hero shot of a big call and a Summon's
+# descent as before, and now a Totem called is watched from round in front
+# of it as it arrives (roam_view) and a lean (cam_focus) leans in from the
+# path rather than from home. Whenever the player has a choice to make on
+# the field (roam_hold, set by the screen every frame) the path is the true
+# home view, so every slot and every tap sits where it always has; it moves
+# on again once the action plays out, and on the rival's turn.
+# Nothing here is a tween: the camera's turn round the middle, its height,
+# its distance, what it looks at and its lens each follow their goal with
+# a critically damped spring (_smooth), so it eases off and eases in and
+# never jerks, and when a shot ends it flows on from wherever the shot left
+# it (_roam_from_here). Moving, it keeps its lens clear of every Totem's
+# body and above the mat (_clearance). Locked (roam_on false) is exactly
+# the camera as it was.
+
+const ROAM_MID := Vector3(0.0, 0.7, -0.3)   # what it travels round: the middle of the Circle, between the rows
+const ROAM_SPEED := 4.5          # degrees a second round the Circle (80 s a lap)...
+const ROAM_SPEED_SWAY := 0.45    # ...quicker and slower by this share as it goes, so it lingers now and then
+const ROAM_PITCH := 34.0         # degrees it looks down at the Circle from...
+const ROAM_PITCH_SWAY := 6.0     # ...rising and falling this much
+const ROAM_DIST := 13.4          # metres from what it looks at (home's is 13.4)...
+const ROAM_DIST_SWAY := 1.2      # ...in and out this much
+const ROAM_FOV := 34.0           # its lens (home's is 33)
+const ROAM_NEAR := 2.0           # it looks this far on from the middle towards itself, so the Circle sits up clear of the hand
+const ROAM_SMOOTH := 1.5         # the springs' time (s): how unhurried it is
+const ROAM_HOLD_SMOOTH := 0.42   # ...going home for the player to choose
+const ROAM_RELAX := 0.5          # how quickly a shot's quicker spring relaxes back to ROAM_SMOOTH (s a second)
+const ROAM_QUICKEST := 0.3       # the quickest its springs are, out of a shot (s): gentler than the locked camera's own way home
+const ROAM_PITCH_MIN := 20.0     # never lower over the mat than this on the path (a shot's own angle aside)
+const ROAM_PITCH_MAX := 60.0
+const VIEW_SECS := 2.6           # a Totem called is watched from in front of it this long...
+const VIEW_HELD := 1.1           # ...and at least this long before the camera goes home for the player
+const VIEW_DIST := 8.6           # roam_view: this far from the Totem...
+const VIEW_PITCH := 21.0         # ...this far above it...
+const VIEW_ROUND := 70.0         # ...as near the way it's facing as this (degrees either side), from the side the camera's on...
+const VIEW_SWING := 60.0         # ...but never turning more than this from where the camera is
+const VIEW_IN := 2.0             # the swing's ease (as a shot's length: its springs start at 0.42 of it)
+const LEAN_DIST := 3.0           # a lean (cam_focus) of 1 comes this much closer...
+const LEAN_PITCH := 7.0          # ...this much lower (degrees)...
+const LEAN_LOOK := 0.85          # ...and looks this share of the way to the point
+const CLEAR_R := 0.9             # the lens is kept off a Totem's body: this far out from its feet (plus a quarter of its height)...
+const CLEAR_SOFT := 1.5          # ...easing in over this much more...
+const CLEAR_ABOVE := 0.8         # ...by lifting it this far over its head
+const MAT_CLEAR := 0.55          # and never lower than this over the mat
+const FOLLOW_IN := 2.5           # how quickly the keeping-clear comes in as the path takes the camera over (a second)
+
+var roam_on := false             # the moving camera (DuelScreen: Game.settings.duel_camera)
+var roam_hold := false           # the player is choosing: the path is the true home
+var pace := 1.0                  # the duel's speed (Fast and Fastest move it quicker)
+var _following := false          # the camera is on the path (not in a shot)
+var _follow_k := 0.0             # 0..1: how much the path's keeping-clear applies
+var _r_yaw := 0.0                # the camera's turn round what it looks at (0: home's side, behind your row); unwrapped
+var _r_pitch := 0.0              # how far it looks down (radians)
+var _r_dist := 0.0
+var _r_look := Vector3.ZERO
+var _r_fov := 33.0
+var _v_yaw := 0.0
+var _v_pitch := 0.0
+var _v_dist := 0.0
+var _v_look := Vector3.ZERO
+var _v_fov := 0.0
+var _goal_yaw := 0.0
+var _goal_mode := ""             # "hold", "view" or "path": the yaw goal starts again from the camera when it changes
+var _roam_t := 0.0
+var _smooth_now := ROAM_SMOOTH
+var _lean := {}                  # a lean in from the path: {target, amount}
+var _r_view := {}                # a Totem watched from in front: {look, yaw, until, from}
+var _at_home := false            # held and settled exactly home
+
+
+## The moving camera on or off (the screen's button). Off goes home as the
+## camera always did; on flows onto the path from where it is.
+func set_roam(on: bool) -> void:
+	if on == roam_on:
+		return
+	roam_on = on
+	if on:
+		_following = false
+		_roam_from_here(0.8)
+	else:
+		_following = false
+		_lean = {}
+		_r_view = {}
+		_cam_to(_home_pos, _home_look, 0.8, _home_fov)
+
+
+## The setting: "moving" (the default) or "locked".
+static func camera_moving() -> bool:
+	return String(Game.settings.get("duel_camera", "moving")) != "locked"
+
+
+## [yaw, pitch, dist] of an offset from what the camera looks at.
+static func _sph(off: Vector3) -> Array:
+	var d := maxf(0.01, off.length())
+	return [atan2(off.x, off.z), asin(clampf(off.y / d, -1.0, 1.0)), d]
+
+
+static func _off(yaw: float, pitch: float, dist: float) -> Vector3:
+	return Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * dist
+
+
+## `a` turned to the equivalent angle nearest `near`.
+static func _nearest(near: float, a: float) -> float:
+	return near + wrapf(a - near, -PI, PI)
+
+
+## A critically damped spring towards `goal` (Game Programming Gems 4's
+## SmoothDamp): [value, velocity].
+static func _smooth(cur: float, goal: float, vel: float, smooth_t: float, dt: float) -> Array:
+	var w := 2.0 / maxf(0.01, smooth_t)
+	var x := w * dt
+	var e := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var ch := cur - goal
+	var tmp := (vel + w * ch) * dt
+	return [goal + (ch + tmp) * e, (vel - w * tmp) * e]
+
+
+static func _smooth3(cur: Vector3, goal: Vector3, vel: Vector3, smooth_t: float, dt: float) -> Array:
+	var w := 2.0 / maxf(0.01, smooth_t)
+	var x := w * dt
+	var e := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var ch := cur - goal
+	var tmp := (vel + w * ch) * dt
+	return [goal + (ch + tmp) * e, (vel - w * tmp) * e]
+
+
+## The path takes the camera over from wherever it is now (a shot's end, the
+## button), its springs quick to begin with (`dur`, as a shot's way home
+## was) and relaxing to their unhurried pace.
+func _roam_from_here(dur: float) -> void:
+	cam_moves += 1
+	if _cam_tw != null and _cam_tw.is_valid():
+		_cam_tw.kill()
+	_lean = {}
+	_at_home = false
+	if _following:
+		return   # (already on it: it carries on as it was moving, at the pace it was)
+	_smooth_now = clampf(dur * 0.42, ROAM_QUICKEST, ROAM_SMOOTH)
+	var s := _sph(cam_pos - cam_look)
+	_r_yaw = _nearest(_r_yaw, float(s[0]))
+	_r_pitch = float(s[1])
+	_r_dist = float(s[2])
+	_r_look = cam_look
+	_r_fov = cam_fov
+	_v_yaw = 0.0
+	_v_pitch = 0.0
+	_v_dist = 0.0
+	_v_look = Vector3.ZERO
+	_v_fov = 0.0
+	_goal_mode = ""   # (the path's turn goes on from here)
+	_following = true
+
+
+## Leans in from the path towards `target` (a lean of 0.3 is a touch, 1 all
+## the way): what cam_focus does while the camera moves. Held until the next
+## cam_home, as a lean always was.
+func roam_lean(target: Vector3, amount: float, dur: float) -> void:
+	_roam_from_here(dur)
+	_lean = {"target": target, "amount": clampf(amount, 0.0, 1.0)}
+
+
+## A Totem just called, watched from round in front of it as it arrives: the
+## camera swings as far round towards the way it faces as it can from where
+## it is (VIEW_ROUND), comes in and down to it, and holds there VIEW_SECS
+## (a shot or the player's choosing take over sooner; a cam_home doesn't).
+func roam_view(side: int, slot: int) -> void:
+	if not roam_on:
+		return
+	var s: Slot = slots[side][slot]
+	var foot := foot_world(side, slot)
+	var h: float = s.creature_h if s.card_id != "" else 2.0
+	var look := foot + Vector3(0, h * 0.45, 0)
+	var front := ahead_of(side)
+	var face_yaw := atan2(front.x, front.z)
+	# from the camera's side of it: the nearest turn within VIEW_ROUND of its front
+	var now_yaw := float(_sph(cam_pos - look)[0])
+	var off := wrapf(now_yaw - face_yaw, -PI, PI)
+	var lim := deg_to_rad(VIEW_ROUND)
+	var yaw := face_yaw + clampf(off, -lim, lim)
+	if absf(off) < deg_to_rad(12.0):
+		# (straight in front already: a little round towards the middle of the field, for its shape)
+		yaw = face_yaw + deg_to_rad(24.0) * (-signf(foot.x) if absf(foot.x) > 0.5 else 1.0) * (1.0 if side == me else -1.0)
+	# (never more of a swing than VIEW_SWING from where it is: a turn to see
+	# it, not a whip round the field)
+	var sw := deg_to_rad(VIEW_SWING)
+	yaw = now_yaw + clampf(wrapf(yaw - now_yaw, -PI, PI), -sw, sw)
+	_roam_from_here(VIEW_IN)
+	_smooth_now = VIEW_IN * 0.42   # (the swing's own ease, whether or not it was on the path already)
+	_r_view = {"look": look, "yaw": yaw, "dist": VIEW_DIST + h * 0.6, "from": _roam_t, "until": _roam_t + VIEW_SECS / maxf(1.0, pace)}
+
+
+## Whether the moving camera is settled exactly at home for the player.
+func roam_home() -> bool:
+	return not roam_on or _at_home
+
+
+func _roam_step(delta: float) -> void:
+	if not roam_on or not _following:
+		_follow_k = move_toward(_follow_k, 0.0, delta * FOLLOW_IN)
+		return
+	_roam_t += delta
+	_follow_k = move_toward(_follow_k, 1.0, delta * FOLLOW_IN)
+	var view_on := not _r_view.is_empty() and _roam_t < float(_r_view.until)
+	if not _r_view.is_empty() and not view_on:
+		_r_view = {}
+	var hold := roam_hold and not (view_on and _roam_t - float(_r_view.from) < VIEW_HELD / maxf(1.0, pace))
+	var goal := "hold" if hold else ("view" if view_on else "path")
+	var pitch: float
+	var dist: float
+	var look: Vector3
+	var fov: float
+	if goal == "hold":
+		var hs := _sph(_home_pos - _home_look)
+		_goal_yaw = _nearest(_r_yaw, float(hs[0]))
+		pitch = float(hs[1])
+		dist = float(hs[2])
+		look = _home_look
+		fov = _home_fov
+	elif goal == "view":
+		_goal_yaw = _nearest(_r_yaw, float(_r_view.yaw))
+		pitch = deg_to_rad(VIEW_PITCH)
+		dist = float(_r_view.dist)
+		look = _r_view.look
+		fov = ROAM_FOV
+	else:
+		if _goal_mode != "path":
+			_goal_yaw = _r_yaw   # (on round the Circle from where it is)
+		var k := 1.0 + ROAM_SPEED_SWAY * sin(_roam_t * 0.071 + 0.6)
+		_goal_yaw += deg_to_rad(ROAM_SPEED) * k * delta * sqrt(maxf(1.0, pace))
+		pitch = deg_to_rad(ROAM_PITCH + ROAM_PITCH_SWAY * sin(_roam_t * 0.13 + 1.0))
+		dist = ROAM_DIST + ROAM_DIST_SWAY * sin(_roam_t * 0.093)
+		look = ROAM_MID + Vector3(sin(_r_yaw), 0, cos(_r_yaw)) * ROAM_NEAR
+		fov = ROAM_FOV
+	_goal_mode = goal
+	if not _lean.is_empty():
+		var a := float(_lean.amount)
+		var tg: Vector3 = _lean.target
+		look = look.lerp(Vector3(tg.x, minf(tg.y, look.y + 0.5), tg.z), LEAN_LOOK * a * 0.5)
+		dist -= LEAN_DIST * a
+		pitch -= deg_to_rad(LEAN_PITCH) * a
+	if goal != "hold" and _lean.is_empty():
+		pitch = clampf(pitch, deg_to_rad(ROAM_PITCH_MIN), deg_to_rad(ROAM_PITCH_MAX))
+	var sm := _smooth_now / sqrt(maxf(1.0, pace))
+	_smooth_now = move_toward(_smooth_now, ROAM_HOLD_SMOOTH if goal == "hold" else ROAM_SMOOTH, delta * ROAM_RELAX)
+	var r := _smooth(_r_yaw, _goal_yaw, _v_yaw, sm, delta)
+	_r_yaw = r[0]
+	_v_yaw = r[1]
+	r = _smooth(_r_pitch, pitch, _v_pitch, sm * 0.8, delta)   # (height a little ahead of the turn: it rises out of a low shot first)
+	_r_pitch = r[0]
+	_v_pitch = r[1]
+	r = _smooth(_r_dist, dist, _v_dist, sm, delta)
+	_r_dist = r[0]
+	_v_dist = r[1]
+	var r3 := _smooth3(_r_look, look, _v_look, sm, delta)
+	_r_look = r3[0]
+	_v_look = r3[1]
+	r = _smooth(_r_fov, fov, _v_fov, sm, delta)
+	_r_fov = r[0]
+	_v_fov = r[1]
+	_at_home = false
+	if goal == "hold" and _lean.is_empty() and absf(_r_yaw - _goal_yaw) < 0.002 and absf(_r_pitch - pitch) < 0.002 \
+			and absf(_r_dist - dist) < 0.01 and _r_look.distance_to(look) < 0.01 and absf(_r_fov - fov) < 0.05:
+		# settled: exactly home, so every slot is where it always is
+		_r_yaw = _goal_yaw
+		_r_pitch = pitch
+		_r_dist = dist
+		_r_look = look
+		_r_fov = fov
+		_v_yaw = 0.0
+		_v_pitch = 0.0
+		_v_dist = 0.0
+		_v_look = Vector3.ZERO
+		_v_fov = 0.0
+		_at_home = true
+	cam_look = _r_look
+	cam_pos = _home_pos if _at_home else _r_look + _off(_r_yaw, _r_pitch, _r_dist)
+	cam_fov = _r_fov
+
+
+## How far the moving camera's lens must lift to keep clear of every
+## Totem's body and stay above the mat: eased, so it never jumps.
+func _clearance(p: Vector3) -> Vector3:
+	var up := 0.0
+	for side in slots:
+		for s in (slots[side] as Dictionary).values():
+			var sl: Slot = s
+			if sl.card_id == "" or sl.shattered:
+				continue
+			var foot := sl.global_position + sl.sprite.position * Vector3(1, 0, 1)
+			var h := sl.creature_h
+			var r := CLEAR_R + h * 0.25
+			var hd := Vector2(p.x - foot.x, p.z - foot.z).length()
+			var k := 1.0 - smoothstep(r, r + CLEAR_SOFT, hd)
+			if k <= 0.0:
+				continue
+			up = maxf(up, (foot.y + h + CLEAR_ABOVE - p.y) * k)
+	up = maxf(up, MAT_CLEAR - p.y)
+	return Vector3(0, maxf(0.0, up), 0)
+
+
+## How much bigger or smaller a slot looks now than from home (for its 2D
+## plate, which is drawn at a set size per row): 1 locked, at home, or in a
+## shot (the plates keep their sizes there, as before).
+func depth_k(side: int, slot: int) -> float:
+	if _follow_k <= 0.0 or cam == null or _at_home:
+		return 1.0
+	var f := foot_world(side, slot)
+	var now := maxf(0.5, (f - cam.global_position).dot(-cam.global_transform.basis.z))
+	var home := maxf(0.5, (f - _home_pos).dot((_home_look - _home_pos).normalized()))
+	var lens := tan(deg_to_rad(_home_fov) * 0.5) / maxf(0.01, tan(deg_to_rad(cam_fov) * 0.5))
+	return lerpf(1.0, clampf(home / now * lens, 0.72, 1.25), _follow_k)
 
 
 # --- the far blur, and the grade --------------------------------------------

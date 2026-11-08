@@ -33,13 +33,15 @@ func _ready() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	AshfordP1.attach(fig, "Hips", AshfordP1.card_boxes(v), AshfordP1.HIP_BOXES, AshfordP1.HIP_BOXES_ROT)
-	AshfordP1.attach(fig, "Spine2", AshfordP1.letter(v), AshfordP1.COAT_LETTER, AshfordP1.COAT_LETTER_ROT)
+	var cl := AshfordP1.letter(v)
+	cl.scale = Vector3.ONE * AshfordP1.COAT_LETTER_SCALE
+	AshfordP1.attach(fig, AshfordP1.COAT_LETTER_BONE, cl, AshfordP1.COAT_LETTER, AshfordP1.COAT_LETTER_ROT)
 	var cam := Camera3D.new()
 	add_child(cam)
 	cam.fov = 30.0
 	await get_tree().create_timer(0.6).timeout
 	var shots := {"front": [Vector3(0, 1.1, -3.2), Vector3(0, 1.0, 0)], "left": [Vector3(3.0, 1.1, -0.6), Vector3(0, 1.0, 0)],
-		"right": [Vector3(-3.0, 1.1, -0.6), Vector3(0, 1.0, 0)], "chest": [Vector3(-0.6, 1.4, -1.5), Vector3(0, 1.2, 0)]}
+		"right": [Vector3(-3.0, 1.1, -0.6), Vector3(0, 1.0, 0)], "chest": [Vector3(0.55, 1.3, -1.4), Vector3(0.07, 1.17, -0.08)]}
 	for k in shots:
 		cam.global_position = shots[k][0]
 		cam.look_at(shots[k][1], Vector3.UP)

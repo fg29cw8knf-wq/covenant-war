@@ -78,7 +78,8 @@ static func story_rules() -> Dictionary:
 
 
 ## How fast the filmed duel plays (DuelScreen.rate of the duel speed setting).
-const FILM_SPEED := 3.0
+## (3.0 until 8 November: directed as a film, its beats need a moment each.)
+const FILM_SPEED := 2.2
 
 ## Bram's deck in the order it's drawn: BRAM_DECK with the Summon `pos`
 ## cards down (the seed shuffles nothing: a set board is written out).

@@ -40,6 +40,8 @@ func _ready() -> void:
 
 
 func _shot(nm: String) -> void:
+	if DisplayServer.get_name() == "headless":
+		return   # (nothing's drawn headless: frame_post_draw never comes)
 	await RenderingServer.frame_post_draw
 	_n += 1
 	get_viewport().get_texture().get_image().save_png(out.path_join("%03d_%05.1f_%s.png" % [_n, _t, nm]))

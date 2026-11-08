@@ -50,6 +50,39 @@ const FIRST_MOVE := 1.0
 ## it is when they're near.
 const KID_GLANCE := Vector2(0.6, 1.1)
 const KID_GLANCE_CHANCE := 0.12
+## The bodies the green's extras stand in (m): a grown-up's and a child's
+## half-width, about their shoulders (the talking villagers, Hob, Ned and
+## the rest, have World's own, 0.45).
+const BODY_R := 0.28
+const KID_BODY_R := 0.21
+
+
+## A body the player can't walk through, for one of the green's extras (the
+## dancers by Ned's fiddle, the children round Corin, his mam at the bakery
+## door; 8 November, Gary: "You can run through the villagers next to
+## Ned"): an upright cylinder under their feet, a child of the node they
+## stand in, so it goes where they go. Only the player is stopped by it: a
+## staged walk sets positions and goes round people by Cine.route already,
+## and Cine.blockers leaves it out (it's a person, not a thing in the set).
+static var bodies := true
+
+static func solid(w: World, id: String, r := BODY_R, h := 1.7) -> void:
+	if not bodies:
+		return
+	var b := Cine.body(w, id)
+	if b == null or b.has_node("Solid"):
+		return
+	var sb := StaticBody3D.new()
+	sb.name = "Solid"
+	sb.set_meta("extra_body", id)
+	var cs := CollisionShape3D.new()
+	var cyl := CylinderShape3D.new()
+	cyl.radius = r
+	cyl.height = h
+	cs.shape = cyl
+	cs.position.y = h * 0.5
+	sb.add_child(cs)
+	b.add_child(sb)
 
 
 static func start(w: World) -> void:
@@ -215,7 +248,9 @@ static func _corin(w: World, rng: RandomNumberGenerator) -> float:
 	var home: Vector3 = b.get_meta("life_home", b.global_position)
 	b.set_meta("life_home", home)
 	var to := home + Vector3(rng.randf_range(-0.6, 0.6), 0.0, rng.randf_range(-0.6, 0.6))
-	_walk(w, "corin", Cine.off_blockers(w, to, 0.4), 1.0)
+	to = Cine.off_blockers(w, to, 0.4)
+	if not _on_player(w, to, 0.45):
+		_walk(w, "corin", to, 1.0)
 	return rng.randf_range(4.0, 6.0)
 
 
@@ -239,13 +274,20 @@ static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 			var a := rng.randf_range(0.0, TAU)
 			var d := rng.randf_range(KID_NEAR, KID_FAR)
 			to = anchor + Vector3(cos(a) * d, 0.0, sin(a) * d)
-			if Vector2(to.x, to.z).length() > 2.6:   # (clear of the Lantern's foot)
+			# (clear of the Lantern's foot, and not where the player stands:
+			# a run that ends on them would end inside them, 8 November)
+			if Vector2(to.x, to.z).length() > 2.6 and not _on_player(w, to, KID_BODY_R) \
+					and _clear_run(w, b.global_position, to, KID_BODY_R):
 				break
 		# a spot on or against something solid (a cart, a stall, the drum) is
 		# moved off it: a walk that ends on a thing goes straight through it
 		# (2 November: p1_v7_test caught a child running through the stall
 		# by the carts)
 		to = Cine.off_blockers(w, to, 0.4)
+		if _on_player(w, to, KID_BODY_R) or not _clear_run(w, b.global_position, to, KID_BODY_R):
+			Cine.look(w, id, watch_at)
+			Cine.hop(w, id, 0.2)
+			return rng.randf_range(0.6, 1.2)
 		_walk(w, id, to, rng.randf_range(2.6, 3.4), "run", watch_at)
 		# (the next thing follows the run closely: _free waits for the run
 		# itself to end)
@@ -261,8 +303,57 @@ static func _kid(w: World, id: String, rng: RandomNumberGenerator) -> float:
 	# a shuffle: a step or two to one side, still watching him
 	var side := rng.randf_range(-0.5, 0.5)
 	var to := b.global_position + (watch_at - b.global_position).normalized().cross(Vector3.UP) * side
-	_walk(w, id, Cine.off_blockers(w, to, 0.4), 1.0, "walk", watch_at)
+	to = Cine.off_blockers(w, to, 0.4)
+	if not _on_player(w, to, KID_BODY_R) and _clear_run(w, b.global_position, to, KID_BODY_R):
+		_walk(w, id, to, 1.0, "walk", watch_at)
 	return rng.randf_range(0.8, 1.6)
+
+
+## Is the straight run from `from` to `to` clear of anything solid in the
+## set, a body `r` wide, at a child's knee and chest? (8 November: the
+## walk-through caught a child running through Nell's bench. A staged walk
+## goes round the things in its way as circles, but a walk that starts in
+## a thing's circle is let through it, and a long thin bench's circle
+## reaches well past its seat; so a run that would cross a real solid isn't
+## set off at all.) People (the villagers, the extras' bodies, the player)
+## and the ground don't count.
+static func _clear_run(w: World, from: Vector3, to: Vector3, r: float) -> bool:
+	var d := to - from
+	d.y = 0.0
+	if d.length() < 0.05 or not w.is_inside_tree():
+		return true
+	var space := w.get_world_3d().direct_space_state
+	var side := d.normalized().cross(Vector3.UP) * r
+	var ga := Cine.ground(w, from)
+	var gb := Cine.ground(w, to)
+	for off: Vector3 in [Vector3.ZERO, side, -side]:
+		for h: float in [0.3, 0.8]:
+			var a: Vector3 = Vector3(from.x, ga + h, from.z) + off
+			var e: Vector3 = Vector3(to.x, gb + h, to.z) + off
+			var skip: Array[RID] = []
+			for k in 6:
+				var q := PhysicsRayQueryParameters3D.create(a, e)
+				q.exclude = skip
+				var hit := space.intersect_ray(q)
+				if hit.is_empty():
+					break
+				var c = hit.collider
+				var person := c is CharacterBody3D or (c is Node and ((c as Node).has_meta("npc")
+						or (c as Node).has_meta("extra_body") or (c as Node).has_meta("beast")))
+				var ground := (hit.normal as Vector3).y > 0.7
+				if not person and not ground:
+					return false
+				skip.append(hit.rid)
+	return true
+
+
+## Would someone `r` wide standing at `p` be in the player (their capsule,
+## and a little)?
+static func _on_player(w: World, p: Vector3, r: float) -> bool:
+	if w.player == null:
+		return false
+	var pp := w.player.global_position
+	return absf(pp.y - p.y) < 1.5 and Vector2(pp.x - p.x, pp.z - p.z).length() < 0.35 + r + 0.15
 
 
 ## Eyes back on `at` after `secs`.
