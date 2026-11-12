@@ -162,6 +162,26 @@ var _seat_settle := 0
 ## with the legs out along it (sat up in bed), "lying" flat on their back,
 ## "astride" on a horse (ride()).
 var _seat_pose := ""
+## Footsteps (12 November, Gary: "Do the footsteps"). A figure walking,
+## running or sneaking is heard each time a foot comes down: the feet's own
+## bones are watched (_footfalls), so the sound lands with the picture
+## whatever the model, the clip or the pace. What the ground is made of comes
+## from `step_on` when it's set ("snow" for Bram in his memory; "none" for a
+## figure never to be heard), else from the world it stands in (the nearest
+## node above it with a surface_at(): World). Sfx.step plays it, quieter the
+## further off it is, and quieter for anyone but the player (STEP_OTHERS_DB).
+signal footfall(side: String, surface: String)
+var step_on := ""
+const STEP_OTHERS_DB := -5.0
+const STEP_GAITS := ["walk", "run", "sneak"]
+const STEP_LIFT := 0.06    # a foot this far (m, on a grown-up) above where it rests is up...
+const STEP_DOWN := 0.025   # ...and within this of it again is down: a footfall
+const STEP_GAP := 0.13     # no two footfalls of one figure closer than this (s)
+const STEP_EASE := 0.03    # where a foot rests is found afresh this fast (m/s), for a new clip or a slope
+var _step_bones: Array = []      # [left, right] bones; [-2, -2] for a model with no feet to follow
+var _step_up := [false, false]
+var _step_rest := [INF, INF]     # each foot's lowest height in the walk (m above the figure's ground)
+var _step_wait := 0.0
 var _clip := ""          # what's playing
 var _action := ""        # a one-shot or held clip, over the walk/idle choice
 var _held := false
@@ -1374,7 +1394,59 @@ func _process(delta: float) -> void:
 			anim.speed_scale = clampf(pace / natural, 0.5, 1.8) if pace > 0.0 else 1.0
 	if _marker != null and _marker.visible:
 		_marker.position.y = _marker_y() + sin(_t * 3.0) * 0.06
+	if walking or _step_wait > 0.0:
+		_footfalls(delta)
 	_look_round(delta)
+
+
+## Watches the two feet while the figure walks and plays a step each time
+## one comes down (see `footfall`).
+func _footfalls(delta: float) -> void:
+	_step_wait = maxf(0.0, _step_wait - delta)
+	if not walking or _action != "" or _skel == null or step_on == "none" or not STEP_GAITS.has(_clip):
+		_step_up[0] = false
+		_step_up[1] = false
+		return
+	if _step_bones.is_empty():
+		_step_bones = [_skel.find_bone("LeftFoot"), _skel.find_bone("RightFoot")]
+		if int(_step_bones[0]) < 0 or int(_step_bones[1]) < 0:
+			_step_bones = [-2, -2]
+	if int(_step_bones[0]) < 0:
+		return
+	var size := _hips / ADULT_HIPS
+	var base := global_position.y
+	var xf := _skel.global_transform
+	for i in 2:
+		var y := (xf * _skel.get_bone_global_pose(int(_step_bones[i])).origin).y - base
+		# (where this foot rests: its lowest, let rise slowly so a new clip
+		# or a slope finds it again)
+		_step_rest[i] = minf(float(_step_rest[i]) + STEP_EASE * delta, y)
+		var over: float = y - float(_step_rest[i])
+		if over > STEP_LIFT * size:
+			_step_up[i] = true
+		elif _step_up[i] and over < STEP_DOWN * size:
+			_step_up[i] = false
+			_step(i)
+
+
+func _step(i: int) -> void:
+	if _step_wait > 0.0:
+		return
+	var surface := step_on
+	if surface == "":
+		# (asked of the world it's in, each time: there can be two worlds at
+		# once, the one behind the title screen and the one being got ready)
+		var p := get_parent()
+		while p != null and not p.has_method("surface_at"):
+			p = p.get_parent()
+		if p != null:
+			surface = String(p.call("surface_at", global_position))
+	if surface == "" or surface == "none":
+		return
+	_step_wait = STEP_GAP
+	footfall.emit("Left" if i == 0 else "Right", surface)
+	var lead := step_on != "" or _model_name.begins_with("player_")
+	Sfx.step(surface, self, _clip == "run", 0.0 if lead else STEP_OTHERS_DB)
 
 
 ## The ground (m/s) a walking clip covers at its own speed on this body; 0

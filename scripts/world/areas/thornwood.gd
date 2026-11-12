@@ -41,6 +41,13 @@ static func village(w: Node) -> ThornwoodSet:
 	return w.get_meta("village") as ThornwoodSet
 
 
+## Underfoot (12 November: footsteps): Bram's shelter under the rise is
+## trodden earth; the wood itself is the world's own rule (its paths dirt,
+## the rest grass).
+static func surface_at(_w: World, at: Vector3) -> String:
+	return "dirt" if at.y < World.INDOORS_BELOW else ""
+
+
 ## The first frame: black, before anything is seen.
 static func intro_frame(w: World) -> void:
 	w.cine = true

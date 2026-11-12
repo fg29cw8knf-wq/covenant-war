@@ -928,6 +928,7 @@ const KO_SLOW := 0.4             # the knockout's burst in slow motion (Engine.t
 const KO_SLOW_MS := 400          # ...for this long, real time...
 const KO_SLOW_RAMP_MS := 250     # ...then back up to speed over this
 const CRY_AFTER_CALL := 0.22     # a called Totem's voice comes this long after its card lands (12 November)
+const CRY_AFTER_LANDING := 0.18  # ...a Summon's this long after its landing's boom
 const CRY_AFTER_CHARGE := 0.1    # ...an attacker's this long into its wind-up
 const CRY_HURT_DAMAGE := 40      # ...and a Totem cries out under a blow this big that it lives through
 const HERO_TIER := 3             # a called Totem of this tier and up gets the low hero shot (so does every Ascension)
@@ -4596,6 +4597,7 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	var landing := func() -> void:
 		DuelFX.flash(fx_layer, Vector2(FIELD_CX, 470), col, 700.0, 0.6 / speed)
 		sfx.play("summon_boom")
+		_cry(card.id, "call", CRY_AFTER_LANDING)   # (12 November: its own voice as it lands, cry_<id>)
 		if field != null:
 			field.pillar(Vector3(0, 0, -0.8), col, 12.0, 5.0, 1.2 / speed)
 			field.floor_wave(Vector3(0, 0, -0.8), col, 9.0, 0.9 / speed)

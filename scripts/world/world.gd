@@ -102,6 +102,32 @@ func setup(p_area: String, spawn: String) -> World:
 	return self
 
 
+## What the ground is made of at a place, for footsteps (12 November: asked
+## by each Figure3D in this world as a foot comes down): "grass", "dirt",
+## "wood", "stone", or "" for no
+## sound. The area says if it knows better (a static surface_at(w, at));
+## otherwise the rooms, which all sit far below the ground (INDOORS_BELOW),
+## are boards, a village's or a wood's paths are dirt and the rest grass, and
+## anywhere else (Solhaven's streets) is stone. Nothing is heard from a world
+## that is waiting under the title screen or drifting behind it.
+const INDOORS_BELOW := -20.0
+const PATH_FROM := 0.3
+
+func surface_at(at: Vector3) -> String:
+	if attract or held or not visible:
+		return ""
+	if area != null and area.has_method("surface_at"):
+		var own := String(area.call("surface_at", self, at))
+		if own != "":
+			return own
+	if at.y < INDOORS_BELOW:
+		return "wood"
+	var v = get_meta("village") if has_meta("village") else null
+	if v is AshfordVillage:
+		return "dirt" if (v as AshfordVillage).path_at(at.x, at.z) > PATH_FROM else "grass"
+	return "stone"
+
+
 func _ready() -> void:
 	VoiceLines.warm()
 	if area == null:

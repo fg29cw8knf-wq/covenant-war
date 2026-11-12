@@ -1987,6 +1987,8 @@ func _build_set() -> void:
 	_cam.current = true
 	var who := "bram_coat" if Figure3D.has_model("bram_coat") else "bram"
 	_bram = Figure3D.make(who, who)
+	if _bram is Figure3D:
+		(_bram as Figure3D).step_on = "snow"   # (12 November: his boots in the snow, the first sound the player makes)
 	_set.add_child(_bram)
 	_bram.position = WALK_FROM
 	_face(_bram, Vector3.FORWARD)   # his back to us, from the first frame

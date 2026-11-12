@@ -15,7 +15,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `scripts/ai/` | The computer opponent. |
 | `tests/` | Headless tests. `sim.gd` plays thousands of AI-vs-AI duels and checks the rules never break. |
 | `assets/art/` | The painted art, sized for the game: `cards/` (card paintings, 640 wide), `creatures/` (transparent battlefield cut-outs), `summons/` (Summon cut-outs and their sky scenes), `arenas/`, `gods/`, `card_back.jpg`, `icon.png`. Files are named by card id (see `scripts/duel_ui/duel_art.gd`); anything missing falls back to drawn placeholders. Prompts: `docs/card-prompts.md`. |
-| `assets/sfx/` | Sound effects (`cry_<kind>.wav`: the creatures' stand-in voices, `tools/make_cries.py`). |
+| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`). |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
 ## Gary's standing rule (22 October): every update is built to the best look and flow
@@ -1752,13 +1752,55 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   creature's Health (`Sfx.SIZE_PITCH`: a Cinderpup high, a Warg low), by a
   per-creature nudge (`VOICE_OF`), and by the moment (`CRY_WHEN`: an attack a
   little higher and quieter, a fall lower). A Hound that's hurt or falls
-  whines (`CRY_ALIAS`: Gary's `hound_whine`). A Summon has no stand-in: its
-  stinger or clip is its voice, unless it's given a `cry_<id>` of its own.
+  whines (`CRY_ALIAS`: Gary's `hound_whine`). Each of the six Summons has a
+  cry of its own (below).
   Gary's own recording replaces a stand-in by being saved under the same
   name (`.ogg`, `.wav` or `.mp3`); `cry_<creature id>` gives one creature
   its own voice. The list of what to make is in the Still to Make doc
   ("Creature voices" tab). A duel loads its decks' voices as it starts
   (`Sfx.warm_cries`).
+- **A voice for each Summon** (Gary, later the same day: "Do the footsteps
+  and and the voice for each summon in the todo list"): `cry_dawnmane` (a
+  great lion's roar, the dawn ringing in it), `cry_grondmaw` (a groan from
+  under the ground, rock grinding and splitting), `cry_pyraxis` (a
+  firebird's scream over a dragon's roar), `cry_somnara` (three voices on
+  one soft dark chord, moth wings), `cry_thalassa` (a long rising call, a
+  second answering above it, a wave drawing back), `cry_orlanthe` (one deep
+  bell, glass singing after it, pages turning). Two to three seconds each,
+  made by `tools/make_cries.py` as the kinds' are, and as unheard. Played
+  `CRY_AFTER_LANDING` after the landing's boom (`DuelScreen.fx_summon`), in
+  Bram's filmed duel too, and in the Codex at a tap on a Summon's picture.
+- **Footsteps** (`Figure3D._footfalls`, `Sfx.step`, `World.surface_at`): a
+  figure walking, running or sneaking is heard each time a foot comes down.
+  The two foot bones are watched (a foot `STEP_LIFT` above where it rests is
+  up; back within `STEP_DOWN` of it is a footfall), so the sound lands with
+  the picture whatever the model, clip or pace: the player's run is 3.8
+  steps a second, a walk 1.8, Bram's trudge in his coat 1.0. The ground is
+  the figure's `step_on` when set (Bram in the memory: "snow"; "none" for
+  never), else what its world says is there (`World.surface_at`, asked by
+  walking up from the figure to the nearest node that has one): the area's
+  own answer first (`Ashford.surface_at`: the cellar "stone", the smugglers'
+  tunnel "dirt", the mill "wood"; `Thornwood.surface_at`: Bram's shelter
+  "dirt"), then boards for anything below `INDOORS_BELOW` (the rooms all sit
+  40 m under the ground), dirt on a village's or a wood's paths
+  (`AshfordVillage.path_at` over `PATH_FROM`) and grass off them, stone
+  anywhere else (Solhaven). A world behind the title screen, or waiting
+  under it, is silent. Five grounds, four takes each
+  (`assets/sfx/step_<ground>.wav`, `_2`, `_3`, `_4`, made by
+  `tools/make_steps.py`: shaped noise, a thump, a knock; unheard, as the
+  voices are), a take picked at random, its pitch and loudness moved a
+  little every time; played on a player of their own (`Sfx.steps()`, which
+  doesn't count as a press's sound, so a button still clicks while you run)
+  at `STEP_DB`, a run a touch harder, quieter the further the walker is from
+  the camera (full within `STEP_NEAR`, the world camera's own distance from
+  the player; unheard past `STEP_FAR_DB`), and anyone but the player (or a
+  figure with its own `step_on`) `STEP_OTHERS_DB` under that. The stand-ins
+  are levelled by what an ear and a phone's speaker get of them (above
+  `HEARD_FROM` 180 Hz: the voices were levelled again the same way).
+  `tests/steps_test.tscn` checks the rates, left then right, stillness,
+  "none", distance, the grounds, and the player run across the green by a
+  tap; `white_sky_test` wants `step_snow` on the walk (29 on the walk to the
+  crater) and `cry_orlanthe` at the landing.
 - **The Codex** (`Codex.Detail`): a card opened turns over (`card_flip`); a
   creature of yours is heard as its card opens and again at a tap on its
   picture ("(Tap its picture to hear its voice.)" under Your Collection);
@@ -1822,7 +1864,11 @@ ok; `white_sky_test` headless PASS, whole and the duel alone (the sounds
 heard listed); `first_launch_test` ok; `duel_sim -- 100` 0 invariant errors;
 `puzzles_test` PASS; `mem_probe -- full duel` a duel played over the village
 with every voice hooked in, no errors; `tri_probe` in Ashford, the Thornwood
-and Solhaven. Not checked: how any of the sounds sound.
+and Solhaven. Later the same day, with the footsteps and the Summons'
+voices: `steps_test` ok; `sfx_test` ok; `white_sky_test` headless PASS (29
+footsteps on the walk, Orlanthe's voice at its landing); `load_all`,
+`first_launch_test`, `white_sky_play_probe`, `duel_sim -- 100` as before.
+Not checked: how any of the sounds sound.
 
 ### Gary's 8 November evening notes (the memory, the morning, the green, the evening)
 
@@ -3744,10 +3790,12 @@ godot --headless --script res://tests/white_sky_play_probe.gd   # Bram's duel in
 godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4      # the whole snow opening, the three moves made
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
+godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]
-python3 tools/make_cries.py [kind ...]                          # the stand-in creature voices (assets/sfx/cry_<kind>.wav)
+python3 tools/make_cries.py [kind or Summon ...]                # the stand-in creature voices (assets/sfx/cry_<kind>.wav, cry_<summon>.wav)
+python3 tools/make_steps.py [ground ...]                        # the stand-in footsteps (assets/sfx/step_<ground>.wav and its takes)
 ```
 
 The summary line must report `0 invariant errors`.

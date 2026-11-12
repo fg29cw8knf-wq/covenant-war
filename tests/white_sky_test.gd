@@ -102,8 +102,14 @@ func _run() -> void:
 			print("white_sky_test: the first card was played %.0f s in (%.1f min)" % [float(_asked[0][2]), float(_asked[0][2]) / 60.0])
 		# (12 November) a sound at each of the three moves, and the Totems' voices
 		var names: Array = Sfx.heard.map(func(h): return String(h[1]))
-		print("white_sky_test: heard: %s" % ", ".join(Sfx.heard.map(func(h): return "%s@%d" % [h[1], h[0]])))
-		for want: String in ["card_draw", "card_lift", "cry_astral", "ward_set", "cry_hound", "hound_whine", "page_turn"]:
+		var steps: Array = Sfx.heard.filter(func(h): return String(h[1]).begins_with("step_"))
+		print("white_sky_test: heard: %s" % ", ".join(Sfx.heard.filter(func(h): return not String(h[1]).begins_with("step_")).map(func(h): return "%s@%d" % [h[1], h[0]])))
+		print("white_sky_test: %d footsteps heard, the first at frame %s, the last at %s" % [steps.size(),
+			str(steps[0][0]) if not steps.is_empty() else "-", str(steps[-1][0]) if not steps.is_empty() else "-"])
+		var wanted := ["card_draw", "card_lift", "cry_astral", "ward_set", "cry_hound", "hound_whine", "page_turn", "cry_orlanthe"]
+		if not _duel_only:
+			wanted.append("step_snow")   # (his boots in the snow, on the walk)
+		for want: String in wanted:
 			if not names.has(want):
 				print("white_sky_test: FAIL: the sound '%s' was never played" % want)
 				ok = false

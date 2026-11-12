@@ -1,7 +1,7 @@
 extends Node
 ## The game's sounds (12 November): every Totem has a voice for each moment
-## (its own recording, or its kind's stand-in) and the file loads; a Summon
-## has none unless it's given one; a Hound that falls whines; a small one
+## (its own recording, or its kind's stand-in) and the file loads; each
+## Summon has a voice of its own; a Hound that falls whines; a small one
 ## cries higher than a big one of its kind; and every button clicks, unless
 ## its own press already played a sound, or it's marked "quiet"; and a card
 ## opened in the Codex turns over with a sound, a creature of yours heard.
@@ -29,8 +29,10 @@ func _ready() -> void:
 					bad.append("%s: %s doesn't load" % [id, snd])
 				elif float(r[1]) < 0.4 or float(r[1]) > 2.2:
 					bad.append("%s: pitch %.2f for '%s'" % [id, float(r[1]), when])
-			elif snd != "" and not snd.begins_with("cry_" + id):
-				bad.append("the Summon %s has a stand-in voice (%s): its stinger is its voice" % [id, snd])
+			elif when == "call" and snd != "cry_" + id:
+				bad.append("the Summon %s isn't heard as it lands by its own voice (cry_%s): '%s'" % [id, id, snd])
+			elif snd != "" and Sfx.get_stream(snd) == null:
+				bad.append("%s: %s doesn't load" % [id, snd])
 			line += "  %s %s x%.2f %+.0f dB" % [when, snd, float(r[1]), float(r[2])]
 		kinds[Sfx.voice_kind(id)] = int(kinds.get(Sfx.voice_kind(id), 0)) + 1
 		if show:

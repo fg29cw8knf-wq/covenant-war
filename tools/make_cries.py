@@ -4,7 +4,8 @@ the game and cards and creatures is good implement that").
 
 Writes one cry per kind of creature to assets/sfx/cry_<kind>.wav: a bark, a
 yip, a snarl, a hoot, a hiss, a roar, a clack, a grind, a creak, a squeak, a
-grunt, a chime, a glassy shimmer, a squawk. They are built from nothing
+grunt, a chime, a glassy shimmer, a squawk; and one for each Summon
+(cry_dawnmane.wav ...), heard as it lands. They are built from nothing
 (tones through mouth-shaped filters, shaped noise), so they are stand-ins:
 a recording saved as assets/sfx/cry_<kind>.ogg or cry_<creature id>.ogg is
 used instead of them (Sfx.cry_sound). The game pitches each cry by the
@@ -27,6 +28,7 @@ from scipy import signal
 SR = 44100
 PEAK = 0.8           # (the game's other effects peak at 0.6 to 0.88)
 LOUD = 0.2           # (and their loudest fifth of a second runs 0.15 to 0.3)
+HEARD_FROM = 180.0   # loudness is judged above this (Hz): an ear, and a phone's small speaker, get little of what's below
 rng = np.random.default_rng(1112)
 
 
@@ -160,7 +162,8 @@ def finish(x):
     # as loud as each other to the ear: the loudest fifth of a second of each
     # at LOUD, but never a peak over PEAK (a click stays a click)
     win = n_of(0.2)
-    power = np.convolve(x * x, np.ones(win) / win, mode="same")
+    heard = highpass(x, HEARD_FROM)
+    power = np.convolve(heard * heard, np.ones(win) / win, mode="same")
     loud = float(np.sqrt(np.max(power)))
     x = x * (LOUD / (loud + 1e-9))
     top = float(np.max(np.abs(x)))
@@ -370,10 +373,134 @@ def astral():
     return room(place([(0.0, out + pages), (0.33, ping)]), 0.14, 0.26)
 
 
+# --------------------------------------------------------------- Summons ---
+# (12 November, Gary: "Do ... the voice for each summon".) A Summon's cry is
+# its own (cry_<its id>.wav), heard as it lands: longer than a Totem's, in a
+# bigger room.
+
+def dawnmane():
+    """A lion the size of a hill: a roar that swells and rolls, the dawn ringing in it."""
+    secs = 1.7
+    n = n_of(secs)
+    f0 = curve([(0, 62), (0.2, 104), (0.55, 92), (1, 52)], secs)
+    v = voice(f0, bright=1.6, jitter=0.07, breath=0.3, rough_hz=23, rough=0.85)
+    v = mouth_glide(v, [(360, 230, 1.0), (900, 400, 0.7), (2200, 800, 0.3)],
+        [(640, 320, 1.0), (1200, 480, 0.8), (2500, 900, 0.35)], 0.5)
+    breath = norm(band(rng.standard_normal(n), 400, 3200))
+    r = drive(norm(v) + breath * 0.25, 3.0) * env(secs, 0.14, 0.5, 0.36, 1.4)
+    under = norm(lowpass(voice(f0 * 0.5, bright=0.6, jitter=0.05), 200.0)) * env(secs, 0.2, 0.45, 0.35) * 0.45
+    t = np.arange(n) / SR
+    sun = np.zeros(n)
+    for i, hz in enumerate([1568.0, 2093.0, 2637.0, 3136.0]):
+        sun += (np.sin(2 * np.pi * (hz - 1.5) * t) + np.sin(2 * np.pi * (hz + 2.0) * t + i)) * (0.8 ** i)
+    sun = norm(sun) * env(secs, 0.5, 0.15, 0.35, 1.8)
+    return room(norm(r) + under + sun * 0.11, 0.3, 0.3)
+
+
+def grondmaw():
+    """A mountain getting up: a groan from under the ground, rock grinding and splitting."""
+    secs = 2.0
+    n = n_of(secs)
+    groan = voice(curve([(0, 44), (0.4, 62), (1, 36)], secs), bright=1.3, jitter=0.08, rough_hz=14, rough=0.8)
+    groan = formants(groan, [(210, 140, 1.0), (430, 220, 0.85), (900, 420, 0.4), (1700, 700, 0.15)])
+    groan = drive(norm(groan), 2.6) * env(secs, 0.25, 0.4, 0.35, 1.3)
+    grit = np.zeros(n)
+    at = 0
+    while at < n:
+        grit[at] = rng.uniform(0.4, 1.0) * rng.choice([-1.0, 1.0])
+        at += int(SR / rng.uniform(45.0, 150.0))
+    grit = signal.lfilter([1.0], [1.0, -0.985], grit)
+    grind = norm(formants(grit, [(190, 120, 1.0), (360, 170, 0.9), (780, 320, 0.5), (1600, 700, 0.2)])) * env(secs, 0.3, 0.45, 0.25, 1.2)
+    parts = [(0.0, groan + grind * 0.55)]
+    for at_s, level in [(0.42, 0.5), (0.95, 0.65), (1.38, 0.9)]:
+        c = norm(band(rng.standard_normal(n_of(0.06)), 500, 3600)) * env(0.06, 0.04, 0.1, 0.86) * level * 0.5
+        parts.append((at_s, c))
+    t = np.arange(n_of(0.45)) / SR
+    thud = np.sin(2 * np.pi * np.cumsum(np.interp(t, [0, 0.45], [110.0, 44.0])) / SR) * np.exp(-t * 8.0)
+    parts.append((1.39, thud * 0.9))
+    return room(place(parts), 0.32, 0.32)
+
+
+def pyraxis():
+    """A firebird's scream over a dragon's roar, the air burning round both."""
+    secs = 1.8
+    n = n_of(secs)
+    hi = voice(curve([(0, 380), (0.18, 720), (0.5, 640), (1, 260)], secs), bright=1.3, jitter=0.04, breath=0.25, rough_hz=58, rough=0.6)
+    hi = mouth_glide(hi, [(900, 400, 1.0), (2100, 700, 0.8), (3600, 1100, 0.4)],
+        [(1300, 500, 1.0), (2600, 800, 0.8), (4000, 1200, 0.4)], 0.6)
+    hi = drive(hi, 2.4) * env(secs, 0.1, 0.45, 0.45, 1.4)
+    lo = voice(curve([(0, 78), (0.3, 120), (1, 64)], secs), bright=1.5, jitter=0.07, breath=0.3, rough_hz=26, rough=0.8)
+    lo = formants(lo, [(420, 260, 1.0), (1000, 440, 0.7), (2300, 800, 0.3)])
+    lo = drive(norm(lo), 3.0) * env(secs, 0.18, 0.45, 0.37, 1.4)
+    fire = norm(band(rng.standard_normal(n), 700, 6000) * smooth_noise(n, 30.0, 0.5).clip(0, 3)) * env(secs, 0.2, 0.4, 0.4)
+    crackle = np.zeros(n)
+    at = 0
+    while at < n:
+        crackle[at] = rng.uniform(0.3, 1.0)
+        at += int(SR / rng.uniform(18.0, 70.0))
+    crackle = norm(band(signal.lfilter([1.0], [1.0, -0.6], crackle), 1500, 8000)) * env(secs, 0.3, 0.4, 0.3)
+    return room(norm(hi) * 0.7 + norm(lo) * 0.8 + fire * 0.2 + crackle * 0.12, 0.3, 0.28)
+
+
+def somnara():
+    """Three voices singing one soft dark chord out of sleep, moth wings under them."""
+    secs = 2.1
+    n = n_of(secs)
+    t = np.arange(n) / SR
+    out = np.zeros(n)
+    for i, (hz, level) in enumerate([(392.0, 1.0), (466.2, 0.8), (587.3, 0.75), (784.0, 0.4)]):
+        f0 = hz * (1.0 + 0.006 * np.sin(2 * np.pi * (5.0 + 0.3 * i) * t + i * 1.7))
+        v = voice(f0, bright=0.7, jitter=0.008, breath=0.12)
+        out += norm(formants(v, [(800, 160, 1.0), (1150, 180, 0.6), (2900, 400, 0.25)])) * level
+    out = norm(out) * env(secs, 0.35, 0.25, 0.4, 1.6)
+    wings = norm(band(rng.standard_normal(n), 3500, 9000)) * (0.5 + 0.5 * np.sin(2 * np.pi * 19.0 * t)) * env(secs, 0.3, 0.3, 0.4) * 0.07
+    def bell(hz):
+        bt = np.arange(n_of(0.9)) / SR
+        return (np.sin(2 * np.pi * hz * bt) + 0.4 * np.sin(2 * np.pi * hz * 2.76 * bt) * np.exp(-bt * 20)) * np.exp(-bt * 5.0)
+    return room(place([(0.0, out + wings), (0.7, bell(1568.0) * 0.14), (1.05, bell(2349.3) * 0.11)]), 0.35, 0.4)
+
+
+def thalassa():
+    """The deep singing: one long rising call, a second answering above it, a wave drawing back."""
+    secs = 2.3
+    n = n_of(secs)
+    t = np.arange(n) / SR
+    f0 = curve([(0, 170), (0.35, 330), (0.7, 300), (1, 215)], secs) * (1.0 + 0.01 * np.sin(2 * np.pi * 4.0 * t))
+    song = voice(f0, bright=0.55, jitter=0.01, breath=0.08)
+    song = norm(formants(song, [(420, 200, 1.0), (900, 300, 0.5), (1700, 500, 0.2)])) * env(secs, 0.25, 0.4, 0.35, 1.5)
+    s_secs = 1.5
+    f2 = curve([(0, 330), (0.4, 495), (1, 400)], s_secs) * (1.0 + 0.012 * np.sin(2 * np.pi * 4.6 * np.arange(n_of(s_secs)) / SR))
+    second = norm(formants(voice(f2, bright=0.5, jitter=0.01, breath=0.1), [(500, 220, 1.0), (1000, 320, 0.4)])) * env(s_secs, 0.3, 0.3, 0.4, 1.5)
+    wash = norm(band(rng.standard_normal(n), 250, 2600) * smooth_noise(n, 6.0, 0.35).clip(0, 3)) * env(secs, 0.45, 0.15, 0.4, 1.2)
+    return room(place([(0.0, song + wash * 0.28), (0.55, second * 0.4)]), 0.4, 0.4)
+
+
+def orlanthe():
+    """One deep bell for the last page, glass singing after it, pages turning by themselves."""
+    secs = 2.2
+    n = n_of(secs)
+    t = np.arange(n) / SR
+    base = 98.0
+    bell = np.zeros(n)
+    for ratio, level, fall in [(1.0, 1.0, 1.6), (2.0, 0.7, 2.0), (2.4, 0.55, 2.4), (3.0, 0.4, 3.0), (4.2, 0.3, 3.8), (5.4, 0.22, 4.6), (6.8, 0.15, 5.5)]:
+        bell += level * np.sin(2 * np.pi * base * ratio * t + rng.uniform(0, 6.28)) * np.exp(-t * fall)
+    strike = norm(band(rng.standard_normal(n_of(0.012)), 800, 5000)) * env(0.012, 0.1, 0.1, 0.8) * 0.3
+    glass = np.zeros(n)
+    for i, hz in enumerate([587.3, 880.0, 1318.5]):
+        for det in (-1.6, 1.9):
+            glass += np.sin(2 * np.pi * (hz + det) * t + rng.uniform(0, 6.28)) * (0.8 ** i)
+    glass = norm(glass) * env(secs, 0.4, 0.2, 0.4, 1.8)
+    pages = norm(band(rng.standard_normal(n), 2200, 6500) * smooth_noise(n, 22.0, 0.7).clip(0, 3)) * env(secs, 0.35, 0.25, 0.4)
+    return room(place([(0.0, norm(bell) + glass * 0.22 + pages * 0.08), (0.0, strike)]), 0.4, 0.4)
+
+
 CRIES = {
     "hound": hound, "fox": fox, "cat": cat, "bird": bird, "owl": owl, "sprite": sprite,
     "serpent": serpent, "drake": drake, "shell": shell, "stone": stone, "wood": wood,
     "rodent": rodent, "beast": beast, "astral": astral,
+    # the Summons, each its own
+    "dawnmane": dawnmane, "grondmaw": grondmaw, "pyraxis": pyraxis,
+    "somnara": somnara, "thalassa": thalassa, "orlanthe": orlanthe,
 }
 
 

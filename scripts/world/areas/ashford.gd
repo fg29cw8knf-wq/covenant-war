@@ -222,6 +222,21 @@ static func village(w: Node) -> AshfordVillage:
 	return w.get_meta("village") as AshfordVillage
 
 
+## What's underfoot where the world's own rule (World.surface_at: boards
+## indoors, dirt on the paths, grass elsewhere) is wrong: the cellar's flags,
+## the smugglers' tunnel's earth, the mill's boards (12 November: footsteps).
+static func surface_at(_w: World, at: Vector3) -> String:
+	if at.y < World.INDOORS_BELOW:
+		if at.distance_to(InnRooms.CELLAR_AT) < 14.0:
+			return "stone"
+		if at.x > AshfordNight.TUNNEL_AT.x - 14.0:
+			return "dirt"
+		return "wood"
+	if at.distance_to(MillSet.AT) < 60.0:
+		return "wood"
+	return ""
+
+
 # ================================================================== story ===
 
 ## P1 opens in the attic (intro(), AshfordP1.opening): nothing more to say

@@ -44,8 +44,8 @@ const VOICE_OF_FAMILY := {
 }
 ## ... and of each creature that has no family, or doesn't sound like its
 ## family: [kind, pitch] (the pitch is on top of its size's: SIZE_PITCH).
-## A Summon has none here: its stinger or its clip is its voice, unless it
-## is given a recording of its own (cry_<id>).
+## A Summon has no kind: each has a cry of its own (cry_<id>, made by
+## tools/make_cries.py as the kinds' are), heard as it lands.
 const VOICE_OF := {
 	"stormcaller": ["bird", 1.0], "somnowl": ["owl", 1.0], "runeowl": ["owl", 0.92],
 	"ashen_drake": ["drake", 1.3], "deepmaw": ["drake", 1.0],
@@ -72,9 +72,21 @@ const SIZE_PITCH := [1.42, 280.0, 0.72, 1.24]   # (pitch at no Health, Health pe
 const CRY_DB := -3.0   # (a voice sits just under the blows and the spells)
 const CRY_PITCH := [0.56, 1.9]   # (no cry slower or faster than this, whatever its size and moment)
 
+## Footsteps (12 November, Gary: "Do the footsteps"): step(), one sound for
+## each kind of ground (step_snow, step_grass, step_dirt, step_wood,
+## step_stone, each with a few takes), a little different every time, and
+## quieter the further the walker is from the camera.
+const STEP_DB := -7.0       # (a step sits well under everything else: there are a lot of them)
+const STEP_RUN_DB := 1.5    # ...a running one a touch harder
+const STEP_NEAR := 14.0     # the world's camera stands this far (m) from the player: full loudness from here in
+const STEP_FAR_DB := 18.0   # a walker so far off that their step would be this much quieter isn't heard
+const STEP_ELSE := "dirt"   # the ground used for one that has no sound of its own
+
 ## One player for sounds that belong to no screen (a button's click, a card
-## turned over in the Codex): shared().
+## turned over in the Codex): shared(). And one for footsteps (steps()), so
+## a run across the green never takes a button's click.
 static var _shared: Sfx
+static var _steps: Sfx
 static var _last_msec := -1000
 static var clicks := 0   # (how many button clicks have been played: for the tests)
 static var listen := false   # (the tests: every sound played is noted in `heard`, [frame, name, pitch])
@@ -82,6 +94,9 @@ static var heard: Array = []
 
 var volume_db := -8.0
 var _players: Array = []
+## Whether a sound from this player counts as a press's own sound (a button
+## that has one doesn't click as well: _click). Footsteps don't.
+var marks_press := true
 
 
 func _init() -> void:
@@ -103,7 +118,8 @@ func play(sound: String, pitch: float = 1.0, gain_db: float = 0.0) -> void:
 	var stream := get_stream(_take(sound))
 	if stream == null:
 		return
-	_last_msec = Time.get_ticks_msec()
+	if marks_press:
+		_last_msec = Time.get_ticks_msec()
 	if listen:
 		heard.append([Engine.get_process_frames(), sound, pitch])
 	var level := linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)) / 0.9))
@@ -188,12 +204,46 @@ static func shared() -> Sfx:
 	return _shared
 
 
+## The player for footsteps, made and kept as shared() is.
+static func steps() -> Sfx:
+	if not is_instance_valid(_steps):
+		_steps = Sfx.new()
+		_steps.name = "StepSfx"
+		_steps.marks_press = false
+		(Engine.get_main_loop() as SceneTree).root.add_child.call_deferred(_steps)
+	return _steps
+
+
+## One footfall on `surface` ("snow", "grass", "dirt", "wood", "stone") by
+## the walker `at` (a Figure3D: how far they are from the camera sets how
+## loud it is; null plays it at full), `gain_db` on top (the villagers'
+## steps sit under the player's). True if it was played.
+static func step(surface: String, at: Node3D = null, running: bool = false, gain_db: float = 0.0) -> bool:
+	var sound := "step_" + surface
+	if not has_file(sound):
+		sound = "step_" + STEP_ELSE
+		if not has_file(sound):
+			return false
+	var gain := STEP_DB + (STEP_RUN_DB if running else 0.0) + gain_db
+	if at != null and at.is_inside_tree():
+		var cam := at.get_viewport().get_camera_3d()
+		if cam != null:
+			var far := cam.global_position.distance_to(at.global_position)
+			var off := 20.0 * log(maxf(far, STEP_NEAR) / STEP_NEAR) / log(10.0)
+			if off > STEP_FAR_DB:
+				return false
+			gain -= off
+	steps().play(sound, randf_range(0.93, 1.07), gain + randf_range(-1.5, 0.5))
+	return true
+
+
 ## Every button in the game clicks (12 November). A screen that plays its own
 ## sound for a press (the duel's buttons, a card lifted) keeps it: the click
 ## comes after the press's own handlers, and stays silent if anything was
 ## played in that moment. A button with the meta "quiet" never clicks.
 static func watch_buttons(tree: SceneTree) -> void:
 	shared()
+	steps()
 	if not tree.node_added.is_connected(_on_node):
 		tree.node_added.connect(_on_node)
 
