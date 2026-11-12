@@ -20,6 +20,7 @@
 #   tools/rig_villager.sh bram_coat    <Bram_Coat.glb, baked>       (4 Nov: the memory's Bram in his coat)
 #   tools/rig_villager.sh shard_hunter <Shadow_Hunter.glb, baked>   (4 Nov: the faceless hunter)
 #   tools/rig_villager.sh tobin        .../Tobin_model.glb             (5 Nov: Ysa's son, at the Golden Gate)
+#   tools/rig_villager.sh ysa          <charactersysa.glb, baked>      (12 Nov: Tobin's mother)
 # then `godot --headless --import`, re-render their portrait and check them
 # (README, Story mode). Each keeps all of its own clips; the game's clips it
 # lacks are fitted to it from clips/shared.glb, Bram's lift and (Corin, who
@@ -221,6 +222,18 @@ hale|sun_guard)
 		--borrow assets/models/characters/bram.glb:lift \
 		--head-up=-12:walk,run
 	;;
+ysa)
+	# Ysa (12 November): Tobin's mother, the woman with the sleeping boy across
+	# her lap on the road outside Solhaven's Golden Gate, and of the side story
+	# The Price of Mercy. Gary's Tripo3D model, a Mixamo rig with the 22
+	# library clips like Hale's; the quarter turn baked out first
+	# (tools/glb_bake_turn.py), as Hale's was.
+	python3 tools/rig_character.py "$src" "$out" --name "Ysa" --height 1.64 \
+		--cycle walk --cycle run --cycle sneak --seam idle --seam dance --seam fight_stance \
+		--borrow "assets/models/characters/clips/shared.glb:$GAME" \
+		--borrow assets/models/characters/bram.glb:lift \
+		--head-up=-12:walk,run
+	;;
 bram_coat|shard_hunter)
 	# The Night of the White Sky (4 November): Gary's two Tripo3D models for
 	# the memory twenty years ago, Mixamo rigs with the 22 library clips, the
@@ -269,7 +282,7 @@ enforcer)
 		--head-up=-12:walk,run
 	;;
 *)
-	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer|bram_coat|shard_hunter|tobin <master.glb or folder of single-clip files>" >&2
+	echo "usage: $0 bram|corin|tam|tilly|nell|hob|ned|farmer|merchant|trader|elder|child_b|child_c|refugee|corin_mam|krell|hale|sun_guard|enforcer|bram_coat|shard_hunter|tobin|ysa <master.glb or folder of single-clip files>" >&2
 	exit 1
 	;;
 esac

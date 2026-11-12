@@ -684,6 +684,8 @@ The Totem plate's HP figure is fitted to its box since the same day (`DuelViews`
 
 **8 November (Gary's files for Round 9):** the Scrivener, Loomwarden, the Unspent Hour and the Weft Serpent are his own now: each has its card painting (`assets/art/cards/<id>.jpg`, at the size he painted it), a battlefield cut-out (`assets/art/creatures/<id>.webp`, cut from the painting with rembg's isnet, 560 px like the others) and his Tripo3D model (`assets/models/creatures/<id>.glb`, readied by `tools/glb_bake_turn.py`, the new `tools/glb_flatten_rig.py` and `tools/split_creature.py`, with its 4096 colour picture beside it, VRAM-compressed), so their `stand_in`s are gone from `duel_cards.gd`; the Glyph Warden is still the indigo Quarry Golem. Tripo's clips came under its own names, so `tools/glb_rename_clips.py` renames them to what `DuelField3D.CLIP_ALIASES` reads before the split: the Loomwarden's `thread_shield`, the Unspent Hour's `time_shield` and the Weft Serpent's `thread_shield` are their `guard`, the Serpent's `attack_strike` its `attack` and its `slither` its `run`; the Scrivener came on the humanoid library (idle, walk, run, punch, sword_swing, fight_stance, hit_react, death, cheer...), so its `sword_swing` is its `attack` (the quill stroke of Strike the Name) and `fight_stance` its `guard`; `death` and `cheer` are read as its ko and victory by the aliases, and it has no spawn clip (the call's light covers it). The Unspent Hour floats (`DuelArt.FLYERS`): a winged hourglass spirit with no feet. **Why the flatten step:** these Tripo exports keep the mesh centred on the origin and lift it onto its feet through the bones, under two quarter-turned nodes (node_0, Armature); Godot draws it where the bones put it but `DuelField3D._merged_aabb` measures the mesh's own bounds through those nodes, so on the field each Totem was lifted half its height into the air (the first render had the Unspent Hour in the sky and the Weft Serpent's head off the top). `glb_bake_turn.py` puts the rest pose into the mesh and `glb_flatten_rig.py` folds the nodes' turns into the root joint (its clip keys turned with it), so measure and picture agree; `tests/creature_peek.tscn -- <dir> creatures/<id> [clips]` renders a model alone (front, three-quarter, back, each clip) and prints its floor and which duel clip each alias finds, and `tests/tree_peek.gd` prints the scene Godot built. Orlanthe's stinger is in (`summon_orlanthe`, his 19.7 s piece as `assets/audio/music/summon_orlanthe.ogg`, the original in `audio/source/`): the duel's music dips under it when the Last Page is called, and in the Night of the White Sky it rings on through the white (`Music.stop` leaves a stinger playing). Kaethis's own painting is `assets/art/gods/kaethis.jpg`, the back view from his set of four Tripo reference pictures (the god is only ever seen from behind; the hooded head sits in the upper third for the seal), so its seal (the medallion `DuelArt.god_medallion` cuts from the hood, on a Totem plate's patron mark and the Favour meter) is cut from the painting now instead of drawn; and his Tripo3D model of the god is rigged as a story character like Warden Hale (`assets/models/characters/kaethis.glb`, `tools/glb_bake_turn.py` then `tools/rig_character.py` with the shared clips, 2.30 m tall, `Figure3D.OWN_GAIT` kaethis), ready for the scenes that will show it; no scene calls it yet. His map of Veyl came too: `assets/art/map/veyl.jpg`, with where each place sits on it noted in `docs/veyl-map-prompt.md` for the "Choose a kingdom" code (not drawn by the game yet). Details and what was checked: `docs/handover/2026-11-08-files.md`. Still to come for Round 9: the Glyph Warden's painting, cut-out and model; Orlanthe's painting, Summon cut-out, sky scene and model; the five small card paintings (Cut Thread, Foreordained, Already Written, Hourglass With No Sand, Knotted Cord).
 
+**12 November (more of Round 9):** the Glyph Warden is his own now: its card painting (`assets/art/cards/glyph_warden.jpg`, 1254 square as painted), its battlefield cut-out (`assets/art/creatures/glyph_warden.webp`, 560 high, framed as the others; rembg's isnet alone read the inlays' glow as see-through and took a door hinge from behind it, so its outline is isnet's and its inside u2net's solid figure, filled) and his Tripo3D model (`assets/models/creatures/glyph_warden.glb` + `_atlas.png` at 4096; its `ward_hold` renamed `guard`, its `dash` is read as run; bake, flatten, split as the others), so its `stand_in` is gone. Orlanthe has its card painting (`cards/orlanthe.jpg`, 1060 × 1484, the 5:7 of a Summon card) and his Tripo3D model (`assets/models/summons/orlanthe.glb` + `_atlas.png`, the same three steps, `ward_hold` as guard): `DuelField3D.summon_descend` brings it down the beam onto the field on its `spawn` clip, as the four Demigods'. Foreordained and Already Written have their paintings (`cards/foreordained.jpg`, `cards/already_written.jpg`). He sent Orlanthe's summon clip too (10 s, 1280 × 720 at 24 fps, with its own choir and sound): the first Summon clip in the game, as `assets/movies/summons/orlanthe_full.ogv` (all of it) and `orlanthe_short.ogv` (4.6 to 7.4 s of it: the book opening, the column of light, the figure in the Circle among the pages; a quarter-second fade at the end), Theora at 24 fps as made (his master and the short cut as .mp4 on the "films" release, for the apps). Since then a Summon whose clip plays doesn't start its stinger under it (`DuelScreen.fx_summon`): the clip's own sound and the stinger were two pieces of music at once; with Summon videos Off, or a Summon with no clip, the stinger plays as before. A filmed duel (`spec.film`, the Night of the White Sky) plays no clips at all (`fx_summon`, `fx_call`): its overlay is hidden, so before this Orlanthe's clip would have played unseen, its sound over the film for ten seconds and the card marked as seen; the memory keeps its own Summon and the stinger ringing into the white. Orlanthe's Summon cut-out and sky scene are still to come (both are needed for the drawn Summon scene, `SummonCine.has_art`, seen only with Summon videos Off; until both come that falls back to the drawn card). Still to come for Round 9: those two, and the paintings of Cut Thread, the Hourglass With No Sand (`hourglass_no_sand`) and the Knotted Cord. Details: `docs/handover/2026-11-12.md`.
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about
@@ -2703,7 +2705,8 @@ Shardlands at night: snow drifts and the crater from `WhiteSky.height()`, the
 village's sky shader with its tear opening, dark glass spires, white shards
 round the crater's lip, driven snow from `DuelField3D.snow_particles`): the
 caption "The Shardlands / Twenty years ago.", Morrowen's `morrowen_attic` over
-the sky (moved from the attic), the sky tearing and Sigils falling (streaks,
+the sky (moved from the attic; recorded afresh 12 November, 13.5 s with its
+soft hall, `docs/handover/2026-11-12.md`), the sky tearing and Sigils falling (streaks,
 flashes, cards of light settling in the snow), then the player walks as Bram,
 from behind, his face never in a shot (hold to walk, gated, the bracketed
 instruction by device), the hunter glimpsed off to the side and gone in a gust,
@@ -3206,7 +3209,13 @@ between them, its let-down tailboard the seat Bram takes in the campfire film
 in the stable yard by day and with the lamp lit; the atlases of both sit
 beside them, VRAM-compressed, split out by `tools/split_glb.py`) and his people (`assets/models/characters/<id>.glb`: hale,
 sun_guard, ysa, tobin, refugee_b, refugee_c, horse_trader, turnip, tamsin, pip,
-maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Voices
+maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Ysa came on 12 November
+(`characters/ysa.glb`, Gary's Tripo3D model, `tools/glb_bake_turn.py` then
+`tools/rig_villager.sh ysa`, 1.64 m, `Figure3D.OWN_GAIT` ysa, her portrait
+rendered from it): she sits on the road at the gate with Tobin across her lap
+(`gate_ysa`) and plays her side story; and Tamsin's stall
+(`solhaven/card_stall.glb`, made at its real size, so it stands at it: 2.35 m
+to the awning, its rack of cards facing the square). Voices
 play from `assets/audio/vo/` (`herald_14`..`16`, `solmaris_01`..`09`,
 `morne_01`..`08`), the square's music is `solhaven_town`. The side stories come
 in through `scripts/world/areas/solhaven/solhaven_side.gd` (`setup(world)`).
@@ -3703,6 +3712,13 @@ fetched the first time that card is summoned, with a loading bar that can be
 skipped. `docs/script/summon_clips.md` lists the cards to make, lengths and
 what each should show (the four Demigod Summons first, then every starter
 Totem). `godot --headless res://tests/summon_video_test.tscn` checks the rule.
+
+The first clip came on 12 November, Orlanthe's (`orlanthe_full.ogv`, 10 s;
+`orlanthe_short.ogv`, 2.9 s cut from it); his master and the short cut
+from it are on the "films" release as `orlanthe_full.mp4` and
+`orlanthe_short.mp4` (through `wip/orlanthe-clip`, as the films go), so the
+apps play those natively. A clip with its own sound plays without its stinger (`fx_summon`), and a
+filmed duel (`spec.film`) plays no clips.
 
 ## Story films: the Prologue's cutscenes as Gary's own films
 

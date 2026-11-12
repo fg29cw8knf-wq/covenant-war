@@ -588,7 +588,10 @@ func _house(pos: Vector3, size: Vector3, yaw: float, which: String) -> void:
 
 func _build_market() -> void:
 	var s := SPOTS.stall as Vector3
-	if model("card_stall", self, s, -90, Vector3(0, 2.9, 0)) == null:
+	# (12 November: Gary's card_stall.glb came made at its real size, 2.35 m to
+	# the top of its awning with the counter at a metre, so it stands at that
+	# size; its front, the cards in their rack, faces the square)
+	if model("card_stall", self, s, -90, Vector3(0, 2.35, 0)) == null:
 		LevelKit.stall(self, s, -90, "awning_blue")
 		# Tamsin's caches: little sealed boxes on the counter
 		for i in 5:

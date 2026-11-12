@@ -4,7 +4,9 @@ extends Node
 ## watch: the computer plays both sides, screenshots every `interval` seconds.
 ## play:  you are player 1; the test taps a hand card and a Totem to show the menus.
 ## lab:   the Duel Lab set-up screen.
-## summon: the Summon cinematic for each of the four Summons.
+## summon: the Summon cinematic for each of the four Summons; or for the
+##        Summons named in place of `shots` (`summon orlanthe,orlanthe`: the
+##        second time plays the short clip), stills until each has landed.
 ## film:  the computer plays both sides at normal speed for `shots` seconds
 ##        (run with --write-movie out.avi --fixed-fps 30 to record it).
 
@@ -13,7 +15,10 @@ func _ready() -> void:
 	var out: String = args[0] if args.size() > 0 else "user://"
 	var wh: PackedStringArray = (args[1] if args.size() > 1 else "1920x1080").split("x")
 	var how: String = args[2] if args.size() > 2 else "watch"
-	var shots := int(args[3]) if args.size() > 3 else 4
+	var shots := int(args[3]) if args.size() > 3 and args[3].is_valid_int() else 4
+	var summons: Array = ["pyraxis", "somnara", "thalassa", "grondmaw"]
+	if args.size() > 3 and not args[3].is_valid_int():
+		summons = Array(args[3].split(","))
 	var interval := float(args[4]) if args.size() > 4 else 5.0
 	get_window().size = Vector2i(int(wh[0]), int(wh[1]))
 	get_tree().root.theme = UITheme.make()
@@ -107,16 +112,19 @@ func _ready() -> void:
 		return
 	if how == "summon":
 		await get_tree().create_timer(1.5).timeout
-		for id in ["pyraxis", "somnara", "thalassa", "grondmaw"]:
+		var seen := {}
+		for id in summons:
 			var st := {"done": false}
 			var runner := func() -> void:
 				await screen.fx_summon(0, DuelCard.new(900, id, 0))
 				st.done = true
 			runner.call()
 			var n := 0
-			while not st.done and n < 14:
+			var shot_id: String = String(id) + ("_again" if seen.has(id) else "")
+			seen[id] = true
+			while not st.done and n < 40:
 				await get_tree().create_timer(0.45).timeout
-				await _shot(out + "/summon_%s_%02d_%s.png" % [id, n, tag])
+				await _shot(out + "/summon_%s_%02d_%s.png" % [shot_id, n, tag])
 				n += 1
 		get_tree().quit()
 		return

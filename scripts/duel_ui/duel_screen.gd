@@ -3273,7 +3273,7 @@ func fx_call(t: DuelTotem) -> void:
 	if t.owner == me:
 		_coach("essence")
 	var hidden: bool = t.face_down and t.owner != me   # a veiled call keeps its secret (Phase C)
-	if not hidden and SummonVideo.pick(t.id()) != "":
+	if not hidden and not _filmed() and SummonVideo.pick(t.id()) != "":
 		await SummonVideo.play(overlay, t.id())
 	var v := _view(t)
 	v.set_totem(t)
@@ -4474,11 +4474,16 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 			_mirrors_show(card)
 			await pause(0.5)
 		story_bark("my_summons")
-	if not Music.stinger("summon_" + card.id):
+	# (12 November) Gary's clip for it, the long one the first time, then the
+	# short, when there is one; not in a filmed duel (the Night of the White
+	# Sky directs its own Summon and lets the stinger ring on into the white).
+	# The clip has its own sound, so its stinger isn't started under it: two
+	# pieces of music at once (Orlanthe's clip has its own choir).
+	var clip := "" if _filmed() else SummonVideo.pick(card.id)
+	if clip == "" and not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
 	_bars(true)   # (4 November: the black bars of a film, until the Demigod has landed)
-	if SummonVideo.pick(card.id) != "":
-		# Gary's clip for it (the long one the first time, then the short)
+	if clip != "":
 		await SummonVideo.play(overlay, card.id)
 	else:
 		var cine := SummonCine.new()

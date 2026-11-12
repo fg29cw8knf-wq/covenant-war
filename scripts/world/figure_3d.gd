@@ -115,6 +115,9 @@ const OWN_GAIT := {
 	# Tobin, Ysa's son at the Golden Gate (5 November), a boy of nine on his
 	# own 22 library clips
 	"tobin": {"walk": 1.28, "run": 3.24, "sneak": 0.65},
+	# Ysa, his mother (12 November), Gary's Tripo3D model on its 22 library
+	# clips, rigged as Hale's (tools/rig_villager.sh ysa)
+	"ysa": {"walk": 1.65, "run": 4.18, "sneak": 0.84},
 }
 ## Clips a model takes from another in place of its own (6 November, Gary:
 ## "Bram still walks very weird at start of game": the coat model's library

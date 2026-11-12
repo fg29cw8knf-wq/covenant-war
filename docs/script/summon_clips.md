@@ -14,6 +14,10 @@ For Gary (23 October): the game plays a clip of yours when a card is summoned or
 
 The long clip: where it comes from (the sky scene its card already has for the four Summons), the creature arriving, one beat of it looking at the duel, and its first blow or its stance. The short clip: it arrives and strikes.
 
+### In the game
+
+- `orlanthe` · **Orlanthe, the Last Page** (astral, Demigod, Kaethis's): Gary's clip, 12 November (the full 10 s, and 2.9 s of it as the short one).
+
 ### The four Demigod Summons (first)
 
 - `pyraxis` · **Pyraxis, Heart of the Pyre** (fire, Demigod): the sky scene from its card, the god's piece coming down into the arena, one great blow.

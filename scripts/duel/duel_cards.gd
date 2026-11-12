@@ -1210,7 +1210,6 @@ const CARDS := {
 	"glyph_warden": {
 		"kind": "totem", "name": "Glyph Warden", "element": "mystic", "tier": 4, "stage": 0, "cost": 3,
 		"hp": 180, "affinity": "intellect", "keywords": ["guardian", "shelter"], "attuned": {"min": 6, "hp": 20},
-		"stand_in": "quarry_golem", "stand_in_tint": "8c90e8",
 		"moves": [
 			{"name": "Rune Strike", "cost": 0, "damage": 30},
 			{"name": "Binding Glyph", "cost": 2, "damage": 50, "effects": [{"op": "status", "status": "silenced"}]},

@@ -25,6 +25,8 @@ const MODELS := {"bram": "bram", "corin": "corin", "player": "player_a", "player
 	# the Ledger's People page shows him). Not the refugee, Krell, Corin's
 	# mam or Aldric: theirs are painted, from Gary's sheets.
 	"child_b": "child_b", "child_c": "child_c", "elder": "elder", "tobin": "tobin",
+	# Ysa, his mother (12 November: her own model, so her own face)
+	"ysa": "ysa",
 	# people whose figure is one of Gary's models but who had no face of their
 	# own (the box and the Ledger showed a blank): Wren and Dask wear Player C
 	# and B (Figure3D.MODELS), Pip the boy's (child_b). (Not Tamsin: the
