@@ -111,6 +111,7 @@ const FIREFLY_UP := [0.45, 1.8]     # how far over the grass one comes out (m)
 const FIREFLY_SPOTS := 512          # places one may come out, found once (a 32-wide picture of them)
 const FIREFLY_CLEAR := 1.2          # this far from any wall
 const FIREFLY_NIGHT := 0.12     # AshfordVillage.daylight under this: night
+const FIREFLY_SETTLE := 0.5     # none in the village's first half-second
 
 const LEAF_EVERY := [14.0, 34.0]    # seconds between one fall of leaves and the next
 const LEAVES := 6               # in a fall
@@ -136,6 +137,7 @@ var fly_spots := PackedVector3Array()   # where a firefly may come out
 var _leaf_pool: Array = []
 var _leaf_turn := 0
 var _leaf_in := 0.0
+var _fly_age := 0.0
 var wet := 0.0           # how full the puddles are, 0 to 1
 var _thunder_in := -1.0  # seconds of this shower till its thunder (-1: none)
 var _puddles: Node3D
@@ -312,7 +314,7 @@ func _process(delta: float) -> void:
 	_puddles.visible = wet > 0.01 and place == "green"
 	if _puddles.visible:
 		_puddle_mat.albedo_color.a = PUDDLE_SEEN * smoothstep(0.0, 0.4, wet)
-	_tick_fireflies(place)
+	_tick_fireflies(delta, place)
 	_tick_leaves(delta, place)
 
 
@@ -497,10 +499,15 @@ func _burning() -> bool:
 	return false
 
 
-func _tick_fireflies(place: String) -> void:
+func _tick_fireflies(delta: float, place: String) -> void:
 	var want := world != null and village != null and place == "green" and not world.attract and not world.held \
 			and village.time_kind == "festival" and village.daylight < FIREFLY_NIGHT and not village.sigil_on and not _burning() \
 			and fly_spots.size() >= 32
+	# (not in the village's first moments: it is built as the festival night
+	# and dressed for the hour it really is a frame or two later)
+	_fly_age += delta
+	if _fly_age < FIREFLY_SETTLE:
+		want = false
 	flies = 1.0 if want else 0.0
 	if want and not _flies.emitting:
 		_flies.visible = true
@@ -508,6 +515,11 @@ func _tick_fireflies(place: String) -> void:
 		_flies.restart()
 	elif not want and _flies.emitting:
 		_flies.emitting = false   # (those out go dark in their own time)
+	# ...but only in the dark: by day, or with the camera gone indoors, any
+	# still out are gone at once (a light by daylight is a white dot)
+	if not want and _flies.visible and (village == null or village.daylight >= FIREFLY_NIGHT or village.time_kind != "festival" or place != "green"):
+		_flies.emitting = false
+		_flies.visible = false
 
 
 ## Where a firefly may come out: over the green's own ground (grass and

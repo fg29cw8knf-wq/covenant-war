@@ -1974,6 +1974,37 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   splash where the foot came down, the fireflies' nights and their spots,
   and the leaves by day only and from the oak's side; `steps_test` puts
   the player's foot down in the widest puddle, full and dry.
+- **Birds on the green** (Gary, 19:20: "3 only", to "birds that fly up from
+  the grass when you run near them"): `Birds` (`scripts/world/birds.gd`),
+  built by Ashford beside its `Weather`. By day up to three flocks
+  (`FLOCKS`, by `Gfx.level()`) of three to five doves stand on the green's
+  paths, pecking, hopping, turning. `_look_round` (every `CHECK` seconds)
+  works out how fast everyone in the world is going and sends a flock up
+  (`send_up`) when someone comes within `reach_for(speed)`: 4.6 m for a
+  runner, 2.1 m for a walker, 0.6 m for someone stood still. They go the
+  way away from whoever it was, the nearest first, wings beating, and are
+  out of the top of the walking view in about a second (`_rise`), with
+  `birds_up` (three takes, made by `tools/make_ambience.py birds_up`) as
+  loud as the flock is near. `BACK` seconds later they come down again
+  (`_descend`) at a spot `_spot` finds: level path, near the spot on screen,
+  clear of walls, of anything solid (asked of the world's colliders), of
+  the player, of everyone else and of the other flocks. Rain and the
+  evening send them up and keep them up; none on the morning after the
+  fires, under the torn sky, or coming down into a staged scene; a scene
+  set down on top of a flock, or anything under a black screen, makes it
+  vanish unseen. There is no bird model: they are drawn in code (`_mesh`),
+  a dozen or so pixels long from the walking camera. **They stand on the
+  paths, not in the grass**: the first stills had them in the grass, which
+  is taller than they are, and they couldn't be seen. `tests/birds_test`
+  ("BIRDS: ok") runs the player at a flock and has the rest above;
+  `rain_shot -- <dir> birds` pictures them down, going up and coming down.
+- **Fireflies by day, fixed** (found in the birds' first stills): the
+  village is built as the festival night and dressed for the real hour a
+  frame or two later, so the fireflies of the build before came out in
+  that first moment and took six seconds to go: white dots over the green
+  each time it was loaded by day. Now none in the village's first
+  half-second (`FIREFLY_SETTLE`), and any still out are hidden at once
+  when it is day or the camera goes indoors (`ambience_test` has both).
 - **Two more grounds for the footsteps**: `step_stairs` (a tread rings
   higher than the floor and creaks: anywhere indoors more than
   `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the

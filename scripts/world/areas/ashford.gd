@@ -214,6 +214,10 @@ static func build(root: Node3D) -> void:
 		var wx := Weather.new().setup(w, v)
 		v.add_child(wx)
 		root.set_meta("weather", wx)
+		# ...and doves on the green by day, which go up when anyone runs at them (Birds)
+		var doves := Birds.new().setup(w, v)
+		v.add_child(doves)
+		root.set_meta("birds", doves)
 	# the festival reel: its intro once, then the loop (Music.LOOP_START), and
 	# it carries on from where it was when a duel or a scene hands back
 	w.music = ["ashford_festival"]

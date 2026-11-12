@@ -426,6 +426,24 @@ func _fireflies(w: World, v: AshfordVillage, wx: Weather) -> void:
 	wx._process(1.0)
 	if wx.flies > 0.0:
 		_bad.append("fireflies on the night of the fires")
+	# out on the festival night, then the day comes (the village is built as
+	# the night and dressed for the day a moment later): none left showing
+	v.time_kind = "festival"
+	v.daylight = 0.0
+	wx._process(1.0)
+	if not wx._flies.visible or not wx._flies.emitting:
+		_bad.append("no fireflies back on the festival night")
+	v.daylight = 1.0
+	wx._process(0.1)
+	if wx._flies.visible or wx._flies.emitting:
+		_bad.append("fireflies still showing the moment it's day")
+	# and none in the village's first half-second, whatever the hour
+	wx._fly_age = 0.0
+	v.daylight = 0.0
+	wx._process(0.1)
+	if wx.flies > 0.0 or wx._flies.visible:
+		_bad.append("fireflies in the village's first moments")
+	wx._fly_age = Weather.FIREFLY_SETTLE + 1.0
 	v.time_kind = kind
 	v.daylight = day
 	wx._process(1.0)

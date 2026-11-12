@@ -9,7 +9,9 @@ it). Built from nothing, as the creature voices and the footsteps are
 (tools/make_cries.py, whose tools these use), out of a few layers: a breeze,
 leaves, birds, crickets, an owl, far voices, a hearth, a house on fire, a
 river, a drip, and (the weather) rain and the wind under a roof. Also the
-sounds the weather plays once (thunder_far.wav and its second take). A recording saved under the same name is used instead.
+sounds played once: the weather's thunder (thunder_far.wav and its second
+take) and a flock going up (birds_up.wav and two more). A recording saved
+under the same name is used instead.
 
     python3 tools/make_ambience.py              every bed
     python3 tools/make_ambience.py fire night   only those
@@ -441,8 +443,37 @@ def thunder(r):
     return far(lowpass(out, 1100.0), r, 0.6, 0.5)
 
 
+def wings(r):
+    """A few birds going up off the ground together (Birds, on Ashford's
+    green): each one a run of wingbeats, quick and hard at first and
+    thinning as it gets away, the birds starting a moment apart. A beat is
+    a short puff of air: a soft clap and the rush after it."""
+    secs = 2.1
+    out = np.zeros(n_of(secs + 0.4))
+    for _ in range(int(r.integers(4, 6))):
+        at = r.uniform(0.0, 0.34)
+        rate = r.uniform(9.0, 12.5)          # beats a second, slowing a little
+        level = r.uniform(0.7, 1.0)
+        tone = r.uniform(0.85, 1.2)
+        for k in range(int(r.integers(9, 15))):
+            s = r.uniform(0.045, 0.07)
+            m = n_of(s)
+            rush = band(r.standard_normal(m), 700.0 * tone, 3800.0 * tone) * env(s, 0.12, 0.05, 0.83, 2.2)
+            clap = band(r.standard_normal(m), 260.0 * tone, 900.0 * tone) * env(s, 0.06, 0.02, 0.5, 2.6) * 0.8
+            i = n_of(at)
+            if i + m >= len(out):
+                break
+            out[i:i + m] += (norm(rush) * 0.75 + norm(clap) * 0.5) * level * r.uniform(0.75, 1.0)
+            at += (1.0 / rate) * r.uniform(0.9, 1.12)
+            rate *= 0.985
+            level *= r.uniform(0.84, 0.93)   # (it is getting away)
+            if level < 0.07:
+                break
+    return far(out, r, 0.12, 0.2)
+
+
 ## Sounds played once, not round (assets/sfx/<name>.wav and its takes).
-ONCE = {"thunder_far": (thunder, 2)}
+ONCE = {"thunder_far": (thunder, 2), "birds_up": (wings, 3)}
 
 
 def finish(x):

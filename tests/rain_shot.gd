@@ -3,7 +3,7 @@ extends Node
 ## dry, then with the rain all the way in, as a Mac draws it (Gfx.level() 2)
 ## or, with "phone", as a phone does.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 1280x720 --fixed-fps 10 --path . res://tests/rain_shot.tscn -- <dir> [phone] [bow | mist | puddles | breath | splash | flies | leaves]
+##       --resolution 1280x720 --fixed-fps 10 --path . res://tests/rain_shot.tscn -- <dir> [phone] [bow | mist | puddles | breath | splash | flies | leaves | birds]
 ## "bow": a rainbow, from the walking camera and from down among the people;
 ## "mist": the morning after the fires, from the walking camera and the dawn's own two.
 
@@ -110,6 +110,49 @@ func _ready() -> void:
 		var fp := world.player.global_position
 		await _from(fp + Vector3(-3.0, 1.5, 7.0), fp + Vector3(2.0, 1.0, -6.0), 44.0, out + "/18_flies_low.png")
 		await _from(Vector3(-16.0, 7.0, 30.0), Vector3(4.0, 1.0, 2.0), 46.0, out + "/19_flies_wide.png")
+		print("RAIN SHOT: done")
+		get_tree().quit()
+		return
+	if "birds" in args:
+		# a flock on the ground by the player, from the walking camera and
+		# from close by; going up from him; and coming down again
+		wx.set_process(false)
+		var birds := Birds.of(world)
+		var bvil := world.get_meta("village") as AshfordVillage
+		await get_tree().create_timer(1.2).timeout
+		var flock: Birds.Flock = null
+		for f: Birds.Flock in birds.flocks:
+			if f.state == "ground" and (flock == null or f.at.distance_to(world.player.global_position) < flock.at.distance_to(world.player.global_position)):
+				flock = f
+		if flock == null:
+			print("RAIN SHOT: PROBLEM: no flock down on the green")
+			get_tree().quit(1)
+			return
+		print("RAIN SHOT: %d flocks; the nearest, of %d, %.1f m from the player at %s" % [birds.flocks.size(), flock.birds.size(), flock.at.distance_to(world.player.global_position), flock.at])
+		var stand := flock.at + Vector3(1.5, 0, 5.2)
+		world.player.global_position = Vector3(stand.x, bvil.ground_y(stand.x, stand.z), stand.z)
+		await get_tree().create_timer(1.5).timeout
+		print("RAIN SHOT: the player put %.1f m from it; the flock is '%s'" % [flock.at.distance_to(world.player.global_position), flock.state])
+		await _still(out + "/22_birds_walking.png")
+		await _from(flock.at + Vector3(0.6, 0.55, 2.3), flock.at + Vector3(0, 0.12, 0), 34.0, out + "/23_birds_close.png")
+		for layer: CanvasLayer in get_tree().root.find_children("*", "CanvasLayer", true, false):
+			layer.visible = true
+		birds.send_up(flock, world.player.global_position)
+		var at_t := 0.0
+		for n in 5:
+			var wait: float = [0.3, 0.4, 0.5, 0.6, 0.8][n]
+			await get_tree().create_timer(wait).timeout
+			at_t += wait
+			await _still(out + "/24_birds_up_%d.png" % (n + 1))
+		print("RAIN SHOT: gone up %.1f s ago: the flock is '%s', the first bird %.1f m up" % [at_t, flock.state, (flock.birds[0] as Node3D).global_position.y - flock.at.y])
+		await get_tree().create_timer(1.5).timeout
+		flock.back_in = 0.05
+		await get_tree().create_timer(0.3).timeout
+		print("RAIN SHOT: due back: the flock is '%s', coming down %.1f m from the player" % [flock.state, flock.at.distance_to(world.player.global_position)])
+		for n in 4:
+			await get_tree().create_timer([1.1, 0.7, 0.7, 1.2][n]).timeout
+			await _still(out + "/25_birds_down_%d.png" % (n + 1))
+		print("RAIN SHOT: the flock is '%s'" % flock.state)
 		print("RAIN SHOT: done")
 		get_tree().quit()
 		return
