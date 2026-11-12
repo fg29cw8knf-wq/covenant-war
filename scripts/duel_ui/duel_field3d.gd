@@ -85,6 +85,8 @@ class Slot:
 	var trail: CPUParticles3D = null   # its element trailing off it as it lunges
 	var glow_boost := 0.0          # 0-1: its glow map turned up as it strikes (FLARE)
 	var glow_tw: Tween = null
+	var glyphs: MeshInstance3D = null   # its ring of glyphs on the ground (FLARE)
+	var glyph_mat: StandardMaterial3D = null
 
 
 func _init() -> void:
@@ -358,6 +360,19 @@ func _make_slot(side: int, i: int) -> Slot:
 	s.glow_mat.albedo_color = Color(0.5, 0.6, 1.0, 0.0)
 	s.floor_glow.material_override = s.glow_mat
 	s.add_child(s.floor_glow)
+	# (12 November) the ring of glyphs a glowing Totem stands in (FLARE), hidden
+	# until one does
+	s.glyphs = MeshInstance3D.new()
+	var gq := QuadMesh.new()
+	gq.size = Vector2(GLYPH_RING, GLYPH_RING)
+	s.glyphs.mesh = gq
+	s.glyphs.rotation_degrees.x = -90
+	s.glyphs.position.y = 0.028
+	s.glyph_mat = _additive(load("res://assets/art/fx/glyph_ring.png"))
+	s.glyph_mat.albedo_color = Color(1, 1, 1, 0)
+	s.glyphs.material_override = s.glyph_mat
+	s.glyphs.visible = false
+	s.add_child(s.glyphs)
 	# the card lying in the slot
 	s.card_vp = SubViewport.new()
 	s.card_vp.size = Vector2i(400, 560)
@@ -716,6 +731,7 @@ func sync(v) -> void:
 		s.lamp.light_color = s.crystal_tint
 		s.lamp.visible = s.lamp.light_energy > 0.01
 		s.glow_mat.albedo_color = Color(s.crystal_tint, 0.2 * (1.0 - float(s.shattered)))
+		_glyph_ring(s, 0.0)
 		_ring_state(s, v.highlight, s.crystal_tint, 0.85 * v.fade)
 		return
 	# (an empty slot's lamp off altogether: every light on the Circle costs
@@ -726,6 +742,7 @@ func sync(v) -> void:
 	# the field is dead still)
 	var pulse := 1.0 - GLOW_PULSE * 0.5 + GLOW_PULSE * 0.5 * sin(_t * 3.0 + v.slot)
 	s.glow_mat.albedo_color = Color(col, 0.16 * v.fade * (pulse if _dressed else 1.0) + v.flash * 0.25)
+	_glyph_ring(s, v.fade)
 	_ring_state(s, v.highlight, col, 0.85 * v.fade)
 
 
@@ -1218,8 +1235,32 @@ func _tint_model(s: Slot, m: Color) -> void:
 const FLARE := {"glyph_warden": 2.0}
 
 
-## Its markings blaze up over a strike `secs` long and settle again.
+## The ring of glyphs on the ground under a glowing Totem (12 November,
+## Gary: yes to it, so the Glyph Warden's glow shows from behind as well,
+## where it has no markings): its own marks, violet diamonds and gold
+## (assets/art/fx/glyph_ring.png, tools/make_glyph_ring.py), turning slowly
+## against the rune circle, breathing with the markings, and blazing up and
+## out a little as it strikes. Out as it turns to glass.
+const GLYPH_RING := 2.5
+const GLYPH_VIOLET := Color(0.62, 0.45, 1.0)
+
+
+func _glyph_ring(s: Slot, fade: float) -> void:
+	var on := fade > 0.02 and FLARE.has(s.card_id) and not s.dying
+	s.glyphs.visible = on
+	if not on:
+		return
+	var a := (0.42 + 0.1 * sin(_t * 1.7 + s.index * 2.1) + 0.58 * s.glow_boost) * fade
+	s.glyph_mat.albedo_color = Color(1, 1, 1, clampf(a, 0.0, 1.0))
+	var k := 1.0 + 0.1 * s.glow_boost
+	s.glyphs.scale = Vector3(k, k, k)
+	s.glyphs.rotation_degrees = Vector3(-90, 0, -rad_to_deg(s.spin) * 0.6 + _t * 4.0)
+
+
+## Its markings blaze up over a strike `secs` long and settle again; the
+## glyphs on the ground throw up a few violet sparks with it.
 func _flare(s: Slot, secs: float) -> void:
+	rise(foot_world(s.side, s.index) + Vector3(0, 0.05, 0), GLYPH_VIOLET, 26, 0.9, 1.6)
 	if s.glow_tw != null and s.glow_tw.is_valid():
 		s.glow_tw.kill()
 	var up := clampf(secs * 0.22, 0.12, 0.35)
