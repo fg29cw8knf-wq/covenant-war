@@ -55,11 +55,19 @@ var _t_prev := 0
 var _dts: Array = []
 
 
+var _body = null
+
+
 func _ready() -> void:
 	# (11 November: "oldwrist" turns hands at the wrist alone, however far, as
 	# they were until then: Figure3D.wrist_natural, the before)
 	if "oldwrist" in OS.get_cmdline_user_args():
 		Figure3D.wrist_natural = false
+	# (12 November: "hinge" bends the reaching arms at the elbow's hinge,
+	# Figure3D.pole_hinge, to see against the old way; "body" runs the body
+	# check over it, tests/body_check.gd)
+	if "hinge" in OS.get_cmdline_user_args():
+		Figure3D.pole_hinge = true
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
@@ -88,6 +96,8 @@ func _ready() -> void:
 	world = World.new().setup("ashford", "green")
 	world.story_next.connect(func(_w: String) -> void: _finish())
 	add_child(world)
+	if "body" in OS.get_cmdline_user_args():
+		_body = load("res://tests/body_check.gd").watch(world, out.path_join("body"))
 	cam = Camera3D.new()
 	add_child(cam)
 	for i in 20:
@@ -114,6 +124,8 @@ func _finish() -> void:
 			_sum_dawn()
 		"cellar":
 			_sum_cellar()
+	if _body != null:
+		print(_body.summary())
 	print("AFTER MIDNIGHT: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)
 

@@ -13,6 +13,8 @@ extends Node
 ##
 ## Forward+ (the Mac's look): --rendering-driver vulkan --rendering-method forward_plus,
 ## with VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json on a machine with no GPU.
+## "keys" draws only the stills' frames (much faster); "body" runs the body
+## check (tests/body_check.gd) over it, its stills in <dir>/body.
 ## "skip" presses Skip a few seconds in, to check skipping; "duel" plays only
 ## the filmed duel and the end; "skip_at=<s>" presses Skip then (32: in the
 ## crater, the duel built and waiting behind it); "max=<s>" stops after that much game time (a
@@ -48,6 +50,9 @@ var _asked: Array = []        # [move, asked at, made at]
 var _ask_hold := 0.0
 var _missed := false          # the tap off the mark has been tried for this move
 var _miss_failed: Array = []
+const DrawHold = preload("res://tests/draw_hold.gd")
+var _keys := false
+var _body = null
 
 
 func _ready() -> void:
@@ -74,6 +79,13 @@ func _ready() -> void:
 	m.prep_early = not _late
 	add_child(m)
 	m.finished.connect(func() -> void: _phase = "done")
+	# keys: draw only the stills' frames (much faster); body: the body check
+	# (tests/body_check.gd), its stills in <dir>/body
+	_keys = args.has("keys")
+	if _keys:
+		DrawHold.start_keys()
+	if args.has("body"):
+		_body = preload("res://tests/body_check.gd").watch(m, out_dir.path_join("body"))
 	_run()
 
 
@@ -128,6 +140,8 @@ func _run() -> void:
 			ok = false
 	print("white_sky_test: %s (filmed %s, summon called %s, %d stills, %.1f s of game time)" % [
 		"PASS" if ok else "FAIL", str(_filmed), str(_called), _shots, _t])
+	if _body != null:
+		print(_body.summary())
 	print("real time %.0f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	get_tree().quit(0 if ok else 1)
 
@@ -221,6 +235,12 @@ func _still_later(label: String, secs: float) -> void:
 func _still(label: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		return   # (nothing's drawn headless: frame_post_draw never comes, and the run would wait on it for ever)
+	if _keys:
+		DrawHold.hold()
+		await get_tree().process_frame
+		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
+	if _keys:
+		DrawHold.release()
 	_shots += 1
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))

@@ -22,6 +22,10 @@ extends Node
 ## only (25 October: a look at the opening without the half hour);
 ## every=<n>: a still every n frames as well (with keys, those frames are
 ## drawn), for watching a staged moment move.
+## qa: the glitch watch as it plays (tests/qa_monitor.gd); body: that and the
+## body check (tests/body_check.gd: twisted joints, the skin pulled out of
+## shape, hands and bodies through things and people, things left hanging;
+## its stills in <out_dir>/body); look=<b|c|d>: the player as that look.
 ##
 ## Every frame it also checks that nobody standing walks through something
 ## solid and small (Nell's bench, the well, Bram's stool, a barrel: the set's
@@ -75,14 +79,18 @@ func _ready() -> void:
 			_stop_at = s.substr(5)
 		elif s.begins_with("every="):
 			_every = int(s.substr(6))
+		elif s.begins_with("look="):
+			DollArt.test_look = s.substr(5)   # the player as look B, C or D
 	if _keys:
-		RenderingServer.render_loop_enabled = false
+		DrawHold.start_keys()
 	Game.new_game("Sprout", "")
 	Game.settings["first_steps"] = 0
 	world = World.new().setup("ashford", "green")
 	world.duel_handler = _duel
 	add_child(world)
 	hud = world.hud
+	if "qa" in args or "body" in args:
+		_qa = preload("res://tests/qa_monitor.gd").watch(world)
 	world.story_next.connect(func(what: String) -> void:
 		print("story_next: ", what))
 	await _frames(20)
@@ -493,7 +501,8 @@ func _click(p: Vector2) -> void:
 	await _frames(2)
 
 
-var _drawing := 0
+const DrawHold = preload("res://tests/draw_hold.gd")
+var _qa = null   # QA monitor (tests/qa_monitor.gd): "qa", and "body" for the body check
 
 
 func _shot(label: String) -> void:
@@ -502,15 +511,12 @@ func _shot(label: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		return
 	if _keys:
-		_drawing += 1
-		RenderingServer.render_loop_enabled = true
+		DrawHold.hold()
 		await get_tree().process_frame
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw
 	if _keys:
-		_drawing -= 1
-		if _drawing == 0:
-			RenderingServer.render_loop_enabled = false
+		DrawHold.release()
 	var img := get_viewport().get_texture().get_image()
 	if img != null:
 		img.save_png(out_dir.path_join("%03d_%s.png" % [n, label]))
@@ -522,5 +528,7 @@ func _finish() -> void:
 	_done = true
 	await _frames(4)
 	await _shot("end")
+	if _qa != null:
+		print(_qa.summary())
 	print("P1 V7 TEST: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)

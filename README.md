@@ -33,7 +33,15 @@ floats, sinks, pops or waits on nothing; every cut and camera move is
 deliberate; the gated steps always say what to do. After each update: the
 play-through as every look (`tests/ashford_test.tscn -- <dir> opening
 look=<a|b|c|d> keys`, and the rest of the game as each) with its stills looked
-at. (2 November, Gary: "don't worry about doing the phone link, just the
+at, and the body sweep over the parts it touched (12 November, below:
+`tools/body_sweep.sh`, then `tools/body_report.py`, every finding looked at
+in its stills; Gary: the model glitches he kept finding himself). And with
+each build, a list of suggestions for him (12 November, Gary: "any time you
+fix something or add something in the game do a check on each thing to work
+out could it look, feel and play better or is there anything we should
+add/change to make the overall game and story better then give me those
+ideas as suggestions after each build"): suggestions, built only once he
+says yes. (2 November, Gary: "don't worry about doing the phone link, just the
 Mac version and the one for the phone through Xcode". The web build isn't
 built or published any more; the Mac app and the iPhone app's Xcode project
 rebuild themselves on every push to `main`, from the `mac` and `iphone`
@@ -1549,6 +1557,16 @@ v7 wins; the parts it changed:
   duel's lines `rival_ward_springs` and `my_ascends`), the morning, Dask by
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
+
+### The body sweep's first finds (12 November)
+
+- **Tilly in the hay cart.** After the heave, from "I'm all right" and all
+  through the white light, Tilly stood 18 to 30 cm inside the hay cart lying
+  on its side: her place a step along the cart from Corin, then "behind
+  Corin, out of the camera's way", both in its spilt hay. Both now take the
+  first of a few places round Corin that's clear of the cart
+  (`Ashford._clear_of_cart`: each of its meshes' bounds in its own frame, a
+  body's half-width round them, at a child's hips and chest).
 
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
@@ -3936,6 +3954,88 @@ python3 tools/make_ambience.py [bed ...]                        # the places' be
 ```
 
 The summary line must report `0 invariant errors`.
+
+### The body check (12 November)
+
+Gary (12 November): "we seem to have a lot of model glitches that I'm having
+to keep go through and ask you to fix". Nearly all of them were the same
+handful of things (a hand through a box, an arm twisted, a body through the
+stairs), each found by him in a play-through. The body check finds them
+first.
+
+`tests/body_check.gd` watches every 3D figure while a play-through runs,
+reading each body as drawn (inside `skeleton_updated`, after every modifier:
+the reaches, the natural wrist, the look round), every fourth frame, for
+figures within 9 m of the camera, and prints `BODY:` lines:
+
+- **joint**: a joint past a body's limits (`LIMITS`): a wrist or an arm
+  twisted round, an elbow or a knee bent the wrong way or out of its hinge,
+  the head turned too far. The limit is never under the furthest the
+  model's own clips take that joint (learnt from the clips' tracks, the game's
+  borrowed clips with them), plus `CLIP_MARGIN` (15 degrees): a clip's own pose
+  isn't the staging's fault. A hinge's way (which way the elbow folds, the
+  knee bends) is learnt from the clips too.
+- **skin**: the mesh pulled out of shape: a sample of each model's triangles
+  (1,500, most where the weights blend) skinned on the CPU the way the renderer
+  does, each against how far it stretches, crushes or turns inside out in
+  the model's own clips (armpits and groins do in every clip). Eight in one
+  region, four of them badly, count.
+- **through**: a part of a body (hips, chest, head, upper arms, elbows,
+  forearms, wrists, hands, knuckles, fingertips, knees) inside a solid
+  thing: the set's own meshes as drawn, made into closed surfaces in a
+  physics space of the check's own (nothing in the game sees them) and
+  tested with rays six ways (`_inside`). Glows, beams and haze
+  (see-through, added or drawn without depth: `_is_light`) and flat cards
+  are left out; what a figure wears isn't in its own way.
+- **person**: a hand inside someone else's body, by that body's own
+  thickness round each bone.
+- **hangs**: something let go of that stays in the air, out of every hand
+  and on nothing.
+
+A finding has to last two checks (or be gross) and is shown once as it
+starts (`BODY:`), again only if it comes back much later or worse, and
+summed up as it ends (`BODY-END:`). When the run draws, each finding gets
+three stills in `<out>/body/`: the game's picture, a close look along the
+camera's line and one from the side (`glitch_NNN_<who>_<kind>.png`,
+`_close`, `_side`). `BODY SUMMARY` gives the counts and the time each test took.
+
+```sh
+tools/body_sweep.sh /tmp/sweep                     # the Prologue: A drawn, everyone (about an hour); B, C, D the player
+                                                   # (P1 to the street drawn, after midnight and the Thornwood headless)
+tools/body_sweep.sh /tmp/sweep "p1" "a"            # parts: snow p1 ashford thorn; looks
+python3 tools/body_report.py /tmp/sweep            # report.md and contact sheets of every finding
+godot --headless --path . res://tests/body_probe.tscn -- [model ...] [clips=a,b] [n=6]   # every model through its clips
+```
+
+The play-throughs take `body` (`p1_v7_test`, `film_test`, `white_sky_test`,
+`notes_1106_shot`, `after_midnight_shot`; with `qa` it rides on the QA
+monitor), and `look=<b|c|d>` plays the player as another look from the start
+(`DollArt.test_look`). Options: `body_every=<n>`, `body_only=player`,
+`body_shots=<n>`, `body_skin=<n>`. `tests/draw_hold.gd` lets the play-throughs'
+stills and the body check's share the drawing in `keys` mode.
+`tests/body_probe.tscn` takes every model through its clips and checks the
+same things on the clips themselves (the rest pose must come out with no
+bad triangles: the skinning sum checked); `tests/elbow_probe.tscn` reaches a
+model's hands to set places with the elbow's IK pole free and on the hinge
+(`Figure3D.pole_hinge`, below).
+
+The first sweep (12 November, `docs/handover/2026-11-12-body.md`) found
+Tilly standing in the hay cart after the heave (fixed: below) and a moment
+of Bram's elbow bent the wrong way as his hand goes onto the player's
+shoulder at dawn (`Figure3D.pole_hinge` takes it away; off until every
+reaching scene has been seen with it); the rest it reported were meant or
+can't be seen.
+
+**`Figure3D.pole_hinge`** (false): a reaching arm's IK (`TwoBoneIK3D`) turns
+the back of the elbow to the elbow's hint (`set_pole_direction`, the way
+away from where the forearm folds in the model's own clips:
+`Figure3D._elbow_back`), so the arm bends at its hinge. Left free, the
+forearm bends towards the hint however the upper arm is rolled.
+
+Not everything it finds is wrong to look at. Things it reports that are
+meant: legs under the blanket in bed, a hand pressing into a mattress, a hand
+sunk a little into the baby's blanket. Each finding is looked at in its
+stills before anything is changed.
 
 ### Texture sizes for the store build (5 November)
 

@@ -50,11 +50,16 @@ var _n := 0
 var _wait := 0
 var _done := false
 var _drive := false
+var _body = null   # "body": the body check over it (tests/body_check.gd)
 
 
 func _ready() -> void:
 	# (11 November: "oldwrist" turns hands at the wrist alone, however far, as
 	# they were until then: Figure3D.wrist_natural, the before)
+	# (12 November: "hinge" bends the reaching arms at the elbow's hinge,
+	# Figure3D.pole_hinge, to see against the old way)
+	if "hinge" in OS.get_cmdline_user_args():
+		Figure3D.pole_hinge = true
 	if "oldwrist" in OS.get_cmdline_user_args():
 		Figure3D.wrist_natural = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -92,6 +97,8 @@ func _ready() -> void:
 			Game.set_flag("p1_stage", "done")
 	world = World.new().setup("ashford", "green")
 	add_child(world)
+	if "body" in OS.get_cmdline_user_args():
+		_body = load("res://tests/body_check.gd").watch(world, out.path_join("body"))
 	hud = world.hud
 	close_vp = SubViewport.new()
 	close_vp.size = Vector2i(480, 480)
@@ -116,6 +123,8 @@ func _ready() -> void:
 	_done = true
 	if not Figure3D.wrist_over.is_empty():
 		print("  wrists asked past what a wrist does (and stopped there): ", Figure3D.wrist_over)
+	if _body != null:
+		print(_body.summary())
 	print("NOTES SHOT: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)
 

@@ -87,7 +87,15 @@ static func player_look() -> String:
 	# cutscenes can be made as films round one character; the mirror no
 	# longer offers looks, and an older save's B, C or D plays as A. (The
 	# "look" flag and the picker stay, for when looks come back.)
+	if test_look != "":
+		return test_look
 	return "a"
+
+
+## (for the tests) Plays the player as another look ("b", "c", "d") from the
+## start of a run: the play-throughs' look=<x> (Gary's standing rule: every
+## update played through as each of the four looks). "" in the game.
+static var test_look := ""
 
 
 ## A head-and-shoulders crop for dialogue boxes. The player's is the face

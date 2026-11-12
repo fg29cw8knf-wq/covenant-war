@@ -3225,6 +3225,37 @@ static func _the_cart_falls(w: World) -> void:
 ## (6 November, Gary: "When you're doing the heave pull with the cart the
 ## players aren't doing anything": they had stood a stride off the hay with
 ## their arms at their sides while the cart rocked a little on its own.)
+## The first of `tries` where someone can stand clear of the hay cart as it
+## lies now: each of its meshes' bounds in its own frame (so a cart on its
+## side is measured as it lies, not by a box square to the world round it),
+## grown by a body's half-width, tested at a child's hips and chest. Its
+## spilt hay reaches further than its bed. The last of them if none is.
+static func _clear_of_cart(v: AshfordVillage, tries: Array) -> Vector3:
+	if tries.is_empty():
+		return Vector3.ZERO
+	if v.hay_cart == null:
+		return tries[0]
+	var meshes: Array = []
+	for mi in v.hay_cart.find_children("*", "MeshInstance3D", true, false):
+		var m := mi as MeshInstance3D
+		if m.mesh != null and m.is_visible_in_tree():
+			meshes.append(m)
+	for p in tries:
+		var q: Vector3 = p
+		var clear := true
+		for m in meshes:
+			var mm := m as MeshInstance3D
+			var inv := mm.global_transform.affine_inverse()
+			var grow := 0.25 / maxf(mm.global_transform.basis.get_scale().x, 0.01)
+			var bb := mm.get_aabb().grow(grow)
+			for h in [0.5, 0.9]:
+				if bb.has_point(inv * Vector3(q.x, q.y + h, q.z)):
+					clear = false
+		if clear:
+			return q
+	return tries[tries.size() - 1]
+
+
 static func _the_heave(w: World) -> void:
 	var v := village(w)
 	var cc := v.cart_centre()
@@ -3336,7 +3367,13 @@ static func _the_heave(w: World) -> void:
 	if cf is Figure3D:
 		await (cf as Figure3D).resume(CORIN_UP, 1.5)   # the fall's own getting up
 	Cine.look(w, "corin", w.player.global_position)
-	Cine.place(w, "tilly", corin.global_position + al * 1.0 + fd * 0.3, corin.global_position)
+	# Tilly by him, on the open side: her old place, a step along the cart
+	# from him, was in its spilt hay once it had come down (12 November, the
+	# body check: her body 18 to 30 cm inside the hay cart all through "I'm
+	# all right"), so the first of these places clear of the cart
+	var ca := corin.global_position
+	Cine.place(w, "tilly", _clear_of_cart(v, [ca + al * 1.0 + fd * 0.3, ca + fd * 1.0 + al * 0.5,
+		ca + fd * 1.0 - al * 0.5, ca - al * 1.0 + fd * 0.3, ca + fd * 1.5]), ca)
 	var mid := (corin.global_position + w.player.global_position) * 0.5
 	Cine.shot(w, mid + fd * 3.4 + al * 1.0 + Vector3(0, 1.5, 0), mid + Vector3(0, 1.2, 0), 36.0)
 	var to_p := w.player.global_position - corin.global_position
@@ -3441,7 +3478,15 @@ static func _the_white_light(w: World) -> void:
 		var away := cb.global_position - (p + Vector3(3.5, 0.0, 6.0))
 		away.y = 0.0
 		away = away.normalized()
-		Cine.place(w, "tilly", cb.global_position + away * 0.9 + away.cross(Vector3.UP) * 0.5, cb.global_position)
+		# (behind him was in the hay cart's spilt hay, lying on its side
+		# beside him: 12 November, the body check found her body 18 to 30 cm
+		# in it all through the white light; the first place behind or
+		# beside him that's clear of it)
+		var cbp := cb.global_position
+		var sd := away.cross(Vector3.UP)
+		Cine.place(w, "tilly", _clear_of_cart(v, [cbp + away * 0.9 + sd * 0.5, cbp + away * 0.9 - sd * 0.5,
+			cbp + away * 0.4 + sd * 1.0, cbp + away * 0.4 - sd * 1.0, cbp + sd * 1.1, cbp - sd * 1.1,
+			cbp - away * 0.5 + sd * 1.0, cbp - away * 0.5 - sd * 1.0]), cbp)
 	Cine.shot(w, p + Vector3(3.5, 1.4, 6.0), p + Vector3(-2.0, 7.0, -4.0), 46.0)
 	var track := [true]   # the camera watches the light until the next shot takes over
 	var tw := w.create_tween()

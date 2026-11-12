@@ -16,7 +16,10 @@ extends Node
 ## four boxes to choose at the campfire, and flag=<name> to set a story flag
 ## first (flag=tam_told, flag=want_solhaven). "qa" watches the film for
 ## glitches as it plays (QAMonitor: jumps, slides, pops after cuts, two lines
-## at once, music, hitches); "notap" leaves each subtitle up for its reading time,
+## at once, music, hitches); "body" that and the body check (tests/body_check.gd:
+## twisted joints, skin out of shape, hands and bodies through things and
+## people, things left hanging; stills in <out_dir>/body); "look=<b|c|d>"
+## plays the player as that look; "notap" leaves each subtitle up for its reading time,
 ## as they do for a player who just watches; "frames=a-b" (or
 ## "frames_list=a-b,c-d") keeps the every-n stills to those frames, for a
 ## close look at a moment the watch pointed at. "ui=1.3" plays it at the
@@ -48,6 +51,7 @@ var _ending := false
 var _read := 3
 var _choice := 0
 var _box := 1
+const DrawHold = preload("res://tests/draw_hold.gd")
 var _qa = null   # QA monitor (tests/qa_monitor.gd)
 var _notap := false
 var _line_secs := 0.0   # how long the subtitle now up has been up (game time)
@@ -86,12 +90,14 @@ func _ready() -> void:
 			var ab := String(a).substr(7).split("-")
 			_from = int(ab[0])
 			_to = int(ab[1]) if ab.size() > 1 else _from + 60
+		elif String(a).begins_with("look="):
+			DollArt.test_look = String(a).substr(5)   # the player as look B, C or D
 		elif String(a).begins_with("frames_list="):
 			for s in String(a).substr(12).split(","):
 				var ab2 := s.split("-")
 				_windows.append([int(ab2[0]), int(ab2[1]) if ab2.size() > 1 else int(ab2[0]) + 30])
 	if _keys:
-		RenderingServer.render_loop_enabled = false
+		DrawHold.start_keys()
 	Game.new_game("Sprout", "")
 	for f in ["arrived_ashford", "ash_started", "ash_tam", "ash_tilly", "ash_nell", "ash_ready"]:
 		Game.set_flag(f)
@@ -134,7 +140,7 @@ func _ready() -> void:
 			print(_qa.summary())
 		get_tree().quit())
 	add_child(world)
-	if "qa" in args:
+	if "qa" in args or "body" in args:
 		_qa = preload("res://tests/qa_monitor.gd").watch(world)
 	await _frames(20)
 	if _part == "corin":
@@ -404,7 +410,7 @@ func _shot(label: String) -> void:
 		for h in hidden:
 			h.visible = false
 	if _keys:
-		RenderingServer.render_loop_enabled = true
+		DrawHold.hold()
 		await get_tree().process_frame
 		await get_tree().process_frame
 	if _board and world != null and world.has_meta("cine_overlay"):
@@ -418,7 +424,7 @@ func _shot(label: String) -> void:
 					hidden.append(c)
 	await RenderingServer.frame_post_draw
 	if _keys:
-		RenderingServer.render_loop_enabled = false
+		DrawHold.release()
 	_shooting = false
 	_shots += 1
 	get_viewport().get_texture().get_image().save_png(out_dir.path_join("%03d_%s.png" % [_shots, label]))

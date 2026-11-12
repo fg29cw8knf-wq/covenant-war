@@ -37,6 +37,7 @@ var _music := ""
 var _stuck_frames := 0
 var _last_line := ""
 var quiet_kinds: Array = []
+var body = null   # the body check, when asked for
 
 
 static func watch(world: World) -> Node:
@@ -53,6 +54,13 @@ func _ready() -> void:
 	# script and tween had moved things
 	get_tree().process_frame.connect(_sample)
 	_t_prev = Time.get_ticks_usec()
+	# "body" on the command line: the body check too (tests/body_check.gd:
+	# joints, skin, hands and bodies through things), its stills in
+	# <the run's folder>/body
+	if "body" in OS.get_cmdline_user_args():
+		var args := OS.get_cmdline_user_args()
+		var out := String(args[0]).path_join("body") if args.size() > 0 and not String(args[0]).contains("=") else ""
+		body = load("res://tests/body_check.gd").watch(w, out)
 
 
 func _exit_tree() -> void:
@@ -398,4 +406,5 @@ func summary() -> String:
 	var parts := []
 	for k in counts:
 		parts.append("%s %d" % [k, counts[k]])
-	return "QA SUMMARY (%d frames): %s" % [frame, ", ".join(parts) if not parts.is_empty() else "nothing"]
+	return "QA SUMMARY (%d frames): %s" % [frame, ", ".join(parts) if not parts.is_empty() else "nothing"] \
+		+ ("\n" + body.summary() if body != null and is_instance_valid(body) else "")

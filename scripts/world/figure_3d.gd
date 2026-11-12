@@ -2335,6 +2335,60 @@ func reaching(side := "") -> bool:
 	return false
 
 
+## The IK turns the back of the elbow to the elbow's hint (pole_hinge), so
+## a reaching arm bends at its hinge. false: the old way, the forearm bent
+## towards the hint however the upper arm was rolled (tests/elbow_probe.gd
+## shows the two).
+static var pole_hinge := false
+
+
+## Which way the back of the elbow faces in the forearm's own frame: away
+## from the way the forearm folds in the model's own clips (sampled where
+## the elbow is well bent: the hinge as the clips have it), or, when they
+## hardly bend it, behind them as the model stands (its toes, both feet
+## together, point ahead).
+func _elbow_back(pre: String) -> Vector3:
+	var fa := _skel.find_bone(pre + "ForeArm")
+	var hb := _skel.find_bone(pre + "Hand")
+	if fa < 0:
+		return Vector3(0, 0, -1)
+	var rb := _skel.get_bone_global_rest(fa).basis.orthonormalized()
+	var fold := Vector3.ZERO
+	var k := 0
+	if hb >= 0 and anim != null:
+		var c := (_skel.get_bone_rest(hb).origin).normalized()   # the forearm's length, its own frame
+		var rr := _skel.get_bone_rest(fa).basis.get_rotation_quaternion()
+		var a_dir := (Basis(rr) * c).normalized()                  # ...at rest, in the upper arm's
+		for clip in ["talk", "play_card", "idle", "lift", "wave", "cheer", "duel_idle", "sit"]:
+			if not anim.has_animation(clip):
+				continue
+			var an := anim.get_animation(clip)
+			for t in an.get_track_count():
+				if an.track_get_type(t) != Animation.TYPE_ROTATION_3D or String(an.track_get_path(t).get_concatenated_subnames()) != pre + "ForeArm":
+					continue
+				for i in 8:
+					var q := an.rotation_track_interpolate(t, an.length * (float(i) + 0.5) / 8.0)
+					var dv := (Basis(q) * c).normalized()
+					var perp := dv - a_dir * a_dir.dot(dv)
+					if a_dir.angle_to(dv) > deg_to_rad(25.0) and perp.length() > 0.05:
+						fold += perp.normalized()
+						k += 1
+	if k >= 6 and fold.length() > 0.5 * k:
+		# (in the upper arm's frame; the forearm's at rest is the same turned by its rest)
+		return -(Basis(_skel.get_bone_rest(fa).basis.get_rotation_quaternion()).inverse() * fold.normalized()).normalized()
+	var fwd := Vector3.ZERO
+	for sd in ["Left", "Right"]:
+		var ft := _skel.find_bone(sd + "Foot")
+		var to := _skel.find_bone(sd + "ToeBase")
+		if ft >= 0 and to >= 0:
+			var v := _skel.get_bone_global_rest(to).origin - _skel.get_bone_global_rest(ft).origin
+			v.y = 0.0
+			fwd += v.normalized() if v.length() > 0.01 else Vector3.ZERO
+	if fwd.length() < 0.1:
+		fwd = Vector3(0, 0, 1)
+	return (rb.inverse() * -fwd.normalized()).normalized()
+
+
 func _reach(side: String, target: Node3D, secs: float) -> void:
 	if _skel == null or not is_inside_tree():
 		return
@@ -2387,6 +2441,13 @@ func _reach(side: String, target: Node3D, secs: float) -> void:
 			pole.position = _elbow_want[side]
 		_pivot.add_child(pole)
 		ik.set_pole_node(0, ik.get_path_to(pole))
+		if pole_hinge:
+			# the back of the elbow is what turns to the hint, so the arm
+			# bends at its hinge (12 November: left free, the IK bent the
+			# forearm whichever way the upper arm happened to be rolled, out of
+			# the elbow's hinge, and the skin of the elbow twisted with it)
+			ik.set_pole_direction(0, SkeletonModifier3D.SECONDARY_DIRECTION_CUSTOM)
+			ik.set_pole_direction_vector(0, _elbow_back(pre))
 		_ik[side] = ik
 	ik.set_target_node(0, ik.get_path_to(target))
 	ik.set_meta("target", target)   # (followed if it's moved elsewhere: _keep_targets)
