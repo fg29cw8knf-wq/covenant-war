@@ -100,6 +100,10 @@ func _ready() -> void:
 				else:
 					tt.boons[id] = {"left": 2, "applied": g.turn}
 			ci += 1
+	# (a turn gone from your Glyph Warden's Burn, and a Dawn from the
+	# Scrivener's Doom, so a spent dot shows beside the lit ones)
+	(g.players[0].slots[0] as DuelTotem).conds["body"]["left"] = 1
+	(g.players[0].slots[2] as DuelTotem).conds["soul"]["dawns"] = 1
 	ds._refresh()
 	await get_tree().create_timer(1.6).timeout
 	if ds.field != null:
@@ -117,6 +121,34 @@ func _ready() -> void:
 		ds.field.cam_shot(Vector3(0, 8.5, 10.5), Vector3(0, 0.4, -0.5), 0.0, 52.0, true)
 		await get_tree().create_timer(0.6).timeout
 		await _shot(out + "/combo_field.png")
+		# a tap on a badge: what the effects on that Totem do (DuelEffectTip),
+		# one of yours and one of theirs
+		for pick in [[0, 1, "terrified"], [1, 0, "hexed"]]:
+			var slot: DuelField3D.Slot = ds.field.slots[pick[0]][pick[1]]
+			var bd := (slot.marks[pick[2]] as Node3D).get_node("badge") as Node3D
+			var local: Vector2 = ds.field.cam.unproject_position(bd.global_position) + ds.field.position
+			var at: Vector2 = ds.get_global_transform_with_canvas() * local
+			print("STATUS MARKS: tap at %s: hit %s; mode %s, pending '%s', banner %s, over a panel %s, tutor %s" % [at,
+				ds.field.badge_at(ds.get_global_transform_with_canvas().affine_inverse() * at), ds.mode, ds.pending,
+				ds.banner_waiting, ds._over_panel(at), ds.tutor != null and ds.tutor.blocking])
+			var ev := InputEventMouseButton.new()
+			ev.button_index = MOUSE_BUTTON_LEFT
+			ev.pressed = true
+			# (a real tap arrives in the window's pixels, scaled into the
+			# screen's own by the stretch: the same here)
+			var win: Vector2 = get_viewport().get_screen_transform() * at
+			ev.position = win
+			ev.global_position = win
+			Input.parse_input_event(ev)
+			var up := ev.duplicate() as InputEventMouseButton
+			up.pressed = false
+			Input.parse_input_event(up)
+			await get_tree().create_timer(0.6).timeout
+			print("STATUS MARKS: tap %s -> tip %s" % [str(pick), ds.tip != null])
+			await _shot(out + "/tip_%s.png" % pick[2])
+			if ds.tip != null:
+				ds.tip.close()
+			await get_tree().create_timer(0.4).timeout
 		ds.stage.visible = false
 	# the Silence leaping from your Glyph Warden onto the Blazehound opposite
 	for side in 2:

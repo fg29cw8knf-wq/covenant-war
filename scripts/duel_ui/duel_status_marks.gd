@@ -29,18 +29,27 @@ const FLOOR_COL := {"doomed": Color(0.62, 0.25, 0.9), "cursed": Color(0.7, 0.3, 
 	"silenced": Color(0.78, 0.82, 0.92), "veiled": Color(0.85, 0.8, 1.0)}
 ## The sign on a round badge over its head for each effect (tools/
 ## make_status_icons.py), in a row with the others it carries, so what's on
-## it reads at a glance on any floor and from any seat. The ones that already
-## show at its head in their own way (Zs for Asleep, stars for Stunned, ?s,
-## hearts, the halo, the crown) have none.
+## it reads at a glance on any floor and from any seat; tapped, it says what
+## the effect does (DuelEffectTip). Under it, a dot for each turn it has
+## left (12 November, evening: Gary said yes to both). Asleep, Stunned,
+## Confused, Charmed, Blessed and Possessed show at its head in their own way
+## as well (Zs, stars, ?s, hearts, the halo, the crown).
 const BADGES := {"burn": "flame", "poison": "venom", "corroded": "drips", "bleed": "claws",
 	"frozen": "flake", "shocked": "bolt", "soaked": "drop", "rooted": "sprout", "petrified": "rock",
 	"staggered": "swirl", "blinded": "eye_shut", "terrified": "bang", "enraged": "vein",
 	"hexed": "hex", "cursed": "skull", "marked": "target", "drained": "down", "doomed": "eye",
 	"shielded": "shield", "empowered": "up", "regenerating": "plus", "veiled": "mist", "hastened": "fast",
-	"silenced": "hush"}
+	"silenced": "hush", "sleep": "zed", "stun": "star", "confused": "question", "charmed": "heart",
+	"blessed": "halo", "possessed": "strings"}
+## Signs drawn bigger than the rest, made smaller on the badge.
+const SIGN_K := {"heart": 0.8, "zed": 0.86, "question": 0.92}
 ## How big a badge is, how far apart they sit in the row (m).
 const BADGE := 0.46
 const BADGE_GAP := 0.52
+## A turn-left dot: its size, how far apart, how far under the badge's middle.
+const PIP := 0.11
+const PIP_GAP := 0.13
+const PIP_Y := 0.31
 ## The ones whose own signs rise over its head: the row of badges sits higher.
 const RISERS := ["sleep", "charmed", "stun", "confused", "blessed", "possessed"]
 
@@ -269,7 +278,7 @@ static func build(f: DuelField3D, id: String, h: float, info: Dictionary = {}) -
 	if not ["silenced", "hastened", "regenerating"].has(id):
 		_flat(m, _tex_named("ring"), 2.35, Color(rc, 0.85), FLOOR_Y + 0.004, "floor")
 	if BADGES.has(id):
-		_badge(m, String(BADGES[id]), rc)
+		_badge(m, String(BADGES[id]), rc, pip_total(id))
 	m.set_meta("born", f._t)
 	return m
 
@@ -294,6 +303,16 @@ static func tick(m: Node3D, t: float, h: float, i: int, info: Dictionary) -> voi
 		var u := clampf((t - float(m.get_meta("born", t))) / 0.35, 0.0, 1.0)
 		var pop := 1.0 + 2.7 * pow(u - 1.0, 3) + 1.7 * pow(u - 1.0, 2) if u < 1.0 else 1.0
 		bd.scale = Vector3.ONE * maxf(0.01, pop)
+		# its turns left: the dots under it, lit for each left, spent ones faint
+		var total := pip_total(String(m.get_meta("id")))
+		if total > 0:
+			var lit := int((info.get("left", {}) as Dictionary).get(m.get_meta("id"), total))
+			for k in total:
+				var pp := bd.get_node_or_null("pip%d" % k) as MeshInstance3D
+				if pp == null:
+					continue
+				pp.position = right * ((k - (total - 1) * 0.5) * PIP_GAP) + Vector3(0, -PIP_Y, 0)
+				(pp.material_override as StandardMaterial3D).albedo_color.a = 1.0 if k < lit else 0.2
 	var fr := m.get_node_or_null("floor") as MeshInstance3D
 	if fr != null:
 		var k := 1.0 + i * 0.13
@@ -472,7 +491,7 @@ static func _icon(m: Node3D, name: String, col: Color, size: float) -> MeshInsta
 ## A badge: the effect's sign, lit, on a dark disc in a rim of its colour, a
 ## little over its head (tick places it in the row). Drawn over everything
 ## (it's a sign, not a thing in the scene).
-static func _badge(m: Node3D, sign: String, col: Color) -> Node3D:
+static func _badge(m: Node3D, sign: String, col: Color, pips := 0) -> Node3D:
 	var bd := Node3D.new()
 	bd.name = "badge"
 	m.add_child(bd)
@@ -482,10 +501,22 @@ static func _badge(m: Node3D, sign: String, col: Color) -> Node3D:
 	bm.blend_mode = BaseMaterial3D.BLEND_MODE_MIX
 	bm.albedo_color = Color(col, 0.95)
 	bm.render_priority = 10
-	var sg := _icon(bd, sign, col.lerp(Color.WHITE, 0.35), BADGE * 0.74)
+	var sg := _icon(bd, sign, col.lerp(Color.WHITE, 0.35), BADGE * 0.74 * float(SIGN_K.get(sign, 1.0)))
 	sg.name = "sign"
 	(sg.material_override as StandardMaterial3D).render_priority = 11
+	for k in pips:
+		var pp := _icon(bd, "pip", col.lerp(Color.WHITE, 0.3), PIP)
+		pp.name = "pip%d" % k
+		(pp.material_override as StandardMaterial3D).render_priority = 12
 	return bd
+
+
+## How many dots its badge has: the turns it lasts (Doomed: its three
+## Dawns); none for one that lasts until cured, broken free or used up.
+static func pip_total(id: String) -> int:
+	if id == "doomed":
+		return 3
+	return DuelConditions.turns(id)
 
 
 ## A ring of light round it at height y (a torus), named for tick.

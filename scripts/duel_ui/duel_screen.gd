@@ -1453,7 +1453,43 @@ func _unhandled_input(e: InputEvent) -> void:
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_RIGHT:
 		_unhandled_input(e)
+	if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT and badge_tap(e.position):
+		get_viewport().set_input_as_handled()
+		return
 	_zoom_input(e)
+
+
+## What a Totem's effects do, opened by tapping a badge over its head
+## (DuelEffectTip; 12 November, evening, Gary: yes). Not while a target is
+## being picked (that tap is for the Totem), nor over a panel, a card opened
+## out, a line of a lesson or the Law's banner.
+var tip: DuelEffectTip = null
+
+
+func badge_tap(vp_pos: Vector2) -> bool:
+	if field == null or game == null or mode == "over" or not is_visible_in_tree() or _held_start or banner_waiting:
+		return false
+	if pending != "" or (zoom != null and is_instance_valid(zoom)) or (tip != null and is_instance_valid(tip)):
+		return false
+	if (tutor != null and tutor.blocking) or _over_panel(vp_pos):
+		return false
+	var hit: Dictionary = field.badge_at(get_global_transform_with_canvas().affine_inverse() * vp_pos)
+	if hit.is_empty():
+		return false
+	var slots_of: Array = game.players[int(hit.side)].slots
+	var tt: DuelTotem = slots_of[int(hit.slot)] if int(hit.slot) < slots_of.size() else null
+	if tt == null:
+		return false
+	sfx.play("card_flip")
+	tip = DuelEffectTip.new()
+	tip.screen = self
+	tip.totem = tt
+	tip.focus = String(hit.id)
+	tip.mine = tt.owner == me
+	tip.anchor = hit.at
+	tip.closed.connect(func() -> void: tip = null)
+	add_child(tip)
+	return true
 
 
 var _touches := {}       # finger index -> where it is
@@ -1512,6 +1548,8 @@ func _over_panel(p: Vector2) -> bool:
 			return true
 	if zoom != null and is_instance_valid(zoom):
 		return true   # (the card opened out to read: no zooming the field under it)
+	if tip != null and is_instance_valid(tip):
+		return true   # (nor under an effect's words)
 	return false
 
 

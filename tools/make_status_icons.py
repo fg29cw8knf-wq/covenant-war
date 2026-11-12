@@ -25,6 +25,10 @@ over the Totem's head, and a sign for every effect without one of its own:
   up       Empowered     plus     Regenerating
   mist     Veiled        fast     Hastened
   hush     Silenced (a speech bubble, struck through)
+  star     Stunned       halo     Blessed
+  strings  Possessed (a puppet's cross and strings)
+  (and Asleep, Confused and Charmed take zed, question and heart)
+  pip      a turn left: the dots under a badge
 
   python3 tools/make_status_icons.py
 """
@@ -453,7 +457,51 @@ def hush():
     finish(img, "hush")
 
 
+def star():
+    img, d = canvas()
+    pts = []
+    for i in range(10):
+        a = -math.pi / 2 + i * math.pi / 5
+        r = 0.36 if i % 2 == 0 else 0.15
+        pts.append((r * math.cos(a), r * math.sin(a) + 0.02))
+    poly(d, pts)
+    finish(img, "star")
+
+
+def halo():
+    img, d = canvas()
+    w = int(W * 0.06)
+    d.ellipse([W * 0.14, W * 0.3, W * 0.86, W * 0.62], outline=255, width=w)
+    # a glint on it
+    poly(d, [(0.22, -0.2), (0.25, -0.12), (0.33, -0.09), (0.25, -0.06), (0.22, 0.02), (0.19, -0.06), (0.11, -0.09), (0.19, -0.12)])
+    finish(img, "halo")
+
+
+def strings():
+    img, d = canvas()
+    w = int(W * 0.05)
+    c = W / 2
+    # the cross the puppeteer holds
+    d.line([(W * 0.22, W * 0.24), (W * 0.78, W * 0.24)], fill=255, width=w)
+    d.line([(c, W * 0.14), (c, W * 0.36)], fill=255, width=w)
+    # three strings down to three little hands
+    for k, x in enumerate((0.26, 0.5, 0.74)):
+        d.line([(W * x, W * 0.26), (W * (x + (0.5 - x) * 0.25), W * 0.74)], fill=255, width=int(w * 0.45))
+        xx = W * (x + (0.5 - x) * 0.25)
+        r = W * 0.06
+        d.ellipse([xx - r, W * 0.74 - r, xx + r, W * 0.74 + r], fill=255)
+    finish(img, "strings")
+
+
+def pip():
+    img, d = canvas()
+    r = W * 0.3
+    d.ellipse([W / 2 - r, W / 2 - r, W / 2 + r, W / 2 + r], fill=255)
+    finish(img, "pip")
+
+
 os.makedirs(OUT, exist_ok=True)
 heart(); zed(); question(); target(); eye(); hexsign()
 badge(); flame(); venom(); drips(); claws(); flake(); bolt(); drop(); sprout(); rock(); swirl()
 eye_shut(); bang(); vein(); skull(); chevrons("down", False); shield(); chevrons("up", True); plus(); mist(); fast(); hush()
+star(); halo(); strings(); pip()

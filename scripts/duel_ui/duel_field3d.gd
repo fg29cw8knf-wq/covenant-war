@@ -1190,8 +1190,9 @@ func _tint_model(s: Slot, m: Color) -> void:
 	var cr := s.crystal if s.crystal_mat != null else 0.0
 	# (12 November) a glowing Totem's light: a slow breath at rest, the flare on a strike
 	var glow := 0.0
-	if FLARE.has(s.card_id) and not s.dying:
-		glow = (0.08 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + s.glow_boost) * float(FLARE[s.card_id])
+	var gk := glow_of(s.card_id)
+	if gk > 0.0 and not s.dying:
+		glow = (0.08 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + s.glow_boost) * gk
 	for mi in s.model.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mi as MeshInstance3D
 		for i in mesh.mesh.get_surface_count() if mesh.mesh != null else 0:
@@ -1252,14 +1253,14 @@ func _tint_model(s: Slot, m: Color) -> void:
 				ov.emission = GLOW_TINT[s.card_id]
 				e0 = 0.35
 			ov.emission_energy_multiplier = e0 + flash * 2.0 + (glow if base.emission_enabled else 0.0)
-			if GLOW_TINT.has(s.card_id) and not s.dying:
+			if has_rim(s.card_id) and not s.dying:
 				# (and its outline lit in that colour, faint at rest and blazing
 				# as it strikes: a glow map on a pale body can only go whiter,
 				# but a rim of coloured light reads on anything)
 				if s.rim_mat == null:
 					s.rim_mat = ShaderMaterial.new()
 					s.rim_mat.shader = _rim_shader()
-					s.rim_mat.set_shader_parameter("col", GLOW_TINT[s.card_id])
+					s.rim_mat.set_shader_parameter("col", rim_col(s.card_id))
 				s.rim_mat.set_shader_parameter("k", 0.18 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + 1.5 * s.glow_boost)
 				ov.next_pass = s.rim_mat
 			elif ov.next_pass != null and ov.next_pass == s.rim_mat:
@@ -1297,6 +1298,42 @@ const FLARE := {"glyph_warden": 2.0, "scrivener": 2.0, "loomwarden": 2.6, "unspe
 ## Glyph Warden's is its own violet and gold): the Scrivener's quill and ink
 ## blue, the Loomwarden's threads gold, the Unspent Hour's sand violet, the
 ## Weft Serpent's threads a cold blue.
+## (12 November, evening, Gary: yes to the outline glow for the ones that
+## barely move, from the other gods.) Measured from their attack clips
+## (tests/motion_probe.gd: how far the bones move over the clip against the
+## creature's size; the Glyph Warden's is 0.05, most are 0.1 to 0.4): every
+## model under 0.1, and the Lantern Moth, which has no clip at all. Keyed by
+## model, so a card standing in on one of them glows too; lit in its card's
+## element's colour (DuelFX.light), its outline only (no glow map).
+const RIM_GLOW := {"hearth_salamander": 1.0, "river_hound": 1.0, "veilfox": 1.0, "elderbark": 1.0,
+	"ashen_drake": 1.0, "quarry_golem": 1.0, "somnowl": 1.0, "emberwisp": 1.0, "lantern_moth": 1.0}
+
+
+## How strongly a card's Totem glows and flares (0: it doesn't): FLARE for
+## the ones with glow maps, RIM_GLOW by the model it stands as.
+static func glow_of(card_id: String) -> float:
+	if FLARE.has(card_id):
+		return float(FLARE[card_id])
+	return float(RIM_GLOW.get(model_key(card_id), 0.0))
+
+
+## Whether its outline is lit (GLOW_TINT, or RIM_GLOW), and in what colour.
+static func has_rim(card_id: String) -> bool:
+	return GLOW_TINT.has(card_id) or (not FLARE.has(card_id) and glow_of(card_id) > 0.0)
+
+
+static func rim_col(card_id: String) -> Color:
+	if GLOW_TINT.has(card_id):
+		return GLOW_TINT[card_id]
+	return DuelFX.light(String(DuelCards.CARDS.get(card_id, {}).get("element", "")))
+
+
+## The model a card stands as: its own, or the one it borrows (stand_in).
+static func model_key(card_id: String) -> String:
+	var d: Dictionary = DuelCards.CARDS.get(card_id, {})
+	return String(d.get("stand_in", card_id))
+
+
 const GLOW_TINT := {"scrivener": Color(0.5, 0.72, 1.0), "loomwarden": Color(1.0, 0.76, 0.32),
 	"unspent_hour": Color(0.78, 0.6, 1.0), "weft_serpent": Color(0.55, 0.78, 1.0)}
 ## (12 November, Gary: yes to the glow on Bram's god's other creatures too:
@@ -1384,6 +1421,15 @@ func _sync_marks(s: Slot, t, v, at: Vector3) -> void:
 		info2["right"] = right
 	if fx.has("doomed"):
 		info2["doom_left"] = 3 - int(t.cond("soul").get("dawns", 0))
+	# (the turns each has left, for the dots under its badge)
+	var left := {}
+	for id in fx:
+		if DuelConditions.is_condition(id):
+			var c: Dictionary = t.cond(DuelConditions.kind_of(id))
+			left[id] = 3 - int(c.get("dawns", 0)) if id == "doomed" else int(c.get("left", 0))
+		elif t.boons.has(id):
+			left[id] = int((t.boons[id] as Dictionary).get("left", 0))
+	info2["left"] = left
 	if fx.has("shielded"):
 		info2["shield_k"] = float(t.shield) / maxf(1.0, float(t.max_hp()) * 0.5)
 	var i := 0
@@ -1395,6 +1441,37 @@ func _sync_marks(s: Slot, t, v, at: Vector3) -> void:
 	s.fx_tint_k = 0.0 if s.dying else float(tn[1])
 	if s.model == null and s.sprite.visible:
 		s.sprite.modulate = DuelArt.stand_in_tint(s.card_id) * Color.WHITE.lerp(s.fx_tint, s.fx_tint_k)
+
+
+## The effect badge (DuelStatusMarks) under a point on the screen, in this
+## field's parent's coordinates: {side, slot, id, at}, or {} when none is
+## there. A finger's width of slack round each; the nearest wins.
+func badge_at(pt: Vector2) -> Dictionary:
+	if cam == null:
+		return {}
+	var best := {}
+	var best_d := INF
+	var right := _cam_right()
+	for side in slots.keys():
+		for slot in (slots[side] as Dictionary).keys():
+			var s: Slot = slots[side][slot]
+			if s == null or s.marks_root == null or not s.marks_root.is_visible_in_tree():
+				continue
+			for id in s.marks.keys():
+				var mk := s.marks[id] as Node3D
+				var bd := mk.get_node_or_null("badge") as Node3D
+				if bd == null or not mk.visible or bd.scale.x < 0.5:
+					continue
+				var w := bd.global_position
+				if cam.is_position_behind(w):
+					continue
+				var c := cam.unproject_position(w) + position
+				var r := c.distance_to(cam.unproject_position(w + right * DuelStatusMarks.BADGE * 0.5) + position)
+				var d := c.distance_to(pt)
+				if d <= maxf(r * 1.2, r + 14.0) and d < best_d:
+					best_d = d
+					best = {"side": side, "slot": slot, "id": String(id), "at": c}
+	return best
 
 
 func _clear_marks(s: Slot) -> void:
@@ -1446,7 +1523,7 @@ func glyph_leap(a: Vector3, b: Vector3, col: Color, dur := 0.9) -> float:
 ## Its markings blaze up over a strike `secs` long and settle again; the
 ## glyphs on the ground throw up a few violet sparks with it.
 func _flare(s: Slot, secs: float) -> void:
-	rise(foot_world(s.side, s.index) + Vector3(0, 0.05, 0), FLARE_SPARKS.get(s.card_id, GLYPH_VIOLET), 26, 0.9, 1.6)
+	rise(foot_world(s.side, s.index) + Vector3(0, 0.05, 0), FLARE_SPARKS.get(s.card_id, rim_col(s.card_id) if has_rim(s.card_id) else GLYPH_VIOLET), 26, 0.9, 1.6)
 	if s.glow_tw != null and s.glow_tw.is_valid():
 		s.glow_tw.kill()
 	var up := clampf(secs * 0.22, 0.12, 0.35)
@@ -1581,14 +1658,18 @@ func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callabl
 func play_clip(side: int, slot: int, want: String, speed_scale: float = 1.0) -> float:
 	var s: Slot = slots[side][slot]
 	if s.anim == null:
+		if want == "attack" and glow_of(s.card_id) > 0.0 and s.model != null:
+			_flare(s, 1.0)   # (the Lantern Moth has no rig to strike with: it still lights up)
 		return 0.0
 	var nm := _clip_name(s, want)
 	if nm == "":
+		if want == "attack" and glow_of(s.card_id) > 0.0 and s.model != null:
+			_flare(s, 1.0)   # (no clip to strike with: it still lights up)
 		return 0.0
 	s.anim.speed_scale = speed_scale
 	s.anim.play(nm, 0.12 if want != "idle" else 0.25)
 	var secs := s.anim.get_animation(nm).length / maxf(0.01, speed_scale)
-	if want == "attack" and FLARE.has(s.card_id):
+	if want == "attack" and glow_of(s.card_id) > 0.0:
 		_flare(s, secs)
 	return secs
 
