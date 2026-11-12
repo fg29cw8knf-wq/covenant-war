@@ -591,7 +591,10 @@ func _build_market() -> void:
 	# (12 November: Gary's card_stall.glb came made at its real size, 2.35 m to
 	# the top of its awning with the counter at a metre, so it stands at that
 	# size; its front, the cards in their rack, faces the square)
-	if model("card_stall", self, s, -90, Vector3(0, 2.35, 0)) == null:
+	var stall := model("card_stall", self, s, -90, Vector3(0, 2.35, 0))
+	if stall != null:
+		_stall_sign(stall)
+	else:
 		LevelKit.stall(self, s, -90, "awning_blue")
 		# Tamsin's caches: little sealed boxes on the counter
 		for i in 5:
@@ -612,6 +615,33 @@ func _build_market() -> void:
 	LevelKit.crate(self, s + Vector3(1.9, 0, 8.4), 0.6, -20)
 	LevelKit.barrel(self, s + Vector3(0.8, 0, -4.8))
 	LevelKit.barrel(self, s + Vector3(1.6, 0, -4.2))
+
+
+## SIGIL CACHES painted on the little tin board that hangs at the front of
+## Gary's card stall (12 November, Gary: yes to the stand-in's sign's words on
+## his stall's blank board), in the duel's lettering, gold on the tin. The
+## board's face as he made it: 0.20 m wide and 0.27 tall, its middle at
+## (0.681, 1.840) in the model, facing out at z 0.487.
+const STALL_BOARD := Vector3(0.681, 1.835, 0.4905)
+
+
+func _stall_sign(root: Node3D) -> void:
+	var inst := root.get_child(0) as Node3D
+	if inst == null:
+		return
+	var l := Label3D.new()
+	l.name = "StallSign"
+	l.text = "SIGIL\nCACHES"
+	l.font = CardFace.font("display_bold")
+	l.font_size = 96
+	l.pixel_size = 0.00043
+	l.line_spacing = -18.0
+	l.modulate = Color("f2c96b")
+	l.outline_modulate = Color("2a1a0e")
+	l.outline_size = 14
+	l.shaded = true
+	l.position = STALL_BOARD
+	inst.add_child(l)
 
 
 ## Bram's wagon in the stable yard: a battered wagon with a lamp hook, the

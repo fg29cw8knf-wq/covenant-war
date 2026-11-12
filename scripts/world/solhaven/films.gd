@@ -367,24 +367,78 @@ const REFUGEES := [
 ]
 ## Hale and the line of guards in front of the shut gate.
 const HALE_AT := Vector3(0.0, 0, 27.6)
-const GUARDS := [Vector3(-2.4, 0, 27.0), Vector3(2.4, 0, 27.0), Vector3(-4.0, 0, 26.6), Vector3(4.0, 0, 26.6)]
+## (12 November: Gary's gate stands 4.9 m deep, its towers' faces at z 27.45,
+## so the outer two, at z 26.6 beyond the arch's 2.85, stood knee-deep in
+## the stone and read as a guard with a leg lifted; they stand in front of
+## the towers now. The inner two are in the arch, which is open.)
+const GUARDS := [Vector3(-2.4, 0, 27.0), Vector3(2.4, 0, 27.0), Vector3(-4.2, 0, 28.0), Vector3(4.2, 0, 28.0)]
+## Where they stand aside when Hale opens the gate: the inner two out of the
+## arch to its sides, in front of the towers, the outer two a step outwards,
+## so the line pours through between them (before, all four stepped back
+## 1.6 m: the outer two into the towers, the inner two into the doors' swing).
+const GUARDS_ASIDE := [Vector3(-3.3, 0, 28.6), Vector3(3.3, 0, 28.6), Vector3(-4.8, 0, 28.3), Vector3(4.8, 0, 28.3)]
 ## Where Bram and the player stop, facing the gate; the Circle on the road.
 const STOP_P := Vector3(-0.7, 0, 32.0)
 const STOP_B := Vector3(0.9, 0, 32.6)
 
 
+## Ysa on the verge (12 November, Gary: Tobin wasn't in her lap; he lay
+## flat on the road somewhere behind her and she sat on air): she sits on a
+## bedroll with her legs out, facing the road where the player stops (she
+## doesn't turn after: turning would swing her legs out from under him), and
+## Tobin sleeps on his back along the bedroll at her right, his head in her
+## lap, her right hand on his hair.
+const YSA_FACES := Vector3(-0.7, 0, 34.0)
+const YSA_SEAT := 0.07          # the bedroll's thickness (m)
+## Where his head rests, from her hips: on the bedroll against the outside of
+## her right thigh (any nearer and it went into her skirt), x to her right,
+## z along her legs; his body runs away from her, out to her right and a
+## little towards her feet (TOBIN_LIES).
+const TOBIN_HEAD := Vector3(0.24, 0, 0.28)
+const TOBIN_LIES := Vector3(1.0, 0, 0.35)
+const TOBIN_HEAD_TO_HIPS := 0.6
+
+
+static func _ysa_and_tobin(w: World) -> void:
+	var at: Vector3 = REFUGEES[0][3]
+	var fwd := (YSA_FACES - at) * Vector3(1, 0, 1)
+	fwd = fwd.normalized()
+	var right := fwd.cross(Vector3.UP)
+	var lies := (right * TOBIN_LIES.x + fwd * TOBIN_LIES.z).normalized()
+	var tob_at := at + right * TOBIN_HEAD.x + fwd * TOBIN_HEAD.z + lies * TOBIN_HEAD_TO_HIPS
+	Cine.place(w, "gate_ysa", at, at + fwd)
+	# the bedroll under them both (hers: it goes when she does)
+	var roll := LevelKit.box(Cine.body(w, "gate_ysa"), right * 0.5 + fwd * 0.3, Vector3(2.1, YSA_SEAT, 1.15), "cloth_white", false, rad_to_deg(atan2(fwd.x, fwd.z)) - 12.0)
+	var rm := StandardMaterial3D.new()
+	rm.albedo_color = Color(0.42, 0.33, 0.24)
+	rm.roughness = 0.95
+	roll.material_override = rm
+	var ysa = Cine.fig(w, "gate_ysa")
+	if ysa is Figure3D:
+		(ysa as Figure3D).sit_long(YSA_SEAT, 0.01)
+	Cine.place(w, "gate_tobin", tob_at, tob_at + lies)
+	var tob = Cine.fig(w, "gate_tobin")
+	if tob is Figure3D:
+		(tob as Figure3D).lie_on(YSA_SEAT, 0.01)
+		# her hand resting on his hair (on his chest, out of her reach, it
+		# came to rest over his face)
+		var crown := at + right * TOBIN_HEAD.x + fwd * TOBIN_HEAD.z - lies * 0.1 + Vector3(0, YSA_SEAT + 0.2, 0)
+		AshfordP1.lap_hands(w, "gate_ysa", ["right"], 0.0, "at", crown)
+	else:
+		Cine.body(w, "gate_tobin").position.y = -0.6
+
+
+## A guard steps out of the way and turns to watch the road come through.
+static func _aside(w: World, id: String, to: Vector3) -> void:
+	await Cine.walk(w, id, to, 1.2)
+	Cine.look(w, id, Vector3(0, 0, 27.4))
+
+
 static func _gate_people(w: World) -> void:
 	for r in REFUGEES:
 		_extra(w, String(r[0]), String(r[1]), r[3], String(r[4]), String(r[2]))
-	# the woman with a sleeping boy across her lap, on a sack; the girl asleep on the sacks
-	var ysa = Cine.fig(w, "gate_ysa")
-	if ysa is Figure3D:
-		(ysa as Figure3D).sit(0.45)
-	var tob = Cine.fig(w, "gate_tobin")
-	if tob is Figure3D:
-		(tob as Figure3D).lie_down(0.01, true)
-	else:
-		Cine.body(w, "gate_tobin").position.y = -0.6
+	_ysa_and_tobin(w)
+	# the girl asleep on the sacks
 	var girl = Cine.fig(w, "refugee_c")
 	if girl is Figure3D:
 		(girl as Figure3D).lie_down(0.01, true)
@@ -396,7 +450,7 @@ static func _gate_people(w: World) -> void:
 			(f as Figure3D).lie_down(0.01, true)
 		else:
 			Cine.body(w, id).position.y = -0.6
-	for id in ["gate_ysa", "refugee_b", "refugee", "ref_1", "ref_2", "ref_4", "ref_5", "ref_7"]:
+	for id in ["refugee_b", "refugee", "ref_1", "ref_2", "ref_4", "ref_5", "ref_7"]:
 		Cine.look(w, id, Vector3(0, 0, 33))
 	_extra(w, "hale_gate", "guard", HALE_AT, "Hale", "hale")
 	Cine.look(w, "hale_gate", Vector3(0, 0, 40))
@@ -442,7 +496,6 @@ static func _gate_meeting(w: World) -> void:
 	Cine.walk(w, "player", STOP_P, 1.2)
 	var ysa := Cine.body(w, "gate_ysa").global_position
 	Cine.shot(w, ysa + Vector3(2.4, 1.3, 1.6), ysa + Vector3(0, 0.8, 0), 34.0)
-	Cine.look(w, "gate_ysa", Vector3(-0.7, 0, 36.0))
 	await Cine.say(w, "gate_ysa", "Three days we've waited. They let the pilgrims through. Not us.")
 	Cine.look(w, "refugee_b", w.player.global_position)
 	_front(w, "refugee_b", w.player.global_position, 30.0)
@@ -525,7 +578,7 @@ static func _gate_after(w: World) -> void:
 			await Cine.say(w, "hale_gate", "Open it. All the way.")
 			Cine.shot(w, Vector3(6.0, 3.2, 38.0), Vector3(0, 3.0, 25.0), 44.0)
 			for i in GUARDS.size():
-				Cine.walk(w, "guard_%d" % i, GUARDS[i] + Vector3(-signf(GUARDS[i].x) * 0.0, 0, -1.6), 1.2)
+				_aside(w, "guard_%d" % i, GUARDS_ASIDE[i])
 			if Sfx.has_file("gate_open"):
 				_sfx(w, "gate_open")
 			await v.open_gate(true, 3.0)

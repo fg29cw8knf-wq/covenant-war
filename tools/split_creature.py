@@ -8,13 +8,19 @@ emission map, <id>_glow.png, so they shine through the duel's bloom the way
 the first creature packs' flame surfaces do.
 
   python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb [--glow]
+
+--glow=rune (12 November, the Glyph Warden: Gary wanted its purple and gold
+markings to glow) takes the saturated violet inlays and the gold trim instead
+of fire, the violet lifted towards a bright glow (dark violet barely shows as
+light); DuelField3D.FLARE then turns it up as the Totem strikes.
 """
 import io, json, os, struct, sys
 import numpy as np
 from PIL import Image
 
 src, dst = sys.argv[1], sys.argv[2]
-glow = "--glow" in sys.argv
+glow_mode = next((a.split("=", 1)[1] if "=" in a else "fire" for a in sys.argv if a.startswith("--glow")), "")
+glow = glow_mode != ""
 size = 4096   # (2 November: Tripo's full size, VRAM-compressed at import: tools/atlas_4k.py)
 stem = os.path.basename(dst)[:-4]
 out_dir = os.path.dirname(dst)
@@ -72,10 +78,22 @@ if glow:
     # fire: red leading, blue well below, bright, saturated and yellow enough
     # (the Cinderpup's orange fur is darker and redder than its flames and
     # the lava cracks in it, which are what should shine)
-    k = (np.clip((r - bl - 0.25) / 0.35, 0, 1) * np.clip((bright - 0.7) / 0.2, 0, 1)
-         * np.clip((sat - 0.3) / 0.3, 0, 1) * np.clip((g - 0.4) / 0.15, 0, 1))
-    k = k[..., None]
-    em = (a * k * 255).astype(np.uint8)
+    if glow_mode == "rune":
+        hsv = np.asarray(img.resize((1024, 1024), Image.LANCZOS).convert("RGB").convert("HSV")).astype(np.float32) / 255.0
+        hue, hs, hv = hsv[..., 0] * 360.0, hsv[..., 1], hsv[..., 2]
+        ramp = lambda x, lo, hi: np.clip((x - lo) / (hi - lo), 0, 1)
+        violet = ramp(hs, 0.5, 0.7) * ramp(hv, 0.3, 0.45) * ((hue > 232) & (hue < 290))
+        gold = ramp(hs, 0.25, 0.4) * ramp(hv, 0.5, 0.65) * ((hue > 18) & (hue < 58))
+        # the violet lifted to a bright glow of its own hue, the gold as painted
+        lift = np.clip(0.95 / np.maximum(bright, 1e-3), 1.0, 3.0)[..., None]
+        em_f = a * (violet[..., None] * lift + gold[..., None])
+        k = np.maximum(violet, gold)[..., None]
+        em = np.clip(em_f * 255, 0, 255).astype(np.uint8)
+    else:
+        k = (np.clip((r - bl - 0.25) / 0.35, 0, 1) * np.clip((bright - 0.7) / 0.2, 0, 1)
+             * np.clip((sat - 0.3) / 0.3, 0, 1) * np.clip((g - 0.4) / 0.15, 0, 1))
+        k = k[..., None]
+        em = (a * k * 255).astype(np.uint8)
     glow_name = "%s_glow.png" % stem
     Image.fromarray(em, "RGB").save(os.path.join(out_dir, glow_name), "PNG", optimize=True)
     images.append({"name": "glow", "uri": glow_name})

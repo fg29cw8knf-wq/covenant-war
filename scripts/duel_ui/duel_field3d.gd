@@ -83,6 +83,8 @@ class Slot:
 	var crystal_tint := Color(0.8, 0.93, 1.0)
 	var crystal_mat: ShaderMaterial = null
 	var trail: CPUParticles3D = null   # its element trailing off it as it lunges
+	var glow_boost := 0.0          # 0-1: its glow map turned up as it strikes (FLARE)
+	var glow_tw: Tween = null
 
 
 func _init() -> void:
@@ -1154,6 +1156,10 @@ func _tint_model(s: Slot, m: Color) -> void:
 	var tinted: bool = s.model.has_meta("stand_in_tint")
 	var tint: Color = s.model.get_meta("stand_in_tint", Color.WHITE)
 	var cr := s.crystal if s.crystal_mat != null else 0.0
+	# (12 November) a glowing Totem's light: a slow breath at rest, the flare on a strike
+	var glow := 0.0
+	if FLARE.has(s.card_id) and not s.dying:
+		glow = (0.08 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + s.glow_boost) * float(FLARE[s.card_id])
 	for mi in s.model.find_children("*", "MeshInstance3D", true, false):
 		var mesh := mi as MeshInstance3D
 		for i in mesh.mesh.get_surface_count() if mesh.mesh != null else 0:
@@ -1182,7 +1188,7 @@ func _tint_model(s: Slot, m: Color) -> void:
 				cov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + cr * 0.4 + s.crack * 0.7
 				cov.next_pass = s.crystal_mat
 				continue
-			if flash <= 0.001 and dim >= 0.999 and not tinted:
+			if flash <= 0.001 and dim >= 0.999 and not tinted and glow <= 0.001:
 				if mesh.get_surface_override_material(i) != null:
 					mesh.set_surface_override_material(i, null)
 				continue
@@ -1201,7 +1207,26 @@ func _tint_model(s: Slot, m: Color) -> void:
 			ov.albedo_color = col * Color(dim, dim, dim, 1.0)
 			ov.emission_enabled = true
 			ov.emission = Color(m.r, m.g, m.b).lerp(base.emission if base.emission_enabled else Color.BLACK, 0.0) * 0.5 if flash > 0.001 else (base.emission if base.emission_enabled else Color.BLACK)
-			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0
+			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0 + (glow if base.emission_enabled else 0.0)
+
+
+## Totems whose glow map (<id>_glow.png, tools/split_creature.py --glow)
+## flares as they strike, by how much its light rises at the height of it,
+## and breathes a little at rest (12 November, Gary: the Glyph Warden "barely
+## moves", a stone slab, so its purple and gold markings glow and blaze up
+## on Rune Strike and Binding Glyph).
+const FLARE := {"glyph_warden": 2.0}
+
+
+## Its markings blaze up over a strike `secs` long and settle again.
+func _flare(s: Slot, secs: float) -> void:
+	if s.glow_tw != null and s.glow_tw.is_valid():
+		s.glow_tw.kill()
+	var up := clampf(secs * 0.22, 0.12, 0.35)
+	s.glow_tw = create_tween()
+	s.glow_tw.tween_property(s, "glow_boost", 1.0, up).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	s.glow_tw.tween_interval(maxf(0.1, secs * 0.35))
+	s.glow_tw.tween_property(s, "glow_boost", 0.0, maxf(0.3, secs * 0.45)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 
 
 ## Clip names the game asks for, and what a model may call them instead.
@@ -1335,7 +1360,10 @@ func play_clip(side: int, slot: int, want: String, speed_scale: float = 1.0) -> 
 		return 0.0
 	s.anim.speed_scale = speed_scale
 	s.anim.play(nm, 0.12 if want != "idle" else 0.25)
-	return s.anim.get_animation(nm).length / maxf(0.01, speed_scale)
+	var secs := s.anim.get_animation(nm).length / maxf(0.01, speed_scale)
+	if want == "attack" and FLARE.has(s.card_id):
+		_flare(s, secs)
+	return secs
 
 
 func _drive_anim(_s: Slot, _v) -> void:

@@ -686,6 +686,8 @@ The Totem plate's HP figure is fitted to its box since the same day (`DuelViews`
 
 **12 November (more of Round 9):** the Glyph Warden is his own now: its card painting (`assets/art/cards/glyph_warden.jpg`, 1254 square as painted), its battlefield cut-out (`assets/art/creatures/glyph_warden.webp`, 560 high, framed as the others; rembg's isnet alone read the inlays' glow as see-through and took a door hinge from behind it, so its outline is isnet's and its inside u2net's solid figure, filled) and his Tripo3D model (`assets/models/creatures/glyph_warden.glb` + `_atlas.png` at 4096; its `ward_hold` renamed `guard`, its `dash` is read as run; bake, flatten, split as the others), so its `stand_in` is gone. Orlanthe has its card painting (`cards/orlanthe.jpg`, 1060 × 1484, the 5:7 of a Summon card) and his Tripo3D model (`assets/models/summons/orlanthe.glb` + `_atlas.png`, the same three steps, `ward_hold` as guard): `DuelField3D.summon_descend` brings it down the beam onto the field on its `spawn` clip, as the four Demigods'. Foreordained and Already Written have their paintings (`cards/foreordained.jpg`, `cards/already_written.jpg`). He sent Orlanthe's summon clip too (10 s, 1280 × 720 at 24 fps, with its own choir and sound): the first Summon clip in the game, as `assets/movies/summons/orlanthe_full.ogv` (all of it) and `orlanthe_short.ogv` (4.6 to 7.4 s of it: the book opening, the column of light, the figure in the Circle among the pages; a quarter-second fade at the end), Theora at 24 fps as made (his master and the short cut as .mp4 on the "films" release, for the apps). Since then a Summon whose clip plays doesn't start its stinger under it (`DuelScreen.fx_summon`): the clip's own sound and the stinger were two pieces of music at once; with Summon videos Off, or a Summon with no clip, the stinger plays as before. A filmed duel (`spec.film`, the Night of the White Sky) plays no clips at all (`fx_summon`, `fx_call`): its overlay is hidden, so before this Orlanthe's clip would have played unseen, its sound over the film for ten seconds and the card marked as seen; the memory keeps its own Summon and the stinger ringing into the white. Orlanthe's Summon cut-out and sky scene are still to come (both are needed for the drawn Summon scene, `SummonCine.has_art`, seen only with Summon videos Off; until both come that falls back to the drawn card). Still to come for Round 9: those two, and the paintings of Cut Thread, the Hourglass With No Sand (`hourglass_no_sand`) and the Knotted Cord. Details: `docs/handover/2026-11-12.md`.
 
+**12 November (afternoon), Gary's yeses:** the Glyph Warden "barely moves" (a stone slab), so its purple and gold markings glow: `tools/split_creature.py --glow=rune` makes its emission map (`creatures/glyph_warden_glow.png`, 1024: the saturated violet inlays lifted towards a bright glow of their own hue, and the gold trim; 11% of the atlas) and `DuelField3D.FLARE` (`{"glyph_warden": 2.0}`) breathes it a little at rest and blazes it up over each strike (`_flare` from `play_clip(..., "attack")`, through `Slot.glow_boost` in `_tint_model`). Only its front carries the markings, so it shows best on the far side of the Circle or turned to strike; `tests/totem_peek.tscn -- <dir> <yours> <theirs> [arena] strike|strike_theirs` takes stills through a strike. In the Night of the White Sky the Last Page's camera moved (Gary: "we want to see it"; `WhiteSky.CLIMAX`): Orlanthe came down behind Bram's middle Totem, seen from low behind him; now the camera is behind him and to his right, above his head and back far enough that all 4.8 m of Orlanthe stands in the picture once it lands (from (2.0, 2.4, 12.0), lens 42; the descent ends 0.4 m higher and 0.6 m further back, looking at (0, 2.0, −0.8)), his back low on the left, the Unspent Hour beside him, the hunter's pack to the right. (A nearer camera between his Totems, tried first on the watched duel, cut it off at the waist once the duel was played and the Loomwarden had fallen.)
+
 ### Synergy: families, side by side, reactions, bonds, chains and the gods (28 October)
 
 Gary (28 October): "to add synergy to the card game how would i go about
@@ -1795,8 +1797,9 @@ Make, before the attic). Every look plays as Player A in the game.
     `FILM_ASPECT` 2.35 where the screen's narrower, each bar 4 to 10% of
     the height, a little deeper for the Last Page). No ordinary cut sooner
     than `MIN_HOLD` 1.3 s after the last. Called down, the Last Page has the
-    picture to itself: tight over his shoulder looking up, pulling back low
-    to `CLIMAX` as it comes down (`_climax_shot`), the camera shaken as its
+    picture to itself: tight over his shoulder looking up, then out to
+    `CLIMAX` as it comes down (`_climax_shot`; since 12 November behind him
+    to his right, high and back enough for the whole of it), the camera shaken as its
     blow lands, and held a second on it (`CLIMAX_HOLD` 1.0, was 0.5) before
     the white comes over 1.5 s (was 1.2). The Totems' cards lying on the
     field under them, with their names and numbers, are kept out of the film
@@ -3377,10 +3380,20 @@ sun_guard, ysa, tobin, refugee_b, refugee_c, horse_trader, turnip, tamsin, pip,
 maren, wren, courtier, hierarch, aldric, liora, morne) as each arrives. Ysa came on 12 November
 (`characters/ysa.glb`, Gary's Tripo3D model, `tools/glb_bake_turn.py` then
 `tools/rig_villager.sh ysa`, 1.64 m, `Figure3D.OWN_GAIT` ysa, her portrait
-rendered from it): she sits on the road at the gate with Tobin across her lap
-(`gate_ysa`) and plays her side story; and Tamsin's stall
+rendered from it): she sits on a bedroll on the verge at the gate, legs out,
+facing where the player stops, with Tobin asleep on his back along it at her
+right, his head against her lap and her right hand on his hair
+(`Films._ysa_and_tobin`, `YSA_FACES`, `TOBIN_HEAD`, `TOBIN_LIES`; `sit_long`,
+`lie_on`, `AshfordP1.lap_hands`; she no longer turns, which would swing her legs
+out from under him), and plays her side story; and Tamsin's stall
 (`solhaven/card_stall.glb`, made at its real size, so it stands at it: 2.35 m
-to the awning, its rack of cards facing the square). Voices
+to the awning, its rack of cards facing the square), SIGIL CACHES painted in
+gold on its little hanging tin board (`SolSet._stall_sign`, `STALL_BOARD`).
+The gate's guards: the outer two (`Films.GUARDS`) stood at z 26.6, inside
+the towers' faces (27.45) of his 4.9 m-deep gate, so they read as a guard with
+a leg lifted; they stand in front at 28.0, and when Hale opens the gate all
+four step aside (`GUARDS_ASIDE`, `_aside`) rather than back 1.6 m, into the
+towers and the doors' swing. `tests/ysa_stall_peek.tscn -- <dir> [gate]`. Voices
 play from `assets/audio/vo/` (`herald_14`..`16`, `solmaris_01`..`09`,
 `morne_01`..`08`), the square's music is `solhaven_town`. The side stories come
 in through `scripts/world/areas/solhaven/solhaven_side.gd` (`setup(world)`).

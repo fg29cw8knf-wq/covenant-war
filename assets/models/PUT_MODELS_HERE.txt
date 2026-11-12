@@ -18,3 +18,9 @@ split it first:  python3 tools/split_glb.py <pack>/<id>.glb assets/models/creatu
 Models face +Z with their feet at Y=0 and carry the clips idle, attack, hit,
 defeat, spawn, run and victory. Material names drive the in-game shading:
 surfaces called "fire", "mist" or "veil" are drawn additively as light.
+
+A creature whose markings should glow (12 November: the Glyph Warden's purple
+and gold inlays): split it with tools/split_creature.py ... --glow=rune, which
+writes <card id>_glow.png as its emission, and add it to DuelField3D.FLARE so
+the glow breathes at rest and blazes up as it strikes. (--glow alone is fire,
+for flames and lava.)

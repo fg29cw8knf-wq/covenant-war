@@ -122,8 +122,16 @@ const WIDES := [
 	[Vector3(0.6, 1.0, 10.2), Vector3(0.0, 2.4, -7.4), 32.0],
 	[Vector3(4.8, 1.2, 8.6), Vector3(-0.8, 1.2, -2.0), 34.0],
 ]
-## When his Summon is called: low behind Bram, up past the hunter.
-const CLIMAX := [Vector3(1.2, 0.9, 10.6), Vector3(0.0, 3.6, -6.0), 46.0]
+## When his Summon is called: from behind Bram and to his right, higher
+## than his head and back far enough for all of Orlanthe, 4.8 m of it, to
+## stand in the picture once it has landed (the descent ends at this plus
+## (0, 0.4, 0.6), looking at (0, 2.0, -0.8)): Bram's head and shoulders low
+## on the left, clear of it, the hunter behind it (12 November, Gary: "we
+## want to see it". It came down behind his Loomwarden from low behind him,
+## at (1.2, 0.9, 10.6), in the watched duel; in the played one the Loomwarden
+## has fallen by then, and a nearer camera between his Totems cut it off at
+## the waist).
+const CLIMAX := [Vector3(2.0, 2.4, 12.0), Vector3(0.0, 2.4, -0.8), 42.0]
 ## The longest the duel may run before the white comes anyway (s).
 const FILM_MAX := 140.0
 
@@ -1754,9 +1762,9 @@ func _wide_shot() -> void:
 	_cut_at = _t
 
 
-## The Last Page called down: low over his shoulder, then rising to
-## CLIMAX, looking up past the hunter at what's coming down; the bars a
-## little deeper.
+## The Last Page called down: low over his shoulder, then back and up to
+## CLIMAX, the whole of what comes down in the picture; the bars a little
+## deeper.
 func _climax_shot() -> void:
 	var f := _dir_f
 	var c: Array = CLIMAX

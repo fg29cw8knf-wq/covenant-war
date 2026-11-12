@@ -3,7 +3,10 @@ extends Node
 ## for a tap, so nothing moves), from the duel's own camera and from close
 ## up: for checking a new creature model (27 October: Gary's new Brookfin).
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 \
-##       res://tests/totem_peek.tscn -- <out_dir> <your ids, comma-separated> <their ids> [arena]
+##       res://tests/totem_peek.tscn -- <out_dir> <your ids, comma-separated> <their ids> [arena] [strike]
+## strike (12 November): your middle Totem plays its attack clip, a still
+## every fifth of a second through it (the Glyph Warden's markings flare);
+## strike_theirs: theirs, which faces the camera.
 
 func _ready() -> void:
 	var a := OS.get_cmdline_user_args()
@@ -44,5 +47,16 @@ func _ready() -> void:
 			await get_tree().create_timer(1.2).timeout
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(out + "/peek_close_%s.png" % ("theirs" if side == 1 else "yours"))
+	if ds.field != null and ("strike" in a or "strike_theirs" in a):
+		var side := 1 if "strike_theirs" in a else 0
+		ds.field.cam_focus(ds.field.foot_world(side, 1), 1.0, 0.3)
+		await get_tree().create_timer(1.2).timeout
+		var secs := ds.field.play_clip(side, 1, "attack")
+		var n := 0
+		while n * 0.2 <= secs + 0.6:
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(out + "/peek_strike_%02d.png" % n)
+			await get_tree().create_timer(0.2).timeout
+			n += 1
 	print("TOTEM PEEK: saved")
 	get_tree().quit()
