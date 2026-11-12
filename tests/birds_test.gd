@@ -193,9 +193,10 @@ func _ready() -> void:
 	if before == 0:
 		_bad.append("no flock down again before the rain")
 	if wx != null:
+		await _all_settled(birds)
 		wx.amount = 1.0
 		await get_tree().create_timer(0.3).timeout
-		var wet: int = birds.flocks.filter(func(f: Birds.Flock) -> bool: return f.state == "ground" or f.state == "down").size()
+		var wet: int = birds.flocks.filter(func(f: Birds.Flock) -> bool: return f.state == "ground").size()
 		if wet > 0 or birds.about():
 			_bad.append("%d flocks stay down in the rain" % wet)
 		for f: Birds.Flock in birds.flocks:
@@ -211,6 +212,9 @@ func _ready() -> void:
 			_bad.append("no flock came down once the rain was over")
 		if _show:
 			print("%d flocks down before the rain, none in it, %d after" % [before, dry])
+	# (a flock that found nowhere clear at first may still be on its way
+	# down: it lands before it can be sent up again, so wait for it)
+	await _all_settled(birds)
 	v.set_daylight(0.0)
 	await get_tree().create_timer(0.3).timeout
 	for f: Birds.Flock in birds.flocks:
@@ -233,6 +237,14 @@ func _ready() -> void:
 		_bad.append("%d flocks came down into a staged scene" % staged)
 	w.cine = false
 	_end()
+
+
+## Wait (up to 9 s) until no flock is on its way down.
+func _all_settled(birds: Birds) -> void:
+	for k in 270:
+		if birds.flocks.filter(func(f: Birds.Flock) -> bool: return f.state == "down").is_empty():
+			return
+		await get_tree().process_frame
 
 
 ## A flock's place: on the green's ground, level, clear of every wall.
