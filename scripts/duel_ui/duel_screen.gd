@@ -4386,6 +4386,17 @@ func fx_status(t: DuelTotem, status: String) -> void:
 		_strike["k"] = 0.85
 		await _deliver(att, c)
 		_impact(c, DuelFX.light((att as DuelTotem).element()), 10, _strike.get("style", {}))
+	if field != null and status == "silenced":
+		# (12 November, Gary: "Show the silence"): the binder's ring leaps onto
+		# it, the Glyph Warden's own glyphs in its violet, anything else's in
+		# silver; it stays round its feet and its head while the Silence lasts
+		var by: String = (att as DuelTotem).id() if att is DuelTotem else ""
+		t.set_meta("silence_by", by)
+		if att is DuelTotem and (att as DuelTotem).owner != t.owner:
+			t.set_meta("silence_hold", true)
+			var lc := DuelStatusMarks.SILENCE_GLYPH if by == "glyph_warden" else DuelStatusMarks.SILENCE_SILVER
+			await get_tree().create_timer(field.glyph_leap(_foot3(att), _foot3(t), lc, 0.9 / speed)).timeout
+			t.remove_meta("silence_hold")
 	if field != null:
 		# a ring of its colour: climbing the body for a boon, coming down round it for a condition
 		field.status_ring(_foot3(t), col, DuelConditions.is_boon(status))

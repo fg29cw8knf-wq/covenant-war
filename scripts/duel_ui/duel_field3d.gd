@@ -84,9 +84,14 @@ class Slot:
 	var crystal_mat: ShaderMaterial = null
 	var trail: CPUParticles3D = null   # its element trailing off it as it lunges
 	var glow_boost := 0.0          # 0-1: its glow map turned up as it strikes (FLARE)
+	var rim_mat: ShaderMaterial    # its outline lit in its GLOW_TINT colour (made when first needed)
 	var glow_tw: Tween = null
 	var glyphs: MeshInstance3D = null   # its ring of glyphs on the ground (FLARE)
 	var glyph_mat: StandardMaterial3D = null
+	var marks_root: Node3D = null  # what it carries, shown while it lasts (DuelStatusMarks)
+	var marks := {}                # effect id -> its mark
+	var fx_tint := Color.WHITE     # its colours drawn towards an effect's (Petrified, Frozen...)
+	var fx_tint_k := 0.0
 
 
 func _init() -> void:
@@ -373,6 +378,10 @@ func _make_slot(side: int, i: int) -> Slot:
 	s.glyphs.material_override = s.glyph_mat
 	s.glyphs.visible = false
 	s.add_child(s.glyphs)
+	# (12 November) the marks of what it carries ride on this, at its feet
+	s.marks_root = Node3D.new()
+	s.marks_root.name = "Marks"
+	s.add_child(s.marks_root)
 	# the card lying in the slot
 	s.card_vp = SubViewport.new()
 	s.card_vp.size = Vector2i(400, 560)
@@ -623,6 +632,7 @@ func sync(v) -> void:
 			s.shadow.visible = false
 			s.lamp.light_energy = 0.0
 			s.lamp.visible = false
+		_clear_marks(s)
 		_ring_state(s, v.highlight, Color(0.7, 0.6, 1.0), 0.35 * v.fade)
 		return
 	if id != s.card_id:
@@ -632,6 +642,7 @@ func sync(v) -> void:
 			s.model = null
 			s.anim = null
 		_reset_death(s)
+		_clear_marks(s)
 		if id == "":
 			s.card.visible = false
 			s.sprite.visible = false
@@ -688,6 +699,10 @@ func sync(v) -> void:
 	s.shadow.scale = Vector3(s.creature_h * 0.55, s.creature_h * 0.55, 1.0) * v.pop
 	if s.trail != null and is_instance_valid(s.trail):
 		s.trail.position = Vector3(off.x, 0.06 + hover + s.creature_h * 0.45, off.z)
+	_sync_marks(s, t, v, Vector3(off.x, hover, off.z))
+	if s.marks.has("terrified") and not s.dying:
+		# (it trembles while it's Terrified)
+		off += Vector3(sin(_t * 47.0), 0, cos(_t * 39.0)) * 0.018
 	var m := Color(1, 1, 1, v.fade)
 	if v.highlight == "dim":
 		m = Color(0.55, 0.55, 0.6, v.fade)
@@ -1205,7 +1220,7 @@ func _tint_model(s: Slot, m: Color) -> void:
 				cov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + cr * 0.4 + s.crack * 0.7
 				cov.next_pass = s.crystal_mat
 				continue
-			if flash <= 0.001 and dim >= 0.999 and not tinted and glow <= 0.001:
+			if flash <= 0.001 and dim >= 0.999 and not tinted and glow <= 0.001 and s.fx_tint_k <= 0.001:
 				if mesh.get_surface_override_material(i) != null:
 					mesh.set_surface_override_material(i, null)
 				continue
@@ -1221,10 +1236,55 @@ func _tint_model(s: Slot, m: Color) -> void:
 			var col := base.albedo_color
 			if tinted:
 				col = base.albedo_color * DuelArt.soft_tint(tint)
+			if s.fx_tint_k > 0.001:
+				# (12 November) an effect's colour over its own, its light and
+				# shade kept: stone, ice, rage, possession
+				var lum := col.r * 0.3 + col.g * 0.59 + col.b * 0.11
+				var to := Color(s.fx_tint.r * (0.35 + lum), s.fx_tint.g * (0.35 + lum), s.fx_tint.b * (0.35 + lum), col.a)
+				col = col.lerp(to, clampf(s.fx_tint_k, 0.0, 1.0))
 			ov.albedo_color = col * Color(dim, dim, dim, 1.0)
 			ov.emission_enabled = true
 			ov.emission = Color(m.r, m.g, m.b).lerp(base.emission if base.emission_enabled else Color.BLACK, 0.0) * 0.5 if flash > 0.001 else (base.emission if base.emission_enabled else Color.BLACK)
-			ov.emission_energy_multiplier = (base.emission_energy_multiplier if base.emission_enabled else 0.0) + flash * 2.0 + (glow if base.emission_enabled else 0.0)
+			var e0 := base.emission_energy_multiplier if base.emission_enabled else 0.0
+			if GLOW_TINT.has(s.card_id) and base.emission_enabled and flash <= 0.001:
+				# (their glow in a colour of its own: the pale threads and robes
+				# lit in their own colours only went whiter, and hardly showed)
+				ov.emission = GLOW_TINT[s.card_id]
+				e0 = 0.35
+			ov.emission_energy_multiplier = e0 + flash * 2.0 + (glow if base.emission_enabled else 0.0)
+			if GLOW_TINT.has(s.card_id) and not s.dying:
+				# (and its outline lit in that colour, faint at rest and blazing
+				# as it strikes: a glow map on a pale body can only go whiter,
+				# but a rim of coloured light reads on anything)
+				if s.rim_mat == null:
+					s.rim_mat = ShaderMaterial.new()
+					s.rim_mat.shader = _rim_shader()
+					s.rim_mat.set_shader_parameter("col", GLOW_TINT[s.card_id])
+				s.rim_mat.set_shader_parameter("k", 0.18 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + 1.5 * s.glow_boost)
+				ov.next_pass = s.rim_mat
+			elif ov.next_pass != null and ov.next_pass == s.rim_mat:
+				ov.next_pass = null
+
+
+static var _rim_sh: Shader
+
+
+## The rim of light round a glowing Totem (GLOW_TINT): added over it,
+## strongest where its surface turns away from the camera.
+static func _rim_shader() -> Shader:
+	if _rim_sh == null:
+		_rim_sh = Shader.new()
+		_rim_sh.code = """shader_type spatial;
+render_mode blend_add, unshaded, cull_back, depth_draw_never;
+uniform vec4 col : source_color = vec4(1.0);
+uniform float k = 0.2;
+void fragment() {
+	float f = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.2);
+	ALBEDO = col.rgb * (0.6 + 1.4 * f);
+	ALPHA = clamp(k * (0.05 + f), 0.0, 1.0);
+}
+"""
+	return _rim_sh
 
 
 ## Totems whose glow map (<id>_glow.png, tools/split_creature.py --glow)
@@ -1232,7 +1292,23 @@ func _tint_model(s: Slot, m: Color) -> void:
 ## and breathes a little at rest (12 November, Gary: the Glyph Warden "barely
 ## moves", a stone slab, so its purple and gold markings glow and blaze up
 ## on Rune Strike and Binding Glyph).
-const FLARE := {"glyph_warden": 2.0}
+const FLARE := {"glyph_warden": 2.0, "scrivener": 2.0, "loomwarden": 2.6, "unspent_hour": 2.0, "weft_serpent": 2.2}
+## The colour the glow is lit in, for the ones whose glow map is pale (the
+## Glyph Warden's is its own violet and gold): the Scrivener's quill and ink
+## blue, the Loomwarden's threads gold, the Unspent Hour's sand violet, the
+## Weft Serpent's threads a cold blue.
+const GLOW_TINT := {"scrivener": Color(0.5, 0.72, 1.0), "loomwarden": Color(1.0, 0.76, 0.32),
+	"unspent_hour": Color(0.78, 0.6, 1.0), "weft_serpent": Color(0.55, 0.78, 1.0)}
+## (12 November, Gary: yes to the glow on Bram's god's other creatures too:
+## tools/add_glow.py gave the Scrivener its quill and ink, the Loomwarden its
+## gold and the threads catching the light, the Unspent Hour the sand
+## sparkling in its glass, the Weft Serpent its brightest threads.) The
+## sparks each throws up as it strikes, in its own light:
+const FLARE_SPARKS := {"glyph_warden": Color(0.62, 0.45, 1.0), "scrivener": Color(0.6, 0.78, 1.0),
+	"loomwarden": Color(0.95, 0.88, 0.62), "unspent_hour": Color(0.82, 0.76, 1.0), "weft_serpent": Color(0.72, 0.84, 1.0)}
+## Those that stand in a ring of their own glyphs (the Warden's markings are
+## on its front only).
+const GLYPH_RINGS := ["glyph_warden"]
 
 
 ## The ring of glyphs on the ground under a glowing Totem (12 November,
@@ -1246,7 +1322,7 @@ const GLYPH_VIOLET := Color(0.62, 0.45, 1.0)
 
 
 func _glyph_ring(s: Slot, fade: float) -> void:
-	var on := fade > 0.02 and FLARE.has(s.card_id) and not s.dying
+	var on := fade > 0.02 and GLYPH_RINGS.has(s.card_id) and not s.dying
 	s.glyphs.visible = on
 	if not on:
 		return
@@ -1257,10 +1333,120 @@ func _glyph_ring(s: Slot, fade: float) -> void:
 	s.glyphs.rotation_degrees = Vector3(-90, 0, -rad_to_deg(s.spin) * 0.6 + _t * 4.0)
 
 
+## What a Totem carries, shown on it while it lasts (12 November, Gary:
+## "every effect shows on the person affected somehow"; DuelStatusMarks):
+## a mark per effect, made when it comes and freed when it goes, at its feet
+## (`at`, slot space), moved each frame; out while it turns to glass or the
+## slot is faded out. The creature's colours drawn towards Petrified's stone,
+## Frozen's ice, Enraged's red or Possessed's violet.
+func _sync_marks(s: Slot, t, v, at: Vector3) -> void:
+	var fx: Array = DuelStatusMarks.effects_of(t)
+	var h := s.creature_h
+	for id in s.marks.keys():
+		if not fx.has(id):
+			(s.marks[id] as Node3D).queue_free()
+			s.marks.erase(id)
+	var by := String(t.get_meta("silence_by", "")) if t.has_meta("silence_by") else ""
+	if s.marks.has("silenced") and String((s.marks["silenced"] as Node3D).get_meta("by", "")) != by:
+		# (who bound it is known a moment after the Silence is: made again in its colours)
+		(s.marks["silenced"] as Node3D).queue_free()
+		s.marks.erase("silenced")
+	for id in fx:
+		if not s.marks.has(id):
+			var mk := DuelStatusMarks.build(self, String(id), h, {"silence_by": by})
+			mk.set_meta("by", by)
+			s.marks_root.add_child(mk)
+			s.marks[id] = mk
+	if s.marks.has("silenced"):
+		# (hidden while the Warden's ring is still on its way over)
+		(s.marks["silenced"] as Node3D).visible = not t.has_meta("silence_hold")
+		if t.has_meta("silence_hold"):
+			(s.marks["silenced"] as Node3D).set_meta("born", _t)   # (its badge pops in as the ring lands)
+	s.marks_root.position = at
+	s.marks_root.visible = v.fade > 0.02 and not s.dying and not s.shattered
+	var info2 := {}
+	# (the badges over its head, in a row across the camera's view)
+	var row: Array = []
+	var rise := false
+	for id in fx:
+		if DuelStatusMarks.BADGES.has(id):
+			row.append(id)
+		if DuelStatusMarks.RISERS.has(id):
+			rise = true
+	if not row.is_empty():
+		info2["badges"] = row
+		info2["row_y"] = h + (1.05 if rise else 0.55)
+		var right := Vector3.RIGHT
+		if cam != null:
+			right = s.marks_root.global_transform.basis.inverse() * cam.global_transform.basis.x
+			right.y = 0.0
+			right = right.normalized() if right.length() > 0.01 else Vector3.RIGHT
+		info2["right"] = right
+	if fx.has("doomed"):
+		info2["doom_left"] = 3 - int(t.cond("soul").get("dawns", 0))
+	if fx.has("shielded"):
+		info2["shield_k"] = float(t.shield) / maxf(1.0, float(t.max_hp()) * 0.5)
+	var i := 0
+	for id in fx:
+		DuelStatusMarks.tick(s.marks[id], _t, h, i, info2)
+		i += 1
+	var tn: Array = DuelStatusMarks.tint(fx, _t)
+	s.fx_tint = tn[0]
+	s.fx_tint_k = 0.0 if s.dying else float(tn[1])
+	if s.model == null and s.sprite.visible:
+		s.sprite.modulate = DuelArt.stand_in_tint(s.card_id) * Color.WHITE.lerp(s.fx_tint, s.fx_tint_k)
+
+
+func _clear_marks(s: Slot) -> void:
+	for id in s.marks.keys():
+		(s.marks[id] as Node3D).queue_free()
+	s.marks.clear()
+	s.fx_tint_k = 0.0
+
+
+## The Glyph Warden's ring leaping onto the Totem it silences (12 November,
+## Gary: "Show the silence"): a ring of its glyphs lifts from under the
+## Warden, arcs over and settles round the other's feet, where it stays while
+## the Silence lasts (DuelStatusMarks, "silenced"). From anything else the
+## same leap in silver.
+func glyph_leap(a: Vector3, b: Vector3, col: Color, dur := 0.9) -> float:
+	var q := MeshInstance3D.new()
+	var qm := QuadMesh.new()
+	qm.size = Vector2(GLYPH_RING, GLYPH_RING)
+	q.mesh = qm
+	var mat := _additive(load("res://assets/art/fx/glyph_ring.png"))
+	# (bright, and drawn over what it passes: it has to read in flight over
+	# the lit floors as well as the dark sky)
+	mat.albedo_color = Color(col.r * 2.0, col.g * 2.0, col.b * 2.0, 1.0)
+	mat.no_depth_test = true
+	q.material_override = mat
+	q.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fx_parent().add_child(q)
+	# a trail of its light left behind it in the air
+	DuelStrikeFX.emit(self, Vector3.ZERO, {"parent": q, "local": false, "emit_for": dur, "explode": 0.0,
+		"amount": 70, "life": 0.55, "shape": "ring", "radius": GLYPH_RING * 0.42, "speed": [0.0, 0.25],
+		"gravity": Vector3(0, -0.5, 0), "tex": "dot", "size": 0.16, "bright": 2.4,
+		"cols": [col.lightened(0.4), Color(col, 0.0)]})
+	q.position = a + Vector3(0, 0.05, 0)
+	q.rotation_degrees.x = -90
+	var tw := q.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		if not is_instance_valid(q):
+			return
+		q.position = a.lerp(b, u) + Vector3(0, 0.05 + sin(u * PI) * 2.2, 0)
+		q.rotation_degrees = Vector3(-90 + 30.0 * sin(u * PI), 0, u * 540.0)
+		var k := 1.0 - 0.45 * sin(u * PI)
+		q.scale = Vector3(k, k, k), 0.0, 1.0, dur).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(rise.bind(b + Vector3(0, 0.05, 0), col, 20, 0.8, 1.6))
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+	tw.tween_callback(q.queue_free)
+	return dur
+
+
 ## Its markings blaze up over a strike `secs` long and settle again; the
 ## glyphs on the ground throw up a few violet sparks with it.
 func _flare(s: Slot, secs: float) -> void:
-	rise(foot_world(s.side, s.index) + Vector3(0, 0.05, 0), GLYPH_VIOLET, 26, 0.9, 1.6)
+	rise(foot_world(s.side, s.index) + Vector3(0, 0.05, 0), FLARE_SPARKS.get(s.card_id, GLYPH_VIOLET), 26, 0.9, 1.6)
 	if s.glow_tw != null and s.glow_tw.is_valid():
 		s.glow_tw.kill()
 	var up := clampf(secs * 0.22, 0.12, 0.35)

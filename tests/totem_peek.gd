@@ -49,7 +49,14 @@ func _ready() -> void:
 			get_viewport().get_texture().get_image().save_png(out + "/peek_close_%s.png" % ("theirs" if side == 1 else "yours"))
 	if ds.field != null and ("strike" in a or "strike_theirs" in a):
 		var side := 1 if "strike_theirs" in a else 0
-		ds.field.cam_focus(ds.field.foot_world(side, 1), 1.0, 0.3)
+		# (the moving camera off and the screen's plates hidden, so the
+		# striker fills the still from in front of it)
+		ds.field.roam_on = false
+		ds.stage.visible = false
+		var foot: Vector3 = ds.field.foot_world(side, 1)
+		var h: float = ds.field.slots[side][1].creature_h
+		var toward := Vector3(0, 0, 1) if side == 1 else Vector3(0, 0, -1)
+		ds.field.cam_shot(foot + toward * 3.2 + Vector3(0.6, h + 0.9, 0), foot + Vector3(0, h * 0.5, 0), 0.0, 55.0, true)
 		await get_tree().create_timer(1.2).timeout
 		var secs := ds.field.play_clip(side, 1, "attack")
 		var n := 0
