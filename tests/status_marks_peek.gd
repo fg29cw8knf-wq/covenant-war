@@ -149,6 +149,37 @@ func _ready() -> void:
 			if ds.tip != null:
 				ds.tip.close()
 			await get_tree().create_timer(0.4).timeout
+		# the badges you can cure glowing gold (DuelScreen._cures): a Clarity
+		# Tonic (Mind) and a Cleansing Bell (Soul) in your hand for the
+		# Brookfin's Terrified and Cursed, but nothing for its Poison; first
+		# with the Essence to play them, then without
+		var mp: DuelPlayer = g.players[0]
+		mp.hand.append(DuelCard.new(9001, "clarity_tonic", 0))
+		mp.hand.append(DuelCard.new(9002, "cleansing_bell", 0))
+		ds.stage.visible = false
+		var bf: Vector3 = ds.field.foot_world(0, 1)
+		var bh: float = ds.field.slots[0][1].creature_h
+		for k in 2:
+			mp.essence = 3 if k == 0 else 0
+			ds._refresh()
+			ds.field.cam_shot(bf + Vector3(0, 0, -3.4) + Vector3(0.5, bh + 1.4, 0), bf + Vector3(0, bh * 0.6, 0), 0.0, 62.0, true)
+			await get_tree().create_timer(0.8).timeout
+			print("STATUS MARKS: cures %s" % str(ds.cure_info))
+			await _shot(out + "/cure_%s.png" % ("now" if k == 0 else "held"))
+		mp.essence = 3
+		ds._refresh()
+		ds.stage.visible = true
+		ds.field.cam_shot(Vector3(0, 8.5, 10.5), Vector3(0, 0.4, -0.5), 0.0, 52.0, true)
+		await get_tree().create_timer(0.6).timeout
+		var slot2: DuelField3D.Slot = ds.field.slots[0][1]
+		var bd2 := (slot2.marks["cursed"] as Node3D).get_node("badge") as Node3D
+		var at2: Vector2 = ds.get_global_transform_with_canvas() * (ds.field.cam.unproject_position(bd2.global_position) + ds.field.position)
+		ds.badge_tap(at2)
+		await get_tree().create_timer(0.6).timeout
+		await _shot(out + "/tip_cure.png")
+		if ds.tip != null:
+			ds.tip.close()
+		await get_tree().create_timer(0.4).timeout
 		ds.stage.visible = false
 	# the Silence leaping from your Glyph Warden onto the Blazehound opposite
 	for side in 2:

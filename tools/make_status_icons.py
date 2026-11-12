@@ -29,6 +29,7 @@ over the Totem's head, and a sign for every effect without one of its own:
   strings  Possessed (a puppet's cross and strings)
   (and Asleep, Confused and Charmed take zed, question and heart)
   pip      a turn left: the dots under a badge
+  cure_glow the gold glow behind a badge you can cure (a soft ring)
 
   python3 tools/make_status_icons.py
 """
@@ -500,8 +501,22 @@ def pip():
     finish(img, "pip")
 
 
+def cure_glow():
+    # a soft ring of light: brightest just outside the badge's rim (which is
+    # 0.47 of the badge, here drawn 1.75 times as big), fading both ways
+    n = W
+    y, x = np.mgrid[0:n, 0:n].astype(np.float32)
+    r = np.hypot(x - n / 2, y - n / 2) / n
+    peak = 0.47 / 1.75
+    a = np.exp(-((r - peak) / 0.07) ** 2)
+    a[r < peak] = np.maximum(a[r < peak], 0.35 * np.exp(-((r[r < peak] - peak) / 0.12) ** 2))
+    a = np.clip(a, 0, 1)
+    img = Image.fromarray((a * 255).astype(np.uint8), "L")
+    finish(img, "cure_glow")
+
+
 os.makedirs(OUT, exist_ok=True)
 heart(); zed(); question(); target(); eye(); hexsign()
 badge(); flame(); venom(); drips(); claws(); flake(); bolt(); drop(); sprout(); rock(); swirl()
 eye_shut(); bang(); vein(); skull(); chevrons("down", False); shield(); chevrons("up", True); plus(); mist(); fast(); hush()
-star(); halo(); strings(); pip()
+star(); halo(); strings(); pip(); cure_glow()

@@ -1084,6 +1084,9 @@ func _refresh() -> void:
 		panels[side].skill_used = game.skill_used(side)
 	_layout_hand()
 	_update_highlights()
+	cure_info = _cures()
+	if field != null:
+		field.cures = cure_info
 	rival_hand.count = game.players[rival].hand.size()
 	rival_hand.queue_redraw()
 	if not _pinch and not game.over and game.turn > 0:
@@ -1123,6 +1126,59 @@ func _refresh() -> void:
 	gift_btn.favour = clampf(mp.favour() / maxf(1.0, DuelRules.favour_max), 0.0, 1.0)
 	gift_btn.favour_ready = mp.favour_ready
 	gift_btn.favour_col = DuelFX.light(Lore.GODS[mp.patron()].element) if mp.patron() != "" and Lore.GODS.has(mp.patron()) else UITheme.GOLD
+
+
+## What can cure the conditions on your own Totems (12 November, night,
+## Gary: yes to "when you hold a card that would cure an effect, that badge
+## could glow gold"): {totem uid: {condition id: {"level": 2 if you can do
+## it now, 1 if you hold it but can't yet, "by": [names]}}}. Cures are the
+## cards in your hand (a Rite that clears conditions, Healing Draught,
+## Clarity Tonic, Cleansing Bell; an Ascension, which clears them all) and
+## your Divine Gift while it's there to use (Dawn's Mercy, Regrowth's Body
+## conditions). Never the rival's: their hand is hidden.
+var cure_info := {}
+
+
+func _cures() -> Dictionary:
+	var out := {}
+	if game == null or game.over or _watching():
+		return out
+	var p: DuelPlayer = game.players[me]
+	var my_turn := mode == "main"
+	for t in p.totems():
+		var d := {}
+		for id in DuelStatusMarks.effects_of(t):
+			if not DuelConditions.is_condition(String(id)):
+				continue
+			var kind := DuelConditions.kind_of(String(id))
+			var level := 0
+			var by: Array = []
+			for c in p.hand:
+				var covers := false
+				if c.is_rite():
+					for e in c.def.get("effects", []):
+						if e.op == "cure" and (String(e.get("kind", "all")) in ["all", kind]):
+							covers = true
+				elif c.is_ascension() and t.id() == String(c.def.get("ascends_from", "")):
+					covers = true
+				if not covers:
+					continue
+				var now := my_turn and game.phase_problem(_play_kind(c)) == "" \
+					and (game.rite_problem(me, c, t) == "" if c.is_rite() else game.ascend_problem(me, c, t) == "")
+				level = maxi(level, 2 if now else 1)
+				if not by.has(c.card_name()):
+					by.append(c.card_name())
+			var g := p.gift()
+			var gift_there := (not p.gift_used or p.favour_ready) and game.law != "ironvault"
+			if gift_there and (g == "dawns_mercy" or (g == "regrowth" and kind == "body")):
+				var gnow := my_turn and game.gift_problem(me, t if g == "dawns_mercy" else null) == ""
+				level = maxi(level, 2 if gnow else 1)
+				by.append(Lore.GIFTS[g].name)
+			if level > 0:
+				d[id] = {"level": level, "by": by}
+		if not d.is_empty():
+			out[t.uid] = d
+	return out
 
 
 func _watching() -> bool:
@@ -1486,6 +1542,7 @@ func badge_tap(vp_pos: Vector2) -> bool:
 	tip.totem = tt
 	tip.focus = String(hit.id)
 	tip.mine = tt.owner == me
+	tip.cures = cure_info.get(tt.uid, {})
 	tip.anchor = hit.at
 	tip.closed.connect(func() -> void: tip = null)
 	add_child(tip)

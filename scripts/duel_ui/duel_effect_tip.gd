@@ -16,6 +16,7 @@ var totem: DuelTotem
 var focus := ""            # the effect tapped
 var mine := true           # the player's own Totem (else the rival's)
 var anchor := Vector2.ZERO # where the badge was tapped, to open out of
+var cures := {}            # what you hold that cures which (DuelScreen._cures, this Totem's)
 var t := 0.0:
 	set(v):
 		t = v
@@ -96,6 +97,15 @@ func _row(id: String, lead: bool) -> Control:
 	var what := UITheme.label(DuelConditions.describe(id), int(_fs * (0.95 if lead else 0.85)), UITheme.TEXT, "body")
 	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	words.add_child(what)
+	if cures.has(id):
+		# (you hold a way to cure it: say which, and whether it's ready now)
+		var cu: Dictionary = cures[id]
+		var by := " or ".join(PackedStringArray(cu.get("by", [])))
+		var line := ("Your %s can cure this now." if int(cu.get("level", 0)) >= 2 else "Your %s can cure this, but not just now.") % by
+		var cl := UITheme.label(line, int(_fs * 0.85), UITheme.GOLD, "bold", 3)
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		words.add_child(cl)
+		b.cure = int(cu.get("level", 0))
 	return row
 
 
@@ -216,10 +226,14 @@ class Badge:
 	var col := Color.WHITE
 	var total := 0
 	var lit := 0
+	var cure := 0   # 1: you hold a cure for it, 2: you can use it now
 
 	func _draw() -> void:
 		var r := minf(size.x, size.y * 0.8) * 0.5
 		var c := Vector2(size.x * 0.5, r)
+		if cure > 0:
+			for k in 6:
+				draw_circle(c, r * (1.0 + 0.06 * (k + 1)), Color(1.0, 0.8, 0.3, (0.16 if cure >= 2 else 0.08) * (1.0 - k / 6.0)))
 		draw_circle(c, r, Color(col, 1.0))
 		draw_circle(c, r * 0.86, Color(col.r * 0.16, col.g * 0.16, col.b * 0.16, 1.0))
 		if sign != null:

@@ -1421,6 +1421,13 @@ func _sync_marks(s: Slot, t, v, at: Vector3) -> void:
 		info2["right"] = right
 	if fx.has("doomed"):
 		info2["doom_left"] = 3 - int(t.cond("soul").get("dawns", 0))
+	# (the ones you can cure, their badges glowing gold: DuelScreen._cures)
+	var cd: Dictionary = cures.get(t.uid, {})
+	if not cd.is_empty():
+		var lv := {}
+		for id in cd:
+			lv[id] = int((cd[id] as Dictionary).get("level", 0))
+		info2["cure"] = lv
 	# (the turns each has left, for the dots under its badge)
 	var left := {}
 	for id in fx:
@@ -1441,6 +1448,11 @@ func _sync_marks(s: Slot, t, v, at: Vector3) -> void:
 	s.fx_tint_k = 0.0 if s.dying else float(tn[1])
 	if s.model == null and s.sprite.visible:
 		s.sprite.modulate = DuelArt.stand_in_tint(s.card_id) * Color.WHITE.lerp(s.fx_tint, s.fx_tint_k)
+
+
+## What can cure the conditions on the player's own Totems, from the screen
+## (DuelScreen._cures): their badges glow gold.
+var cures := {}
 
 
 ## The effect badge (DuelStatusMarks) under a point on the screen, in this

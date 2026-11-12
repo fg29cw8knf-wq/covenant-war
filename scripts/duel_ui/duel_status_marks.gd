@@ -46,6 +46,8 @@ const SIGN_K := {"heart": 0.8, "zed": 0.86, "question": 0.92}
 ## How big a badge is, how far apart they sit in the row (m).
 const BADGE := 0.46
 const BADGE_GAP := 0.52
+## The glow behind a badge you can cure (12 November, night): gold.
+const CURE_GOLD := Color(1.0, 0.8, 0.3)
 ## A turn-left dot: its size, how far apart, how far under the badge's middle.
 const PIP := 0.11
 const PIP_GAP := 0.13
@@ -303,6 +305,18 @@ static func tick(m: Node3D, t: float, h: float, i: int, info: Dictionary) -> voi
 		var u := clampf((t - float(m.get_meta("born", t))) / 0.35, 0.0, 1.0)
 		var pop := 1.0 + 2.7 * pow(u - 1.0, 3) + 1.7 * pow(u - 1.0, 2) if u < 1.0 else 1.0
 		bd.scale = Vector3.ONE * maxf(0.01, pop)
+		# gold behind it if you can cure it: steady while you only hold the cure,
+		# breathing bright when you can use it now
+		var cg := bd.get_node_or_null("cure") as MeshInstance3D
+		if cg != null:
+			var lvl := int((info.get("cure", {}) as Dictionary).get(m.get_meta("id"), 0))
+			cg.visible = lvl > 0
+			if lvl > 0:
+				var now := lvl >= 2
+				var a := (0.75 + 0.25 * sin(t * 4.0)) if now else 0.42
+				(cg.material_override as StandardMaterial3D).albedo_color = Color(CURE_GOLD * (1.6 if now else 1.0), a)
+				var gk := (1.0 + 0.07 * sin(t * 4.0)) if now else 0.94
+				cg.scale = Vector3(gk, gk, gk)
 		# its turns left: the dots under it, lit for each left, spent ones faint
 		var total := pip_total(String(m.get_meta("id")))
 		if total > 0:
@@ -495,6 +509,11 @@ static func _badge(m: Node3D, sign: String, col: Color, pips := 0) -> Node3D:
 	var bd := Node3D.new()
 	bd.name = "badge"
 	m.add_child(bd)
+	# (a gold glow behind it while you hold a way to cure it: hidden till then)
+	var cg := _icon(bd, "cure_glow", CURE_GOLD, BADGE * 1.75)
+	cg.name = "cure"
+	(cg.material_override as StandardMaterial3D).render_priority = 9
+	cg.visible = false
 	var back := _icon(bd, "badge", col, BADGE)
 	back.name = "back"
 	var bm := back.material_override as StandardMaterial3D
