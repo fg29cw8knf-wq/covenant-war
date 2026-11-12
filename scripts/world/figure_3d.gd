@@ -791,14 +791,22 @@ func slump(amount := 1.0, blend := 1.0) -> void:
 ## is), so the arms turn at the shoulders and elbows as arms do, over
 ## `secs`: up over the first 0.4 of it, held, and down over the last 0.35.
 ## Degrees about each bone's own axes at the full stretch; waited for.
-const STRETCH := {"LeftArm": Vector3(-165, 0, 15), "RightArm": Vector3(-165, 0, -15),
-	"LeftForeArm": Vector3(20, 0, 0), "RightForeArm": Vector3(20, 0, 0),
-	"Spine1": Vector3(-6, 0, 0), "Spine2": Vector3(-6, 0, 0), "Head": Vector3(-10, 0, 0)}
+## (12 November, Gary's yes to a gentler one: the arms went 165 degrees up,
+## dead straight over the head, and the body check measured the shoulders
+## twisted 150 to 175 degrees on all four looks, past any body's 110, the
+## elbows a little backwards on some. Now the arms go up 135 degrees and out
+## a little, the elbows bent and the hands coming in over the head, the back
+## arching and the face lifting a little more: clean on all four,
+## tests/stretch_probe.gd, which tries other shapes too.)
+const STRETCH := {"LeftArm": Vector3(-135, 0, 22), "RightArm": Vector3(-135, 0, -22),
+	"LeftForeArm": Vector3(-25, 0, 0), "RightForeArm": Vector3(-25, 0, 0),
+	"Spine1": Vector3(-8, 0, 0), "Spine2": Vector3(-8, 0, 0), "Head": Vector3(-14, 0, 0)}
 
-func stretch(secs := 2.8) -> void:
+func stretch(secs := 2.8, shape: Dictionary = STRETCH, nm := "") -> void:
 	if anim == null or not anim.has_animation("idle") or _skel == null:
 		return
-	var nm := "stretch_%d" % roundi(secs * 10.0)
+	if nm == "":
+		nm = "stretch_%d" % roundi(secs * 10.0)
 	if not anim.has_animation(nm):
 		var a := (anim.get_animation("idle") as Animation).duplicate(true) as Animation
 		a.loop_mode = Animation.LOOP_NONE
@@ -814,9 +822,9 @@ func stretch(secs := 2.8) -> void:
 			if bone == "":
 				continue
 			prefix = String(a.track_get_path(t).get_concatenated_names())
-			if a.track_get_type(t) != Animation.TYPE_ROTATION_3D or not STRETCH.has(bone):
+			if a.track_get_type(t) != Animation.TYPE_ROTATION_3D or not shape.has(bone):
 				continue
-			var e: Vector3 = STRETCH[bone]
+			var e: Vector3 = shape[bone]
 			var full := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))
 			# the idle's own turn at each moment, with the stretch eased over it
 			var samples: Array = []
@@ -830,10 +838,10 @@ func stretch(secs := 2.8) -> void:
 				a.rotation_track_insert_key(t, float(s[0]), s[1])
 			done[bone] = true
 		# a bone the idle doesn't move: a track of its own, at rest plus the stretch
-		for bone: String in STRETCH:
+		for bone: String in shape:
 			if done.has(bone) or _skel.find_bone(bone) < 0 or prefix == "":
 				continue
-			var e: Vector3 = STRETCH[bone]
+			var e: Vector3 = shape[bone]
 			var full := Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))
 			var rest := _skel.get_bone_rest(_skel.find_bone(bone)).basis.get_rotation_quaternion()
 			var t := a.add_track(Animation.TYPE_ROTATION_3D)
@@ -2345,10 +2353,13 @@ func reaching(side := "") -> bool:
 
 
 ## The IK turns the back of the elbow to the elbow's hint (pole_hinge), so
-## a reaching arm bends at its hinge. false: the old way, the forearm bent
-## towards the hint however the upper arm was rolled (tests/elbow_probe.gd
-## shows the two).
-static var pole_hinge := false
+## a reaching arm bends at its hinge (12 November, Gary's yes to "switch on
+## the natural elbow for every reach": the body check had found Bram's elbow
+## bent the wrong way as his hand went onto the player's shoulder at dawn).
+## false: the old way, the forearm bent towards the hint however the upper
+## arm was rolled (tests/elbow_probe.gd shows the two; the shot tests take
+## "nohinge" for the before).
+static var pole_hinge := true
 
 
 ## Which way the back of the elbow faces in the forearm's own frame: away

@@ -1568,6 +1568,67 @@ v7 wins; the parts it changed:
   (`Ashford._clear_of_cart`: each of its meshes' bounds in its own frame, a
   body's half-width round them, at a child's hips and chest).
 
+### Gary's eight yeses after the body check (12 November, later)
+
+Suggested after the body check went in, and all eight said yes to ("1 yes 2
+yes 3 yes 4 yes 5 yes 6 yes 7 yes 8 yes"):
+
+1. **The natural elbow is on** (`Figure3D.pole_hinge`, now true): every
+   reaching arm bends at its own hinge. The Prologue swept again with it
+   (look A, everyone): Ashford's joint findings 5 to 2 (the two left are the
+   sitting clip's own ankles in the attic), the Thornwood's 1 to 0, nothing
+   new; the snow and P1 as before.
+2. **Tilly holds Corin's sleeve as the white light comes down**
+   (`Ashford._sleeve_hold`, `_sleeve_let_go`): placed half a metre from him,
+   on the side away from you (the first place clear of the cart), her nearer
+   hand on his forearm just above the wrist, by a mark on his forearm bone so
+   it stays on his sleeve as he moves; she lets go after the flash. Which arm
+   and which hand go by where the bones are, not `facing()` (Corin's lags a
+   turn still under way: the first try had her reaching 79 cm across him).
+3. **Bram brushes the snow off the baby's blanket before lifting him**
+   (`WhiteSky._brush_snow`): twelve small drifts sunk into the blanket's top
+   over the body and legs (`_lay_snow`, `SNOW_LUMPS`; the face and the mark
+   left clear), one sweep of the hand on the feet's side, palm down, from the
+   middle off the end (`BRUSH_IN` 0.25 s, `BRUSH_SECS` 0.35 s), each drift
+   going as the hand passes, a puff of snow off the end (`_snow_puff`, its
+   flecks `_snow_dot`: white to clear, not the sparks' black-edged dot) and a
+   soft snow step under it; his other hand goes under the head's end
+   meanwhile (alone, bent over, it hung back from his shoulder). The lift
+   starts as soon as both hands are on, so from the prompt to the child in
+   his arms is 4.6 s in the test (4.5 before). `brush_snow = false` leaves it out.
+4. **The tunnel mouth and the thorn bushes** (`AshfordNight._hillside`): hooks
+   for Gary's models, `assets/models/ashford/tunnel_mouth.glb` (fitted to the
+   drawn bank's place and size, `MOUTH_SIZE`) and `thorn_bush.glb` (one at each
+   of the six bushes' places, sized and turned each its own way), each falling
+   back to the drawn one on its own (`_fitted`). Prompts in Still to Make,
+   "13. The look back". Corin now comes **up the hill from the village** to
+   them (until now from 3 m behind the mouth: through the bank, his knees 17
+   to 28 cm in it, and before that through the dry-stone wall that runs down
+   the hill 3 m west of it), filmed from up the hill beside them with the
+   village's lights behind him.
+5. **A gentler waking stretch** (`Figure3D.STRETCH`): the arms 135 degrees up
+   and a little out, the elbows bent and the hands coming in over the head,
+   the back arching, the face lifting (it was 165 degrees, dead straight,
+   and the shoulders twisted 150 to 175 degrees on all four looks).
+   `tests/stretch_probe.tscn` tries shapes on a model and photographs them;
+   this one is clean on all four.
+6. **Bram's lines at the three moves in the snow duel** (`WhiteSky.MOVE_LINES`,
+   `_move_line`): "One more hour. That's all I need." (the Unspent Hour), "Get
+   back from him." (the hound), "Write it in my name, then." (the Last Page).
+   Said over the move and gone by themselves (a line elsewhere waits for a
+   tap; these mustn't hold the duel); the next move waits for the line.
+   Their ids are on the voice sheet (`docs/script/vo_lines.md`, lines 5 to
+   7: the sheet's numbers after them moved up three).
+7. **Damage numbers in the blow's colour, and the stone cracking under a hurt
+   Totem**: see the duel's "12 November, later" below.
+8. **Press and hold to skip the opening movie**: see Opening movie.
+
+Also: the voice sheet (`tools/vo_sheet.py`) read a dictionary of lines
+(`MOVE_LINES`) as one more line, its last, said twice; a dictionary as a
+value is stepped over whole now. The body check sees the walls and other
+things drawn many at a time (`MultiMeshInstance3D`: the dry-stone walls,
+the fences), which it couldn't before.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the
@@ -1710,6 +1771,19 @@ His list, and what each line became:
   health bar draining from before to after with the numbers, "BLOCKED" when
   a shield stops a whole blow. The plaques' health bars are deeper, with the
   shield as a pale band and "SHIELD n".
+  **12 November, later (Gary's yes):** the damage number is in the blow's own
+  colour, its element's light a little towards white
+  (`DuelScreen.hit_number_colour`; it was always red, orange for a weakness,
+  which still says so under it in gold), a Rite's in its element's. And the
+  stone under a hurt Totem cracks (`DuelCracks`, the 3D field only): dark
+  cracks with pale chipped lips running out from under its card as far as
+  it has lost of its Health, spreading over a moment after each blow, their
+  newest ends lit in its own colour as they run, a faint light in them
+  after; healed, they close; a new Totem starts on whole stone. One picture
+  for every slot (`assets/art/fx/base_cracks.png`, imported lossless:
+  `tools/make_base_cracks.gd` remakes it), turned its own way in each.
+  `tests/crack_shot.tscn` checks the reach against the Health, the spreading
+  and the closing, with stills.
 - **13. "After, his body goes through the stairs"** (the Reckoning's cellar
   scenes): Bram stood inside the flight and the player ran into its second
   tread. Everyone stands and walks clear of it (`AshfordNight.RK_*`,
@@ -4004,6 +4078,8 @@ godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures'
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
 godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence, the weather
 godot --headless res://tests/summon_video_test.tscn             # which Summon clip plays under each choice
+# ... res://tests/crack_shot.tscn -- <dir>      (under xvfb) the stone cracking under hurt Totems, checked, with stills
+# ... res://tests/stretch_probe.tscn -- <dir> [model] [shapes=a,b]   (under xvfb) waking stretches tried, measured, photographed
 # stills (under xvfb, as the others): ... res://tests/rain_shot.tscn -- <dir> [phone]   the green dry and in a shower
 #                                     ... res://tests/options_shot.tscn -- <dir>         the Options page
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
@@ -4047,7 +4123,9 @@ figures within 9 m of the camera, and prints `BODY:` lines:
   physics space of the check's own (nothing in the game sees them) and
   tested with rays six ways (`_inside`). Glows, beams and haze
   (see-through, added or drawn without depth: `_is_light`) and flat cards
-  are left out; what a figure wears isn't in its own way.
+  are left out; what a figure wears isn't in its own way. Things drawn
+  many at a time count too (12 November: the dry-stone walls, the fences),
+  each copy at least `MM_BIG` across and `MM_THICK` through a solid of its own.
 - **person**: a hand inside someone else's body, by that body's own
   thickness round each bone.
 - **hangs**: something let go of that stays in the air, out of every hand
@@ -4083,11 +4161,11 @@ model's hands to set places with the elbow's IK pole free and on the hinge
 The first sweep (12 November, `docs/handover/2026-11-12-body.md`) found
 Tilly standing in the hay cart after the heave (fixed: below) and a moment
 of Bram's elbow bent the wrong way as his hand goes onto the player's
-shoulder at dawn (`Figure3D.pole_hinge` takes it away; off until every
-reaching scene has been seen with it); the rest it reported were meant or
-can't be seen.
+shoulder at dawn (`Figure3D.pole_hinge` takes it away: on since the
+second sweep); the rest it reported were meant or can't be seen.
 
-**`Figure3D.pole_hinge`** (false): a reaching arm's IK (`TwoBoneIK3D`) turns
+**`Figure3D.pole_hinge`** (true since 12 November, Gary's yes; the second
+sweep with it found nothing new and lost Bram's wrong-way elbows): a reaching arm's IK (`TwoBoneIK3D`) turns
 the back of the elbow to the elbow's hint (`set_pole_direction`, the way
 away from where the forearm folds in the model's own clips:
 `Figure3D._elbow_back`), so the arm bends at its hinge. Left free, the
@@ -4196,7 +4274,16 @@ tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the
 **When it plays (12 November):** once, before the title screen, the first
 time the game is opened on a device (`Main._ready`,
 `Game.settings.seen_opening`), skippable; after that from the title's Watch
-the Opening. New Game no longer plays it: New Game opens on the snow
+the Opening.
+
+**Hold to skip (12 November, later, Gary's yes):** a tap no longer skips it.
+The Skip button reads "Hold to skip" and fills with gold while it's held
+(or E, A, a click held); a second's hold skips (`OpeningMovie.HOLD_SECS`).
+In the apps the native player's own label does the same
+(`is_skip_held`, `set_skip_progress` in `addons/native_video`; a player built
+before this skips on a tap, as it did). Esc, Tab or Start still skip at once.
+`tests/native_movie_test.tscn` and `tests/controls_test.tscn` check a tap
+doesn't skip and a hold does. New Game no longer plays it: New Game opens on the snow
 (`WhiteSky`). Before 12 November it played on every New Game.
 
 Since 22 October the opening is Gary's one finished film: his animated clips,

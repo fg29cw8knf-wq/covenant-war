@@ -229,6 +229,12 @@ def dict_pairs(toks, match, open_i):
 			depth -= 1
 		elif depth == 0 and k == "str" and i + 2 < end and toks[i + 1] == ("p", ":", toks[i + 1][2]):
 			val = toks[i + 2]
+			if val[0] == "p" and val[1] in "{[(" and (i + 2) in match:
+				# (a value that's a dictionary or list of its own: past it whole,
+				# not into it, or a dictionary of lines read as one line, the last)
+				pairs[v] = ("other", val[1])
+				i = match[i + 2] + 1
+				continue
 			nxt = toks[i + 3] if i + 3 < end else None
 			if nxt is not None and nxt[0] == "p" and nxt[1] in "%+" and val[0] == "str":
 				pairs[v] = ("built", val[1])

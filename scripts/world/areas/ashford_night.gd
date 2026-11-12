@@ -1966,7 +1966,12 @@ static func look_back(w: World) -> void:
 	if cb != null:
 		var cfig = Cine.fig(w, "corin")
 		cfig.visible = true
-		var c0 := mouth - to_v * 3.0 + to_v.cross(Vector3.UP) * -2.4
+		# (up the hill from the village, the way he'll go back down: until 12
+		# November he came from 3 m behind the mouth, and the body check found
+		# him walking through the bank, his knees 17 to 28 cm in it, and before
+		# that through the dry-stone wall that runs down the hill 3 m west of
+		# the mouth; his place is off the player's, where he's let walk)
+		var c0 := step2 + to_v * 3.5 - to_v.cross(Vector3.UP) * 2.2
 		c0.y = v.height(c0.x, c0.z)
 		AshfordP1.put(w, "corin", c0, step2)
 		var spoke := Node3D.new()
@@ -1985,7 +1990,11 @@ static func look_back(w: World) -> void:
 		Cine.look(w, "bram", c0)
 		var cto := step2 - to_v.cross(Vector3.UP) * 1.4 - to_v * 0.4
 		cto.y = v.height(cto.x, cto.z)
-		Cine.shot(w, (c0 + cto) * 0.5 + to_v.cross(Vector3.UP) * 3.5 + Vector3(0, 1.6, 0), (c0 + cto) * 0.5 + Vector3(0, 1.1, 0), 40.0)
+		# (from up the hill beside them, looking down at him coming up it, the
+		# village's lights behind him)
+		var cam_at := step2 - to_v * 2.4 - to_v.cross(Vector3.UP) * 1.0
+		cam_at.y = v.height(cam_at.x, cam_at.z) + 1.75
+		Cine.shot(w, cam_at, (c0 + cto) * 0.5 + Vector3(0, 1.0, 0), 40.0)
 		await A.call("_limp", w, "corin", cto, 3.6)
 		Cine.look(w, "corin", w.player.global_position)
 		Cine.look(w, "player", Cine.body(w, "corin").global_position)
@@ -2023,6 +2032,17 @@ static func look_back(w: World) -> void:
 
 
 ## The tunnel's mouth under the thorn roots, and a few thorn trees about it.
+## Gary's models when they come (12 November, his yes: the Still to Make
+## doc's look-back jobs): assets/models/ashford/tunnel_mouth.glb, the bank
+## with the mouth in it, fitted to the drawn one's place and size (MOUTH_SIZE,
+## its mouth facing down the hill, its foot a little into the ground), and
+## thorn_bush.glb, one model at each bush's place, sized to it and turned
+## each its own way. Each falls back to the drawn one on its own.
+const TUNNEL_MODEL := "res://assets/models/ashford/tunnel_mouth.glb"
+const THORN_MODEL := "res://assets/models/ashford/thorn_bush.glb"
+## The drawn bank's size (m: across, high, deep), which the model is fitted to.
+const MOUTH_SIZE := Vector3(2.4, 1.6, 1.4)
+
 static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3D:
 	var hill := Node3D.new()
 	hill.name = "TunnelMouth"
@@ -2030,25 +2050,50 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 	hill.global_position = mouth
 	hill.global_basis = Basis.looking_at(-to_v, Vector3.UP)
 	# (+z runs down the hill towards the village: the mouth is behind him)
-	var earth := StandardMaterial3D.new()
-	earth.albedo_color = Color(0.16, 0.12, 0.08)
-	v.box(hill, Vector3(2.4, 1.6, 1.4), Vector3(0, 0.6, -1.0), earth)
-	v.box(hill, Vector3(1.0, 1.1, 0.1), Vector3(0, 0.55, -0.28), v.mats.dark)
+	if _fitted(hill, TUNNEL_MODEL, Vector3(0, -0.05, -1.0), MOUTH_SIZE.x, 0.0) == null:
+		var earth := StandardMaterial3D.new()
+		earth.albedo_color = Color(0.16, 0.12, 0.08)
+		v.box(hill, MOUTH_SIZE, Vector3(0, 0.6, -1.0), earth)
+		v.box(hill, Vector3(1.0, 1.1, 0.1), Vector3(0, 0.55, -0.28), v.mats.dark)
 	var thorn := StandardMaterial3D.new()
 	thorn.albedo_color = Color(0.08, 0.1, 0.06)
 	thorn.roughness = 1.0
 	for i in 6:
 		var a := -1.2 + i * 0.5
 		var at := Vector3(sin(a) * 3.4, 0, -cos(a) * 1.6 - 0.6)
+		var r := 0.9 + 0.2 * (i % 3)
+		if _fitted(hill, THORN_MODEL, at + Vector3(0, -0.05, 0), r * 2.0, a * 2.3 + i) != null:
+			continue
 		var bush := MeshInstance3D.new()
 		var sm := SphereMesh.new()
-		sm.radius = 0.9 + 0.2 * (i % 3)
+		sm.radius = r
 		sm.height = 1.4
 		bush.mesh = sm
 		bush.material_override = thorn
 		bush.position = at + Vector3(0, 0.6, 0)
 		hill.add_child(bush)
 	return hill
+
+
+## One of Gary's models under `parent` at `at` (its foot there, its middle
+## over it), scaled so its width across is `width` m, turned `yaw` about the
+## up axis; null if the model isn't there yet.
+static func _fitted(parent: Node3D, path: String, at: Vector3, width: float, yaw: float) -> Node3D:
+	if not ResourceLoader.exists(path):
+		return null
+	var m: Node3D = (load(path) as PackedScene).instantiate()
+	var holder := Node3D.new()
+	parent.add_child(holder)
+	holder.position = at
+	holder.rotation.y = yaw
+	holder.add_child(m)
+	var bb := DuelField3D._merged_aabb(m)
+	var k := width / maxf(0.01, maxf(bb.size.x, bb.size.z))
+	m.scale = Vector3.ONE * k
+	m.position = Vector3(-bb.get_center().x, -bb.position.y, -bb.get_center().z) * k
+	for mi: MeshInstance3D in m.find_children("*", "MeshInstance3D", true, false):
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	return holder
 
 
 ## The village held by Ironvault, for the look back: grey coats walking the

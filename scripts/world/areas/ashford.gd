@@ -3459,6 +3459,66 @@ static func _tremble(w: World, who: String, secs: float, amp := 0.015) -> void:
 		n.rotation = base
 
 
+## A hand on someone's sleeve: `who`'s hand on their side to the forearm
+## of `of` on theirs, a third of the way down from the elbow and on the
+## outside of the sleeve towards them, following the arm as it moves (the
+## mark rides on the forearm's bone), the palm to the arm. Returns what
+## carries the mark, for _sleeve_let_go.
+static func _sleeve_hold(w: World, who: String, of: String) -> Node3D:
+	var hf = Cine.fig(w, who)
+	var of_f = Cine.fig(w, of)
+	if not (hf is Figure3D and of_f is Figure3D):
+		return null
+	var h := hf as Figure3D
+	var o := of_f as Figure3D
+	if o._skel == null:
+		return null
+	var to_h := h.global_position - o.global_position
+	to_h.y = 0.0
+	if to_h.length() < 0.05:
+		return null
+	to_h = to_h.normalized()
+	# his arm nearer her and her hand nearer it, by where the bones are (his
+	# facing() can lag a turn still under way)
+	var mid := h.bone_pos("Spine2")
+	var his := "Right" if o.bone_pos("RightForeArm").distance_to(mid) < o.bone_pos("LeftForeArm").distance_to(mid) else "Left"
+	var fa := o._skel.find_bone(his + "ForeArm")
+	var hb := o._skel.find_bone(his + "Hand")
+	if fa < 0 or hb < 0:
+		return null
+	var att := BoneAttachment3D.new()
+	att.name = "SleeveHold"
+	o._skel.add_child(att)
+	att.bone_name = his + "ForeArm"
+	var mark := Node3D.new()
+	att.add_child(mark)
+	await Cine.wait(w, 0.05)   # (the attachment on the bone as drawn)
+	if not is_instance_valid(att):
+		return null
+	var along: Vector3 = o._skel.get_bone_rest(hb).origin * 0.35
+	var out_way := att.global_basis.orthonormalized().inverse() * (to_h * 0.045 * o.stature())
+	mark.position = along + out_way / maxf(att.global_basis.get_scale().x, 0.01)
+	var at := mark.global_position
+	var hers := "right" if h.bone_pos("RightArm").distance_to(at) < h.bone_pos("LeftArm").distance_to(at) else "left"
+	if hers == "right":
+		h.reach(null, mark, 0.45)
+	else:
+		h.reach(mark, null, 0.45)
+	h.palm(hers, -to_h, 0.45, 0.3)
+	return att
+
+
+static func _sleeve_let_go(w: World, who: String, att: Node3D) -> void:
+	var hf = Cine.fig(w, who)
+	if hf is Figure3D:
+		(hf as Figure3D).let_go(0.4)
+		(hf as Figure3D).palm("left", Vector3.ZERO, 0.4)
+		(hf as Figure3D).palm("right", Vector3.ZERO, 0.4)
+	await Cine.wait(w, 0.5)
+	if att != null and is_instance_valid(att):
+		att.queue_free()
+
+
 ## The white light: slow, silent, it passes Bram, passes Corin and stops at the
 ## player. A blank card in their hand, a white mark on its back, and every
 ## other light in the sky goes out.
@@ -3500,9 +3560,18 @@ static func _the_white_light(w: World) -> void:
 		# beside him that's clear of it)
 		var cbp := cb.global_position
 		var sd := away.cross(Vector3.UP)
-		Cine.place(w, "tilly", _clear_of_cart(v, [cbp + away * 0.9 + sd * 0.5, cbp + away * 0.9 - sd * 0.5,
+		# (close enough to hold his sleeve, a child's arm away: half a metre,
+		# on the side away from you first; further out only if the cart's there)
+		if (cbp + sd - p).length() < (cbp - sd - p).length():
+			sd = -sd
+		Cine.place(w, "tilly", _clear_of_cart(v, [cbp + away * 0.3 + sd * 0.42, cbp + sd * 0.52,
+			cbp + away * 0.3 - sd * 0.42, cbp + away * 0.52, cbp - sd * 0.52,
+			cbp + away * 0.9 + sd * 0.5, cbp + away * 0.9 - sd * 0.5,
 			cbp + away * 0.4 + sd * 1.0, cbp + away * 0.4 - sd * 1.0, cbp + sd * 1.1, cbp - sd * 1.1,
 			cbp - away * 0.5 + sd * 1.0, cbp - away * 0.5 - sd * 1.0]), cbp)
+	# and holds on to his sleeve as it comes down (12 November, Gary's yes: a
+	# frightened child's hand on the arm of the one beside her)
+	var sleeve := await _sleeve_hold(w, "tilly", "corin")
 	Cine.shot(w, p + Vector3(3.5, 1.4, 6.0), p + Vector3(-2.0, 7.0, -4.0), 46.0)
 	var track := [true]   # the camera watches the light until the next shot takes over
 	var tw := w.create_tween()
@@ -3529,6 +3598,7 @@ static func _the_white_light(w: World) -> void:
 	v.hide_white_light()
 	_sfx(w, "gift")
 	await w.flash(Color(1, 1, 1), 0.08, 1.6)
+	_sleeve_let_go(w, "tilly", sleeve)   # (it's over: she lets go)
 	var holder := Node3D.new()
 	var card := InnRooms.blank_card(v)
 	card.rotation = Vector3(-PI * 0.35, 0, 0)

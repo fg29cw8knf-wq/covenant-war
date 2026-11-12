@@ -66,6 +66,16 @@ const OPEN := {"who": "morrowen", "say": "Every soul in my book starts with a de
 const HUSH := {"who": "bram", "say": "Hush, now. I've got you."}
 const NOT_THIS := {"who": "bram", "say": "Not this one."}
 const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the debt came due."}
+## What he says under his breath as each of the three moves is made (12
+## November, Gary's yes to "a short remembered Bram line at each move"): the
+## Unspent Hour called, an hour he hasn't got; the hound struck as it comes
+## for the child; the Last Page, and what it costs him written down to him.
+## Said over the move, gone by itself (_move_line), never waited on.
+const MOVE_LINES := {
+	"call": {"who": "bram", "say": "One more hour. That's all I need."},
+	"attack": {"who": "bram", "say": "Get back from him."},
+	"last_page": {"who": "bram", "say": "Write it in my name, then."},
+}
 const CAPTION := ["The Shardlands", "Twenty years ago."]
 ## The falling Sigils' colours (the village's, Ashford.SIGIL_COLS).
 const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 0.85, 0.35), Color(0.35, 0.7, 1.0),
@@ -1215,6 +1225,9 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 		await get_tree().process_frame
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f):
 		return
+	# (the last move's line gone first: the overlay holds taps while it's up)
+	while _move_line_on and not _skipping:
+		await get_tree().process_frame
 	_asking = gate
 	_take(PLAY_SHOT, 0.9, 3600.0)
 	_film_bars(false, 0.5)
@@ -1270,7 +1283,32 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	_drop_ring()
 	_move_film(gate)
 	_hint_home()
+	_move_line(gate)   # (not waited on)
 	# (and back at once: the move is made the moment this returns)
+
+
+## His line for a move (MOVE_LINES), over the move as it's made: up for its
+## recording's length, or for its reading time if there's none, and gone by
+## itself (a line elsewhere waits for a tap; this one mustn't hold the duel).
+var _move_line_on := false
+
+func _move_line(gate: String) -> void:
+	if not MOVE_LINES.has(gate) or _skipping:
+		return
+	var line: Dictionary = MOVE_LINES[gate]
+	_move_line_on = true
+	await _wait(0.35)   # (the card down first)
+	if not _skipping:
+		var who := String(line.who)
+		var host: Node = w if w != null else self
+		var secs := VoiceLines.play(host, who, String(line.say), String(line.get("vo", "")))
+		var nm: String = w._speaker(who) if w != null else who.capitalize()
+		var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
+		var hold := secs if secs > 0.0 else 1.2 + text.length() * 0.045
+		await _ov.say(nm, text, hold, true)
+		if secs > 0.0:
+			VoiceLines.stop(host)
+	_move_line_on = false
 
 
 ## A sound the moment each move is made (12 November, Gary said yes to "a
@@ -2441,6 +2479,7 @@ func _make_baby() -> Node3D:
 		glow.position = Vector3(0, 0.2, -0.1)
 		glow.name = "MarkGlow"
 		root.add_child(glow)
+		_lay_snow(root, _tops_of(m, root))
 		return root
 	var wool := StandardMaterial3D.new()
 	var nt := NoiseTexture2D.new()
@@ -2511,7 +2550,92 @@ func _make_baby() -> Node3D:
 	glow.position = Vector3(0, 0.2, -0.1)
 	glow.name = "MarkGlow"
 	root.add_child(glow)
+	# (the drawn bundle's top: the capsule's, 11 cm over its axis, rounding
+	# down at its ends)
+	var tops := PackedVector3Array()
+	for iz in 13:
+		var z := -0.24 + iz * 0.04
+		for ix in 5:
+			var x := -0.08 + ix * 0.04
+			var r2 := 0.11 * 0.11 - x * x
+			var over := maxf(0.0, absf(z) - 0.14)
+			tops.append(Vector3(x, sqrt(maxf(0.0, r2 - over * over)), z))
+	_lay_snow(root, tops)
 	return root
+
+
+## The snow that's settled on the child while it lay there (12 November,
+## Gary's yes to "Bram brushes the snow off the baby's blanket before lifting
+## him"): a few flat drifts on the blanket's top, over the body and legs (the
+## face and the mark over the heart left clear), each resting on the blanket
+## where it is (tops: points on its top in the bundle's frame). Brushed off by
+## his hand before he lifts it (_brush_snow).
+## (a seeded scatter of small lumps, sunk a little into the wool so they read
+## as snow lying in it rather than discs on it: SNOW_LUMPS of them between
+## SNOW_FROM and SNOW_TO along it, the head's end left clear)
+const SNOW_LUMPS := 12
+const SNOW_FROM := -0.01
+const SNOW_TO := 0.21
+
+func _lay_snow(root: Node3D, tops: PackedVector3Array) -> void:
+	var cover := Node3D.new()
+	cover.name = "SnowCover"
+	root.add_child(cover)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.9, 0.92, 0.97)
+	mat.roughness = 0.95
+	var lump := SphereMesh.new()
+	lump.radius = 1.0
+	lump.height = 2.0
+	lump.radial_segments = 12
+	lump.rings = 6
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1211
+	for i in SNOW_LUMPS:
+		var z := lerpf(SNOW_FROM, SNOW_TO, (i + rng.randf()) / SNOW_LUMPS)
+		var x := rng.randf_range(-0.045, 0.045)
+		var r := rng.randf_range(0.02, 0.034)
+		# the highest point of the blanket under it
+		var y := -INF
+		for t in tops:
+			if Vector2(t.x - x, t.z - z).length() < r * 0.8:
+				y = maxf(y, t.y)
+		if y == -INF:
+			continue
+		var mi := MeshInstance3D.new()
+		mi.mesh = lump
+		mi.material_override = mat
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.scale = Vector3(r * rng.randf_range(0.8, 1.3), r * rng.randf_range(0.35, 0.5), r * rng.randf_range(0.9, 1.5))
+		mi.rotation.y = rng.randf() * TAU
+		mi.position = Vector3(x, y - r * 0.25, z)
+		cover.add_child(mi)
+
+
+## Points on the top of a model, in root's frame (every few vertices).
+static func _tops_of(m: Node3D, root: Node3D) -> PackedVector3Array:
+	var pts := PackedVector3Array()
+	var inv := root.global_transform.affine_inverse() if root.is_inside_tree() else Transform3D.IDENTITY
+	for n in m.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		# (root isn't in the tree yet: each mesh's place in it by its parents)
+		var xf := Transform3D.IDENTITY
+		var q: Node = mi
+		while q != null and q != root:
+			if q is Node3D:
+				xf = (q as Node3D).transform * xf
+			q = q.get_parent()
+		if root.is_inside_tree():
+			xf = inv * mi.global_transform
+		for si in mi.mesh.get_surface_count():
+			var arr := mi.mesh.surface_get_arrays(si)
+			var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+			var step := maxi(1, vs.size() / 4000)
+			for i in range(0, vs.size(), step):
+				pts.append(xf * vs[i])
+	return pts
 
 
 ## Twenty years ago he wasn't an innkeeper: a heavy travelling coat of dark
@@ -2748,6 +2872,12 @@ func _lift_child() -> void:
 	if stoop != null:
 		create_tween().tween_property(stoop, "amount", 1.0, KNEEL_SECS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _wait(KNEEL_SECS * 0.45)
+	# a hand over the blanket first, brushing the snow off it
+	var brushed := 0.0   # (the time it took, which the kneel had as well)
+	if brush_snow:
+		brushed = await _brush_snow(fig, l, r)
+	if _skipping:
+		return
 	var mirror := Vector3(-1, 1, 1)
 	var s := fig.stature()
 	if turn_wrists:
@@ -2780,7 +2910,7 @@ func _lift_child() -> void:
 		el += get_process_delta_time()
 		lift_gaps = [(hands[0] as Vector3).distance_to(l.global_position), (hands[1] as Vector3).distance_to(r.global_position)]
 		lift_gap = maxf(lift_gaps[0], lift_gaps[1])
-		if el > KNEEL_SECS * 0.55 + REACH_SECS and lift_gap < HANDS_ON:
+		if el + brushed > KNEEL_SECS * 0.55 + REACH_SECS and lift_gap < HANDS_ON:
 			break
 	await _wait(0.1)   # (a breath, his hands under it)
 	if _skipping:
@@ -2847,6 +2977,155 @@ func _lift_child() -> void:
 	_baby.basis = b1
 	if sk != null and sk.skeleton_updated.is_connected(watch):
 		sk.skeleton_updated.disconnect(watch)
+
+
+## Before he takes the child up, one sweep of his hand along the blanket,
+## from its middle to its feet, the snow on it going off the end in a puff
+## (12 November, Gary's yes). The hand on the bundle's side of him, palm
+## down, a few centimetres over the blanket (BRUSH_OVER: the reach puts the
+## wrist's line there, the palm and fingers a little lower); each drift goes
+## as the hand passes it. Brisk: about 0.6 s (Gary wanted the pickup quick).
+const BRUSH_IN := 0.25
+const BRUSH_SECS := 0.35
+const BRUSH_OVER := 0.08
+## (false: straight to lifting it, as before the 12 November brush)
+var brush_snow := true
+
+func _brush_snow(fig: Figure3D, l: Node3D, r: Node3D) -> float:
+	var cover := _baby.get_node_or_null("SnowCover") as Node3D
+	if cover == null or cover.get_child_count() == 0:
+		return 0.0
+	# the hand whose end of it is the feet's brushes, out along it to that
+	# end; the other goes under the head's end, where it'll lift it from
+	# (alone, bent over it, the other arm hung back from his shoulder)
+	var side := "left" if l.position.z > 0.0 else "right"
+	var other := "right" if side == "left" else "left"
+	var s := fig.stature()
+	fig.elbow(other, LIFT_ELBOW * (Vector3(-1, 1, 1) if other == "right" else Vector3.ONE) * s, BRUSH_IN)
+	fig.palm(other, LIFT_PALM * (Vector3(-1, 1, 1) if other == "right" else Vector3.ONE), BRUSH_IN, LIFT_FLAT, true,
+		LIFT_FINGERS * (Vector3(-1, 1, 1) if other == "right" else Vector3.ONE))
+	# the blanket's top along its middle, in its own frame
+	var top := 0.0
+	for c in cover.get_children():
+		top = maxf(top, (c as Node3D).position.y)
+	# from the middle to the feet (+z), the fingers going off the end
+	var from := Vector3(0.0, top + BRUSH_OVER, -0.03)
+	var to := Vector3(0.0, top + BRUSH_OVER - 0.03, 0.2)
+	var mark := Node3D.new()
+	mark.name = "Brush"
+	_baby.add_child(mark)
+	mark.position = from
+	if side == "left":
+		fig.reach(mark, r, BRUSH_IN)
+	else:
+		fig.reach(l, mark, BRUSH_IN)
+	# palm down, the fingers along the way it sweeps
+	var along := _baby.global_basis.z.normalized()
+	fig.palm(side, Vector3.DOWN, BRUSH_IN, 0.0, false, along)
+	await _wait(BRUSH_IN)
+	if _skipping:
+		mark.queue_free()
+		return 0.0
+	var left := cover.get_children()
+	var el := 0.0
+	while el < BRUSH_SECS and not _skipping:
+		await get_tree().process_frame
+		el += get_process_delta_time()
+		var k := smoothstep(0.0, 1.0, clampf(el / BRUSH_SECS, 0.0, 1.0))
+		mark.position = from.lerp(to, k)
+		for c in left.duplicate():
+			var d := c as Node3D
+			if d.position.z < mark.position.z + 0.02:
+				left.erase(d)
+				var tw := create_tween()
+				tw.tween_property(d, "scale", d.scale * Vector3(0.3, 0.2, 0.3), 0.1)
+				tw.tween_callback(d.queue_free)
+	for c in left:
+		(c as Node3D).queue_free()
+	# off the end of the blanket in a puff
+	var puff := _snow_puff()
+	_set.add_child(puff)
+	puff.global_position = _baby.global_transform * Vector3(0.0, top + 0.02, 0.24)
+	(puff.process_material as ParticleProcessMaterial).direction = (along + Vector3.UP * 0.6).normalized()
+	puff.emitting = true
+	get_tree().create_timer(1.6, false).timeout.connect(puff.queue_free)
+	_step_sound(-18.0)
+	mark.queue_free()
+	return BRUSH_IN + BRUSH_SECS
+
+
+## A small puff of snow knocked off something: soft white flecks thrown out
+## and falling back.
+func _snow_puff() -> GPUParticles3D:
+	var sp := GPUParticles3D.new()
+	sp.amount = [12, 20, 30][clampi(quality, 0, 2)]
+	sp.lifetime = 1.0
+	sp.one_shot = true
+	sp.explosiveness = 0.85
+	sp.emitting = false
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.05
+	pm.direction = Vector3.UP
+	pm.spread = 35.0
+	pm.initial_velocity_min = 0.5
+	pm.initial_velocity_max = 1.4
+	pm.gravity = Vector3(0, -3.5, 0)
+	pm.damping_min = 0.5
+	pm.damping_max = 1.2
+	pm.scale_min = 0.5
+	pm.scale_max = 1.0
+	var fade := Gradient.new()
+	fade.set_color(0, Color(0.95, 0.96, 1.0, 0.9))
+	fade.set_color(1, Color(0.95, 0.96, 1.0, 0.0))
+	var ft := GradientTexture1D.new()
+	ft.gradient = fade
+	pm.color_ramp = ft
+	sp.process_material = pm
+	var q := QuadMesh.new()
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.albedo_texture = _snow_dot()
+	qm.vertex_color_use_as_albedo = true
+	q.material = qm
+	q.size = Vector2(0.035, 0.035)
+	sp.draw_pass_1 = q
+	return sp
+
+
+## A soft round fleck, white all over and clear at its edge (_soft_dot is
+## black at its edge for added sparks, which blended draws as a dark ring).
+static var _sdot: GradientTexture2D
+
+static func _snow_dot() -> Texture2D:
+	if _sdot == null:
+		var g := Gradient.new()
+		g.set_color(0, Color(1, 1, 1, 1))
+		g.set_color(1, Color(1, 1, 1, 0))
+		_sdot = GradientTexture2D.new()
+		_sdot.gradient = g
+		_sdot.width = 32
+		_sdot.height = 32
+		_sdot.fill = GradientTexture2D.FILL_RADIAL
+		_sdot.fill_from = Vector2(0.5, 0.5)
+		_sdot.fill_to = Vector2(0.5, 0.0)
+	return _sdot
+
+
+## One of the soft snow steps, quietly (for the brush: a hand in snow).
+func _step_sound(db: float) -> void:
+	var p := "res://assets/sfx/step_snow_%d.wav" % _rng.randi_range(2, 4)
+	if not ResourceLoader.exists(p):
+		return
+	var a := AudioStreamPlayer.new()
+	a.stream = load(p)
+	a.volume_db = db
+	a.pitch_scale = 1.3
+	add_child(a)
+	a.play()
+	a.finished.connect(a.queue_free)
 
 
 ## The bend from the hips over the child (Stoop), degrees about each bone

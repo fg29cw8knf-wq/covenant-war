@@ -63,11 +63,11 @@ func _ready() -> void:
 	# they were until then: Figure3D.wrist_natural, the before)
 	if "oldwrist" in OS.get_cmdline_user_args():
 		Figure3D.wrist_natural = false
-	# (12 November: "hinge" bends the reaching arms at the elbow's hinge,
-	# Figure3D.pole_hinge, to see against the old way; "body" runs the body
+	# (12 November: "nohinge" bends the reaching arms the old way, not at
+	# the elbow's hinge (Figure3D.pole_hinge), for the before; "body" runs the body
 	# check over it, tests/body_check.gd)
-	if "hinge" in OS.get_cmdline_user_args():
-		Figure3D.pole_hinge = true
+	if "nohinge" in OS.get_cmdline_user_args():
+		Figure3D.pole_hinge = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:

@@ -47,6 +47,8 @@ var _stood_t := -1.0
 ## (12 November) the player's three moves: when each was asked for and made,
 ## and that a tap somewhere else didn't make it
 var _asked: Array = []        # [move, asked at, made at]
+var _move_lines := 0          # Bram's lines at the moves, seen (12 November)
+var _line_was := false
 var _ask_hold := 0.0
 var _missed := false          # the tap off the mark has been tried for this move
 var _miss_failed: Array = []
@@ -125,6 +127,10 @@ func _run() -> void:
 		var wanted := ["card_draw", "card_lift", "cry_astral", "ward_set", "cry_hound", "hound_whine", "page_turn", "cry_orlanthe"]
 		if not _duel_only:
 			wanted.append("step_snow")   # (his boots in the snow, on the walk)
+		print("white_sky_test: %d of Bram's lines at the moves" % _move_lines)
+		if _move_lines != WhiteSky.MOVE_LINES.size():
+			print("white_sky_test: FAIL: Bram's lines at the moves: %d, not %d" % [_move_lines, WhiteSky.MOVE_LINES.size()])
+			ok = false
 		for want: String in wanted:
 			if not names.has(want):
 				print("white_sky_test: FAIL: the sound '%s' was never played" % want)
@@ -188,6 +194,9 @@ func _process(delta: float) -> void:
 		if _hold_hint > 1.0:
 			m._tapped = true
 			_hold_hint = 0.0
+	if m._move_line_on and not _line_was:
+		_move_lines += 1
+	_line_was = m._move_line_on
 	# the player's three moves: a tap off the mark first (nothing happens),
 	# then the move, a second after it's asked for
 	var ask := m.asking()

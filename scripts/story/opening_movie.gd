@@ -11,12 +11,12 @@ extends CanvasLayer
 ##      own video player (WebVideoPlayer: the film streamed as HLS from
 ##      films/opening/ beside the page, 4K as the connection allows, since 24
 ##      October). Nothing of the engine's goes over it; a tap shows its own
-##      Skip, and the next tap on Skip skips.
+##      "Hold to skip", and holding it a second skips (HOLD_SECS).
 ##   2. the finished cut as Ogg Theora: res://assets/movies/opening.ogv (the
 ##      same film at 1280x720 and 30 fps, since 22 October: his clips,
 ##      Morrowen's narration, the music, the title and the words already in
 ##      the picture). Nothing of the engine's plays over it: no subtitles,
-##      music, voice or title. Tap to show Skip. What the phone link plays,
+##      music, voice or title. Tap to show "Hold to skip". What the phone link plays,
 ##      and the apps' fallback.
 ##   3. shot by shot: res://assets/movies/shots/<shot>.ogv for each shot,
 ##      or the still res://assets/art/movie/<shot>.png (or .jpg) animated in the engine,
@@ -111,7 +111,19 @@ var _music: AudioStreamPlayer
 var _voice: AudioStreamPlayer
 var _done := false
 var _skip_timer: SceneTreeTimer
-var _skip_up := false        # Skip is showing: the next E, Space, Enter or A skips
+var _skip_up := false        # Skip is showing: holding it (or E, Space, Enter or A) skips
+## Skipping is a press held, not a tap (12 November, Gary's yes to "make
+## skipping a press-and-hold, so a stray tap doesn't skip your 4K film"): a
+## tap shows "Hold to skip"; held on it this long (or E, Space, Enter or A held
+## while it shows) skips, its gold filling across as it's held; let go
+## sooner and nothing happens. Esc, Tab or Start still skip at once. A native
+## player without the hold (an app built before 12 November) skips on a tap
+## of its Skip, as before.
+const HOLD_SECS := 1.0
+const HOLD_TEXT := "Hold to skip"
+var _hold := 0.0             # how long the hold has gone on (s)
+var _btn_held := false       # the engine's Skip button is pressed down
+var _fill: ColorRect         # the hold's progress across the engine's button
 var _focus_before: Control   # the button underneath that had the keyboard focus
 var _duck_tween: Tween
 var _ducked := false
@@ -173,7 +185,7 @@ func _ready() -> void:
 	_sub.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
 	_root.add_child(_sub)
 
-	_skip = UITheme.button("Skip", false, 200)
+	_skip = UITheme.button(HOLD_TEXT, false, 260)
 	_skip.anchor_left = 1.0
 	_skip.anchor_right = 1.0
 	_skip.modulate.a = 0.0
@@ -182,13 +194,20 @@ func _ready() -> void:
 		var m := SafeArea.insets()
 		_sub.offset_top = -190 - m.w
 		_sub.offset_bottom = -60 - m.w
-		_skip.offset_left = -250 - m.z
+		_skip.offset_left = -320 - m.z
 		_skip.offset_right = -40 - m.z
 		_skip.offset_top = 36 + m.y
 		_skip.offset_bottom = 132 + m.y)
 	_skip.focus_mode = Control.FOCUS_NONE   # keys are handled in _unhandled_input
-	_skip.pressed.connect(_finish)
+	_skip.button_down.connect(func() -> void: _btn_held = true)
+	_skip.button_up.connect(func() -> void: _btn_held = false)
 	_root.add_child(_skip)
+	_fill = ColorRect.new()
+	_fill.color = Color(0.93, 0.8, 0.47, 0.4)
+	_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fill.anchor_bottom = 1.0
+	_fill.size = Vector2(0, 0)
+	_skip.add_child(_fill)
 	# the title's button underneath keeps the keyboard focus, and would take
 	# Space and Enter for itself (starting the movie again); it gets it back after
 	_focus_before = get_viewport().gui_get_focus_owner()
@@ -321,8 +340,11 @@ func _play_native() -> bool:
 			push_warning("OpeningMovie: the native player failed at %.1f s (%s); the movie ends there" % [p.get_position(), p.get_error()])
 			break
 		if ev & NV_SKIP_PRESSED:
-			_finish()
-			break
+			if _native_holds():
+				_show_skip()   # a tap on it: it's held down to skip
+			else:
+				_finish()      # (an older player: a tap on its Skip skips)
+				break
 		if ev & NV_TAPPED:
 			_show_skip()
 		_clock = maxf(_clock, p.get_position())
@@ -497,18 +519,45 @@ func _on_input(e: InputEvent) -> void:
 		_show_skip()
 
 
-## Esc, Tab or Start skips at once; E, Space, Enter or A shows Skip, and a
-## second press while it shows skips.
+## Esc, Tab or Start skips at once; E, Space, Enter or A shows "Hold to
+## skip", and held while it shows, skips (_process).
 func _unhandled_input(e: InputEvent) -> void:
 	if e.is_action_pressed("menu"):
 		_finish()
 		get_viewport().set_input_as_handled()
 	elif e.is_action_pressed("interact"):
-		if _skip_up:
-			_finish()
-		else:
-			_show_skip()
+		_show_skip()
 		get_viewport().set_input_as_handled()
+
+
+## The native player can tell when its Skip is held down.
+func _native_holds() -> bool:
+	return _native != null and _native.has_method("is_skip_held")
+
+
+## The hold to skip, each frame: on Skip (the native player's or the
+## engine's) or a key, while Skip shows.
+func _process(delta: float) -> void:
+	if _done:
+		return
+	var held := false
+	if _skip_up:
+		if _native != null:
+			held = _native_holds() and bool(_native.is_skip_held())
+		else:
+			held = _btn_held
+		held = held or Input.is_action_pressed("interact")
+	if held:
+		_hold += delta
+	elif _hold > 0.0:
+		_hold = 0.0
+	var k := clampf(_hold / HOLD_SECS, 0.0, 1.0)
+	if _native_holds():
+		_native.set_skip_progress(k)
+	if _fill != null:
+		_fill.size = Vector2(_skip.size.x * k, _skip.size.y)
+	if _hold >= HOLD_SECS:
+		_finish()
 
 
 ## Skip comes up for 3.5 s: the engine's button, or, while the native player
@@ -516,16 +565,19 @@ func _unhandled_input(e: InputEvent) -> void:
 func _show_skip() -> void:
 	_skip_up = true
 	if _native != null:
-		_native.show_skip(true, "Skip")
+		_native.show_skip(true, HOLD_TEXT if _native_holds() else "Skip")
 	else:
 		create_tween().tween_property(_skip, "modulate:a", 1.0, 0.2)
 	var my_timer := get_tree().create_timer(3.5)
 	_skip_timer = my_timer
 	await my_timer.timeout
 	if _skip_timer == my_timer and not _done:
+		if _hold > 0.0:
+			_show_skip()   # (still being held: it stays)
+			return
 		_skip_up = false
 		if _native != null:
-			_native.show_skip(false, "Skip")
+			_native.show_skip(false, HOLD_TEXT if _native_holds() else "Skip")
 		else:
 			create_tween().tween_property(_skip, "modulate:a", 0.0, 0.4)
 

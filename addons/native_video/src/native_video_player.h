@@ -94,6 +94,11 @@ public:
 	void set_subtitle(const String &p_text);
 	// A Skip label at the top right, tapped to skip.
 	void show_skip(bool p_show, const String &p_text);
+	// True while a press that began on the Skip label is held down (hold to
+	// skip, 12 November: a stray tap doesn't skip the film).
+	bool is_skip_held() const;
+	// The hold's progress drawn across the Skip label (0..1).
+	void set_skip_progress(double p_progress);
 
 	// Events since the last call, as Event bits; also emits the matching
 	// signals. Call once a frame.

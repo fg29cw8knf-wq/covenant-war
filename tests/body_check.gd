@@ -637,6 +637,51 @@ func _scan_solids() -> void:
 		if _under_paper(mi) or _is_light(mi):
 			continue
 		_make_solid(mi)
+	# (12 November) the things drawn many at a time, each a solid of its own:
+	# the dry-stone walls along the fields (AshfordVillage.lay_walls), which
+	# Corin walked through coming down the hill to the tunnel's mouth and
+	# nothing here saw. Not grass or pebbles: only copies a body could walk
+	# into (MM_BIG across at the least, MM_THICK through).
+	for n in root.find_children("*", "MultiMeshInstance3D", true, false):
+		var mmi := n as MultiMeshInstance3D
+		var mm := mmi.multimesh
+		if mm == null or mm.mesh == null or not mmi.is_visible_in_tree() or mmi.has_meta("qa_skip"):
+			continue
+		var mb := mm.mesh.get_aabb()
+		if maxf(mb.size.x, maxf(mb.size.y, mb.size.z)) < MM_BIG * 0.5:
+			continue
+		var whole := mmi.global_transform * mmi.get_aabb()
+		var any_near := false
+		for p in near:
+			if whole.grow(2.5).has_point(p + Vector3(0, 0.9, 0)):
+				any_near = true
+				break
+		if not any_near:
+			continue
+		var cnt := mm.visible_instance_count if mm.visible_instance_count >= 0 else mm.instance_count
+		for i in cnt:
+			var key := "%d:%d" % [mmi.get_instance_id(), i]
+			var ixf := mm.get_instance_transform(i)
+			if cnt > 1 and ixf == Transform3D.IDENTITY:
+				continue   # (a copy never placed: it sits at the multimesh's own origin)
+			var bb := mmi.global_transform * (ixf * mb)
+			var big := maxf(bb.size.x, maxf(bb.size.y, bb.size.z))
+			var thin := minf(bb.size.x, minf(bb.size.y, bb.size.z))
+			if big < MM_BIG or thin < MM_THICK or big > MAX_MESH:
+				continue
+			var close := false
+			for p in near:
+				if bb.grow(2.5).has_point(p + Vector3(0, 0.9, 0)):
+					close = true
+					break
+			if not close:
+				continue
+			seen[key] = true
+			if _solids.has(key):
+				continue
+			_make_solid(mmi, ixf, key)
+			if OS.has_environment("BODY_DEBUG"):
+				print("BODY-DEBUG multimesh solid ", mmi.get_path(), " #", i, " at ", bb.get_center())
 	for id in _solids.keys():
 		if not seen.has(id):
 			PhysicsServer3D.free_rid(_solids[id].body)
@@ -680,13 +725,20 @@ func _under_paper(n: Node) -> bool:
 	return false
 
 
-func _make_solid(mi: MeshInstance3D) -> void:
+## One copy in a MultiMeshInstance3D counts as a solid this big across at
+## the least, and this thick (m).
+const MM_BIG := 0.8
+var _by_rid := {}   # a solid's body -> its key in _solids (a copy's isn't its node's id)
+const MM_THICK := 0.15
+
+func _make_solid(mi: GeometryInstance3D, inst := Transform3D(), key = null) -> void:
 	var sc := mi.global_transform.basis.get_scale()
-	var faces := mi.mesh.get_faces()
+	var mesh: Mesh = (mi as MeshInstance3D).mesh if mi is MeshInstance3D else (mi as MultiMeshInstance3D).multimesh.mesh
+	var faces := mesh.get_faces()
 	if faces.is_empty():
 		return
 	for i in faces.size():
-		faces[i] = faces[i] * sc
+		faces[i] = (inst * faces[i]) * sc
 	var shape := ConcavePolygonShape3D.new()
 	shape.backface_collision = true
 	shape.set_faces(faces)
@@ -704,7 +756,8 @@ func _make_solid(mi: MeshInstance3D) -> void:
 			fig_id = cur.get_instance_id()
 			break
 		cur = cur.get_parent()
-	_solids[mi.get_instance_id()] = {"mi": mi, "body": body, "shape": shape, "scale": sc, "xf": Transform3D(), "owner": fig_id, "faces": faces}
+	_by_rid[body] = key if key != null else mi.get_instance_id()
+	_solids[key if key != null else mi.get_instance_id()] = {"mi": mi, "body": body, "shape": shape, "scale": sc, "xf": Transform3D(), "owner": fig_id, "faces": faces}
 
 
 func _move_solids() -> void:
@@ -770,7 +823,7 @@ func _inside(p: Vector3, skip: Array) -> Array:
 ## Which way a hit face of a solid faces (world; its winding's normal, out
 ## of the closed surface).
 func _face_dir(hit: Dictionary) -> Vector3:
-	var s = _solids.get(int(hit.collider_id))
+	var s = _solids.get(_by_rid.get(hit.rid, int(hit.collider_id)))
 	if s == null:
 		return Vector3.ZERO
 	var fi := int(hit.get("face_index", -1))

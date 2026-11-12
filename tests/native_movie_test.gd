@@ -3,8 +3,10 @@ extends Node
 ## addons/native_video), driven here by a stand-in, since the real player
 ## exists only in the iPhone and Mac apps. Checks that OpeningMovie prefers it
 ## when the 4K film is in the bundle (nothing of the engine's shown), follows
-## its clock, shows its Skip on a tap and skips on the next, that E shows Skip
-## and a second E skips, that Esc skips at once, that the fade-out takes the
+## its clock, shows its "Hold to skip" on a tap, that a tap on it doesn't skip
+## and a hold of it does (12 November), that E shows it, a second E pressed
+## doesn't skip and E held does, that an older player without the hold skips
+## on a tap of its Skip as before, that Esc skips at once, that the fade-out takes the
 ## picture and the sound down together (not a cut) and stops the player, that
 ## the film's end ends the movie, and that without the film, when it won't
 ## open or can't be read, the Theora copy plays as before.
@@ -79,6 +81,8 @@ class FakePlayer:
 		skip_text = text
 	func tap() -> void: _queue |= 1
 	func press_skip() -> void: _queue |= 2
+
+
 	func poll() -> int:
 		polls += 1
 		var ev := _queue
@@ -105,6 +109,14 @@ class FakePlayer:
 				playing = false
 
 
+## The player as built since 12 November: its Skip is held down to skip.
+class HoldPlayer:
+	extends FakePlayer
+	var held := false
+	var progress := 0.0
+	func is_skip_held() -> bool: return held
+	func set_skip_progress(k: float) -> void: progress = k
+
 func _process(delta: float) -> void:
 	if stub != null:
 		stub.advance(delta)
@@ -112,6 +124,7 @@ func _process(delta: float) -> void:
 
 func _ready() -> void:
 	await _tap_and_skip()
+	await _old_player_tap()
 	await _keys()
 	await _esc()
 	await _runs_to_its_end()
@@ -125,8 +138,8 @@ func _ready() -> void:
 
 
 ## A new stand-in and a new movie over it.
-func _start(setup: Callable = Callable()) -> OpeningMovie:
-	stub = FakePlayer.new()
+func _start(setup: Callable = Callable(), old := false) -> OpeningMovie:
+	stub = FakePlayer.new() if old else HoldPlayer.new()
 	if setup.is_valid():
 		setup.call(stub)
 	OpeningMovie.native_stub = stub
@@ -197,10 +210,40 @@ func _tap_and_skip() -> void:
 	_check(not stub.skip_shown and not m._skip_up, "Skip goes away after 3.5 s")
 	stub.tap()
 	await frames(3)
-	_check(stub.skip_shown, "Skip is back on the next tap")
+	_check(stub.skip_shown and stub.skip_text == OpeningMovie.HOLD_TEXT, "\"Hold to skip\" is back on the next tap (%s)" % stub.skip_text)
+	# a tap on it (pressed and let go at once) doesn't skip
+	stub.held = true
+	await frames(2)
+	stub.held = false
 	stub.press_skip()
-	_check(await gone(m), "Skip ends the movie")
+	await secs(0.5)
+	_check(is_instance_valid(m) and not m._done, "a tap on Skip doesn't skip")
+	_check(stub.progress == 0.0, "the hold's fill goes back to nothing when let go (%.2f)" % stub.progress)
+	# held half a second, let go: nothing
+	stub.held = true
+	await secs(0.5)
+	_check(stub.progress > 0.3 and stub.progress < 0.7, "held half a second, Skip half filled (%.2f)" % stub.progress)
+	stub.held = false
+	await secs(0.3)
+	_check(is_instance_valid(m) and not m._done, "let go before a second, the film goes on")
+	# held a whole second: it skips
+	stub.held = true
+	_check(await gone(m, 2.0), "Skip held a second ends the movie")
 	_faded("tap and skip")
+
+
+## A player built before 12 November, without the hold: a tap on its Skip
+## skips, as it did.
+func _old_player_tap() -> void:
+	var m := await _start(Callable(), true)
+	await frames(6)
+	_native_up(m, "older player")
+	stub.tap()
+	await frames(3)
+	_check(stub.skip_shown and stub.skip_text == "Skip", "an older player shows its plain Skip (%s)" % stub.skip_text)
+	stub.press_skip()
+	_check(await gone(m), "an older player's Skip ends the movie on a tap")
+	_faded("older player")
 
 
 func _keys() -> void:
@@ -210,7 +253,12 @@ func _keys() -> void:
 	await press(KEY_E)
 	_check(stub.skip_shown and m._skip_up, "E shows Skip while the native player plays")
 	await press(KEY_E)
-	_check(await gone(m), "a second E skips")
+	await secs(0.3)
+	_check(is_instance_valid(m) and not m._done, "a second E pressed (not held) doesn't skip")
+	key(KEY_E, true)
+	var ok := await gone(m, 2.0)
+	key(KEY_E, false)
+	_check(ok, "E held a second skips")
 	_faded("keys")
 
 

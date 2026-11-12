@@ -633,6 +633,7 @@ func sync(v) -> void:
 			s.lamp.light_energy = 0.0
 			s.lamp.visible = false
 		_clear_marks(s)
+		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, 0.0)
 		_ring_state(s, v.highlight, Color(0.7, 0.6, 1.0), 0.35 * v.fade)
 		return
 	if id != s.card_id:
@@ -670,10 +671,13 @@ func sync(v) -> void:
 			s.lamp.light_color = DuelFX.light(t.element())
 			_load_model(s, id)
 	if t == null:
+		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, 0.0)
 		_ring_state(s, v.highlight, Color(0.55, 0.65, 1.0), 0.35 * v.fade)
 		return
 	var el: String = t.element()
 	var col := DuelFX.light(el)
+	# (12 November) the stone under it cracking as it's hurt (DuelCracks)
+	DuelCracks.sync(self, s, t, col, v.fade, get_process_delta_time())
 	# the creature: breathing, flipped for the rival, nudged by the 2D offset
 	var breathe := sin(_t * 2.1 + v.slot * 1.7)
 	var sx := 1.0 - 0.006 * breathe

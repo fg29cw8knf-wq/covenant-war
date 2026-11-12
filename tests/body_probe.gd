@@ -8,6 +8,9 @@ extends Node
 ##
 ##   godot --headless --path . res://tests/body_probe.tscn -- [model ...] [clips=idle,walk] [n=6]
 ##
+## (clips=stretch_20: the attic's waking stretch, Figure3D.stretch(), built
+## from the idle as the game builds it)
+##
 ## Prints a line a model and clip with anything found ("PROBE:"), and ends
 ## with each model's worst ("PROBE WORST:").
 
@@ -83,6 +86,11 @@ func _ready() -> void:
 			if seen.has(clip) or String(clip).begins_with("RESET"):
 				continue
 			seen[clip] = true
+			# (the waking stretch is built from the idle when first asked for:
+			# stretch_N is N tenths of a second long)
+			if String(clip).begins_with("stretch_") and not f.anim.has_animation(clip):
+				f.stretch(int(String(clip).substr(8)) / 10.0)
+				await _frames(2)
 			if not f._ensure(clip):
 				continue
 			var lines: Array = []

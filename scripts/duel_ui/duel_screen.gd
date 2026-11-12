@@ -4112,6 +4112,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		col = Color(1.0, 0.55, 0.2)
 	elif src == "poison":
 		col = Color(0.65, 1.0, 0.3)
+	elif String(info.get("element", "")) != "":
+		col = DuelFX.light(String(info.element))   # (a Rite's)
 	_impact(c, col, amount, st)
 	if amount >= 40:
 		punch(c, 0.025 + minf(float(amount), 120.0) * 0.0002)
@@ -4135,7 +4137,10 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 			story_bark("rival_guardian_hit")
 		if amount >= 60:
 			story_bark("my_big_hit")
-	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, Color("ffb347") if weak else Color("ff5a4a"), 96 if amount >= 50 else 80,
+	# (12 November, Gary's yes: the number in the blow's own colour, the
+	# element's, a little lighter so it reads; it was always red, or orange
+	# for a weakness, which still says so under it in gold)
+	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, hit_number_colour(col), 96 if amount >= 50 or weak else 80,
 		_read(1.1, "WEAK!" if weak else "") / speed, "WEAK!  ×1.5" if weak else "")
 	# knocked back, then settles (5 November: away from whatever struck it,
 	# and further the harder the blow)
@@ -4164,6 +4169,12 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 			await tutor.lesson("weakness", "See that? Every element hurts something and fears something. Twelve of them. Hit a Totem on the element it fears and the blow does half as much again; the little sign on every card says what it fears. The chart in the menu has all twelve, but you'll learn them the way I did: by getting hit.", "The elements", "foe:" + t.id())
 		elif t.owner == me:
 			await tutor.event("hit_mine")
+
+
+## A damage number's colour: the blow's (its element's light), drawn a
+## little towards white so even a dark one reads over the field.
+static func hit_number_colour(col: Color) -> Color:
+	return col.lerp(Color.WHITE, 0.18)
 
 
 ## The Health strip by a Totem that's just been hit (DuelViews.HitStrip):

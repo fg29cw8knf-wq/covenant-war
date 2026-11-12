@@ -109,8 +109,13 @@ using namespace godot;
 @property(nonatomic, strong) NVLabel *subtitle;
 @property(nonatomic, strong) NVLabel *skip;
 @property(nonatomic, copy) void (^onTap)(BOOL onSkip);
+// A press that began on the Skip label and hasn't ended (hold to skip).
+@property(atomic, assign) BOOL skipHeld;
+// The hold's progress drawn across the Skip label (0..1).
+@property(nonatomic, strong) CALayer *skipFill;
 - (void)setSubtitleText:(NSString *)text;
 - (void)setSkipText:(NSString *)text shown:(BOOL)shown;
+- (void)setSkipProgress:(CGFloat)k;
 - (void)placeLabels;
 @end
 
@@ -154,6 +159,10 @@ static const CGFloat NV_MARGIN = 28.0;
 		_skip.text = @"Skip";
 		_skip.hidden = YES;
 		[self addSubview:_skip];
+		_skipFill = [CALayer layer];
+		_skipFill.backgroundColor = [UIColor colorWithRed:0.93 green:0.80 blue:0.47 alpha:0.4].CGColor;
+		_skipFill.frame = CGRectZero;
+		[_skip.layer addSublayer:_skipFill];
 
 		UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(nvTapped:)];
 		tap.cancelsTouchesInView = YES;
@@ -165,6 +174,24 @@ static const CGFloat NV_MARGIN = 28.0;
 - (void)layoutSubviews {
 	[super layoutSubviews];
 	[self placeLabels];
+}
+
+// A press on Skip held down (the tap recognizer cancels the touch when it
+// recognises a tap, so up or cancelled, the hold is over).
+- (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	[super touchesBegan:touches withEvent:event];
+	CGPoint p = [touches.anyObject locationInView:self];
+	self.skipHeld = !self.skip.hidden && CGRectContainsPoint(CGRectInset(self.skip.frame, -24.0, -24.0), p);
+}
+
+- (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	[super touchesEnded:touches withEvent:event];
+	self.skipHeld = NO;
+}
+
+- (void)touchesCancelled:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+	[super touchesCancelled:touches withEvent:event];
+	self.skipHeld = NO;
 }
 
 - (void)nvTapped:(UITapGestureRecognizer *)g {
@@ -206,6 +233,14 @@ static const CGFloat NV_MARGIN = 28.0;
 	}
 	self.skip.hidden = !shown;
 	[self placeLabels];
+}
+
+- (void)setSkipProgress:(CGFloat)k {
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	CGRect b = self.skip.bounds;
+	self.skipFill.frame = CGRectMake(0.0, 0.0, b.size.width * MAX(0.0, MIN(1.0, k)), b.size.height);
+	[CATransaction commit];
 }
 
 #else // macOS
@@ -251,6 +286,10 @@ static const CGFloat NV_MARGIN = 28.0;
 		_skip.layer.borderWidth = 1.0;
 		_skip.hidden = YES;
 		[self addSubview:_skip];
+		_skipFill = [CALayer layer];
+		_skipFill.backgroundColor = [NSColor colorWithRed:0.93 green:0.80 blue:0.47 alpha:0.4].CGColor;
+		_skipFill.frame = CGRectZero;
+		[_skip.layer addSublayer:_skipFill];
 	}
 	return self;
 }
@@ -271,9 +310,14 @@ static const CGFloat NV_MARGIN = 28.0;
 - (void)mouseDown:(NSEvent *)event {
 	NSPoint p = [self convertPoint:event.locationInWindow fromView:nil];
 	BOOL onSkip = !self.skip.hidden && NSPointInRect(p, NSInsetRect(self.skip.frame, -24.0, -24.0));
+	self.skipHeld = onSkip;
 	if (self.onTap) {
 		self.onTap(onSkip);
 	}
+}
+
+- (void)mouseUp:(NSEvent *)event {
+	self.skipHeld = NO;
 }
 
 - (void)placeLabels {
@@ -299,6 +343,14 @@ static const CGFloat NV_MARGIN = 28.0;
 	}
 	self.skip.hidden = !shown;
 	[self placeLabels];
+}
+
+- (void)setSkipProgress:(CGFloat)k {
+	[CATransaction begin];
+	[CATransaction setDisableActions:YES];
+	NSRect b = self.skip.bounds;
+	self.skipFill.frame = CGRectMake(0.0, 0.0, b.size.width * MAX(0.0, MIN(1.0, k)), b.size.height);
+	[CATransaction commit];
 }
 
 #endif
@@ -396,6 +448,8 @@ void NativeVideoPlayer::_bind_methods() {
 
 	ClassDB::bind_method(D_METHOD("set_subtitle", "text"), &NativeVideoPlayer::set_subtitle);
 	ClassDB::bind_method(D_METHOD("show_skip", "show", "text"), &NativeVideoPlayer::show_skip, DEFVAL(String("Skip")));
+	ClassDB::bind_method(D_METHOD("is_skip_held"), &NativeVideoPlayer::is_skip_held);
+	ClassDB::bind_method(D_METHOD("set_skip_progress", "progress"), &NativeVideoPlayer::set_skip_progress);
 
 	ClassDB::bind_method(D_METHOD("poll"), &NativeVideoPlayer::poll);
 
@@ -687,6 +741,18 @@ void NativeVideoPlayer::show_skip(bool p_show, const String &p_text) {
 	NVPlayerState *state = nv_state(impl);
 	if (state.overlay) {
 		[state.overlay setSkipText:nv_ns(p_text) shown:p_show];
+	}
+}
+
+bool NativeVideoPlayer::is_skip_held() const {
+	NVPlayerState *state = nv_state(impl);
+	return state.overlay ? (bool)state.overlay.skipHeld : false;
+}
+
+void NativeVideoPlayer::set_skip_progress(double p_progress) {
+	NVPlayerState *state = nv_state(impl);
+	if (state.overlay) {
+		[state.overlay setSkipProgress:(CGFloat)p_progress];
 	}
 }
 
