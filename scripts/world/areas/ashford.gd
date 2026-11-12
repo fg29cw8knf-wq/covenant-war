@@ -237,6 +237,41 @@ static func surface_at(_w: World, at: Vector3) -> String:
 	return ""
 
 
+## What Ashford sounds like where the camera is looking (12 November:
+## World.ambience, for Ambience): the hearth in either taproom, a drip in
+## the cellar and the tunnel, the race at the mill; out of doors a house on
+## fire before anything, then the hour: birds and people by day, the first
+## crickets as the sun goes, the whole village talking on the festival
+## night, crickets and an owl on the dark night after, and nothing at all
+## on the morning the fires are out.
+static func ambience_at(w: World, at: Vector3) -> String:
+	if at.y < World.INDOORS_BELOW:
+		var flat := func(c: Vector3) -> float: return Vector2(at.x - c.x, at.z - c.z).length()
+		if flat.call(InnRooms.TAPROOM_AT) < 13.0 or flat.call(InnRooms.EVE_AT) < 13.0:
+			return "amb_fire"
+		if flat.call(InnRooms.CELLAR_AT) < 13.0 or at.x > AshfordNight.TUNNEL_AT.x - 13.0:
+			return "amb_cellar"
+		return ""   # (the attic: quiet)
+	if at.distance_to(MillSet.AT) < 80.0:
+		return "amb_river"
+	var v := village(w)
+	if v == null:
+		return ""
+	for h: Dictionary in v.houses:
+		if h.get("burning", false):
+			return "amb_burning"
+	if v.daylight > 0.6:
+		return "amb_green_day"
+	if v.daylight > 0.12:
+		return "amb_dusk"
+	match v.time_kind:
+		"festival":
+			return "amb_festival"
+		"dawn":
+			return ""
+	return "amb_night"
+
+
 # ================================================================== story ===
 
 ## P1 opens in the attic (intro(), AshfordP1.opening): nothing more to say

@@ -15,7 +15,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `scripts/ai/` | The computer opponent. |
 | `tests/` | Headless tests. `sim.gd` plays thousands of AI-vs-AI duels and checks the rules never break. |
 | `assets/art/` | The painted art, sized for the game: `cards/` (card paintings, 640 wide), `creatures/` (transparent battlefield cut-outs), `summons/` (Summon cut-outs and their sky scenes), `arenas/`, `gods/`, `card_back.jpg`, `icon.png`. Files are named by card id (see `scripts/duel_ui/duel_art.gd`); anything missing falls back to drawn placeholders. Prompts: `docs/card-prompts.md`. |
-| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`). |
+| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`; `amb_<name>.ogg`: each place's bed of sound, `tools/make_ambience.py`). |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
 ## Gary's standing rule (22 October): every update is built to the best look and flow
@@ -1801,6 +1801,41 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   "none", distance, the grounds, and the player run across the green by a
   tap; `white_sky_test` wants `step_snow` on the walk (29 on the walk to the
   crater) and `cry_orlanthe` at the landing.
+- **A quiet bed of sound for each place** (Gary, the same afternoon: "Yes
+  re sound effects", to "a quiet background sound for each place under its
+  music: the taproom's fire, birds and voices on the green, the Thornwood at
+  night" and "a splash at the river's edge, and a different sound for the
+  inn's stairs"). `Ambience` (`scripts/ui/ambience.gd`, made by
+  `Game._ready`) asks whichever world is showing, every `CHECK` seconds,
+  what its place sounds like (`World.ambience()`, which asks the area's
+  static `ambience_at(w, at)`, `at` the spot of ground the camera is looking
+  at: `World.cam_ground`), and eases to that bed over `FADE`, or to silence.
+  Nothing starts or stops one: a duel (the world hidden behind it), the
+  title screen, a world still waiting, a black screen (`CineOverlay.is_black`),
+  a film (`StoryFilm` counts itself into `Ambience.hush`) and Bram's memory
+  (`WhiteSky._hush`: its storm is its own) are all quiet by that. Eleven
+  loops of 24 s (`assets/sfx/amb_<name>.ogg`, about 240 KB each, made by
+  `tools/make_ambience.py` from layers: a breeze, leaves, birds, crickets,
+  an owl, far voices, a hearth, a house on fire, a river, a drip; each made
+  to join its own start; as unheard as the rest), played at `Ambience.DB`
+  under the sound-effects volume:
+  `amb_fire` both taprooms; `amb_cellar` the cellar and the smugglers'
+  tunnel; `amb_river` the mill and the Thornwood within `RIVER_HEARD` of its
+  river; on Ashford's green `amb_burning` while a house burns, else by the
+  hour: `amb_green_day` (`daylight` over 0.6), `amb_dusk`, `amb_festival`
+  (the festival night), `amb_night` (the dark night after), silence on the
+  dawn after the fires and in the attic; in the Thornwood by
+  `ThornwoodSet.scene_kind`: `amb_camp`, `amb_wood_day` (morning, the
+  ridge), `amb_night` (the road), silence in Bram's shelter; `amb_city` all
+  through Solhaven. A new place: give its area an `ambience_at`.
+  `tests/ambience_test.tscn` checks every one, the easing between two, and
+  each kind of silence; `white_sky_world` that no bed plays under the
+  memory.
+- **Two more grounds for the footsteps**: `step_stairs` (a tread rings
+  higher than the floor and creaks: anywhere indoors more than
+  `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the
+  attic's) and `step_water` (a splash: where the Thornwood's ground is under
+  its river, `Thornwood.surface_at`).
 - **The Codex** (`Codex.Detail`): a card opened turns over (`card_flip`); a
   creature of yours is heard as its card opens and again at a tap on its
   picture ("(Tap its picture to hear its voice.)" under Your Collection);
@@ -1868,6 +1903,8 @@ and Solhaven. Later the same day, with the footsteps and the Summons'
 voices: `steps_test` ok; `sfx_test` ok; `white_sky_test` headless PASS (29
 footsteps on the walk, Orlanthe's voice at its landing); `load_all`,
 `first_launch_test`, `white_sky_play_probe`, `duel_sim -- 100` as before.
+With the beds: `ambience_test` ok; `white_sky_world -- <dir> play` headless
+(no bed under the memory, none left hushed after it); the rest again.
 Not checked: how any of the sounds sound.
 
 ### Gary's 8 November evening notes (the memory, the morning, the green, the evening)
@@ -3791,11 +3828,13 @@ godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4    
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
+godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]
 python3 tools/make_cries.py [kind or Summon ...]                # the stand-in creature voices (assets/sfx/cry_<kind>.wav, cry_<summon>.wav)
 python3 tools/make_steps.py [ground ...]                        # the stand-in footsteps (assets/sfx/step_<ground>.wav and its takes)
+python3 tools/make_ambience.py [bed ...]                        # the places' beds of sound (assets/sfx/amb_<name>.ogg; needs ffmpeg)
 ```
 
 The summary line must report `0 invariant errors`.

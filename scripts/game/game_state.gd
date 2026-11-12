@@ -52,6 +52,7 @@ func _ready() -> void:
 	load_settings_only()
 	Gfx.setup(get_tree())
 	Sfx.watch_buttons(get_tree())   # (12 November: every button clicks)
+	Ambience.start(get_tree())      # (...and each place has its own quiet bed of sound)
 
 
 func _process(delta: float) -> void:

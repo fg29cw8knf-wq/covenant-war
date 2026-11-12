@@ -231,6 +231,12 @@ func bars(on: bool, secs := 0.7) -> void:
 	_layout()
 
 
+## Whether the screen is wholly black now (12 November: a place isn't
+## heard while it can't be seen, World.ambience).
+func is_black() -> bool:
+	return _black != null and _black.modulate.a >= 0.98
+
+
 ## Black at once (true) or clear at once (false): the first frame of a film.
 func black(on: bool) -> void:
 	_black.modulate.a = 1.0 if on else 0.0

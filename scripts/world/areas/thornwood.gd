@@ -44,8 +44,37 @@ static func village(w: Node) -> ThornwoodSet:
 ## Underfoot (12 November: footsteps): Bram's shelter under the rise is
 ## trodden earth; the wood itself is the world's own rule (its paths dirt,
 ## the rest grass).
-static func surface_at(_w: World, at: Vector3) -> String:
-	return "dirt" if at.y < World.INDOORS_BELOW else ""
+static func surface_at(w: World, at: Vector3) -> String:
+	if at.y < World.INDOORS_BELOW:
+		return "dirt"
+	# (later the same day: a splash where the ground is under the river)
+	var v := village(w)
+	if v != null and v.height(at.x, at.z) < ThornwoodSet.WATER_Y:
+		return "water"
+	return ""
+
+
+## What the Thornwood sounds like where the camera is looking (12 November:
+## World.ambience): the river within earshot of it; else by the part of the
+## wood that's lit (ThornwoodSet.scene_kind): the fire in the clearing on
+## the first night, birds by morning and on the ridge at dawn, crickets and
+## an owl on the road. Bram's shelter is quiet.
+const RIVER_HEARD := 16.0
+
+static func ambience_at(w: World, at: Vector3) -> String:
+	if at.y < World.INDOORS_BELOW:
+		return ""
+	var v := village(w)
+	if v == null:
+		return ""
+	if absf(at.z - (ThornwoodSet.RIVER_Z + 3.0 * sin(at.x / 25.0))) < RIVER_HEARD:
+		return "amb_river"
+	match v.scene_kind:
+		"camp":
+			return "amb_camp"
+		"morning", "ridge":
+			return "amb_wood_day"
+	return "amb_night"
 
 
 ## The first frame: black, before anything is seen.

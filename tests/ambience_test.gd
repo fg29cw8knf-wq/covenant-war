@@ -1,0 +1,191 @@
+extends Node3D
+## The places' beds of sound (12 November): every bed a place can ask for is
+## there, loads and goes round; Ashford asks for the right one by where the
+## camera looks (the taprooms, the cellar, the attic, the mill), by the hour
+## (day, dusk, the festival night, the dark night, the dawn after) and when
+## a house burns; the Thornwood by the river and by its part; Solhaven its
+## streets; a world hidden behind a duel, waiting, behind the title screen
+## or under a black screen is silent, and so is everything while a film plays; and the player eases
+## from one bed to the next. Also the two new grounds: the inn's stairs and
+## the river's shallows.
+## Run: godot --headless --path . --fixed-fps 30 res://tests/ambience_test.tscn [-- list]
+## Ends "AMBIENCE: ok" or the problems.
+
+var _bad: Array = []
+var _show := false
+const BEDS := ["amb_fire", "amb_cellar", "amb_green_day", "amb_dusk", "amb_night", "amb_festival", "amb_burning", "amb_wood_day", "amb_river", "amb_camp", "amb_city"]
+
+
+func _ready() -> void:
+	_show = "list" in OS.get_cmdline_user_args()
+	get_tree().root.theme = UITheme.make()
+	for b: String in BEDS:
+		var s := Ambience.loop_of(b)
+		if s == null:
+			_bad.append("no bed %s (assets/sfx/%s.ogg: tools/make_ambience.py)" % [b, b])
+		elif s.get_length() < 10.0:
+			_bad.append("%s is only %.1f s long" % [b, s.get_length()])
+		elif s is AudioStreamOggVorbis and not (s as AudioStreamOggVorbis).loop:
+			_bad.append("%s doesn't go round" % b)
+	for g: String in ["stairs", "water"]:
+		if not Sfx.has_file("step_" + g) or not Sfx.has_file("step_%s_2" % g):
+			_bad.append("no footstep (or only one take) for %s" % g)
+	await _ashford()
+	await _thornwood()
+	await _solhaven()
+	for b in _bad:
+		print("  problem: ", b)
+	print("AMBIENCE: ok" if _bad.is_empty() else "AMBIENCE: %d problem(s)" % _bad.size())
+	get_tree().quit(0 if _bad.is_empty() else 1)
+
+
+func _want(w: World, what: String, bed: String) -> void:
+	var got := w.ambience()
+	if _show:
+		print("%-44s %s" % [what, got if got != "" else "(silence)"])
+	if got != bed:
+		_bad.append("%s: '%s', not '%s'" % [what, got, bed])
+
+
+## The world's camera put over a spot, looking down at it as the game's does.
+func _look(w: World, at: Vector3) -> void:
+	w.cam.global_position = at + Vector3(0, 6.0, 8.0)
+	w.cam.look_at(at + Vector3(0, 1.0, 0))
+
+
+func _ashford() -> void:
+	Game.new_game("Sprout", "tidegrove")
+	Game.settings["first_steps"] = 2
+	for f in ["arrived_ashford", "ash_started", "p1_crate_down", "corin_met", "first_deck"]:
+		Game.set_flag(f)
+	Game.set_flag("p1_stage", "done")
+	var w := World.new().setup("ashford", "green")
+	add_child(w)
+	for k in 20:
+		await get_tree().process_frame
+	w.cine = true   # (the camera stays where the test puts it)
+	var v := w.get_meta("village") as AshfordVillage
+	var green := w.player.global_position
+	_look(w, green)
+	v.set_daylight(1.0)
+	_want(w, "Ashford's green by day", "amb_green_day")
+	v.set_daylight(0.3)
+	_want(w, "the green as the sun goes", "amb_dusk")
+	v.set_daylight(0.0)
+	v.time_kind = "festival"
+	_want(w, "the green on the festival night", "amb_festival")
+	v.time_kind = "burning"
+	_want(w, "the green on the dark night after", "amb_night")
+	v.time_kind = "dawn"
+	_want(w, "the green the morning the fires are out", "")
+	v.time_kind = "festival"
+	if v.houses.size() > 0:
+		(v.houses[0] as Dictionary)["burning"] = true
+		_want(w, "the green with a house on fire", "amb_burning")
+		(v.houses[0] as Dictionary)["burning"] = false
+	for row: Array in [[InnRooms.TAPROOM_AT + Vector3(1, 0, 0.5), "the taproom", "amb_fire"], [InnRooms.EVE_AT + Vector3(-1, 0, 1), "the taproom of an evening", "amb_fire"],
+			[InnRooms.CELLAR_AT + Vector3(0, 0, 1), "the cellar", "amb_cellar"], [AshfordNight.TUNNEL_AT + Vector3(2, 0, 0), "the smugglers' tunnel", "amb_cellar"],
+			[InnRooms.ATTIC_AT + Vector3(0.5, 0, 0), "the attic", ""], [MillSet.AT + Vector3(2, 0, 3), "the mill", "amb_river"]]:
+		_look(w, row[0])
+		_want(w, String(row[1]), String(row[2]))
+	# the grounds: the stairs in the cellar, three treads up
+	if w.surface_at(InnRooms.CELLAR_AT + Vector3(3.0, 0.9, 1.0)) != "stairs":
+		_bad.append("three treads up the cellar stairs the ground is '%s'" % w.surface_at(InnRooms.CELLAR_AT + Vector3(3.0, 0.9, 1.0)))
+	if w.surface_at(InnRooms.CELLAR_AT + Vector3(-1.0, 0.0, 0.5)) != "stone":
+		_bad.append("the cellar's floor is '%s'" % w.surface_at(InnRooms.CELLAR_AT + Vector3(-1.0, 0.0, 0.5)))
+	if w.surface_at(InnRooms.EVE_AT + Vector3(-2.0, 1.4, 2.9)) != "stairs":
+		_bad.append("halfway up the attic stairs the ground is '%s'" % w.surface_at(InnRooms.EVE_AT + Vector3(-2.0, 1.4, 2.9)))
+	# the player easing from one bed to the next, and to silence when the world is put away
+	_look(w, green)
+	v.set_daylight(1.0)
+	await get_tree().create_timer(Ambience.FADE + Ambience.CHECK + 0.4).timeout
+	if Ambience.bed() != "amb_green_day" or Ambience.gain_of("amb_green_day") < 0.95:
+		_bad.append("the green's bed isn't playing in full (%s, %.2f)" % [Ambience.bed(), Ambience.gain_of("amb_green_day")])
+	_look(w, InnRooms.TAPROOM_AT)
+	await get_tree().create_timer(Ambience.CHECK + Ambience.FADE * 0.5).timeout
+	var a := Ambience.gain_of("amb_green_day")
+	var b := Ambience.gain_of("amb_fire")
+	if _show:
+		print("half-way from the green to the taproom: the green %.2f, the hearth %.2f" % [a, b])
+	if Ambience.bed() != "amb_fire" or a <= 0.05 or a >= 0.95 or b <= 0.05 or b >= 0.95:
+		_bad.append("half-way from the green's bed to the hearth's: %s, %.2f and %.2f" % [Ambience.bed(), a, b])
+	# a film: its own soundtrack
+	Ambience.hush += 1
+	await get_tree().create_timer(Ambience.CHECK + 0.1).timeout
+	if Ambience.bed() != "":
+		_bad.append("a bed plays under a film: %s" % Ambience.bed())
+	Ambience.hush -= 1
+	# behind a duel: hidden and stopped, as Main does it
+	w.visible = false
+	w.process_mode = Node.PROCESS_MODE_DISABLED
+	_want(w, "the world behind a duel", "")
+	await get_tree().create_timer(Ambience.FADE + Ambience.CHECK + 0.4).timeout
+	if Ambience.bed() != "" or Ambience.gain_of("amb_fire") > 0.0:
+		_bad.append("a bed is still playing behind a duel (%s, %.2f)" % [Ambience.bed(), Ambience.gain_of("amb_fire")])
+	w.visible = true
+	w.process_mode = Node.PROCESS_MODE_INHERIT
+	w.attract = true
+	_want(w, "the world behind the title screen", "")
+	w.attract = false
+	w.held = true
+	_want(w, "a world waiting to start", "")
+	w.held = false
+	w.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _thornwood() -> void:
+	var w := World.new().setup("thornwood", "river")
+	add_child(w)
+	for k in 20:
+		await get_tree().process_frame
+	w.cine = true
+	# (the wood opens on a black screen, and a place isn't heard under one)
+	_want(w, "the Thornwood under its opening's black", "")
+	Cine.overlay(w).black(false)
+	var v := w.get_meta("village") as ThornwoodSet
+	var S: Dictionary = ThornwoodSet.SPOTS
+	_look(w, S.near_bank)
+	_want(w, "the Thornwood's river bank", "amb_river")
+	v.set_scene("camp")
+	_look(w, S.camp)
+	_want(w, "the camp on the first night", "amb_camp")
+	v.set_scene("morning")
+	_want(w, "the camp by morning", "amb_wood_day")
+	v.set_scene("road")
+	_look(w, S.road)
+	_want(w, "the road at night", "amb_night")
+	v.set_scene("ridge")
+	_look(w, S.ridge)
+	_want(w, "the ridge at dawn", "amb_wood_day")
+	_look(w, ThornwoodShelter.ROOM_AT + Vector3(0.5, 0, 0.5))
+	_want(w, "Bram's shelter", "")
+	# the grounds: in the river, on its bank
+	var mid := Vector3(S.near_bank.x, 0, ThornwoodSet.RIVER_Z + 3.0 * sin(S.near_bank.x / 25.0))
+	var in_water := v.height(mid.x, mid.z) < ThornwoodSet.WATER_Y
+	if _show:
+		print("the river's bed at its middle: %.2f (the water at %.2f)" % [v.height(mid.x, mid.z), ThornwoodSet.WATER_Y])
+	if in_water and w.surface_at(Vector3(mid.x, v.height(mid.x, mid.z), mid.z)) != "water":
+		_bad.append("in the river the ground is '%s'" % w.surface_at(mid))
+	if not in_water:
+		_bad.append("the river's bed isn't under its water at its middle")
+	var bank := Vector3(S.camp.x + 3.0, 0, S.camp.z)
+	if w.surface_at(bank) == "water":
+		_bad.append("the camp is under water")
+	w.queue_free()
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+
+func _solhaven() -> void:
+	var w := World.new().setup("solhaven", "gate")
+	add_child(w)
+	for k in 20:
+		await get_tree().process_frame
+	Cine.overlay(w).black(false)
+	_want(w, "Solhaven's gate", "amb_city")
+	Cine.overlay(w).black(true)
+	_want(w, "Solhaven under a black screen", "")
+	w.queue_free()
+	await get_tree().process_frame

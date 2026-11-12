@@ -121,6 +121,12 @@ static func set_of(w: Node) -> Node3D:
 	return w.get_meta("solhaven_set") as Node3D
 
 
+## What Solhaven sounds like (12 November: World.ambience, for Ambience): a
+## city going about its day, wherever in it the camera looks.
+static func ambience_at(_w: World, _at: Vector3) -> String:
+	return "amb_city"
+
+
 ## The first frame: black, before the gate film.
 static func intro_frame(w: World) -> void:
 	w.cine = true

@@ -306,8 +306,24 @@ func _sound(nm: String, db: float, loop: bool) -> AudioStreamPlayer:
 
 # ================================================================== play ===
 
+## Keeps the place's bed of sound (Ambience) out of the memory while it
+## plays, and lets it back after; however the memory ends, or is taken away.
+var _hushed := false
+
+func _hush(on: bool) -> void:
+	if on == _hushed:
+		return
+	_hushed = on
+	Ambience.hush = maxi(0, Ambience.hush + (1 if on else -1))
+
+
+func _exit_tree() -> void:
+	_hush(false)
+
+
 ## Plays the whole memory; returns once it has ended on black.
 func play() -> void:
+	_hush(true)   # (the storm is this memory's own sound: no bed from the world it's played over)
 	_ov = Cine.overlay(w) if w != null else _own_overlay()
 	if w != null:
 		_ov.black(false)
@@ -1893,6 +1909,7 @@ func _close() -> void:
 	Game.settings["seen_white_sky"] = true
 	Game.save_settings()
 	_done = true
+	_hush(false)
 	finished.emit()
 
 

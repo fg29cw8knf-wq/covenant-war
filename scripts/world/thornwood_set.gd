@@ -534,7 +534,10 @@ func build_grass_here() -> void:
 ##            the fire burned down to embers
 ##   "road"   a dark blue night, the last of the dusk in the west
 ##   "ridge"  dawn over the plains, Solhaven catching the sun
+var scene_kind := "river"   # (the part lit now: Thornwood.ambience_at reads it)
+
 func set_scene(kind: String) -> void:
+	scene_kind = kind
 	var sol: Node3D = get_meta("solhaven") if has_meta("solhaven") else null
 	if sol != null:
 		sol.visible = kind == "ridge"

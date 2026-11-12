@@ -505,6 +505,16 @@ func _fade_out(secs: float) -> void:
 	queue_free()
 
 
+## (12 November) a film has its own soundtrack: the place's bed of sound
+## (Ambience) is quiet while one plays.
+func _enter_tree() -> void:
+	Ambience.hush += 1
+
+
+func _exit_tree() -> void:
+	Ambience.hush = maxi(0, Ambience.hush - 1)
+
+
 func _ready() -> void:
 	layer = 12   # over the 3D world, under the movie bars and subtitles (14)
 	_root = Control.new()

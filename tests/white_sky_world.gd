@@ -51,6 +51,7 @@ func _shot(nm: String) -> void:
 
 var _trace_n := 0
 var _found := false
+var _beds: Array = []
 
 func _process(delta: float) -> void:
 	_t += delta
@@ -69,14 +70,20 @@ func _process(delta: float) -> void:
 				_found = true
 				print("[%.1f] memory begins" % _t)
 		return
+	# (12 November: the world's own bed of sound, the green's birds or the
+	# attic's quiet, kept out of the memory: its storm is its own)
+	if is_instance_valid(m) and not m._done and Ambience.bed() != "" and not _beds.has(Ambience.bed()):
+		_beds.append(Ambience.bed())
+		print("[%.1f] PROBLEM: the bed '%s' plays under the memory" % [_t, Ambience.bed()])
 	if not is_instance_valid(m) or m._done:
 		if _done_at < 0.0:
 			_done_at = _t
-			print("[%.1f] memory over" % _t)
+			print("[%.1f] memory over (beds heard under it: %s; hush now %d)" % [_t, _beds, Ambience.hush])
 		if _t - _done_at < 8.0 and _t >= _next:
 			_next = _t + 0.5
 			_shot("after")
 		if _t - _done_at > 8.0:
+			print("after the memory: the bed is '%s', hush %d" % [Ambience.bed(), Ambience.hush])
 			print("WHITE SKY WORLD: done")
 			get_tree().quit()
 		return

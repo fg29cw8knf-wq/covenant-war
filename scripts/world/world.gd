@@ -104,18 +104,23 @@ func setup(p_area: String, spawn: String) -> World:
 
 ## What the ground is made of at a place, for footsteps (12 November: asked
 ## by each Figure3D in this world as a foot comes down): "grass", "dirt",
-## "wood", "stone", or "" for no
-## sound. The area says if it knows better (a static surface_at(w, at));
+## "wood", "stone", "stairs", "water", or "" for
+## no sound. The area says if it knows better (a static surface_at(w, at));
 ## otherwise the rooms, which all sit far below the ground (INDOORS_BELOW),
 ## are boards, a village's or a wood's paths are dirt and the rest grass, and
 ## anywhere else (Solhaven's streets) is stone. Nothing is heard from a world
 ## that is waiting under the title screen or drifting behind it.
 const INDOORS_BELOW := -20.0
+const INDOOR_FLOOR := -40.0   # every room's floor (InnRooms.*_AT, ThornwoodShelter.ROOM_AT)
+const STAIR_RISE := 0.15      # this far above a room's floor is on its stairs
 const PATH_FROM := 0.3
 
 func surface_at(at: Vector3) -> String:
 	if attract or held or not visible:
 		return ""
+	# (the inn's stairs, wherever they are: nothing else indoors is walked on above the floor)
+	if at.y < INDOORS_BELOW and at.y > INDOOR_FLOOR + STAIR_RISE:
+		return "stairs"
 	if area != null and area.has_method("surface_at"):
 		var own := String(area.call("surface_at", self, at))
 		if own != "":
@@ -128,7 +133,38 @@ func surface_at(at: Vector3) -> String:
 	return "stone"
 
 
+## What this place sounds like now, under its music (12 November: Ambience
+## asks, a few times a second): a bed's name (assets/sfx/amb_<name>), or ""
+## for silence. The area decides (a static ambience_at(w, at), `at` the spot
+## of ground the camera is looking at); a world that isn't showing, is
+## behind the title screen, or is under a black screen, is silent.
+func ambience() -> String:
+	if attract or held or cam == null or not is_inside_tree() or not is_visible_in_tree() or process_mode == Node.PROCESS_MODE_DISABLED:
+		return ""
+	# (nor while the screen is black: a place comes in with its picture, and
+	# goes with it, at a scene's first frame as at a fade)
+	if has_meta("cine_overlay") and is_instance_valid(get_meta("cine_overlay")) and (get_meta("cine_overlay") as CineOverlay).is_black():
+		return ""
+	if area != null and area.has_method("ambience_at"):
+		return String(area.call("ambience_at", self, cam_ground()))
+	return ""
+
+
+## The spot of ground the camera is looking at: the place on screen, whoever
+## is standing where (a film's camera can be a street away from the player).
+func cam_ground() -> Vector3:
+	var from := cam.global_position
+	var fwd := -cam.global_basis.z
+	var floor_y := INDOOR_FLOOR if from.y < INDOORS_BELOW else (player.global_position.y if player != null else 0.0)
+	if fwd.y < -0.05:
+		var t := (floor_y - from.y) / fwd.y
+		if t > 0.0 and t < 200.0:
+			return from + fwd * t
+	return from
+
+
 func _ready() -> void:
+	add_to_group(Ambience.GROUP)
 	VoiceLines.warm()
 	if area == null:
 		setup(Game.area, Game.spawn)

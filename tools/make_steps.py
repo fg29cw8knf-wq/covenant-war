@@ -4,7 +4,8 @@
 Writes four takes of one footfall on each kind of ground to
 assets/sfx/step_<ground>.wav, step_<ground>_2.wav ... (Sfx picks a take at
 random, and moves its pitch and loudness a little each time): snow, grass,
-dirt, wood, stone. Built from nothing, as the creature voices are
+dirt, wood, stone, and (later the same day) the inn's stairs and the river's
+shallows. Built from nothing, as the creature voices are
 (tools/make_cries.py, whose tools these use): shaped noise, a thump, a
 knock. A recording saved under the same name is used instead.
 
@@ -128,8 +129,49 @@ def stone(r):
     return place([(0.0, norm(tap) * 0.8), (0.0, norm(body) * 0.7), (0.012, norm(scuff) * 0.22)])
 
 
-GROUNDS = {"snow": snow, "grass": grass, "dirt": dirt, "wood": wood, "stone": stone}
-ROOM = {"snow": (0.03, 0.05), "grass": (0.04, 0.07), "dirt": (0.04, 0.08), "wood": (0.07, 0.16), "stone": (0.09, 0.2)}
+def stairs(r):
+    """A tread of the inn's stairs: the board rings higher than a floor's, and creaks."""
+    secs = 0.22
+    n = n_of(secs)
+    hit = np.zeros(n)
+    k = n_of(0.003)
+    hit[:k] = r.standard_normal(k) * np.hanning(k)
+    f = r.uniform(1.25, 1.5)
+    knock = formants(hit, [(150 * f, 22, 1.0), (330 * f, 40, 0.9), (610 * f, 80, 0.5), (1150 * f, 260, 0.2)])
+    heel = band(r.standard_normal(n_of(0.012)), 1800, 5200) * env(0.012, 0.1, 0.1, 0.8)
+    c_secs = r.uniform(0.1, 0.16)
+    pulses = np.zeros(n_of(c_secs))
+    at = 0.0
+    rate = r.uniform(130, 210)
+    while at < len(pulses) - 1:
+        pulses[int(at)] = r.uniform(0.5, 1.0)
+        at += SR / (rate * r.uniform(0.85, 1.2))
+        rate *= 1.03
+    creak = formants(pulses, [(720 * f, 60, 1.0), (1500 * f, 150, 0.5)]) * env(c_secs, 0.3, 0.3, 0.4)
+    return place([(0.0, norm(knock)), (0.0, norm(heel) * 0.25), (0.035, norm(creak) * r.uniform(0.14, 0.26))])
+
+
+def water(r):
+    """A foot into the shallows: the slap of it, the water closing after."""
+    secs = r.uniform(0.26, 0.34)
+    n = n_of(secs)
+    slap = band(r.standard_normal(n), 600, 6500) * env(secs, 0.03, 0.12, 0.85, 2.2)
+    spray = band(grains(secs, r.uniform(500, 900), r, 0.6), 3000, 9000) * env(secs, 0.1, 0.3, 0.6, 1.6)
+    plop_t = np.arange(n_of(0.09)) / SR
+    plop = np.sin(2 * np.pi * np.cumsum(np.interp(plop_t, [0, 0.09], [r.uniform(380, 460), 190.0])) / SR) * np.exp(-plop_t * 30.0)
+    parts = [(0.0, norm(slap) * 0.9 + norm(spray) * 0.3), (0.008, plop * 0.45)]
+    at = 0.06
+    for _ in range(int(r.integers(3, 6))):
+        b_secs = r.uniform(0.02, 0.05)
+        f = np.interp(np.arange(n_of(b_secs)) / SR, [0, b_secs], [r.uniform(500, 1500), r.uniform(900, 2400)])
+        parts.append((at, np.sin(2 * np.pi * np.cumsum(f) / SR) * np.hanning(len(f)) * r.uniform(0.12, 0.3)))
+        at += r.uniform(0.03, 0.07)
+    return place(parts)
+
+
+GROUNDS = {"snow": snow, "grass": grass, "dirt": dirt, "wood": wood, "stone": stone, "stairs": stairs, "water": water}
+ROOM = {"snow": (0.03, 0.05), "grass": (0.04, 0.07), "dirt": (0.04, 0.08), "wood": (0.07, 0.16), "stone": (0.09, 0.2),
+    "stairs": (0.08, 0.18), "water": (0.05, 0.1)}
 
 
 def finish(x):
