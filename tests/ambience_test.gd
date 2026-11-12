@@ -305,6 +305,9 @@ func _weather(w: World, v: AshfordVillage) -> void:
 	w.cine = false
 	wx.bow = 0.0
 	wx._bow_left = 0.0
+	_splashes(w, v, wx, n)
+	_fireflies(w, v, wx)
+	_leaves(w, v, wx)
 	# the mist: on the morning after the fires, and only then
 	wx._process(1.0)
 	if wx.mist > 0.0 or wx._mist.emitting:
@@ -325,6 +328,153 @@ func _weather(w: World, v: AshfordVillage) -> void:
 		_bad.append("breath shows on a festival day")
 	w.cine = true
 	wx.set_process(true)
+
+
+## A foot down in a puddle: water underfoot while there is water in it,
+## the path's dirt once it has dried; and a splash goes up from it.
+func _splashes(w: World, v: AshfordVillage, wx: Weather, puddles: int) -> void:
+	if wx._puddle_at.size() != puddles:
+		_bad.append("%d puddles drawn and %d known for stepping in" % [puddles, wx._puddle_at.size()])
+		return
+	var widest: Array = wx._puddle_at[0]
+	for row: Array in wx._puddle_at:
+		if float(row[1]) > float(widest[1]):
+			widest = row
+		if float(row[1]) < 0.15 or float(row[1]) > 0.7:
+			_bad.append("a puddle to be stepped in from %.2f m off" % float(row[1]))
+	var c: Vector2 = widest[0]
+	var mid := Vector3(c.x, v.ground_y(c.x, c.y), c.y)
+	var beside := mid + Vector3(float(widest[1]) + 0.25, 0.0, 0.0)
+	wx.wet = 1.0
+	if w.surface_at(mid) != "water":
+		_bad.append("in a full puddle the ground is '%s'" % w.surface_at(mid))
+	if w.surface_at(beside) == "water":
+		_bad.append("a step beside a puddle is in the water")
+	var was := wx.splashes
+	w.stepped_at(mid, w.surface_at(mid))
+	w.stepped_at(beside, w.surface_at(beside))
+	if wx.splashes != was + 1:
+		_bad.append("a step in a puddle and one beside it made %d splashes" % (wx.splashes - was))
+	var ring := (wx._splash_pool[(wx._splash_turn + wx._splash_pool.size() - 1) % wx._splash_pool.size()] as Node3D)
+	if ring.global_position.distance_to(mid) > 0.1 or not (ring.get_node("Ring") as MeshInstance3D).visible:
+		_bad.append("the splash isn't where the foot came down")
+	wx.wet = Weather.SPLASH_FROM * 0.5
+	if w.surface_at(mid) != "dirt":
+		_bad.append("in a puddle all but dry the ground is '%s'" % w.surface_at(mid))
+	was = wx.splashes
+	w.stepped_at(mid, "water")
+	if wx.splashes != was:
+		_bad.append("a puddle all but dry splashed")
+	wx.wet = 0.0
+	if _show:
+		print("%d puddles to step in; the widest takes a foot from %.2f m" % [wx._puddle_at.size(), float(widest[1])])
+
+
+## Fireflies: over the green on the festival night, and not by day, on the
+## morning after, or once a house is alight.
+func _fireflies(w: World, v: AshfordVillage, wx: Weather) -> void:
+	var day := v.daylight
+	var kind := v.time_kind
+	wx._process(1.0)
+	if wx.flies > 0.0 or wx._flies.emitting:
+		_bad.append("fireflies by day")
+	v.daylight = 0.0
+	v.time_kind = "festival"
+	wx._process(1.0)
+	if wx.flies < 1.0 or not wx._flies.emitting or not wx._flies.visible:
+		_bad.append("no fireflies on the green on the festival night")
+	# where they come out: over the green's ground, clear of the walls
+	var low := 0
+	var walled := 0
+	for spot: Vector3 in wx.fly_spots:
+		var over := spot.y - v.ground_y(spot.x, spot.z)
+		if over < float(Weather.FIREFLY_UP[0]) - 0.01 or over > float(Weather.FIREFLY_UP[1]) + 0.01:
+			low += 1
+		for f in v.footprints:
+			if Vector2(spot.x, spot.z).distance_to(f[0]) < float(f[1]) + 0.5:
+				walled += 1
+				break
+	if wx.fly_spots.size() < 200 or low > 0 or walled > 0:
+		_bad.append("%d places for a firefly to come out: %d not over the grass, %d in a wall" % [wx.fly_spots.size(), low, walled])
+	if _show:
+		print("%d places for a firefly to come out, %d on screen at once" % [wx.fly_spots.size(), wx._flies.amount])
+	if not v.houses.is_empty():
+		var h: Dictionary = v.houses[0]
+		var lit: bool = h.get("burning", false)
+		h["burning"] = true
+		wx._process(1.0)
+		if wx.flies > 0.0 or wx._flies.emitting:
+			_bad.append("fireflies with a house on fire")
+		h["burning"] = lit
+		wx._process(1.0)
+	v.sigil_on = true
+	wx._process(1.0)
+	if wx.flies > 0.0:
+		_bad.append("fireflies under the torn sky")
+	v.sigil_on = false
+	wx._process(1.0)
+	w.cine = true   # (a staged scene on the festival night keeps them: they are part of the night)
+	wx._process(1.0)
+	if wx.flies < 1.0:
+		_bad.append("a staged scene on the festival night has no fireflies")
+	w.cine = false
+	v.time_kind = "dawn"
+	wx._process(1.0)
+	if wx.flies > 0.0 or wx._flies.emitting:
+		_bad.append("fireflies on the morning after the fires")
+	v.time_kind = "burning"
+	wx._process(1.0)
+	if wx.flies > 0.0:
+		_bad.append("fireflies on the night of the fires")
+	v.time_kind = kind
+	v.daylight = day
+	wx._process(1.0)
+
+
+## Leaves: a few come down over the spot on screen every so often by day,
+## from the side the nearest oak stands on; none at night or in a staged scene.
+func _leaves(w: World, v: AshfordVillage, wx: Weather) -> void:
+	var day := v.daylight
+	var at := w.cam_ground()
+	if v.oaks.is_empty():
+		_bad.append("no oaks in Ashford for leaves to come from")
+		return
+	v.daylight = 1.0
+	var was := wx.leaf_falls
+	var secs := int(float(Weather.LEAF_EVERY[1]) * 3.0)
+	for k in secs:
+		wx._process(1.0)
+	var falls := wx.leaf_falls - was
+	if falls < 2 or falls > int(secs / float(Weather.LEAF_EVERY[0])) + 1:
+		_bad.append("%d falls of leaves in %d s of day" % [falls, secs])
+	# the last one: over the spot on screen, towards the nearest oak
+	var last := wx._leaf_pool[(wx._leaf_turn + wx._leaf_pool.size() - 1) % wx._leaf_pool.size()] as CPUParticles3D
+	var off := last.global_position - at
+	var wind := wx.leaf_wind(at)
+	var up := last.global_position.y - maxf(at.y, v.ground_y(last.global_position.x, last.global_position.z))
+	var back := -Vector3(off.x, 0, off.z).dot(wind)
+	var aside := absf(Vector3(off.x, 0, off.z).dot(wind.cross(Vector3.UP)))
+	if up < float(Weather.LEAF_UP[0]) - 0.01 or up > float(Weather.LEAF_UP[1]) + 0.01 or absf(back - Weather.LEAF_UPWIND) > 0.05 or aside > Weather.LEAF_ASIDE + 0.05:
+		_bad.append("leaves let go %.1f m up, %.1f m upwind and %.1f m aside of the spot on screen" % [up, back, aside])
+	if last.direction.y > -0.7 or Vector3(last.direction.x, 0, last.direction.z).dot(wind) < 0.2:
+		_bad.append("leaves sent off %s with the air going %s" % [last.direction, wind])
+	if _show:
+		print("%d oaks; %d falls of leaves in %d s; the last %.1f m up, %.1f m upwind, %.1f m aside; the air goes %s" % [v.oaks.size(), falls, secs, up, back, aside, wind])
+	w.cine = true
+	was = wx.leaf_falls
+	for k in secs:
+		wx._process(1.0)
+	if wx.leaf_falls != was:
+		_bad.append("%d falls of leaves in a staged scene" % (wx.leaf_falls - was))
+	w.cine = false
+	v.daylight = 0.0
+	was = wx.leaf_falls
+	for k in secs:
+		wx._process(1.0)
+	if wx.leaf_falls != was:
+		_bad.append("%d falls of leaves at night" % (wx.leaf_falls - was))
+	v.daylight = day
+	wx._process(1.0)
 
 
 func _thornwood() -> void:

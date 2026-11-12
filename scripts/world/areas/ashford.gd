@@ -239,7 +239,19 @@ static func surface_at(_w: World, at: Vector3) -> String:
 		return "wood"
 	if at.distance_to(MillSet.AT) < 60.0:
 		return "wood"
+	# (a puddle a shower has left, with water enough in it: Weather)
+	var wx := Weather.of(_w)
+	if wx != null and wx.in_puddle(at):
+		return "water"
 	return ""
+
+
+## A foot down in a puddle sends up a splash (World.stepped_at).
+static func stepped_at(w: World, at: Vector3, surface: String) -> void:
+	if surface == "water":
+		var wx := Weather.of(w)
+		if wx != null and wx.in_puddle(at):
+			wx.splash(at)
 
 
 ## What Ashford sounds like where the camera is looking (12 November:

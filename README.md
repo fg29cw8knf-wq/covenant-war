@@ -1944,6 +1944,36 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   (on paths, filling, drying, seen off) and the breath's switch;
   `steps_test` the mouth and the breaths' rate; `white_sky_test` wants
   three of Bram's breaths on the walk (11 in the whole memory).
+- **Splashes, fireflies and leaves** (Gary, 18:28: "yes to all 3"), all in
+  `Weather`:
+  - **A puddle splashes underfoot**: `Weather.in_puddle(at)` (the puddles'
+    middles and reaches are kept as they're laid; only once `wet` is over
+    `SPLASH_FROM`) makes `Ashford.surface_at` answer "water", so the step is
+    `step_water`; and `Figure3D._step` now asks about the spot under the
+    foot itself and then tells the world (`World.stepped_at`, the area's
+    `stepped_at`), which sends up `Weather.splash`: a dozen drops and a ring
+    that widens and goes in half a second (a pool of four). Anyone's feet,
+    not only the player's.
+  - **Fireflies on the festival night**: `FIREFLIES` (140 on a Mac) soft
+    green-gold lights that wander and wink, over the green's own ground
+    (`_firefly_spots`: 512 places clear of every wall, handed to the
+    particles as a picture). On while the village is dressed for the
+    festival, it's night, the sky hasn't torn (`sigil_on`) and no house
+    burns; never behind the title screen.
+  - **Leaves**: by day, while the player is free to walk, every
+    `LEAF_EVERY` seconds half a dozen small leaves come down across the spot
+    on screen and drift the way the air goes (`leaf_wind`: away from the
+    nearest oak). The oaks themselves stand behind the houses, 28 to 53 m
+    from the middle of the green, where the walking camera never looks: a
+    fall from their own crowns was built first and couldn't be seen.
+  `rain_shot -- <dir> splash | flies | leaves` pictures them (looked at:
+  the ring and drops round the player's boots; soft lights of different
+  strengths across the dark grass and between the houses, none on a roof;
+  small ochre and brown ovals over the grass by the stalls).
+  `ambience_test` has water underfoot only while a puddle is full, the
+  splash where the foot came down, the fireflies' nights and their spots,
+  and the leaves by day only and from the oak's side; `steps_test` puts
+  the player's foot down in the widest puddle, full and dry.
 - **Two more grounds for the footsteps**: `step_stairs` (a tread rings
   higher than the floor and creaks: anywhere indoors more than
   `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the

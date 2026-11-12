@@ -35,6 +35,16 @@ extends Node3D
 ## in a few seconds. And on the morning after the fires, with the mist,
 ## everyone's breath shows (Breath).
 ##
+## Splashes, fireflies, leaves (later again, "yes to all 3"). A foot that
+## comes down in a puddle splashes: the step sounds of water
+## (Ashford.surface_at asks in_puddle) and a few drops and a ring go up from
+## it (splash). On the festival night, until the sky tears or anything
+## burns, fireflies drift over the green, as they do on the Thornwood's
+## road. And by day, while the player is free to walk, a few leaves come
+## down now and then across the spot on screen: the oaks stand round the
+## village's edge, behind the houses, where the walking camera never looks,
+## so the leaves are carried in on the air from the nearest of them.
+##
 ## The sky, the light and the ground are left as they are: nothing here
 ## changes what the place looks like on a dry, clear day.
 
@@ -87,9 +97,45 @@ const PUDDLE_DRY := 70.0        # seconds to dry out after
 const PUDDLE_SEEN := 0.7        # how solid a full one is
 const PUDDLE_UP := 0.014        # how far off the ground they lie (m)
 
+const SPLASH_FROM := 0.3        # how full the puddles must be for one to splash
+const SPLASH_WATER := 0.8       # how much of a puddle's width is water deep enough
+const SPLASH_FOOT := 0.1        # the foot in front of the ankle (m)
+const SPLASH_DROPS := 12
+const SPLASH_RING := [0.22, 0.95]   # the ring's width as it starts and ends (m)
+const SPLASH_SECS := 0.5
+
+const FIREFLIES := [55, 95, 140]    # by Gfx.level()
+const FIREFLY_MID := Vector2(0.0, 8.0)      # the middle of the ground they keep to
+const FIREFLY_REACH := Vector2(30.0, 26.0)  # ...and how far from it, east-west and north-south
+const FIREFLY_UP := [0.45, 1.8]     # how far over the grass one comes out (m)
+const FIREFLY_SPOTS := 512          # places one may come out, found once (a 32-wide picture of them)
+const FIREFLY_CLEAR := 1.2          # this far from any wall
+const FIREFLY_NIGHT := 0.12     # AshfordVillage.daylight under this: night
+
+const LEAF_EVERY := [14.0, 34.0]    # seconds between one fall of leaves and the next
+const LEAVES := 6               # in a fall
+const LEAF_DAY := 0.3           # only by this much daylight or more
+const LEAF_UP := [4.4, 6.0]     # how far over the ground they come in (m: just over the top of the walking view)
+const LEAF_UPWIND := 2.6        # ...and how far back towards the oak they came from
+const LEAF_ASIDE := 4.5         # ...and how far to either side of the spot on screen
+const LEAF_DRIFT := 0.5         # how fast the air carries them along (m/s)
+const LEAF_FALL := [0.7, 1.0]   # how fast they come down (m/s)
+const LEAF_SECS := 7.5          # how long one is in the air
+
 var world: World
 var village: AshfordVillage
 var amount := 0.0        # how much of a shower there is now, 0 to 1
+var flies := 0.0         # fireflies wanted, 0 or 1
+var splashes := 0        # splashes made, in all (the tests)
+var leaf_falls := 0      # falls of leaves, in all (the tests)
+var _puddle_at: Array = []   # [Vector2 middle, reach] of each puddle
+var _splash_pool: Array = []
+var _splash_turn := 0
+var _flies: GPUParticles3D
+var fly_spots := PackedVector3Array()   # where a firefly may come out
+var _leaf_pool: Array = []
+var _leaf_turn := 0
+var _leaf_in := 0.0
 var wet := 0.0           # how full the puddles are, 0 to 1
 var _thunder_in := -1.0  # seconds of this shower till its thunder (-1: none)
 var _puddles: Node3D
@@ -142,6 +188,19 @@ func _ready() -> void:
 	_puddles = _make_puddles(int(PUDDLES[level]))
 	add_child(_puddles)
 	_puddles.visible = false
+	for i in 4:
+		var sp := _make_splash()
+		add_child(sp)
+		_splash_pool.append(sp)
+	_flies = _make_fireflies(int(FIREFLIES[level]))
+	add_child(_flies)
+	_flies.emitting = false
+	_flies.visible = false
+	for i in 3:
+		var lf := _make_leaves()
+		add_child(lf)
+		_leaf_pool.append(lf)
+	_leaf_in = randf_range(LEAF_EVERY[0], LEAF_EVERY[1]) * 0.5
 	# (breath in the cold, on the morning the mist lies: everyone in the world)
 	_breath = Breath.new()
 	_breath.under = world
@@ -253,6 +312,8 @@ func _process(delta: float) -> void:
 	_puddles.visible = wet > 0.01 and place == "green"
 	if _puddles.visible:
 		_puddle_mat.albedo_color.a = PUDDLE_SEEN * smoothstep(0.0, 0.4, wet)
+	_tick_fireflies(place)
+	_tick_leaves(delta, place)
 
 
 # ---------------------------------------------------------------- rainbow ---
@@ -425,6 +486,319 @@ func _make_mist(count: int, banks: bool) -> GPUParticles3D:
 	return p
 
 
+# -------------------------------------------------------------- fireflies ---
+
+## Whether any house is on fire.
+func _burning() -> bool:
+	if village != null:
+		for h: Dictionary in village.houses:
+			if h.get("burning", false):
+				return true
+	return false
+
+
+func _tick_fireflies(place: String) -> void:
+	var want := world != null and village != null and place == "green" and not world.attract and not world.held \
+			and village.time_kind == "festival" and village.daylight < FIREFLY_NIGHT and not village.sigil_on and not _burning() \
+			and fly_spots.size() >= 32
+	flies = 1.0 if want else 0.0
+	if want and not _flies.emitting:
+		_flies.visible = true
+		_flies.emitting = true
+		_flies.restart()
+	elif not want and _flies.emitting:
+		_flies.emitting = false   # (those out go dark in their own time)
+
+
+## Where a firefly may come out: over the green's own ground (grass and
+## path both), clear of every wall, at about the height of the grass heads
+## to a little over a head's. Found once, with dice of their own.
+func _firefly_spots() -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if village == null:
+		return out
+	var r := RandomNumberGenerator.new()
+	r.seed = 1113
+	var floor_y := village.ground_y(FIREFLY_MID.x, FIREFLY_MID.y)
+	var tries := 0
+	while out.size() < FIREFLY_SPOTS and tries < FIREFLY_SPOTS * 40:
+		tries += 1
+		var far := sqrt(r.randf())
+		var a := r.randf() * TAU
+		var at := FIREFLY_MID + Vector2(cos(a) * far * FIREFLY_REACH.x, sin(a) * far * FIREFLY_REACH.y)
+		var y := village.ground_y(at.x, at.y)
+		if absf(y - floor_y) > 1.5:
+			continue   # (a bank or a roof's own ground: not the green)
+		var clear := true
+		for f in village.footprints:
+			if at.distance_to(f[0]) < float(f[1]) + FIREFLY_CLEAR:
+				clear = false
+				break
+		if clear:
+			out.append(Vector3(at.x, y + r.randf_range(FIREFLY_UP[0], FIREFLY_UP[1]), at.y))
+	return out
+
+
+## As the Thornwood's road has them (ThornwoodSet.build_road_place): small
+## green-gold lights that wander a little and wink twice before they go.
+func _make_fireflies(count: int) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.name = "Fireflies"
+	p.amount = count
+	p.lifetime = 6.5
+	p.preprocess = 6.5
+	p.randomness = 1.0
+	p.local_coords = false
+	fly_spots = _firefly_spots()
+	var pm := ParticleProcessMaterial.new()
+	if fly_spots.size() >= 32:
+		# (the spots as a picture, a spot to a dot: the particles' own way of
+		# being told where to start)
+		var wide := 32
+		var tall := int(ceil(fly_spots.size() / float(wide)))
+		var img := Image.create(wide, tall, false, Image.FORMAT_RGBF)
+		var lo := fly_spots[0]
+		var hi := fly_spots[0]
+		for k in wide * tall:
+			var spot := fly_spots[k % fly_spots.size()]
+			img.set_pixel(k % wide, k / wide, Color(spot.x, spot.y, spot.z))
+			lo = lo.min(spot)
+			hi = hi.max(spot)
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_POINTS
+		pm.emission_point_texture = ImageTexture.create_from_image(img)
+		pm.emission_point_count = wide * tall
+		p.visibility_aabb = AABB(lo - Vector3(4, 3, 4), hi - lo + Vector3(8, 6, 8))
+	else:
+		p.amount = 1
+		p.visible = false
+	pm.direction = Vector3(0, 0.2, 0)
+	pm.spread = 180.0
+	pm.initial_velocity_min = 0.04
+	pm.initial_velocity_max = 0.18
+	pm.gravity = Vector3.ZERO
+	pm.turbulence_enabled = true
+	pm.turbulence_noise_strength = 0.6
+	pm.turbulence_noise_speed_random = 0.5
+	var ac := Gradient.new()
+	ac.set_color(0, Color(1, 1, 1, 0))
+	ac.add_point(0.2, Color(1, 1, 1, 1))
+	ac.add_point(0.5, Color(1, 1, 1, 0.2))
+	ac.add_point(0.7, Color(1, 1, 1, 1))
+	ac.set_color(1, Color(1, 1, 1, 0))
+	var act := GradientTexture1D.new()
+	act.gradient = ac
+	pm.color_ramp = act
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.09, 0.09)   # (a soft round light: its bright middle is a third of this)
+	p.draw_pass_1 = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	# (see-through, or neither the round of the dot nor the winking counts)
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.albedo_texture = DuelFX.dot_tex()
+	m.albedo_color = Color(0.85, 1.0, 0.45) * 2.2
+	p.material_override = m
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	return p
+
+
+# ----------------------------------------------------------------- leaves ---
+
+func _tick_leaves(delta: float, place: String) -> void:
+	if world == null or village == null or place != "green" or world.attract or world.held or world.cine \
+			or village.daylight < LEAF_DAY or village.oaks.is_empty():
+		return
+	_leaf_in -= delta
+	if _leaf_in > 0.0:
+		return
+	_leaf_in = randf_range(LEAF_EVERY[0], LEAF_EVERY[1])
+	leaves_at(world.cam_ground())
+
+
+## The way the air carries a leaf to `at`: from the nearest oak.
+func leaf_wind(at: Vector3) -> Vector3:
+	var best := Vector3.ZERO
+	var near := 1e9
+	if village != null:
+		for o in village.oaks:
+			if not is_instance_valid(o):
+				continue
+			var from := (o as Node3D).global_position
+			var off := Vector2(at.x - from.x, at.z - from.z)
+			if off.length() < near and off.length() > 0.5:
+				near = off.length()
+				best = Vector3(off.x, 0.0, off.y).normalized()
+	return best if best != Vector3.ZERO else Vector3(1, 0, 0)
+
+
+## A few leaves come down across the spot of ground at `at`.
+func leaves_at(at: Vector3) -> void:
+	var wind := leaf_wind(at)
+	var side := wind.cross(Vector3.UP)
+	var p: CPUParticles3D = _leaf_pool[_leaf_turn]
+	_leaf_turn = (_leaf_turn + 1) % _leaf_pool.size()
+	var from := at - wind * LEAF_UPWIND + side * randf_range(-LEAF_ASIDE, LEAF_ASIDE)
+	var ground := village.ground_y(from.x, from.z) if village != null else at.y
+	p.global_position = Vector3(from.x, maxf(ground, at.y) + randf_range(LEAF_UP[0], LEAF_UP[1]), from.z)
+	p.direction = (Vector3.DOWN * ((float(LEAF_FALL[0]) + float(LEAF_FALL[1])) * 0.5) + wind * LEAF_DRIFT).normalized()
+	p.gravity = wind * 0.06 + Vector3(0, -0.05, 0)
+	p.restart()
+	p.emitting = true
+	leaf_falls += 1
+
+
+func _make_leaves() -> CPUParticles3D:
+	var p := CPUParticles3D.new()
+	p.name = "Leaves"
+	p.emitting = false
+	p.one_shot = true
+	p.amount = LEAVES
+	p.lifetime = LEAF_SECS
+	p.explosiveness = 0.3
+	p.randomness = 0.6
+	p.local_coords = false
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	p.emission_sphere_radius = 2.2
+	p.direction = Vector3(0.4, -1.0, 0.0)
+	p.spread = 22.0
+	p.initial_velocity_min = LEAF_FALL[0]
+	p.initial_velocity_max = LEAF_FALL[1]
+	p.gravity = Vector3(0.06, -0.05, 0.0)
+	# they turn as they fall, and a little round one another
+	p.angle_min = 0.0
+	p.angle_max = 360.0
+	p.angular_velocity_min = -220.0
+	p.angular_velocity_max = 220.0
+	p.tangential_accel_min = -0.22
+	p.tangential_accel_max = 0.22
+	p.scale_amount_min = 0.75
+	p.scale_amount_max = 1.3
+	# the green of the tree to the yellow-brown of one that was ready to go
+	var kinds := Gradient.new()
+	kinds.offsets = PackedFloat32Array([0.0, 0.4, 1.0])
+	kinds.colors = PackedColorArray([Color(0.34, 0.43, 0.13), Color(0.56, 0.47, 0.14), Color(0.53, 0.32, 0.11)])
+	p.color_initial_ramp = kinds
+	var fade := Gradient.new()
+	fade.offsets = PackedFloat32Array([0.0, 0.06, 0.9, 1.0])
+	fade.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	p.color_ramp = fade
+	# a leaf: a long soft-edged shape, face on, turning
+	var q := QuadMesh.new()
+	q.size = Vector2(0.15, 0.08)
+	var m := StandardMaterial3D.new()
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.billboard_keep_scale = true
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR
+	m.alpha_scissor_threshold = 0.45
+	m.albedo_texture = DuelFX.dot_tex()
+	m.vertex_color_use_as_albedo = true
+	m.roughness = 0.9
+	q.material = m
+	p.mesh = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return p
+
+
+# --------------------------------------------------------------- splashes ---
+
+## Is this spot in a puddle with water enough in it to splash?
+func in_puddle(at: Vector3) -> bool:
+	if wet < SPLASH_FROM:
+		return false
+	var p := Vector2(at.x, at.z)
+	for row: Array in _puddle_at:
+		if p.distance_to(row[0]) <= float(row[1]):
+			return true
+	return false
+
+
+## Drops and a ring going out from a foot that came down in a puddle.
+func splash(at: Vector3) -> void:
+	var sp: Node3D = _splash_pool[_splash_turn]
+	_splash_turn = (_splash_turn + 1) % _splash_pool.size()
+	sp.global_position = Vector3(at.x, (village.ground_y(at.x, at.z) if village != null else at.y) + PUDDLE_UP + 0.006, at.z)
+	var drops := sp.get_node("Drops") as CPUParticles3D
+	drops.restart()
+	drops.emitting = true
+	var ring := sp.get_node("Ring") as MeshInstance3D
+	var mat := ring.material_override as StandardMaterial3D
+	ring.visible = true
+	ring.scale = Vector3.ONE * float(SPLASH_RING[0])
+	mat.albedo_color.a = 0.8
+	if sp.has_meta("tw") and is_instance_valid(sp.get_meta("tw")):
+		(sp.get_meta("tw") as Tween).kill()   # (its last splash, cut short by this one)
+	var tw := sp.create_tween().set_parallel(true)
+	sp.set_meta("tw", tw)
+	tw.tween_property(ring, "scale", Vector3.ONE * float(SPLASH_RING[1]), SPLASH_SECS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat, "albedo_color:a", 0.0, SPLASH_SECS)
+	tw.chain().tween_callback(func() -> void: ring.visible = false)
+	splashes += 1
+
+
+func _make_splash() -> Node3D:
+	var root := Node3D.new()
+	var d := CPUParticles3D.new()
+	d.name = "Drops"
+	d.emitting = false
+	d.one_shot = true
+	d.amount = SPLASH_DROPS
+	d.lifetime = 0.5
+	d.explosiveness = 1.0
+	d.local_coords = false
+	d.direction = Vector3.UP
+	d.spread = 52.0
+	d.initial_velocity_min = 1.3
+	d.initial_velocity_max = 2.5
+	d.gravity = Vector3(0, -9.8, 0)
+	d.scale_amount_min = 0.6
+	d.scale_amount_max = 1.3
+	var q := QuadMesh.new()
+	q.size = Vector2(0.05, 0.05)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = DuelFX.dot_tex()
+	m.albedo_color = Color(0.88, 0.94, 1.0, 0.85)
+	q.material = m
+	d.mesh = q
+	d.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(d)
+	# the ring: a thin soft circle lying on the water, widening as it goes
+	var g := Gradient.new()
+	g.offsets = PackedFloat32Array([0.0, 0.62, 0.8, 0.92, 1.0])
+	g.colors = PackedColorArray([Color(1, 1, 1, 0), Color(1, 1, 1, 0), Color(1, 1, 1, 1), Color(1, 1, 1, 0.25), Color(1, 1, 1, 0)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = g
+	tex.width = 64
+	tex.height = 64
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	var rq := QuadMesh.new()
+	rq.size = Vector2(1.0, 1.0)
+	rq.orientation = PlaneMesh.FACE_Y
+	var rm := StandardMaterial3D.new()
+	rm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	rm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	rm.cull_mode = BaseMaterial3D.CULL_DISABLED
+	rm.albedo_texture = tex
+	rm.albedo_color = Color(0.9, 0.95, 1.0, 0.0)
+	var ring := MeshInstance3D.new()
+	ring.name = "Ring"
+	ring.mesh = rq
+	ring.material_override = rm
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.visible = false
+	root.add_child(ring)
+	return root
+
+
 # ---------------------------------------------------------------- puddles ---
 
 ## Small still pools on the paths of the green, in the same places every
@@ -483,8 +857,15 @@ func _make_puddles(count: int) -> Node3D:
 			continue
 		placed.append(at)
 		var size := r.randf_range(PUDDLE_SIZE[0], PUDDLE_SIZE[1])
-		var b := Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(size * r.randf_range(0.75, 1.3), 1.0, size * r.randf_range(0.75, 1.3)))
+		# (the dice in the order they always were: the puddles lie where they did)
+		var yaw := r.randf() * TAU
+		var wide := size * r.randf_range(0.75, 1.3)
+		var deep := size * r.randf_range(0.75, 1.3)
+		var b := Basis(Vector3.UP, yaw).scaled(Vector3(wide, 1.0, deep))
 		(xfs[placed.size() % 3] as Array).append(Transform3D(b, Vector3(x, y + PUDDLE_UP, z)))
+		# (how near its middle an ankle must come down: the water, less its
+		# damp edge, and the length of the foot that is in front of the ankle)
+		_puddle_at.append([at, (wide + deep) * 0.25 * SPLASH_WATER + SPLASH_FOOT])
 	for k in 3:
 		if (xfs[k] as Array).is_empty():
 			continue

@@ -1457,18 +1457,27 @@ func _step(i: int) -> void:
 	if _step_wait > 0.0:
 		return
 	var surface := step_on
+	# (where this foot is: over the ground the figure stands on)
+	var foot := global_position
+	if _skel != null and _step_bones.size() > i and int(_step_bones[i]) >= 0:
+		foot = _skel.global_transform * _skel.get_bone_global_pose(int(_step_bones[i])).origin
+	var at := Vector3(foot.x, global_position.y, foot.z)
+	var ground: Node = null
 	if surface == "":
 		# (asked of the world it's in, each time: there can be two worlds at
 		# once, the one behind the title screen and the one being got ready)
-		var p := get_parent()
-		while p != null and not p.has_method("surface_at"):
-			p = p.get_parent()
-		if p != null:
-			surface = String(p.call("surface_at", global_position))
+		ground = get_parent()
+		while ground != null and not ground.has_method("surface_at"):
+			ground = ground.get_parent()
+		if ground != null:
+			surface = String(ground.call("surface_at", at))
 	if surface == "" or surface == "none":
 		return
 	_step_wait = STEP_GAP
 	footfall.emit("Left" if i == 0 else "Right", surface)
+	# (the world may answer a step with something to see: a puddle's splash)
+	if ground != null and ground.has_method("stepped_at"):
+		ground.call("stepped_at", at, surface)
 	var lead := step_on != "" or _model_name.begins_with("player_")
 	Sfx.step(surface, self, _clip == "run", 0.0 if lead else STEP_OTHERS_DB)
 

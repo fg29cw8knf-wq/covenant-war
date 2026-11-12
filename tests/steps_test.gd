@@ -127,6 +127,45 @@ func _breath() -> void:
 	await get_tree().process_frame
 
 
+## A foot put down in a puddle a shower has left: heard as water, and a
+## splash goes up; the same foot in the same place once it's dry is on dirt.
+func _puddle(w: World, v: AshfordVillage) -> void:
+	var wx := Weather.of(w)
+	if wx == null or wx._puddle_at.is_empty():
+		_bad.append("no puddles to step in on the green")
+		return
+	wx.set_process(false)
+	var widest: Array = wx._puddle_at[0]
+	for row: Array in wx._puddle_at:
+		if float(row[1]) > float(widest[1]):
+			widest = row
+	var c: Vector2 = widest[0]
+	w._move_target = null
+	w.player.global_position = Vector3(c.x, v.ground_y(c.x, c.y), c.y)
+	await get_tree().create_timer(0.4).timeout
+	var doll := w.player_doll as Figure3D
+	var grounds: Array = []
+	doll.footfall.connect(func(_side: String, surface: String) -> void: grounds.append(surface))
+	wx.wet = 1.0
+	Sfx.heard.clear()
+	var was := wx.splashes
+	doll._step(0)
+	var wet_steps := Sfx.heard.filter(func(h): return String(h[1]).begins_with("step_water")).size()
+	if grounds != ["water"] or wet_steps != 1 or wx.splashes != was + 1:
+		_bad.append("a foot down in a full puddle: on %s, %d heard as water, %d splashes" % [grounds, wet_steps, wx.splashes - was])
+	await get_tree().create_timer(0.3).timeout
+	wx.wet = 0.0
+	grounds.clear()
+	Sfx.heard.clear()
+	was = wx.splashes
+	doll._step(1)
+	if grounds != ["dirt"] or wx.splashes != was:
+		_bad.append("a foot down in a dry puddle: on %s, %d splashes" % [grounds, wx.splashes - was])
+	if _show:
+		print("a foot down in the widest puddle (%.2f m): water and a splash while it's full, dirt once it's dry" % float(widest[1]))
+	wx.set_process(true)
+
+
 ## What the world says is underfoot (World.surface_at and Ashford's own).
 func _grounds() -> void:
 	var w := World.new().setup("ashford", "green")
@@ -195,5 +234,6 @@ func _village() -> void:
 	for k: String in kinds:
 		if k != "grass" and k != "dirt":
 			_bad.append("on the green a footstep on '%s'" % k)
+	await _puddle(w, v)
 	w.queue_free()
 	await get_tree().process_frame

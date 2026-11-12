@@ -133,6 +133,13 @@ func surface_at(at: Vector3) -> String:
 	return "stone"
 
 
+## A foot has come down at `at` on `surface` (Figure3D, after its sound):
+## the area may answer with something to see (Ashford: a puddle's splash).
+func stepped_at(at: Vector3, surface: String) -> void:
+	if area != null and area.has_method("stepped_at"):
+		area.call("stepped_at", self, at, surface)
+
+
 ## What this place sounds like now, under its music (12 November: Ambience
 ## asks, a few times a second): a bed's name (assets/sfx/amb_<name>), or ""
 ## for silence. The area decides (a static ambience_at(w, at), `at` the spot
