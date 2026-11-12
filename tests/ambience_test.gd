@@ -6,14 +6,15 @@ extends Node3D
 ## a house burns; the Thornwood by the river and by its part; Solhaven its
 ## streets; a world hidden behind a duel, waiting, behind the title screen
 ## or under a black screen is silent, and so is everything while a film plays; and the player eases
-## from one bed to the next. Also the two new grounds: the inn's stairs and
-## the river's shallows.
+## from one bed to the next. Also the two new grounds (the inn's stairs and
+## the river's shallows) and the weather: a shower on the green in its time,
+## and what sees one off.
 ## Run: godot --headless --path . --fixed-fps 30 res://tests/ambience_test.tscn [-- list]
 ## Ends "AMBIENCE: ok" or the problems.
 
 var _bad: Array = []
 var _show := false
-const BEDS := ["amb_fire", "amb_cellar", "amb_green_day", "amb_dusk", "amb_night", "amb_festival", "amb_burning", "amb_wood_day", "amb_river", "amb_camp", "amb_city"]
+const BEDS := ["amb_rain", "amb_attic", "amb_fire", "amb_cellar", "amb_green_day", "amb_dusk", "amb_night", "amb_festival", "amb_burning", "amb_wood_day", "amb_river", "amb_camp", "amb_city"]
 
 
 func _ready() -> void:
@@ -85,7 +86,7 @@ func _ashford() -> void:
 		(v.houses[0] as Dictionary)["burning"] = false
 	for row: Array in [[InnRooms.TAPROOM_AT + Vector3(1, 0, 0.5), "the taproom", "amb_fire"], [InnRooms.EVE_AT + Vector3(-1, 0, 1), "the taproom of an evening", "amb_fire"],
 			[InnRooms.CELLAR_AT + Vector3(0, 0, 1), "the cellar", "amb_cellar"], [AshfordNight.TUNNEL_AT + Vector3(2, 0, 0), "the smugglers' tunnel", "amb_cellar"],
-			[InnRooms.ATTIC_AT + Vector3(0.5, 0, 0), "the attic", ""], [MillSet.AT + Vector3(2, 0, 3), "the mill", "amb_river"]]:
+			[InnRooms.ATTIC_AT + Vector3(0.5, 0, 0), "the attic", "amb_attic"], [MillSet.AT + Vector3(2, 0, 3), "the mill", "amb_river"]]:
 		_look(w, row[0])
 		_want(w, String(row[1]), String(row[2]))
 	# the grounds: the stairs in the cellar, three treads up
@@ -95,9 +96,10 @@ func _ashford() -> void:
 		_bad.append("the cellar's floor is '%s'" % w.surface_at(InnRooms.CELLAR_AT + Vector3(-1.0, 0.0, 0.5)))
 	if w.surface_at(InnRooms.EVE_AT + Vector3(-2.0, 1.4, 2.9)) != "stairs":
 		_bad.append("halfway up the attic stairs the ground is '%s'" % w.surface_at(InnRooms.EVE_AT + Vector3(-2.0, 1.4, 2.9)))
-	# the player easing from one bed to the next, and to silence when the world is put away
 	_look(w, green)
 	v.set_daylight(1.0)
+	_weather(w, v)
+	# the player easing from one bed to the next, and to silence when the world is put away
 	await get_tree().create_timer(Ambience.FADE + Ambience.CHECK + 0.4).timeout
 	if Ambience.bed() != "amb_green_day" or Ambience.gain_of("amb_green_day") < 0.95:
 		_bad.append("the green's bed isn't playing in full (%s, %.2f)" % [Ambience.bed(), Ambience.gain_of("amb_green_day")])
@@ -133,6 +135,75 @@ func _ashford() -> void:
 	w.queue_free()
 	await get_tree().process_frame
 	await get_tree().process_frame
+
+
+## The shower (Weather): none before its time, one within FIRST of a free
+## day on the green, heard as rain, gone within LAST, none again inside GAP;
+## none indoors, at dusk, in a staged scene, during a film or with a house
+## on fire, and one that's falling is seen off in a few seconds by any of
+## those. Its clock is run by hand here, a second at a time.
+func _weather(w: World, v: AshfordVillage) -> void:
+	var wx := Weather.of(w)
+	if wx == null:
+		_bad.append("Ashford has no weather")
+		return
+	wx.set_process(false)
+	w.cine = false
+	if not wx.may_rain():
+		_bad.append("no shower may fall on a free day on the green")
+	var began := -1.0
+	var ended := -1.0
+	var again := -1.0
+	var t := 0.0
+	while t < float(Weather.FIRST[1]) + float(Weather.LAST[1]) + float(Weather.GAP[1]) + 20.0:
+		wx._process(1.0)
+		t += 1.0
+		if began < 0.0 and wx.raining():
+			began = t
+			if w.ambience() != "amb_rain":
+				_bad.append("it's raining and the green sounds of '%s'" % w.ambience())
+		elif began >= 0.0 and ended < 0.0 and wx.amount <= 0.0:
+			ended = t
+			if w.ambience() != "amb_green_day":
+				_bad.append("the shower's over and the green sounds of '%s'" % w.ambience())
+		elif ended >= 0.0 and again < 0.0 and wx.amount > 0.0:
+			again = t
+	if _show:
+		print("a day on the green, a second at a time: the first shower heard at %.0f s, over by %.0f s, the next %s" % [began, ended, ("at %.0f s" % again) if again >= 0.0 else "not yet"])
+	if began < float(Weather.FIRST[0]) or began > float(Weather.FIRST[1]) + Weather.EASE_IN:
+		_bad.append("the first shower came at %.0f s" % began)
+	if ended < 0.0 or ended - began > float(Weather.LAST[1]) + Weather.EASE_OUT + 2.0 or ended - began < float(Weather.LAST[0]) - Weather.EASE_IN:
+		_bad.append("the shower lasted %.0f s" % (ended - began))
+	if again >= 0.0 and again - ended < float(Weather.GAP[0]) - 5.0:
+		_bad.append("a second shower only %.0f s after the first ended" % (again - ended))
+	# seen off: each thing that stops one, with a shower falling
+	for why: String in ["a staged scene", "the sun going down", "a film", "a house on fire", "indoors"]:
+		wx._left = 60.0
+		wx.amount = 1.0
+		match why:
+			"a staged scene":
+				w.cine = true
+			"the sun going down":
+				v.set_daylight(0.5)
+			"a film":
+				Ambience.hush += 1
+			"a house on fire":
+				(v.houses[0] as Dictionary)["burning"] = true
+			"indoors":
+				_look(w, InnRooms.TAPROOM_AT)
+		if wx.may_rain():
+			_bad.append("a shower may fall with %s" % why)
+		for k in int(Weather.EASE_OUT) + 1:
+			wx._process(1.0)
+		if wx.amount > 0.0 or wx._left > 0.0:
+			_bad.append("%s didn't see the shower off (%.2f, %.0f s left)" % [why, wx.amount, wx._left])
+		w.cine = false
+		v.set_daylight(1.0)
+		Ambience.hush = 0
+		(v.houses[0] as Dictionary)["burning"] = false
+		_look(w, w.player.global_position)
+	w.cine = true
+	wx.set_process(true)
 
 
 func _thornwood() -> void:

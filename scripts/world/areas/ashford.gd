@@ -209,6 +209,11 @@ static func build(root: Node3D) -> void:
 	if v.spread:
 		await v.build_spread()
 	root.set_meta("village", v)
+	# (12 November) a shower over the green now and then (Weather)
+	if w != null:
+		var wx := Weather.new().setup(w, v)
+		v.add_child(wx)
+		root.set_meta("weather", wx)
 	# the festival reel: its intro once, then the loop (Music.LOOP_START), and
 	# it carries on from where it was when a duel or a scene hands back
 	w.music = ["ashford_festival"]
@@ -243,7 +248,8 @@ static func surface_at(_w: World, at: Vector3) -> String:
 ## fire before anything, then the hour: birds and people by day, the first
 ## crickets as the sun goes, the whole village talking on the festival
 ## night, crickets and an owl on the dark night after, and nothing at all
-## on the morning the fires are out.
+## on the morning the fires are out. By day a shower changes the green's
+## birds for rain (Weather); the attic has the wind under its eaves.
 static func ambience_at(w: World, at: Vector3) -> String:
 	if at.y < World.INDOORS_BELOW:
 		var flat := func(c: Vector3) -> float: return Vector2(at.x - c.x, at.z - c.z).length()
@@ -251,7 +257,7 @@ static func ambience_at(w: World, at: Vector3) -> String:
 			return "amb_fire"
 		if flat.call(InnRooms.CELLAR_AT) < 13.0 or at.x > AshfordNight.TUNNEL_AT.x - 13.0:
 			return "amb_cellar"
-		return ""   # (the attic: quiet)
+		return "amb_attic"   # (the wind under its eaves)
 	if at.distance_to(MillSet.AT) < 80.0:
 		return "amb_river"
 	var v := village(w)
@@ -261,7 +267,8 @@ static func ambience_at(w: World, at: Vector3) -> String:
 		if h.get("burning", false):
 			return "amb_burning"
 	if v.daylight > 0.6:
-		return "amb_green_day"
+		var wx := Weather.of(w)
+		return "amb_rain" if wx != null and wx.raining() else "amb_green_day"
 	if v.daylight > 0.12:
 		return "amb_dusk"
 	match v.time_kind:

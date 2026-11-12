@@ -871,6 +871,9 @@ func _options() -> Control:
 	v.add_theme_constant_override("separation", 16)
 	v.add_child(_slider("Music", "music", 0.8, func() -> void: Music.apply_volume()))
 	v.add_child(_slider("Sound effects", "sfx", 0.9, func() -> void: pass))
+	# (12 November, Gary: "Yes re the slider") each place's own quiet sound,
+	# apart from the other effects: Ambience reads it as it plays
+	v.add_child(_slider("Background sounds", Ambience.SETTING, Ambience.SETTING_DEFAULT, func() -> void: pass))
 	v.add_child(_slider("Text speed", "text_speed", 1.0, func() -> void: pass, 0.5, 2.5))
 	# the walking camera: left is further out, right closer in (World eases to it)
 	var zoom := _slider("Camera zoom", "cam_zoom", 1.0, func() -> void: pass, World.ZOOM_MIN, World.ZOOM_MAX)
@@ -926,13 +929,18 @@ func _options() -> Control:
 		respond_btns.append(rb)
 		respond.add_child(rb)
 	v.add_child(respond)
-	# Gary's Summon clips in a duel: the long one the first time a card is
-	# summoned, then the short; or the short always; or none (SummonVideo)
+	# Gary's Summon clips in a duel (SummonVideo; 12 November: "a button in
+	# the game setting for summons play full video or 3 second intro"): the
+	# whole film every time, the three-second cut every time, the whole film
+	# once and the cut after (as it was), or none; what the choice does in a
+	# line under the buttons
 	var videos := HBoxContainer.new()
 	videos.add_theme_constant_override("separation", 24)
 	var vl := UITheme.label("Summon videos", 30, UITheme.TEXT, "bold")
 	vl.custom_minimum_size = Vector2(300, 0)
 	videos.add_child(vl)
+	var video_words := UITheme.label(String(SummonVideo.MODE_WORDS[SummonVideo.mode()]), 24, UITheme.TEXT_DIM)
+	video_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var video_btns := []
 	for m in SummonVideo.MODES:
 		var vb := UITheme.button(String(SummonVideo.MODE_NAMES[m]), false, 200)
@@ -942,11 +950,19 @@ func _options() -> Control:
 		vb.add_theme_font_size_override("font_size", 26)
 		vb.pressed.connect(func() -> void:
 			SummonVideo.set_mode(String(m))
+			video_words.text = String(SummonVideo.MODE_WORDS[m])
 			for o in video_btns:
 				o.button_pressed = o == vb)
 		video_btns.append(vb)
 		videos.add_child(vb)
 	v.add_child(videos)
+	var video_row := HBoxContainer.new()
+	var video_gap := Control.new()
+	video_gap.custom_minimum_size = Vector2(324, 0)
+	video_row.add_child(video_gap)
+	video_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	video_row.add_child(video_words)
+	v.add_child(video_row)
 	# how fast a duel plays out (27 October; the duel's own Speed button too)
 	var speeds := HBoxContainer.new()
 	speeds.add_theme_constant_override("separation", 24)

@@ -19,6 +19,10 @@ const DB := -6.0        # how loud a bed plays (it is recorded quiet as well: se
 const FADE := 1.8       # seconds a bed takes to come in, or to go
 const CHECK := 0.35     # seconds between asking what the place sounds like
 const GROUP := "worlds"
+## Options, "Background sounds" (Game.settings.ambience): how loud the
+## places are, apart from the other sound effects. All the way down is off.
+const SETTING := "ambience"
+const SETTING_DEFAULT := 0.9
 
 static var _me: Ambience
 ## Things with a soundtrack of their own count themselves in here while
@@ -68,7 +72,7 @@ func _process(delta: float) -> void:
 		var want := wanted()
 		if want != _bed:
 			_switch(want)
-	var level := DB + linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)) / 0.9))
+	var level := DB + linear_to_db(maxf(0.001, float(Game.settings.get(SETTING, SETTING_DEFAULT)) / SETTING_DEFAULT))
 	for s: Dictionary in _slots:
 		var p: AudioStreamPlayer = s.p
 		s.gain = move_toward(float(s.gain), float(s.want), delta / FADE)

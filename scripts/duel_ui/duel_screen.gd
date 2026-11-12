@@ -624,11 +624,12 @@ func _build_lab() -> void:
 				o.button_pressed = o == rb)
 		rd_btns.append(rb)
 		rd.add_child(rb)
-	# Gary's Summon clips: the long one first, then the short; or short
-	# always, or none (SummonVideo)
+	# Gary's Summon clips (SummonVideo): the whole film every time, the
+	# three-second cut every time, the whole film once then the cut, or none
 	box.add_child(UITheme.label("Summon videos", 24, UITheme.TEXT_DIM))
-	var svb := HBoxContainer.new()
-	svb.add_theme_constant_override("separation", 10)
+	var svb := HFlowContainer.new()
+	svb.add_theme_constant_override("h_separation", 10)
+	svb.add_theme_constant_override("v_separation", 8)
 	box.add_child(svb)
 	var sv_btns := []
 	for m in SummonVideo.MODES:

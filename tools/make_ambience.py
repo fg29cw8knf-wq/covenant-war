@@ -8,7 +8,7 @@ and made to join its own start without a seam (the Ambience player loops
 it). Built from nothing, as the creature voices and the footsteps are
 (tools/make_cries.py, whose tools these use), out of a few layers: a breeze,
 leaves, birds, crickets, an owl, far voices, a hearth, a house on fire, a
-river, a drip. A recording saved under the same name is used instead.
+river, a drip, and (the weather) rain and the wind under a roof. A recording saved under the same name is used instead.
 
     python3 tools/make_ambience.py              every bed
     python3 tools/make_ambience.py fire night   only those
@@ -326,7 +326,67 @@ def bed_city(r):
     return murmur(r, 20) * 0.65 + breeze(r) * 0.25 + knocks(r, 8) * 0.14
 
 
+def rain(r):
+    """Light rain on grass and leaves: its steady hush, and the nearer drops."""
+    hush = norm(looped(lambda n: band(r.standard_normal(n), 1300, 9000) * slow(n, 0.35, 0.14, r)))
+    low = norm(looped(lambda n: band(r.standard_normal(n), 300, 1400) * slow(n, 0.25, 0.2, r)))
+    drops = np.zeros(N)
+    for _ in range(int(55 * LOOP_SECS)):
+        secs = r.uniform(0.004, 0.014)
+        mid = r.uniform(1500, 5200)
+        d = band(r.standard_normal(n_of(secs) + 64), mid * 0.7, mid * 1.5)[:n_of(secs)] * np.hanning(n_of(secs))
+        put(drops, r.uniform(0, LOOP_SECS), d / (np.max(np.abs(d)) + 1e-9), r.uniform(0.15, 1.0) ** 2)
+    return norm(hush * 0.85 + low * 0.25 + norm(drops) * 0.4)
+
+
+def eaves(r):
+    """Wind finding the gaps under a roof: a low moan that rises and falls,
+    a whistle in it when it blows hard, a timber answering now and then."""
+    gust = None
+
+    def moan(n):
+        nonlocal gust
+        gust = slow(n, 0.18, 0.75, r) ** 1.5
+        return band(r.standard_normal(n), 120, 900) * gust
+
+    low = norm(looped(moan))
+
+    def whistle(n):
+        g = slow(n, 0.16, 0.9, r)
+        g = np.clip(g - 1.1, 0.0, None)        # (only when it blows hard)
+        return (band(r.standard_normal(n), 470, 560, 3) + band(r.standard_normal(n), 720, 830, 3) * 0.6) * g
+
+    high = looped(whistle)
+    high = high / (np.max(np.abs(high)) + 1e-9)
+    out = low + high * 0.3
+    for _ in range(3):
+        secs = r.uniform(0.18, 0.4)
+        pulses = np.zeros(n_of(secs))
+        at = 0.0
+        rate = r.uniform(60, 110)
+        while at < len(pulses) - 1:
+            pulses[int(at)] = r.uniform(0.5, 1.0)
+            at += SR / (rate * r.uniform(0.85, 1.2))
+        creak = norm(formants(pulses, [(380, 60, 1.0), (820, 110, 0.6), (1500, 200, 0.25)])) * env(secs, 0.3, 0.3, 0.4)
+        put(out, r.uniform(0, LOOP_SECS), far(creak, r, 0.25, 0.5), r.uniform(0.1, 0.2))
+    return norm(out)
+
+
+def bed_rain(r):
+    """A shower passing over the green by day: the rain, a bird or two that doesn't mind it."""
+    return rain(r) * 0.9 + birds(r, 4) * 0.2
+
+
+def bed_attic(r):
+    """The attic: wind under the eaves."""
+    return eaves(r)
+
+
+## A bed made quieter than the rest (a share of LOUD).
+QUIETER = {"attic": 0.6}
+
 BEDS = {
+    "rain": bed_rain, "attic": bed_attic,
     # ("tavern": bed_tavern, a taproom with people in it: no room has a crowd yet)
     "fire": bed_fire, "cellar": bed_cellar, "green_day": bed_green_day,
     "dusk": bed_dusk, "night": bed_night, "festival": bed_festival, "burning": bed_burning,
@@ -359,7 +419,7 @@ def main():
     for name in (args or list(BEDS)):
         r = np.random.default_rng(1112 + sum(ord(c) * (i + 1) for i, c in enumerate(name)))
         mc.rng = r
-        x = finish(BEDS[name](r))
+        x = finish(BEDS[name](r)) * QUIETER.get(name, 1.0)
         ogg = os.path.join(out_dir, "amb_%s.ogg" % name)
         wav = os.path.join(out_dir, "amb_%s.wav" % name) if keep_wav else os.path.join(tempfile.gettempdir(), "amb_%s.wav" % name)
         mc.save(wav, x)

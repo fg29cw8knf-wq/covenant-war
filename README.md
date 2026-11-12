@@ -1824,13 +1824,46 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   river; on Ashford's green `amb_burning` while a house burns, else by the
   hour: `amb_green_day` (`daylight` over 0.6), `amb_dusk`, `amb_festival`
   (the festival night), `amb_night` (the dark night after), silence on the
-  dawn after the fires and in the attic; in the Thornwood by
+  dawn after the fires (the attic has had `amb_attic` since the weather,
+  below); in the Thornwood by
   `ThornwoodSet.scene_kind`: `amb_camp`, `amb_wood_day` (morning, the
   ridge), `amb_night` (the road), silence in Bram's shelter; `amb_city` all
   through Solhaven. A new place: give its area an `ambience_at`.
   `tests/ambience_test.tscn` checks every one, the easing between two, and
   each kind of silence; `white_sky_world` that no bed plays under the
   memory.
+- **A slider for the places, Summon videos' choices, and weather** (Gary,
+  16:34: "Yes re the slider. Also a button in the game setting for summons
+  play full video or 3 second intro and yes re weather"):
+  - Options, **"Background sounds"** (`Game.settings.ambience`,
+    `Ambience.SETTING`): how loud the places' beds are, apart from Sound
+    effects (which they followed before); all the way down is off.
+  - Options and the duel's Menu, **"Summon videos"**: *Full video* (the new
+    `always`: a Summon's whole clip every time), *3-second intro* (`short`,
+    was "Short"), *Full once* (`full`, was "Full", and still what a save has
+    until one is chosen: the whole clip the first time each is summoned, the
+    intro after), *Off*; what the choice does in a line under the buttons
+    (`SummonVideo.MODE_WORDS`). `tests/summon_video_test.tscn` has the new
+    choice; `tests/options_shot.tscn` pictures the page.
+  - **Weather** (`scripts/world/weather.gd`, a `Weather` node on the
+    village, `Weather.of(w)`): a light shower over Ashford's green for
+    about a minute (`LAST`), first after `FIRST` (150 to 300 s) of a day
+    spent free on the green and again after `GAP` (6 to 11 minutes): thin
+    streaks falling where the camera looks (`DROPS` by `Gfx.level()`, a
+    particle box that follows `World.cam_ground`), and the green's bed
+    changing to `amb_rain` (`Ashford.ambience_at`, once `raining()`). Only
+    by full day, out of doors, with the player free: a staged scene
+    (`cine`), a film, the sun going down, a house on fire or going indoors
+    sees it off in `EASE_OUT` seconds, and its clock only runs while one
+    could fall. The sky, light and ground are untouched (a sun shower), so
+    nothing changes when it's dry, and a film that follows it shows no
+    seam beyond the rain having stopped. The attic has `amb_attic`, the
+    wind under its eaves (it was silent), made quieter than the other beds
+    (`QUIETER` in `tools/make_ambience.py`). `tests/ambience_test.tscn`
+    runs a day's weather a second at a time (the first shower, its length,
+    the gap) and everything that sees one off; `tests/rain_shot.tscn`
+    pictures the green dry and in the rain (looked at: thin pale streaks,
+    light, the green otherwise as it was).
 - **Two more grounds for the footsteps**: `step_stairs` (a tread rings
   higher than the floor and creaks: anywhere indoors more than
   `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the
@@ -3828,7 +3861,10 @@ godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4    
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
-godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence
+godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence, the weather
+godot --headless res://tests/summon_video_test.tscn             # which Summon clip plays under each choice
+# stills (under xvfb, as the others): ... res://tests/rain_shot.tscn -- <dir> [phone]   the green dry and in a shower
+#                                     ... res://tests/options_shot.tscn -- <dir>         the Options page
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]

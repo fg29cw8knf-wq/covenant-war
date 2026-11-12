@@ -10,17 +10,28 @@ extends Control
 ## native player (NativeVideoPlayer) as the opening film is. The first time
 ## a card is called or summoned in a save its full clip plays; every time
 ## after, the short one (whichever of the two exists). Options and the
-## duel's Menu set "Summon videos: Full / Short / Off"
-## (Game.settings.summon_videos): Short always plays the short one, Off plays
-## none (the SummonCine as before). A tap skips. On the web each card's
+## duel's Menu set "Summon videos" (Game.settings.summon_videos; 12 November,
+## Gary: "a button in the game setting for summons play full video or 3
+## second intro"): Full video ("always": the whole clip every time),
+## 3-second intro ("short": the short cut every time), Full once ("full",
+## what it was before and still is until one is chosen: the whole clip the
+## first time, the intro after), Off (none: the SummonCine as before). A tap
+## skips. On the web each card's
 ## clips are their own pack (tools/web_packs.py: summon_<id>), fetched the
 ## first time that card is summoned, with a loading bar that can be skipped.
 ## A card with no clip keeps the SummonCine.
 
 const DIR := "res://assets/movies/summons/"
 const SETTING := "summon_videos"
-const MODES := ["full", "short", "off"]
-const MODE_NAMES := {"full": "Full", "short": "Short", "off": "Off"}
+const MODES := ["always", "short", "full", "off"]
+const MODE_NAMES := {"always": "Full video", "short": "3-second intro", "full": "Full once", "off": "Off"}
+## What each choice does, in a line under the buttons.
+const MODE_WORDS := {
+	"always": "A Summon's whole film plays every time it's summoned.",
+	"short": "A three-second cut of its film plays every time.",
+	"full": "Its whole film plays the first time you summon each one, the three-second cut after that.",
+	"off": "No film: the Summon arrives on the field as drawn.",
+}
 ## NativeVideoPlayer.poll()'s events, as native_video_player.h numbers them
 const NV_TAPPED := 1
 const NV_SKIP_PRESSED := 2
@@ -85,7 +96,7 @@ static func pick(card_id: String) -> String:
 	var m := mode()
 	if m == "off":
 		return ""
-	var want := "short" if (m == "short" or seen(card_id)) else "full"
+	var want := "full" if m == "always" else ("short" if (m == "short" or seen(card_id)) else "full")
 	var other := "short" if want == "full" else "full"
 	for kind in [want, other]:
 		if has_clip(card_id, kind):
