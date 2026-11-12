@@ -1864,6 +1864,39 @@ Details: `docs/handover/2026-11-12-sounds.md`.
     the gap) and everything that sees one off; `tests/rain_shot.tscn`
     pictures the green dry and in the rain (looked at: thin pale streaks,
     light, the green otherwise as it was).
+- **Rain on the roof, a rainbow, and mist at dawn** (Gary, 16:51: "Yes to
+  all 3 suggestions"), all in `Weather`:
+  - **A shower heard from inside the inn.** Going indoors no longer sees a
+    shower off: it isn't drawn in there, but it carries on (`may_rain`:
+    out on the green with the player free, *or* indoors), and
+    `Ashford.ambience_at` gives the taprooms `amb_fire_rain` (the hearth,
+    rain overhead with its edge taken off) and the attic `amb_attic_rain`
+    (the roof just above); the cellar and the tunnel are too far under the
+    ground. Its clock still only runs out on the green.
+  - **A rainbow** as some showers end by themselves (`BOW_CHANCE` 0.6): one
+    end of a great arc (`BOW_RADIUS` 90 m, `BOW_WIDTH` 4.2 m, a ring of
+    colour added to what's behind it, thinning into the grass at its foot)
+    comes down `BOW_AT` from the spot on screen, square to the camera, for
+    `BOW_HOLD` seconds. The walking camera never sees the sky, so what it
+    shows is the foot, a soft band of colour standing in the grass a few
+    steps off; a camera down among the people sees it go up and over the
+    village. What sees a shower off sees it off.
+  - **Mist on the morning after the fires** (`time_kind` "dawn"): flat
+    soft sheets a hand to a yard off the grass (what's seen from above) and
+    low banks standing up off it that turn to the camera (what's seen from
+    among the people), barely drifting, there from the morning's first
+    frame. It lies under the Pale Herald's own mist, which still rolls down
+    the road against the wind over it: it is thin and still so that the
+    Herald's reads as the one that moves. Where Gary's film of the Herald
+    plays instead of the 3D, the mist is only seen in Bram's talk after it:
+    if that doesn't match the film, `_tick_mist` is the one place to turn
+    it off.
+  `tests/rain_shot.tscn -- <dir> bow | mist` pictures each (looked at: the
+  foot in the walking view faint but there, the arc from the ground soft
+  and whole; the mist a pale low band across the green from the dawn's own
+  low camera, soft patches from above); `ambience_test` has the shower
+  indoors, the rainbow's coming, standing and being seen off, and the mist
+  only at dawn.
 - **Two more grounds for the footsteps**: `step_stairs` (a tread rings
   higher than the floor and creaks: anywhere indoors more than
   `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the

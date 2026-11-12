@@ -14,7 +14,7 @@ extends Node3D
 
 var _bad: Array = []
 var _show := false
-const BEDS := ["amb_rain", "amb_attic", "amb_fire", "amb_cellar", "amb_green_day", "amb_dusk", "amb_night", "amb_festival", "amb_burning", "amb_wood_day", "amb_river", "amb_camp", "amb_city"]
+const BEDS := ["amb_rain", "amb_attic", "amb_fire_rain", "amb_attic_rain", "amb_fire", "amb_cellar", "amb_green_day", "amb_dusk", "amb_night", "amb_festival", "amb_burning", "amb_wood_day", "amb_river", "amb_camp", "amb_city"]
 
 
 func _ready() -> void:
@@ -137,11 +137,15 @@ func _ashford() -> void:
 	await get_tree().process_frame
 
 
-## The shower (Weather): none before its time, one within FIRST of a free
-## day on the green, heard as rain, gone within LAST, none again inside GAP;
-## none indoors, at dusk, in a staged scene, during a film or with a house
-## on fire, and one that's falling is seen off in a few seconds by any of
-## those. Its clock is run by hand here, a second at a time.
+## The weather (Weather). The shower: none before its time, one within FIRST
+## of a free day on the green, heard as rain, gone within LAST, none again
+## inside GAP; none at dusk, in a staged scene on the green, during a film or
+## with a house on fire, and one that's falling is seen off in a few seconds
+## by any of those; indoors it carries on, heard on the roof from the
+## taproom and the attic and not drawn. The rainbow: there as a shower ends,
+## its foot in the walking camera's sight, gone in its time or seen off. The
+## mist: on the morning after the fires only. Its clock is run by hand here,
+## a second at a time.
 func _weather(w: World, v: AshfordVillage) -> void:
 	var wx := Weather.of(w)
 	if wx == null:
@@ -177,7 +181,7 @@ func _weather(w: World, v: AshfordVillage) -> void:
 	if again >= 0.0 and again - ended < float(Weather.GAP[0]) - 5.0:
 		_bad.append("a second shower only %.0f s after the first ended" % (again - ended))
 	# seen off: each thing that stops one, with a shower falling
-	for why: String in ["a staged scene", "the sun going down", "a film", "a house on fire", "indoors"]:
+	for why: String in ["a staged scene", "the sun going down", "a film", "a house on fire"]:
 		wx._left = 60.0
 		wx.amount = 1.0
 		match why:
@@ -189,8 +193,6 @@ func _weather(w: World, v: AshfordVillage) -> void:
 				Ambience.hush += 1
 			"a house on fire":
 				(v.houses[0] as Dictionary)["burning"] = true
-			"indoors":
-				_look(w, InnRooms.TAPROOM_AT)
 		if wx.may_rain():
 			_bad.append("a shower may fall with %s" % why)
 		for k in int(Weather.EASE_OUT) + 1:
@@ -202,6 +204,66 @@ func _weather(w: World, v: AshfordVillage) -> void:
 		Ambience.hush = 0
 		(v.houses[0] as Dictionary)["burning"] = false
 		_look(w, w.player.global_position)
+	# indoors a shower carries on, heard on the roof and not drawn; under
+	# the ground it isn't heard at all
+	wx._left = 60.0
+	wx.amount = 1.0
+	for row: Array in [[InnRooms.TAPROOM_AT, "the taproom in a shower", "amb_fire_rain"], [InnRooms.ATTIC_AT, "the attic in a shower", "amb_attic_rain"],
+			[InnRooms.CELLAR_AT, "the cellar in a shower", "amb_cellar"]]:
+		_look(w, row[0])
+		w.cine = true   # (a staged scene indoors doesn't see it off either)
+		wx._process(1.0)
+		_want(w, String(row[1]), String(row[2]))
+		if wx._left <= 0.0 or wx.amount < 1.0:
+			_bad.append("%s: going indoors saw the shower off" % row[1])
+		if wx._rain.emitting:
+			_bad.append("%s: rain is drawn indoors" % row[1])
+		w.cine = false
+	_look(w, w.player.global_position)
+	wx._process(1.0)
+	if not wx._rain.emitting or w.ambience() != "amb_rain":
+		_bad.append("back out on the green the shower isn't falling (%s)" % w.ambience())
+	wx._left = 0.0
+	wx.amount = 0.0
+	# the rainbow: there within BOW_IN of a shower's end, gone again after
+	# BOW_HOLD, and seen off by a staged scene
+	wx.force_bow()
+	for k in int(Weather.BOW_IN) + 1:
+		wx._process(1.0)
+	if wx.bow < 0.99 or not wx._bow.visible:
+		_bad.append("no rainbow %.0f s after one was due (%.2f)" % [Weather.BOW_IN + 1.0, wx.bow])
+	var foot: Vector3 = wx._bow.global_transform * Vector3(-Weather.BOW_RADIUS, 0, 0)
+	if _show:
+		print("the rainbow's foot stands %.1f m from the player" % Vector2(foot.x - w.player.global_position.x, foot.z - w.player.global_position.z).length())
+	if Vector2(foot.x - w.player.global_position.x, foot.z - w.player.global_position.z).length() > 12.0:
+		_bad.append("the rainbow's foot is %.0f m from the player: out of the walking camera's sight" % foot.distance_to(w.player.global_position))
+	for k in int(Weather.BOW_HOLD + Weather.BOW_OUT) + 2:
+		wx._process(1.0)
+	if wx.bow > 0.0 or wx._bow.visible:
+		_bad.append("the rainbow is still there %.0f s on (%.2f)" % [Weather.BOW_HOLD + Weather.BOW_OUT, wx.bow])
+	wx.force_bow()
+	for k in int(Weather.BOW_IN) + 1:
+		wx._process(1.0)
+	w.cine = true
+	for k in int(Weather.EASE_OUT) + 1:
+		wx._process(1.0)
+	if wx.bow > 0.0:
+		_bad.append("a staged scene didn't see the rainbow off (%.2f)" % wx.bow)
+	w.cine = false
+	# the mist: on the morning after the fires, and only then
+	wx._process(1.0)
+	if wx.mist > 0.0 or wx._mist.emitting:
+		_bad.append("mist on the green on a festival day")
+	v.time_kind = "dawn"
+	wx._process(1.0)
+	if wx.mist < 1.0 or not wx._mist.emitting or not wx._banks.emitting:
+		_bad.append("no mist on the green on the morning after the fires")
+	if wx.may_rain():
+		_bad.append("a shower may fall on the morning after the fires")
+	v.time_kind = "festival"
+	wx._process(1.0)
+	if wx._mist.emitting or wx._banks.emitting:
+		_bad.append("the mist stays when the morning is over")
 	w.cine = true
 	wx.set_process(true)
 

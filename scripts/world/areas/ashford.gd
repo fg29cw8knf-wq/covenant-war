@@ -253,11 +253,14 @@ static func surface_at(_w: World, at: Vector3) -> String:
 static func ambience_at(w: World, at: Vector3) -> String:
 	if at.y < World.INDOORS_BELOW:
 		var flat := func(c: Vector3) -> float: return Vector2(at.x - c.x, at.z - c.z).length()
+		# (a shower that's falling outside is heard on the roof from the
+		# taproom and the attic; the cellar is too far under the ground)
+		var wet := Weather.of(w) != null and Weather.of(w).raining()
 		if flat.call(InnRooms.TAPROOM_AT) < 13.0 or flat.call(InnRooms.EVE_AT) < 13.0:
-			return "amb_fire"
+			return "amb_fire_rain" if wet else "amb_fire"
 		if flat.call(InnRooms.CELLAR_AT) < 13.0 or at.x > AshfordNight.TUNNEL_AT.x - 13.0:
 			return "amb_cellar"
-		return "amb_attic"   # (the wind under its eaves)
+		return "amb_attic_rain" if wet else "amb_attic"   # (the wind under its eaves)
 	if at.distance_to(MillSet.AT) < 80.0:
 		return "amb_river"
 	var v := village(w)

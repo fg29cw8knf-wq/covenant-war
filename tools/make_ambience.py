@@ -372,6 +372,29 @@ def eaves(r):
     return norm(out)
 
 
+def roof_rain(r, top):
+    """Rain heard from under the roof it's falling on: the hush of it with
+    the edge taken off (nothing above `top` Hz gets through), dull drops."""
+    hush = norm(looped(lambda n: band(r.standard_normal(n), 220, top) * slow(n, 0.3, 0.16, r)))
+    drops = np.zeros(N)
+    for _ in range(int(26 * LOOP_SECS)):
+        secs = r.uniform(0.008, 0.02)
+        mid = r.uniform(380, top * 0.7)
+        d = band(r.standard_normal(n_of(secs) + 64), mid * 0.7, mid * 1.5)[:n_of(secs)] * np.hanning(n_of(secs))
+        put(drops, r.uniform(0, LOOP_SECS), d / (np.max(np.abs(d)) + 1e-9), r.uniform(0.15, 1.0) ** 2)
+    return norm(hush * 0.9 + norm(drops) * 0.35)
+
+
+def bed_fire_rain(r):
+    """The taproom with a shower on its roof: the hearth, the rain overhead."""
+    return fire(r, 7.0, False) * 0.75 + roof_rain(r, 1900.0) * 0.5
+
+
+def bed_attic_rain(r):
+    """The attic with a shower on the roof just above it."""
+    return eaves(r) * 0.45 + roof_rain(r, 3400.0) * 0.8
+
+
 def bed_rain(r):
     """A shower passing over the green by day: the rain, a bird or two that doesn't mind it."""
     return rain(r) * 0.9 + birds(r, 4) * 0.2
@@ -383,10 +406,10 @@ def bed_attic(r):
 
 
 ## A bed made quieter than the rest (a share of LOUD).
-QUIETER = {"attic": 0.6}
+QUIETER = {"attic": 0.6, "attic_rain": 0.8}
 
 BEDS = {
-    "rain": bed_rain, "attic": bed_attic,
+    "rain": bed_rain, "attic": bed_attic, "fire_rain": bed_fire_rain, "attic_rain": bed_attic_rain,
     # ("tavern": bed_tavern, a taproom with people in it: no room has a crowd yet)
     "fire": bed_fire, "cellar": bed_cellar, "green_day": bed_green_day,
     "dusk": bed_dusk, "night": bed_night, "festival": bed_festival, "burning": bed_burning,
