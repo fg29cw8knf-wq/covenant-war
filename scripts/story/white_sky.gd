@@ -2007,6 +2007,12 @@ func _build_set() -> void:
 	if _bram is Figure3D:
 		(_bram as Figure3D).step_on = "snow"   # (12 November: his boots in the snow, the first sound the player makes)
 	_set.add_child(_bram)
+	if _bram is Figure3D:
+		# (the same evening: his breath in the cold)
+		var cold := Breath.new()
+		cold.who = [_bram]
+		cold.wind = Vector3(-1.1, 0.0, 0.3)   # (the way the snow is blown)
+		_set.add_child(cold)
 	_bram.position = WALK_FROM
 	_face(_bram, Vector3.FORWARD)   # his back to us, from the first frame
 	_dress_bram.call_deferred()

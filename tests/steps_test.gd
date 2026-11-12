@@ -3,7 +3,8 @@ extends Node3D
 ## foot comes down, left then right, at a walker's and a runner's rate; one
 ## standing still, or marked "none", isn't; the world says what's underfoot
 ## (boards in the rooms, dirt on a path, grass off it, flags in the cellar);
-## and there is a sound for every kind of ground.
+## and there is a sound for every kind of ground. Also breath in the cold
+## (Breath): at the mouth, every few seconds, and not when switched off.
 ## Run: godot --headless --path . --fixed-fps 30 res://tests/steps_test.tscn [-- list]
 ## Ends "STEPS: ok" or the problems.
 
@@ -28,6 +29,7 @@ func _ready() -> void:
 			["bram_coat" if Figure3D.has_model("bram_coat") else "bram", "walk", 1.1, 0.8, 2.4], ["corin", "run", 0.0, 2.2, 4.8]]:
 		await _walk(String(row[0]), String(row[1]), float(row[2]), float(row[3]), float(row[4]))
 	await _still()
+	await _breath()
 	_grounds()
 	await _village()
 	for b in _bad:
@@ -90,6 +92,39 @@ func _still() -> void:
 	if Sfx.heard.size() > 0:
 		_bad.append("a runner 400 m off was heard")
 	f.queue_free()
+
+
+## Breath in the cold (Breath): a figure it looks after lets one out every
+## few seconds, at its mouth (head height, in front of the face) and the way
+## it faces; none while it's switched off.
+func _breath() -> void:
+	var f: Figure3D = Figure3D.make("player", "player")
+	add_child(f)
+	f.face(Vector3(1, 0, 0), null)
+	await get_tree().create_timer(1.0).timeout
+	var m: Array = f.mouth()
+	var at: Vector3 = m[0]
+	var out: Vector3 = m[1]
+	if _show:
+		print("the player's mouth: %.2f m up, %.2f m in front, facing %s (the body faces %s)" % [at.y, (at - f.global_position).dot(f.facing()), out, f.facing()])
+	if at.y < 1.3 or at.y > 1.85 or (at - f.global_position).dot(f.facing()) < 0.03 or out.dot(f.facing()) < 0.7:
+		_bad.append("the player's mouth is at %s facing %s (standing at %s facing %s)" % [at, out, f.global_position, f.facing()])
+	var b := Breath.new()
+	b.who = [f]
+	add_child(b)
+	var was := Breath.count
+	await get_tree().create_timer(float(Breath.EVERY[1]) * 2.0 + 1.5).timeout
+	var let := Breath.count - was
+	if let < 2 or let > 6:
+		_bad.append("%d breaths in %.0f s (wanted 2 to 6)" % [let, float(Breath.EVERY[1]) * 2.0 + 1.5])
+	b.on = false
+	was = Breath.count
+	await get_tree().create_timer(float(Breath.EVERY[1]) + 1.0).timeout
+	if Breath.count != was:
+		_bad.append("breath shows while it's switched off")
+	b.queue_free()
+	f.queue_free()
+	await get_tree().process_frame
 
 
 ## What the world says is underfoot (World.surface_at and Ashford's own).

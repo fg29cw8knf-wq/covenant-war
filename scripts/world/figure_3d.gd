@@ -171,6 +171,7 @@ var _seat_pose := ""
 ## node above it with a surface_at(): World). Sfx.step plays it, quieter the
 ## further off it is, and quieter for anyone but the player (STEP_OTHERS_DB).
 signal footfall(side: String, surface: String)
+const GROUP := "figures"
 var step_on := ""
 const STEP_OTHERS_DB := -5.0
 const STEP_GAITS := ["walk", "run", "sneak"]
@@ -292,6 +293,7 @@ static func model_key(look: String, id := "") -> String:
 
 
 func _ready() -> void:
+	add_to_group(GROUP)   # (found by what goes round every figure in a place: Breath)
 	_pivot = Node3D.new()
 	_pivot.name = "Pivot"
 	add_child(_pivot)
@@ -1352,6 +1354,28 @@ func hand_light(node: Node3D, right := true) -> Node3D:
 
 
 ## The world position of a bone (head, hands), for aiming cameras and lights.
+## Where this figure's mouth is, and the way it faces: [point, direction],
+## for breath that shows in the cold (Breath). The head's own way, so a
+## bowed head breathes down at the ground; the body's if the model's head
+## bone points some other way.
+const MOUTH_OUT := 0.1    # forward of the head's joint (m, on a grown-up)
+const MOUTH_UP := 0.03
+
+func mouth() -> Array:
+	var size := _hips / ADULT_HIPS
+	var flat := facing()
+	if _skel == null:
+		return [global_position + Vector3(0, 1.55 * size, 0) + flat * MOUTH_OUT, flat]
+	var i := _skel.find_bone("Head")
+	if i < 0:
+		return [global_position + Vector3(0, 1.55 * size, 0) + flat * MOUTH_OUT, flat]
+	var xf := _skel.global_transform * _skel.get_bone_global_pose(i)
+	var out := xf.basis.z.normalized()
+	if out.dot(flat) < 0.15:
+		out = flat
+	return [xf.origin + out * MOUTH_OUT * size + xf.basis.y.normalized() * MOUTH_UP * size, out]
+
+
 func bone_pos(bone: String) -> Vector3:
 	var sk := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	if sk == null:

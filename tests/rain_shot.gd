@@ -3,7 +3,7 @@ extends Node
 ## dry, then with the rain all the way in, as a Mac draws it (Gfx.level() 2)
 ## or, with "phone", as a phone does.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 1280x720 --fixed-fps 10 --path . res://tests/rain_shot.tscn -- <dir> [phone] [bow | mist]
+##       --resolution 1280x720 --fixed-fps 10 --path . res://tests/rain_shot.tscn -- <dir> [phone] [bow | mist | puddles | breath]
 ## "bow": a rainbow, from the walking camera and from down among the people;
 ## "mist": the morning after the fires, from the walking camera and the dawn's own two.
 
@@ -44,6 +44,45 @@ func _ready() -> void:
 		print("RAIN SHOT: done")
 		get_tree().quit()
 		return
+	if "puddles" in args:
+		# just after a shower: the puddles on the paths, full
+		wx.wet = 1.0
+		for k in 3:
+			await get_tree().process_frame
+		print("RAIN SHOT: %d puddles, showing %s, as solid as %.2f" % [_count_puddles(wx), wx._puddles.visible, wx._puddle_mat.albedo_color.a])
+		await _still(out + "/10_puddles_walking.png")
+		var pp := world.player.global_position
+		await _from(pp + Vector3(0.5, 1.5, 7.0), pp + Vector3(0.0, 0.2, -3.0), 42.0, out + "/11_puddles_low.png")
+		await _from(pp + Vector3(0.0, 9.0, 3.0), pp + Vector3(0.0, 0.0, -4.0), 50.0, out + "/12_puddles_above.png")
+		print("RAIN SHOT: done")
+		get_tree().quit()
+		return
+	if "breath" in args:
+		# the morning after the fires: breath showing, close on the player
+		var bv := world.get_meta("village") as AshfordVillage
+		bv.set_time("dawn")
+		var bp := world.player.global_position
+		var f := (world.player_doll as Figure3D).facing()
+		var cam := Camera3D.new()
+		world.add_child(cam)
+		cam.fov = 24.0
+		cam.look_at_from_position(bp + f.cross(Vector3.UP) * 2.2 + f * 0.5 + Vector3(0, 1.6, 0), bp + f * 0.3 + Vector3(0, 1.58, 0))
+		cam.make_current()
+		for layer: CanvasLayer in get_tree().root.find_children("*", "CanvasLayer", true, false):
+			layer.visible = false
+		var was := Breath.count
+		await get_tree().create_timer(4.0).timeout
+		print("RAIN SHOT: %d breaths let out on the green in 4 s" % (Breath.count - was))
+		# the player's own, as it leaves and hangs
+		var m: Array = (world.player_doll as Figure3D).mouth()
+		print("RAIN SHOT: the player's mouth is %.2f m up, facing %s (the body faces %s)" % [(m[0] as Vector3).y - bp.y, m[1], f])
+		wx._breath._puff(world.player_doll as Figure3D)
+		for n in 4:
+			await get_tree().create_timer(0.3).timeout
+			await _still(out + "/13_breath_%d.png" % (n + 1))
+		print("RAIN SHOT: done")
+		get_tree().quit()
+		return
 	if "mist" in args:
 		# the morning after the fires: the mist on the green
 		var v := world.get_meta("village") as AshfordVillage
@@ -64,6 +103,13 @@ func _ready() -> void:
 	await _still(out + "/3_rain.png")
 	print("RAIN SHOT: done")
 	get_tree().quit()
+
+
+func _count_puddles(wx: Weather) -> int:
+	var n := 0
+	for mm: MultiMeshInstance3D in wx._puddles.find_children("*", "MultiMeshInstance3D", true, false):
+		n += mm.multimesh.instance_count
+	return n
 
 
 ## A still from a camera of the test's own (the world's stays where it is).

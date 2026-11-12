@@ -144,8 +144,10 @@ func _ashford() -> void:
 ## by any of those; indoors it carries on, heard on the roof from the
 ## taproom and the attic and not drawn. The rainbow: there as a shower ends,
 ## its foot in the walking camera's sight, gone in its time or seen off. The
-## mist: on the morning after the fires only. Its clock is run by hand here,
-## a second at a time.
+## mist, and everyone's breath: on the morning after the fires only.
+## Thunder: once in a shower that has it. Puddles: on the paths, full after
+## PUDDLE_FILL of rain, dry PUDDLE_DRY after, or at once when a shower is
+## seen off. Its clock is run by hand here, a second at a time.
 func _weather(w: World, v: AshfordVillage) -> void:
 	var wx := Weather.of(w)
 	if wx == null:
@@ -250,6 +252,59 @@ func _weather(w: World, v: AshfordVillage) -> void:
 	if wx.bow > 0.0:
 		_bad.append("a staged scene didn't see the rainbow off (%.2f)" % wx.bow)
 	w.cine = false
+	# thunder: once, part-way through a shower that has one
+	Sfx.listen = true
+	Sfx.heard.clear()
+	wx._left = 30.0
+	wx.amount = 1.0
+	wx._thunder_in = 2.5
+	for k in 6:
+		wx._process(1.0)
+	var rolls: int = Sfx.heard.filter(func(h): return String(h[1]) == "thunder_far").size()
+	if rolls != 1:
+		_bad.append("a shower with thunder in it thundered %d times" % rolls)
+	if not Sfx.has_file("thunder_far") or not Sfx.has_file("thunder_far_2"):
+		_bad.append("no thunder (or only one take): assets/sfx/thunder_far.wav")
+	# puddles: filled by PUDDLE_FILL of rain, on the paths; dry PUDDLE_DRY
+	# after it; dried in a few seconds by what sees a shower off
+	var n := 0
+	var off_path := 0
+	for mm: MultiMeshInstance3D in wx._puddles.find_children("*", "MultiMeshInstance3D", true, false):
+		for i in mm.multimesh.instance_count:
+			var o := mm.multimesh.get_instance_transform(i).origin
+			n += 1
+			if v.path_at(o.x, o.z) < 0.5 or absf(o.y - v.ground_y(o.x, o.z)) > 0.05:
+				off_path += 1
+	if _show:
+		print("%d puddles, %d of them off a path or off the ground" % [n, off_path])
+	if n < 10 or off_path > 0:
+		_bad.append("%d puddles, %d off a path or off the ground" % [n, off_path])
+	wx.wet = 0.0
+	wx._left = 60.0
+	wx._thunder_in = -1.0
+	for k in int(Weather.PUDDLE_FILL) + 2:
+		wx._process(1.0)
+	if wx.wet < 0.99 or not wx._puddles.visible:
+		_bad.append("the puddles aren't full after %.0f s of rain (%.2f)" % [Weather.PUDDLE_FILL + 2.0, wx.wet])
+	wx._left = 0.0
+	wx._bow_left = 0.0
+	for k in int(Weather.EASE_OUT + Weather.PUDDLE_DRY * 0.5):
+		wx._process(1.0)
+	if wx.wet < 0.3 or not wx._puddles.visible:
+		_bad.append("the puddles are gone half-way through their drying (%.2f)" % wx.wet)
+	for k in int(Weather.PUDDLE_DRY * 0.5) + 6:
+		wx._process(1.0)
+	if wx.wet > 0.0 or wx._puddles.visible:
+		_bad.append("the puddles are still there %.0f s after the rain (%.2f)" % [Weather.PUDDLE_DRY + 6.0, wx.wet])
+	wx.wet = 1.0
+	w.cine = true
+	for k in int(Weather.EASE_OUT) + 1:
+		wx._process(1.0)
+	if wx.wet > 0.0:
+		_bad.append("a staged scene didn't dry the puddles (%.2f)" % wx.wet)
+	w.cine = false
+	wx.bow = 0.0
+	wx._bow_left = 0.0
 	# the mist: on the morning after the fires, and only then
 	wx._process(1.0)
 	if wx.mist > 0.0 or wx._mist.emitting:
@@ -258,12 +313,16 @@ func _weather(w: World, v: AshfordVillage) -> void:
 	wx._process(1.0)
 	if wx.mist < 1.0 or not wx._mist.emitting or not wx._banks.emitting:
 		_bad.append("no mist on the green on the morning after the fires")
+	if not wx._breath.on:
+		_bad.append("no breath shows on the morning after the fires")
 	if wx.may_rain():
 		_bad.append("a shower may fall on the morning after the fires")
 	v.time_kind = "festival"
 	wx._process(1.0)
 	if wx._mist.emitting or wx._banks.emitting:
 		_bad.append("the mist stays when the morning is over")
+	if wx._breath.on:
+		_bad.append("breath shows on a festival day")
 	w.cine = true
 	wx.set_process(true)
 

@@ -1897,6 +1897,33 @@ Details: `docs/handover/2026-11-12-sounds.md`.
   low camera, soft patches from above); `ambience_test` has the shower
   indoors, the rainbow's coming, standing and being seen off, and the mist
   only at dawn.
+- **Thunder, puddles and breath** (Gary, 17:29: "Yes to all 3"):
+  - **Thunder**: `THUNDER_CHANCE` (0.3) of showers have one roll of it a
+    long way off, `THUNDER_AFTER` seconds in (`thunder_far.wav` and a second
+    take, 9 s, no crack, made by `tools/make_ambience.py`'s `ONCE`), played
+    once on the shared player, quieter through a roof.
+  - **Puddles**: `PUDDLES` small pools (40 on a Mac) in fixed places on the
+    green's paths (`Weather._make_puddles`: well onto a path, on level drawn
+    ground, clear of buildings and each other), flat soft-edged shapes a
+    centimetre off the ground and as smooth as glass, so they show the sky.
+    `wet` fills over `PUDDLE_FILL` of rain and dries over `PUDDLE_DRY` after
+    it; what sees a shower off dries them in `EASE_OUT`.
+  - **Breath in the cold** (`scripts/world/breath.gd`, `Figure3D.mouth()`):
+    every few seconds (`EVERY`; `HARD` when running) each figure looked
+    after lets out a few small soft shapes at the mouth, which drift the
+    way the head faces, rise, swell and go. Bram in his memory (`who`, with
+    the storm's `wind` to carry it aside); everyone on the green on the
+    morning after the fires (`under` the world, switched `on` with the
+    mist). The hunter has none. A pool of ten small emitters taken in turn;
+    figures further than `REACH` from the camera are left out.
+  `rain_shot -- <dir> puddles | breath` pictures them (looked at: the
+  puddles slate-blue pools on the paths; the breath a pale wisp at the
+  player's mouth in a close shot. In the snow walk, seen from behind against
+  the snow, Bram's is all but invisible: it's there for the shots that see
+  him from the side). `ambience_test` has the thunder (once), the puddles
+  (on paths, filling, drying, seen off) and the breath's switch;
+  `steps_test` the mouth and the breaths' rate; `white_sky_test` wants
+  three of Bram's breaths on the walk (11 in the whole memory).
 - **Two more grounds for the footsteps**: `step_stairs` (a tread rings
   higher than the floor and creaks: anywhere indoors more than
   `World.STAIR_RISE` above a room's floor, so the cellar's stairs and the

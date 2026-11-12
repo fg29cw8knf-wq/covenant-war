@@ -104,6 +104,10 @@ func _run() -> void:
 		var names: Array = Sfx.heard.map(func(h): return String(h[1]))
 		var steps: Array = Sfx.heard.filter(func(h): return String(h[1]).begins_with("step_"))
 		print("white_sky_test: heard: %s" % ", ".join(Sfx.heard.filter(func(h): return not String(h[1]).begins_with("step_")).map(func(h): return "%s@%d" % [h[1], h[0]])))
+		print("white_sky_test: %d of Bram's breaths shown in the cold" % Breath.count)
+		if not _duel_only and Breath.count < 3:
+			print("white_sky_test: FAIL: Bram's breath didn't show on the walk (%d)" % Breath.count)
+			ok = false
 		print("white_sky_test: %d footsteps heard, the first at frame %s, the last at %s" % [steps.size(),
 			str(steps[0][0]) if not steps.is_empty() else "-", str(steps[-1][0]) if not steps.is_empty() else "-"])
 		var wanted := ["card_draw", "card_lift", "cry_astral", "ward_set", "cry_hound", "hound_whine", "page_turn", "cry_orlanthe"]

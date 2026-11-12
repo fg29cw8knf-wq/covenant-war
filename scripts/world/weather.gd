@@ -27,6 +27,14 @@ extends Node3D
 ## yard off the grass, barely drifting. The Pale Herald's own mist, which
 ## rolls down the road against the wind, comes in over it.
 ##
+## Thunder, puddles, breath (the same evening, "Yes to all 3"). Once in a
+## few showers (THUNDER_CHANCE) a roll of thunder a long way off, part-way
+## through. A shower fills small puddles on the paths of the green
+## (PUDDLE_FILL of rain), which catch the sky and the sun and dry out over
+## about a minute after it (PUDDLE_DRY); what sees a shower off dries them
+## in a few seconds. And on the morning after the fires, with the mist,
+## everyone's breath shows (Breath).
+##
 ## The sky, the light and the ground are left as they are: nothing here
 ## changes what the place looks like on a dry, clear day.
 
@@ -64,9 +72,29 @@ const MIST_BANKS := [16, 28, 40]    # the low banks that stand up off the grass,
 const MIST_BANK_TALL := 0.14        # a bank's height as a share of its width
 const MIST_BANK_COL := Color(0.88, 0.86, 0.82, 0.2)
 
+const THUNDER_CHANCE := 0.3     # of showers
+const THUNDER_AFTER := [10.0, 34.0]   # seconds into one
+const THUNDER_DB := -1.0
+const THUNDER_INDOORS_DB := -5.0      # ...quieter still through a roof
+
+const PUDDLES := [16, 28, 40]   # by Gfx.level()
+const PUDDLE_REACH := 36.0      # this far from the green's middle and no further
+const PUDDLE_SIZE := [0.3, 0.8] # across (m)
+const PUDDLE_APART := 1.7       # no two nearer than this
+const PUDDLE_ON_PATH := 0.75    # AshfordVillage.path_at at least this: well onto a path
+const PUDDLE_FILL := 22.0       # seconds of rain to fill them
+const PUDDLE_DRY := 70.0        # seconds to dry out after
+const PUDDLE_SEEN := 0.7        # how solid a full one is
+const PUDDLE_UP := 0.014        # how far off the ground they lie (m)
+
 var world: World
 var village: AshfordVillage
 var amount := 0.0        # how much of a shower there is now, 0 to 1
+var wet := 0.0           # how full the puddles are, 0 to 1
+var _thunder_in := -1.0  # seconds of this shower till its thunder (-1: none)
+var _puddles: Node3D
+var _puddle_mat: StandardMaterial3D
+var _breath: Breath
 var bow := 0.0           # how much of a rainbow, 0 to 1
 var mist := 0.0          # how much mist is wanted, 0 or 1 (the sheets come and go by themselves)
 var _clock := 0.0        # seconds of free daylight on the green so far
@@ -111,6 +139,14 @@ func _ready() -> void:
 			m.position.y = village.height(MIST_MID.x, MIST_MID.z) + (MIST_MID.y if m == _mist else 0.0)
 		m.emitting = false
 		m.visible = false
+	_puddles = _make_puddles(int(PUDDLES[level]))
+	add_child(_puddles)
+	_puddles.visible = false
+	# (breath in the cold, on the morning the mist lies: everyone in the world)
+	_breath = Breath.new()
+	_breath.under = world
+	_breath.on = false
+	add_child(_breath)
 
 
 ## Is it raining enough to hear?
@@ -188,6 +224,12 @@ func _process(delta: float) -> void:
 					_bow_start()
 		elif place == "green" and _clock >= _next:
 			_left = randf_range(LAST[0], LAST[1])
+			_thunder_in = randf_range(THUNDER_AFTER[0], THUNDER_AFTER[1]) if randf() < THUNDER_CHANCE else -1.0
+		# a roll of thunder, a long way off, once in a few showers
+		if _left > 0.0 and _thunder_in >= 0.0:
+			_thunder_in -= delta
+			if _thunder_in < 0.0:
+				Sfx.shared().play("thunder_far", randf_range(0.92, 1.06), THUNDER_DB + (THUNDER_INDOORS_DB if place == "inn" else 0.0))
 	elif _left > 0.0:
 		# (seen off by a scene or the evening: the next one waits its turn)
 		_left = 0.0
@@ -202,6 +244,15 @@ func _process(delta: float) -> void:
 	_rain.amount_ratio = clampf(amount, 0.02, 1.0)
 	_tick_bow(delta, ok and place == "green")
 	_tick_mist()
+	# the puddles: filled by the rain, dried by the minute after it (or in a
+	# few seconds by whatever sees a shower off)
+	if amount > 0.5:
+		wet = move_toward(wet, 1.0, delta / PUDDLE_FILL)
+	else:
+		wet = move_toward(wet, 0.0, delta / (PUDDLE_DRY if ok else EASE_OUT))
+	_puddles.visible = wet > 0.01 and place == "green"
+	if _puddles.visible:
+		_puddle_mat.albedo_color.a = PUDDLE_SEEN * smoothstep(0.0, 0.4, wet)
 
 
 # ---------------------------------------------------------------- rainbow ---
@@ -297,6 +348,7 @@ void fragment() {
 func _tick_mist() -> void:
 	var want := world != null and village != null and village.time_kind == "dawn" and not world.attract and not world.held and where() == "green"
 	mist = 1.0 if want else 0.0
+	_breath.on = want
 	if want and not _mist.emitting:
 		# (there from the first frame of the morning, which opens on black)
 		for m: GPUParticles3D in [_mist, _banks]:
@@ -371,6 +423,101 @@ func _make_mist(count: int, banks: bool) -> GPUParticles3D:
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
 	return p
+
+
+# ---------------------------------------------------------------- puddles ---
+
+## Small still pools on the paths of the green, in the same places every
+## time: flat shapes with soft uneven edges just off the ground, as smooth
+## as glass, so they show the sky and flash where the sun finds them.
+func _make_puddles(count: int) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Puddles"
+	_puddle_mat = StandardMaterial3D.new()
+	_puddle_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_puddle_mat.albedo_color = Color(0.6, 0.68, 0.78, 0.0)
+	_puddle_mat.metallic = 0.9
+	_puddle_mat.roughness = 0.05
+	# (a little of the sky's own light in them, so they show it on a
+	# renderer that mirrors less than the Mac's does)
+	_puddle_mat.emission_enabled = true
+	_puddle_mat.emission = Color(0.42, 0.56, 0.74)
+	_puddle_mat.emission_energy_multiplier = 0.3
+	_puddle_mat.vertex_color_use_as_albedo = true
+	_puddle_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	if village == null:
+		return root
+	var r := RandomNumberGenerator.new()
+	r.seed = 1112
+	var shapes: Array = []
+	for k in 3:
+		shapes.append(_puddle_shape(r))
+	var placed: Array = []
+	var xfs: Array = [[], [], []]
+	var tries := 0
+	while placed.size() < count and tries < count * 60:
+		tries += 1
+		var far := sqrt(r.randf()) * PUDDLE_REACH
+		var a := r.randf() * TAU
+		var x := cos(a) * far
+		var z := sin(a) * far
+		if village.path_at(x, z) < PUDDLE_ON_PATH:
+			continue
+		# level ground only: water doesn't lie on a slope
+		var y := village.ground_y(x, z)
+		if absf(village.ground_y(x + 0.5, z) - y) > 0.02 or absf(village.ground_y(x, z + 0.5) - y) > 0.02 \
+				or absf(village.ground_y(x - 0.5, z) - y) > 0.02 or absf(village.ground_y(x, z - 0.5) - y) > 0.02:
+			continue
+		var at := Vector2(x, z)
+		var clear := true
+		for p: Vector2 in placed:
+			if p.distance_to(at) < PUDDLE_APART:
+				clear = false
+				break
+		if clear:
+			for f in village.footprints:
+				if at.distance_to(f[0]) < float(f[1]) + 0.4:
+					clear = false
+					break
+		if not clear:
+			continue
+		placed.append(at)
+		var size := r.randf_range(PUDDLE_SIZE[0], PUDDLE_SIZE[1])
+		var b := Basis(Vector3.UP, r.randf() * TAU).scaled(Vector3(size * r.randf_range(0.75, 1.3), 1.0, size * r.randf_range(0.75, 1.3)))
+		(xfs[placed.size() % 3] as Array).append(Transform3D(b, Vector3(x, y + PUDDLE_UP, z)))
+	for k in 3:
+		if (xfs[k] as Array).is_empty():
+			continue
+		var mi := village.multimesh(root, shapes[k], _puddle_mat, xfs[k], [], false)
+		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	return root
+
+
+## One puddle's outline, about a metre across before it's sized: a ring of
+## points wandering in and out, solid in the middle and thinning to nothing
+## at its edge.
+func _puddle_shape(r: RandomNumberGenerator) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := 16
+	var rim: Array = []
+	for i in n:
+		var a := TAU * float(i) / n
+		var far := 0.5 * (1.0 + 0.3 * sin(a * 2.0 + r.randf() * TAU) * r.randf() + r.randf_range(-0.12, 0.12))
+		rim.append(Vector3(cos(a) * far, 0.0, sin(a) * far))
+	var solid := Color(1, 1, 1, 1)
+	var none := Color(1, 1, 1, 0)
+	for i in n:
+		var p0: Vector3 = rim[i]
+		var p1: Vector3 = rim[(i + 1) % n]
+		var q0 := p0 * 0.68
+		var q1 := p1 * 0.68
+		for v: Array in [[Vector3.ZERO, solid], [q1, solid], [q0, solid], [q0, solid], [q1, solid], [p1, none], [q0, solid], [p1, none], [p0, none]]:
+			st.set_normal(Vector3.UP)
+			st.set_color(v[1])
+			st.add_vertex(v[0])
+	st.index()
+	return st.commit()
 
 
 # ------------------------------------------------------------------- rain ---

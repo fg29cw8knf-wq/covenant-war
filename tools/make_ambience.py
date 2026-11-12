@@ -8,7 +8,8 @@ and made to join its own start without a seam (the Ambience player loops
 it). Built from nothing, as the creature voices and the footsteps are
 (tools/make_cries.py, whose tools these use), out of a few layers: a breeze,
 leaves, birds, crickets, an owl, far voices, a hearth, a house on fire, a
-river, a drip, and (the weather) rain and the wind under a roof. A recording saved under the same name is used instead.
+river, a drip, and (the weather) rain and the wind under a roof. Also the
+sounds the weather plays once (thunder_far.wav and its second take). A recording saved under the same name is used instead.
 
     python3 tools/make_ambience.py              every bed
     python3 tools/make_ambience.py fire night   only those
@@ -417,6 +418,33 @@ BEDS = {
 }
 
 
+def thunder(r):
+    """Thunder a long way off: no crack, only the roll of it, one swell
+    over another, each fainter (played once, part-way through some showers)."""
+    secs = r.uniform(4.6, 5.6)
+    out = np.zeros(n_of(secs + 2.4))
+    at = 0.0
+    level = 1.0
+    for _ in range(int(r.integers(5, 8))):
+        s = r.uniform(0.9, 2.2)
+        m = n_of(s)
+        brown = highpass(np.cumsum(r.standard_normal(m)), 40.0)
+        roll = norm(lowpass(brown, r.uniform(260, 520)) * slow(m, r.uniform(2.5, 5.0), 0.5, r)) * env(s, r.uniform(0.08, 0.25), 0.1, 0.7, 1.6)
+        # (the part of it a phone's small speaker can still say)
+        mid = norm(band(r.standard_normal(m), 250, 900) * slow(m, 4.0, 0.4, r)) * env(s, 0.1, 0.1, 0.8, 2.2) * 0.28
+        i = n_of(at)
+        out[i:i + m] += (roll + mid) * level
+        at += r.uniform(0.35, 0.9)
+        level *= r.uniform(0.6, 0.9)
+        if at > secs - 1.5:
+            break
+    return far(lowpass(out, 1100.0), r, 0.6, 0.5)
+
+
+## Sounds played once, not round (assets/sfx/<name>.wav and its takes).
+ONCE = {"thunder_far": (thunder, 2)}
+
+
 def finish(x):
     # (filtered round the join, so the join stays whole)
     pad = n_of(1.0)
@@ -439,7 +467,20 @@ def main():
         out_dir = args[i + 1]
         del args[i:i + 2]
     os.makedirs(out_dir, exist_ok=True)
+    for name in (args or list(ONCE)):
+        if name not in ONCE:
+            continue
+        make, takes = ONCE[name]
+        for take in range(takes):
+            r = np.random.default_rng(1112 + 131 * take + sum(ord(c) for c in name))
+            mc.rng = r
+            x = mc.finish(make(r))
+            path = os.path.join(out_dir, "%s%s.wav" % (name, "" if take == 0 else "_%d" % (take + 1)))
+            mc.save(path, x)
+            print("%-10s take %d  %.1f s  rms %.3f -> %s" % (name, take + 1, len(x) / SR, float(np.sqrt(np.mean(x * x))), path))
     for name in (args or list(BEDS)):
+        if name not in BEDS:
+            continue
         r = np.random.default_rng(1112 + sum(ord(c) * (i + 1) for i, c in enumerate(name)))
         mc.rng = r
         x = finish(BEDS[name](r)) * QUIETER.get(name, 1.0)
