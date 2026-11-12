@@ -595,6 +595,27 @@ class Detail:
 		_buttons.add_theme_constant_override("v_separation", 12)
 		right.add_child(_buttons)
 		_refresh()
+		# (12 November) the card turned over to be read; a creature that's
+		# yours is heard as its card opens, and again at a tap on its picture
+		Sfx.shared().play("card_flip")
+		_voice(0.3)
+		_art.gui_input.connect(func(e: InputEvent) -> void:
+			if e is InputEventMouseButton and e.pressed and e.button_index == MOUSE_BUTTON_LEFT:
+				_voice(0.0))
+
+	## Whether this card is a creature of yours that has a voice (Sfx.cry_of).
+	func _has_voice() -> bool:
+		return Codex.owned(id) > 0 and String(Sfx.cry_of(id, "call")[0]) != ""
+
+	func _voice(wait: float) -> void:
+		if not _has_voice():
+			return
+		var cid := id
+		if wait > 0.0:
+			# (nothing of this card's in it: the card may be closed by then)
+			get_tree().create_timer(wait).timeout.connect(func() -> void: Sfx.shared().cry(cid, "call"))
+		else:
+			Sfx.shared().cry(cid, "call")
 
 	func _refresh() -> void:
 		var v: Dictionary = Game.v2
@@ -619,6 +640,8 @@ class Detail:
 		if n > 0:
 			var in_deck := Codex.count_in(deck, id) if deck != null else 0
 			lines.append("You own %d.%s" % [n, ("  %d in your deck." % in_deck) if deck != null else ""])
+			if _has_voice():
+				lines.append("[color=#%s](Tap its picture to hear its voice.)[/color]" % UITheme.TEXT_DIM.to_html(false))
 		else:
 			lines.append("Not in your collection yet.")
 		# --- how to get one
@@ -689,6 +712,7 @@ class Detail:
 			var pour := mini(Game.shards(), Game.forge_needed(id))
 			_add("Forge with %d Shard%s" % [pour, "" if pour == 1 else "s"], func() -> void:
 				var r := Game.forge(id)
+				Sfx.shared().play("gift" if String(r.made) != "" else "essence_gain")
 				if String(r.made) != "":
 					_status.text = "%s crystallises in your hand!  (%d Shards left)" % [d.name, Game.shards()]
 				else:
@@ -697,12 +721,14 @@ class Detail:
 		if Game.spare_is_shards(id) and Game.spare_copies(id) > 0:
 			_add("Turn a spare into %d Shards" % DuelRewards.copy_shards(id), func() -> void:
 				Game.reabsorb(id, 1)
+				Sfx.shared().play("essence_gain")
 				_status.text = "Nothing left for it to feed, so it breaks down into Shards: you have %d." % Game.shards()
 				_after())
 		elif p.get("state", "") != "filling" and DuelCards.is_basic_totem(id) and Game.spare_copies(id) > 0 and Game.temper_of(id) < 3:
 			# nothing left to manifest, but it can still be Tempered (then spares turn into Shards)
 			_add("Re-absorb a spare %s" % d.name, func() -> void:
 				Game.reabsorb(id, 1)
+				Sfx.shared().play("essence_gain")
 				_status.text = "%s is Tempered (%d of 3)." % [d.name, Game.temper_of(id)]
 				_after())
 		if p.get("state", "") == "filling":
@@ -710,12 +736,14 @@ class Detail:
 			if Game.spare_copies(root) > 0:
 				_add("Re-absorb a spare %s" % root_name, func() -> void:
 					var made := Game.reabsorb(root, 1)
+					Sfx.shared().play("gift" if made != "" else "essence_gain")
 					_status.text = "%s manifests!" % DuelCards.CARDS[made].name if made != "" else "+%d Attunement, and %s is Tempered (%d of 3)." % [DuelRewards.copy_points(root), root_name, Game.temper_of(root)]
 					_after())
 			if int(v.get("pool", 0)) > 0:
 				_add("Pour in the pool", func() -> void:
 					var need := int(p.need) - int(p.have)
 					var made := Game.pour_pool(root, mini(int(v.pool), need * 2))
+					Sfx.shared().play("gift" if made != "" else "essence_gain")
 					_status.text = "%s manifests!" % DuelCards.CARDS[made].name if made != "" else "The pool flows in."
 					_after())
 		if deck != null and n > 0:
@@ -723,10 +751,12 @@ class Detail:
 			var in_deck := Codex.count_in(deck, id)
 			var add := _add("Add to deck", func() -> void:
 				deck.append(id)
+				Sfx.shared().play("card_fly")
 				_after())
 			add.disabled = in_deck >= n or in_deck >= int(DuelCards.TIER_MAX_COPIES[tier]) or d.kind == "summon" and in_deck >= 1
 			var rem := _add("Take out of deck", func() -> void:
 				deck.erase(id)
+				Sfx.shared().play("card_lift")
 				_after())
 			rem.disabled = in_deck <= 0
 			if add.disabled and in_deck < n:

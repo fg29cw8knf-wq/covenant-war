@@ -5,6 +5,13 @@ extends Node
 ## exists, the sound falls back to a tiny synthesised placeholder (see
 ## FALLBACK and _synth), or stays silent. The names are listed in the
 ## "Sound & Music Plan" doc.
+##
+## Creatures have voices (12 November, Gary: "adding the sound effect to the
+## game and cards and creatures is good implement that"): cry() plays a
+## creature's own recording (cry_<its id>), else the stand-in for its kind
+## (cry_hound, cry_fox...: VOICE_OF, made by tools/make_cries.py), pitched by
+## its size and by the moment. And every button in the game clicks
+## (watch_buttons, shared).
 
 ## Placeholder used for each named sound until its file arrives ("" = silent).
 const FALLBACK := {
@@ -17,6 +24,8 @@ const FALLBACK := {
 	"cast_fire": "", "cast_storm": "", "cast_tide": "", "cast_verdant": "", "cast_earth": "",
 	"cast_metal": "", "cast_psychic": "", "cast_venom": "", "cast_mystic": "",
 	"cast_frost": "", "cast_wind": "",
+	# (12 November: the elements with no cast of their own borrowed a test beep)
+	"cast_astral": "cast_mystic", "cast_radiant": "cast_mystic", "cast_spirit": "cast_mystic", "cast_umbral": "cast_psychic",
 	"hit_light": "hit", "hit_heavy": "hit", "hit_weak": "hit", "shield_block": "select", "life_hit": "hit",
 	"miss": "", "status_burn": "select", "status_poison": "select", "status_stun": "select",
 	"status_sleep": "select", "dice_roll": "", "dice_land": "coin", "dice_crit": "gift", "dice_fumble": "lose",
@@ -25,31 +34,181 @@ const FALLBACK := {
 
 const RATE := 22050
 static var _cache := {}
+static var _files := {}   # sound name -> its file's path ("" for none)
+
+# --- creature voices ----------------------------------------------------------
+## The stand-in voice of each family (DuelSynergy.FAMILY_OF) ...
+const VOICE_OF_FAMILY := {
+	"hound": "hound", "fox": "fox", "cat": "cat", "winged": "sprite",
+	"scaled": "serpent", "shell": "shell", "stoneborn": "stone",
+}
+## ... and of each creature that has no family, or doesn't sound like its
+## family: [kind, pitch] (the pitch is on top of its size's: SIZE_PITCH).
+## A Summon has none here: its stinger or its clip is its voice, unless it
+## is given a recording of its own (cry_<id>).
+const VOICE_OF := {
+	"stormcaller": ["bird", 1.0], "somnowl": ["owl", 1.0], "runeowl": ["owl", 0.92],
+	"ashen_drake": ["drake", 1.3], "deepmaw": ["drake", 1.0],
+	"blightrat": ["rodent", 1.0], "burrowmole": ["rodent", 0.74],
+	"briar_colossus": ["wood", 1.0], "elderbark": ["wood", 0.9], "thornwarden": ["wood", 1.05],
+	"mossling": ["sprite", 0.8], "emberwisp": ["sprite", 1.0],
+	"mirewidow": ["shell", 1.25], "glyph_warden": ["stone", 1.0],
+	"rimecub": ["beast", 1.4], "thunder_ram": ["beast", 1.05], "thought_eater": ["beast", 0.9],
+	"scrivener": ["astral", 1.0], "loomwarden": ["astral", 0.88], "unspent_hour": ["astral", 1.12],
+	"sunlance_seraph": ["astral", 1.2], "weft_serpent": ["serpent", 1.0],
+}
+## The moments a creature is heard at, and how each moves a cry that has no
+## recording of its own for it (cry_<name>_attack...): the pitch, and the
+## loudness in dB. A hurt cry is only asked for on a heavy blow.
+const CRY_WHEN := {
+	"call": [1.0, 0.0], "attack": [1.1, -4.0], "hurt": [1.18, -5.0], "ko": [0.78, -1.0],
+}
+## Sounds used for a moment until its own file exists: a Hound that is hurt
+## or falls whines (Gary's hound_whine).
+const CRY_ALIAS := {"cry_hound_hurt": "hound_whine", "cry_hound_ko": "hound_whine"}
+## A stand-in is one cry for every creature of its kind, so its pitch goes by
+## the creature's size: its Health (a Cinderpup's 70 high, a Warg's 200 low).
+const SIZE_PITCH := [1.42, 280.0, 0.72, 1.24]   # (pitch at no Health, Health per whole step down, least, most)
+const CRY_DB := -3.0   # (a voice sits just under the blows and the spells)
+const CRY_PITCH := [0.56, 1.9]   # (no cry slower or faster than this, whatever its size and moment)
+
+## One player for sounds that belong to no screen (a button's click, a card
+## turned over in the Codex): shared().
+static var _shared: Sfx
+static var _last_msec := -1000
+static var clicks := 0   # (how many button clicks have been played: for the tests)
+static var listen := false   # (the tests: every sound played is noted in `heard`, [frame, name, pitch])
+static var heard: Array = []
 
 var volume_db := -8.0
 var _players: Array = []
 
 
+func _init() -> void:
+	# (a menu's sounds are heard while the game is paused behind it)
+	process_mode = Node.PROCESS_MODE_ALWAYS
+
+
 func _ready() -> void:
-	for i in 6:
+	if not _players.is_empty():
+		return
+	for i in 8:
 		var p := AudioStreamPlayer.new()
 		p.volume_db = volume_db
 		add_child(p)
 		_players.append(p)
 
 
-func play(sound: String, pitch: float = 1.0) -> void:
+func play(sound: String, pitch: float = 1.0, gain_db: float = 0.0) -> void:
 	var stream := get_stream(_take(sound))
 	if stream == null:
 		return
+	_last_msec = Time.get_ticks_msec()
+	if listen:
+		heard.append([Engine.get_process_frames(), sound, pitch])
 	var level := linear_to_db(maxf(0.001, float(Game.settings.get("sfx", 0.9)) / 0.9))
 	for p in _players:
 		if not p.playing:
 			p.stream = stream
 			p.pitch_scale = pitch
-			p.volume_db = volume_db + level
+			p.volume_db = volume_db + level + gain_db
 			p.play()
 			return
+
+
+## A creature's voice at a moment: "call" (it arrives), "attack", "hurt" (a
+## heavy blow lands on it) or "ko" (it falls). Silent if it has none.
+func cry(id: String, when: String = "call") -> void:
+	var c := cry_of(id, when)
+	if String(c[0]) != "":
+		play(String(c[0]), float(c[1]), float(c[2]))
+
+
+## [sound, pitch, dB] of a creature's voice at a moment, the sound "" when it
+## has none. Looked for in turn: its own recording for the moment
+## (cry_<id>_<when>), its own cry, its kind's for the moment, its kind's cry.
+static func cry_of(id: String, when: String = "call") -> Array:
+	var how: Array = CRY_WHEN.get(when, CRY_WHEN["call"])
+	for own: String in ["cry_%s_%s" % [id, when], "cry_" + id]:
+		if has_file(own):
+			# (its own voice: as recorded, only moved for a moment it has no take of)
+			var made_for: bool = own == "cry_%s_%s" % [id, when]
+			return [own, 1.0 if made_for else float(how[0]), CRY_DB + (0.0 if made_for else float(how[1]))]
+	var kind := voice_kind(id)
+	if kind == "":
+		return ["", 1.0, 0.0]
+	var size := size_pitch(id) * float((VOICE_OF.get(id, ["", 1.0]) as Array)[1])
+	# (never quite the same twice: a few hundredths either way)
+	size *= randf_range(0.97, 1.03)
+	var lo := float(CRY_PITCH[0])
+	var hi := float(CRY_PITCH[1])
+	var at := "cry_%s_%s" % [kind, when]
+	if has_file(at):
+		return [at, clampf(size, lo, hi), CRY_DB]
+	if CRY_ALIAS.has(at) and has_file(String(CRY_ALIAS[at])):
+		return [String(CRY_ALIAS[at]), clampf(size, lo, hi), CRY_DB + float(how[1])]
+	if has_file("cry_" + kind):
+		return ["cry_" + kind, clampf(size * float(how[0]), lo, hi), CRY_DB + float(how[1])]
+	return ["", 1.0, 0.0]
+
+
+## Which kind of voice a creature has ("" for none: a Summon, a Rite).
+static func voice_kind(id: String) -> String:
+	if VOICE_OF.has(id):
+		return String((VOICE_OF[id] as Array)[0])
+	return String(VOICE_OF_FAMILY.get(DuelSynergy.family_of(id), ""))
+
+
+## How high a creature's kind's cry is pitched for its size.
+static func size_pitch(id: String) -> float:
+	var hp := float(DuelCards.CARDS.get(id, {}).get("hp", 120))
+	return clampf(float(SIZE_PITCH[0]) - hp / float(SIZE_PITCH[1]), float(SIZE_PITCH[2]), float(SIZE_PITCH[3]))
+
+
+## Loads the voices of these creatures now, so the first one called in a duel
+## doesn't wait on the disk.
+static func warm_cries(ids: Array) -> void:
+	for id in ids:
+		for when in CRY_WHEN:
+			var c := cry_of(String(id), when)
+			if String(c[0]) != "":
+				get_stream(String(c[0]))
+
+
+## The player for sounds that belong to no screen. Made when first asked for,
+## under the root, and kept.
+static func shared() -> Sfx:
+	if not is_instance_valid(_shared):
+		_shared = Sfx.new()
+		_shared.name = "SharedSfx"
+		# (added a moment later: the root may be in the middle of its own
+		# children; watch_buttons asks for it as the game starts, so it is
+		# long there by the first sound)
+		(Engine.get_main_loop() as SceneTree).root.add_child.call_deferred(_shared)
+	return _shared
+
+
+## Every button in the game clicks (12 November). A screen that plays its own
+## sound for a press (the duel's buttons, a card lifted) keeps it: the click
+## comes after the press's own handlers, and stays silent if anything was
+## played in that moment. A button with the meta "quiet" never clicks.
+static func watch_buttons(tree: SceneTree) -> void:
+	shared()
+	if not tree.node_added.is_connected(_on_node):
+		tree.node_added.connect(_on_node)
+
+
+static func _on_node(n: Node) -> void:
+	# (a button taken out of the tree and put back is met twice)
+	if n is BaseButton and not n.has_meta("quiet") and not (n as BaseButton).pressed.is_connected(_click):
+		(n as BaseButton).pressed.connect(_click, CONNECT_DEFERRED)
+
+
+static func _click() -> void:
+	if Time.get_ticks_msec() - _last_msec < 90:
+		return
+	clicks += 1
+	shared().play("ui_tap")
 
 
 ## True when a real recording exists for this sound.
@@ -58,11 +217,17 @@ static func has_file(sound: String) -> bool:
 
 
 static func _file(sound: String) -> String:
+	# (looked up once: a voice asks after several names every time it's heard)
+	if _files.has(sound):
+		return _files[sound]
+	var found := ""
 	for ext in ["ogg", "wav", "mp3"]:
 		var path := "res://assets/sfx/%s.%s" % [sound, ext]
 		if ResourceLoader.exists(path):
-			return path
-	return ""
+			found = path
+			break
+	_files[sound] = found
+	return found
 
 
 ## Picks one of the recorded takes (name, name_2, name_3...) at random.

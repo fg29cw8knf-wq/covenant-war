@@ -797,6 +797,7 @@ func _start() -> void:
 				ids[String(kid)] = true
 		field.warm_models(ids.keys())
 		field.warm_fx()   # (29 October: the new effects' shaders, drawn once now)
+		Sfx.warm_cries(ids.keys())   # (12 November: and their voices)
 	if bool(spec.get("hold", false)):
 		_held_start = true
 		await _go
@@ -857,6 +858,17 @@ func pause(sec: float) -> void:
 	await get_tree().create_timer(maxf(0.01, sec / speed)).timeout
 
 
+## A creature's own voice (12 November: Sfx.cry, its recording or its kind's
+## stand-in): as it's called, as it attacks, under a heavy blow, as it
+## falls. `wait` in the duel's time, so the cry comes with the picture.
+func _cry(t, when: String, wait: float = 0.0) -> void:
+	var id: String = t.id() if t is DuelTotem else String(t)
+	if wait <= 0.0:
+		sfx.cry(id, when)
+	else:
+		get_tree().create_timer(maxf(0.01, wait / speed)).timeout.connect(func() -> void: sfx.cry(id, when))
+
+
 ## How long timed words stay up, in the duel's own time (what pause() and
 ## the "/ speed" tweens take): the old hold made longer, and never less than
 ## a reader needs for the words (DuelReading: 29 October, Gary: "The text in
@@ -915,6 +927,9 @@ const HIT_STOP_DAMAGE := 50      # a blow this big stops time (so does one on a 
 const KO_SLOW := 0.4             # the knockout's burst in slow motion (Engine.time_scale)...
 const KO_SLOW_MS := 400          # ...for this long, real time...
 const KO_SLOW_RAMP_MS := 250     # ...then back up to speed over this
+const CRY_AFTER_CALL := 0.22     # a called Totem's voice comes this long after its card lands (12 November)
+const CRY_AFTER_CHARGE := 0.1    # ...an attacker's this long into its wind-up
+const CRY_HURT_DAMAGE := 40      # ...and a Totem cries out under a blow this big that it lives through
 const HERO_TIER := 3             # a called Totem of this tier and up gets the low hero shot (so does every Ascension)
 const LETTERBOX := 0.08          # the black bars of a Summon and the finishing blow: each this share of the screen's height
 const LETTERBOX_SECS := 0.3      # eased in and out over this (real time)
@@ -3312,6 +3327,8 @@ func fx_call(t: DuelTotem) -> void:
 		field.cam_focus(_foot3(t), 0.3, 0.4 / speed)
 	await _fly_card("" if hidden else t.id(), from, foot - Vector2(0, 30), 0.3 / speed)
 	sfx.play("call_totem")
+	if not hidden:
+		_cry(t, "call", CRY_AFTER_CALL)   # (as it stands up out of the light)
 	if hero:
 		_hero_shot(t.owner, t.slot, CALL_WAIT_MAX)
 	elif field != null and field.roam_on and not hidden:
@@ -3399,6 +3416,7 @@ func fx_ascend(t: DuelTotem) -> void:
 	v.flash_color = UITheme.GOLD
 	c = _center(v)   # (where it is now, under the hero shot)
 	DuelFX.number(fx_layer, c + Vector2(0, -150 * v.depth), "ASCENDED!", UITheme.GOLD, 64, _read(1.3, "ASCENDED!") / speed)
+	_cry(t, "call")   # (the new form's voice: lower than the one it grew from)
 	_clip(t, "summon", speed)
 	v.pop = 1.25
 	var tw := create_tween().set_parallel(true)
@@ -3630,6 +3648,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	_strike = {"attacker": t, "melee": String(st.kind) == "melee", "style": st, "target": target, "hit": {},
 		"all": t.move_target(i) == "all_foes"}
 	sfx.play("attack_charge")
+	_cry(t, "attack", CRY_AFTER_CHARGE)
 	_strike["clip_len"] = _clip(t, "attack", speed)
 	var hostile: bool = (target is DuelTotem and target.owner != t.owner) or (target is String and target == DuelGame.LIFE) or bool(_strike.all)
 	if field != null:
@@ -3986,6 +4005,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		return
 	var weak: bool = att != null and t.weak_to(att.element())
 	sfx.play("hit_weak" if weak else ("hit_heavy" if amount >= 40 else "hit_light"))
+	if amount >= CRY_HURT_DAMAGE and src != "burn" and src != "poison" and not t.is_knocked_out():
+		_cry(t, "hurt", 0.12)   # (a heavy blow it lives through; its fall has its own cry)
 	_clip(t, "hit", speed)
 	var col := Color(1.0, 0.45, 0.35)
 	if att != null:
@@ -4444,6 +4465,7 @@ func fx_ko(t: DuelTotem) -> void:
 	var gem := DuelFXStyle.gem(t.element())
 	var glass := Color(0.82, 0.94, 1.0).lerp(gem, 0.3)
 	sfx.play("cast_frost", 1.15)
+	_cry(t, "ko")   # (its last cry as the crystal takes it, before it breaks)
 	var burst := func() -> void:
 		sfx.play("ko")
 		shake(12.0)

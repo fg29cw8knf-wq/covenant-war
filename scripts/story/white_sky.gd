@@ -1211,8 +1211,10 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	var card: Control = null
 	if gate == "attack":
 		_show_ring(action.get("target"))
+		_snd("ward_set", 1.25, -5.0)   # (the mark closing on the hound)
 	elif action.get("card") is DuelCard:
 		card = _show_hand(String((action.card as DuelCard).id))
+		_snd("card_draw")   # (his hand coming up)
 	await _wait(MOVE_SHOWN)
 	# (just over his hand when it's up; where the walk's and the pick-up's
 	# were otherwise)
@@ -1247,11 +1249,37 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 		_hint_home()
 		return
 	_film_bars(true, 0.4)
+	_move_sound(gate, action)
 	_play_hand(card)
 	_drop_ring()
 	_move_film(gate)
 	_hint_home()
 	# (and back at once: the move is made the moment this returns)
+
+
+## A sound the moment each move is made (12 November, Gary said yes to "a
+## sound on each tap: the card going down, the hound's cry, a page
+## turning"): the card off his hand, the hound's snarl as it is marked, the
+## Last Page turning. What the move does then has the duel's own sounds (the
+## call, the Totems' voices, the blows: DuelScreen).
+func _move_sound(gate: String, action: Dictionary) -> void:
+	match gate:
+		"attack":
+			var t = action.get("target")
+			if t is DuelTotem:
+				var c := Sfx.cry_of((t as DuelTotem).id(), "call")
+				if String(c[0]) != "":
+					_snd(String(c[0]), float(c[1]), float(c[2]))
+		"last_page":
+			_snd("page_turn", 1.0, 2.0)
+		_:
+			_snd("card_lift")
+
+
+## A sound over the memory, at the duel's own loudness when its screen is up.
+func _snd(sound: String, pitch: float = 1.0, gain_db: float = 0.0) -> void:
+	var s: Sfx = _screen.sfx if is_instance_valid(_screen) and is_instance_valid(_screen.sfx) else Sfx.shared()
+	s.play(sound, pitch, gain_db)
 
 
 ## The hint back where the walk's and the pick-up's were, once it has faded

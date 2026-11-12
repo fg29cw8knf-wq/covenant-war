@@ -20,6 +20,10 @@ extends RefCounted
 ##
 ## Run with `-- --phone` on a computer to see the Smooth profile.
 
+## A test can set the detail level whatever it's drawn with (tests/mem_probe
+## counts what a Mac holds and draws on a machine with no graphics card).
+static var force_level := -1
+
 ## How big the 3D is drawn on a phone in Smooth, before upscaling.
 const PHONE_SCALE := 0.67
 const PHONE_FPS := 60
@@ -44,6 +48,8 @@ static func full() -> bool:
 ## The detail level the world is built at: 2 everything (Forward+ on a
 ## computer, or a phone set to Full), 1 phone, 0 the phone link.
 static func level() -> int:
+	if force_level >= 0:
+		return force_level
 	if OS.has_feature("web"):
 		return 0
 	match RenderingServer.get_current_rendering_method():

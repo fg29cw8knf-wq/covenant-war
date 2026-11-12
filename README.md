@@ -15,7 +15,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `scripts/ai/` | The computer opponent. |
 | `tests/` | Headless tests. `sim.gd` plays thousands of AI-vs-AI duels and checks the rules never break. |
 | `assets/art/` | The painted art, sized for the game: `cards/` (card paintings, 640 wide), `creatures/` (transparent battlefield cut-outs), `summons/` (Summon cut-outs and their sky scenes), `arenas/`, `gods/`, `card_back.jpg`, `icon.png`. Files are named by card id (see `scripts/duel_ui/duel_art.gd`); anything missing falls back to drawn placeholders. Prompts: `docs/card-prompts.md`. |
-| `assets/sfx/` | Sound effects. |
+| `assets/sfx/` | Sound effects (`cry_<kind>.wav`: the creatures' stand-in voices, `tools/make_cries.py`). |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
 ## Gary's standing rule (22 October): every update is built to the best look and flow
@@ -1605,7 +1605,8 @@ His list, and what each line became:
   his coat." / "Ask what he was doing out there, or what else was there
   that night, and he finds a barrel that needs moving." / (v6's last
   sentence, unchanged) "He bought this inn with unexplained gold, gave you a
-  bed, and taught you to keep your head down." **Gary to approve the words.**
+  bed, and taught you to keep your head down." Gary said yes to the words on
+  12 November ("1 yes").
 - **"Remove the 68-second watched duel from the opening"**: gone
   (`WhiteSky._duel_film` and the two-computer duel; `WhiteSkyDuel.board()`
   and its seed stay for `tests/white_sky_probe.gd`).
@@ -1712,6 +1713,116 @@ errors; `puzzles_test` PASS. Not checked here: the frame-rate guard and the
 slowness on a real Mac. Left as found: as Player D the right hand's skin goes
 2.4 cm into the box's underside for half a second as he takes it (the same
 with the wrist as it was: not from this change).
+
+### Sounds for the taps, the cards and the creatures; the grass and the wood in patches (12 November, later)
+
+Gary, 12 November, after the opening's build: "adding the sound effect to the
+game and cards and creatures is good implement that" (his yes to "a sound on
+each tap: the card going down, the hound's cry, a page turning"), "m1 chip"
+(his Mac), and, to "I'll lighten it where it's too much": "dont lighten it as
+i want the game to be able to run on other peoples computers and they likely
+have that". So nothing in the look was lowered and no setting was changed for
+his Mac: what follows makes the same picture cheaper to draw, for everyone.
+Details: `docs/handover/2026-11-12-sounds.md`.
+
+**Sounds**
+
+- **The three taps in the snow** (`WhiteSky._move_sound`, `_snd`): Bram's
+  hand comes up with `card_draw`; the tap on the glowing card is `card_lift`
+  (the duel's own `card_fly`, `call_totem` and the Unspent Hour's voice
+  follow); the mark closing on the hound is a high `ward_set`, and the tap on
+  it is the hound's snarl (its voice, below), with its whine as the blow
+  lands and it breaks; the tap on the Last Page is `page_turn`.
+- **Creatures have voices** (`Sfx.cry`, `cry_of`; `DuelScreen._cry`): each
+  Totem is heard as it's called (`CRY_AFTER_CALL` after its card lands), as it
+  attacks, under a blow of `CRY_HURT_DAMAGE` or more that it lives through,
+  as it falls, and as it Ascends (the new form's voice). A voice is looked
+  for in turn: `assets/sfx/cry_<id>_<when>` (`call`, `attack`, `hurt`, `ko`),
+  `cry_<id>`, `cry_<kind>_<when>`, `cry_<kind>`. The kinds are the families'
+  (`Sfx.VOICE_OF_FAMILY`: Hounds bark, Foxes yip, Cats snarl, the Winged
+  chime, the Scaled hiss, Shells clack, the Stoneborn grind) and those of
+  `Sfx.VOICE_OF` for a creature with no family or not like its family (the
+  owls hoot, the heron squawks, the drakes roar, the rats squeak, the tree
+  folk creak, the ram and the cub grunt, Kaethis's Totems sing like glass).
+  **The fourteen `cry_<kind>.wav` files are stand-ins built from nothing by
+  `tools/make_cries.py`** (tones through mouth-shaped filters, shaped noise:
+  the same sort of sound as the game's other effects), levelled against each
+  other and checked by their spectrograms, not by ear: nobody has heard them
+  yet. One cry serves every creature of its kind, so it's pitched by the
+  creature's Health (`Sfx.SIZE_PITCH`: a Cinderpup high, a Warg low), by a
+  per-creature nudge (`VOICE_OF`), and by the moment (`CRY_WHEN`: an attack a
+  little higher and quieter, a fall lower). A Hound that's hurt or falls
+  whines (`CRY_ALIAS`: Gary's `hound_whine`). A Summon has no stand-in: its
+  stinger or clip is its voice, unless it's given a `cry_<id>` of its own.
+  Gary's own recording replaces a stand-in by being saved under the same
+  name (`.ogg`, `.wav` or `.mp3`); `cry_<creature id>` gives one creature
+  its own voice. The list of what to make is in the Still to Make doc
+  ("Creature voices" tab). A duel loads its decks' voices as it starts
+  (`Sfx.warm_cries`).
+- **The Codex** (`Codex.Detail`): a card opened turns over (`card_flip`); a
+  creature of yours is heard as its card opens and again at a tap on its
+  picture ("(Tap its picture to hear its voice.)" under Your Collection);
+  Add to deck is `card_fly`, Take out `card_lift`; forging, re-absorbing and
+  the pool have `essence_gain`, or `gift` when a card is made.
+- **Every button clicks** (`Sfx.watch_buttons`, from `Game._ready`): a
+  button that plays nothing of its own on a press plays `ui_tap` through one
+  shared player (`Sfx.shared()`, which also plays the Codex's sounds and is
+  heard while the game is paused). The click comes after the press's own
+  handlers and stays silent if anything was played in that moment, so the
+  duel's buttons keep their own sounds; a button with the meta `quiet` never
+  clicks.
+- **No more test beep on four elements**: Astral, Radiant, Spirit and Umbral
+  attacks had no `cast_` file and played a placeholder tone; they borrow
+  `cast_mystic` (Umbral `cast_psychic`) until they have their own
+  (`Sfx.FALLBACK`).
+- `tests/sfx_test.tscn` checks all of it (every Totem a voice for every
+  moment and the file loads, no stand-in on a Summon, Hounds whine, small
+  cries higher than big, the button click and its two exceptions, the Codex);
+  `white_sky_test` now fails if any of the three taps' sounds, or the
+  Totems' voices, isn't played.
+
+**The M1, without lightening** (measured with `tests/mem_probe.tscn -- full`
+and the new `tests/tri_probe.tscn`, both building the place as a Mac does,
+`Gfx.force_level`):
+
+- What the village held and drew: 858 MB of textures (1,075 MB with a duel
+  over it), and **4.3 million triangles standing, of which 2.0 million were
+  grass**: one piece of 42,000 clumps, each 48 triangles written as 144
+  separate points, so the graphics card placed, bent in the wind and shaded
+  six million points a pass, twice a frame (depth, then colour), wherever
+  the camera looked. A piece like that is drawn whole or not at all.
+- **The grass in patches** (`AshfordVillage.grass_field`, `in_cells`,
+  `GRASS_CELL` 12 m): the same clumps in the same places with the same
+  colours, sorted into squares; a square out of sight isn't sent. And a
+  clump's shared corners are kept once (`blade_clump` ends `st.index()`: 64
+  points, not 144). From the green a frame went from 4.9 to 3.1 million
+  triangles. Two stills of the same frame, before and after, differ only
+  where the people breathe: the grass is the same to the pixel.
+- **The Thornwood's trees in squares** (`multimesh_cells`, `TREE_CELL` 28 m)
+  and its grass in patches: the wood was eight pieces a quarter of a mile
+  long, every tree drawn every frame and again for each of the sun's shadow
+  maps. From over the camp a frame went from 9.0 to 2.7 million triangles;
+  the two stills are identical (largest difference 0).
+- Solhaven's gate is light (0.3 million triangles) and so is a duel (0.2
+  million, 580 draw calls): what a duel costs a Mac is its pixels (the bounce
+  light, fog and soft shadows at a Retina screen's size), which is what the
+  frame-rate guard of 11 November watches (`Gfx.Guard`: unchanged; Options,
+  "Keep the frame rate smooth", off holds the full picture whatever).
+- **Not done, offered to Gary:** the models' pictures are held unpacked in
+  the graphics memory (a 4096 square is 85 MB). Stored the way graphics
+  cards read them they'd take a quarter of that, load without a decode and
+  look the same, for about 470 MB more download per app and 11 minutes more
+  build. It changes how every texture is stored, so it waits for his yes.
+- Still not measured: the frame rate on a real M1 (nothing here has a
+  graphics card). Options, "Show frame rate" gives the number, and "3D at
+  N%" when the guard has stepped in.
+
+**What was checked:** `load_all` 0 failed; `sfx_test` ok; `white_sky_play_probe`
+ok; `white_sky_test` headless PASS, whole and the duel alone (the sounds
+heard listed); `first_launch_test` ok; `duel_sim -- 100` 0 invariant errors;
+`puzzles_test` PASS; `mem_probe -- full duel` a duel played over the village
+with every voice hooked in, no errors; `tri_probe` in Ashford, the Thornwood
+and Solhaven. Not checked: how any of the sounds sound.
 
 ### Gary's 8 November evening notes (the memory, the morning, the green, the evening)
 
@@ -3632,6 +3743,11 @@ godot --headless --script res://tests/puzzles_test.gd           # every riddle's
 godot --headless --script res://tests/white_sky_play_probe.gd   # Bram's duel in the snow, every move as written
 godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4      # the whole snow opening, the three moves made
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
+godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
+# what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
+#   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
+#   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]
+python3 tools/make_cries.py [kind ...]                          # the stand-in creature voices (assets/sfx/cry_<kind>.wav)
 ```
 
 The summary line must report `0 invariant errors`.

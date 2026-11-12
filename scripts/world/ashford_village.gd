@@ -2278,7 +2278,57 @@ func blade_clump() -> ArrayMesh:
 					st.set_uv(Vector2(v[2], v[1]))
 					st.add_vertex(v[0])
 			prev_l = l; prev_r = rr; prev_t = t
+	# (12 November) the corners two triangles share are kept once: a clump is
+	# 64 points for the graphics card to place, not 144, and looks the same
+	st.index()
 	return st.commit()
+
+## The grass, laid in patches (12 November, Gary's Mac has an M1 chip, and
+## "dont lighten it"). It was one piece: 42,000 clumps the graphics card had
+## to place, bend in the wind and shade every frame, twice (once for depth,
+## once for colour), wherever the camera looked, six million points a pass.
+## The same clumps in the same places are now cut into GRASS_CELL squares,
+## and a square the camera can't see isn't sent at all. Nothing in the
+## picture changes: the same blades, the same colours, the same wind (the
+## shader goes by where a blade stands in the world, not by its patch).
+const GRASS_CELL := 12.0
+
+func grass_field(xfs: Array, cols: Array) -> Node3D:
+	var root := Node3D.new()
+	root.name = "Grass"
+	add_child(root)
+	var mesh := blade_clump()
+	var mat := shader_mat("grass")
+	for part: Array in in_cells(xfs, cols, GRASS_CELL):
+		var mi := multimesh(root, mesh, mat, part[0], part[1], false)
+		mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+		mi.extra_cull_margin = 0.5   # (the wind leans a blade a little past its patch's edge)
+	return root
+
+## Many copies of one shape, laid in `cell`-metre squares instead of as one
+## piece (as multimesh(), and looking the same): a square out of the
+## camera's sight isn't drawn, nor one out of a shadow's reach.
+func multimesh_cells(parent: Node, mesh: Mesh, mat: Material, xfs: Array, cols: Array, cell: float, shadows := true) -> Array:
+	var made: Array = []
+	for part: Array in in_cells(xfs, cols, cell):
+		made.append(multimesh(parent, mesh, mat, part[0], part[1], shadows))
+	return made
+
+## Sorts placings (and their colours, if any) into squares `cell` metres
+## across: [[placings, colours], ...], in the order the squares are first met.
+static func in_cells(xfs: Array, cols: Array, cell: float) -> Array:
+	var cells := {}
+	var order: Array = []
+	for i in xfs.size():
+		var o: Vector3 = (xfs[i] as Transform3D).origin
+		var key := Vector2i(floori(o.x / cell), floori(o.z / cell))
+		if not cells.has(key):
+			cells[key] = [[], []]
+			order.append(key)
+		(cells[key][0] as Array).append(xfs[i])
+		if cols.size() > i:
+			(cells[key][1] as Array).append(cols[i])
+	return order.map(func(k): return cells[k])
 
 func build_grass() -> void:
 	var xfs: Array = []
@@ -2309,8 +2359,7 @@ func build_grass() -> void:
 		xfs.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.3), sc)), Vector3(x, height(x, z) - 0.02, z)))
 		var v := rng.randf_range(0.75, 1.15)
 		cols.append(Color(v * rng.randf_range(0.9, 1.1), v, v * rng.randf_range(0.8, 1.0)))
-	var mi := multimesh(self, blade_clump(), shader_mat("grass"), xfs, cols, false)
-	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	grass_field(xfs, cols)
 	print("grass clumps: ", xfs.size())
 
 # ------------------------------------------------------------------ sky lanterns

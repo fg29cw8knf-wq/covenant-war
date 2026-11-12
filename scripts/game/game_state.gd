@@ -51,6 +51,7 @@ func _ready() -> void:
 	_setup_input()
 	load_settings_only()
 	Gfx.setup(get_tree())
+	Sfx.watch_buttons(get_tree())   # (12 November: every button clicks)
 
 
 func _process(delta: float) -> void:

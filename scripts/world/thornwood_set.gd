@@ -487,11 +487,18 @@ func build_forest() -> void:
 			var xf := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.55, 0.85)), Vector3(x, height(x, z) - 0.1, z))
 			thorn_bark.append(xf)
 			thorn_leaf.append(xf)
+	# (12 November) the wood in TREE_CELL squares, not as eight pieces a
+	# quarter of a mile long: every tree was drawn every frame, and again for
+	# each of the sun's shadow maps, wherever the camera stood. Now only the
+	# squares in sight, and in a shadow map's reach. The same trees.
 	for k in 4:
-		multimesh(self, variants[k][0], mats.bark, bark_x[k], [])
-		multimesh(self, variants[k][1], mats.leaf, leaf_x[k], [])
-	multimesh(self, variants[2][0], mats.bark, thorn_bark, [])
-	multimesh(self, variants[2][1], mats.leaf_dark, thorn_leaf, [])
+		multimesh_cells(self, variants[k][0], mats.bark, bark_x[k], [], TREE_CELL)
+		multimesh_cells(self, variants[k][1], mats.leaf, leaf_x[k], [], TREE_CELL)
+	multimesh_cells(self, variants[2][0], mats.bark, thorn_bark, [], TREE_CELL)
+	multimesh_cells(self, variants[2][1], mats.leaf_dark, thorn_leaf, [], TREE_CELL)
+
+
+const TREE_CELL := 28.0
 
 
 ## Grass near the places the camera goes (not everywhere: it's a big wood).
@@ -517,8 +524,7 @@ func build_grass_here() -> void:
 		xfs.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.3), sc)), Vector3(x, height(x, z) - 0.02, z)))
 		var v := rng.randf_range(0.75, 1.15)
 		cols.append(Color(v * rng.randf_range(0.9, 1.1), v, v * rng.randf_range(0.8, 1.0)))
-	var mi := multimesh(self, blade_clump(), shader_mat("grass"), xfs, cols, false)
-	mi.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	grass_field(xfs, cols)   # (in patches: AshfordVillage.grass_field)
 
 
 ## The sky and light for each part:

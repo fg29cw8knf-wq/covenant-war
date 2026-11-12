@@ -68,6 +68,7 @@ func _ready() -> void:
 	get_window().size = Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
 	Game.settings["seen_white_sky"] = false
+	Sfx.listen = true
 	m = WhiteSky.new()
 	_late = args.has("late")
 	m.prep_early = not _late
@@ -99,6 +100,13 @@ func _run() -> void:
 			ok = false
 		if not _duel_only and not _asked.is_empty():
 			print("white_sky_test: the first card was played %.0f s in (%.1f min)" % [float(_asked[0][2]), float(_asked[0][2]) / 60.0])
+		# (12 November) a sound at each of the three moves, and the Totems' voices
+		var names: Array = Sfx.heard.map(func(h): return String(h[1]))
+		print("white_sky_test: heard: %s" % ", ".join(Sfx.heard.map(func(h): return "%s@%d" % [h[1], h[0]])))
+		for want: String in ["card_draw", "card_lift", "cry_astral", "ward_set", "cry_hound", "hound_whine", "page_turn"]:
+			if not names.has(want):
+				print("white_sky_test: FAIL: the sound '%s' was never played" % want)
+				ok = false
 	if not _duel_only and not _skip:
 		print("white_sky_test: the duel built at %.1f s and warmed by %.1f s; the walk began at %.1f s, the pick-up prompt at %.1f s, the child in his arms by %.1f s (%s)" % [
 			_built_t, _warm_t, _roam_t, _prompt_t, _stood_t, "built at the prompt, the before" if _late else "built under the opening's black"])

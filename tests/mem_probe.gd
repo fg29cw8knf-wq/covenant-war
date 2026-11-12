@@ -7,12 +7,17 @@ extends Node
 ## triangles, draw calls). Then every texture over 4 MB by its size and
 ## whether it's stored compressed for the graphics card, largest first.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 960x540 --fixed-fps 10 --path . res://tests/mem_probe.tscn -- [duel] [list]
+##       --resolution 960x540 --fixed-fps 10 --path . res://tests/mem_probe.tscn -- [full] [duel] [list]
+## "full" builds everything as a Mac does (Gfx.level() 2: all the grass, every
+## prop), whatever it's drawn with here: the counts a Mac's frame has, bar its
+## bounce light and fog, which this machine's renderer doesn't draw.
 
 var world: World
 
 
 func _ready() -> void:
+	if "full" in OS.get_cmdline_user_args():
+		Gfx.force_level = 2
 	get_tree().root.theme = UITheme.make()
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["first_steps"] = 2
