@@ -1546,6 +1546,171 @@ v7 wins; the parts it changed:
   day (Player B, a crossbow; Run to Ground is +10 a round,
   `DuelGame.run_to_ground_bonus`; the first experience) and the ridge.
 
+### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
+
+Gary's thirteen notes from playing the Mac build on 11 November, and the
+change to the game's opening he sent the next morning
+(`docs/handover/2026-11-12-opening.md`). Every look plays as Player A in the game.
+
+**The opening rebuilt (12 November)**
+
+His list, and what each line became:
+
+- *Keep* the snow walk first; the baby, the hunter, "Not this one", Bram's
+  face unseen, the white, "Twenty years later, the debt came due."; the quiet
+  day in Ashford; Bram's memories teaching one thing at a time, gated steps,
+  a first duel that can't be lost; Tilly's Lantern Moth. All as they were.
+- **"Bram's duel becomes played, not watched ... three gated moves as Bram
+  (call a Totem, attack, play the Last Page), with no costs or numbers, and
+  it can't be lost."** `WhiteSky._duel` plays a duel written out move by move
+  (`WhiteSkyDuel.PLAY_TURNS`, `play_board`) on the real rules, cut into
+  already joined and going badly (`DuelGame.puzzle.damage`: Totems already
+  hurt). The hunter strikes first and the Warg breaks the Scrivener. Then
+  the player's three moves, each waited for (`WhiteSky._ask_move`, called by
+  Bram's side of the duel, `WhiteSkyDuel.Staged.ask`):
+  1. *call*: his hand comes up as paintings alone (`WhiteSky.PlayCard`: no
+     names, costs or numbers), the Unspent Hour lifted and glowing.
+     "(Tap the glowing card to call a Totem.)"
+  2. *attack*: a ring of light on the Blazehound (`MoveRing`).
+     "(Tap the hound to strike it.)" The Unspent Hour is Swift, so it
+     strikes the turn it's called, and breaks the hound.
+  3. *last_page*: after the pack's answer has brought the Loomwarden down,
+     the card he has just drawn glows. "(Tap the glowing card: the Last
+     Page.)" Orlanthe's blow lands and the screen burns white.
+  Each prompt is in brackets and worded for the device (`HOW_MOVE`: tap,
+  click or E, A on a controller). A tap anywhere else does nothing
+  (`_on_move`, `MOVE_NEAR`). Nothing in it is chance and nothing can lose
+  it: both sides are `Staged` players that only make the moves written; no
+  Wards are set and nobody holds an answer. Between the moves it's filmed
+  by its beats as the watched duel was (`_on_beat`), the bars off while the
+  player chooses, the choosing done from high behind Bram (`PLAY_SHOT`).
+  `DuelScreen` takes its players from the spec now (`spec.controllers`).
+  `tests/white_sky_play_probe.gd` plays the written duel headless and
+  checks every step; `tests/white_sky_test.tscn` plays the whole memory,
+  taps off the mark first to see nothing happens, and reports when the
+  first card is played (60 s in with the test's quick hands; about a minute
+  and a half to two minutes for a person).
+- **"The opening movie moves to before the title screen on first launch,
+  skippable. New Game then goes straight to the snow."** `Main._ready` plays
+  it once after the notice, the first time the game is opened on a device
+  (`Game.settings.seen_opening`), then the title; `_on_new_game` no longer
+  plays it. Watch the Opening on the title is unchanged. `-- --no-opening`
+  leaves it out.
+- **"The mirror's crater answer should add something new, since the player
+  has just lived it."** `AshfordP1.REFLECTION`, the second question: it told
+  the crater again. Now: "Twenty years. Bram tells it in one breath: he
+  found you in the snow, out in the Shardlands, and carried you home inside
+  his coat." / "Ask what he was doing out there, or what else was there
+  that night, and he finds a barrel that needs moving." / (v6's last
+  sentence, unchanged) "He bought this inn with unexplained gold, gave you a
+  bed, and taught you to keep your head down." **Gary to approve the words.**
+- **"Remove the 68-second watched duel from the opening"**: gone
+  (`WhiteSky._duel_film` and the two-computer duel; `WhiteSkyDuel.board()`
+  and its seed stay for `tests/white_sky_probe.gd`).
+- **"Remove the never-skip rule after the first play-through"**: the Skip
+  button is back once the memory has been seen (`WhiteSky._skip_btn`,
+  `seen()`); the first time nothing can be skipped, as he asked on 8
+  November.
+- **"Your film's shots as the payoff after each of the player's three
+  moves, with the full film shown later once they know the rules."** Three
+  short films, `white_sky_move_1`, `_2`, `_3` (`StoryFilm.FILMS`), play over
+  the duel as it plays each move out (`WhiteSky._move_film`) once Gary has
+  made them; until then the game's own shots are the payoff. His whole
+  film, `white_sky_duel`, plays on the Thornwood road once it exists: after
+  Bram's lesson, the player under the blanket and Bram awake by the door
+  (`ThornwoodShelter.after_lesson`). The brief is in
+  `docs/script/films_plan.md`, section 8.
+- **"A test: watch five people who have never seen the game play the first
+  ten minutes without help."** Gary's to run; the one-page sheet for it is
+  `docs/playtest_first_ten_minutes.md`.
+
+**The thirteen notes (11 November)**
+
+- **1, 4. "Bram's left hand is deformed"; the hunter's right hand**: both
+  models' fingers were being bent by clips made for another hand
+  (auto-rigged fingers, poor weights). Their fingers stay as modelled now
+  (`Figure3D.FROZEN` `"*fingers"` for `bram_coat` and `shard_hunter`,
+  `finger_rests`, `keep_fingers`).
+- **2. "Whole game running slow, keeps freezing, especially when Bram goes
+  to pick up baby"**: the duel was being built behind the picture as the
+  pick-up prompt came up. It's built under the opening's black now
+  (`WhiteSky.prep_early`, `_open`), and not drawn again until the cut. On
+  computers a frame-rate guard draws the 3D a little smaller only while the
+  machine can't keep up (`Gfx.Guard`; Options: "Keep the frame rate
+  smooth"). Not measurable here: it needs his Mac.
+- **3. "Have Bram pick up baby quicker"**: the kneel, reach, lift and rise
+  are about 40% shorter (`KNEEL_SECS` 0.8, `REACH_SECS` 0.45, `LIFT_SECS`
+  0.8, `RISE_SECS` 0.95); prompt to child in his arms 4.5 s.
+- **5. "It makes no sense just watching them fight"**: the played duel,
+  above.
+- **6, 7, 11, 12. Arms and hands twisting** (the porridge, Bram's box,
+  Corin's button, Bram at the marks): a hand asked to face somewhere was
+  turned at the wrist alone, however far. `Figure3D._natural_wrist`: the
+  forearm takes most of a roll (`FORE_SHARE` 0.7, up to 125 degrees), the
+  wrist rolls no more than 50 and bends no more than 72; past that the hand
+  stops short instead of wringing. On top of that, each scene's own cause:
+  - *Porridge*: the palm was turned out over the bowl, so the forearm
+    rolled half a turn every mouthful. The palm stays down-and-in and
+    squares up only near the lips (`AshfordP1.SPOON_PALM_BOWL`). Forearm
+    roll through the eating: 2 to 50 degrees (`tests/eat_probe`).
+  - *The box*: over the lid the fingers pointed straight ahead on a forearm
+    coming in across the body, and the elbow stayed up while the hand
+    followed the lid up. The fingers lie the way the forearm comes
+    (`Ashford.LID_FINGERS`) and the elbow drops as the lid lifts
+    (`LID_ELBOW`); no wrist is asked past its range (`Figure3D.wrist_over`,
+    printed by `notes_1106_shot deck`).
+  - *Corin's button*: the natural wrist; and the button goes to his pocket
+    in his hand instead of hanging in the air (`AshfordDay.BUTTON_POCKET`).
+    His head eases between speakers and lingers on the last one
+    (`Figure3D.LOOK_SMOOTH`, `LOOK_LINGER`).
+  - *Bram at the marks*: his palm was laid flat on the timber from a
+    shoulder a forearm away, the hand bent back like a hand held up to stop
+    someone. His fingers go to each mark now, wrist straight, the arm worked
+    out each frame from his shoulder (`AshfordNight._aim_hand`,
+    `_marks_glide`; `Figure3D.elbow_to`, `palm_to`), starting from and going
+    back to where his hand hangs; the marks he presses are the easy ones
+    (`_marks_for`), and he kneels 6 cm further from the cask.
+    `after_midnight_shot cellar`: ok (no hand in the timber or the cask).
+- **8. "After first battle with Corin we have 2 different music playing at
+  same time"**: the 12-second victory stinger played on over the village
+  reel. `Music` fades a stinger that isn't ducking the music out when the
+  music changes (`_solo_out`), and every fade is its own tween now
+  (`_fade`, `_dip`). `tests/music_overlap_test`.
+- **9. "I like it turning during battle but don't like it keeps getting
+  pulled back all the time"**: while the player chooses, the moving camera
+  swings gently on their side of the board instead of going home
+  (`DuelField3D.roam_near`, `NEAR_ARC`), slower still while a slot or an
+  answer is being picked (`roam_still`); only a lesson holds it home.
+- **10. "Hard to know how much health is left or how much damage is being
+  done"**: every blow shows a strip under the Totem for 1.7 s
+  (`DuelViews.HitStrip`): what the shield took and what's left of it, the
+  health bar draining from before to after with the numbers, "BLOCKED" when
+  a shield stops a whole blow. The plaques' health bars are deeper, with the
+  shield as a pale band and "SHIELD n".
+- **13. "After, his body goes through the stairs"** (the Reckoning's cellar
+  scenes): Bram stood inside the flight and the player ran into its second
+  tread. Everyone stands and walks clear of it (`AshfordNight.RK_*`,
+  `STAIRS_FOOT`, `STAIRS_CAM`); the cellar probe checks every spot and the
+  ways between against the treads and the walls. Placed by measurement,
+  not yet seen rendered: worth a look on the Mac.
+
+**What was checked** (12 November): `load_all` 0 failed;
+`white_sky_play_probe` ok; `white_sky_test` headless PASS (the three moves
+asked in order, a stray tap ignored, the Last Page called, the memory
+finished), and with Skip pressed at four moments in the duel;
+`white_sky_world -- <dir> play` (the memory inside the Ashford world, as New
+Game plays it): the duel played, the attic reached, rendered and headless;
+`first_launch_test` ok both ways (first launch: notice, movie, title, New
+Game, the snow; later: notice, title, New Game, the snow); the played duel
+rendered and looked at; `eat_probe` ok; `notes_1106_shot deck` ok as Player
+A, `wall` ok; `after_midnight_shot cellar` ok (the Reckoning's spots 25 cm
+clear of the steps and walls); `music_overlap_test` ok; `hit_strip_shot` ok;
+`duel_camera_shot choose attack` no problems; `duel_sim -- 100` 0 invariant
+errors; `puzzles_test` PASS. Not checked here: the frame-rate guard and the
+slowness on a real Mac. Left as found: as Player D the right hand's skin goes
+2.4 cm into the box's underside for half a second as he takes it (the same
+with the wrist as it was: not from this change).
+
 ### Gary's 8 November evening notes (the memory, the morning, the green, the evening)
 
 Gary's notes from playing the Mac build on the evening of 8 November, and
@@ -3451,6 +3616,9 @@ godot --headless --script res://tests/sim.gd -- 900 emberstorm tidegrove ironsto
 godot --headless --script res://tests/duel_sim.gd -- 1000       # the v2 duel: decks, synergy by deck
 godot --headless --script res://tests/synergy_test.gd           # families, reactions, chains, the gods
 godot --headless --script res://tests/puzzles_test.gd           # every riddle's answer and a wrong try
+godot --headless --script res://tests/white_sky_play_probe.gd   # Bram's duel in the snow, every move as written
+godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4      # the whole snow opening, the three moves made
+godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 ```
 
 The summary line must report `0 invariant errors`.
@@ -3549,6 +3717,12 @@ tools/build_web.sh && python3 tests/web_music_check.py build/web   # records the
 ```
 
 ## Opening movie
+
+**When it plays (12 November):** once, before the title screen, the first
+time the game is opened on a device (`Main._ready`,
+`Game.settings.seen_opening`), skippable; after that from the title's Watch
+the Opening. New Game no longer plays it: New Game opens on the snow
+(`WhiteSky`). Before 12 November it played on every New Game.
 
 Since 22 October the opening is Gary's one finished film: his animated clips,
 Morrowen's narration, the music, the title and the words on screen all in the

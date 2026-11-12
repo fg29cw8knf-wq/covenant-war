@@ -9,7 +9,9 @@ extends Node
 ## and skipped, then stills on until the attic. Prints what the world's own
 ## viewport and the inn are doing at the cut.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 960x540 --fixed-fps 10 --path . res://tests/white_sky_world.tscn -- <dir>
+##       --resolution 960x540 --fixed-fps 10 --path . res://tests/white_sky_world.tscn -- <dir> [play]
+## ("play", 12 November: the duel isn't skipped; its three moves are made as
+## they're asked for and it runs to the white.)
 
 var out := "/tmp/ws_world"
 var world: World
@@ -47,12 +49,24 @@ func _shot(nm: String) -> void:
 	get_viewport().get_texture().get_image().save_png(out.path_join("%03d_%05.1f_%s.png" % [_n, _t, nm]))
 
 
+var _trace_n := 0
+var _found := false
+
 func _process(delta: float) -> void:
 	_t += delta
-	if m == null:
+	# ("trace": what the memory is doing each frame once the duel has gone)
+	if "trace" in OS.get_cmdline_user_args() and _found and is_instance_valid(m) and _cut_at >= 0.0 and not is_instance_valid(m._screen) and _trace_n < 60:
+		_trace_n += 1
+		print("    trace [%.2f] delta %.3f scale %.2f paused %s skipping %s done %s waiting %s black %.2f white %.2f" % [_t, delta, Engine.time_scale,
+			get_tree().paused, m._skipping, m._done, m._ov._waiting if m._ov != null else false, m._black.modulate.a, m._white.modulate.a])
+	# (12 November: the attic frees the memory when it's over, and a freed
+	# node reads as null: the test went back to looking for it and never
+	# ended. `_found` says it has been seen.)
+	if not _found:
 		for c in world.get_children():
 			if c is WhiteSky:
 				m = c
+				_found = true
 				print("[%.1f] memory begins" % _t)
 		return
 	if not is_instance_valid(m) or m._done:
@@ -78,6 +92,9 @@ func _process(delta: float) -> void:
 			ov._next.emit()
 	if m._hint.modulate.a > 0.9 and m._hint.text.contains("pick up"):
 		m._tapped = true
+	# (12 November: the duel is played; each of the three moves made as it's asked for)
+	if m.asking() != "" and m._hint.modulate.a > 0.9:
+		m.play_move()
 	# from the hunter's cards (the white begins) to a few seconds into the duel
 	var hunting := m._hunter != null and is_instance_valid(m._hunter) and not m._hunter._cards.is_empty()
 	if (hunting or m._white.modulate.a > 0.05 or is_instance_valid(m._screen)) and _cut_at < 0.0 and m._t > 30.0:
@@ -95,9 +112,11 @@ func _process(delta: float) -> void:
 		if is_instance_valid(m._screen) and m._screen.game != null and m._white.modulate.a < 0.01 and _phase == "":
 			_phase = "duel"
 			_report()
-			get_tree().create_timer(4.0, false).timeout.connect(func() -> void:
-				print("[%.1f] skipping the duel" % _t)
-				m.skip())
+			# ("play": the duel played through, its three moves made as they're asked for)
+			if not "play" in OS.get_cmdline_user_args():
+				get_tree().create_timer(4.0, false).timeout.connect(func() -> void:
+					print("[%.1f] skipping the duel" % _t)
+					m.skip())
 
 
 func _report() -> void:

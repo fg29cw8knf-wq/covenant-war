@@ -1633,9 +1633,28 @@ const CLEAR_SOFT := 1.5          # ...easing in over this much more...
 const CLEAR_ABOVE := 0.8         # ...by lifting it this far over its head
 const MAT_CLEAR := 0.55          # and never lower than this over the mat
 const FOLLOW_IN := 2.5           # how quickly the keeping-clear comes in as the path takes the camera over (a second)
+## The player's own choosing (11 November, Gary: "I like [it] turning during
+## battle but don't like it keeps getting pulled back all the time": every
+## time they had something to choose the camera went home and stopped, so in
+## their own turn it was pulled back after every card and every attack). Now
+## it never goes home by itself: while they choose it keeps to their side of
+## the Circle (within NEAR_ARC of home, so their row is the near one and the
+## hand sits under it) and goes on turning there, slowly, to and fro; from
+## further round it carries on round to that side at NEAR_CATCH times the
+## path's pace, no quicker. Only a lesson from Bram's memory (which points at
+## things on the screen) still holds it exactly home (roam_hold).
+const NEAR_ARC := 62.0           # degrees either side of home it keeps to while the player chooses
+const NEAR_SPEED := 3.4          # degrees a second at the middle of its swing there (slower towards each end)
+const NEAR_CATCH := 3.0          # coming round to that side from further off: this many times ROAM_SPEED
+const NEAR_STILL := 0.3          # the share of that pace while a slot is being picked or a card dragged
 
 var roam_on := false             # the moving camera (DuelScreen: Game.settings.duel_camera)
-var roam_hold := false           # the player is choosing: the path is the true home
+var roam_hold := false           # a lesson is up: the path is the true home, exactly
+var roam_near := false           # the player is choosing: it keeps to their side, still turning
+var roam_still := false          # ...and a slot is being picked: slower still
+var _near_mid := 0.0             # the middle of that side (home's turn, unwrapped to the way it's coming)
+var _near_phase := INF           # where it is in its swing there (INF: still coming round)
+var _near_k := 1.0               # its pace there, eased (NEAR_STILL when a slot is being picked)
 var pace := 1.0                  # the duel's speed (Fast and Fastest move it quicker)
 var _following := false          # the camera is on the path (not in a shot)
 var _follow_k := 0.0             # 0..1: how much the path's keeping-clear applies
@@ -1794,7 +1813,7 @@ func _roam_step(delta: float) -> void:
 	if not _r_view.is_empty() and not view_on:
 		_r_view = {}
 	var hold := roam_hold and not (view_on and _roam_t - float(_r_view.from) < VIEW_HELD / maxf(1.0, pace))
-	var goal := "hold" if hold else ("view" if view_on else "path")
+	var goal := "hold" if hold else ("view" if view_on else ("near" if roam_near else "path"))
 	var pitch: float
 	var dist: float
 	var look: Vector3
@@ -1811,6 +1830,41 @@ func _roam_step(delta: float) -> void:
 		pitch = deg_to_rad(VIEW_PITCH)
 		dist = float(_r_view.dist)
 		look = _r_view.look
+		fov = ROAM_FOV
+	elif goal == "near":
+		# the player's side of the Circle, still turning (see NEAR_ARC)
+		var arc := deg_to_rad(NEAR_ARC)
+		if _goal_mode != "near":
+			_goal_yaw = _r_yaw
+			_near_phase = INF
+			var home_yaw := _nearest(_r_yaw, float(_sph(_home_pos - _home_look)[0]))
+			_near_mid = home_yaw
+			var off0 := _r_yaw - home_yaw
+			if absf(off0) > arc:
+				# round to their side by the shorter way, unless it's already
+				# going the longer way and that isn't much further (no turning
+				# back on itself for the sake of a few degrees)
+				var back := absf(off0) - arc
+				var on := TAU - absf(off0) - arc
+				if signf(_v_yaw) == signf(off0) and absf(_v_yaw) > deg_to_rad(1.0) and on < back * 1.6:
+					_near_mid = home_yaw + TAU * signf(off0)
+		var off := _goal_yaw - _near_mid
+		_near_k = move_toward(_near_k, NEAR_STILL if roam_still else 1.0, delta * 1.5)
+		if is_inf(_near_phase) and absf(off) > arc:
+			var edge := _near_mid + signf(off) * arc
+			_goal_yaw = move_toward(_goal_yaw, edge, deg_to_rad(ROAM_SPEED * NEAR_CATCH) * delta * sqrt(maxf(1.0, pace)))
+			if is_equal_approx(_goal_yaw, edge):
+				_near_phase = PI * 0.5 * signf(off)   # (at the end of its swing, about to come back in)
+		else:
+			if is_inf(_near_phase):
+				# picked up where it is, going the way it's going
+				var x := asin(clampf(off / arc, -1.0, 1.0))
+				_near_phase = x if _v_yaw >= 0.0 else PI - x
+			_near_phase += deg_to_rad(NEAR_SPEED) / arc * _near_k * delta * sqrt(maxf(1.0, pace))
+			_goal_yaw = _near_mid + arc * sin(_near_phase)
+		pitch = deg_to_rad(ROAM_PITCH + ROAM_PITCH_SWAY * sin(_roam_t * 0.13 + 1.0))
+		dist = ROAM_DIST + ROAM_DIST_SWAY * sin(_roam_t * 0.093)
+		look = ROAM_MID + Vector3(sin(_r_yaw), 0, cos(_r_yaw)) * ROAM_NEAR
 		fov = ROAM_FOV
 	else:
 		if _goal_mode != "path":

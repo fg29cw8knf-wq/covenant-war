@@ -1318,8 +1318,14 @@ const REFLECTION := [
 			{"who": "player", "say": "[i]Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt for your birth.[/i]"},
 			{"who": "player", "say": "[i]In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a rarity... and a threat to Aurex Morne's bank.[/i]"},
 		],
+		# (12 November, Gary: "The mirror's crater answer should add something
+		# new, since the player has just lived it." It used to tell the crater
+		# again: "Ever since an old man walked out of a crater in the Shardlands
+		# carrying a baby tucked inside his heavy coat." Now it's what he's been
+		# told, and what Bram won't say: the player knows what else was there.)
 		[
-			{"who": "player", "say": "[i]Twenty years. Ever since an old man walked out of a crater in the Shardlands carrying a baby tucked inside his heavy coat.[/i]"},
+			{"who": "player", "say": "[i]Twenty years. Bram tells it in one breath: he found you in the snow, out in the Shardlands, and carried you home inside his coat.[/i]"},
+			{"who": "player", "say": "[i]Ask what he was doing out there, or what else was there that night, and he finds a barrel that needs moving.[/i]"},
 			{"who": "player", "say": "[i]He bought this inn with unexplained gold, gave you a bed, and taught you to keep your head down.[/i]"},
 		],
 	]},
@@ -2493,15 +2499,36 @@ static func _eat(w: World, e: Dictionary) -> void:
 				pole.position = SPOON_ELBOW_BOWL.lerp(SPOON_ELBOW_MOUTH, float(st.k)) + Vector3(0, me._shoulder, 0)
 			# the fist round the handle, square to the forearm as drawn: the
 			# fingers on along the forearm, the spoon out past the thumb
+			# (11 November, Gary: "Eating porridge looks much better but players
+			# arm twists in an unnatural way". The palm was always turned square
+			# to the spoon, across the forearm: right at the lips, where the
+			# spoon comes in level from his right and the palm faces down and
+			# in; but over the bowl the spoon points down and away, and square
+			# to that is palm out, thumb down, as nobody holds a spoon: so
+			# between the bowl and the lips the whole forearm rolled half a turn
+			# and back, every mouthful. Now the palm keeps one easy way through
+			# the mouthful, down and in to his left (SPOON_PALM_BOWL, his own
+			# frame, laid square to the forearm), going over to the square-to-
+			# the-spoon way only as it nears the lips, where the two are within
+			# a few degrees; over the bowl the spoon goes down out of the fist
+			# between the thumb and the fingers, as a spoon is held to stir.)
 			if hold.fore != Vector3.ZERO and me._palms.has("right"):
 				var sw := (me.to_world(end) - me.to_world(want)).normalized()
 				var fo: Vector3 = hold.fore
 				var fw := fo - sw * fo.dot(sw)
-				if fw.length() > 0.05:
+				var easy := (me.to_world(SPOON_PALM_BOWL) - me.to_world(Vector3.ZERO)).normalized()
+				easy = easy - fo * easy.dot(fo)
+				if fw.length() > 0.05 and easy.length() > 0.05:
 					fw = fw.normalized()
-					me._palms["right"][0] = sw.cross(fw).normalized() * SPOON_PALM_SIDE
+					easy = easy.normalized()
+					var square := sw.cross(fw).normalized() * SPOON_PALM_SIDE
+					var near_lips := smoothstep(SPOON_PALM_FROM, 1.0, float(st.k)) if spoon_palm_easy else 1.0
+					# (never the long way round: if the two are more than a
+					# quarter turn apart even at the lips, the easy way stays)
+					var palm_dir := easy.slerp(square, near_lips) if easy.dot(square) > 0.0 else easy
+					me._palms["right"][0] = palm_dir.normalized()
 					me._palms["right"][3] = false
-					me._palms["right"][4] = fw
+					me._palms["right"][4] = fo
 		var drive := func() -> void:
 			while feeding[0] and is_instance_valid(hand) and is_instance_valid(me):
 				await w.get_tree().process_frame
@@ -2658,6 +2685,13 @@ const SPOON_ELBOW_MOUTH := Vector3(-0.44, -0.24, 0.08)
 ## The palm's way round the handle: 1 if the model's palm is where
 ## Figure3D.palm_frame says, -1 if it's the back of the hand.
 const SPOON_PALM_SIDE := 1.0
+## The palm's easy way through a mouthful (his own frame: x to his left, y
+## up, z ahead): down and in. From this share of the way up (0 the bowl, 1
+## the lips) it goes over to square to the spoon. spoon_palm_easy = false
+## turns it square to the spoon all the way, as it was (the tests' before).
+const SPOON_PALM_BOWL := Vector3(0.62, -0.72, 0.3)
+const SPOON_PALM_FROM := 0.55
+static var spoon_palm_easy := true
 ## The feedback on the fist's target: how much of the drawn fist's shortfall
 ## (against the frame before's asking) is added to the target each frame,
 ## and the most the target is moved by it (m).

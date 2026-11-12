@@ -3,7 +3,7 @@ extends SceneTree
 ## stage: stills of the right hand and the left for checking the fingers (4
 ## November, Gary: "Players right hand the baby finger looks deformed").
 ##   xvfb-run -a -s "-screen 0 1100x700x24" godot --rendering-driver opengl3 --resolution 1000x600 \
-##       --script res://tests/hand_peek.gd -- <out_dir> [look, default a] [clip, default idle]
+##       --script res://tests/hand_peek.gd -- <out_dir> [look, default a; or a model's name] [clip, default idle]
 var out := "/tmp/hands"
 var look := "a"
 var clip := "idle"
@@ -45,7 +45,8 @@ func _run() -> void:
 	stage.add_child(cam)
 	cam.fov = 22.0
 	cam.current = true
-	var model := "player_a" if look == "a" else "player_" + look
+	# (11 November: any model by its name too, "bram_coat", "shard_hunter")
+	var model := look if look.length() > 1 else ("player_a" if look == "a" else "player_" + look)
 	var f := Figure3D.make(model, model) as Figure3D
 	stage.add_child(f)
 	f.snap_face(Vector3.BACK)
@@ -78,6 +79,10 @@ func _run() -> void:
 			cam.global_position = hp + Vector3(-0.5 if side == "Right" else 0.5, 0.1, 0.25)
 			cam.look_at(hp, Vector3.UP)
 			await _shot("%s_%s_%d_side" % [look, side.to_lower(), n])
+			# (11 November) and from behind and above, as the Night of the White Sky films Bram
+			cam.global_position = hp + Vector3(-0.12 if side == "Right" else 0.12, 0.3, -0.5)
+			cam.look_at(hp, Vector3.UP)
+			await _shot("%s_%s_%d_back" % [look, side.to_lower(), n])
 		n += 1
 	print("HAND PEEK: %d stills in %s" % [n * 4, out])
 	quit()

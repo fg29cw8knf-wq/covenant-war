@@ -9,6 +9,8 @@ extends Node
 ##          the side (the hands under the bundle while it's on the snow); the
 ##          wrists and elbows measured each frame ("nowrists": left to the
 ##          reach alone, the 8 November before)
+##   hunter the hunter on the rim with his cards raised, as filmed and close on
+##          each hand (11 November)
 ##   duel   the cut from the hunter's raised cards to the filmed duel: how long
 ##          the white holds, and what's seen in it (a still every 0.1 s)
 ##
@@ -42,6 +44,9 @@ func _ready() -> void:
 
 
 func _process(_d: float) -> void:
+	# (12 November: Bram's duel is played; each of his three moves is made as it's asked for)
+	if m != null and is_instance_valid(m) and m.asking() != "" and m._hint.modulate.a > 0.9:
+		m.play_move()
 	if _peek and m != null and m._cam != null:
 		m._cam_mode = "peek"
 		m._cam.global_position = _peek_pos
@@ -85,10 +90,44 @@ func _run() -> void:
 			await _lift()
 		"duel":
 			await _duel()
+		"hunter":
+			await _hunter_look()
 		"feet":
 			_feet()
 	print("WHITE SKY PEEK: done ", what, " in ", out)
 	get_tree().quit()
+
+
+## The hunter on the rim, his cards raised, as the game shows him and close
+## on each hand (11 November, Gary: the hunter "before brams battle has
+## deformed right hand").
+func _hunter_look() -> void:
+	m._bram.position = WhiteSky.CRATER - Vector3(0, 0, -0.5)
+	var at := WhiteSky.CRATER + Vector3(0, 0, -8.6)
+	at.y = WhiteSky.height(at.x, at.z)
+	m._hunter.position = at
+	m._hunter.look_at_dir(m._bram.position - m._hunter.position)
+	m._hunter.visible = true
+	m._hunter._set_fade(1.0)
+	m._shot(WhiteSky.CRATER + Vector3(0.9, 1.0, 2.6), m._hunter.position + Vector3(0, 2.2, 0), 38.0)
+	m._hunter.raise_cards()
+	await get_tree().create_timer(1.6, false).timeout
+	await _shot("as_filmed")
+	var sk := m._hunter.find_child("Skeleton3D", true, false) as Skeleton3D
+	for k in 2:
+		for side in ["Right", "Left"]:
+			var hb := sk.find_bone(side + "Hand") if sk != null else -1
+			if hb < 0:
+				continue
+			var hp := sk.global_transform * sk.get_bone_global_pose(hb).origin
+			var to_b := (m._bram.position - m._hunter.position).normalized()
+			_peek_at(hp + to_b * 1.1 + Vector3(0, 0.15, 0), hp + Vector3(0, -0.12, 0))
+			await _shot("%s_hand_front_%d" % [side.to_lower(), k])
+			_peek_at(hp + to_b.rotated(Vector3.UP, 1.2 if side == "Left" else -1.2) * 1.1 + Vector3(0, 0.1, 0), hp + Vector3(0, -0.12, 0))
+			await _shot("%s_hand_side_%d" % [side.to_lower(), k])
+		await get_tree().create_timer(0.7, false).timeout
+	_peek_at(m._hunter.position + (m._bram.position - m._hunter.position).normalized() * 4.2 + Vector3(0, 1.5, 0), m._hunter.position + Vector3(0, 1.3, 0))
+	await _shot("whole_front")
 
 
 ## Every crystal's foot (its prism's bottom ring, UV.y 0) under the snow?

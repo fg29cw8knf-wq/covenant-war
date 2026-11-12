@@ -24,22 +24,32 @@ extends CanvasLayer
 ##      child up (gated): Bram kneels to it, lifts it and stands with it;
 ##      he tucks it into his coat ("Hush, now. I've got you."), and turns:
 ##      the faceless hunter on the crater's rim. "Not this one."
-##   5. Bram's duel, filmed: the real duel engine (DuelScreen, spec.film) with
-##      no HUD and the camera directed by its beats like a film (8 November:
-##      _on_beat; Gary's own film of it, StoryFilm "white_sky_duel", plays in
-##      its place once he's made it), out in the snow; Bram's deck of his
-##      god's cards (Kaethis, the Hand Before, never named here: WhiteSkyDuel)
-##      against the hunter's pale hounds of Sigil light. Bram plays one-handed,
-##      the child in his coat; he is losing; he calls down Orlanthe, the Last
-##      Page, and when its book opens the screen burns white. Nobody sees who
-##      won.
+##   5. Bram's duel, played (12 November, Gary: "Bram's duel becomes played,
+##      not watched ... three gated moves as Bram (call a Totem, attack, play
+##      the Last Page), with no costs or numbers, and it can't be lost"): the
+##      real duel engine (DuelScreen, spec.film) with no HUD, out in the snow,
+##      cut into already joined and going badly, every move of it written out
+##      (WhiteSkyDuel.PLAY_TURNS). The hunter's pack breaks one of his Totems;
+##      then the player, as Bram, makes three moves, each waited for (_ask_move:
+##      his hand as paintings, no names, costs or numbers, the card to play
+##      glowing, the instruction in brackets): he calls the Unspent Hour; it
+##      strikes a hound and breaks it; the pack answers and another of his
+##      falls; he plays the Last Page, and when Orlanthe's book opens the
+##      screen burns white. Nobody sees who won. Each move's payoff is filmed
+##      by its beats as the watched duel was (8 November: _on_beat), and by
+##      Gary's own shot of it once he's made one (StoryFilm "white_sky_move_1"
+##      to "_3": _move_film). Bram's cards are his god's (Kaethis, the Hand
+##      Before, never named here). The duel watched whole, 68 seconds of it,
+##      is gone from here: Gary's film of it, "white_sky_duel", plays later,
+##      on the Thornwood road, once the player knows the rules.
 ##   6. Black. Morrowen: "Twenty years later, the debt came due." Then the attic
 ##      (AshfordP1._attic): the player wakes, the mark under his collar fading.
 ##
-## None of it can be skipped (8 November, Gary: "Make it so you can't skip
-## Bram's bit at the beginning": a tap skipped the filmed duel, and once the
-## memory had been seen, Game.settings seen_white_sky, a Skip button skipped
-## the lot). Taps move the lines on as everywhere else. The gate
+## The first time, none of it can be skipped (8 November, Gary: "Make it so
+## you can't skip Bram's bit at the beginning"). Once it has been seen
+## (Game.settings seen_white_sky) a Skip button skips the lot (12 November:
+## "Remove: the never-skip rule after the first play-through"). Taps move the
+## lines on as everywhere else. The gate
 ## at dawn and the clerk counting the crowns are kept back for the Reckoning
 ## (the reckoning film's shot rk_02b), so the opening doesn't say where Bram's
 ## gold came from.
@@ -69,9 +79,19 @@ const COMPASS_LABEL := "The light"
 const HOW_TAKE := {"phone": "(Tap the screen to pick up the child.)", "tablet": "(Tap the screen to pick up the child.)",
 	"computer": "(Press E, or click, to pick up the child.)", "controller": "(Press A to pick up the child.)"}
 
+## The player's three moves in Bram's duel (WhiteSkyDuel.PLAY_GATES).
+const HOW_MOVE := {
+	"call": {"phone": "(Tap the glowing card to call a Totem.)", "tablet": "(Tap the glowing card to call a Totem.)",
+		"computer": "(Click the glowing card, or press E, to call a Totem.)", "controller": "(Press A to call a Totem.)"},
+	"attack": {"phone": "(Tap the hound to strike it.)", "tablet": "(Tap the hound to strike it.)",
+		"computer": "(Click the hound, or press E, to strike it.)", "controller": "(Press A to strike the hound.)"},
+	"last_page": {"phone": "(Tap the glowing card: the Last Page.)", "tablet": "(Tap the glowing card: the Last Page.)",
+		"computer": "(Click the glowing card, or press E: the Last Page.)", "controller": "(Press A to play the Last Page.)"},
+}
+
 # ------------------------------------------------------------------ duel ---
-## The duel itself (decks, seed, skill) is WhiteSkyDuel's, so its probe can
-## run without the game's autoloads.
+## The duel itself (the board and every move of it) is WhiteSkyDuel's, so its
+## probe can run without the game's autoloads.
 ## Where Bram and the hunter stand on the duel's field (its own coordinates:
 ## Bram's row at z 2, the hunter's at -2.6).
 const BRAM_AT := Vector3(-0.6, 0.0, 6.4)
@@ -158,7 +178,9 @@ var _held := false            # a finger or the mouse held down
 var _tapped := false
 var _last_input := ""
 var _skipping := false
+var _skip_btn: Button
 var _done := false
+var _tap_at := Vector2.INF       # where the last tap or click was (Vector2.INF: a key or a button)
 var _falling: Array = []      # [node, velocity, spin, colour]
 var _rng := RandomNumberGenerator.new()
 ## Walking about (the pad, the keys, a tap on the snow): on through the walk.
@@ -228,6 +250,21 @@ func _ready() -> void:
 	_compass.label = COMPASS_LABEL
 	_root.add_child(_compass)
 	SafeArea.fit(_compass)
+	# Skip, once the memory has been seen (12 November; play() shows it)
+	_skip_btn = UITheme.button("Skip", false, 200)
+	_skip_btn.anchor_left = 1.0
+	_skip_btn.anchor_right = 1.0
+	# (clear of a phone's Dynamic Island, as the opening movie's is)
+	SafeArea.watch(_skip_btn, func() -> void:
+		var mg := SafeArea.insets()
+		_skip_btn.offset_left = -250 - mg.z
+		_skip_btn.offset_right = -40 - mg.z
+		_skip_btn.offset_top = 36 + mg.y
+		_skip_btn.offset_bottom = 132 + mg.y)
+	_skip_btn.visible = false
+	_skip_btn.focus_mode = Control.FOCUS_NONE
+	_skip_btn.pressed.connect(skip)
+	_root.add_child(_skip_btn)
 	_wind = _sound("storm_wind", WIND_DB, true)
 	_cry = _sound("baby_cry", -6.0, true)
 
@@ -269,6 +306,7 @@ func play() -> void:
 	Music.play(["white_sky", "sigilfall"], 2.0)
 	if _wind != null:
 		_wind.play()
+	_skip_btn.visible = seen()
 	await _open()
 	if not _skipping:
 		await _sigilfall()
@@ -289,11 +327,12 @@ func _own_overlay() -> CineOverlay:
 	return ov
 
 
-## Skips the rest: the white, then the last line and the attic. (Nothing in
-## the game calls it since 8 November: the memory can't be skipped. The
-## tests use it.)
+## Skips the rest: the white, then the last line and the attic (the Skip
+## button, there once the memory has been seen; and the tests).
 func skip() -> void:
 	_skipping = true
+	if _skip_btn != null:
+		_skip_btn.visible = false
 	if _ov != null and _ov._waiting:
 		_ov._next.emit()
 	_tapped = true
@@ -313,9 +352,19 @@ func _open() -> void:
 	_cam.fov = 50.0
 	if warm_sigils:
 		_warm_sigils()   # (under the caption's black, a few frames; not waited for)
+	# the duel built now too, under the caption's black, and the black held
+	# until it is (11 November, Gary: "Whole game running slow keeps freezing
+	# especially when Bram goes to pick up baby": see _prepare_duel)
+	var early := prep_early
+	if early:
+		_prepare_duel()
 	await _ov.caption(CAPTION[0], CAPTION[1], 2.6)
 	if _skipping:
 		return
+	var held := 0.0
+	while early and not _prep_done and held < DUEL_WARM_MAX and not _skipping:
+		await get_tree().process_frame
+		held += get_process_delta_time()
 	_fade(_black, 0.0, 2.2)
 	_roam = true
 	_show_hint(HOW_WALK)
@@ -649,14 +698,14 @@ func _crater() -> void:
 	_child_beacon(true)
 	if _cry != null:
 		_cry.play()
-	await _wait(2.2)
+	await _wait(REVEAL_SECS)
 	if _skipping:
 		return
 	# down the slope to it, the camera coming down behind him and keeping
 	# the child in the middle of the picture
 	var krt := kd.cross(Vector3.UP)
 	var close := _bottom - kd * 2.4 + krt * 1.1 + Vector3(0, 2.3, 0)
-	var secs := 5.4
+	var secs := DOWN_SECS
 	var way := _bottom - b
 	way.y = 0.0
 	if _bram is PaperDoll and way.length() > 0.05:
@@ -686,11 +735,13 @@ func _crater() -> void:
 	if _bram is PaperDoll:
 		(_bram as PaperDoll).face(_ad, _cam)
 	_cam_yaw = atan2(_ad.x, _ad.z)
-	await _wait(0.6)
+	await _wait(PROMPT_BEAT)
 	_show_hint(HOW_TAKE)
-	# the duel built behind the picture while the prompt waits (still, so a
-	# frame's catch isn't seen)
-	_prepare_duel()
+	# (the duel is built already, under the opening's black: _open. Until 11
+	# November it was built here, behind the picture, while the prompt waited,
+	# and a tap straight away had him kneel and lift the child through it.)
+	if not prep_early:
+		_prepare_duel()
 	_tapped = false
 	while not _tapped and not _skipping:
 		if Input.is_action_just_pressed("interact"):
@@ -889,15 +940,31 @@ func _far_whine() -> void:
 ## drawn again till the cut: DUEL_WARM_SECS), and the white is a short,
 ## deliberate flash of the book's light (WHITE_HOLD) before it opens on the
 ## duel.
+## (11 November, Gary: "Whole game running slow keeps freezing especially
+## when Bram goes to pick up baby": building it as the pick-up prompt came up
+## meant a tap on the prompt had him kneel, lift the child and stand while
+## the duel's models were still being read, put on the field and drawn for
+## the first time behind the picture, two 3D pictures drawn at once, for up
+## to DUEL_WARM_MAX seconds: the worst catch in the game, on the one moment
+## that's a close-up. Now it's built at the very start, under the caption's
+## black (_open; `prep_early`), which holds until it's done; from then on
+## its picture isn't drawn at all until the cut, so the walk, the crater and
+## the lift have the machine to themselves.)
 const DUEL_WARM_SECS := 1.5
 const DUEL_WARM_MAX := 10.0
 const WHITE_HOLD := 0.25
+## False builds it as the pick-up prompt comes up, as before (the tests'
+## before).
+var prep_early := true
+var _prep_done := false
+
 
 func _prepare_duel() -> void:
 	if _prep != null or _screen != null or _skipping:
 		return
 	var spec := duel_spec()
 	spec["hold"] = true
+	_players = spec.get("controllers", [])
 	var sc: DuelScreen = DuelScreen.new().configure(spec)
 	_prep = sc
 	sc.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -917,6 +984,7 @@ func _prepare_duel() -> void:
 			break
 	if is_instance_valid(sc) and sc.field != null and sc.field.vp != null and not _screen_live:
 		sc.field.vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	_prep_done = true
 
 
 ## A duel screen let go: its duel ended first and cut off from the screen
@@ -932,9 +1000,12 @@ static func _end_screen(sc: DuelScreen) -> void:
 	sc.queue_free()
 
 
-## The duel built and waiting (_prepare_duel), until _duel makes it _screen.
+## The duel built and waiting (_prepare_duel), until _duel makes it _screen;
+## and its two sides' players (WhiteSkyDuel.Staged: Bram's waits for the
+## player at each of his three moves).
 var _prep: DuelScreen
 var _screen_live := false
+var _players: Array = []
 
 
 ## The Shardlands' ice round the duel too (6 November: the filmed duel stood
@@ -962,34 +1033,42 @@ func _ice_round_duel(f: DuelField3D) -> void:
 		mi.rotation = Vector3(r.randf_range(-0.2, 0.2), r.randf() * TAU, r.randf_range(-0.2, 0.2))
 		f.world.add_child(mi)
 
-## The duel, filmed (8 November, Gary: "Can we make the battle more movie
-## like or give me images and prompt and I'll make it a movie"): both. When
-## his film of it is there (FILM, StoryFilm's ladder: white_sky_duel_4k.mp4
-## through the device's own player, then assets/movies/white_sky_duel.ogv,
-## then a clip or painting for every shot) it plays in the duel's place
-## (_duel_film). Until then the real duel plays as before, directed like a
-## film (_on_beat): every beat the duel's presenter is told of
-## (DuelGame.beat) chooses its shot. A Totem called rises in a low hero
-## shot; an attack is seen from behind the attacker, and a big blow cuts to
-## where it lands, the camera shaken by it (a small one shakes the shot
-## that's up); a Totem broken is held close; a blow on Bram is seen over his
-## shoulder as he takes it; each turn opens on whoever's turn it is (over
-## his shoulder, or the hunter across the Circle on a long lens), creeping
-## in; the black bars of a widescreen film over it all (_film_bars); and
-## when nothing has happened for a while, one of the WIDES, drifting; no
-## ordinary cut sooner than MIN_HOLD after the last. Every shot is
-## checked against Bram's face (_face_seen): a shot that would show it is
-## passed over for the next of its kind, so it's never seen. Called down,
-## the Last Page has the picture to itself: over his shoulder, low, rising
-## to CLIMAX as it comes down. (The duel's own cinematic shots stay off in a
-## film, DuelScreen._filmed: the camera here is the film's alone, through
-## DuelField3D.cam_shot, set_home and cam_home.)
+## Bram's duel, played (12 November; the note at the top, 5). The duel was
+## built under the opening's black (_prepare_duel) and waits; here it's cut
+## to and begun. Its two sides are WhiteSkyDuel.Staged players: the hunter's
+## plays its turns as written; Bram's waits at each of the player's three
+## moves (_ask_move) and makes it when they do. Between the moves it's a
+## film, as the watched duel was (8 November, Gary: "Can we make the battle
+## more movie like"): every beat the duel's presenter is told of
+## (DuelGame.beat) chooses its shot (_on_beat). A Totem called rises in a
+## low hero shot; an attack is seen from behind the attacker, and a big blow
+## cuts to where it lands, the camera shaken by it; a Totem broken is held
+## close; a blow on Bram is seen over his shoulder as he takes it; the black
+## bars of a widescreen film over it all (_film_bars), off while the player
+## chooses. Every shot is checked against Bram's face (_face_seen): a shot
+## that would show it is passed over for the next of its kind, so it's never
+## seen. Called down, the Last Page has the picture to itself: over his
+## shoulder, low, rising to CLIMAX as it comes down. (The duel's own
+## cinematic shots stay off in a film, DuelScreen._filmed: the camera here
+## is the film's alone, through DuelField3D.cam_shot, set_home and cam_home.)
 const FILM := "white_sky_duel"
+## Where the choosing is done from: high over his back, looking down the
+## Circle, his row and the pack's one above the other and the hunter beyond
+## ([camera, looking at, lens]). From SHOTS[0], lower, his Loomwarden hid the
+## Warg behind it and the ring on the hound lay across the Unspent Hour's
+## wing.
+const PLAY_SHOT := [Vector3(1.2, 8.4, 14.2), Vector3(0.0, 0.4, 0.4), 40.0]
+## The move of his being waited for ("": none), and how long the duel has
+## stood waiting for the player in all (not counted against FILM_MAX).
+var _asking := ""
+var _asked_secs := 0.0
+var _move_go := false
+var _hand: Control = null
+var _ring: MoveRing = null
+var _ring_of: DuelTotem = null
+var _clip_on := false
 
 func _duel() -> void:
-	if w != null and StoryFilm.available(FILM):
-		if await _duel_film():
-			return
 	if _prep == null:
 		_prepare_duel()
 	_screen = _prep
@@ -1033,29 +1112,39 @@ func _duel() -> void:
 	# home and its lean, so the film's shot is the one that stands)
 	_screen.game.beat.connect(_on_beat, CONNECT_DEFERRED)
 	_screen.finished.connect(func(_r) -> void: st.over = true)
+	# Bram's side waits for the player at each of his three moves
+	if not _players.is_empty() and _players[0] != null and "ask" in _players[0]:
+		_players[0].ask = _ask_move
 	_screen.go()
 	_wind_to(WIND_DB, 1.2)   # (the storm's back round the Circle after the hush on the rim)
 	var fade := create_tween()
 	fade.tween_interval(WHITE_HOLD)
 	fade.tween_property(_white, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	var start := _t
+	_asked_secs = 0.0
 	_cut_at = _t
 	_free_at = _t + 1.6
 	_wide_i = 0
-	while not _skipping and not st.over and _t - start < FILM_MAX:
+	while not _skipping and not st.over and _t - start - _asked_secs < FILM_MAX:
 		if f != null:
 			_hide_plates(f)
 		if f != null and st.called >= 0.0 and not _climax:
 			_climax = true
 			_climax_shot()
-		if f != null and not _climax and _t - _cut_at > IDLE_WIDE:
+		if f != null and not _climax and _asking == "" and _t - _cut_at > IDLE_WIDE:
 			_wide_shot()
 		if st.called >= 0.0 and ((st.struck >= 0.0 and _t - st.struck > CLIMAX_HOLD) or _t - st.called > 10.0):
 			break
 		await get_tree().process_frame
-	# the white: the book opening on the Last Page's blow, or the end of the film; the
-	# music (Gary's white_sky_duel, its climax looping under the duel) stops
-	# dead with it
+	# (Gary's shot of the last move, to its end: it ends on the white too)
+	while _clip_on and not _skipping:
+		await get_tree().process_frame
+	_asking = ""
+	_drop_hand(0.2)
+	_drop_ring()
+	_hide_hint()
+	# the white: the book opening on the Last Page's blow; the music (Gary's
+	# white_sky_duel, its climax looping under the duel) stops dead with it
 	var wt := create_tween()
 	wt.tween_property(_white, "modulate:a", 1.0, 1.5 if not _skipping else 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await wt.finished
@@ -1064,40 +1153,252 @@ func _duel() -> void:
 	Music.stop(0.12)
 
 
-## Gary's film of the duel in its place: the memory's picture and sounds
-## stepped aside (the white of the hunter's cards still up as it starts),
-## the film over everything, and after it the white again, which the close
-## takes to black as after the 3D duel (so his film should end on the white
-## of the book opening: docs/script/films_plan.md). False if it couldn't
-## play after all (StoryFilm's "played": false): the 3D duel then plays.
-var _film_played := false
+# --- the player's three moves (12 November) -----------------------------------
+## One of the player's three moves, waited for: called by Bram's side of the
+## duel (WhiteSkyDuel.Staged.ask) with the move's name and the action it's
+## about to make, and awaited; the action is made when this returns. The
+## last blow's shot has its moment first (and Gary's shot of the last move
+## its end). Then the picture goes back behind Bram (PLAY_SHOT), the film's
+## bars come off, and what's to be done is shown: for a card (the Totem to
+## call, the Last Page) his hand comes up along the bottom of the picture as
+## paintings alone, no names, costs or numbers, the card to play lifted and
+## glowing and the rest dimmed; for the attack a ring of light closes on the
+## hound to strike. The instruction is in brackets, by device (HOW_MOVE).
+## Nothing else moves the duel on: a tap on the glowing card or the ringed
+## hound (or near it: MOVE_NEAR), E or Enter, or A on a controller. Then the
+## card flies from his hand, the bars come back and the move plays out,
+## filmed (_on_beat), and Gary's shot of it over that when there is one
+## (_move_film).
+const MOVE_NEAR := 34.0
+const MOVE_SETTLE := 0.75
+const MOVE_SHOWN := 0.45
 
-func _duel_film() -> bool:
-	Music.stop(0.4)
-	_wind_to(-60.0, 0.5)
-	_vpc.visible = false
-	_vp.render_target_update_mode = SubViewport.UPDATE_DISABLED
-	_white.modulate.a = 0.0
+## The move waited for now ("": none), and making it without a tap (a key,
+## a controller's button; the tests).
+func asking() -> String:
+	return _asking
+
+
+func play_move() -> void:
+	if _asking != "":
+		_move_go = true
+
+
+func _ask_move(gate: String, action: Dictionary) -> void:
+	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
+		return
+	while (_t < _free_at or _clip_on) and not _skipping:
+		await get_tree().process_frame
+	if _skipping or _dir_f == null or not is_instance_valid(_dir_f):
+		return
+	_asking = gate
+	_take(PLAY_SHOT, 0.9, 3600.0)
+	_film_bars(false, 0.5)
+	# (the picture back behind him first: his hand came up over the last
+	# blow's close shot while the camera was still on its way)
+	await _wait(MOVE_SETTLE)
+	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
+		_asking = ""
+		return
+	var card: Control = null
+	if gate == "attack":
+		_show_ring(action.get("target"))
+	elif action.get("card") is DuelCard:
+		card = _show_hand(String((action.card as DuelCard).id))
+	await _wait(MOVE_SHOWN)
+	# (just over his hand when it's up; where the walk's and the pick-up's
+	# were otherwise)
+	if card != null:
+		_hint.offset_bottom = -(card.size.y * 0.96 + 14.0)
+		_hint.offset_top = _hint.offset_bottom - 60.0
+	_show_hint(HOW_MOVE.get(gate, HOW_MOVE["call"]))
+	_tapped = false
+	_move_go = false
+	while not _skipping:
+		await get_tree().process_frame
+		_asked_secs += get_process_delta_time()
+		if _move_go:
+			break
+		if _tapped:
+			_tapped = false
+			if card != null and not is_instance_valid(card):
+				card = null
+			if _tap_at == Vector2.INF or _on_move(_tap_at, card):
+				break
+	_move_go = false
+	_hide_hint()
+	_asking = ""
+	_free_at = _t   # (the move's own shot may cut in at once)
+	_cut_at = _t
+	# (skipped while it waited: the close has taken his hand away already)
+	if card != null and not is_instance_valid(card):
+		card = null
+	if _skipping:
+		_drop_hand(0.0)
+		_drop_ring()
+		_hint_home()
+		return
+	_film_bars(true, 0.4)
+	_play_hand(card)
+	_drop_ring()
+	_move_film(gate)
+	_hint_home()
+	# (and back at once: the move is made the moment this returns)
+
+
+## The hint back where the walk's and the pick-up's were, once it has faded
+## (it sits over his hand for a card).
+func _hint_home() -> void:
+	await get_tree().create_timer(0.45, false).timeout
+	if _asking == "" and is_instance_valid(_hint):
+		_hint.offset_top = -170
+		_hint.offset_bottom = -110
+
+
+## Is a tap at `pos` on what's to be tapped: the glowing card, or the ring on
+## the hound (MOVE_NEAR px round either counts)?
+func _on_move(pos: Vector2, card: Control) -> bool:
+	if card != null and is_instance_valid(card):
+		return card.get_global_rect().grow(MOVE_NEAR * SafeArea.ui_scale()).has_point(pos)
+	if _ring != null and is_instance_valid(_ring):
+		return pos.distance_to(_ring.centre) <= _ring.radius + MOVE_NEAR * SafeArea.ui_scale()
+	return true
+
+
+## Bram's hand along the bottom of the picture, as paintings (PlayCard: no
+## names, costs or numbers), the card to play (`glow_id`) lifted and glowing
+## and the rest dimmed. Returns the glowing card (null if it isn't there).
+func _show_hand(glow_id: String) -> Control:
+	_drop_hand(0.0)
+	if not is_instance_valid(_screen) or _screen.game == null:
+		return null
+	var ids: Array = []
+	for c in _screen.game.players[0].hand:
+		ids.append(String((c as DuelCard).id))
+	if ids.is_empty():
+		return null
+	_hand = Control.new()
+	_hand.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_hand.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_hand)
+	_root.move_child(_hand, _white.get_index())   # over the duel and its bars, under the white and the black
+	var sz := _root.size
+	var hgt := clampf(sz.y * 0.32, 190.0, 420.0)
+	var wid := hgt * 5.0 / 7.0
+	var step := wid * 0.86
+	var n := ids.size()
+	var picked: PlayCard = null
+	for i in n:
+		var pc := PlayCard.new()
+		pc.id = ids[i]
+		pc.element = String(DuelCards.CARDS.get(ids[i], {}).get("element", ""))
+		pc.size = Vector2(wid, hgt)
+		var off := float(i) - float(n - 1) * 0.5
+		var lit: bool = ids[i] == glow_id and picked == null
+		pc.position = Vector2(sz.x * 0.5 + off * step - wid * 0.5, sz.y - hgt * (0.96 if lit else 0.78) + absf(off) * hgt * 0.03)
+		pc.pivot_offset = Vector2(wid * 0.5, hgt)
+		pc.rotation = deg_to_rad(off * 4.5)
+		pc.lit = lit
+		if not lit:
+			pc.modulate = Color(0.5, 0.52, 0.62)
+		_hand.add_child(pc)
+		if lit:
+			picked = pc
+	if picked != null:
+		_hand.move_child(picked, -1)
+	_hand.position.y = hgt
+	create_tween().tween_property(_hand, "position:y", 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	return picked
+
+
+## The card played: up out of his hand and gone, the rest of the hand down.
+func _play_hand(card: Control) -> void:
+	if card != null and is_instance_valid(card):
+		var tw := create_tween().set_parallel(true)
+		tw.tween_property(card, "position:y", card.position.y - card.size.y * 0.7, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tw.tween_property(card, "modulate:a", 0.0, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_drop_hand(0.4)
+
+
+func _drop_hand(secs: float) -> void:
+	var h := _hand
+	_hand = null
+	if h == null or not is_instance_valid(h):
+		return
+	if secs <= 0.0:
+		h.queue_free()
+		return
+	var tw := create_tween()
+	tw.tween_property(h, "position:y", clampf(_root.size.y * 0.32, 190.0, 420.0) * 1.1, secs).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tw.tween_callback(h.queue_free)
+
+
+## The ring of light on the hound to strike (it follows the hound as the
+## picture settles: _place_ring, each frame).
+func _show_ring(target) -> void:
+	_drop_ring()
+	if not (target is DuelTotem):
+		return
+	_ring_of = target
+	_ring = MoveRing.new()
+	_ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_ring.modulate.a = 0.0
+	_root.add_child(_ring)
+	_root.move_child(_ring, _white.get_index())
+	_place_ring()
+	create_tween().tween_property(_ring, "modulate:a", 1.0, 0.4)
+
+
+func _drop_ring() -> void:
+	var r := _ring
+	_ring = null
+	_ring_of = null
+	if r != null and is_instance_valid(r):
+		var tw := create_tween()
+		tw.tween_property(r, "modulate:a", 0.0, 0.2)
+		tw.tween_callback(r.queue_free)
+
+
+func _place_ring() -> void:
+	var f := _dir_f
+	if _ring == null or not is_instance_valid(_ring) or _ring_of == null or f == null or not is_instance_valid(f) or f.cam == null:
+		return
+	var foot := f.foot_world(_ring_of.owner, _ring_of.slot)
+	var a := _field_px(f, foot)
+	var b := _field_px(f, foot + Vector3(0, _height(_ring_of), 0))
+	_ring.centre = (a + b) * 0.5
+	_ring.radius = clampf(a.distance_to(b) * 0.66, 64.0 * SafeArea.ui_scale(), 260.0 * SafeArea.ui_scale())
+
+
+## A point on the duel's field, where it's drawn on the screen (this layer's
+## own pixels).
+func _field_px(f: DuelField3D, p: Vector3) -> Vector2:
+	var px := f.cam.unproject_position(p)
+	if f.vp != null and f.vp.size.x > 0 and f.vp.size.y > 0:
+		px *= f.size / Vector2(f.vp.size)
+	return f.get_global_transform() * px
+
+
+## Gary's own shot of one of the three moves, over the duel as it plays the
+## move out underneath (StoryFilm "white_sky_move_1", "_2", "_3": the brief's
+## in docs/script/films_plan.md), when he's made it; nothing until then. The
+## next move isn't asked for, and the white doesn't come, until it has ended
+## (_clip_on).
+func _move_film(gate: String) -> void:
+	var nm := "white_sky_move_%d" % (WhiteSkyDuel.PLAY_GATES.find(gate) + 1)
+	if w == null or not StoryFilm.available(nm):
+		return
+	_clip_on = true
 	var was := layer
 	layer = 11   # (under the film: StoryFilm is 12, the subtitles 14)
-	var r: Dictionary = await StoryFilm.play(w, FILM)
-	if not bool(r.get("played", true)):
-		layer = was
-		_white.modulate.a = 1.0
-		_vpc.visible = true
-		_vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
-		_ov.black(false)
-		Music.play(["white_sky_duel", "white_sky", "sigilfall"], 0.3)
-		return false
-	_film_played = true
-	_end_screen(_prep)
-	_prep = null
-	# (the same frame the film ends on black: the white over it before
-	# anything's drawn, and the close takes it from there)
-	_white.modulate.a = 1.0
+	await StoryFilm.play(w, nm)
 	layer = was
-	_ov.black(false)
-	return true
+	if _ov != null:
+		_ov.black(false)
+	if gate != WhiteSkyDuel.PLAY_GATES[-1] and not _skipping:
+		Music.play(["white_sky_duel", "white_sky", "sigilfall"], 0.3)
+	_clip_on = false
 
 
 # --- the filmed duel's camera (8 November) --------------------------------------
@@ -1511,13 +1812,15 @@ func _film_bars(on: bool, secs := 0.6, extra := 0.0) -> void:
 			tw.tween_property(r, "offset_top", -hgt, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
 
 
-## The filmed duel's spec for DuelScreen (tests read it too).
+## The duel's spec for DuelScreen (tests read it too): the played duel's set
+## board and its two sides' players (WhiteSkyDuel.play_board,
+## play_controllers), with no HUD (film).
 static func duel_spec() -> Dictionary:
 	var D := WhiteSkyDuel
-	return {"decks": [D.bram_deck(D.SEED, D.SUMMON_AT), D.hunter_deck(D.SEED)], "stacked": [true, true],
-		"puzzle": D.board(), "story_rules": D.story_rules(),
+	return {"decks": [D.PLAY_BRAM_DECK.duplicate(), D.PLAY_HUNTER_DECK.duplicate()], "stacked": [true, true],
+		"puzzle": D.play_board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
-		"ai": [true, true], "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
+		"ai": [true, true], "controllers": D.play_controllers(), "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
 		"film": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
 		"music": ["white_sky_duel", "white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
 
@@ -1527,15 +1830,18 @@ func _close() -> void:
 	_hide_hint()
 	_roam = false
 	_dir_f = null
+	_asking = ""
+	_drop_hand(0.0)
+	_drop_ring()
+	if _skip_btn != null:
+		_skip_btn.visible = false
 	if _compass != null:
 		_compass.show_compass(false, 0.3)
 	if _white.modulate.a < 0.99:
 		var wt := create_tween()
 		wt.tween_property(_white, "modulate:a", 1.0, 0.5)
 		await wt.finished
-	# (after Gary's film, the white it ended on held a breath less: his
-	# film has had its moment of it)
-	await _wait(0.3 if _film_played else 0.6)
+	await _wait(0.6)
 	_end_screen(_screen)
 	_end_screen(_prep)   # (skipped before the duel: never shown)
 	_black.modulate.a = 0.0
@@ -2286,10 +2592,20 @@ void fragment() {
 ## held; how long the kneel, the reach, the lift and the rise take (s).
 const LIFT_LEAN := 0.8
 const HOLD_LEAN := 0.3
-const KNEEL_SECS := 1.2
-const REACH_SECS := 0.7
-const LIFT_SECS := 1.2
-const RISE_SECS := 1.4
+## (11 November, Gary: "Have Bram pick up baby quicker": from the tap to
+## stood with the child was 4.9 s, each part unhurried; every movement is
+## the same and brisker, about 3.3 s: a man who's found a child crying in the
+## snow doesn't take his time. The walk down to it is quicker too, DOWN_SECS.)
+const KNEEL_SECS := 0.8
+const REACH_SECS := 0.45
+const LIFT_SECS := 0.8
+const RISE_SECS := 0.95
+## The look down into the crater before he goes down (s; was 2.2), the walk
+## down the slope (was 5.4: 8 m at a stroll; now he hurries to it) and the
+## beat before the prompt (was 0.6).
+const REVEAL_SECS := 1.5
+const DOWN_SECS := 4.0
+const PROMPT_BEAT := 0.3
 ## Where it's held against the chest once gathered: in his own frame, off
 ## the chest bone (a little below and ahead of it, to his left side, where
 ## the left arm will cradle it).
@@ -2405,7 +2721,7 @@ func _lift_child() -> void:
 		lift_gap = maxf(lift_gaps[0], lift_gaps[1])
 		if el > KNEEL_SECS * 0.55 + REACH_SECS and lift_gap < HANDS_ON:
 			break
-	await _wait(0.2)   # (a breath, his hands under it)
+	await _wait(0.1)   # (a breath, his hands under it)
 	if _skipping:
 		if sk != null and sk.skeleton_updated.is_connected(watch):
 			sk.skeleton_updated.disconnect(watch)
@@ -2922,6 +3238,8 @@ func _apply_cam() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if _ring != null:
+		_place_ring()
 	if _roam:
 		_roam_step(delta)
 	if _cam_mode == "roam":
@@ -3202,11 +3520,13 @@ func _input(e: InputEvent) -> void:
 		_held = (e as InputEventScreenTouch).pressed
 		if _held:
 			_tapped = true
+			_tap_at = (e as InputEventScreenTouch).position
 		_last_input = ""
 	elif e is InputEventMouseButton and (e as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
 		_held = (e as InputEventMouseButton).pressed
 		if _held:
 			_tapped = true
+			_tap_at = (e as InputEventMouseButton).position
 		_last_input = ""
 	elif e is InputEventJoypadButton or e is InputEventJoypadMotion:
 		if (e is InputEventJoypadMotion and absf((e as InputEventJoypadMotion).axis_value) > 0.4) or e is InputEventJoypadButton:
@@ -3215,6 +3535,8 @@ func _input(e: InputEvent) -> void:
 		_last_input = "keys"
 	if e.is_action_pressed("interact"):
 		_tapped = true
+		if not (e is InputEventScreenTouch or e is InputEventMouseButton):
+			_tap_at = Vector2.INF   # (a key or a button: no place)
 
 
 func _device() -> String:
@@ -3481,6 +3803,100 @@ void fragment() {
 
 # ================================================================== stoop ===
 
+## One of Bram's cards as the player sees it in the snow: its painting in a
+## plain frame, no name, cost or numbers (a card with no painting yet: its
+## element's colours and sign, CardFace.draw_art). `lit`: the one to play,
+## a light round it that breathes.
+class PlayCard:
+	extends Control
+	var id := ""
+	var element := ""
+	var lit := false
+	var _t := 0.0
+	const RADIUS := 0.055   # the frame's corners, of the card's width
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var rad := int(size.x * RADIUS)
+		var mask := Panel.new()
+		mask.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mask.clip_children = CanvasItem.CLIP_CHILDREN_ONLY
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color.WHITE
+		sb.set_corner_radius_all(rad)
+		mask.add_theme_stylebox_override("panel", sb)
+		add_child(mask)
+		var art := Painting.new()
+		art.id = id
+		art.element = element
+		art.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mask.add_child(art)
+		var frame := Panel.new()
+		frame.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var fb := StyleBoxFlat.new()
+		fb.draw_center = false
+		fb.set_corner_radius_all(rad)
+		fb.set_border_width_all(maxi(2, int(size.x * 0.018)))
+		fb.border_color = Color(0.93, 0.9, 0.78) if lit else Color(0.62, 0.6, 0.55)
+		frame.add_theme_stylebox_override("panel", fb)
+		add_child(frame)
+		set_process(lit)
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if not lit:
+			return
+		# the light round it, breathing
+		var k := 0.5 + 0.5 * sin(_t * 3.6)
+		var rad := int(size.x * RADIUS)
+		for i in 6:
+			var g := (4.0 + i * 6.0) * (0.8 + 0.4 * k) * size.x / 240.0
+			var sb := StyleBoxFlat.new()
+			sb.bg_color = Color(0.8, 0.92, 1.0, (0.2 - i * 0.03) * (0.55 + 0.45 * k))
+			sb.set_corner_radius_all(rad + int(g))
+			draw_style_box(sb, Rect2(Vector2.ZERO, size).grow(g))
+
+	class Painting:
+		extends Control
+		var id := ""
+		var element := ""
+
+		func _draw() -> void:
+			var r := Rect2(Vector2.ZERO, size)
+			draw_rect(r, Color(0.05, 0.06, 0.09))
+			CardFace.draw_art(self, r, id, element, 0.4)
+
+
+## The ring of light on the hound to strike: two arcs turning about it and a
+## soft round of light, breathing.
+class MoveRing:
+	extends Control
+	var centre := Vector2.ZERO
+	var radius := 100.0
+	var _t := 0.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var k := 0.5 + 0.5 * sin(_t * 3.6)
+		var col := Color(0.8, 0.92, 1.0)
+		var r := radius * (1.0 + 0.04 * k)
+		for i in 5:
+			draw_arc(centre, r + i * 3.0, 0.0, TAU, 72, Color(col, (0.16 - i * 0.03) * (0.5 + 0.5 * k)), 6.0, true)
+		var wd := maxf(3.0, radius * 0.035)
+		for i in 4:
+			var a := _t * 0.9 + i * TAU / 4.0
+			draw_arc(centre, r, a, a + TAU / 4.0 - 0.5, 20, Color(col, 0.95), wd, true)
+
+
 ## A bend at the small of the back laid over whatever the clip has (and
 ## before the hands' reach, so the arms reach from where it puts the
 ## shoulders): `amount` 0..1 of STOOP. Kneeling on one knee, Figure3D's kneel
@@ -3540,6 +3956,10 @@ class Hunter:
 				ap.play("idle")
 			if ap != null and ap.has_animation("walk"):
 				ap.get_animation("walk").loop_mode = Animation.LOOP_LINEAR
+			# (11 November, Gary: the hunter "before brams battle has deformed
+			# right hand": his clips curl his long fingers and the skin
+			# doesn't follow, Figure3D.FROZEN; kept as modelled)
+			Figure3D.keep_fingers(m.find_child("Skeleton3D", true, false) as Skeleton3D)
 			for g in m.find_children("*", "GeometryInstance3D", true, false):
 				_geometry.append(g)
 			_card_top = 2.2

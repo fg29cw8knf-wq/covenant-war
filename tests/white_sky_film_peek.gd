@@ -53,6 +53,9 @@ func _ready() -> void:
 
 
 func _process(_d: float) -> void:
+	# (12 November: Bram's duel is played; each of his three moves is made as it's asked for)
+	if m != null and is_instance_valid(m) and m.asking() != "" and m._hint.modulate.a > 0.9:
+		m.play_move()
 	if _peek and m != null and m._cam != null:
 		m._cam_mode = "peek"
 		m._cam.global_position = _peek_pos

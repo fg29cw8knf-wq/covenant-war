@@ -296,12 +296,19 @@ class TotemView:
 			col = Color("ff5a4a")
 		elif frac <= 0.5:
 			col = Color("ffc94a")
-		var br := Rect2(pr.position + Vector2(34, 36), Vector2(146, 11))
-		CardFace.box(self, br, 5.5, Color(0, 0, 0, 0.75 * f))
+		# (11 November: 15 px deep, was 11, and a shield drawn on it as a band
+		# of pale blue along its top, as long as the shield is against its
+		# full Health, so what stands between a blow and the Health is seen
+		# on the bar itself)
+		var br := Rect2(pr.position + Vector2(34, 33), Vector2(146, 15))
+		CardFace.box(self, br, 6.5, Color(0, 0, 0, 0.75 * f))
 		if lag > frac:
-			CardFace.box(self, Rect2(br.position, Vector2(br.size.x * lag, br.size.y)), 5.5, Color(1, 0.95, 0.9, 0.8 * f))
+			CardFace.box(self, Rect2(br.position, Vector2(br.size.x * lag, br.size.y)), 6.5, Color(1, 0.95, 0.9, 0.8 * f))
 		if frac > 0.0:
-			CardFace.vgrad(self, Rect2(br.position, Vector2(maxf(br.size.y, br.size.x * frac), br.size.y)), 5.5, Color(col.lightened(0.35), f), Color(col.darkened(0.2), f))
+			CardFace.vgrad(self, Rect2(br.position, Vector2(maxf(br.size.y, br.size.x * frac), br.size.y)), 6.5, Color(col.lightened(0.35), f), Color(col.darkened(0.2), f))
+		if totem.shield > 0:
+			var sw := br.size.x * clampf(float(totem.shield) / mx, 0.08, 1.0)
+			CardFace.box(self, Rect2(br.position + Vector2(0, -3), Vector2(sw, 6)), 3, Color("9fe8ff", (0.85 + 0.15 * sin(_t * 3.0)) * f), Color("0b2a3a", 0.9 * f), 1.0)
 		# (5 November: sized to its 62 px, so three figures (220) aren't cut to "22")
 		var hp_s := str(int(round(left)))
 		CardFace.text(self, fnt, Vector2(pr.end.x - 72, pr.position.y + 43), hp_s, CardFace.fit_size(fnt, hp_s, 34, 60.0, 22), Color(1, 1, 1, f), HORIZONTAL_ALIGNMENT_RIGHT, 62, 6)
@@ -332,7 +339,10 @@ class TotemView:
 		for bn in totem.boons:
 			x += DuelViews.pill(self, Vector2(x, pr.position.y - 14), "+" + DuelConditions.short_name(bn), Color("140f18", 0.92 * f), DuelConditions.color(bn), 14, 22) + 5
 		if totem.shield > 0:
-			DuelViews.pill(self, Vector2(pr.end.x - 78, pr.position.y - 14), "◈ %d" % totem.shield, Color("9fe8ff", 0.95 * f), Color("0b2a3a"), 14, 22)
+			# (bigger, and it says what it is: "◈ 50" alone read as nothing)
+			var sh_s := "◈ SHIELD %d" % totem.shield
+			var sh_w := CardFace.font("bold").get_string_size(sh_s, HORIZONTAL_ALIGNMENT_LEFT, -1, 17).x + 18
+			DuelViews.pill(self, Vector2(pr.end.x - sh_w + 6, pr.position.y - 20), sh_s, Color("9fe8ff", 0.97 * f), Color("0b2a3a"), 17, 28)
 
 	func _arch(r: Rect2) -> PackedVector2Array:
 		var pts := PackedVector2Array()
@@ -348,6 +358,87 @@ class TotemView:
 
 ## The light under a Totem: its rune circle, floor glow and highlight rings,
 ## drawn additively behind the creature.
+## What a blow did, in plain numbers, by the Totem it landed on (11
+## November, Gary: "With things like Bulwark it's hard to know how much
+## health is left or how much damage is being done during the attacks"). The
+## big number says what the blow took off; this says the rest, where the eye
+## already is: a wide Health bar with what it had (the lost part white, then
+## draining away) and what it has now, "80 / 120"; and when a shield stood
+## in the way, a line over it for what the shield took and what's left of
+## the shield ("SHIELD took 50 · 0 left"), so a blow of 70 on a Bulwark
+## reads "SHIELD took 50", "-20", "80 / 120" and not just a flash of blue.
+## It's by the Totem's body on the screen wherever the camera is (an attack's
+## close shot leaves the name plate, under its feet, off the bottom of the
+## picture), kept inside the screen's edges, and stays up long enough to read.
+class HitStrip:
+	extends Control
+	const W := 430.0
+	const BAR_H := 36.0
+	var before := 0
+	var after := 0
+	var max_hp := 1
+	var absorbed := 0
+	var shield_left := 0
+	var name_text := ""
+	var mine := false
+	var t := 0.0            # 0..1 over its life
+	var drain := 0.0        # 0..1: the lost part draining away
+	var where := Callable() # where it should be now (the screen's: by its Totem)
+
+	func _init() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		size = Vector2(W, 120)
+
+	func _process(_delta: float) -> void:
+		if where.is_valid():
+			position = where.call()
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := clampf(t / 0.08, 0.0, 1.0) * clampf((1.0 - t) / 0.18, 0.0, 1.0)
+		if a <= 0.0:
+			return
+		var fnt := CardFace.font("display_bold")
+		var bold := CardFace.font("bold")
+		var y := 0.0
+		if absorbed > 0:
+			# what the shield took, and what's left of it
+			var sr := Rect2(Vector2(0, y), Vector2(W, 38))
+			CardFace.box(self, sr, 19, Color("0b2a3a", 0.95 * a), Color("9fe8ff", 0.95 * a), 2.5)
+			var st := "◈ SHIELD took %d  ·  %s" % [absorbed, ("%d left" % shield_left) if shield_left > 0 else "broken"]
+			CardFace.text_in(self, bold, sr, st, CardFace.fit_size(bold, st, 25, W - 28, 14), Color("cdf4ff", a))
+			y += 44
+		# the Health bar: what it had, what it has
+		var pr := Rect2(Vector2(0, y), Vector2(W, BAR_H + 34))
+		CardFace.vgrad(self, pr, 14, Color(0.1, 0.11, 0.18, 0.95 * a), Color(0.02, 0.02, 0.05, 0.95 * a))
+		CardFace.box(self, pr, 14, Color(0, 0, 0, 0), Color(UITheme.GOLD if mine else UITheme.GOLD_DIM, 0.95 * a), 2.5)
+		var mx := maxf(1.0, float(max_hp))
+		var f_after := clampf(float(after) / mx, 0.0, 1.0)
+		var f_before := clampf(float(before) / mx, 0.0, 1.0)
+		var f_lag := lerpf(f_before, f_after, clampf(drain, 0.0, 1.0))
+		var br := Rect2(pr.position + Vector2(10, 9), Vector2(W - 20, BAR_H))
+		CardFace.box(self, br, 9, Color(0, 0, 0, 0.8 * a))
+		if f_lag > f_after:
+			CardFace.box(self, Rect2(br.position, Vector2(maxf(br.size.y, br.size.x * f_lag), br.size.y)), 9, Color(1, 0.95, 0.9, 0.92 * a))
+		var col := Color("6fe08a")
+		if f_after <= 0.25:
+			col = Color("ff5a4a")
+		elif f_after <= 0.5:
+			col = Color("ffc94a")
+		if f_after > 0.0:
+			CardFace.vgrad(self, Rect2(br.position, Vector2(maxf(br.size.y, br.size.x * f_after), br.size.y)), 9, Color(col.lightened(0.35), a), Color(col.darkened(0.2), a))
+		var hp_s := ("%d / %d" % [after, max_hp]) if after > 0 else "BROKEN"
+		CardFace.text_in(self, fnt, br, hp_s, 30, Color(1, 1, 1, a), HORIZONTAL_ALIGNMENT_CENTER, 8)
+		# whose it is and what it lost, small, under the bar
+		var lost := before - after
+		var cap := name_text if name_text != "" else "Health"
+		if lost > 0:
+			cap += "  ·  Health %d → %d" % [before, after]
+		elif absorbed > 0:
+			cap += "  ·  Health untouched"
+		CardFace.text(self, bold, Vector2(pr.position.x + 14, pr.end.y - 8), cap, CardFace.fit_size(bold, cap, 19, W - 28, 11), Color(UITheme.TEXT, 0.92 * a))
+
+
 class ZoneLayer:
 	extends Control
 	var view: TotemView

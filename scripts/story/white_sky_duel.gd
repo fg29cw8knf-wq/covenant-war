@@ -120,3 +120,152 @@ static func hunter_profile() -> Dictionary:
 	return Lore.new_profile("The hunter", "", 9)
 
 
+# ==================================================== the duel as it's played ===
+## (12 November, Gary: "Bram's duel becomes played, not watched ... three gated
+## moves as Bram (call a Totem, attack, play the Last Page), with no costs or
+## numbers, and it can't be lost. The first card is played about two minutes
+## in, not ten.") The same duel, cut into already joined and already going
+## badly, and written out move by move (PLAY_TURNS) instead of left to two
+## computers and a seed: the real rules play it, so every blow and every
+## Totem is the game's own, but nothing in it is chance and nothing is chosen
+## that could lose it.
+##   The hunter strikes first: the Infernal Warg's charge breaks the
+##     Scrivener, already hurt (PLAY_BRAM_HURT).
+##   1. Bram calls the Unspent Hour into the gap (the player's first move:
+##      "call"). It's Swift: it can strike the turn it's called.
+##   2. It turns its glass on the Blazehound across from it and breaks it
+##      (the second: "attack").
+##   The pack answers: the Veilfox and the Warg bring the Loomwarden down.
+##   3. He draws the Last Page and calls it down (the third: "last_page");
+##      as its blow lands the screen burns white (WhiteSky).
+## No Wards are set and neither side holds anything that answers a play, so
+## nothing interrupts a move. Each of the player's three is a step with a
+## "gate": the Staged controller waits at it for whoever is playing (the
+## game's tap; nobody in the probe). tests/white_sky_play_probe.gd plays it
+## headless and checks every step happens as written.
+const PLAY_LIFE := [600, 600]
+const PLAY_ESSENCE := [8, 8]
+const PLAY_BRAM_BOARD := [["scrivener"], ["loomwarden"], null]
+const PLAY_BRAM_HURT := [110, 100, 0]
+## (the Last Page is the second card he draws: there on his second turn. The
+## cards beside the one to play are ones with paintings: his hand is shown
+## as paintings alone.)
+const PLAY_BRAM_HAND := ["unspent_hour", "weft_serpent"]
+const PLAY_BRAM_DECK := ["counter_rune", "orlanthe", "last_stand", "scrivener", "loomwarden", "glyph_warden"]
+const PLAY_HUNTER_BOARD := [["cinderpup", "blazehound"], ["cinderpup", "blazehound", "infernal_warg"], ["dreamfox", "veilfox"]]
+const PLAY_HUNTER_HURT := [40, 0, 0]
+const PLAY_HUNTER_DECK := ["cinderpup", "dreamfox", "sparkkit", "cinderpup", "dreamfox", "sparkkit"]
+## The turns, [Bram's, the hunter's], each a list of steps (DuelHuman.Scripted's,
+## and "summon"); a step with a "gate" is one of the player's three moves.
+const PLAY_TURNS := [
+	[
+		[{"type": "call", "card": "unspent_hour", "gate": "call"},
+			{"type": "attack", "attacker": "unspent_hour", "move": 1, "target": "blazehound", "gate": "attack"}],
+		[{"type": "summon", "card": "orlanthe", "target": "infernal_warg", "gate": "last_page"}],
+	],
+	[
+		[{"type": "attack", "attacker": "infernal_warg", "move": 1, "target": "scrivener"}],
+		[{"type": "attack", "attacker": "veilfox", "move": 1, "target": "loomwarden"},
+			{"type": "attack", "attacker": "infernal_warg", "move": 1, "target": "loomwarden"}],
+	],
+]
+## The player's three moves, in order.
+const PLAY_GATES := ["call", "attack", "last_page"]
+
+
+## The played duel's set board (DuelGame.puzzle).
+static func play_board() -> Dictionary:
+	return {"first": FIRST, "attack_first": true, "life": PLAY_LIFE.duplicate(), "essence_max": PLAY_ESSENCE.duplicate(),
+		"board": [PLAY_BRAM_BOARD.duplicate(true), PLAY_HUNTER_BOARD.duplicate(true)],
+		"damage": [PLAY_BRAM_HURT.duplicate(), PLAY_HUNTER_HURT.duplicate()],
+		"hand": [PLAY_BRAM_HAND.duplicate(), []],
+		"deck": [PLAY_BRAM_DECK.duplicate(), PLAY_HUNTER_DECK.duplicate()],
+		"wards": [[], []], "no_gift": true, "synergy": []}
+
+
+## The two sides' players for the played duel: [Bram's, the hunter's].
+static func play_controllers() -> Array:
+	var bram := Staged.new(PLAY_TURNS[0])
+	bram.hold = true   # (after the Last Page nothing more is played: the white is coming)
+	return [bram, Staged.new(PLAY_TURNS[1])]
+
+
+## A side of the played duel: its turns as written, nothing else. A step
+## with a "gate" waits for `ask` (called with the gate's name and the action
+## about to be made; awaited) before it's made: the player's tap. A step that
+## can't be made is skipped and noted in `skipped`; with its turns all
+## played it only ends its turn, or with `hold` waits where it is until the
+## duel is ended from outside. It answers nothing and rerolls nothing.
+class Staged:
+	extends DuelHuman.Scripted
+	var ask := Callable()
+	var hold := false
+	var skipped: Array = []
+	var made: Array = []      # the gates passed, in order
+
+	func _init(script_turns: Array) -> void:
+		super(script_turns, 1.0)
+
+	func choose_action(game: DuelGame, pi: int) -> Dictionary:
+		if game.turn != _turn_seen:
+			_turn_seen = game.turn
+			_queue = (turns[_scripted] as Array).duplicate() if _scripted < turns.size() else []
+			_scripted += 1
+		while not _queue.is_empty():
+			var step: Dictionary = _queue[0]
+			var a := _step(game, pi, step)
+			if DuelRules.phases and not a.is_empty() and game.phase_problem(String(a.type)) != "":
+				if game.next_phase(pi) != "end":
+					return {"type": "next"}
+				_queue.pop_front()
+				skipped.append("%s: %s" % [step, game.phase_problem(String(a.type))])
+				continue
+			_queue.pop_front()
+			if a.is_empty():
+				skipped.append("%s: nothing to do it with" % [step])
+				continue
+			var why := game.action_problem(pi, a)
+			if why != "":
+				skipped.append("%s: %s" % [step, why])
+				continue
+			if step.has("gate"):
+				if ask.is_valid():
+					await ask.call(String(step.gate), a)
+				made.append(String(step.gate))
+			else:
+				await _pause(THINK_ACTION)
+				if screen != null:
+					await screen.preview_ai_action(pi, a)
+			return a
+		if hold and _scripted >= turns.size():
+			while not game.over:
+				await Engine.get_main_loop().process_frame
+		return {"type": "end"}
+
+	func choose_response(_game: DuelGame, _pi: int, _event: Dictionary, _cards: Array) -> DuelCard:
+		return null
+
+	func choose_reroll(_game: DuelGame, _pi: int, _info: Dictionary) -> bool:
+		return false
+
+	func choose_scry(_game: DuelGame, _pi: int, _card: DuelCard) -> bool:
+		return true
+
+	static func _step(game: DuelGame, pi: int, step: Dictionary) -> Dictionary:
+		if String(step.get("type", "")) != "summon":
+			return _resolve(game, pi, step)
+		var c := _in_hand(game.players[pi], String(step.card))
+		if c == null:
+			return {}
+		var a := {"type": "summon", "card": c}
+		if step.has("target"):
+			var tg = _totem(game.players[1 - pi], String(step.target))
+			if tg == null:
+				# (the one written has fallen: any of the pack still standing)
+				var left: Array = game.targetable(game.players[1 - pi].totems())
+				if left.is_empty():
+					return {}
+				tg = left[0]
+			a["target"] = tg
+		return a
+

@@ -313,9 +313,15 @@ func shake(amount: float) -> void:
 func _sync_field() -> void:
 	if game == null:
 		return
-	# (8 November) the moving camera: home while the player chooses, and at
-	# the duel's own pace
-	field.roam_hold = _choosing()
+	# (8 November) the moving camera, at the duel's own pace. (11 November,
+	# Gary: "don't like it keeps getting pulled back all the time": it went
+	# home and stopped whenever the player had something to choose. Now it
+	# keeps to their side of the Circle and goes on turning there; only a
+	# lesson, which points at things on the screen, still holds it home.)
+	field.roam_hold = _lesson_up()
+	field.roam_near = _choosing()
+	# (slower still while something is picked up and a place on the field is to be tapped)
+	field.roam_still = mode == "pick_slot" or mode == "respond" or (mode == "main" and (pending != "" or sel_card != null or sel_totem != null))
 	field.pace = speed
 	for side in 2:
 		for v in views[side]:
@@ -486,14 +492,21 @@ func _set_camera(moving: bool) -> void:
 
 
 ## Whether the player has a choice to make on the field now (the moving
-## camera goes home for it, so everything is where they expect): their own
-## turn's choosing, a slot to pick, an answer to give, or a lesson up.
+## camera keeps to their side of the Circle for it, their row the near one):
+## their own turn's choosing, a slot to pick, an answer to give, or a lesson
+## up.
 func _choosing() -> bool:
 	if _watching():
 		return false
-	if tutor != null and tutor.box != null and tutor.box.visible:
+	if _lesson_up():
 		return true
 	return mode == "main" or mode == "pick_slot" or mode == "respond"
+
+
+## A lesson from Bram's memory is on the screen (it rings and points at
+## things where they stand, so the moving camera is held exactly home).
+func _lesson_up() -> bool:
+	return not _watching() and tutor != null and tutor.box != null and tutor.box.visible
 
 ## How fast Normal plays (2 November, Gary: "make normal mode in the card
 ## battle slightly faster"): the setting's 1x is this much faster than the
@@ -677,8 +690,15 @@ func _start() -> void:
 	human.screen = self
 	var controllers := []
 	var lesson: Dictionary = spec.get("tutorial", {})
+	# (12 November: a duel whose sides are played by something of the scene's
+	# own, spec.controllers: Bram's duel in the snow, WhiteSkyDuel.Staged)
+	var given: Array = spec.get("controllers", [])
 	for i in 2:
-		if ai_flags[i]:
+		if i < given.size() and given[i] != null:
+			if "screen" in given[i]:
+				given[i].screen = self
+			controllers.append(given[i])
+		elif ai_flags[i]:
 			var a: DuelHuman.Paced
 			if i == 1 and not lesson.is_empty() and spec.has("rival_script"):
 				a = DuelHuman.Scripted.new(spec.rival_script, float(spec.get("difficulty", 1.0)))
@@ -3948,9 +3968,14 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	if absorbed > 0:
 		sfx.play("shield_block")
 		DuelFX.shockwave(fx_layer, c, Color("9fe8ff"), 150.0 * v.depth, 0.4 / speed, 1.0, 8.0)
-		DuelFX.number(fx_layer, c + Vector2(110, -40), "◈ -%d" % absorbed, Color("9fe8ff"), 46, _read(0.9, "") / speed)
+		if amount <= 0:
+			# (the whole blow stopped: say so where the damage number would be)
+			DuelFX.number(fx_layer, c + Vector2(0, -10), "BLOCKED", Color("9fe8ff"), 64, _read(1.0, "") / speed)
 		if field != null:
 			DuelStrikeFX.shield(field, _foot3(t), Color("9fe8ff"), 1.25, 0.2 / speed)
+	# (11 November) what the blow did, in numbers, by the Totem: the shield's
+	# share, and its Health before and after (DuelViews.HitStrip)
+	_hit_strip(t, v, amount, absorbed)
 	_last_hit_pos = c
 	if amount <= 0:
 		await pause(0.2)
@@ -4021,6 +4046,53 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 			await tutor.lesson("weakness", "See that? Every element hurts something and fears something. Twelve of them. Hit a Totem on the element it fears and the blow does half as much again; the little sign on every card says what it fears. The chart in the menu has all twelve, but you'll learn them the way I did: by getting hit.", "The elements", "foe:" + t.id())
 		elif t.owner == me:
 			await tutor.event("hit_mine")
+
+
+## The Health strip by a Totem that's just been hit (DuelViews.HitStrip):
+## under the damage number, following the Totem on the screen as the camera
+## moves, kept inside the picture. Not in a film (nothing's written over the
+## Night of the White Sky's duel), nor at the tests' autoplay speeds.
+const HIT_STRIP_SECS := 1.7
+var _strips := {}   # the strip up for each Totem (one at a time: a second blow takes its place)
+
+func _hit_strip(t: DuelTotem, v: DuelViews.TotemView, amount: int, absorbed: int) -> void:
+	if _filmed() or speed > 4.0 or fx_layer == null:
+		return
+	if amount <= 0 and absorbed <= 0:
+		return
+	var old = _strips.get(t)
+	var before_was := -1
+	if old != null and is_instance_valid(old):
+		before_was = (old as DuelViews.HitStrip).before   # (two blows in a breath: from where the first began)
+		(old as Node).queue_free()
+	var hs := DuelViews.HitStrip.new()
+	hs.after = maxi(0, t.hp_left())
+	hs.before = before_was if before_was >= 0 else hs.after + maxi(0, amount)
+	hs.max_hp = maxi(1, t.max_hp())
+	hs.before = mini(hs.before, hs.max_hp)
+	hs.absorbed = absorbed
+	hs.shield_left = t.shield
+	hs.name_text = t.card_name()
+	hs.mine = t.owner == me
+	fx_layer.add_child(hs)
+	_strips[t] = hs
+	var life := _read(HIT_STRIP_SECS, "") / speed
+	var tw := hs.create_tween().set_parallel(true)
+	tw.tween_property(hs, "t", 1.0, life)
+	tw.tween_property(hs, "drain", 1.0, 0.55 / speed).set_delay(0.3 / speed).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.chain().tween_callback(hs.queue_free)
+	# it rides with the Totem's body on the screen, under the number
+	hs.where = func() -> Vector2:
+		if not is_instance_valid(v):
+			return hs.position
+		var at := _center(v) + Vector2(-DuelViews.HitStrip.W * 0.5, 64.0)
+		at.x = clampf(at.x, 24.0, DESIGN.x - DuelViews.HitStrip.W - 24.0)
+		at.y = clampf(at.y, 150.0, DESIGN.y - 330.0)
+		return at
+	hs.position = hs.where.call()
+	hs.tree_exiting.connect(func() -> void:
+		if _strips.get(t) == hs:
+			_strips.erase(t))
 
 
 func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:

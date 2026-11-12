@@ -50,6 +50,20 @@ var _names := ["", ""]          # which track each player holds
 var _active := 0
 var _sting: AudioStreamPlayer
 var _duel_i := 0
+## One fade a player (11 November, Gary: "After first battle with Corin we
+## have 2 different music playing at same time"): every fade, dip and stop of
+## a player goes through _fade, which ends the one before it, so an old
+## fade's last step can never bring a track back up, or stop one that has
+## since been started on the same player.
+var _fades: Array = [null, null]
+## A piece played on its own with the music stopped under it (the victory
+## and defeat pieces, the Marking): true while it's the one playing.
+var _sting_solo := false
+var _sting_tw: Tween
+## How quickly a piece played on its own makes way when the next music
+## starts under it (s): the victory piece is 12 s long, and the village's
+## reel came back under it the moment the duel closed.
+const SOLO_OUT := 1.2
 ## Where each track was when it faded out, so coming back to it (the village
 ## after a duel, say) carries on from there instead of starting again.
 var _resume := {}
@@ -170,8 +184,8 @@ func _switch(track: String, fade: float) -> void:
 	_set_loop(s, true)
 	if s is AudioStreamOggVorbis:
 		(s as AudioStreamOggVorbis).loop_offset = float(LOOP_START.get(track, 0.0))
-	var old := _players[_active]
-	_remember(_active)
+	var was := _active
+	_remember(was)
 	_active = 1 - _active
 	var p := _players[_active]
 	_names[_active] = track
@@ -181,11 +195,52 @@ func _switch(track: String, fade: float) -> void:
 	if from >= s.get_length() - 1.0:
 		from = 0.0
 	p.play(from)
-	var tw := create_tween().set_parallel(true)
-	tw.tween_property(p, "volume_db", level_db(), fade)
-	if old.playing:
-		tw.tween_property(old, "volume_db", -60.0, fade)
-		tw.chain().tween_callback(old.stop)
+	_fade(_active, level_db(), fade, false)
+	if _players[was].playing:
+		_fade(was, -60.0, fade, true)
+	# a piece still playing on its own (the victory piece as the duel closes)
+	# makes way for it: never two pieces of music at once
+	_solo_out(minf(fade, SOLO_OUT))
+
+
+## Fades player `i` to `db` over `secs` and, with `then_stop`, stops it
+## there. Whatever fade, dip or stop that player had before ends here.
+func _fade(i: int, db: float, secs: float, then_stop: bool) -> void:
+	var was = _fades[i]
+	if was is Tween and (was as Tween).is_valid():
+		(was as Tween).kill()
+	var p := _players[i]
+	var tw := create_tween()
+	tw.tween_property(p, "volume_db", db, maxf(0.01, secs))
+	if then_stop:
+		tw.tween_callback(p.stop)
+	_fades[i] = tw
+
+
+## A dip of player `i` for `secs`, then back (a Summon's piece, a hush).
+func _dip(i: int, by: float, secs: float) -> void:
+	var was = _fades[i]
+	if was is Tween and (was as Tween).is_valid():
+		(was as Tween).kill()
+	var p := _players[i]
+	var tw := create_tween()
+	tw.tween_property(p, "volume_db", level_db() - by, 0.2)
+	tw.tween_interval(maxf(0.5, secs - 0.6))
+	tw.tween_property(p, "volume_db", level_db(), 0.8)
+	_fades[i] = tw
+
+
+## A piece playing on its own fades out and stops (the next music is
+## starting under it).
+func _solo_out(secs: float) -> void:
+	if not _sting_solo or _sting == null or not _sting.playing:
+		return
+	_sting_solo = false
+	if _sting_tw != null and _sting_tw.is_valid():
+		_sting_tw.kill()
+	_sting_tw = create_tween()
+	_sting_tw.tween_property(_sting, "volume_db", -60.0, maxf(0.05, secs))
+	_sting_tw.tween_callback(_sting.stop)
 
 
 ## _switch on the web: the same, in the page's player. The new track fades in
@@ -216,9 +271,7 @@ func stop(fade: float = 0.8) -> void:
 		var p := _players[i]
 		if p.playing:
 			_remember(i)
-			var tw := create_tween()
-			tw.tween_property(p, "volume_db", -60.0, fade)
-			tw.tween_callback(p.stop)
+			_fade(i, -60.0, fade, true)
 
 
 ## Notes where a player's track has got to, for when it comes back.
@@ -245,15 +298,16 @@ func stinger(track: String, duck: bool = true) -> bool:
 		return true
 	var s: AudioStream = load(path_for(track))
 	_set_loop(s, false)
+	if _sting_tw != null and _sting_tw.is_valid():
+		_sting_tw.kill()   # (a piece on its way out: this one takes the player)
 	_sting.stream = s
 	_sting.volume_db = level_db() + 2.0
 	_sting.play()
+	# on its own (nothing under it: the victory piece, the Marking) or over
+	# the music (a Summon's)
+	_sting_solo = not duck
 	if duck and _players[_active].playing:
-		var p := _players[_active]
-		var tw := create_tween()
-		tw.tween_property(p, "volume_db", level_db() - 14.0, 0.2)
-		tw.tween_interval(maxf(0.5, s.get_length() - 0.6))
-		tw.tween_property(p, "volume_db", level_db(), 0.8)
+		_dip(_active, 14.0, s.get_length())
 	return true
 
 
@@ -265,13 +319,9 @@ func duck(secs: float, by := 14.0) -> void:
 			_web.level(_active, level_db() - by)
 			get_tree().create_timer(secs).timeout.connect(func() -> void: _web.level(_active, level_db()))
 		return
-	var p := _players[_active]
-	if not p.playing:
+	if not _players[_active].playing:
 		return
-	var tw := create_tween()
-	tw.tween_property(p, "volume_db", level_db() - by, 0.2)
-	tw.tween_interval(maxf(0.5, secs - 0.6))
-	tw.tween_property(p, "volume_db", level_db(), 0.8)
+	_dip(_active, by, secs)
 
 
 static func _set_loop(s: AudioStream, on: bool) -> void:

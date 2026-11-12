@@ -8,8 +8,10 @@ extends Node
 ##            the player: stills every `every` seconds over a lap; it must
 ##            turn, stay within its heights, keep off every Totem's body and
 ##            above the mat, and never jump between frames
-##   choose   the player's turn to choose: it must settle exactly home (the
-##            locked camera's view), and quickly
+##   choose   the player's turn to choose (11 November): it comes round to
+##            their side without a whip and goes on turning there, never
+##            home and stopped; slower while a slot is picked; a lesson
+##            still holds it exactly home
 ##   call     a Totem called on each side: it swings round in front of it
 ##   attack   an attack's shots, then on round from where they left it
 ##            (not back home), keeping clear as it goes
@@ -199,34 +201,89 @@ func _path() -> void:
 		problems.append("path: its height went outside its limits (%.0f to %.0f degrees)" % [pmin, pmax])
 
 
-## The player's turn to choose: exactly home, and quickly.
+## The player's turn to choose (11 November, Gary: "don't like it keeps
+## getting pulled back all the time"): it must not go home and stop. From
+## the far side of the Circle it comes round to the player's side without a
+## whip, then keeps to that side (NEAR_ARC of home) and goes on turning; the
+## slots' views stay on their slots as it moves. Only a lesson holds it
+## exactly home.
 func _choose() -> void:
 	var f := ds.field
+	var home_yaw := float(DuelField3D._sph(f._home_pos - f._home_look)[0])
 	ds.mode = "busy"
-	await _wait(3.0)   # (out on the path somewhere)
-	var away := f.cam_pos.distance_to(f._home_pos)
-	ds.mode = "main"
+	# (out on the path, round to the far side of the Circle)
 	var t := 0.0
+	while absf(wrapf(f._r_yaw - home_yaw, -PI, PI)) < deg_to_rad(120.0) and t < 80.0:
+		await _wait(0.5)
+		t += 0.5
+	var from := rad_to_deg(wrapf(f._r_yaw - home_yaw, -PI, PI))
+	ds.mode = "main"
+	_watching_start()
+	var arc := DuelField3D.NEAR_ARC
+	var came := -1.0
+	var fastest := 0.0
+	var last_yaw := f._r_yaw
+	var left := false
+	var lo := INF
+	var hi := -INF
+	var homed := false
+	var off_slot := 0.0
+	t = 0.0
+	while t < 40.0:
+		await _wait(0.1)
+		t += 0.1
+		fastest = maxf(fastest, absf(rad_to_deg(f._r_yaw - last_yaw)) / 0.1)
+		last_yaw = f._r_yaw
+		var off := rad_to_deg(wrapf(f._r_yaw - home_yaw, -PI, PI))
+		if came < 0.0 and absf(off) <= arc + 1.0:
+			came = t
+			await _shot("choose_1_came_round")
+		elif came >= 0.0:
+			lo = minf(lo, off)
+			hi = maxf(hi, off)
+			if absf(off) > arc + 3.0:
+				left = true
+		homed = homed or f._at_home
+		var v = ds.views[0][1]
+		var want: Vector2 = f.foot_stage(0, 1) - Vector2(v.size.x * 0.5, v.size.y * 0.6)
+		off_slot = maxf(off_slot, v.position.distance_to(want))
+	await _shot("choose_2_still_turning")
+	_watching_end("choose", 0.6)
+	print("CAMERA SHOT: choose: from %.0f degrees round, on the player's side in %.1f s, then turned between %.0f and %.0f degrees of home; quickest turn %.0f degrees a second" % [from, came, lo, hi, fastest])
+	if came < 0.0:
+		problems.append("choose: it never came round to the player's side")
+	if left:
+		problems.append("choose: it left the player's side while they were choosing")
+	if came >= 0.0 and hi - lo < 4.0:
+		problems.append("choose: it stopped turning while the player was choosing (%.1f degrees in %.0f s)" % [hi - lo, 40.0 - came])
+	if homed or f.roam_home():
+		problems.append("choose: it went home and stopped (the pull back)")
+	if fastest > DuelField3D.ROAM_SPEED * DuelField3D.NEAR_CATCH * 1.6:
+		problems.append("choose: it whipped round (%.0f degrees a second)" % fastest)
+	if off_slot > 1.5:
+		problems.append("choose: your middle slot's view came %.1f px off its slot as the camera moved" % off_slot)
+	# a slot being picked: slower still
+	var y0 := f._r_yaw
+	ds.mode = "pick_slot"
+	await _wait(1.5)
+	y0 = f._r_yaw
+	await _wait(3.0)
+	var slow := absf(rad_to_deg(f._r_yaw - y0)) / 3.0
+	ds.mode = "main"
+	print("CAMERA SHOT: choose: picking a slot it turns at %.1f degrees a second" % slow)
+	if slow > DuelField3D.NEAR_SPEED * 0.6:
+		problems.append("choose: it didn't slow while a slot was being picked (%.1f degrees a second)" % slow)
+	# a lesson up: exactly home, where it rings and points
+	f.roam_hold = true
+	ds.set_process(false)   # (the screen sets roam_hold from its lesson box every frame)
+	t = 0.0
 	while not f.roam_home() and t < 6.0:
 		await _wait(0.1)
 		t += 0.1
-	await _shot("choose_home")
-	print("CAMERA SHOT: choose: %.1f m from home, settled home in %.1f s" % [away, t])
-	if not f.roam_home():
-		problems.append("choose: the camera didn't settle home for the player (%.2f m off)" % f.cam_pos.distance_to(f._home_pos))
-	elif f.cam_pos.distance_to(f._home_pos) > 0.001 or f.cam_look.distance_to(f._home_look) > 0.001 or absf(f.cam_fov - f._home_fov) > 0.01:
-		problems.append("choose: settled, but not exactly home")
-	if t > 3.0:
-		problems.append("choose: it took %.1f s to come home" % t)
-	# the slots' tap targets where the locked camera has them
-	var v = ds.views[0][1]
-	var want: Vector2 = f.foot_stage(0, 1) - Vector2(v.size.x * 0.5, v.size.y * 0.6)
-	await _wait(0.1)
-	if v.position.distance_to(want) > 1.0:
-		problems.append("choose: your middle slot's view isn't on its slot")
-	await _wait(1.0)
-	if not f.roam_home():
-		problems.append("choose: it wandered off home while the player was choosing")
+	ds.set_process(true)
+	if not f.roam_home() or f.cam_pos.distance_to(f._home_pos) > 0.001:
+		problems.append("choose: a lesson didn't bring it exactly home")
+	f.roam_hold = false
 
 
 ## A Totem called on each side: round in front of it as it arrives.

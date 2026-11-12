@@ -26,6 +26,11 @@ var _n := 0
 var _wait := 0
 
 const WALL_CAP_MS := 420000
+## (11 November, Gary: "players arm twists in an unnatural way") the most a
+## forearm rolls between the bowl and the lips, and the furthest it turns
+## either way from the palm facing in (degrees).
+const ROLL_SWEEP_MOST := 80.0
+const ROLL_MOST := 110.0
 ## What's natural (9 November): a wrist bends about 70 degrees back or down at
 ## most, and less sideways; an elbow bent under 15 degrees is all but locked;
 ## a hand reaching briskly and easing in and out accelerates at up to 6 to 8
@@ -54,6 +59,7 @@ class Recorder:
 	var elbow_bend := 0.0    # degrees the elbow is bent (0 straight)
 	var grip := Vector3.INF  # the palm's middle (where the spoon's held)
 	var rest_wrist := -1.0   # the same angle as modelled (the rest pose), taken off
+	var roll := 0.0          # the forearm's roll, degrees (see below)
 
 	func _process_modification_with_delta(_delta: float) -> void:
 		if not is_instance_valid(fig):
@@ -85,14 +91,30 @@ class Recorder:
 				else:
 					rest_wrist = 0.0
 			wrist_bend = maxf(0.0, rad_to_deg(fore.angle_to(pf.basis.z)) - rest_wrist)
+			# (11 November) the forearm's roll: which way the palm faces round
+			# the forearm, from facing in across the body (0: the thumb up, a
+			# handshake), towards palm down (+90) or palm up (-90); 180 is palm
+			# out, thumb down, which no forearm does
+			var hinge := (e0 - s0).cross(fore)
+			if hinge.length() > 0.05:
+				var inn := -hinge.normalized()   # (the right arm's inward way)
+				var pn: Vector3 = pf.basis.y - fore * pf.basis.y.dot(fore)
+				if pn.length() > 0.05:
+					roll = -rad_to_deg(inn.signed_angle_to(pn.normalized(), fore))
 		if is_instance_valid(spoon) and spoon.is_inside_tree():
 			tip = spoon.to_global(Vector3(0, 0, AshfordP1.SPOON_LEN * 0.5))
 		frames += 1
 
 
 func _ready() -> void:
+	# (11 November: "oldwrist" turns hands at the wrist alone, however far, as
+	# they were until then: Figure3D.wrist_natural, the before)
+	if "oldwrist" in OS.get_cmdline_user_args():
+		Figure3D.wrist_natural = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var a := OS.get_cmdline_user_args()
+	if "oldpalm" in a:
+		AshfordP1.spoon_palm_easy = false   # (the 9 November palm: square to the spoon all the way)
 	if a.size() > 0:
 		out = a[0]
 	for s in a.slice(1):
@@ -206,6 +228,10 @@ func _run() -> void:
 	var jumps := 0
 	var jump_at: Array = []
 	var path_len := 0.0
+	var roll_lo := INF
+	var roll_hi := -INF
+	var roll_last := INF
+	var roll_step := 0.0
 	while not Game.flag("p1_ate") and t < 20.0:
 		await get_tree().process_frame
 		me._skel.move_child(rec, -1)   # (after the hands, whatever moved them)
@@ -222,6 +248,11 @@ func _run() -> void:
 		# (only while the hand's on the spoon: not as it comes or goes)
 		if hand != null and rec.grip != Vector3.INF and held:
 			wrist_most = maxf(wrist_most, rec.wrist_bend)
+			roll_lo = minf(roll_lo, rec.roll)
+			roll_hi = maxf(roll_hi, rec.roll)
+			if roll_last != INF:
+				roll_step = maxf(roll_step, absf(wrapf(rec.roll - roll_last, -180.0, 180.0)))
+			roll_last = rec.roll
 			elbow_most = maxf(elbow_most, rec.elbow_bend)
 			elbow_least = minf(elbow_least, rec.elbow_bend)
 			var dt := maxf(get_process_delta_time(), 0.001)
@@ -273,6 +304,11 @@ func _run() -> void:
 	print("  nearest the spoon's end came to the mouth: %.1f cm at %.2f s; the palm at most %.1f cm off the arm's IK target" % [best * 100.0, best_t, worst_palm * 100.0])
 	print("  the arm: wrist bent at most %.0f degrees; elbow bent %.0f to %.0f degrees; the hand at most %.2f m/s, %.2f m of path; its speed changing by at most %.2f m/s in a frame (at %.2f s), %d frames over %.2f" % [
 		wrist_most, elbow_least, elbow_most, speed_most, path_len, jerk_most, jerk_at, jumps, EAT_JUMP])
+	print("  the forearm's roll (0 the palm in, +90 palm down, -90 palm up, 180 palm out): from %.0f to %.0f degrees through the eating, %.0f degrees at most in a frame" % [roll_lo, roll_hi, roll_step])
+	if roll_hi - roll_lo > ROLL_SWEEP_MOST:
+		problems.append("the forearm rolled %.0f degrees between the bowl and the lips (a spoon comes up on about %.0f)" % [roll_hi - roll_lo, ROLL_SWEEP_MOST])
+	if roll_hi > ROLL_MOST or roll_lo < -ROLL_MOST:
+		problems.append("the palm was turned out past what a forearm does (%.0f to %.0f degrees)" % [roll_lo, roll_hi])
 	if not jump_at.is_empty():
 		print("  the jerks (when, the change of speed in m/s): ", ", ".join(jump_at))
 	if mouthfuls.is_empty():

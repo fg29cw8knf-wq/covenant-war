@@ -53,6 +53,10 @@ var _drive := false
 
 
 func _ready() -> void:
+	# (11 November: "oldwrist" turns hands at the wrist alone, however far, as
+	# they were until then: Figure3D.wrist_natural, the before)
+	if "oldwrist" in OS.get_cmdline_user_args():
+		Figure3D.wrist_natural = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var a := OS.get_cmdline_user_args()
 	if a.size() > 0:
@@ -110,6 +114,8 @@ func _ready() -> void:
 		"wall":
 			await _wall_quick()
 	_done = true
+	if not Figure3D.wrist_over.is_empty():
+		print("  wrists asked past what a wrist does (and stopped there): ", Figure3D.wrist_over)
 	print("NOTES SHOT: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)
 
@@ -505,6 +511,16 @@ func _watch_box_arms(fig: Figure3D) -> void:
 					_lid_skin[side][1] = deep_l
 					_lid_skin[side][2] = "%s in the lid's frame (lid at %.0f deg), frame %d" % [where_l.snapped(Vector3(0.001, 0.001, 0.001)), rad_to_deg(_lid_node.rotation.x), _seen_frames]
 				(_lid_skin[side][3] as Array).append(_seen_frames)
+				var pre_l := "Left" if side == "left" else "Right"
+				var wr_l: Vector3 = lx * (xf * sk.get_bone_global_pose(sk.find_bone(pre_l + "Hand")).origin)
+				var ik_l = fig._ik.get(side)
+				var tgt_l := ""
+				var inf_l := 0.0
+				if ik_l != null and is_instance_valid(ik_l) and ik_l.has_meta("target"):
+					var tn_l = ik_l.get_meta("target")
+					tgt_l = String((tn_l as Node).name) if tn_l != null and is_instance_valid(tn_l) else "?"
+					inf_l = (ik_l as TwoBoneIK3D).influence
+				print("    frame %d: the %s hand's skin %.1f cm in the lid at %s (lid at %.0f deg); its wrist at %s in the lid's frame, reaching for '%s' (%.2f on)" % [_seen_frames, side, deep_l * 100.0, where_l.snapped(Vector3(0.001, 0.001, 0.001)), rad_to_deg(_lid_node.rotation.x), wr_l.snapped(Vector3(0.001, 0.001, 0.001)), tgt_l, inf_l])
 		var deep_arm := 0.0
 		var deep_f := 0.0
 		# the thumbs' bones too (printed: Player A's lie off the thumb)

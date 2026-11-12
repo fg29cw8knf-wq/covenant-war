@@ -5,9 +5,9 @@ extends Node
 var _current: Node = null
 var _world: World = null
 ## New Game's Ashford, built under the title screen a piece a frame
-## (World.prepare), so the attic comes up the moment the opening movie ends or
-## is skipped instead of after a long wait; the game state from before it was
-## built goes back if the player picks anything but New Game.
+## (World.prepare), so the snow comes up the moment New Game is pressed
+## instead of after a long wait; the game state from before it was built goes
+## back if the player picks anything but New Game.
 var _prepared: World = null
 var _kept := {}
 var _starting := false   # New Game pressed before the world could be prepared
@@ -28,6 +28,14 @@ func _ready() -> void:
 		add_child(notice)
 		LaunchLog.mark("notice")
 		await notice.finished
+		# (12 November, Gary: "The opening movie moves to before the title
+		# screen on first launch, skippable. New Game then goes straight to
+		# the snow.") The first time the game is opened on this device the
+		# film plays here, once, before the title; after that it's the
+		# title's Watch the Opening. `-- --no-opening` leaves it out.
+		if not bool(Game.settings.get("seen_opening", false)) and not "--no-opening" in args:
+			LaunchLog.mark("opening movie")
+			await play_opening()
 	show_title()
 
 
@@ -37,6 +45,10 @@ func play_opening() -> void:
 	# (the phone link streams the film, and fetches the Theora pack only if
 	# the stream can't play: OpeningMovie._play)
 	if not OpeningMovie.streams() and not await Packs.need("movie", true):
+		# (its download skipped: that's the film skipped, not to be offered
+		# again before the title)
+		Game.settings["seen_opening"] = true
+		Game.save_settings()
 		return
 	var movie := OpeningMovie.new()
 	add_child(movie)
@@ -153,38 +165,29 @@ func _on_continue() -> void:
 
 
 func _on_new_game() -> void:
-	# The story starts with the opening movie (skippable), then Ashford: the
-	# festival and the Sigilfall are played in the village. The player's real
-	# name is asked later, when the herald reads it out. No cards yet: Bram
-	# hands over the first deck in Ashford, before the Lantern Duel.
+	# The story starts in the snow (the Night of the White Sky, then the attic
+	# and Ashford: the festival and the Sigilfall are played in the village).
+	# The opening movie isn't played here any more (12 November): it plays
+	# once before the title, the first time the game is opened, and from
+	# Watch the Opening. The player's real name is asked later, at the
+	# mirror. No cards yet: Bram hands over the first deck in Ashford, before
+	# the Lantern Duel.
 	if _prepared == null:
 		_starting = true
-		await play_opening()
 		Game.new_game("Sprout", "")
 		go_world("ashford", "green")
 		return
-	# Ashford was built under the title screen (or is still being built,
-	# under the movie now): the attic starts the moment the movie's done.
-	# On the web the movie's download can be skipped like the movie itself.
-	var done := [false]
-	if OpeningMovie.streams() or await Packs.need("movie", true):
-		var movie := OpeningMovie.new()
-		add_child(movie)
-		movie.finished.connect(func() -> void: done[0] = true)
-	else:
-		done[0] = true
-	_swap(null)   # the title screen's gone (under the movie anyway)
-	# if the movie's over before Ashford is ready (New Game pressed the
-	# moment the title came up, then Skip), say so rather than sit on black
+	# Ashford was built under the title screen, or is still being built: if
+	# it isn't ready yet (New Game pressed the moment the title came up), say
+	# so rather than sit on black.
+	_swap(null)   # the title screen's gone
 	var holding: CanvasLayer = null
-	while not done[0] or _prepared == null or not _prepared.prepared:
-		if done[0] and holding == null:
+	while _prepared == null or not _prepared.prepared:
+		if holding == null:
 			holding = Packs.hold("Lighting the lanterns in Ashford")
 		await get_tree().process_frame
 	if holding != null:
 		holding.queue_free()
-	Game.settings["seen_opening"] = true
-	Game.save_settings()
 	Packs.want("looks")   # (Ironvault's hunters in Ashford: Player D)
 	var w := _prepared
 	_prepared = null

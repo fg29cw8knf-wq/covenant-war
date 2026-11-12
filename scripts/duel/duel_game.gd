@@ -326,6 +326,11 @@ func _setup_puzzle() -> void:
 			for k in range(1, ids.size()):
 				t.stack.append(_new_card(String(ids[k]), i))
 			p.slots[s] = t
+			# (12 November: a duel cut into already joined, its Totems
+			# already hurt: puzzle.damage, a number for each slot of each side)
+			var hurt: Array = (puzzle.get("damage", [[], []]) as Array)[i]
+			if s < hurt.size():
+				t.damage = clampi(int(hurt[s]), 0, t.max_hp() - 10)
 		# (27 October, Bram's Riddles) Wards set face down, and no Gift
 		for id in (puzzle.get("wards", [[], []]) as Array)[i]:
 			p.wards.append(_new_card(String(id), i))

@@ -8,7 +8,9 @@ extends CanvasLayer
 ## one hero, Player A). Master Script v7 has seven (the Still to Make doc,
 ## the "Films for Player A" tab): midnight, white_light, herald, reckoning,
 ## tams_hand, no_roof and ridge; and since 8 November white_sky_duel, Bram's
-## duel in the Night of the White Sky (WhiteSky._duel). Conversations,
+## duel in the Night of the White Sky (since 12 November that duel is played,
+## with white_sky_move_1 to _3 as the three moves' own shots, and the whole
+## film is Bram's watch on the Thornwood road). Conversations,
 ## choices and the things the player does (the cart, the tunnel, the look
 ## back) stay in the game between them.
 ##
@@ -77,7 +79,8 @@ signal finished
 ## _herald_film), reckoning, tams_hand and no_roof in
 ## scripts/world/areas/ashford_night.gd, ridge in
 ## scripts/world/areas/thornwood.gd, white_sky_duel in
-## scripts/story/white_sky.gd (_duel_film). The lines are the 3D scene's own, word
+## scripts/world/thornwood_shelter.gd (after_lesson) and white_sky_move_1 to
+## _3 in scripts/story/white_sky.gd (_move_film). The lines are the 3D scene's own, word
 ## for word; Master Script v7 (docs/script/v7_prologue.md) has them in order.
 const FILMS := {
 	# (5 November: Gary's film comes in parts, cut at the player's choice.
@@ -224,10 +227,13 @@ const FILMS := {
 	# the White Sky, WhiteSky._duel, as his own film. It opens from the white
 	# of the hunter's cards and ends on the white of the book opening, which
 	# the game takes to black for Morrowen's last line. No lines over it;
-	# Bram's face never seen; nobody sees who won. Until it's there the
-	# real duel plays, filmed by WhiteSky's director. Each shot is a beat of
-	# that duel, in its order, the reference stills Claude rendered of each
-	# beat sent with the brief.)
+	# Bram's face never seen; nobody sees who won. Each shot is a beat of the
+	# duel as two computers played it then, in its order, the reference stills
+	# Claude rendered of each beat sent with the brief. 12 November: the duel
+	# in the snow is played now, in three moves, so this film isn't shown
+	# there any more: it plays whole on the Thornwood road, Bram awake by the
+	# door after his lesson (ThornwoodShelter.after_lesson), and the snow
+	# has white_sky_move_1 to _3 below.)
 	"white_sky_duel": {
 		"title": "The Night of the White Sky: Bram's Duel",
 		"steps": [
@@ -247,6 +253,36 @@ const FILMS := {
 			{"id": "wsd_14", "len": 3.5, "see": "Wide, high over Bram's back: the hunter's poison mist rolls over his side of the Circle and his Totems sicken in it. The Circle nearly lost."},
 			{"id": "wsd_15", "len": 6.0, "see": "The Last Page: the sky over the Circle goes still, the stars draw together into a closed book, and Orlanthe comes down out of it, a hooded figure the size of a hill in robes of folded parchment, faceless, the book in one hand. Low behind Bram, up past the hunter at it."},
 			{"id": "wsd_16", "len": 4.0, "see": "The clasp comes undone. The book opens, and white light pours out of it over the Circle, the pack and the hunter, until there is nothing but white. (End on the white: the game takes it to black.)"},
+		],
+	},
+	# (12 November, Gary: "Your film's shots as the payoff after each of the
+	# player's three moves, with the full film shown later once they know the
+	# rules.") Bram's duel is played now: three moves, each waited for
+	# (WhiteSky._ask_move). These are his film's shots for each, cut as three
+	# short films that play over the duel as it plays the move out
+	# (WhiteSky._move_film), each used once it's there:
+	# white_sky_move_1_4k.mp4 and so on, or assets/movies/white_sky_move_1.ogv,
+	# or a clip or painting for each shot. No lines over them; Bram's face
+	# never seen. The whole film, white_sky_duel above, plays on the Thornwood
+	# road, the night of Bram's lesson (Thornwood: his watch at the door).
+	"white_sky_move_1": {
+		"title": "Bram's Duel: the Unspent Hour",
+		"steps": [
+			{"id": "wsm_1a", "len": 3.5, "see": "Bram from behind, the child a bulge in his coat under his left arm, his right hand up with a card: the Unspent Hour, a winged hourglass of glass and starlit sand, darts out of the light over his shoulder into the gap where the Scrivener stood."},
+		],
+	},
+	"white_sky_move_2": {
+		"title": "Bram's Duel: the glass turned",
+		"steps": [
+			{"id": "wsm_2a", "len": 4.0, "see": "The Unspent Hour turns its glass on the Blazehound across from it: the sand runs upward, and the hound of pale smoke bursts into white sparks."},
+			{"id": "wsm_2b", "len": 4.5, "see": "The pack's answer: the Veilfox's mirage and the Infernal Warg's charge of pale fire bring the Loomwarden down, its threads snapping. Over Bram's shoulder: he staggers, his arm going round the child in his coat."},
+		],
+	},
+	"white_sky_move_3": {
+		"title": "Bram's Duel: the Last Page",
+		"steps": [
+			{"id": "wsm_3a", "len": 6.0, "see": "The Last Page: the sky over the Circle goes still, the stars draw together into a closed book, and Orlanthe comes down out of it, a hooded figure the size of a hill in robes of folded parchment, faceless, the book in one hand. Low behind Bram, up past the hunter at it."},
+			{"id": "wsm_3b", "len": 4.0, "see": "The clasp comes undone. The book opens, and white light pours out of it over the Circle, the pack and the hunter, until there is nothing but white. (End on the white: the game takes it to black.)"},
 		],
 	},
 	"ridge": {

@@ -184,6 +184,12 @@ var _look_at: Figure3D = null   # who they're turning their head to (look_round(
 var _look_point := Vector3.ZERO
 var _look_w := 0.0               # how far into the turn (0..1, eased)
 var _look_scan := 0.0
+var _look_on := false            # there's something to look at now
+var _look_keep := 0.0            # how much longer it rests on _look_at with nobody talking (s)
+var _head_yaw := 0.0             # the head's turn as drawn (eased: LOOK_SMOOTH)
+var _head_pitch := 0.0
+var _head_yaw_v := 0.0
+var _head_pitch_v := 0.0
 ## A point a scene has them look at with the head alone (eyes_on()), or null.
 var _eyes_on = null
 
@@ -597,7 +603,17 @@ const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb
 	"LeftHandRing1", "LeftHandRing2", "LeftHandRing3", "LeftHandPinky1", "LeftHandPinky2", "LeftHandPinky3",
 	"RightHandThumb1", "RightHandThumb2", "RightHandThumb3",
 	"RightHandIndex1", "RightHandIndex2", "RightHandIndex3", "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3",
-	"RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3"]}
+	"RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3"],
+	# (11 November, Gary: "In the opening bit of the game brams left hand is
+	# deformed" and the hunter "before brams battle has deformed right hand".
+	# The same fault on two more rigs: Bram in his coat and the Shard hunter
+	# have hands that are right as modelled (tests/hand_freeze_peek.gd, "rest"),
+	# but their clips turn each finger's first joint 30 to 68 degrees and
+	# their skin doesn't follow those joints cleanly: Bram's thumb stood out
+	# as a stub with the fingers fused and bent beside it, the hunter's long
+	# fingers pulled into splinters. "*fingers" keeps every bone below both
+	# hands as the model has it, whatever the bones are called.)
+	"bram_coat": ["*fingers"], "shard_hunter": ["*fingers"]}
 
 
 ## How a hand modelled closed opens when a flat hand is asked for
@@ -644,6 +660,36 @@ class Posture:
 			sk.set_bone_pose_rotation(int(f[0]), f[1] as Quaternion)
 
 
+## Every bone below either hand of a skeleton, with its rest turn: [bone,
+## Quaternion] pairs for Posture.frozen (FROZEN's "*fingers").
+static func finger_rests(sk: Skeleton3D) -> Array:
+	var out: Array = []
+	for side in ["LeftHand", "RightHand"]:
+		var hb := sk.find_bone(side)
+		if hb < 0:
+			continue
+		for b in sk.get_bone_count():
+			var p := sk.get_bone_parent(b)
+			while p >= 0 and p != hb:
+				p = sk.get_bone_parent(p)
+			if p == hb:
+				out.append([b, sk.get_bone_rest(b).basis.get_rotation_quaternion()])
+	return out
+
+
+## Keeps a model's fingers as modelled when it isn't a Figure3D (the Night of
+## the White Sky's hunter plays his own file's clips): the same Posture, with
+## only the fingers in it.
+static func keep_fingers(sk: Skeleton3D) -> void:
+	if sk == null or sk.has_node("Posture"):
+		return
+	var pm := Posture.new()
+	pm.name = "Posture"
+	pm.frozen = finger_rests(sk)
+	sk.add_child(pm)
+	sk.move_child(pm, 0)
+
+
 func _add_posture() -> void:
 	if _skel == null or (not POSTURE.has(_model_name) and not FROZEN.has(_model_name)) or _skel.has_node("Posture"):
 		return
@@ -656,6 +702,9 @@ func _add_posture() -> void:
 		var e: Vector3 = POSTURE[_model_name][bone]
 		pm.turns.append([i, Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))])
 	for bone: String in FROZEN.get(_model_name, []):
+		if bone == "*fingers":
+			pm.frozen.append_array(finger_rests(_skel))
+			continue
 		var i := _skel.find_bone(bone)
 		if i >= 0:
 			pm.frozen.append([i, _skel.get_bone_rest(i).basis.get_rotation_quaternion()])
@@ -1403,6 +1452,20 @@ func palm(side: String, dir: Vector3, secs := 0.3, flat := 0.0, own_frame := fal
 		tw.tween_callback(func() -> void: _palms.erase(side))
 
 
+## A hand already turned (palm()) turned on to a new way at once: for a
+## hand that follows something frame by frame (palm() eases a turn in; called
+## every frame it would start the ease again each time). World directions.
+func palm_to(side: String, dir: Vector3, fingers := Vector3.ZERO) -> void:
+	if not _palms.has(side) or dir == Vector3.ZERO:
+		return
+	var cur: Array = _palms[side]
+	while cur.size() < 5:
+		cur.append(0.0 if cur.size() == 2 else (false if cur.size() == 3 else Vector3.ZERO))
+	cur[0] = dir.normalized()
+	cur[3] = false
+	cur[4] = fingers.normalized() if fingers != Vector3.ZERO else Vector3.ZERO
+
+
 func _turn_hands() -> void:
 	for side in _palms:
 		var pd: Vector3 = _palms[side][0]
@@ -1447,8 +1510,11 @@ func _turn_hands() -> void:
 		var mb := Basis(f_b, p_b, f_b.cross(p_b)).orthonormalized()
 		var mt := Basis(f_t, p_t, f_t.cross(p_t)).orthonormalized()
 		var want := (mt * mb.transposed()).orthonormalized()
-		var q := gp.basis.orthonormalized().get_rotation_quaternion().slerp(want.get_rotation_quaternion(), clampf(k, 0.0, 1.0))
+		var q_was := gp.basis.orthonormalized().get_rotation_quaternion()
+		var q := q_was.slerp(want.get_rotation_quaternion(), clampf(k, 0.0, 1.0))
 		var par := _skel.get_bone_parent(h)
+		if wrist_natural and par >= 0:
+			q = _natural_wrist(h, par, gp, q_was, q, f_b)
 		var pb := _skel.get_bone_global_pose(par).basis.orthonormalized() if par >= 0 else Basis()
 		_skel.set_bone_pose_rotation(h, (pb.inverse() * Basis(q)).get_rotation_quaternion())
 		# a flat hand: the fingers back to their rest, straight (the thumb too,
@@ -1485,6 +1551,81 @@ func _turn_hands() -> void:
 
 ## Turns a bone's pose about `axis` (the skeleton's frame) by `ang`, its
 ## children with it (OPEN_FLAT).
+## A wrist that turns the way a wrist does (11 November, Gary: eating the
+## porridge the "players arm twists in an unnatural way"; opening Bram's box
+## "his hand is twisted in an unnatural way"; Corin giving the coin, "arms
+## are distorted in weird ways"; Bram at the timber, "his arms distort in
+## weird ways"). Until now a hand asked to face somewhere (palm()) was
+## turned there at the wrist alone, however far that was from where the
+## forearm had it: palm up from a forearm that had it palm down was half a
+## turn at one joint, and the skin between the forearm and the hand wrung
+## like a cloth; a palm asked to lie on a lid swinging up past upright bent
+## the hand back past a right angle. A real forearm does the rolling (its
+## two bones cross along its whole length) and a real wrist only bends, and
+## not far. So:
+##   the roll: of the turn asked for about the forearm's own length, the
+##     forearm takes FORE_SHARE (rolling about its length moves nothing: the
+##     wrist stays where the reach put it), up to FORE_ROLL_MOST; the wrist
+##     keeps the rest, up to WRIST_ROLL_MOST. Beyond both, the hand stops
+##     short of what was asked instead of wringing.
+##   the bend: the hand's own length never more than WRIST_BEND_MOST off the
+##     forearm's; asked for more, it stops there.
+## `q_was` is the hand as the clip and the reach left it, `q` as asked;
+## returns the hand as it'll be drawn. Figure3D.wrist_natural = false gives
+## the old wrist (the tests' before).
+const FORE_SHARE := 0.7
+const FORE_ROLL_MOST := deg_to_rad(125.0)
+const WRIST_ROLL_MOST := deg_to_rad(50.0)
+const WRIST_BEND_MOST := deg_to_rad(72.0)
+static var wrist_natural := true
+## (for the tests) The most any wrist was asked to bend and to roll past
+## what it does, since this was last emptied: {"bend": degrees, "roll":
+## degrees, "bend_who": ..., "roll_who": ...}.
+static var wrist_over := {}
+
+func _natural_wrist(h: int, fore: int, gp: Transform3D, q_was: Quaternion, q: Quaternion, f_b: Vector3) -> Quaternion:
+	var fa_g := _skel.get_bone_global_pose(fore)
+	var ax := gp.origin - fa_g.origin
+	if ax.length() < 0.02:
+		return q
+	ax = ax.normalized()
+	# the roll asked for about the forearm, from where the hand is
+	var d := (q * q_was.inverse()).normalized()
+	var tw := _twist_about(d, ax)
+	var roll := clampf(tw * FORE_SHARE, -FORE_ROLL_MOST, FORE_ROLL_MOST)
+	if absf(roll) > 0.005:
+		_turn_bone_about(fore, ax, roll)
+	var left := tw - roll
+	if absf(left) > WRIST_ROLL_MOST:
+		if rad_to_deg(absf(left) - WRIST_ROLL_MOST) > float(wrist_over.get("roll", 0.0)):
+			wrist_over["roll"] = rad_to_deg(absf(left) - WRIST_ROLL_MOST)
+			wrist_over["roll_who"] = "%s %s" % [_model_name, _skel.get_bone_name(h)]
+		q = (Quaternion(ax, -(left - signf(left) * WRIST_ROLL_MOST)) * q).normalized()
+	# the bend: the hand's length against the forearm's
+	var hl := (Basis(q) * f_b).normalized()
+	var bend := ax.angle_to(hl)
+	if bend > WRIST_BEND_MOST:
+		if rad_to_deg(bend - WRIST_BEND_MOST) > float(wrist_over.get("bend", 0.0)):
+			wrist_over["bend"] = rad_to_deg(bend - WRIST_BEND_MOST)
+			wrist_over["bend_who"] = "%s %s" % [_model_name, _skel.get_bone_name(h)]
+		var bax := ax.cross(hl)
+		if bax.length() > 0.001:
+			q = (Quaternion(bax.normalized(), -(bend - WRIST_BEND_MOST)) * q).normalized()
+	return q
+
+
+## How far a turn goes round `axis` (radians, signed): the twist of its
+## swing-and-twist about that axis.
+static func _twist_about(q: Quaternion, axis: Vector3) -> float:
+	var v := Vector3(q.x, q.y, q.z)
+	var along := v.dot(axis)
+	var w := q.w
+	if absf(along) < 1e-6 and absf(w) < 1e-6:
+		return 0.0
+	var ang := 2.0 * atan2(along, w)
+	return wrapf(ang, -PI, PI)
+
+
 func _turn_bone_about(b: int, axis: Vector3, ang: float) -> void:
 	var g := _skel.get_bone_global_pose(b)
 	var par := _skel.get_bone_parent(b)
@@ -2017,6 +2158,20 @@ func elbow(side: String, at: Vector3, secs := 0.3) -> void:
 	tw.tween_property(pole, "position", want, maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
 
 
+## The same hint put at a point in the world, at once (an arm worked out
+## frame by frame, the elbow where the working has it: Bram's hand to the
+## Ward marks, AshfordNight._aim_hand). elbow(side, Vector3.INF) gives the arm
+## its usual hint back.
+func elbow_to(side: String, at_world: Vector3) -> void:
+	if _pivot == null:
+		return
+	var at := _pivot.global_transform.affine_inverse() * at_world
+	_elbow_want[side] = at
+	var pole := _pivot.get_node_or_null(("Left" if side == "left" else "Right") + "Elbow") as Node3D
+	if pole != null:
+		pole.position = at
+
+
 ## Puts their hands on things: each hand goes to its target (a Node3D, and
 ## follows it if it moves; null leaves that hand to the clip), blending in
 ## over `secs`, elbows out and down. Holding a barrel by its rims, a card
@@ -2165,6 +2320,19 @@ const LOOK_YAW := deg_to_rad(50.0)       # the most the head turns aside
 const LOOK_PITCH := deg_to_rad(16.0)     # ...and up or down
 const LOOK_NECK := 0.4                   # the neck's share of the turn
 const LOOK_EASE := 3.0                   # how fast it comes in and goes (a third of a second)
+## (11 November, Gary: "When talking with Corin in the evening his head
+## movements are glitchy". Two things. The head followed its point exactly:
+## when what it looked at changed (eyes_on from the player to the meadow and
+## back in Corin's beat, or from a scene's point to whoever was talking) it
+## snapped there in one frame; only its coming in and going out were eased.
+## And a listener's head went to the speaker only while a line was up, so
+## between every two lines of a talk it eased back to the front and round
+## again. Now the turn itself is eased: the head's angles follow where it's
+## asked to look on a spring (LOOK_SMOOTH), whatever changes; and it stays
+## on whoever it was looking at for LOOK_LINGER after they stop talking, so
+## through a conversation it rests on them.)
+const LOOK_SMOOTH := 0.3                 # the spring's time (s): a head takes about half a second to come round
+const LOOK_LINGER := 1.6                 # how long it rests on someone after they stop talking (s)
 static var _figures: Array = []          # every figure standing in a scene
 ## How much of that turn this one takes (1 all of it, 0 none): a scene can
 ## keep a face to its camera (6 November: Bram sat on the attic bed beside
@@ -2230,34 +2398,73 @@ func _who_to_look_at() -> Figure3D:
 
 func _look_round(delta: float) -> void:
 	_look_scan -= delta
+	_look_keep -= delta
 	if _look_scan <= 0.0:
 		_look_scan = 0.2 + randf() * 0.15   # (nobody turns in step)
-		_look_at = _who_to_look_at()
+		var who := _who_to_look_at()
+		if who != null:
+			_look_at = who
+			_look_keep = LOOK_LINGER
+		elif _look_keep <= 0.0 or not _still_there(_look_at):
+			_look_at = null
 	var on := _look_at != null and is_instance_valid(_look_at) and _free_to_look()
 	if on:
 		_look_point = _look_at.bone_pos("Head") + Vector3(0, 0.06, 0)
 	if _eyes_on is Vector3 and _free_to_look():
 		on = true
 		_look_point = _eyes_on
+	_look_on = on
 	_look_w = move_toward(_look_w, 1.0 if on else 0.0, delta * LOOK_EASE)
+
+
+## A critically damped spring towards `goal` over about `smooth_t` seconds:
+## [value, velocity] (the same easing the moving duel camera uses).
+static func _spring(cur: float, goal: float, vel: float, smooth_t: float, dt: float) -> Array:
+	var om := 2.0 / maxf(0.01, smooth_t)
+	var x := om * dt
+	var e := 1.0 / (1.0 + x + 0.48 * x * x + 0.235 * x * x * x)
+	var ch := cur - goal
+	var tmp := (vel + om * ch) * dt
+	return [goal + (ch + tmp) * e, (vel - om * tmp) * e]
+
+
+## Whoever the head rests on between their lines is still someone to look
+## at: there, seen, near, and not round behind.
+func _still_there(f: Figure3D) -> bool:
+	if f == null or not is_instance_valid(f) or not f.is_visible_in_tree() or not looking or not _free_to_look():
+		return false
+	var to := f.global_position - global_position
+	to.y = 0.0
+	var d := to.length()
+	return d >= 0.3 and d <= LOOK_RANGE * 1.2 and absf(facing().signed_angle_to(to / d, Vector3.UP)) <= LOOK_FIELD
 
 
 ## The turn itself, after the clip (and the posture) each frame: the neck
 ## and then the head turned towards the face looked at, about the upright
-## and their own left-right, by their share of it.
-func _turn_head(sk: Skeleton3D, neck: int, head: int) -> void:
-	var w := _look_w * _look_w * (3.0 - 2.0 * _look_w)
-	if w < 0.001 or head < 0:
+## and their own left-right, by their share of it. The angles are eased
+## (LOOK_SMOOTH), so the head never snaps when what it looks at changes.
+func _turn_head(sk: Skeleton3D, neck: int, head: int, delta := 0.016) -> void:
+	if head < 0:
 		return
 	var sx := sk.global_transform
-	var hp := sx * sk.get_bone_global_pose(head).origin
-	var to := _look_point - hp
-	var flat := Vector3(to.x, 0.0, to.z)
-	if flat.length() < 0.05:
-		return
 	var fwd := facing()
-	var yaw := clampf(fwd.signed_angle_to(flat.normalized(), Vector3.UP), -LOOK_YAW, LOOK_YAW) * w * look_turn
-	var pitch := clampf(atan2(to.y, flat.length()), -LOOK_PITCH, LOOK_PITCH) * w * look_turn
+	var yaw_t := 0.0
+	var pitch_t := 0.0
+	if _look_on:
+		var hp := sx * sk.get_bone_global_pose(head).origin
+		var to := _look_point - hp
+		var flat := Vector3(to.x, 0.0, to.z)
+		if flat.length() >= 0.05:
+			yaw_t = clampf(fwd.signed_angle_to(flat.normalized(), Vector3.UP), -LOOK_YAW, LOOK_YAW) * look_turn
+			pitch_t = clampf(atan2(to.y, flat.length()), -LOOK_PITCH, LOOK_PITCH) * look_turn
+	var r := _spring(_head_yaw, yaw_t, _head_yaw_v, LOOK_SMOOTH, clampf(delta, 0.0, 0.1))
+	_head_yaw = r[0]
+	_head_yaw_v = r[1]
+	r = _spring(_head_pitch, pitch_t, _head_pitch_v, LOOK_SMOOTH, clampf(delta, 0.0, 0.1))
+	_head_pitch = r[0]
+	_head_pitch_v = r[1]
+	if absf(_head_yaw) < 0.0005 and absf(_head_pitch) < 0.0005:
+		return
 	var side := Vector3.UP.cross(fwd).normalized()   # their left (a turn about it by -pitch lifts the face)
 	var b := sx.basis.orthonormalized()
 	var bi := b.inverse()
@@ -2266,7 +2473,7 @@ func _turn_head(sk: Skeleton3D, neck: int, head: int) -> void:
 		if i < 0:
 			continue
 		var k: float = part[1] if neck >= 0 else 1.0
-		var turn := Basis(Vector3.UP, yaw * k) * Basis(side, -pitch * k)
+		var turn := Basis(Vector3.UP, _head_yaw * k) * Basis(side, -_head_pitch * k)
 		var g := sk.get_bone_global_pose(i)
 		sk.set_bone_global_pose(i, Transform3D(bi * turn * b * g.basis, g.origin))
 
@@ -2277,6 +2484,6 @@ class HeadTurn:
 	var neck := -1
 	var head := -1
 
-	func _process_modification_with_delta(_delta: float) -> void:
+	func _process_modification_with_delta(delta: float) -> void:
 		if is_instance_valid(fig):
-			fig._turn_head(get_skeleton(), neck, head)
+			fig._turn_head(get_skeleton(), neck, head, delta)

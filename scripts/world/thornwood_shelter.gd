@@ -631,6 +631,17 @@ static func after_lesson(w: World, r: Dictionary) -> void:
 		tw.tween_property(mat, "albedo_color:a", 0.12, 1.8)
 	await Cine.wait(w, 3.2)
 	await Cine.fade(w, 1.0, 1.6)
+	# (12 November, Gary: Bram's duel in the snow is played now, three moves
+	# of it, "with the full film shown later once they know the rules".)
+	# What he's watching for in the dark between the marks: the night of the
+	# white sky, whole, twenty years back; the player has had Corin's duel
+	# and his lesson by now and can read it. Gary's film of it
+	# (StoryFilm "white_sky_duel"), once he's made it; until then the night
+	# goes straight on to the morning, as it did.
+	if StoryFilm.available("white_sky_duel"):
+		await StoryFilm.play(w, "white_sky_duel")
+		Cine.overlay(w).black(true)
+		Music.play(["thornwood", "menu_theme"], 2.0, true)
 	if pf is Figure3D:
 		(pf as Figure3D).get_up(0.01)
 	if bf is Figure3D:

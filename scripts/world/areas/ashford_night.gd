@@ -473,17 +473,39 @@ static func awakening(w: World) -> void:
 ## marks (he knelt a metre off the marks with the cask between, and reached
 ## for them through it; kneeling 0.42 m off the timber his shoulder was
 ## still 0.52 m off the marks, the nearest 0.50 to 0.63 m from it); how far
-## he leans to them; where his elbow is drawn to; how many marks he presses
-## before the line, the last one kept for after it (the nearest to his
-## hand: 0.32 to 0.44 m from his shoulder; the reach aims the forearm's line
-## 7.5 cm past the wrist, which with the palm flat on the timber is 3 cm
-## inside it, so the arm's 0.56 is used up at a mark 0.49 from the shoulder:
-## at 0.46 it was straight; kneeling nearer, his face was on the timber); and
+## he leans to them; how many marks he presses before the line, the last
+## one kept for after it (the nearest to his hand: 0.32 to 0.44 m from his
+## shoulder; kneeling nearer, his face was on the timber); and
 ## how far round he turns on his knees for "Twenty-two
 ## marks" (to his right, towards the camera in the north-west corner: his
 ## feet, out behind him on the floor, swung into the timber when he turned
 ## right round to the player).
 const MARKS_TURN := deg_to_rad(45.0)
+## The staircase, from the cellar's `stairs` point (the flight's middle, on
+## the floor): eight open treads 1.1 m wide climbing north up the east wall
+## (InnRooms.cellar), so it covers STEPS_HALF either side of the point and
+## from STEPS_NORTH to STEPS_SOUTH of it; the k-th tread is 0.3 m thick with
+## its top 0.3 (k + 1) up. Nobody stands inside that (11 November). The floor
+## in front of the bottom step, where someone about to go up stands
+## (STAIRS_FOOT), and the camera up the flight looking back down at it
+## (STAIRS_CAM: over the fifth tread, under the beams).
+const STEPS_HALF := 0.55
+const STEPS_NORTH := -1.9
+const STEPS_SOUTH := 0.66
+const STAIRS_FOOT := Vector3(-0.2, 0, 1.0)
+const STAIRS_CAM := Vector3(0.12, 1.95, -0.75)
+## Where the two of them stand and go in the Reckoning's two cellar scenes,
+## from the same point (tests/after_midnight_shot.gd's cellar part checks
+## each, and the ways between, against the steps): hoofbeats overhead (Bram,
+## the player); then the player for the stairs (where they start, the way
+## round the flight's open side, STAIRS_FOOT) and Bram after them (where he
+## starts, where he catches their arm).
+const RK_BRAM_1 := Vector3(-0.95, 0, -0.6)
+const RK_PLAYER_1 := Vector3(-2.4, 0, -0.45)
+const RK_PLAYER_2 := Vector3(-1.0, 0, 0.0)
+const RK_BRAM_2 := Vector3(-1.8, 0, -0.5)
+const RK_RUN_VIA := Vector3(-0.95, 0, 0.9)
+const RK_BRAM_CATCH := Vector3(-0.82, 0, 0.82)
 const PACK_AT := Vector3(-1.5, 0, 0.25)
 const SATCHEL_AT := Vector3(-1.8, 0, 0.25)
 ## Packing: the player on both knees over the satchel (Figure3D.kneel with
@@ -499,81 +521,276 @@ const PACK_LEAN := 1.0
 const PACK_HANDS := [Vector3(0.06, 0.3, 0.0), Vector3(-0.06, 0.3, 0.0)]
 const PACK_FLAP := 0.30
 const PACK_ELBOW := Vector3(0.42, 0.55, 0.25)
-const MARKS_KNEEL := Vector3(-0.17, 0, 0.55)
+const MARKS_KNEEL := Vector3(-0.17, 0, 0.61)
 const MARKS_LEAN := 0.25
-const MARKS_ELBOW := Vector3(-0.3, 0.75, 0.25)
 const MARKS_PRESSED := 3
-## How far off the timber's face his palm's middle stops (m): the palm's own
-## half thickness and a little; how far off it his hand starts for the first
-## mark (the reach blending in from his side swings the fingers round
-## towards the timber half way, and from 15 cm off their tips went 3 cm
-## into it); how long the hand settles on each mark after the glide (s), and
-## the most the point is moved to bring the palm onto it. The palm faces the
-## timber tipped MARKS_TIP up, the heel of the hand on it and the fingers
-## off it (his fingers rest a little curled, the little finger most: flat to
-## it, their tips were 2 to 3 cm in, and tipped 20 degrees the little
-## finger's still 1.5).
-const MARKS_OFF := 0.035
-const MARKS_IN := 0.25
+## His hand at the marks (11 November, Gary: "When Bram opens his vault after
+## the hearald his arms distort in weird ways"). Until now his palm was laid
+## flat on the timber at each mark, from a shoulder 0.3 m off it: the forearm
+## came in level and the hand stood up off the end of it at a right angle,
+## bent back like a hand held up to stop someone, the elbow folded to 32
+## degrees to fit; and a wrist that only bends as far as a wrist does (the
+## same day) put the fingertips 3 cm into the timber instead. Nobody presses
+## a mark on a wall a forearm away like that. Now his fingers go to it, the
+## wrist straight: the upper arm hangs at his side, the forearm comes up and
+## forward from the elbow to the mark and the hand goes on along it, the
+## fingertips on the mark and the heel of the hand off the timber.
+##   Worked out each frame (_aim_hand) from where his shoulder is drawn: the
+## elbow where an arm of his upper arm's length and his forearm-and-hand's
+## reaches the fingertips' point, bent the way MARKS_ELBOW_WAY says (his own
+## frame: straight down under the shoulder and a little back. Out to his
+## right, where an elbow would sooner go, is the cask: 9 cm into it); the
+## reach's point on that line; the fingers on along it and the palm the
+## nearest it can face to MARKS_PALM_WAY (his own frame: down, and a little
+## to his left, as a hand held out lies).
+##   Which marks (_marks_for): the nearest to where his hand works,
+## MARKS_WORK under his right shoulder (the mark at his shoulder's own
+## height, a forearm off, folded the arm up under his chin); not the ones
+## the cask stands in front of (lower than its top and MARKS_CASK beside
+## its middle along the timber, or nearer), nor the ones his face is in
+## front of (above his shoulder, within MARKS_FACE of his middle). The
+## nearest of all is kept for after the line.
+##   MARKS_OFF: the fingertips' end off the mark (m; the marks are 1 cm off
+## the timber's face). The fingertips start for the first mark from where
+## his hand hangs, and go back there when he's done (_marks_home; MARKS_IN,
+## MARKS_DROP: from his right shoulder, if that can't be read).
+## MARKS_LIFT: how far off the timber they lift between two marks.
+## MARKS_BLEND: the reach blended in over this at most. MARKS_SETTLE: the
+## hand held on each mark (s). The fingertips are kept on what's asked by
+## where they were drawn (_marks_glide; his fingers rest a little curled, so
+## they end a little to the palm's side of the hand's line), MARKS_CORR_MAX
+## at most. FINGER_END: a fingertip past its last joint (m, a grown-up's).
+const MARKS_ELBOW_WAY := Vector3(0.0, -1.0, -0.15)
+const MARKS_PALM_WAY := Vector3(0.25, -1.0, 0.0)
+const MARKS_WORK := 0.2
+const MARKS_CASK := 0.36
+const MARKS_FACE := 0.26
+const MARKS_OFF := 0.004
+const MARKS_IN := 0.1
+const MARKS_DROP := 0.47
+const MARKS_LIFT := 0.07
 const MARKS_BLEND := 0.3
 const MARKS_SETTLE := 0.25
-const MARKS_CORR_MAX := 0.15
-const MARKS_TIP := deg_to_rad(30.0)
+const MARKS_CORR_MAX := 0.12
+const MARKS_CORR_GAIN := 0.5
+const FINGER_END := 0.023
 
 
-## His hand to a mark: the palm's middle MARKS_OFF off the timber in front
-## of it, glided there from the last mark over `secs` (one point his hand
-## follows, under the world's "mark_hand": a reach given a new point snaps
-## the hand to it in a frame), held a moment. The reach puts the end of his
-## forearm on the point, and the hand turned palm to the timber swings the
-## palm off it: so the point is moved each frame by where the palm's middle
-## was drawn against the mark (Ashford._palm_watch: read as the skeleton
-## finishes its frame; between frames a bone has only the clip's pose), the
-## difference kept from mark to mark ("mark_corr"), so the palm itself comes
-## to rest on each. _marks_done() takes his hand back and the point away.
-static func _press_mark(w: World, f: Figure3D, m: MeshInstance3D, secs: float) -> void:
-	var want := m.global_position + Vector3(MARKS_OFF, 0, 0)
+## His right arm as drawn each frame: [0] the shoulder, [1] the elbow, [2]
+## the end of his middle finger (Vector3.INF until the reach is fully on, or
+## when it's off), [5] the same whether he's reaching or not; read as the
+## skeleton finishes its frame, the reach and the hand's turn included
+## (between frames a bone has only the clip's pose). _arm_unwatch() stops it.
+static func _arm_watch(f: Figure3D) -> Array:
+	var seen := [Vector3.INF, Vector3.INF, Vector3.INF, null, null, Vector3.INF]
+	if f == null or f._skel == null:
+		return seen
+	var sk: Skeleton3D = f._skel
+	var sh := sk.find_bone("RightArm")
+	var el := sk.find_bone("RightForeArm")
+	var m3 := sk.find_bone("RightHandMiddle3")
+	var m2 := sk.find_bone("RightHandMiddle2")
+	var watch := func() -> void:
+		if not is_instance_valid(f) or f._skel == null or sh < 0 or el < 0:
+			return
+		var xf := sk.global_transform
+		seen[0] = xf * sk.get_bone_global_pose(sh).origin
+		seen[1] = xf * sk.get_bone_global_pose(el).origin
+		seen[2] = Vector3.INF
+		if m3 < 0 or m2 < 0:
+			return
+		var p3 := xf * sk.get_bone_global_pose(m3).origin
+		var p2 := xf * sk.get_bone_global_pose(m2).origin
+		seen[5] = p3 + (p3 - p2).normalized() * FINGER_END * f.stature()
+		var ik = f._ik.get("right")
+		if ik != null and is_instance_valid(ik) and (ik as TwoBoneIK3D).active and (ik as TwoBoneIK3D).influence > 0.95:
+			seen[2] = seen[5]
+	sk.skeleton_updated.connect(watch)
+	seen[3] = sk
+	seen[4] = watch
+	return seen
+
+
+static func _arm_unwatch(seen: Array) -> void:
+	if seen.size() > 4 and seen[3] is Skeleton3D and is_instance_valid(seen[3]) and seen[4] is Callable:
+		var sk: Skeleton3D = seen[3]
+		if sk.skeleton_updated.is_connected(seen[4]):
+			sk.skeleton_updated.disconnect(seen[4])
+
+
+## His right arm's lengths as it's drawn (m): [0] shoulder to elbow, [1]
+## elbow to wrist, [2] wrist to the end of the middle finger, the hand as it
+## was made (the fingers at rest: a flat hand's), [3] how far past the wrist
+## the reach's point is (Figure3D._reach: it reaches with the palm).
+static func _arm_lengths(f: Figure3D) -> Array:
+	var out := [0.29, 0.27, 0.19, 0.075]
+	if f == null or f._skel == null:
+		return out
+	var sk: Skeleton3D = f._skel
+	var xf := sk.global_transform
+	var pts: Array = []
+	for bn in ["RightArm", "RightForeArm", "RightHand", "RightHandMiddle2", "RightHandMiddle3"]:
+		var b := sk.find_bone(bn)
+		pts.append(xf * sk.get_bone_global_rest(b).origin if b >= 0 else Vector3.INF)
+	out[3] = 0.075 * f.stature()
+	if pts[0] == Vector3.INF or pts[1] == Vector3.INF or pts[2] == Vector3.INF:
+		return out
+	out[0] = (pts[0] as Vector3).distance_to(pts[1])
+	out[1] = (pts[1] as Vector3).distance_to(pts[2])
+	if pts[3] != Vector3.INF and pts[4] != Vector3.INF:
+		var end: Vector3 = (pts[4] as Vector3) + ((pts[4] as Vector3) - (pts[3] as Vector3)).normalized() * FINGER_END * f.stature()
+		out[2] = (pts[2] as Vector3).distance_to(end)
+	return out
+
+
+## His arm for the fingertips at `tip` (world), `out` the way out of the
+## timber there: the elbow, the reach's point (`to`) and the hand's turn, as
+## the note over MARKS_ELBOW_WAY has it. `corr` moves the reach's point (the
+## fingertips brought onto a mark by where they were drawn). `turn_in`: the
+## hand's turn eased in (the first frame of a reach), not put on at once.
+## False when `tip` is further off than his arm goes, or nearer than it
+## folds: the arm does what it can.
+static func _aim_hand(f: Figure3D, seen: Array, arm: Array, tip: Vector3, out: Vector3, to: Node3D, corr: Vector3, turn_in := false) -> bool:
+	var s: Vector3 = seen[0] if seen[0] != Vector3.INF else f.bone_pos("RightArm")
+	var l1: float = arm[0]
+	var l2: float = float(arm[1]) + float(arm[2])
+	var d0 := s.distance_to(tip)
+	if d0 < 0.001:
+		return false
+	var dir := (tip - s) / d0
+	var d := clampf(d0, absf(l2 - l1) + 0.01, l1 + l2 - 0.01)
+	var hint := (f.to_world(MARKS_ELBOW_WAY) - f.to_world(Vector3.ZERO)).normalized()
+	var perp := hint - dir * hint.dot(dir)
+	if perp.length() < 0.05:
+		perp = Vector3.DOWN - dir * Vector3.DOWN.dot(dir)
+	perp = perp.normalized()
+	var x := (l1 * l1 - l2 * l2 + d * d) / (2.0 * d)
+	var e := s + dir * x + perp * sqrt(maxf(l1 * l1 - x * x, 0.0))
+	var a := (s + dir * d - e).normalized()   # (the forearm's way, and the hand's)
+	to.global_position = e + a * (float(arm[1]) + float(arm[3])) + corr
+	f.elbow_to("right", e + perp * 0.3)
+	# the palm: down and a little to his left, square to the hand's way (up
+	# the timber, that's towards it)
+	var pw := (f.to_world(MARKS_PALM_WAY) - f.to_world(Vector3.ZERO)).normalized()
+	var pd := pw - a * pw.dot(a)
+	if pd.length() < 0.05:
+		pd = -out - a * (-out).dot(a)
+	if turn_in:
+		f.palm("right", pd, MARKS_BLEND, 1.0, false, a)
+	else:
+		f.palm_to("right", pd, a)
+	return is_equal_approx(d, d0)
+
+
+## His fingertips from `from` to `goal` (world) over `secs`, the arm worked
+## out every frame on the way (_aim_hand), lifting `lift` off the timber
+## between; then held `settle`. All the way, the reach's point is moved by
+## how far the fingertips were drawn from where they were asked the frame
+## before (MARKS_CORR_GAIN of it a frame, the sum kept from mark to mark,
+## "mark_corr"): put right only once they'd stopped on a mark, what had put
+## them right on the last mark took them 1.6 cm into the timber on the way
+## to the next.
+static func _marks_glide(w: World, f: Figure3D, from: Vector3, goal: Vector3, out: Vector3, secs: float, settle: float, lift: float) -> void:
 	var to: Node3D = w.get_meta("mark_hand") if w.has_meta("mark_hand") else null
 	var corr: Vector3 = w.get_meta("mark_corr") if w.has_meta("mark_corr") else Vector3.ZERO
+	var seen := _arm_watch(f)
+	var arm := _arm_lengths(f)
 	if to == null or not is_instance_valid(to):
 		to = Node3D.new()
 		w.add_child(to)
-		to.global_position = want + corr + Vector3(MARKS_IN, 0, 0)
 		w.set_meta("mark_hand", to)
-		# (the reach is on the point well before the point is on the timber:
-		# blended in and glided in together, the hand's way between the clip
-		# and the point swung through the timber)
+		_aim_hand(f, seen, arm, from, out, to, corr, true)
 		f.reach(null, to, minf(secs, MARKS_BLEND))
-	var from := to.global_position
-	var seen: Array = w.area.call("_palm_watch", f, "right")
 	var t := 0.0
-	while t < secs + MARKS_SETTLE and is_instance_valid(to) and is_instance_valid(f):
+	var asked := Vector3.INF   # (where the fingertips were asked last frame, if his arm goes there)
+	while t < secs + settle and is_instance_valid(to) and is_instance_valid(f):
 		await w.get_tree().process_frame
+		if not is_instance_valid(to) or not is_instance_valid(f):
+			break
 		t += w.get_process_delta_time()
 		var k := clampf(t / maxf(secs, 0.01), 0.0, 1.0)
 		k = 0.5 - 0.5 * cos(k * PI)
-		if k >= 1.0 and seen[0] != Vector3.INF:
-			corr = (corr + (want - (seen[0] as Vector3)) * 0.7).limit_length(MARKS_CORR_MAX)
-		to.global_position = from.lerp(want + corr, k)
-	w.area.call("_palm_unwatch", seen)
+		if asked != Vector3.INF and seen[2] != Vector3.INF:
+			corr = (corr + (asked - (seen[2] as Vector3)) * MARKS_CORR_GAIN).limit_length(MARKS_CORR_MAX)
+		var at := from.lerp(goal, k) + out * lift * sin(k * PI)
+		asked = at if _aim_hand(f, seen, arm, at, out, to, corr) else Vector3.INF
+	_arm_unwatch(seen)
 	w.set_meta("mark_corr", corr)
+	w.set_meta("mark_tip", goal)
+	w.set_meta("mark_out", out)
 
 
-## His hand off the marks (the point glides MARKS_IN off the timber first,
-## his hand with it, so the arm goes back to the clip from clear of it), his
-## arm his own again, and the point gone once it's off.
+## The marks he presses, the easiest first (the note over MARKS_ELBOW_WAY):
+## [0] is the one kept for after the line.
+static func _marks_for(f: Figure3D, marks: Array, cask: Node3D) -> Array:
+	var sh := f.bone_pos("RightArm")
+	var work := sh + Vector3.DOWN * MARKS_WORK * f.stature()
+	var picked: Array = []
+	for m: MeshInstance3D in marks:
+		var p := m.global_position
+		var along := m.global_transform.basis.z.cross(Vector3.UP).normalized()   # (along the timber)
+		if cask != null and is_instance_valid(cask) and p.y < cask.global_position.y + AshfordVillage.BARREL_HALF + 0.05 \
+				and absf((p - cask.global_position).dot(along)) < MARKS_CASK:
+			continue
+		if p.y > sh.y + 0.05 and absf((p - f.global_position).dot(along)) < MARKS_FACE:
+			continue
+		picked.append(m)
+	picked.sort_custom(func(a: MeshInstance3D, b: MeshInstance3D) -> bool:
+		return a.global_position.distance_to(work) < b.global_position.distance_to(work))
+	return picked
+
+
+## Where his fingertips start from for the first mark and go back to after
+## the last: where his hand hangs in his clip, as it's drawn (so the reach
+## comes on with his hand where it already is, and lets go of it there: from
+## a point of its own in front of his ribs, a hand's length from his
+## shoulder, the arm folded shut to get there and the elbow stood out a
+## forearm behind his back). Kept under the world's "mark_home". If it can't
+## be read: under his shoulder, MARKS_IN towards the timber and MARKS_DROP
+## down.
+static func _marks_home(w: World, f: Figure3D, out: Vector3) -> Vector3:
+	if w.has_meta("mark_home"):
+		return w.get_meta("mark_home")
+	var seen := _arm_watch(f)
+	for k in 2:   # (a frame drawn with the watch on)
+		await w.get_tree().process_frame
+	var home: Vector3 = seen[5]
+	_arm_unwatch(seen)
+	if home == Vector3.INF and is_instance_valid(f):
+		home = f.bone_pos("RightArm") - out * MARKS_IN * f.stature() + Vector3.DOWN * MARKS_DROP * f.stature()
+	w.set_meta("mark_home", home)
+	return home
+
+
+## His fingers to a mark: from where his hand hangs for the first
+## (_marks_home), from the last mark for the next, lifted off the timber
+## between. _marks_done() takes his hand back.
+static func _press_mark(w: World, f: Figure3D, m: MeshInstance3D, secs: float) -> void:
+	var out := m.global_transform.basis.z.normalized()   # (the marks face out of the timber)
+	var goal := m.global_position + out * MARKS_OFF
+	var first := not w.has_meta("mark_tip")
+	var from: Vector3 = await _marks_home(w, f, out) if first else w.get_meta("mark_tip")
+	if not is_instance_valid(f):
+		return
+	await _marks_glide(w, f, from, goal, out, secs, MARKS_SETTLE, 0.0 if first else MARKS_LIFT)
+
+
+## His hand off the marks (the fingertips back off the timber the way they
+## came, his arm with them, so it goes back to the clip from clear of it),
+## his arm his own again, and the point gone once it's off.
 static func _marks_done(w: World, f: Figure3D) -> void:
 	var old = w.get_meta("mark_hand") if w.has_meta("mark_hand") else null
-	if old != null and is_instance_valid(old):
-		var off := w.create_tween()
-		off.tween_property(old, "global_position", (old as Node3D).global_position + Vector3(MARKS_IN, 0, 0), 0.3).set_trans(Tween.TRANS_SINE)
-		await off.finished
+	if old != null and is_instance_valid(old) and w.has_meta("mark_tip"):
+		var tip: Vector3 = w.get_meta("mark_tip")
+		var out: Vector3 = w.get_meta("mark_out") if w.has_meta("mark_out") else Vector3.RIGHT
+		await _marks_glide(w, f, tip, await _marks_home(w, f, out), out, 0.4, 0.0, 0.0)
 	_bram_hand_back(f)
 	await Cine.wait(w, 0.45)
 	if old != null and is_instance_valid(old):
 		(old as Node).queue_free()
-	w.remove_meta("mark_hand")
-	w.remove_meta("mark_corr")
+	for k in ["mark_hand", "mark_corr", "mark_tip", "mark_out", "mark_home"]:
+		if w.has_meta(k):
+			w.remove_meta(k)
 
 
 ## P3b · That Day (v7): the cellar, the lamp low. Bram at the back wall behind
@@ -611,24 +828,21 @@ static func that_day(w: World) -> void:
 	# cask hid him; from behind, all you saw was his back)
 	Cine.shot(w, wall + Vector3(-0.15, 1.3, -1.15), wall + Vector3(-0.3, 1.0, 0.5), 42.0)
 	await Cine.wait(w, 1.1)   # (down on his knees: where his shoulder is then)
-	# the marks nearest his hand (MARKS_PRESSED), pressed in turn, his palm
-	# flat to the timber (8 November: he reached for the last five cut, a
-	# metre off, through the cask, his arm locked straight at them). The
-	# palm's way is the timber's own (the world's -x), not his: turning on
-	# his knees, a palm set in his own frame turned with him and the fingers
-	# went into the timber.
-	var press: Array = marks.slice(0, marks.size() - 1)   # (the last is pressed after the line)
+	# the marks nearest his hand (MARKS_PRESSED), pressed in turn, his
+	# fingers to each (8 November: he reached for the last five cut, a metre
+	# off, through the cask, his arm locked straight at them; 11 November:
+	# his fingers, not his palm laid flat, the note over MARKS_ELBOW_WAY).
+	var press: Array = marks.slice(0, MARKS_PRESSED)
+	var last: MeshInstance3D = marks[marks.size() - 1]   # (pressed after the line)
 	if bf is Figure3D:
-		var from: Vector3 = (bf as Figure3D).bone_pos("RightArm")
-		press.sort_custom(func(a: MeshInstance3D, b: MeshInstance3D) -> bool:
-			return a.global_position.distance_to(from) < b.global_position.distance_to(from))
-		(bf as Figure3D).elbow("right", MARKS_ELBOW * (bf as Figure3D).stature(), 0.01)
-		(bf as Figure3D).palm("right", Vector3(-cos(MARKS_TIP), sin(MARKS_TIP), 0), 0.3, 1.0, false, Vector3.UP)
-	press = press.slice(0, MARKS_PRESSED)
+		var easy := _marks_for(bf as Figure3D, marks, r.get("cask") as Node3D)
+		if easy.size() > MARKS_PRESSED:
+			last = easy[0]
+			press = easy.slice(1, 1 + MARKS_PRESSED)
 	var first := true
 	for m: MeshInstance3D in press:
 		if bf is Figure3D:
-			await _press_mark(w, bf as Figure3D, m, 0.7 if first else 0.3)
+			await _press_mark(w, bf as Figure3D, m, 0.7 if first else 0.45)
 		first = false
 		_mark_glow(w, m, 0.9)
 		await Cine.wait(w, 0.5)
@@ -684,15 +898,12 @@ static func that_day(w: World) -> void:
 	for pt in pack_pts:   # (the player's hands are off the satchel by now)
 		(pt as Node).queue_free()
 	# he presses the last
-	var last: MeshInstance3D = marks[marks.size() - 1]
 	Cine.shot(w, wall + Vector3(-0.15, 1.3, -1.15), wall + Vector3(-0.3, 1.0, 0.5), 42.0)
 	if bf is Figure3D:
 		# (back round to the timber first: reached for while he turned, the
 		# hand came to the mark edge on)
 		Cine.look(w, "bram", kneel_at + Vector3(-1, 0, 0))
 		await Cine.wait(w, 0.4)
-		(bf as Figure3D).elbow("right", MARKS_ELBOW * (bf as Figure3D).stature(), 0.01)
-		(bf as Figure3D).palm("right", Vector3(-cos(MARKS_TIP), sin(MARKS_TIP), 0), 0.3, 1.0, false, Vector3.UP)
 		await _press_mark(w, bf as Figure3D, last, 0.7)
 	_mark_glow(w, last, 1.2)
 	await Cine.wait(w, 0.8)
@@ -877,16 +1088,23 @@ static func reckoning(w: World) -> void:
 	var r := cellar(v)
 	# ---- in the cellar: hoofbeats overhead
 	InnRooms.inside(v)
-	Cine.place(w, "bram", r.stairs + Vector3(-0.4, 0, -0.6), r.stairs + Vector3(0, 2.0, -2.0))
+	# (11 November, Gary: "his body goes through the stairs": the `stairs`
+	# point is the staircase's middle, and Bram stood 0.4 m west of it and
+	# 0.6 north: inside the flight, its fourth and fifth treads through his
+	# hips and chest. The steps cover 0.55 m either side of the point and
+	# from 1.9 m north of it to 0.66 south (STEPS_HALF, STEPS_NORTH,
+	# STEPS_SOUTH): he, the player and the camera are all 0.55 m further west,
+	# the picture the same, and he's clear of the flight's open side.)
+	Cine.place(w, "bram", r.stairs + RK_BRAM_1, r.stairs + Vector3(-0.55, 2.0, -2.0))
 	# (beside Bram as the camera sees them, not between: there he hid Bram)
-	Cine.place(w, "player", r.stairs + Vector3(-1.85, 0, -0.45), r.stairs)
-	Cine.shot(w, r.stairs + Vector3(-2.5, 1.5, 1.2), r.stairs + Vector3(-0.4, 1.55, -0.6), 40.0)
+	Cine.place(w, "player", r.stairs + RK_PLAYER_1, r.stairs + Vector3(-0.55, 0, 0))
+	Cine.shot(w, r.stairs + Vector3(-3.05, 1.5, 1.2), r.stairs + Vector3(-0.95, 1.55, -0.6), 40.0)
 	await Cine.fade(w, 0.0, 0.8)
 	_sfx(w, "hooves")
 	w.shake(0.05)
 	# up at the boards overhead, towards the camera (towards the stairs he
 	# turned his back on it, and from the stairs' side they hid his face)
-	Cine.look(w, "bram", r.stairs + Vector3(-1.6, 3.2, 0.4))
+	Cine.look(w, "bram", r.stairs + Vector3(-2.15, 3.2, 0.4))
 	await Cine.wait(w, 1.2)
 	await Cine.say(w, "bram", "She's early.")
 	await Cine.wait(w, 0.7)
@@ -911,24 +1129,33 @@ static func reckoning(w: World) -> void:
 	await Cine.fade(w, 1.0, 0.4)
 	InnRooms.inside(v)
 	_only(w, ["bram", "player"])
-	Cine.place(w, "player", r.stairs + Vector3(-1.0, 0, 0.0), r.stairs)
-	Cine.place(w, "bram", r.stairs + Vector3(-1.8, 0, -0.5), r.stairs)
-	Cine.shot(w, r.stairs + Vector3(-2.8, 1.5, 1.6), r.stairs + Vector3(-0.6, 1.2, -0.2), 40.0)
+	Cine.place(w, "player", r.stairs + RK_PLAYER_2, r.stairs + STAIRS_FOOT)
+	Cine.place(w, "bram", r.stairs + RK_BRAM_2, r.stairs + STAIRS_FOOT)
+	Cine.shot(w, r.stairs + Vector3(-2.8, 1.5, 1.6), r.stairs + Vector3(-0.6, 1.2, 0.4), 40.0)
 	await Cine.fade(w, 0.0, 0.4)
-	Cine.path(w, "player", [r.stairs + Vector3(-0.2, 0, 0.2)], 3.2, "run")
+	# (11 November, Gary: "his body goes through the stairs": the player ran
+	# to a point 0.2 m from the staircase's middle and was then stood 0.4 m
+	# from it, shin-deep in the second tread. They run for the stairs' foot
+	# now, round the flight's open side to the floor in front of the bottom
+	# step (STAIRS_FOOT), and that's where Bram catches them.)
+	Cine.path(w, "player", [r.stairs + RK_RUN_VIA, r.stairs + STAIRS_FOOT], 3.2, "run")
 	await Cine.wait(w, 0.3)
 	await Cine.say(w, "player", "He's going to get himself killed for me! Bram, we have to help him. We can't just leave him out there!")
 	# Bram catches him by the arm before the stairs; for a moment he looks as
 	# though he might go back himself
-	Cine.place(w, "player", r.stairs + Vector3(-0.4, 0, 0.1), r.stairs)
-	await Cine.walk(w, "bram", r.stairs + Vector3(-1.0, 0, -0.1), 3.0)
+	Cine.place(w, "player", r.stairs + STAIRS_FOOT, r.stairs + Vector3(0, 0, -0.4))
+	await Cine.walk(w, "bram", r.stairs + RK_BRAM_CATCH, 3.0)
 	var bf = Cine.fig(w, "bram")
 	var arm: Node3D = A.call("_shoulder_point", w, "player")
 	if bf is Figure3D:
 		(bf as Figure3D).reach(null, arm, 0.25)
 	Cine.look(w, "player", Cine.body(w, "bram").global_position)
 	Cine.look(w, "bram", r.stairs + Vector3(0, 2.4, -1.4))
-	Cine.shot(w, r.stairs + Vector3(-1.4, 1.5, 1.4), r.stairs + Vector3(-0.7, 1.45, -0.1), 32.0)
+	# from up the stairs, looking down at the two of them at its foot: the
+	# way out over the camera's shoulder, both their faces (from the cellar
+	# floor behind them, as it was, the foot of the stairs is the room's
+	# corner and they'd have their backs to it)
+	Cine.shot(w, r.stairs + STAIRS_CAM, r.stairs + STAIRS_FOOT + Vector3(-0.3, 1.38, -0.1), 38.0)
 	await Cine.wait(w, 1.4)
 	Cine.look(w, "bram", w.player.global_position)
 	await Cine.say(w, "bram", "I know, Sprout. And Tam knows what he's sacrificing, and why.")

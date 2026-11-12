@@ -56,6 +56,10 @@ var _dts: Array = []
 
 
 func _ready() -> void:
+	# (11 November: "oldwrist" turns hands at the wrist alone, however far, as
+	# they were until then: Figure3D.wrist_natural, the before)
+	if "oldwrist" in OS.get_cmdline_user_args():
+		Figure3D.wrist_natural = false
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var args := OS.get_cmdline_user_args()
 	if args.size() > 0:
@@ -822,6 +826,7 @@ var _cellar_reach := {"n": 0, "over": 0, "by": 0.0, "d": 0.0, "arm": 0.0, "elbow
 	"timber": 0, "timber_deep": 0.0, "timber_bone": "", "knee_timber": 0.0, "knee_timber_bone": "", "knee_floor": INF, "knee_floor_bone": ""}
 var _timber_x := INF         # the timber's face (world x; the room is at +x of it)
 var _cellar_knelt := false   # Bram has been seen down at the marks
+const RK_BODY := 0.24
 var _cellar_last_still := -100
 const BONE_R := {"Hips": 0.12, "Spine": 0.11, "Spine1": 0.11, "Spine2": 0.11, "Neck": 0.05, "Head": 0.1,
 	"LeftUpLeg": 0.07, "RightUpLeg": 0.07, "LeftLeg": 0.05, "RightLeg": 0.05, "LeftFoot": 0.04, "RightFoot": 0.04, "LeftToeBase": 0.03, "RightToeBase": 0.03,
@@ -852,6 +857,34 @@ func _watch_cellar() -> void:
 	var bf := Cine.fig(world, "bram") as Figure3D
 	if bf != null:
 		_cellar_reach.arm = bf.arm_reach() + 0.075 * bf.stature()
+	# (11 November, Gary: after the Herald, "his body goes through the
+	# stairs": the Reckoning's two cellar scenes) where each of them stands
+	# and every step of the ways they go between, a body's half width
+	# (RK_BODY) clear of every tread and of the room's walls
+	var N := AshfordNight
+	var ways := {"Bram, hoofbeats overhead": [N.RK_BRAM_1], "the player, hoofbeats overhead": [N.RK_PLAYER_1],
+		"the player's run for the stairs": [N.RK_PLAYER_2, N.RK_RUN_VIA, N.STAIRS_FOOT],
+		"Bram after them": [N.RK_BRAM_2, N.RK_BRAM_CATCH]}
+	var tight := INF
+	for nm in ways:
+		var pts: Array = ways[nm]
+		var worst := INF
+		for i in pts.size():
+			var a: Vector3 = (r.stairs as Vector3) + (pts[i] as Vector3)
+			var b: Vector3 = (r.stairs as Vector3) + (pts[mini(i + 1, pts.size() - 1)] as Vector3)
+			for k in 21:
+				var p := a.lerp(b, k / 20.0)
+				for box in _steps:
+					var bx: AABB = box
+					var dx := maxf(maxf(bx.position.x - p.x, p.x - bx.end.x), 0.0)
+					var dz := maxf(maxf(bx.position.z - p.z, p.z - bx.end.z), 0.0)
+					worst = minf(worst, Vector2(dx, dz).length())
+				var lp := root.to_local(p)
+				worst = minf(worst, minf(W * 0.5 - absf(lp.x), 5.5 * 0.5 - absf(lp.z)) - 0.1)
+		tight = minf(tight, worst)
+		if worst < RK_BODY:
+			problems.append("the Reckoning's cellar: %s comes within %.0f cm of the steps or a wall" % [nm, worst * 100.0])
+	print("  the Reckoning's cellar scenes: nobody nearer the steps or a wall than %.0f cm (a body's half width is %.0f)" % [tight * 100.0, RK_BODY * 100.0])
 	if "oldspots" in OS.get_cmdline_user_args():
 		# the places as they were before 8 November (the player half a metre
 		# west of the `stairs` point, Bram 0.7 m off the marks), for the

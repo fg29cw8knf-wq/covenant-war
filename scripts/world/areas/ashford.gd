@@ -1168,6 +1168,14 @@ const BOX_HEEL := 0.012
 ## back from the wrist below the box's bottom (6 November: level with the
 ## hand it came up into the box's back corner on the longer-handed looks).
 const BOX_RIGHT_ELBOW := Vector3(-0.46, -0.5, 0.1)
+## And while that hand lifts the lid (the note at lid_follow): down beside
+## the ribs, under the hand.
+const LID_ELBOW := Vector3(-0.36, -0.52, 0.02)
+## The way that hand's fingers point over the lid (their own frame, for the
+## right hand: across to their left and ahead, as the forearm comes).
+const LID_FINGERS := Vector3(0.8, 0.0, 0.6)
+const LID_EASE_OFF := 0.028
+const LID_SLANT_OVER := 0.012
 const BOX_RIGHT_BACK := 0.02
 ## How much further under the box the right palm's mark sits than the
 ## left's (m): reaching from its lower elbow the right hand lands a little
@@ -2020,7 +2028,9 @@ static func _first_deck(w: World) -> void:
 		# (the hand's own thickness over the lid, as under the box, _box_bottom,
 		# and a finger's width more: the fingertips curl over the edge as it
 		# swings up)
-		var lid_over := float(_box_fit(me).get("lid_over", _box_bottom(me) + 0.01))
+		# (and LID_SLANT_OVER more since 11 November: with the fingers on the
+		# slant the thumb lies back across the lid, under the palm's level)
+		var lid_over := float(_box_fit(me).get("lid_over", _box_bottom(me) + 0.01)) + LID_SLANT_OVER
 		edge.position = Vector3(0.0, size.y * 0.5 + lid_over, size.z * 0.5 - float(_box_fit(me).get("lid_back", 0.0)))
 		if lid != null:
 			edge.reparent(lid, true)
@@ -2063,6 +2073,17 @@ static func _first_deck(w: World) -> void:
 		round_over.tween_property(rh, "global_position", side_out, 0.14 if not one else 0.3).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", side_up, 0.18).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", over_edge, 0.18).set_trans(Tween.TRANS_SINE)
+		# (11 November, Gary: "When player opens box from Bram his hand is
+		# twisted in an unnatural way". Over the lid the fingers pointed
+		# straight ahead, to its front edge, on the end of a forearm that
+		# comes in across the body from an elbow out at the side: the hand
+		# turned a right angle sideways at the wrist, and 27 degrees further
+		# than a wrist goes as the lid came up. Clear of the box's side and
+		# over its top, the fingers come round to lie the way the forearm
+		# comes, LID_FINGERS: across the lid's front edge on the slant, the
+		# wrist straight.)
+		round_over.parallel().tween_method(func(u: float) -> void:
+			me.palm(os, Vector3.DOWN, 0.01, 1.0, true, Vector3.BACK.lerp(LID_FINGERS * Vector3(sx, 1, 1), u)), 0.0, 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 		round_over.tween_property(rh, "global_position", edge.global_position, 0.12).set_trans(Tween.TRANS_SINE)
 		await round_over.finished
 		both_reach.call(lh, edge, 0.08)
@@ -2072,15 +2093,38 @@ static func _first_deck(w: World) -> void:
 		# with it, palm to the lid's face and fingers along it to the edge (8
 		# November: held palm down as the lid came up past level, the palm
 		# lay through the lid)
+		# (11 November, Gary: "When player opens box from Bram his hand is
+		# twisted in an unnatural way". The elbow stayed up and out, where it
+		# had gone to bring the forearm down onto the lid, while the hand
+		# followed the lid up past sixty degrees: the hand bent back over a
+		# right angle on the end of a forearm still pointing down. An elbow
+		# drops as a hand lifts a lid: down beside the ribs, the forearm
+		# coming up to the hand, the wrist all but straight.)
+		me.elbow(os, LID_ELBOW * Vector3(sx, 1, 1) + Vector3(0, me._shoulder, 0), 0.5)
+		# (which way the lid's own x lies against their left)
+		var lid_x := 1.0
+		if lid != null and is_instance_valid(lid):
+			lid_x = 1.0 if lid.global_transform.basis.x.dot(me.to_world(Vector3(1, 0, 0)) - me.to_world(Vector3.ZERO)) >= 0.0 else -1.0
 		var lid_follow := w.create_tween()
+		# (and the hand eased three centimetres further off the lid's face as it
+		# comes up, lying nearer flat to it: the thumb, lying back across the
+		# lid now the fingers are on the slant, sank a centimetre into the
+		# lid's face at the top of its swing)
+		var edge_y := edge.position.y
 		lid_follow.tween_method(func(_u: float) -> void:
+			if is_instance_valid(edge):
+				edge.position.y = edge_y + LID_EASE_OFF * _u
 			if lid != null and is_instance_valid(lid) and lid.is_inside_tree():
 				# (the hand pitched a little nose-up off the lid's face, so the
 				# fingertips ride clear of its edge as it swings: Player A's
 				# long fingers hooked a centimetre into it)
 				var ly := lid.global_transform.basis.y
 				var lz := lid.global_transform.basis.z
-				me.palm(os, (-ly + lz * 0.4).normalized(), 0.01, 1.0, false, lz), 0.0, 1.0, 0.6)
+				# (the fingers kept on the slant across it, as they came:
+				# LID_FINGERS in the lid's own frame, which was theirs when
+				# the hand came down on it)
+				var lx := lid.global_transform.basis.x
+				me.palm(os, (-ly + lz * lerpf(0.4, 0.12, _u)).normalized(), 0.01, 1.0, false, (lx * LID_FINGERS.x * sx * lid_x + lz * LID_FINGERS.z).normalized()), 0.0, 1.0, 0.6)
 		await open_box_lid(w, box, true, 0.6)
 		var away := Node3D.new()
 		away.name = "RightAway"

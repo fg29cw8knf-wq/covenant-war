@@ -158,3 +158,31 @@ The times below are where each shot and line falls in its own part.
 | sol_02 | 0:07.0 | 6 s |  | Bram, turning to him. | 0:07.3 Bram: "Go through Dask's cards when we stop. Swap in what's nastier than what you've got. That's most of duelling." |
 | sol_03 | 0:13.0 | 5 s |  | Solhaven, as close as the eye can get it. | 0:13.4 Bram: "There she is. Solhaven." |
 | sol_04 | 0:18.0 | 4 s |  | Bram's face. He doesn't sound pleased. |  |
+
+
+## 8. Bram's duel in the snow (12 November: it's played now)
+
+The duel in the Night of the White Sky is played by the player in three moves,
+so your film of it has two new jobs.
+
+**Three short films, one for each move.** Each plays over the game's own
+picture of that move, the moment the player makes it. Until one exists the
+game's own shots play, so nothing breaks while you make them.
+
+| Film | Name it | What's in it |
+|---|---|---|
+| The call | `white_sky_move_1_4k.mp4` | Bram from behind, the child in his coat, his right hand up with a card: the Unspent Hour darts out of the light over his shoulder into the gap where the Scrivener stood. About 3.5 s. |
+| The strike, and the pack's answer | `white_sky_move_2_4k.mp4` | The Unspent Hour turns its glass on the Blazehound: the hound bursts into white sparks (4 s). Then the Veilfox's mirage and the Warg's charge bring the Loomwarden down; over Bram's shoulder he staggers, his arm going round the child (4.5 s). |
+| The Last Page | `white_sky_move_3_4k.mp4` | Orlanthe comes down out of the stars, the book in one hand, seen low from behind Bram (6 s). The clasp comes undone, the book opens, white light pours out until there is nothing but white (4 s). End on the white. |
+
+No voices, no subtitles, Bram's face never seen. These are the same shots as
+`wsd_04`, `wsd_05`/`wsd_06`, `wsd_08`/`wsd_11` and `wsd_15`/`wsd_16` in the
+whole film's list (`scripts/story/story_film.gd`), so if the whole film is
+already cut, these are three pieces of it.
+
+**The whole film, `white_sky_duel_4k.mp4`,** is no longer shown in the opening.
+It plays later, on the Thornwood road: after Bram's lesson, when the player is
+under the blanket and Bram is awake by the door, watching the dark. By then the
+player knows the rules and can read the duel. Until the film exists that night
+goes straight to the morning.
+

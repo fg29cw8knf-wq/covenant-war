@@ -1167,6 +1167,8 @@ const BUTTON_MODEL := "res://assets/models/ashford/corin_button.glb"
 ## and down, so their fingertips pass under his.
 const BUTTON_ACROSS := 0.1
 const BUTTON_UNDER := 0.045
+## How long their hand takes from the look at it to the pocket at their hip (s).
+const BUTTON_POCKET := 0.45
 
 
 static func corin_button(w: World) -> void:
@@ -1277,6 +1279,19 @@ static func corin_button(w: World) -> void:
 		tw.tween_property(take, "global_position", keep, 0.6).set_trans(Tween.TRANS_SINE)
 		await tw.finished
 		await Cine.wait(w, 0.4)
+		# (11 November, Gary: the "coin lingers in air before disappearing":
+		# it was let go here, where the hand had brought it, and hung there
+		# while the hand went back to their lap, then vanished. Now the hand
+		# carries it down to the pocket at their hip, still in the palm, and
+		# it's gone as the hand gets there, into the pocket.)
+		var pocket := me.bone_pos(("Right" if my_side == "right" else "Left") + "UpLeg")
+		pocket = pocket.lerp(keep, 0.22) + Vector3(0, 0.06, 0)
+		var put := w.create_tween()
+		put.tween_property(take, "global_position", pocket, BUTTON_POCKET).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		me.palm(my_side, Vector3.ZERO, BUTTON_POCKET)
+		await put.finished
+		if is_instance_valid(b):
+			b.visible = false
 		me.detach(b)
 		if me.seat >= 0.0 and AshfordP1.lap_rest:
 			# back to rest on their thigh (sat on the wall: hanging, it went

@@ -1024,6 +1024,11 @@ func _options() -> Control:
 			Game.settings["graphics"] = "smooth" if on else "full"
 			Gfx.setup(get_tree())
 			toast("Fully applies the next time a place loads")))
+	else:
+		# (11 November) the frame-rate guard on a Mac or PC (Gfx.Guard)
+		v.add_child(_check("Keep the frame rate smooth (draws the 3D a little smaller only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
+			Game.settings["smooth_auto"] = on
+			Gfx.setup(get_tree())))
 	v.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
 		Game.settings["show_fps"] = on
 		Gfx.FpsMeter.show_on(get_tree(), on)))

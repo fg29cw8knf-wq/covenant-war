@@ -29,18 +29,23 @@ page turning back, and Again / Change deck first.
 
 ## The Opening Movie
 
-Gary's finished 4K film (3:14.6), played whole on New Game and from Watch the
-Opening: on the iPhone and Mac through the device's own video player, on the
-phone link through the browser's own player (streamed, 4K where the connection
-allows). Nothing of the game's plays over it. It cuts to black, then the attic.
+Gary's finished 4K film (3:14.6). **(changed, 12 November, Gary: "The opening
+movie moves to before the title screen on first launch, skippable. New Game then
+goes straight to the snow.")** It plays once, before the title screen, the first
+time the game is opened on a device, and can be skipped (a tap shows Skip); after
+that it's the title screen's Watch the Opening. New Game doesn't play it: New Game
+opens on the snow (P0). On the iPhone and Mac it plays through the device's own
+video player, on the phone link through the browser's own player (streamed, 4K
+where the connection allows). Nothing of the game's plays over it.
 
 ---
 
 ## Prologue P0 · The Night of the White Sky (new, 3 November 2026)
 
 _(A memory, twenty years before the attic, in place of the five seconds of stars
-that were the dream. About two and a half minutes. Once it has been seen, a Skip
-button skips all of it; the filmed duel can always be skipped.)_
+that were the dream. About two and a half minutes; the first card is played about
+two minutes in. The first time, none of it can be skipped; once it has been seen
+a Skip button skips all of it (changed, 12 November).)_
 
 _(Black.)_ **[CAPTION]** The Shardlands / Twenty years ago.
 
@@ -85,20 +90,51 @@ a hood with nothing in it. No face. No voice.)_
 
 _(The hunter lifts a hand. Cards rise out of the snow round it, white.)_
 
-### Bram's duel (filmed, new)
+### Bram's duel (played; changed, 12 November)
 
-_(Played by the duel itself, filmed, with nothing on the screen but the duel:
-no hand, no Life, no buttons. (changed, 4 November, Gary: Bram has served a god
-for many years and is a powerful, distinguished duellist, and it shows.) Bram
-plays one-handed, the child in his coat, and nothing in his hands is low: the
-film cuts in with the duel already joined, Cragmaul and the Ironclad Behemoth
-Ascended and standing, Last Stand set, the Quarry Golem and Gilded Sentinels,
-Relics and Rites to hand, every card Crystal tier or above. Which god he served
-stays hidden. The hunter's pack is already on the field too: hounds and foxes of
-white smoke, Ascended, that bite harder for every one beside them, and it Dooms
-his Cragmaul with its first card. Bram breaks two of them; he loses two. Then he
-calls down Grondmaw, the Mountain's Heart, and as its blow lands the screen burns
+_(Gary, 12 November: "Bram's duel becomes played, not watched ... three gated
+moves as Bram (call a Totem, attack, play the Last Page), with no costs or
+numbers, and it can't be lost." The 68 seconds of duel that were watched here are
+gone from the opening.)_
+
+_(Out of the white of the hunter's cards: the Circle in the snow, the duel already
+joined and already going badly. Bram plays one-handed, the child in his coat. His
+cards are his god's, and nothing in his hands is low; which god he served stays
+hidden. His Scrivener and his Loomwarden stand, both hurt. Across the Circle the
+hunter's pack: a Blazehound, the Infernal Warg and a Veilfox, of white smoke and
+Sigil light. Nothing is on the screen but the duel: no Life, no names, no numbers.)_
+
+_(The hunter strikes first. The Warg's charge breaks the Scrivener.)_
+
+[GAME] The player is Bram. His hand comes up along the bottom of the picture as
+paintings alone; one card is lifted and glowing.
+**(Tap the glowing card to call a Totem.)** / **(Click the glowing card, or press
+E, to call a Totem.)** / **(Press A to call a Totem.)**
+
+_(The Unspent Hour, a winged hourglass of glass and starlit sand, rises in the gap
+where the Scrivener stood.)_
+
+[GAME] A ring of light closes on the Blazehound across from it.
+**(Tap the hound to strike it.)** / **(Click the hound, or press E, to strike
+it.)** / **(Press A to strike the hound.)**
+
+_(The Unspent Hour turns its glass on the hound, and the hound bursts into smoke.
+The pack answers: the Veilfox's mirage, then the Warg's charge, and the Loomwarden
+comes down. Bram staggers, his arm going round the child.)_
+
+[GAME] His hand again; the card he has just drawn is glowing.
+**(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
+E: the Last Page.)** / **(Press A to play the Last Page.)**
+
+_(He calls down Orlanthe, the Last Page, and as its blow lands the screen burns
 white. Nobody sees who won.)_
+
+[GAME] Each of the three waits for the player; nothing else moves the duel on, and
+nothing the player can do loses it. Every move of the duel is written out and
+played by the real rules (the game's `WhiteSkyDuel.PLAY_TURNS`). Each move's
+payoff is filmed by the game; Gary's own shot of each plays over it once he has
+made it (`white_sky_move_1`, `_2`, `_3`: docs/script/films_plan.md). His whole
+film of the duel plays later, on the Thornwood road (P5).
 
 _(Black.)_
 
@@ -146,9 +182,15 @@ and kingdom is pledged to a patron, a person who owes nothing is a rarity... and
 a threat to Aurex Morne's bank."
 
 **Q2:** "How long have I lived under Bram's roof?"
-**[INNER VOICE]:** "Twenty years. Ever since an old man walked out of a crater in
-the Shardlands carrying a baby tucked inside his heavy coat. He bought this inn
+**[INNER VOICE] (changed, 12 November, Gary: "The mirror's crater answer should
+add something new, since the player has just lived it"):** "Twenty years. Bram
+tells it in one breath: he found you in the snow, out in the Shardlands, and
+carried you home inside his coat. Ask what he was doing out there, or what else
+was there that night, and he finds a barrel that needs moving. He bought this inn
 with unexplained gold, gave you a bed, and taught you to keep your head down."
+_(v6 had: "Twenty years. Ever since an old man walked out of a crater in the
+Shardlands carrying a baby tucked inside his heavy coat." The last sentence is
+v6's, unchanged.)_
 
 **Option 3:** Step away from the glass. _(Progresses, once the name is written.)_
 
@@ -1076,6 +1118,11 @@ for one day. Get some sleep. At first light, we move."
 _(The protagonist settles beneath a folded wool blanket. Bram stays awake by the
 door, watching the darkness between the Ward marks. Outside, the Thornwood is silent.)_
 
+_(new, 12 November: what he is watching for. Gary's whole film of the duel in the
+snow, `white_sky_duel`, plays here once it is made: the player has had Corin's
+duel and Bram's lesson by now, and can read it. Until the film exists the night
+goes straight on to the morning.)_
+
 _(The next morning. No fire has been lit and the shelter is left as they found it.
 Bram unhooks the door and leads the protagonist back through the trees toward
 Solhaven.)_
@@ -1297,3 +1344,16 @@ While building v7 the game needed a few short lines the script doesn't have. The
   the opening (so the opening doesn't say where Bram's gold came from).
 - **Shards (new, all of Gary's five):** see the README's Codex and Shards
   section; nothing in the script changes.
+
+## Changes, 12 November 2026 (Gary's notes on the opening)
+
+- **The opening movie** plays once before the title screen, the first time the game
+  is opened, and can be skipped. New Game goes straight to the snow.
+- **Bram's duel is played:** three gated moves (call the Unspent Hour, strike the
+  Blazehound, play the Last Page), no costs, names or numbers, and it can't be
+  lost. The watched duel is gone from the opening. Gary's shots are the payoff
+  after each move once made; his whole film plays on the Thornwood road, after
+  Bram's lesson.
+- **Skipping:** the snow can be skipped once it has been seen.
+- **The mirror, Q2:** the answer no longer tells the crater again; it says what
+  the player was told, and what Bram won't say.

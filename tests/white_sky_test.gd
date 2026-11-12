@@ -2,9 +2,11 @@ extends Node
 ## Plays the Night of the White Sky (WhiteSky) on its own, as a player would
 ## (walking on with the up key, tapping to pick up the child, tapping each
 ## line on after a moment) and takes a still every few seconds and at each beat, then checks
-## it ran to the end: the duel was filmed, Bram's Summon (WhiteSkyDuel.SUMMON,
-## Orlanthe since 5 November; Grondmaw before) was called and the memory
-## finished. Run (stills in <dir>):
+## it ran to the end: the duel was played (12 November: the player's three
+## moves each waited for, a tap off the glowing card or the ringed hound
+## doing nothing, then made), Bram's Summon (WhiteSkyDuel.SUMMON, Orlanthe)
+## was called and the memory finished; and when the first card was played.
+## Run (stills in <dir>):
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 \
 ##       --rendering-method gl_compatibility --fixed-fps 10 res://tests/white_sky_test.tscn -- <dir> [every s] [skip]
@@ -31,6 +33,21 @@ var _hold_hint := 0.0
 var _duel_only := false
 var _max := 0.0
 var _skip_at := 8.0
+## (11 November) when the duel was built and warmed, against when the walk
+## began and the pick-up prompt came up: it's built under the opening's black
+## now ("late" builds it at the prompt, as it was until then).
+var _late := false
+var _built_t := -1.0
+var _warm_t := -1.0
+var _roam_t := -1.0
+var _prompt_t := -1.0
+var _stood_t := -1.0
+## (12 November) the player's three moves: when each was asked for and made,
+## and that a tap somewhere else didn't make it
+var _asked: Array = []        # [move, asked at, made at]
+var _ask_hold := 0.0
+var _missed := false          # the tap off the mark has been tried for this move
+var _miss_failed: Array = []
 
 
 func _ready() -> void:
@@ -52,6 +69,8 @@ func _ready() -> void:
 	get_tree().root.theme = UITheme.make()
 	Game.settings["seen_white_sky"] = false
 	m = WhiteSky.new()
+	_late = args.has("late")
+	m.prep_early = not _late
 	add_child(m)
 	m.finished.connect(func() -> void: _phase = "done")
 	_run()
@@ -69,6 +88,26 @@ func _run() -> void:
 		await m.play()
 	await _still("end")
 	var ok := _phase == "done" and (_skip or (_filmed and _called))
+	if not _skip:
+		var moves: Array = _asked.map(func(a): return a[0])
+		print("white_sky_test: the player's moves: %s" % ", ".join(_asked.map(func(a): return "%s asked at %.1f s, made at %.1f s" % [a[0], a[1], a[2]])))
+		if moves != WhiteSkyDuel.PLAY_GATES:
+			print("white_sky_test: FAIL: the moves waited for were %s, not %s" % [moves, WhiteSkyDuel.PLAY_GATES])
+			ok = false
+		if not _miss_failed.is_empty():
+			print("white_sky_test: FAIL: a tap away from it made the move: %s" % [_miss_failed])
+			ok = false
+		if not _duel_only and not _asked.is_empty():
+			print("white_sky_test: the first card was played %.0f s in (%.1f min)" % [float(_asked[0][2]), float(_asked[0][2]) / 60.0])
+	if not _duel_only and not _skip:
+		print("white_sky_test: the duel built at %.1f s and warmed by %.1f s; the walk began at %.1f s, the pick-up prompt at %.1f s, the child in his arms by %.1f s (%s)" % [
+			_built_t, _warm_t, _roam_t, _prompt_t, _stood_t, "built at the prompt, the before" if _late else "built under the opening's black"])
+		if not _late and (_built_t < 0.0 or _warm_t < 0.0 or _warm_t > _roam_t):
+			print("white_sky_test: FAIL: the duel wasn't built and warmed before the walk began")
+			ok = false
+		if not _late and _stood_t - _prompt_t > 6.0:
+			print("white_sky_test: FAIL: the pick-up took %.1f s from the prompt" % (_stood_t - _prompt_t))
+			ok = false
 	print("white_sky_test: %s (filmed %s, summon called %s, %d stills, %.1f s of game time)" % [
 		"PASS" if ok else "FAIL", str(_filmed), str(_called), _shots, _t])
 	print("real time %.0f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
@@ -85,6 +124,17 @@ func _process(delta: float) -> void:
 		print("white_sky_test: stopped at %.1f s (max)" % _t)
 		get_tree().quit(0)
 		return
+	if _built_t < 0.0 and is_instance_valid(m._prep):
+		_built_t = _t
+	if _warm_t < 0.0 and m._prep_done:
+		_warm_t = _t
+	if _roam_t < 0.0 and m._roam:
+		_roam_t = _t
+	if _prompt_t < 0.0 and m._hint != null and m._hint.modulate.a > 0.9 and m._hint.text.contains("pick up"):
+		_prompt_t = _t
+	# (in his arms: the bundle his, lifted off the snow to his chest)
+	if _stood_t < 0.0 and _prompt_t >= 0.0 and m._baby != null and m._bram != null and m._baby.get_parent() != m._set and m._baby.global_position.y - m._bram.global_position.y > 0.9:
+		_stood_t = _t
 	# walk on, the way the camera looks (the pad's up, as a key), whenever the
 	# walk is his (4 November: he walks about freely, no longer held forward)
 	if m._roam:
@@ -106,6 +156,29 @@ func _process(delta: float) -> void:
 		if _hold_hint > 1.0:
 			m._tapped = true
 			_hold_hint = 0.0
+	# the player's three moves: a tap off the mark first (nothing happens),
+	# then the move, a second after it's asked for
+	var ask := m.asking()
+	if ask != "":
+		if _asked.is_empty() or _asked[-1][0] != ask:
+			_asked.append([ask, _t, -1.0])
+			_ask_hold = 0.0
+			_missed = false
+			_still_later("ask_" + ask, 1.4)
+		if m._hint.modulate.a > 0.9:
+			_ask_hold += delta
+		if _ask_hold > 0.6 and not _missed:
+			_missed = true
+			m._tap_at = Vector2(6, 6)
+			m._tapped = true
+		if _ask_hold > 2.0:
+			_asked[-1][2] = _t
+			_ask_hold = 0.0
+			m.play_move()
+	elif not _asked.is_empty() and float(_asked[-1][2]) < 0.0:
+		# (no longer asking, and the test didn't make the move: the stray tap did)
+		_miss_failed.append(_asked[-1][0])
+		_asked[-1][2] = _t
 	if is_instance_valid(m._screen) and m._screen.game != null and not _filmed:
 		_filmed = true
 		m._screen.game.logged.connect(func(t: String, who: int) -> void:

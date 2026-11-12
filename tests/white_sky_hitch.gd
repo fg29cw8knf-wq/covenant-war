@@ -97,6 +97,9 @@ func _run() -> void:
 
 
 func _process(delta: float) -> void:
+	# (12 November: Bram's duel is played; each of his three moves is made as it's asked for)
+	if m != null and is_instance_valid(m) and m.asking() != "" and m._hint.modulate.a > 0.9:
+		m.play_move()
 	_t += delta
 	var now := Time.get_ticks_usec()
 	var ms := (now - _last_us) / 1000.0
