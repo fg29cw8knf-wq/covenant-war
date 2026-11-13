@@ -3519,6 +3519,10 @@ static func _sleeve_let_go(w: World, who: String, att: Node3D) -> void:
 		att.queue_free()
 
 
+## How far down the white light is (0 to 1 of its fall) when Tilly turns her
+## face into Corin's arm: about the last two and a half seconds of it.
+const TILLY_HIDES := 0.74
+
 ## The white light: slow, silent, it passes Bram, passes Corin and stops at the
 ## player. A blank card in their hand, a white mark on its back, and every
 ## other light in the sky goes out.
@@ -3574,6 +3578,7 @@ static func _the_white_light(w: World) -> void:
 	var sleeve := await _sleeve_hold(w, "tilly", "corin")
 	Cine.shot(w, p + Vector3(3.5, 1.4, 6.0), p + Vector3(-2.0, 7.0, -4.0), 46.0)
 	var track := [true]   # the camera watches the light until the next shot takes over
+	var hid := [false]
 	var tw := w.create_tween()
 	tw.tween_method(func(u: float) -> void:
 		var e := u * u * (3.0 - 2.0 * u) * 0.35 + u * 0.65
@@ -3581,8 +3586,19 @@ static func _the_white_light(w: World) -> void:
 		wl.global_position = at
 		for who in watchers:
 			var f = Cine.fig(w, who)
-			if f != null:
-				f.look_toward(at, w.cam)
+			if f == null:
+				continue
+			if who == "tilly" and u >= TILLY_HIDES and sleeve != null and is_instance_valid(sleeve):
+				# (12 November, Gary's yes: as it comes down to you she turns
+				# her face into Corin's arm, the one she's holding, her head
+				# down against it: his elbow, the sleeve's bone's root)
+				var elbow: Vector3 = (sleeve as Node3D).global_position
+				f.look_toward(elbow, w.cam)
+				if not hid[0] and f is Figure3D:
+					hid[0] = true
+					(f as Figure3D).eyes_on(elbow + Vector3(0, -0.25, 0))
+				continue
+			f.look_toward(at, w.cam)
 		if track[0]:
 			w.cam.look_at(at, Vector3.UP), 0.0, 1.0, 9.5)
 	await Cine.wait(w, 3.0)
@@ -3599,6 +3615,11 @@ static func _the_white_light(w: World) -> void:
 	_sfx(w, "gift")
 	await w.flash(Color(1, 1, 1), 0.08, 1.6)
 	_sleeve_let_go(w, "tilly", sleeve)   # (it's over: she lets go)
+	# (and looks up from his arm, at you)
+	var tf = Cine.fig(w, "tilly")
+	if tf is Figure3D:
+		(tf as Figure3D).eyes_on(null)
+		(tf as Figure3D).look_toward(p, w.cam)
 	var holder := Node3D.new()
 	var card := InnRooms.blank_card(v)
 	card.rotation = Vector3(-PI * 0.35, 0, 0)

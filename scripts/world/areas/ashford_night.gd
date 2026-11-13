@@ -201,7 +201,15 @@ static func awakening(w: World) -> void:
 		await AshfordP1.throw_blanket(w, pf as Figure3D, a, bhand, 0.7)
 		(pf as Figure3D).let_go(0.4)
 		(pf as Figure3D).sit_long(a.lie_top, 1.2)
+		# (12 November, Gary's yes to fixing the sitting in the attic: the
+		# clip's arms hung straight down at their sides, sat up in bed and on
+		# its edge, and the hands went 4 to 17 cm into the mattress; now the
+		# palms rest on it beside the hips, and the mattress is a solid for
+		# them as well)
+		(pf as Figure3D).hands_off(a.get("hand_solids", []))
 		bhand.queue_free()
+		await Cine.wait(w, 0.5)
+		_hands_on_bed(w, pf as Figure3D, fy + HANDS_IN_BED, -0.08, true)
 	await Cine.wait(w, 1.0)
 	var mid := (lie + stool) * 0.5
 	Cine.drift(w, mid + side * 2.0 + Vector3(0, 1.2, 0), mid + side * 1.75 + Vector3(0.0, 1.15, 0) - into * 0.1, mid + Vector3(0, 0.85, 0), mid + Vector3(0, 0.88, 0), 7.0, 40.0)
@@ -225,10 +233,12 @@ static func awakening(w: World) -> void:
 	# the player swings their legs out and sits on the bed's edge
 	if pf is Figure3D:
 		var fig := pf as Figure3D
+		_hands_up(w, fig)
 		await fig.shift_seat(a.edge_at + WAKE_EDGE, Vector3.BACK, 0.9, 0.05)
 		fig.sit(a.edge_top, 0.6)
 		await Cine.wait(w, 0.4)
 		fig.look_toward(bram_win, w.cam)
+		_hands_on_bed(w, fig, fy + HANDS_ON_EDGE, HANDS_BACK)
 	await Cine.say(w, "bram", "Everything I've done has been to protect you. To protect what you are... and what you're going to become.")
 	# how the player takes it (v7, Gary's note: the protagonist's own feeling):
 	# close on them, sat on the bed's edge, from the hatch side
@@ -363,6 +373,7 @@ static func awakening(w: World) -> void:
 	if bf is Figure3D:
 		_bram_hand_back(bf as Figure3D)
 	if pf is Figure3D:
+		_hands_up(w, pf as Figure3D)
 		(pf as Figure3D).pose("play_card", 0.4, 0.6)
 	var neck: Vector3 = (pf as Figure3D).bone_pos("Neck") if pf is Figure3D else w.player.global_position + Vector3(0, 1.0, 0)
 	Cine.drift(w, neck + Vector3(0.15, 0.05, 0.75), neck + Vector3(0.1, 0.0, 0.6), neck + Vector3(0, -0.12, 0), neck + Vector3(0, -0.15, 0), 3.0, 32.0)
@@ -370,6 +381,7 @@ static func awakening(w: World) -> void:
 	await Cine.wait(w, 2.0)
 	if pf is Figure3D:
 		(pf as Figure3D).release(0.5)
+		_hands_on_bed(w, pf as Figure3D, fy + HANDS_ON_EDGE, HANDS_BACK)
 	# (from in front of the two of them, a little to his side: from along
 	# the bed's edge he hid the player and showed his painted eyes side on)
 	Cine.drift(w, two + Vector3(0.55, 1.12, 2.05), two + Vector3(0.35, 1.08, 1.85), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.93, 0), 6.0, 40.0)
@@ -387,6 +399,8 @@ static func awakening(w: World) -> void:
 	Cine.look(w, "bram", win)
 	Cine.look(w, "player", win)
 	await AshfordP1.stand_up(w, "bram", 0.45)
+	if pf is Figure3D:
+		_hands_up(w, pf as Figure3D)
 	await AshfordP1.stand_up(w, "player", 0.45)
 	Cine.drift(w, root.to_global(Vector3(0.6, 1.7, 1.3)), root.to_global(Vector3(0.2, 1.65, 1.0)), (bram_win + me_win) * 0.5 + Vector3(0, 1.4, 0), win, 4.0, 46.0)
 	Cine.path(w, "bram", [root.to_global(Vector3(-1.5, 0, -0.2)), bram_win], 1.3)
@@ -449,6 +463,7 @@ static func awakening(w: World) -> void:
 		(bf as Figure3D).stand(0.0)
 	if pf is Figure3D:
 		(pf as Figure3D).stand(0.0)
+		(pf as Figure3D).hands_off([])
 	if is_instance_valid(st):
 		st.global_position = Vector3(0, -200, 0)
 	InnRooms.outside(v)
@@ -2029,6 +2044,62 @@ static func look_back(w: World) -> void:
 	if is_instance_valid(hill):
 		hill.queue_free()
 	_release_village(w)
+
+
+## Their palms resting on the bed beside their hips, sat on it (12
+## November: the clip's arms hung down into the mattress): a mark each side,
+## HANDS_APART out from the hips and a little ahead, or `back` behind them
+## (sat on the edge, the hands go back onto it), at the mattress's height
+## there (`y`, world); each hand reaches it,
+## and is held with its palm's middle a palm's thickness over it
+## (Figure3D.press), its turn the arm's own. _hands_up takes them back.
+const HANDS_IN_BED := 0.485   # the mattress beside the hips, in its dip (m off the floor)
+const HANDS_ON_EDGE := 0.5    # by its edge
+const HANDS_APART := 0.24
+const HANDS_BACK := 0.0
+
+static func _hands_on_bed(w: World, fig: Figure3D, y: float, back := -0.08, flat := false) -> void:
+	_hands_up(w, fig, 0.0)
+	var fwd := fig.facing()
+	var rt := fwd.cross(Vector3.UP).normalized()
+	var marks: Array = []
+	for k in [-1.0, 1.0]:
+		var m := Node3D.new()
+		m.set_meta("p1_prop", true)
+		w.add_child(m)
+		m.global_position = fig.global_position + rt * k * HANDS_APART * fig.stature() / 1.8 - fwd * back
+		m.global_position.y = y + 0.035
+		marks.append(m)
+	fig.reach(marks[0], marks[1], 0.6)
+	for side in ["left", "right"]:
+		# sat up in bed (`flat`), the hand turned palm down, the fingers
+		# forward and a little out (left to the arm's own turn the knuckles
+		# went 3 cm into the mattress); on the edge, the arm hanging, its own
+		# turn (turned palm down there the wrists twisted 140 to 179 degrees)
+		if flat:
+			var out := rt * (-1.0 if side == "left" else 1.0)
+			fig.palm(side, Vector3.DOWN, 0.6, 0.0, false, (fwd + out * 0.45).normalized())
+		fig.press(side, y + 0.015)
+	fig.set_meta("bed_hands", marks)
+
+
+static func _hands_up(w: World, fig: Figure3D, secs := 0.4) -> void:
+	if not fig.has_meta("bed_hands"):
+		return
+	var marks: Array = fig.get_meta("bed_hands")
+	fig.remove_meta("bed_hands")
+	fig.press("left", NAN)
+	fig.press("right", NAN)
+	if secs > 0.0:
+		fig.palm("left", Vector3.ZERO, secs)
+		fig.palm("right", Vector3.ZERO, secs)
+		fig.let_go(secs)
+	for m in marks:
+		if is_instance_valid(m):
+			if secs > 0.0:
+				w.get_tree().create_timer(secs + 0.1, false).timeout.connect((m as Node).queue_free)
+			else:
+				(m as Node).queue_free()
 
 
 ## The tunnel's mouth under the thorn roots, and a few thorn trees about it.

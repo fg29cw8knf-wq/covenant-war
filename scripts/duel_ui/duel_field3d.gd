@@ -633,7 +633,7 @@ func sync(v) -> void:
 			s.lamp.light_energy = 0.0
 			s.lamp.visible = false
 		_clear_marks(s)
-		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, 0.0)
+		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, get_process_delta_time())
 		_ring_state(s, v.highlight, Color(0.7, 0.6, 1.0), 0.35 * v.fade)
 		return
 	if id != s.card_id:
@@ -671,7 +671,7 @@ func sync(v) -> void:
 			s.lamp.light_color = DuelFX.light(t.element())
 			_load_model(s, id)
 	if t == null:
-		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, 0.0)
+		DuelCracks.sync(self, s, null, Color.WHITE, 0.0, get_process_delta_time())
 		_ring_state(s, v.highlight, Color(0.55, 0.65, 1.0), 0.35 * v.fade)
 		return
 	var el: String = t.element()
@@ -3634,8 +3634,9 @@ func crystal_death(side: int, slot: int, el: String, spd: float = 1.0, cue := Ca
 	await tw2.finished
 	if not is_instance_valid(self):
 		return
-	# 3. it bursts into diamonds
+	# 3. it bursts into diamonds, and the stone under it splits (DuelCracks)
 	s.shattered = true
+	DuelCracks.split(s, DuelFX.light(el), spd)
 	var centre := foot + Vector3(0, hover + s.creature_h * 0.48, 0)
 	var half := Vector3(s.creature_h * 0.3, s.creature_h * 0.36, s.creature_h * 0.26)
 	DuelCrystal.shatter(self, centre, half, tint, gem, spd)

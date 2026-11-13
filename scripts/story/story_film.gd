@@ -322,6 +322,72 @@ var _keep_music := false   # the part playing now goes under the game's music (t
 var _choice_music := ""    # the music a choice started, playing on until something stops it
 ## The part the film stopped before, not made yet ("": it played to its end).
 var stopped_at := ""
+## (12 November, Gary's yes: hold to skip, as the opening.) Once a film has
+## been seen (Game.settings seen_films), a "Hold to skip" button comes up over
+## it (HoldSkip; held a second, or E or A held, or the device's player's own
+## label held); skipped, the rest of the film goes, but every choice still in
+## it is asked, over black, so the story keeps its picks. The first time
+## through it can't be skipped, as the Night of the White Sky.
+var _skipping := false
+var _skip_btn: Button = null
+var _hs: HoldSkip = null
+
+
+static func seen(p_film: String) -> bool:
+	return (Game.settings.get("seen_films", []) as Array).has(p_film)
+
+
+func _mark_seen() -> void:
+	var list: Array = (Game.settings.get("seen_films", []) as Array).duplicate()
+	if not list.has(film):
+		list.append(film)
+		Game.settings["seen_films"] = list
+		Game.save_settings()
+
+
+## The skip button, over the subtitles (their catch takes taps while a line
+## is up), top right inside the safe area.
+func _make_skip() -> void:
+	var lay := CanvasLayer.new()
+	lay.layer = 15
+	add_child(lay)
+	_skip_btn = UITheme.button(HoldSkip.TEXT, false, 260)
+	_skip_btn.anchor_left = 1.0
+	_skip_btn.anchor_right = 1.0
+	_skip_btn.focus_mode = Control.FOCUS_NONE
+	SafeArea.watch(_skip_btn, func() -> void:
+		var mg := SafeArea.insets()
+		_skip_btn.offset_left = -310 - mg.z
+		_skip_btn.offset_right = -40 - mg.z
+		_skip_btn.offset_top = 36 + mg.y
+		_skip_btn.offset_bottom = 132 + mg.y)
+	lay.add_child(_skip_btn)
+	_hs = HoldSkip.attach(_skip_btn)
+	_hs.done.connect(_skip_now)
+
+
+## Skipped: the picture and the voice go at once; the loops below step over
+## what's left of the film, stopping only for its choices.
+func _skip_now() -> void:
+	if _skipping or _done:
+		return
+	_skipping = true
+	if _skip_btn != null:
+		_skip_btn.visible = false
+	if _hs != null:
+		_hs.on = false
+	_voice.stop()
+	_native_sub("")
+	if _native != null:
+		_native.show_skip(false, "")
+		_native.pause()
+		_native.set_visible(false)
+	_video.stop()
+	_video.visible = false
+	_stage.visible = false
+	_hold.visible = false
+	if OS.is_debug_build():
+		print("story film: %s skipped" % film)
 
 
 ## Is this film there to play: the 4K film, the whole cut, or a clip or
@@ -548,6 +614,8 @@ func _ready() -> void:
 	_voice = AudioStreamPlayer.new()
 	add_child(_voice)
 	Cine.call_by(_w, "herald", "The Pale Herald")   # (the subtitles' name for it)
+	if seen(film):
+		_make_skip()
 	_run.call_deferred()
 
 
@@ -597,9 +665,12 @@ func _run() -> void:
 	ov.black(false)
 	if FILMS.get(film, {}).has("parts"):
 		await _play_parts(ov)
-		if stopped_at == "" or not _played:
+		if stopped_at == "" or not _played or _skipping:
 			ov.black(true)
 		# (stopped: its last frame stays up for the scene to take over from)
+		if _played:
+			_mark_seen()
+		_end_skip()
 		_done = true
 		finished.emit()
 		return
@@ -622,8 +693,19 @@ func _run() -> void:
 		print("story film: %s (%s)" % [film, how])
 	# it ends on black: the overlay's, under which the scene carries on
 	ov.black(true)
+	if _played:
+		_mark_seen()
+	_end_skip()
 	_done = true
 	finished.emit()
+
+
+func _end_skip() -> void:
+	if _skip_btn != null:
+		_skip_btn.visible = false
+	if _hs != null:
+		_hs.on = false
+		_hs.native = null
 
 
 func _shots_there(steps: Array) -> bool:
@@ -657,6 +739,14 @@ func _play_parts(ov: CineOverlay) -> void:
 			if not there:
 				stopped_at = file
 				break
+		if _skipping:
+			# (skipped: its choices still asked, its film not played)
+			for st in steps:
+				if st.has("choice") or st.has("name"):
+					await _between(st, ov)
+			hows.append("%s: skipped" % file)
+			first = false
+			continue
 		_voiced = bool(part.get("voiced", false))
 		_keep_music = bool(part.get("keep_music", false))
 		var how := await _play_part(file, steps, first)
@@ -753,6 +843,11 @@ func _play_native(steps: Array, file := "", first := true) -> bool:
 	_stage.visible = false
 	_video.visible = false
 	_hold.visible = false   # (under the player now)
+	if _hs != null and not _skipping:
+		# (its own Skip label while it covers the view: held, or on a player
+		# built before holding, tapped: NV_SKIP_PRESSED below)
+		_hs.native = p
+		p.show_skip(true, HoldSkip.TEXT if p.has_method("is_skip_held") else "Skip")
 	_part_music()
 	if OS.is_debug_build() or OS.has_feature("web"):
 		print("story film: %s through the %s player (%s, %.1f s)" % [file, "browser's" if p is WebVideoPlayer else "native", path, p.get_length()])
@@ -763,10 +858,16 @@ func _play_native(steps: Array, file := "", first := true) -> bool:
 		var ev: int = p.poll()
 		if ev & (OpeningMovie.NV_FINISHED | OpeningMovie.NV_FAILED):
 			ended[0] = true
+		if ev & OpeningMovie.NV_SKIP_PRESSED and _hs != null and not p.has_method("is_skip_held"):
+			_skip_now()
 		return maxf(0.0, p.get_position())
 	for st in steps:
-		if not is_inside_tree() or ended[0]:
+		if not is_inside_tree() or (ended[0] and not _skipping):
 			break
+		if _skipping:
+			if st.has("choice") or st.has("name"):
+				await _between(st, ov)
+			continue
 		if st.has("id"):
 			var length := float(st.len)
 			var start := at
@@ -780,13 +881,22 @@ func _play_native(steps: Array, file := "", first := true) -> bool:
 			_native_sub("")
 			p.set_visible(false)
 			await _between(st, ov)
-			p.set_visible(true)
-			p.play()
+			if not _skipping:
+				p.set_visible(true)
+				p.play()
 	# the rest of the film, to its end
-	while is_inside_tree() and not ended[0]:
+	while is_inside_tree() and not ended[0] and not _skipping:
 		watch.call()
 		await get_tree().process_frame
 	_native_sub("")
+	if _hs != null:
+		_hs.native = null
+		p.show_skip(false, "")
+	if _skipping:
+		_voice.stop()
+		p.stop()
+		_native = null
+		return true
 	if file != film:
 		# a part: the player stays up on its last frame, for what comes next
 		# (a choice holds it, the next part opens on it, or the scene takes over)
@@ -851,6 +961,10 @@ func _play_shots(steps: Array) -> void:
 	for st in steps:
 		if not is_inside_tree():
 			return
+		if _skipping:
+			if st.has("choice") or st.has("name"):
+				await _between(st, ov)
+			continue
 		if st.has("id"):
 			n += 1
 			await _shot(st, n)
@@ -881,7 +995,7 @@ func _shot(st: Dictionary, n: int) -> void:
 	if clip != "":
 		# a clip a little longer than its length is held on its last frame
 		# by the next shot's cut, never cut short
-		while _video.is_playing() and is_inside_tree():
+		while _video.is_playing() and is_inside_tree() and not _skipping:
 			await get_tree().process_frame
 
 
@@ -897,8 +1011,10 @@ func _lines_over(lines: Array, length: float, clock: Callable) -> void:
 		pending.append(ln)
 	pending.sort_custom(func(a, b): return float(a.at) < float(b.at))
 	var t := 0.0
-	while t < length and is_inside_tree():
+	while t < length and is_inside_tree() and not _skipping:
 		await get_tree().process_frame
+		if _skipping:
+			return
 		var c: float = clock.call()
 		t = maxf(t, c) if c >= 0.0 else t + get_process_delta_time()
 		while not pending.is_empty() and float(pending[0].at) <= t:
@@ -934,6 +1050,18 @@ func _say(ln: Dictionary) -> void:
 
 ## A choice, the name, a caption or the music, between shots.
 func _between(st: Dictionary, ov: CineOverlay) -> void:
+	if _hs != null and (st.has("choice") or st.has("name")):
+		# (the skip lets go under the buttons, and comes back after)
+		_hs.on = false
+		await _between_ask(st, ov)
+		_hs.on = not _skipping
+		return
+	if _skipping and (st.has("caption") or st.has("stinger")):
+		return
+	await _between_ask(st, ov)
+
+
+func _between_ask(st: Dictionary, ov: CineOverlay) -> void:
 	if st.has("choice"):
 		_video.paused = true
 		# the film's last frame held under the buttons (a film in parts), and
@@ -1015,6 +1143,10 @@ func _play_cut(steps: Array, file := "") -> void:
 	for st in steps:
 		if not is_inside_tree():
 			return
+		if _skipping:
+			if st.has("choice") or st.has("name"):
+				await _between(st, ov)
+			continue
 		if st.has("id"):
 			var length := float(st.len)
 			var start := at
@@ -1029,8 +1161,12 @@ func _play_cut(steps: Array, file := "") -> void:
 			await _between(st, ov)
 	# to its end (by its clock too: with no sound device the player never
 	# says it has finished, and runs on past its end on the last frame)
-	while _video.is_playing() and _video.stream_position < _video.get_stream_length() - 0.02 and is_inside_tree():
+	while _video.is_playing() and _video.stream_position < _video.get_stream_length() - 0.02 and is_inside_tree() and not _skipping:
 		await get_tree().process_frame
+	if _skipping:
+		_video.stop()
+		_video.visible = false
+		return
 	if file != film:
 		# a part: its last frame stays up, for the choice after it or the
 		# scene taking over (the player itself may go to black once it's over)

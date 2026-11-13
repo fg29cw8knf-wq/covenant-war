@@ -145,6 +145,13 @@ const ASTRIDE_SHIN := Vector3(0.14, 0.97, -0.1)
 ## end, onto the pillow, and how far the feet drop from standing square.
 const LIE_HEAD_UP := deg_to_rad(13.0)
 const LIE_FOOT_DROP := deg_to_rad(55.0)
+## Sat up in bed with the legs out (sit_long): how far up the thighs slope to
+## the knees (the shins come back down a touch more, the heels on the
+## mattress), and how far the feet loll from square to the shins. (12
+## November: the knees were 0.1 up and sank 3 cm into the mattress, which is
+## higher towards the foot than in the dip the hips sit in.)
+const LONG_KNEE := 0.24
+const LONG_FOOT_DROP := deg_to_rad(22.0)
 
 var model: Node3D
 var anim: AnimationPlayer
@@ -1241,14 +1248,22 @@ func _seated_pose() -> Dictionary:
 		var t_dir := Vector3(side_x, -drop, sqrt(maxf(0.0, 1.0 - drop * drop - side_x * side_x)))
 		var s_dir := Vector3(0.0, -cos(tilt), sin(tilt))
 		if _seat_pose == "long":
-			# legs out along the bed, the knees a touch up
-			t_dir = Vector3(side_x, 0.1, sqrt(1.0 - 0.01 - side_x * side_x))
-			s_dir = Vector3(0.0, -0.1, sqrt(0.99))
+			# legs out along the bed, the knees up a little (LONG_KNEE), the
+			# heels back down on it
+			t_dir = Vector3(side_x, LONG_KNEE, sqrt(1.0 - LONG_KNEE * LONG_KNEE - side_x * side_x))
+			s_dir = Vector3(0.0, -LONG_KNEE * 1.1, sqrt(1.0 - LONG_KNEE * LONG_KNEE * 1.21))
 		var gu := Quaternion(thigh / lt, t_dir)
 		var gk := Quaternion(shin / ls, s_dir)
 		rot[side + "UpLeg"] = gu
 		rot[side + "Leg"] = gu.inverse() * gk
 		rot[side + "Foot"] = gk.inverse()   # flat
+		if _seat_pose == "long":
+			# (12 November, Gary's yes: the foot kept square to the shin as it
+			# stands, the toes up, lolling a little, LONG_FOOT_DROP. Laid "flat"
+			# as on a bench, a foot at the end of a level shin pointed straight
+			# out along the bed, the ankle bent 84 to 85 degrees, past a body's
+			# 70: the body check, in the attic after the white light.)
+			rot[side + "Foot"] = Quaternion(Vector3.RIGHT, LONG_FOOT_DROP)
 		rot[side + "ToeBase"] = Quaternion.IDENTITY
 	return {"pos": pos, "rot": rot}
 

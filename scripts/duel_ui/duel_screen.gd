@@ -4140,8 +4140,13 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	# (12 November, Gary's yes: the number in the blow's own colour, the
 	# element's, a little lighter so it reads; it was always red, or orange
 	# for a weakness, which still says so under it in gold)
-	DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, hit_number_colour(col), 96 if amount >= 50 or weak else 80,
-		_read(1.1, "WEAK!" if weak else "") / speed, "WEAK!  ×1.5" if weak else "")
+	# (12 November, later, Gary's yes: a natural 20 on the strike's roll shows
+	# as a critical, the number bigger and gold, CRITICAL under it)
+	var under := hit_tag(crit, weak)
+	var nl := DuelFX.number(fx_layer, c + Vector2(0, -10), "-%d" % amount, CRIT_GOLD if crit else hit_number_colour(col),
+		CRIT_SIZE if crit else (96 if amount >= 50 or weak else 80), _read(1.1 if not crit else 1.4, under) / speed, under)
+	if crit:
+		_crit_mark(nl)
 	# knocked back, then settles (5 November: away from whatever struck it,
 	# and further the harder the blow)
 	var push := Vector2(0, -16) if t.owner == me else Vector2(0, 12)
@@ -4175,6 +4180,30 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 ## little towards white so even a dark one reads over the field.
 static func hit_number_colour(col: Color) -> Color:
 	return col.lerp(Color.WHITE, 0.18)
+
+
+## A critical's number: gold, bigger, and the word under it (with the
+## weakness's, when it's both).
+const CRIT_GOLD := Color(1.0, 0.84, 0.3)
+const CRIT_SIZE := 124
+
+
+static func hit_tag(crit: bool, weak: bool) -> String:
+	if crit and weak:
+		return "CRITICAL  ·  WEAK! ×1.5"
+	if crit:
+		return "CRITICAL"
+	return "WEAK!  ×1.5" if weak else ""
+
+
+## A critical's number made to stand out: a gold edge round its letters
+## and a beat bigger as it lands.
+func _crit_mark(l: Label) -> void:
+	if l == null or not is_instance_valid(l):
+		return
+	l.add_theme_color_override("font_outline_color", Color(0.45, 0.27, 0.02, 1.0))
+	l.add_theme_constant_override("outline_size", maxi(14, CRIT_SIZE / 5))
+	l.scale = Vector2(2.4, 2.4)
 
 
 ## The Health strip by a Totem that's just been hit (DuelViews.HitStrip):
@@ -4286,8 +4315,12 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	var num_at := _life_number_pos(pi)
 	if pi == rival and _letterbox != null and _letterbox.amount > 0.3:
 		num_at.y += 70.0   # (under the top bar of the finishing blow)
-	DuelFX.number(fx_layer, num_at, "-%d" % amount, Color("ff4d6a"), 88 if tag == "" else 70,
+	if crit and tag == "":
+		tag = "CRITICAL"
+	var ln := DuelFX.number(fx_layer, num_at, "-%d" % amount, CRIT_GOLD if crit else Color("ff4d6a"), (CRIT_SIZE - 16) if crit else (88 if tag == "" else 70),
 		_read(1.2, tag) / speed, tag)
+	if crit:
+		_crit_mark(ln)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(p, "flash", 0.0, 0.5 / speed)
 	tw.tween_property(p, "shake", 0.0, 0.45 / speed)

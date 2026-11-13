@@ -269,19 +269,21 @@ func _ready() -> void:
 	_root.add_child(_compass)
 	SafeArea.fit(_compass)
 	# Skip, once the memory has been seen (12 November; play() shows it)
-	_skip_btn = UITheme.button("Skip", false, 200)
+	_skip_btn = UITheme.button(HoldSkip.TEXT, false, 260)
 	_skip_btn.anchor_left = 1.0
 	_skip_btn.anchor_right = 1.0
 	# (clear of a phone's Dynamic Island, as the opening movie's is)
 	SafeArea.watch(_skip_btn, func() -> void:
 		var mg := SafeArea.insets()
-		_skip_btn.offset_left = -250 - mg.z
+		_skip_btn.offset_left = -310 - mg.z
 		_skip_btn.offset_right = -40 - mg.z
 		_skip_btn.offset_top = 36 + mg.y
 		_skip_btn.offset_bottom = 132 + mg.y)
 	_skip_btn.visible = false
 	_skip_btn.focus_mode = Control.FOCUS_NONE
-	_skip_btn.pressed.connect(skip)
+	# (12 November, Gary's yes: held a second to skip, as the opening and the
+	# story films; not E or A, which make the moves and pick up the child)
+	HoldSkip.attach(_skip_btn, false).done.connect(skip)
 	_root.add_child(_skip_btn)
 	_wind = _sound("storm_wind", WIND_DB, true)
 	_cry = _sound("baby_cry", -6.0, true)
@@ -1012,6 +1014,8 @@ func _prepare_duel() -> void:
 	var el := 0.0
 	while el < DUEL_WARM_MAX and is_instance_valid(sc) and not _screen_live:
 		await get_tree().process_frame
+		if not is_instance_valid(sc):
+			break   # (skipped while it warmed: the screen's gone)
 		el += get_process_delta_time()
 		if el >= DUEL_WARM_SECS and sc.field != null and sc.field.world != null \
 				and sc.field.world.get_node_or_null("Warm") == null and sc.field.world.get_node_or_null("WarmFX") == null:
@@ -2990,6 +2994,10 @@ const BRUSH_SECS := 0.35
 const BRUSH_OVER := 0.08
 ## (false: straight to lifting it, as before the 12 November brush)
 var brush_snow := true
+## How much quieter the crying goes as he brushes it (dB), and how much
+## slower (its pitch scale): it stops once it's lifted, as before.
+const CRY_EASE_DB := 9.0
+const CRY_EASE_PITCH := 0.93
 
 func _brush_snow(fig: Figure3D, l: Node3D, r: Node3D) -> float:
 	var cover := _baby.get_node_or_null("SnowCover") as Node3D
@@ -3026,6 +3034,13 @@ func _brush_snow(fig: Figure3D, l: Node3D, r: Node3D) -> float:
 	if _skipping:
 		mark.queue_free()
 		return 0.0
+	# (12 November, Gary's yes: the crying eases at his first touch, the
+	# sobs going quieter and slower as the snow's brushed off it, not only
+	# once it's in his arms)
+	if _cry != null and _cry.playing:
+		var ct := create_tween().set_parallel(true)
+		ct.tween_property(_cry, "volume_db", _cry.volume_db - CRY_EASE_DB, BRUSH_SECS + 0.5).set_trans(Tween.TRANS_SINE)
+		ct.tween_property(_cry, "pitch_scale", CRY_EASE_PITCH, BRUSH_SECS + 0.5).set_trans(Tween.TRANS_SINE)
 	var left := cover.get_children()
 	var el := 0.0
 	while el < BRUSH_SECS and not _skipping:

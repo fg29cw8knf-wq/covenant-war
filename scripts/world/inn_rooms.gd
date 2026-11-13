@@ -449,6 +449,10 @@ static func attic(v: AshfordVillage) -> Dictionary:
 		"lie_at": root.to_global(bed + Vector3(-0.16, 0, 0)), "edge_at": root.to_global(bed + Vector3(0.12, 0, 0.36)),
 		# (the mattress's edge; the dip a body lies in; the edge under someone sat on it)
 		"bed_top": BED_TOP, "lie_top": BED_TOP - BED_SAG, "edge_top": BED_TOP - EDGE_SINK,
+		# (12 November) the mattress, for keeping hands out of it
+		# (Figure3D.hands_off): its top at the edges' height (where
+		# the hands rest, at the sides, the dip is shallow)
+		"hand_solids": [_world_box(root, bed + Vector3(BED_FOOT * 0.5, 0.4, 0), Vector3(2.05 + BED_FOOT - 0.2, (BED_TOP - 0.4) * 2.0, 1.0 - 0.16))],
 		"blanket": bed_parts.blanket, "blanket_off": bed_parts.blanket_off,
 		"mirror_stand": root.to_global(Vector3(mx - 0.82, 0, mz)), "window": root.to_global(win_c), "hatch": root.to_global(hatch),
 		"floor_y": ATTIC_AT.y, "view_quad": null,
@@ -973,6 +977,20 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	# thrown back against the wall, in a heap, when they get up
 	var off := Transform3D(Basis.from_euler(Vector3(0.0, 0.0, 0.0)) * Basis.from_scale(Vector3(0.85, 1.3, 0.42)), at + Vector3(0.4, BED_TOP, -0.27))
 	return {"blanket": blanket, "blanket_off": off}
+
+
+## A box in a room's own frame (its middle at `c` but for y, which is its
+## base; `size` across, high and deep) as the world sees it, square to the
+## world: the corners' bounds (a room turned by quarter turns gives the box
+## itself). The height is doubled so the base can be given.
+static func _world_box(root: Node3D, c: Vector3, size: Vector3) -> AABB:
+	var h := size.y * 0.5
+	var box := AABB(root.to_global(c + Vector3(-size.x * 0.5, 0, -size.z * 0.5)), Vector3.ZERO)
+	for x in [-0.5, 0.5]:
+		for y in [0.0, 1.0]:
+			for z in [-0.5, 0.5]:
+				box = box.expand(root.to_global(c + Vector3(size.x * x, h * y, size.z * z)))
+	return box
 
 
 ## How far the mattress's top dips at (x, z) from its middle (metres), on a

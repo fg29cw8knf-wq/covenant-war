@@ -11,7 +11,8 @@ extends Node
 ## made yet, up on its last frame until the scene lets it go; that it ends on black with
 ## the player stopped and "played"; that a film that won't open or can't be
 ## read says it didn't play (the scene plays its 3D instead); and that each
-## of the seven v7 films has its lines and shots.
+## of the seven v7 films has its lines and shots. And (12 November) that a
+## film once seen can be held to skip, its choices still asked.
 ##   godot --headless --fixed-fps 30 --path . res://tests/story_film_test.tscn
 ## Ends with "STORY FILM TEST: PASS" or the problems.
 
@@ -119,8 +120,10 @@ func _ready() -> void:
 	await frames(10)
 	_films_are_whole()
 	_there_or_not()
+	Game.settings["seen_films"] = []
 	await _white_light()
 	await _choice()
+	await _skip()
 	await _wont_open()
 	await _cant_be_read()
 	OpeningMovie.native_stub = null
@@ -224,6 +227,71 @@ func _choice() -> void:
 	await StoryFilm.let_go(r, 0.3)
 	_check(stub.stopped >= 1 and stub.opacity < 0.01, "midnight: let go, it fades and the player is taken down")
 	_check(not is_instance_valid(r.get("film")) or (r.get("film") as Node).is_queued_for_deletion(), "midnight: and the film is gone")
+	Music.stop(0.0)
+
+
+## Hold to skip (12 November, Gary's yes): the first time through there's no
+## Skip; once seen there is; a tap on it does nothing, a second's hold skips
+## the rest of the film, but its choice is still asked (and kept), Bram's
+## answer isn't played, and it ends on black, the player taken down.
+func _skip() -> void:
+	_check(StoryFilm.seen("white_light") and StoryFilm.seen("midnight"), "skip: a film played through is marked seen (%s)" % [Game.settings.get("seen_films", [])])
+	Game.settings["seen_films"] = ["white_light"]   # (midnight not seen)
+	_fresh()
+	var probe := [false]
+	var watch_none := func() -> void:
+		await frames(20)
+		var sf: Array = world.find_children("*", "StoryFilm", false, false)
+		probe[0] = not sf.is_empty() and (sf[0] as StoryFilm)._skip_btn == null
+		var ov0 := Cine.overlay(world)
+		while not ov0._choices.visible:
+			await get_tree().process_frame
+		ov0._chosen.emit(0)
+	watch_none.call()
+	var r0 := await StoryFilm.play(world, "midnight")
+	_check(bool(probe[0]), "skip: not seen yet, there's no Skip")
+	await StoryFilm.let_go(r0, 0.0)
+	Music.stop(0.0)
+	_fresh()
+	var ov := Cine.overlay(world)
+	var seen := {}
+	var driver := func() -> void:
+		var f: StoryFilm = null
+		while f == null:
+			await get_tree().process_frame
+			var sf: Array = world.find_children("*", "StoryFilm", false, false)
+			f = sf[0] if not sf.is_empty() else null
+		while stub.position < 6.0:
+			await get_tree().process_frame
+		seen["button"] = f._skip_btn != null and f._skip_btn.is_visible_in_tree()
+		# a tap: down for a moment
+		f._hs._down = true
+		await get_tree().create_timer(0.25).timeout
+		f._hs._down = false
+		await frames(3)
+		seen["tap_skipped"] = f._skipping
+		# held a second
+		f._hs._down = true
+		await get_tree().create_timer(OpeningMovie.HOLD_SECS + 0.2).timeout
+		f._hs._down = false
+		seen["held_skipped"] = f._skipping
+		seen["at"] = stub.position
+		while not ov._choices.visible:
+			await get_tree().process_frame
+		seen["choice_asked"] = true
+		ov._chosen.emit(1)
+	driver.call()
+	var t0 := Time.get_ticks_msec()
+	var r := await StoryFilm.play(world, "midnight")
+	_check(bool(seen.get("button", false)), "skip: seen before, the Skip is up")
+	_check(not bool(seen.get("tap_skipped", true)), "skip: a tap doesn't skip")
+	_check(bool(seen.get("held_skipped", false)), "skip: a second's hold does")
+	_check(bool(seen.get("choice_asked", false)) and int(r.get("mid_choice", -1)) == 1, "skip: the choice is still asked, and kept (%s)" % r.get("mid_choice", -1))
+	_check(stub.opened_files == ["midnight_1"], "skip: Bram's answer isn't played after it (%s)" % [stub.opened_files])
+	_check(not stub.opened or not stub.visible, "skip: the player is down or hidden")
+	_check(Cine.overlay(world)._black.modulate.a > 0.99, "skip: it ends on black")
+	print("  skipped at %.1f s of part 1 (34.1 s long); the whole took %.1f s" % [float(seen.get("at", 0.0)), (Time.get_ticks_msec() - t0) / 1000.0])
+	await StoryFilm.let_go(r, 0.0)
 	Music.stop(0.0)
 
 

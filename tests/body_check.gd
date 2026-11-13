@@ -914,7 +914,14 @@ func _thing_name(mi) -> String:
 			break
 		parts.push_front(String(cur.name))
 		cur = cur.get_parent()
-	return "/".join(parts)
+	var out := "/".join(parts)
+	# (a mesh made in code has no name of its own: say what and how big it
+	# is, so the finding can be told from its neighbours)
+	if String(n.name).begins_with("@") and n is MeshInstance3D and (n as MeshInstance3D).mesh != null:
+		var m := (n as MeshInstance3D).mesh
+		var bb := (n as MeshInstance3D).global_transform * m.get_aabb()
+		out += " (%s %.2f x %.2f x %.2f m at %s)" % [m.get_class(), bb.size.x, bb.size.y, bb.size.z, str(bb.get_center().snapped(Vector3.ONE * 0.01))]
+	return out
 
 
 # ------------------------------------------------------------------ people ---

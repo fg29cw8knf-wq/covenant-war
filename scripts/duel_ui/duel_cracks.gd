@@ -25,6 +25,13 @@ const LIFT := 0.018
 const SPREAD := 0.75
 ## How fast they close up again when it's healed.
 const CLOSE := 1.5
+## A knockout: how far out the cracks run at once as it shatters (split),
+## how many chips fly, and how long the broken stone stays after the slot is
+## cleared (s), fading over the last AFTER_KO_FADE of it.
+const SPLIT_REACH := 1.0
+const SPLIT_CHIPS := 26
+const AFTER_KO := 1.6
+const AFTER_KO_FADE := 0.8
 ## Their glow after a blow (fades over this long, s).
 const GLOW_SECS := 1.1
 ## The picture: its size in pixels, its cracks, its seed.
@@ -78,6 +85,20 @@ void fragment() {
 static func sync(_field: Node, s: Node3D, t, col: Color, fade: float, dt: float) -> void:
 	var m := (s.get_meta("base_crack") if s.has_meta("base_crack") else null) as MeshInstance3D
 	var who: int = t.get_instance_id() if t != null else 0
+	if t == null and m != null and m.visible and float(s.get_meta("base_crack_k", 0.0)) > 0.005:
+		# (its Totem gone, knocked out and shattered: the broken stone stays a
+		# moment and fades, AFTER_KO, rather than mending as the slot clears)
+		var left := float(s.get_meta("base_crack_left", AFTER_KO)) - dt
+		s.set_meta("base_crack_left", left)
+		var mat0 := m.material_override as ShaderMaterial
+		mat0.set_shader_parameter("fade", clampf(left / AFTER_KO_FADE, 0.0, 1.0))
+		var g0 := maxf(0.0, float(s.get_meta("base_crack_glow", 0.0)) - dt / GLOW_SECS)
+		s.set_meta("base_crack_glow", g0)
+		mat0.set_shader_parameter("glow", g0)
+		if left > 0.0:
+			return
+	if s.has_meta("base_crack_left"):
+		s.remove_meta("base_crack_left")
 	if int(s.get_meta("base_crack_of", 0)) != who:
 		# (a new Totem: whole stone)
 		s.set_meta("base_crack_of", who)
@@ -114,6 +135,61 @@ static func sync(_field: Node, s: Node3D, t, col: Color, fade: float, dt: float)
 	mat.set_shader_parameter("glow", glow)
 	mat.set_shader_parameter("col", col)
 	mat.set_shader_parameter("fade", clampf(fade, 0.0, 1.0))
+
+
+## A knocked-out Totem shattering (DuelField3D.crystal_death, as it bursts:
+## 12 November, later, Gary's yes): the stone under it splits through, its
+## cracks run out to the edge at once and blaze in its colour (`col`), and
+## chips of it fly up and fall back about the slot (SPLIT_CHIPS).
+static func split(s: Node3D, col: Color, spd := 1.0) -> void:
+	s.set_meta("base_crack_k", maxf(float(s.get_meta("base_crack_k", 0.0)), SPLIT_REACH))
+	s.set_meta("base_crack_target", 1.0)
+	s.set_meta("base_crack_glow", 1.0)
+	if not s.has_meta("base_crack"):
+		_make(s)
+	var mm := s.get_meta("base_crack") as MeshInstance3D
+	mm.visible = true
+	var mat := mm.material_override as ShaderMaterial
+	mat.set_shader_parameter("amount", 0.12 + SPLIT_REACH * 0.92)
+	mat.set_shader_parameter("glow", 1.0)
+	mat.set_shader_parameter("col", col)
+	var p := CPUParticles3D.new()
+	p.name = "StoneChips"
+	p.one_shot = true
+	p.explosiveness = 0.92
+	p.amount = SPLIT_CHIPS
+	p.lifetime = 1.3 / maxf(0.1, spd)
+	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	p.emission_ring_axis = Vector3.UP
+	p.emission_ring_radius = 0.95
+	p.emission_ring_inner_radius = 0.35
+	p.emission_ring_height = 0.02
+	p.direction = Vector3.UP
+	p.spread = 50.0
+	p.initial_velocity_min = 2.0
+	p.initial_velocity_max = 4.2
+	p.gravity = Vector3(0, -11.0, 0)
+	p.angular_velocity_min = -360.0
+	p.angular_velocity_max = 360.0
+	p.particle_flag_rotate_y = true
+	p.scale_amount_min = 0.55
+	p.scale_amount_max = 1.5
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(0.75, 1))
+	shrink.add_point(Vector2(1, 0))
+	p.scale_amount_curve = shrink
+	var chip := BoxMesh.new()
+	chip.size = Vector3(0.08, 0.045, 0.065)
+	var cm := StandardMaterial3D.new()
+	cm.albedo_color = Color(0.46, 0.43, 0.39)
+	cm.roughness = 0.95
+	chip.material = cm
+	p.mesh = chip
+	s.add_child(p)
+	p.position = Vector3(0, 0.05, 0)
+	p.emitting = true
+	s.get_tree().create_timer(p.lifetime + 0.6, false).timeout.connect(p.queue_free)
 
 
 ## Where a slot's cracks reach now (0 whole, 1 broken through), for the tests.

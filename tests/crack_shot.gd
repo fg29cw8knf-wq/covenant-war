@@ -2,9 +2,12 @@ extends Node
 ## The stone cracking under a hurt Totem (DuelCracks, 12 November). On the
 ## 3D field with the camera held still: the rival's three Totems at full, a
 ## third down and nearly gone, a still once the cracks have spread; then a
-## blow on the whole one (the new cracks running lit, a still as they go),
+## critical blow on the whole one (the gold number, CRITICAL under it; the
+## new cracks running lit, a still as they go),
 ## and the hurt one healed (they close). Checks each slot's reach against its
-## Health, that they spread over time rather than at once, and close.
+## Health, that they spread over time rather than at once, and close; and a
+## knockout: the stone splitting and its chips flying as it shatters, the
+## cracks staying a moment after the slot is cleared and fading.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
 ##       res://tests/crack_shot.tscn -- <out_dir>
 
@@ -74,14 +77,58 @@ func _ready() -> void:
 	# a blow on the whole one: the new cracks run lit
 	var mine: DuelTotem = made[0][1]
 	var hit: DuelTotem = foe[0]
+	# (a critical: a natural 20 on the strike, the number gold with CRITICAL under it)
 	await ds.fx_attack(mine, 0, hit)
+	ds._strike["roll"] = 20
 	hit.damage += int(hit.max_hp() * 0.6)
 	ds.fx_totem_hit(hit, int(hit.max_hp() * 0.6), {"attacker": mine, "element": mine.element()})
-	await _wait(0.9)
-	await _shot("2_blow_cracks_running")
+	await _wait(0.5)
+	var crit_seen := false
+	for n in ds.fx_layer.find_children("*", "Label", true, false):
+		if (n as Label).text == "CRITICAL" or (n as Label).text.begins_with("CRITICAL"):
+			crit_seen = true
+	if not crit_seen:
+		problems.append("the critical's number had no CRITICAL under it")
+	await _wait(0.4)
+	await _shot("2_critical_blow_cracks_running")
 	ds._strike = {}
 	await _wait(2.5)
 	await _shot("3_after")
+	# a knockout: the nearly-gone one broken, shattering, the stone under it
+	# splitting, chips flying; then the slot cleared and the cracks fading
+	var gone: DuelTotem = foe[2]
+	var ko_slot := _slot(1, 2)
+	var rest := gone.hp_left()
+	await ds.fx_attack(mine, 0, gone)
+	gone.damage += rest
+	ds.fx_totem_hit(gone, rest, {"attacker": mine, "element": mine.element()})
+	ds._strike = {}
+	await _wait(0.4)
+	ds.fx_ko(gone)
+	var t_ko := 0.0
+	var chips_seen := false
+	while t_ko < 3.0:
+		await _wait(0.1)
+		t_ko += 0.1
+		if ko_slot.has_node("StoneChips") and not chips_seen:
+			chips_seen = true
+			await _wait(0.15)
+			await _shot("4_knockout_stone_splits")
+	if not chips_seen:
+		problems.append("no stone chips flew as it shattered")
+	print("CRACKS: knocked out: reach %.2f" % DuelCracks.reach(ko_slot))
+	g.players[1].slots[2] = null
+	g._changed()
+	ds._refresh()
+	await _wait(0.6)
+	var mid_fade := ko_slot.has_meta("base_crack") and (ko_slot.get_meta("base_crack") as Node3D).visible
+	await _wait(2.0)
+	var after := ko_slot.has_meta("base_crack") and (ko_slot.get_meta("base_crack") as Node3D).visible
+	print("CRACKS: after the knockout, the cracks still there at 0.6 s: %s, at 2.6 s: %s" % [mid_fade, after])
+	if not mid_fade:
+		problems.append("the broken stone went the moment the slot was cleared")
+	if after:
+		problems.append("the broken stone never faded after the knockout")
 	# healed: they close
 	var healed: DuelTotem = foe[1]
 	healed.damage = 0

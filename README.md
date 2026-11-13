@@ -1623,6 +1623,54 @@ yes 3 yes 4 yes 5 yes 6 yes 7 yes 8 yes"):
    Totem**: see the duel's "12 November, later" below.
 8. **Press and hold to skip the opening movie**: see Opening movie.
 
+### And six more yeses (12 to 13 November)
+
+The suggestions after the eight, all six said yes to:
+
+1. **Tilly hides her face in Corin's arm** as the white light comes down to
+   you (`Ashford.TILLY_HIDES`: the last quarter of its fall): turned to his
+   elbow, her head down against it (`eyes_on` under it); after the flash she
+   lets go and looks up at you.
+2. **The crying eases at Bram's first touch** (`WhiteSky.CRY_EASE_DB`,
+   `CRY_EASE_PITCH`): as his hand sweeps the snow off, the sobs go 9 dB
+   quieter and a little slower, then stop once he lifts the child, as before.
+3. **A knockout splits the stone** (`DuelCracks.split`, from
+   `DuelField3D.crystal_death` as it bursts): its cracks run out to the edge
+   at once and blaze in its colour, 26 chips of stone fly up and fall back
+   (`SPLIT_CHIPS`), and the broken stone stays 1.6 s after the slot is
+   cleared, fading over the last 0.8 (`AFTER_KO`), instead of mending at once.
+4. **Critical hits** (a natural 20 on the strike's roll): the number gold
+   (`DuelScreen.CRIT_GOLD`), bigger (`CRIT_SIZE`), a dark gold edge round it,
+   and "CRITICAL" under it (`hit_tag`: with "WEAK! ×1.5" when it's both); a
+   critical on Life the same.
+5. **Hold to skip everywhere** (`scripts/ui/hold_skip.gd`, `HoldSkip.attach`):
+   the story films get a "Hold to skip" button once they've been seen
+   (`StoryFilm.seen`, `Game.settings.seen_films`; the first time through,
+   none, as the Night of the White Sky), on a layer over the subtitles, and
+   the device's player's own label when it covers the view. Skipped, the
+   rest of the film goes at once, but every choice still in it is asked,
+   over black or its held frame, so the story keeps its picks; a part after
+   a skip isn't played. The Night of the White Sky's Skip holds too (not E or
+   A there: they make the moves). `tests/story_film_test.tscn` checks a tap
+   doesn't skip, a hold does, the choice is still asked and kept, and there's
+   no Skip the first time. (Also: skipping the snow early read its duel
+   screen after it was freed; it stops waiting for it now.)
+6. **The attic sitting fixed** (after the white light): sat up in bed, the
+   knees come up a little (`Figure3D.LONG_KNEE`, the shins back down to the
+   heels) and the feet stay square to the shins, lolling a little
+   (`LONG_FOOT_DROP`): the knees were 3 cm into the mattress and the ankles
+   bent 84 to 85 degrees. The palms rest on the mattress beside the hips
+   (`AshfordNight._hands_on_bed`, `_hands_up`: flat in bed, the arm's own
+   turn on the edge, held at the mattress's height by `Figure3D.press`), off
+   for the moment they look at their hands, and the mattress is a solid for
+   the hands (`InnRooms` attic `hand_solids`, `hands_off`): the arms hung
+   4 to 17 cm into it. The night's whole run now shows one body finding, the
+   hand gripping the hay cart in the heave.
+
+The body check names a mesh made in code by its shape and size
+("ArrayMesh 2.00 x 0.12 x 0.84 m at ..."), so a finding can be told from its
+neighbours.
+
 Also: the voice sheet (`tools/vo_sheet.py`) read a dictionary of lines
 (`MOVE_LINES`) as one more line, its last, said twice; a dictionary as a
 value is stepped over whole now. The body check sees the walls and other
@@ -4078,7 +4126,8 @@ godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures'
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
 godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence, the weather
 godot --headless res://tests/summon_video_test.tscn             # which Summon clip plays under each choice
-# ... res://tests/crack_shot.tscn -- <dir>      (under xvfb) the stone cracking under hurt Totems, checked, with stills
+# ... res://tests/crack_shot.tscn -- <dir>      (under xvfb) the stone cracking under hurt Totems, a critical, a knockout's split, checked, with stills
+godot --headless --fixed-fps 30 res://tests/story_film_test.tscn  # the story films through the device's player, their choices, hold to skip
 # ... res://tests/stretch_probe.tscn -- <dir> [model] [shapes=a,b]   (under xvfb) waking stretches tried, measured, photographed
 # stills (under xvfb, as the others): ... res://tests/rain_shot.tscn -- <dir> [phone]   the green dry and in a shower
 #                                     ... res://tests/options_shot.tscn -- <dir>         the Options page
