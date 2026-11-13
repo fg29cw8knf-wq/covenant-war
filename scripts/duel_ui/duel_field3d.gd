@@ -678,10 +678,15 @@ func sync(v) -> void:
 	var col := DuelFX.light(el)
 	# (12 November) the stone under it cracking as it's hurt (DuelCracks)
 	DuelCracks.sync(self, s, t, col, v.fade, get_process_delta_time())
+	# (13 November, Gary's yes) badly hurt: under a third of its Health it
+	# sits lower and leans, breathes slower and heavier, its idle slowed
+	var hurt: bool = not s.dying and t.max_hp() > 0 and float(t.hp_left()) < float(t.max_hp()) * WOUNDED
 	# the creature: breathing, flipped for the rival, nudged by the 2D offset
-	var breathe := sin(_t * 2.1 + v.slot * 1.7)
+	var breathe := sin(_t * (WOUNDED_BREATH if hurt else 2.1) + v.slot * 1.7)
 	var sx := 1.0 - 0.006 * breathe
-	var sy := 1.0 + 0.014 * breathe
+	var sy := 1.0 + (0.022 if hurt else 0.014) * breathe
+	if hurt:
+		sy *= WOUNDED_SQUASH
 	if t.asleep:
 		sy = 1.0 + 0.02 * sin(_t * 1.1)
 	if s.dying:
@@ -729,7 +734,11 @@ func sync(v) -> void:
 					want = Vector3(1.06, 0.88, 0.14 * (1.0 if s.mine else -1.0))
 				"rest":
 					want = Vector3(1.04, 0.74, 0.0)
-		s.pose = s.pose.lerp(want, clampf(get_process_delta_time() * 6.0, 0.0, 1.0))
+		if hurt:
+			# lower, a little wider, leaning to one side as if it favours it
+			want = Vector3(want.x * 1.03, want.y * WOUNDED_SQUASH, want.z + WOUNDED_LEAN * (1.0 if s.index % 2 == 0 else -1.0))
+		s.pose = s.pose.lerp(want, clampf(get_process_delta_time() * (2.0 if hurt else 6.0), 0.0, 1.0))
+		_wounded_idle(s, hurt)
 		s.model.scale = Vector3(k * s.pose.x, k * s.pose.y, k * s.pose.x)
 		s.model.rotation.z = s.pose.z
 		# models face +Z: at rest they stand three-quarters to the camera so their
@@ -1694,6 +1703,37 @@ func _drive_anim(_s: Slot, _v) -> void:
 	pass   # clips are driven explicitly by the screen's effects (play_clip)
 
 
+## A Totem badly hurt (13 November, Gary's yes: "below a third of their
+## health they move slower and hunch lower"): under WOUNDED of its Health its
+## model sits WOUNDED_SQUASH as tall and leans WOUNDED_LEAN to a side, its
+## breathing slower and deeper (WOUNDED_BREATH), its idle clip played at
+## WOUNDED_IDLE; healed above it, it straightens and its idle comes back to
+## speed. Only the idle is slowed (an attack, a hit, a guard play as they
+## were), and none of it while it turns to glass.
+const WOUNDED := 1.0 / 3.0
+const WOUNDED_SQUASH := 0.9
+const WOUNDED_LEAN := 0.07
+const WOUNDED_BREATH := 1.3
+const WOUNDED_IDLE := 0.7
+
+
+func _wounded_idle(s: Slot, hurt: bool) -> void:
+	if s.anim == null or s.dying:
+		return
+	var idle := _clip_name(s, "idle")
+	if idle == "" or s.anim.current_animation != idle:
+		return
+	var to := WOUNDED_IDLE if hurt else 1.0
+	if absf(s.anim.speed_scale - to) > 0.001 and (s.anim.speed_scale >= WOUNDED_IDLE - 0.001 and s.anim.speed_scale <= 1.001):
+		s.anim.speed_scale = move_toward(s.anim.speed_scale, to, get_process_delta_time() * 0.6)
+
+
+## Is the Totem in this slot badly hurt (WOUNDED)? For the tests.
+func wounded(side: int, slot: int) -> bool:
+	var s: Slot = slots[side][slot]
+	return s.model != null and s.pose.y < 0.95 and s.stance == "strike"
+
+
 ## A Totem's stance on its model (Phase A): a guard or rest clip when the
 ## model has one; otherwise a held pose (sync: braced lower and leaning for
 ## Guard, settled down for Rest, back up for Strike).
@@ -2637,6 +2677,25 @@ func floor_wave(at: Vector3, col: Color, radius: float = 3.5, dur: float = 0.5) 
 	tw.tween_property(m, "scale", Vector3(radius, radius, radius), dur).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
 	tw.tween_property(mat, "albedo_color:a", 0.0, dur).set_ease(Tween.EASE_IN)
 	tw.chain().tween_callback(m.queue_free)
+
+
+## A critical hit landing (13 November, Gary's yes: "a gold ring that bursts
+## across the floor under the Totem, to go with the slow-motion"): two gold
+## rings racing out across the floor from under it, one on the other's heels,
+## a gold flash of real light, and a spray of gold sparks round its feet.
+## (The screen's slow-motion that follows slows them with everything else.)
+const CRIT_RING_GOLD := Color(1.0, 0.8, 0.3)
+const CRIT_RING_R := 5.5
+
+func crit_ring(foot: Vector3) -> void:
+	floor_wave(foot, CRIT_RING_GOLD, CRIT_RING_R, 0.75)
+	flash_light(foot + Vector3(0, 0.8, 0), CRIT_RING_GOLD, 6.0, 0.6, 8.0)
+	DuelStrikeFX.emit(self, foot + Vector3(0, 0.1, 0), {"amount": 36, "life": 0.9, "shape": "ring", "radius": 1.0,
+		"speed": [1.5, 3.5], "dir": Vector3.UP, "spread": 60.0, "gravity": Vector3(0, -4.0, 0), "tex": "star", "size": 0.16,
+		"cols": [Color.WHITE, CRIT_RING_GOLD]})
+	get_tree().create_timer(0.12, false).timeout.connect(func() -> void:
+		if is_instance_valid(self):
+			floor_wave(foot, CRIT_RING_GOLD.lightened(0.3), CRIT_RING_R * 0.7, 0.6))
 
 
 ## A quick flash of real light.

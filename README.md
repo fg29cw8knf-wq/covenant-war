@@ -1667,6 +1667,31 @@ The suggestions after the eight, all six said yes to:
    4 to 17 cm into it. The night's whole run now shows one body finding, the
    hand gripping the hay cart in the heave.
 
+### Three more (13 November)
+
+From the suggestions after the six, Gary said yes to 1, 3 and 4:
+
+- **KNOCKED OUT no longer lands on the health strip**: the knocked-out
+  Totem's Health strip (still up from the blow that broke it, saying
+  BROKEN) fades as the words come (`DuelScreen._strip_away`). On the rival's
+  row the strip's own clamp kept it inside the picture right under the words.
+- **Badly hurt Totems look it** (`DuelField3D.WOUNDED`, a third of its
+  Health): the model sits lower (`WOUNDED_SQUASH`, 0.9) and leans to one side
+  (`WOUNDED_LEAN`), eased in slowly; its breathing slower and deeper
+  (`WOUNDED_BREATH`); its idle clip at 0.7 speed (`WOUNDED_IDLE`,
+  `_wounded_idle`: only the idle, never an attack or a hit). Healed above a
+  third, it straightens and its idle comes back to speed. A painted cut-out
+  sits lower and breathes slower the same way.
+- **A critical's gold ring** (`DuelField3D.crit_ring`, from
+  `DuelScreen.fx_totem_hit` on a natural 20): two gold rings racing out
+  across the floor from under the struck Totem, a gold flash and gold
+  sparks round its feet, slowed with everything else by the slow-motion
+  that follows.
+
+`tests/crack_shot.tscn` checks the wounded stance (and that a Totem above a
+third isn't), the slowed idle, and the strip gone at the knockout, with a
+still of the gold ring.
+
 The body check names a mesh made in code by its shape and size
 ("ArrayMesh 2.00 x 0.12 x 0.84 m at ..."), so a finding can be told from its
 neighbours.

@@ -74,6 +74,19 @@ func _ready() -> void:
 			problems.append("%s's cracks reach %.2f, not %.2f" % [tt.card_name(), got, want])
 	if early > 0.6:
 		problems.append("the cracks were all there at once (%.2f in 0.3 s)" % early)
+	# (13 November) under a third of its Health it stands lower and leans,
+	# its idle slowed; above, as it was
+	var f3 = ds.field
+	print("CRACKS: wounded: Mossling %s, Elderbark %s, Pebblit %s" % [f3.wounded(1, 0), f3.wounded(1, 1), f3.wounded(1, 2)])
+	if not f3.wounded(1, 2):
+		problems.append("Pebblit, at 5 of 80, doesn't stand wounded")
+	if f3.wounded(1, 1) or f3.wounded(1, 0):
+		problems.append("a Totem over a third of its Health stands wounded")
+	var ps = f3.slots[1][2]
+	if ps.anim != null:
+		print("CRACKS: Pebblit's idle at %.2f speed" % ps.anim.speed_scale)
+		if ps.anim.speed_scale > 0.8:
+			problems.append("the wounded one's idle isn't slowed (%.2f)" % ps.anim.speed_scale)
 	# a blow on the whole one: the new cracks run lit
 	var mine: DuelTotem = made[0][1]
 	var hit: DuelTotem = foe[0]
@@ -82,7 +95,9 @@ func _ready() -> void:
 	ds._strike["roll"] = 20
 	hit.damage += int(hit.max_hp() * 0.6)
 	ds.fx_totem_hit(hit, int(hit.max_hp() * 0.6), {"attacker": mine, "element": mine.element()})
-	await _wait(0.5)
+	await _wait(0.12)
+	await _shot("2a_critical_gold_ring")
+	await _wait(0.38)
 	var crit_seen := false
 	for n in ds.fx_layer.find_children("*", "Label", true, false):
 		if (n as Label).text == "CRITICAL" or (n as Label).text.begins_with("CRITICAL"):
@@ -116,6 +131,9 @@ func _ready() -> void:
 			await _shot("4_knockout_stone_splits")
 	if not chips_seen:
 		problems.append("no stone chips flew as it shattered")
+	# (13 November) its Health strip gone as KNOCKED OUT comes, not under it
+	if ds._strips.has(gone) and is_instance_valid(ds._strips[gone]):
+		problems.append("the knocked-out one's Health strip was still up under KNOCKED OUT")
 	print("CRACKS: knocked out: reach %.2f" % DuelCracks.reach(ko_slot))
 	g.players[1].slots[2] = null
 	g._changed()

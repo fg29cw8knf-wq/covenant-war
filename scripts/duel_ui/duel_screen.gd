@@ -4123,6 +4123,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 	var big: bool = amount >= HIT_STOP_DAMAGE or weak or crit
 	if field != null:
 		field.impact_glow(1.0 if big else 0.5)
+		if crit:
+			field.crit_ring(_foot3(t))   # (13 November, Gary's yes: gold across the floor)
 	if big and _may_slow():
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -4251,6 +4253,17 @@ func _hit_strip(t: DuelTotem, v: DuelViews.TotemView, amount: int, absorbed: int
 	hs.tree_exiting.connect(func() -> void:
 		if _strips.get(t) == hs:
 			_strips.erase(t))
+
+
+## A Totem's Health strip taken away now, faded over `secs`.
+func _strip_away(t: DuelTotem, secs: float) -> void:
+	var hs = _strips.get(t)
+	if hs == null or not is_instance_valid(hs):
+		return
+	_strips.erase(t)
+	var tw := (hs as Node).create_tween()
+	tw.tween_property(hs, "modulate:a", 0.0, maxf(secs, 0.01))
+	tw.tween_callback((hs as Node).queue_free)
 
 
 func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
@@ -4631,6 +4644,11 @@ func fx_ko(t: DuelTotem) -> void:
 		# (4 November) the burst in slow motion, the colour draining for it
 		_slow_time(KO_SLOW, KO_SLOW_MS, KO_SLOW_RAMP_MS)
 		# (higher under the close-up, clear of the toasts in the middle)
+		# (13 November, Gary's yes: its Health strip, still up from the blow
+		# that broke it and saying so, goes as the words come: kept inside
+		# the picture by the strip's own clamp, it sat under them, the two
+		# printed over each other on the rival's row)
+		_strip_away(t, 0.18 / speed)
 		DuelFX.number(fx_layer, at + Vector2(0, -150 if _cine() else -70), "KNOCKED OUT", Color("ff4d6a"), 54, _read(1.2, "KNOCKED OUT") / speed)
 		# its plate goes as it bursts
 		var tw := create_tween()
