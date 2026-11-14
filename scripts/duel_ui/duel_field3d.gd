@@ -1045,6 +1045,9 @@ static func _drop_see_through(mi: MeshInstance3D) -> void:
 ## arena's painting and backdrop gone for trampled snow, the sky's shader
 ## (the village's, the Sigilfall's tear open across it), cold moonlight,
 ## driven snow and a heavier haze.
+## (14 November: the Night of the White Sky dresses its own set over this
+## one, the walk's Shardlands: WhiteSky._dress_duel. What's here is what any
+## other film would stand on.)
 func film_mode(quality := 2) -> void:
 	if world == null:
 		return
@@ -2698,12 +2701,18 @@ func crit_ring(foot: Vector3) -> void:
 			floor_wave(foot, CRIT_RING_GOLD.lightened(0.3), CRIT_RING_R * 0.7, 0.6))
 
 
+## How bright a flash is drawn (flash_light, flash_sprite): 1 on an arena's
+## dark floor; a film out on white snow sets it lower (14 November: on the
+## Night of the White Sky's snow every call and knockout burned the whole
+## picture white).
+var flash_k := 1.0
+
 ## A quick flash of real light.
 func flash_light(at: Vector3, col: Color, energy: float = 6.0, dur: float = 0.4, range_m: float = 7.0) -> void:
 	var l := OmniLight3D.new()
 	l.position = at
 	l.light_color = col
-	l.light_energy = energy
+	l.light_energy = energy * flash_k
 	l.omni_range = range_m
 	l.shadow_enabled = false
 	_fx_parent().add_child(l)
@@ -2720,7 +2729,7 @@ func flash_sprite(at: Vector3, col: Color, size: float = 2.5, dur: float = 0.35)
 	sp.shaded = false
 	sp.transparent = true
 	sp.alpha_cut = SpriteBase3D.ALPHA_CUT_DISABLED
-	sp.modulate = Color(col.r * 2.0, col.g * 2.0, col.b * 2.0, 1.0)
+	sp.modulate = Color(col.r * 2.0 * flash_k, col.g * 2.0 * flash_k, col.b * 2.0 * flash_k, 1.0)
 	sp.pixel_size = size / 128.0
 	sp.position = at
 	sp.scale = Vector3.ONE * 0.4

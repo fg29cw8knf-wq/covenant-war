@@ -103,6 +103,10 @@ func _run() -> void:
 		await m.play()
 	await _still("end")
 	var ok := _phase == "done" and (_skip or (_filmed and _called))
+	# (14 November: the duel's blows slow the clock; it must never be left slow)
+	if Engine.time_scale < 0.99:
+		print("white_sky_test: FAIL: the clock was left slow (%.2f)" % Engine.time_scale)
+		ok = false
 	if not _skip:
 		var moves: Array = _asked.map(func(a): return a[0])
 		print("white_sky_test: the player's moves: %s" % ", ".join(_asked.map(func(a): return "%s asked at %.1f s, made at %.1f s" % [a[0], a[1], a[2]])))

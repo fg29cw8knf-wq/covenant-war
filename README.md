@@ -1702,6 +1702,149 @@ value is stepped over whole now. The body check sees the walls and other
 things drawn many at a time (`MultiMeshInstance3D`: the dry-stone walls,
 the fences), which it couldn't before.
 
+### The Shardlands' look and the duel's drama (14 November)
+
+Gary (14 November): "Can we make the bram bit at the beginning look visually
+better and smoother - I want best looking graphics and scenery - also how
+could we make the battle more dramatic". The Night of the White Sky was
+rendered as a Mac draws it first (stills, `docs/handover/2026-11-14.md`), and
+what follows is what those showed and what was done about each. The shared
+parts are in `scripts/story/shard_set.gd` (`ShardSet`, new).
+
+**The walk's look**
+
+- **It was never night.** The picture was one pale lilac wash from edge to
+  edge: the fog lit the whole sky. `ShardSet.night` gives the fog nothing of
+  the sky's (`fog_sky_affect` and `volumetric_fog_sky_affect` 0, no ambient
+  light in it), so it's a dark sky with stars and a moon over a low haze.
+  The sky's horizon is kept the haze's own colour (`_set_sky_k`), so no line
+  shows between them.
+- **Lit from ahead of him.** The moon stands low ahead on his right
+  (`MOON_ROT`, the sky's own moon moved to where its light comes from); when
+  the sky tears the light changes hands to the tear (`TEAR_ROT`, `TEAR_COL`,
+  `TEAR_ENERGY`), under the white that washes over the screen as it opens.
+  Every drift, crystal and his own shoulders are edged with it, and the
+  shadows lie towards the camera (every spire casts one now). A soft light
+  on him alone (`FILL_LAYER`, a light that falls on nothing else) keeps him
+  a man and not a cut-out from behind.
+- **The snow** (`ShardSet.ground_material`, `GROUND`): long ridges laid
+  along the wind with their shape in the light, snow snaking across the
+  surface on the wind, glints that come and go as the camera moves, the
+  crater's glass dark. All read from one tiling texture made once
+  (`snow_tex`: drifts, grain, ridges, glints): a dozen texture reads a pixel
+  where the old shader worked eleven layers of noise out by hand for every
+  pixel, so it's lighter on the Mac than what it replaces, and it can't
+  shimmer in the distance (the texture has mipmaps; sums of sines haven't).
+- **The land** (`WhiteSky.height`, `_build_ground`): away from the crater,
+  where every shot of it was set, the snow lies in long dunes; far out,
+  past where he can walk, it rises to hills. The field is 380 m across
+  (`ShardSet.ground_mesh`), its squares under half a metre over the crater
+  and the way to it where they were a metre, coarse at the hills.
+- **The Shardlands on the horizon** (`ShardSet.far_range`): three dozen
+  shards as big as hills in a ring 130 to 225 m out, dark against the night
+  until the sky opens, then lit on the faces turned to the tear. Drawn in
+  their own shader with no fog on them (`RANGE`: they stand in a far haze of
+  their own, `FAR_NIGHT` to `FAR_TORN`).
+- **The crater's light is what he walks to** (`_shaft`, `_halo`,
+  `ShardSet.shaft`): a column of pale light standing out of it into the sky
+  and a glow over its rim, seen through the storm from his first step. They
+  sink as he nears the rim (from in or over the bowl they'd lie across the
+  whole picture) and are gone by the rim's shot, where the child's own
+  small light is what's seen.
+- **The storm** (`ShardSet.storm`): small flakes drawn as short streaks
+  along the wind, a few soft ones by the lens, sheets torn along the
+  ground, and banks of blown snow drifting through that give it depth. The
+  old "sheets along the ground" stood upright like rain: a standard
+  particle billboard stands every particle upright on the screen whichever
+  way it's going. `ShardSet.STREAK` turns each along its own way.
+- **The torn sky**: colours hanging under the tear in folds, wavering
+  (`sky.gdshader`'s new `aurora`; `village_glow` 0 takes Ashford's warm
+  horizon glow off out here; both default to what Ashford had).
+- **The crater**: its bowl was a white dish and every close shot in it had
+  a blank white behind it. Three things did it: the light at its floor
+  lying bright three metres out, the crater's lamp a metre or two over
+  near-white fog and pale glass, and the glass mirroring the whole torn
+  sky. Now it's black glass with a pool of light under the child
+  (`GROUND`'s glass, `CRATER_LIGHT`, the lamp's share of the fog).
+- **The shot before the hunter comes** was taken from under the bowl's lip,
+  through the back of the snow, so the picture's bottom corner was a hole
+  into the sky. It stands on the slope now, aimed between him and the rim
+  on a wider lens: he's whole and small in the foot of the bowl with the
+  empty rim over him.
+- His footprints (`ShardSet.Prints`, at each `Figure3D.footfall`), filling
+  in behind him; snow kicked up at his feet as he walks (`_kick`); the
+  picture's corners drawn down a little (`ShardSet.vignette`).
+
+**Smoother**
+
+- **His walk**: he was at full pace the frame a key went down and stock
+  still the frame it came up, and a new way was taken at once. His pace is
+  worked up to and let go of now (`WALK_ACCEL`, a third of a second from
+  standing), a turn is walked round in an arc, and a tap on the snow is
+  eased up to (`WALK_SLOW_IN`).
+- **The camera behind him**: its heading came round at a rate set by the
+  frame, and it chased its place by a fixed share a frame, so every start,
+  stop and turn of his was a jolt in the picture. Both are on springs
+  (`CAM_SMOOTH`, `CAM_TURN`: they ease away and ease to rest, the same at
+  any frame rate), it looks a little ahead of the way he's walking
+  (`CAM_LEAD`), and it's kept out of the drifts.
+- **At the rim** the walk's camera rises to the shot down into the bowl
+  (`REVEAL_RISE`) where it used to cut.
+- The frame rate itself can't be measured here (no graphics card). The
+  snow costs less than it did and nothing heavy was added to the walk.
+
+**The duel's set** (`WhiteSky._dress_duel`)
+
+The duel stood on a set of its own that had nothing to do with the walk: a
+flat dark blue floor that read as sea, under a black sky
+(`DuelField3D.film_mode`). It stands in the walk's Shardlands now: the same
+snow, level under the Circle and in dunes beyond it (`duel_height`), the
+great shards on the horizon, the same storm about the camera, and the torn
+sky across the picture behind the hunter with its colours hanging under it
+(`DUEL_TEAR`). The light comes from it, low and from behind the pack
+(`DUEL_KEY_ROT`), so every Totem is edged with it and throws a long shadow
+towards Bram, and the pale hounds stand out on the shadowed snow. Out in
+the dark behind the hunter are the eyes of the rest of its pack
+(`_pack_eyes`), blinking. A film's own flashes are turned down for white
+snow (`DuelField3D.flash_k`, 1 everywhere else): made for a dark floor,
+every call and knockout burned the whole picture white.
+
+**The duel's drama** (at the film's own beats, `WhiteSky._on_beat`)
+
+A film had none of what an ordinary duel has had since 5 November (no
+freeze, no slow motion, no punch: `DuelScreen._filmed`).
+
+- *A big blow*: time stops for a blink (`_slow`), the picture is punched
+  from where it landed, its edges flare (`_wash`) and the snow jumps in a
+  ring.
+- *A Totem broken*: slow motion as it bursts; the sky flares and a bolt
+  comes down out on the Shardlands, thunder a moment after (`_sky_flare`,
+  `ShardSet.SkyBolt`, Gary's `thunder_far`). One of Bram's: the child cries
+  out in his coat, he staggers, the hunter comes a pace nearer, more eyes
+  open in the dark and the storm rises (`_bram_loses_one`).
+- *The Last Page* is waited for in a hush, as the rim was before the hunter
+  came: the wind drops, the snow hangs, the music dips, and across the
+  Circle the hunter raises its cards for the end. Played, the storm comes
+  back at once, harder. As Orlanthe's blow lands the sky splits wide, three
+  bolts fall, a wave of light and a wall of snow run out from the Circle,
+  the ice all round it blazes (`_last_page_lands`), and the white follows.
+
+None of it changes what happens in the duel, its order, or how long the
+player has to choose (`WhiteSkyDuel` is untouched), and the clock is never
+left slow: skipped or left in the middle of a blow it's put straight
+(`_close`, `_exit_tree`; `white_sky_test` fails if it isn't).
+
+**Checked** (14 November): `tests/white_sky_look.tscn` (new: stills of the
+set without playing it) as a Mac draws it and as a phone's Smooth does
+(`-- --phone`); `white_sky_test` drawn as a Mac draws it, whole and the duel
+alone, every still looked at; headless PASS whole, the duel alone, and
+skipped at 20, 58, 65, 76 and 79 s; `white_sky_play_probe` ok;
+`white_sky_world -- <dir> play` to "done"; `first_launch_test` and
+`-- again` ok; `load_all` 0 failed; `duel_sim -- 100` 0 invariant errors;
+`puzzles_test` PASS; `ambience_test` ok. **Not checked:** anything on a real
+Mac or iPhone (the frame rate above all); the phone link's picture; the
+body sweep (no pose of his was changed).
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the
@@ -4146,6 +4289,7 @@ godot --headless --script res://tests/synergy_test.gd           # families, reac
 godot --headless --script res://tests/puzzles_test.gd           # every riddle's answer and a wrong try
 godot --headless --script res://tests/white_sky_play_probe.gd   # Bram's duel in the snow, every move as written
 godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4      # the whole snow opening, the three moves made
+# ... res://tests/white_sky_look.tscn -- <dir> [night torn mid wide back rim bowl held] [--phone]   (under xvfb) the snow's set in stills, without playing it
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green

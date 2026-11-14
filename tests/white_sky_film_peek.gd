@@ -193,8 +193,7 @@ func _rim() -> void:
 	var near := WhiteSky.CRATER + Vector3(0, 0, WhiteSky.RIM_AT - 0.2)
 	m._flat = Vector3(near.x, 0, near.z)
 	m._bram.position = Vector3(near.x, WhiteSky.height(near.x, near.z), near.z)
-	m._sky.set_shader_parameter("tear_open", 1.25)
-	m._tear_light.light_energy = 0.55
+	m.tear_now()   # (14 November: the sky open, as WhiteSky lights it now)
 	m._rain_cards(true)
 	if m._wind != null:
 		m._wind.play()
@@ -227,8 +226,7 @@ func _glimpse() -> void:
 	var at := WhiteSky.CRATER + Vector3(0, 0, WhiteSky.GLIMPSE_AT + 2.0)
 	m._flat = Vector3(at.x, 0, at.z)
 	m._bram.position = Vector3(at.x, WhiteSky.height(at.x, at.z), at.z)
-	m._sky.set_shader_parameter("tear_open", 1.25)
-	m._tear_light.light_energy = 0.55
+	m.tear_now()   # (14 November: the sky open, as WhiteSky lights it now)
 	m._rain_cards(true)
 	if m._wind != null:
 		m._wind.play()
@@ -249,9 +247,7 @@ func _glimpse() -> void:
 
 # --- references ---------------------------------------------------------------
 func _refs() -> void:
-	m._sky.set_shader_parameter("tear_open", 1.25)
-	m._tear_light.light_energy = 0.55
-	m._env.fog_light_color = Color(0.22, 0.2, 0.34)
+	m.tear_now()   # (14 November: the sky open, as WhiteSky lights it now)
 	var b := Vector3(0, 0, -6)
 	m._flat = b
 	m._bram.position = Vector3(b.x, WhiteSky.height(b.x, b.z), b.z)

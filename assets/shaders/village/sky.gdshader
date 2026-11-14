@@ -20,6 +20,12 @@ uniform vec3 sun_dir = vec3(0.86, 0.10, -0.50);
 // afternoon, before the festival evening): a clear northern-English sky,
 // pale at the horizon, with white clouds and the sun where sun_dir says
 uniform float day : hint_range(0.0, 1.0) = 0.0;
+// (14 November, the Night of the White Sky) the village's warm glow on the
+// horizon and under the clouds: 1 over Ashford, 0 out in the Shardlands
+uniform float village_glow : hint_range(0.0, 1.0) = 1.0;
+// curtains of the tear's colours hanging under it, wavering (0: none, as
+// over Ashford; 1: the Shardlands' sky once it's torn)
+uniform float aurora : hint_range(0.0, 1.5) = 0.0;
 
 vec3 tear_light(vec3 d, out float core) {
 	vec3 a = normalize(tear_a);
@@ -64,6 +70,16 @@ vec3 tear_light(vec3 d, out float core) {
 	}
 	core = max(core, fork * 0.6);
 	vec3 col = vec3(1.0, 0.97, 0.9) * core * 10.0 + c * glow1 * 1.1 + c * glow2 * 0.22 + c * spill * 0.28;
+	if (aurora > 0.001) {
+		// under the tear (the side of it that faces the ground): light
+		// hanging down in folds, brightest at the crack, in its colours
+		float below = (dot(d, n) - jag) * (n.y < 0.0 ? 1.0 : -1.0);
+		float curtain = smoothstep(0.0, 0.012, below) * exp(-below / 0.085) * ends * open;
+		float wav = sin(s * 9.0 + TIME * 0.27) * 1.8 + sin(s * 23.0 - TIME * 0.19) * 0.9;
+		float fold = 0.5 + 0.5 * sin(s * 38.0 + wav);
+		fold = mix(fold, fold * fold, 0.6) * (0.75 + 0.25 * sin(s * 97.0 - TIME * 0.5 + wav));
+		col += c * curtain * (0.1 + fold * 0.34) * aurora;
+	}
 	if (CUBEPASS) col *= 0.3;
 	return col * tear_open;
 }
@@ -73,7 +89,7 @@ void sky() {
 	float h = clamp(d.y, -1.0, 1.0);
 	vec3 col = mix(horizon, zenith, pow(clamp(h, 0.0, 1.0), 0.45));
 	// faint warm glow on the horizon from the village
-	col += vec3(0.10, 0.05, 0.02) * exp(-max(h, 0.0) * 18.0) * 0.6;
+	col += vec3(0.10, 0.05, 0.02) * exp(-max(h, 0.0) * 18.0) * 0.6 * village_glow;
 
 	// stars
 	if (h > 0.0 && !CUBEPASS) {
@@ -115,7 +131,7 @@ void sky() {
 		float tear_near = 0.0;
 		float c2;
 		vec3 tglow = tear_light(normalize(d + vec3(0.0, 0.0, 0.0)), c2);
-		vec3 cloud_col = vec3(0.025, 0.03, 0.06) + tglow * 0.25 + vec3(0.09, 0.06, 0.04) * exp(-h * 9.0);
+		vec3 cloud_col = vec3(0.025, 0.03, 0.06) + tglow * 0.25 + vec3(0.09, 0.06, 0.04) * exp(-h * 9.0) * village_glow;
 		cloud_col += vec3(0.12, 0.13, 0.18) * pow(max(mdot, 0.0), 30.0);
 		float cover = cl * smoothstep(-0.05, 0.12, h) * 0.92;
 		col = mix(col, cloud_col, cover);

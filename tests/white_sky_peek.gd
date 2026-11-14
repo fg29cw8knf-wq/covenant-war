@@ -204,9 +204,7 @@ func _walk() -> void:
 
 func _ice() -> void:
 	m._bram.position = Vector3(0, WhiteSky.height(0, -2), -2)
-	m._sky.set_shader_parameter("tear_open", 1.25)
-	m._tear_light.light_energy = 0.55
-	m._env.fog_light_color = Color(0.22, 0.2, 0.34)
+	m.tear_now()   # (14 November: the sky open, as WhiteSky lights it now)
 	var views := [
 		[Vector3(0.75, 1.85, 0.9), Vector3(0.1, 1.35, -9.0), "start"],
 		[Vector3(0.0, 1.7, -14.0), Vector3(0.0, 0.5, -30.0), "towards_crater"],
@@ -234,8 +232,7 @@ func _ice() -> void:
 func _cards() -> void:
 	m._flat = Vector3(0, 0, -8)
 	m._bram.position = Vector3(0, WhiteSky.height(0, -8), -8)
-	m._sky.set_shader_parameter("tear_open", 1.25)
-	m._tear_light.light_energy = 0.55
+	m.tear_now()   # (14 November: the sky open, as WhiteSky lights it now)
 	m._rain_cards(true)
 	m._strike_burst(6, 0.4)
 	m._rain_next = 0.0
