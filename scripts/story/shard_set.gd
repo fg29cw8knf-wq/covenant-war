@@ -949,8 +949,14 @@ void vertex() {
 	VERTEX = (VIEW_MATRIX * vec4(w, 1.0)).xyz;
 }
 void fragment() {
-	float x = abs(UV.x - 0.5) * 2.0;
-	float y = 1.0 - UV.y;
+	// (14 November, later: kept inside the sheet. Along the sheet's own edge
+	// the picture's edge-smoothing works a pixel out from just outside it,
+	// where 1 - y was under nothing and its power wasn't a number: a pixel
+	// that isn't a number is black, and the glow spreads it. One showed now
+	// and then on the line of the halo's top; with four samples a pixel
+	// (Gfx.Best) it was a row of dashes with the glow blown out round each.)
+	float x = min(abs(UV.x - 0.5) * 2.0, 1.0);
+	float y = clamp(1.0 - UV.y, 0.0, 1.0);
 	float body = exp(-x * x * 14.0) + exp(-x * x * 3.0) * 0.3;
 	float up = pow(1.0 - y, 1.8) * smoothstep(0.0, 0.02, y);
 	float drift = 0.86 + 0.14 * sin(TIME * 1.1 + y * 17.0 + x * 3.0);

@@ -1876,7 +1876,7 @@ was not built**, see the end.
   duellist, a Totem broken, his knee landing, and a long one as the Last
   Page lands. `Input.vibrate_handheld`; nothing happens on a Mac. Settings
   has a **Vibration** switch where there's a motor (`Game.settings
-  ["vibration"]`, on by default). Only this memory asks for it so far.
+  ["vibration"]`, on by default). Every duel shakes it too now (below).
 - **5. The opening's wide shot** (`_open_k`, `OPEN_FROM`, `OPEN_LOOK`). The
   black lifts on the Shardlands from high and far behind him, him small in
   the foot of the picture and the crater's column of light ahead; it hangs
@@ -1977,6 +1977,69 @@ anything on a real Mac or iPhone; the frame rate; whether the phone
 actually buzzes (there is no motor here: the test counts what was asked
 for); how the cloth and the gusts look moving (stills only); the phone's
 Smooth picture beyond those few stills; how the stand-in sounds sound.
+
+### The phone's shake in every duel, and "Best picture" on a Mac (14 November, evening)
+
+Gary's "1 yes 4 yes" to the suggestions that went with the second pass.
+
+**The phone shakes in every duel** (`DuelScreen._buzz`, `Haptics`). It did
+only in the opening memory. In any duel played on a phone it's shaken by a
+big blow on a Totem (one that stops time: `HIT_STOP_DAMAGE` or more, a
+weakness struck, a critical) and on a duellist (`Haptics.BLOW`), harder as a
+Totem breaks (`HEAVY`), and long on the blow that ends the duel (`LONG`,
+`_finishing_start`). Not a small blow, a burn or a poison's tick; not in a
+duel run at a watcher's speed; not in the filmed duel, which shakes it at
+its own moments (`WhiteSky`). The **Vibration** switch on the Options page
+turns all of it off. `tests/haptics_test.tscn` (new) checks each of those
+by what was asked of the phone; nothing here can feel it.
+
+**"Best picture"** (`Gfx.Best`, new; Options, on a Mac or PC only, off by
+default: `Game.settings.best_picture`). On, everything drawn in 3D is drawn
+the sharpest the game can:
+
+- *edges*: four samples a pixel where a view had two (4x MSAA: the world,
+  a duel's field, the Night of the White Sky);
+- *shadows*: the sun's, the moon's and the tear's shadow map twice as fine
+  each way (8192 for 4096), each lamp's the same, and the softer filter
+  (Soft High for Soft Low);
+- the small shadows where things meet (SSAO) worked out more finely;
+- snow, grass and stone seen at a slant stay sharp into the distance (16x
+  anisotropic filtering for 4x);
+- models keep their full shape however far off (no simpler copies);
+- skies and haze shade without bands (debanding).
+
+It costs frame rate, most of it the edges and the shadow maps, and **how
+much can't be measured here** (no graphics card), which is why it's a switch
+and off until asked for. While it's on the frame-rate guard of 11 November
+stands down (`Gfx.Guard.on`): the guard's whole job is to draw the 3D
+smaller when the Mac can't keep up, which would undo what was asked for.
+Off puts every view back exactly as it was made (each keeps its own
+settings on it, `gfx_was`) and the guard back. A view made while it's on is
+dressed as it's made (`Gfx.apply`; `DuelField3D` sets its own lamps' shadow
+map before that call now, so it's doubled too). A phone has its own two
+settings (Smooth and Full) and none of this.
+
+**A bright dot that wasn't the moon** (found by this; `ShardSet.SHAFT`).
+With four samples a pixel the first still had a row of blown-out white
+dashes across the sky over the crater. They were on the top edge of the
+glow that stands over the crater's rim (`_halo`, a sheet of light): along a
+sheet's own edge the edge-smoothing works a pixel out from just outside
+it, and there the shader raised a number under nothing to a power, which
+isn't a number at all; such a pixel is black and the picture's glow
+spreads it into a white blot. With two samples a pixel it had been
+happening since the look pass that morning, one pixel now and then on that
+line, each a small glowing dot that came and went: it is in that pass's
+stills, and it was taken for the moon. The shader keeps inside its sheet
+now, and there is none (counted in the stills: 172 such pixels with Best
+picture on before, 1 with it off, 0 either way after).
+
+**Checked:** `tests/best_picture_test.tscn` (new: off, on, a view made while
+on, a duel's field, off again, and `-- --phone`); `haptics_test`; stills of
+the Shardlands with it off and on (`white_sky_look ... -- --best`, the
+software renderer); `options_shot` (the switch is on the page);
+`white_sky_test` whole and `duel`; `load_all`; `duel_sim -- 100`;
+`duel_monkey`. **Not checked:** the frame rate with it on, on any real Mac;
+the phone's buzz in the hand.
 
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 

@@ -103,8 +103,10 @@ func _init() -> void:
 	vp.handle_input_locally = false
 	vp.transparent_bg = false
 	vp.msaa_3d = Viewport.MSAA_2X
-	Gfx.apply(vp)   # a phone draws it smaller and upscales it
 	vp.positional_shadow_atlas_size = 2048
+	# (after its own settings: a Mac's "Best picture" raises them from what
+	# they are here, Gfx.Best)
+	Gfx.apply(vp)   # a phone draws it smaller and upscales it
 	add_child(vp)
 
 

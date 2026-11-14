@@ -17,7 +17,7 @@ extends Node
 ## the rim; "close" Bram near, his coat in a gust and the snow on him.)
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
-## picture; `--rendering-driver opengl3 --rendering-method gl_compatibility`
+## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
 ## the phone link's.
 
 var out := "/tmp/ws_look"
@@ -40,6 +40,9 @@ func _ready() -> void:
 	get_window().size = Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
 	Game.settings["seen_white_sky"] = false
+	# (`-- --best`: a Mac's "Best picture", Gfx.Best, to set beside the same still without)
+	Game.settings["best_picture"] = "--best" in OS.get_cmdline_user_args()
+	Gfx.setup(get_tree())
 	m = WhiteSky.new()
 	m.prep_early = false
 	add_child(m)

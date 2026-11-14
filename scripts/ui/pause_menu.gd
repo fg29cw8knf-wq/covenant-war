@@ -1045,6 +1045,11 @@ func _options() -> Control:
 		v.add_child(_check("Keep the frame rate smooth (draws the 3D a little smaller only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
 			Game.settings["smooth_auto"] = on
 			Gfx.setup(get_tree())))
+		# (14 November) the sharpest picture a Mac or PC can be asked for (Gfx.Best)
+		v.add_child(_check("Best picture (sharper edges and finer shadows; can run slower, and holds the picture at full size whatever the frame rate)", Gfx.Best.on(), func(on: bool) -> void:
+			Game.settings["best_picture"] = on
+			Gfx.setup(get_tree())
+			toast("Best picture on" if on else "Best picture off")))
 	# (14 November) the phone shaking in the hand on a big blow (Haptics); only
 	# where there's a motor to shake
 	if Haptics.can():

@@ -968,6 +968,19 @@ func _filmed() -> bool:
 	return bool(spec.get("film", false))
 
 
+## The phone shaking in the hand (Haptics; 14 November, Gary's yes to "the
+## phone shake in every duel, not just the opening"): a big blow on a Totem
+## (one that stops time: HIT_STOP_DAMAGE or more, a weakness struck, a
+## critical) and on a duellist, harder as a Totem breaks, and a long one on
+## the blow that ends the duel. Not in a film (the Night of the White Sky
+## shakes it at its own moments, WhiteSky), nor in a duel nobody is watching
+## (the simulator's, a watched duel run at speed).
+func _buzz(kind: Array) -> void:
+	if _filmed() or speed > 4.0 or not is_inside_tree():
+		return
+	Haptics.kind(kind)
+
+
 ## Whether the camera may take the cinematic shots: the touches on, a 3D
 ## field, and not a film.
 func _cine() -> bool:
@@ -4125,6 +4138,8 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		field.impact_glow(1.0 if big else 0.5)
 		if crit:
 			field.crit_ring(_foot3(t))   # (13 November, Gary's yes: gold across the floor)
+	if big:
+		_buzz(Haptics.BLOW)
 	if big and _may_slow():
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -4316,6 +4331,8 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 	# (4 November) a big blow on Life stops time for a blink (not the
 	# finishing one, which has its own slow motion)
 	var crit: bool = att != null and _strike.get("attacker") == att and int(_strike.get("roll", 0)) == 20
+	if not finishing and (amount >= HIT_STOP_DAMAGE or crit):
+		_buzz(Haptics.BLOW)
 	if not finishing and (amount >= HIT_STOP_DAMAGE or crit) and _may_slow():
 		await get_tree().process_frame
 		await get_tree().process_frame
@@ -4386,6 +4403,7 @@ func _watching_fast() -> bool:
 
 func _finishing_start(pi: int, land3: Vector3) -> void:
 	_finished_slow = true
+	_buzz(Haptics.LONG)   # (the blow that ends it)
 	if pi == rival:
 		story_bark("rival_falls")
 	_slow_shade = ColorRect.new()
@@ -4633,6 +4651,7 @@ func fx_ko(t: DuelTotem) -> void:
 	_cry(t, "ko")   # (its last cry as the crystal takes it, before it breaks)
 	var burst := func() -> void:
 		sfx.play("ko")
+		_buzz(Haptics.HEAVY)
 		shake(12.0)
 		var at := _center(v)   # (where it is now, under the close-up)
 		punch(at, 0.045)

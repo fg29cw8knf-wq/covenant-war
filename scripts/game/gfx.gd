@@ -69,6 +69,7 @@ static func apply(vp: Viewport) -> void:
 		return
 	if not is_phone():
 		Guard.watch(vp)
+		Best.dress(vp)
 		return
 	if full():
 		vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
@@ -91,6 +92,7 @@ static func setup(tree: SceneTree) -> void:
 		apply(tree.root)
 	else:
 		Guard.start(tree)
+		Best.apply_all(tree)
 	FpsMeter.show_on(tree, bool(Game.settings.get("show_fps", false)))
 
 
@@ -156,8 +158,10 @@ class Guard extends Node:
 			step = 0
 			_apply_all()
 
+	## (Not while "Best picture" is on: that asks for the full picture
+	## whatever it costs, and a smaller one sharpened back up would undo it.)
 	static func on() -> bool:
-		return bool(Game.settings.get("smooth_auto", true))
+		return bool(Game.settings.get("smooth_auto", true)) and not Best.on()
 
 	## Puts a viewport that draws 3D on the list, at the size the guard is at.
 	static func watch(vp: Viewport) -> void:
@@ -274,6 +278,92 @@ class Guard extends Node:
 			if env != null and (env.sdfgi_enabled or env.ssil_enabled):
 				env.sdfgi_enabled = false
 				env.ssil_enabled = false
+
+
+## "Best picture", on a Mac or PC (14 November, Gary's yes to "a Best picture
+## switch on the Mac: sharper edges and finer shadows, at some cost in
+## smoothness"). Options: "Best picture" (Game.settings.best_picture, off by
+## default). On, everything the game draws in 3D is drawn the sharpest it
+## can be:
+##   - edges: four samples a pixel where a view had two (4x MSAA: the world,
+##     a duel's field, the Night of the White Sky), so a roof's edge, a
+##     crystal's and a card's are smooth where they stepped;
+##   - shadows: the sun's, the moon's and the tear's shadow map twice as
+##     fine each way (8192 for 4096) and each lamp's the same, with the
+##     softer of the renderer's filters (Soft High for Soft Low), so a
+##     shadow's edge is clean close to and doesn't crawl as the camera moves;
+##   - the small shadows where things meet (SSAO) worked out more finely;
+##   - snow, grass and stone seen at a slant stay sharp into the distance
+##     (16x anisotropic filtering for 4x);
+##   - models keep their full shape however far off they are (no swapping
+##     to their simpler copies);
+##   - skies and haze shade without bands (debanding).
+## It costs frame rate, most of it the edges and the shadow maps, and it
+## can't be measured here (no graphics card), so it's a switch and it's off
+## until asked for. While it's on the frame-rate guard stands down
+## (Guard.on): the picture is held at the screen's own size whatever the
+## frame rate. Off puts every view back exactly as it was made (each one's
+## own settings are kept on it: "gfx_was").
+## A phone has its own two settings (Smooth and Full, above) and none of
+## this.
+class Best:
+	const SHADOW_MAP := 8192
+	const LAMP_MAP_MOST := 8192
+
+	static func on() -> bool:
+		if OS.has_feature("web") or Gfx.is_phone():
+			return false
+		return bool(Game.settings.get("best_picture", false))
+
+	## One 3D view dressed for it, or put back as it was made.
+	static func dress(vp: Viewport) -> void:
+		if vp == null or not is_instance_valid(vp):
+			return
+		if not vp.has_meta("gfx_was"):
+			vp.set_meta("gfx_was", [vp.msaa_3d, vp.positional_shadow_atlas_size, vp.anisotropic_filtering_level, vp.mesh_lod_threshold, vp.use_debanding])
+		var was: Array = vp.get_meta("gfx_was")
+		if on():
+			# (a view made with no multisampling keeps none: it has its reasons)
+			if int(was[0]) != Viewport.MSAA_DISABLED:
+				vp.set("msaa_3d", maxi(int(was[0]), Viewport.MSAA_4X))
+			vp.positional_shadow_atlas_size = clampi(int(was[1]) * 2, int(was[1]), maxi(int(was[1]), LAMP_MAP_MOST))
+			vp.set("anisotropic_filtering_level", Viewport.ANISOTROPY_16X)
+			vp.mesh_lod_threshold = 0.0
+			vp.use_debanding = true
+		else:
+			vp.set("msaa_3d", int(was[0]))
+			vp.positional_shadow_atlas_size = int(was[1])
+			vp.set("anisotropic_filtering_level", int(was[2]))
+			vp.mesh_lod_threshold = float(was[3])
+			vp.use_debanding = bool(was[4])
+
+	## What a view was made with, before any of this (the tests read it).
+	static func was(vp: Viewport) -> Array:
+		return vp.get_meta("gfx_was", [])
+
+	## The renderer's own settings (the shadow maps and their filter, the
+	## small shadows), and every 3D view there is now.
+	static func apply_all(tree: SceneTree) -> void:
+		var best := on()
+		var ps := func(nm: String, fallback: Variant) -> Variant:
+			var v: Variant = ProjectSettings.get_setting(nm)
+			return v if v != null else fallback
+		RenderingServer.directional_shadow_atlas_set_size(SHADOW_MAP if best else int(ps.call("rendering/lights_and_shadows/directional_shadow/size", 4096)), bool(ps.call("rendering/lights_and_shadows/directional_shadow/16_bits", true)))
+		RenderingServer.directional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if best else int(ps.call("rendering/lights_and_shadows/directional_shadow/soft_shadow_filter_quality", 2)))
+		RenderingServer.positional_soft_shadow_filter_set_quality(RenderingServer.SHADOW_QUALITY_SOFT_HIGH if best else int(ps.call("rendering/lights_and_shadows/positional_shadow/soft_shadow_filter_quality", 2)))
+		RenderingServer.environment_set_ssao_quality(
+			RenderingServer.ENV_SSAO_QUALITY_HIGH if best else int(ps.call("rendering/environment/ssao/quality", 2)),
+			bool(ps.call("rendering/environment/ssao/half_size", true)),
+			float(ps.call("rendering/environment/ssao/adaptive_target", 0.5)),
+			int(ps.call("rendering/environment/ssao/blur_passes", 2)),
+			float(ps.call("rendering/environment/ssao/fadeout_from", 50.0)),
+			float(ps.call("rendering/environment/ssao/fadeout_to", 300.0)))
+		if tree != null:
+			dress(tree.root)
+		for r in Guard._views:
+			var vp = (r as WeakRef).get_ref()
+			if vp != null and is_instance_valid(vp) and (tree == null or vp != tree.root):
+				dress(vp as Viewport)
 
 
 ## A small frame-rate readout in the top corner (Options > Show frame rate),
