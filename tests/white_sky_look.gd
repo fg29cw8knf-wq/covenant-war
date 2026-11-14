@@ -14,7 +14,11 @@ extends Node
 ## (The second pass of 14 November: "open" the opening's wide shot, as it
 ## begins, on its way down and nearly home; "flash" the lightning behind the
 ## rim with the hunter black against it; "eyes" the pack's eyes open along
-## the rim; "close" Bram near, his coat in a gust and the snow on him.)
+## the rim; "close" Bram near, his coat in a gust and the snow on him.
+## "demand" (the same evening): the child picked up, then the hunter's arm
+## put out for it, the mark's light and him turning it away, and the lead-in
+## to the duel: its cards, his, and the Circle drawn in the snow. Slow: the
+## pick-up is played.)
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
 ## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
@@ -28,7 +32,7 @@ var _look := Vector3.ZERO
 var _fov := 50.0
 var _n := 0
 var _blow := false
-const ALL := ["night", "open", "torn", "mid", "wide", "back", "rim", "bowl", "held", "flash", "eyes", "close"]
+const ALL := ["night", "open", "torn", "mid", "wide", "back", "rim", "bowl", "held", "flash", "eyes", "close", "demand"]
 
 
 func _ready() -> void:
@@ -247,5 +251,54 @@ func _run() -> void:
 		await _shot("close_shoulder_most", 6)
 		_at(bp - fw * 2.3 + Vector3(0, 1.3, 0), bp + Vector3(0, 1.05, 0), 44.0)
 		await _shot("close_behind_most", 6)
+	if names.has("demand"):
+		# the child picked up and tucked in his coat, as the memory does it
+		var kd4 := m._kneel_dir(Vector3.FORWARD)
+		var bottom4 := m._kneel_spot(kd4)
+		m._ad = kd4
+		m._bottom = bottom4
+		m._bram.position = bottom4
+		if m._bram is Figure3D:
+			(m._bram as Figure3D).snap_face(kd4)
+		m._shaft_k = 0.0
+		m._child_beacon(false)
+		m._crater_k = 0.32
+		m._raining = false
+		_peek = false
+		var rt4 := kd4.cross(Vector3.UP)
+		m._shot(bottom4 - kd4 * 1.9 + rt4 * 1.45 + Vector3(0, 1.15, 0), m._baby.position + Vector3(0, 0.2, 0), 40.0)
+		await m._lift_child()
+		m._tuck()
+		for k in 14:
+			await get_tree().process_frame
+		# the hunter on the rim, looking down at him
+		var rim4 := c + kd4 * WhiteSky.RIM_AT
+		rim4.y = WhiteSky.height(rim4.x, rim4.z)
+		m._hunter.position = rim4
+		m._hunter.look_at_dir(m._bram.position - rim4)
+		m._hunter.visible = true
+		m._hunter._set_fade(1.0)
+		var lamp := OmniLight3D.new()
+		lamp.light_color = Color(0.72, 0.8, 1.0)
+		lamp.light_energy = WhiteSky.RIM_LIGHT
+		lamp.omni_range = 4.5
+		lamp.position = Vector3(0.0, 2.0, 1.6)
+		m._hunter.add_child(lamp)
+		if m._bram is Figure3D:
+			(m._bram as Figure3D).eyes_on(rim4 + Vector3(0, 2.0, 0))
+		m._shot(bottom4 - kd4 * 2.0 + rt4 * 0.45 + Vector3(0, 1.2, 0), rim4 + Vector3(0, 1.9, 0), WhiteSky.RIM_LENS)
+		await _shot("demand_0_before", 8)
+		m._the_demand(rim4, bottom4, rt4)
+		await _shot("demand_1_arm_coming", 13)
+		await _shot("demand_1_arm_out", 9)
+		await _shot("demand_2_the_mark", 12)
+		await _shot("demand_3_turned_away", 22)
+		for k in 6:
+			await get_tree().process_frame
+		m._to_the_duel(rim4, bottom4, rt4)
+		await _shot("lead_1_its_cards", 10)
+		await _shot("lead_2_his_cards", 12)
+		await _shot("lead_3_the_circle", 12)
+		await _shot("lead_4_closed", 14)
 	print("WHITE SKY LOOK: done in ", out)
 	get_tree().quit()

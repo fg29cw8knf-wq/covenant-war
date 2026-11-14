@@ -86,9 +86,27 @@ there with one arm. A gust of snow. When it clears, a figure stands on the
 crater's rim above him: taller than a man, a ragged cloak the colour of old ash,
 a hood with nothing in it. No face. No voice.)_
 
+_(Changed, 14 November. Gary: "need something before bram says not this one
+otherwise whole thing doesn't make much sense and maybe something that leads into
+the battle".)_
+
+_(Lightning out beyond the rim: for the length of the flash it stands up there,
+black against it. Then the gust, and it forms and comes to the edge. It puts out a
+long arm, the hand open, at the child in his coat. The mark over the child's heart
+answers: its light spills out round Bram through his coat, motes of it lifting
+off towards the open hand, and the child cries out. Bram turns the child away
+from it, his back bent and both arms round it; the light is shut in.)_
+
 **[BRAM] (new):** "Not this one."
 
-_(The hunter lifts a hand. Cards rise out of the snow round it, white.)_
+_(Along the rim to either side of it the eyes of its pack open in the dark, one
+pair after another. The hunter lifts its other hand. Cards rise out of the snow
+round it, white. Bram squares to it and his own come up in answer, a fan of gold
+light by his free hand. A Circle of light draws itself in the snow and the glass
+between them, round from his feet until it closes under the rim.)_
+
+_(White; then black.)_ **[CAPTION]** The end of the duel / Bram is down to his
+last cards.
 
 ### Bram's duel (played; changed, 12 November)
 
@@ -126,8 +144,10 @@ comes down. Bram staggers, his arm going round the child.)_
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
 E: the Last Page.)** / **(Press A to play the Last Page.)**
 
-_(He calls down Orlanthe, the Last Page, and as its blow lands the screen burns
-white. Nobody sees who won.)_
+_(He comes up off his knee as he plays it. Orlanthe's Summon video plays
+(changed, 14 November; Gary: "when bram plays the summon we need to see the
+summons video"); then Orlanthe, the Last Page, comes down on the field, and as its
+blow lands the screen burns white. Nobody sees who won.)_
 
 [GAME] Each of the three waits for the player; nothing else moves the duel on, and
 nothing the player can do loses it. Every move of the duel is written out and

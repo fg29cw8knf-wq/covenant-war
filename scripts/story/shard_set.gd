@@ -20,7 +20,8 @@ extends RefCounted
 ##                      layers of noise out by hand for every pixel
 ##   ground_material()  the snow: wind-carved ridges in the light, snow
 ##                      snaking across it on the wind, glints that come and go
-##                      as the camera moves, the crater's black glass
+##                      as the camera moves, the crater's black glass; and a
+##                      Circle that can be drawn on it in light ("ring")
 ##   ground_mesh()      the snowfield, finer near its middle
 ##   far_range()        the Shardlands themselves: shards as big as hills
 ##                      standing round the horizon, dark until the sky opens
@@ -806,6 +807,10 @@ uniform vec3 crater = vec3(0.0, 0.0, -30.0);
 uniform float crater_r = 7.0;
 uniform float glow = 0.6;
 uniform vec2 wind = vec2(-0.96, 0.28);
+uniform vec4 ring = vec4(0.0, 0.0, 1.0, 0.0);
+uniform vec2 ring_from = vec2(0.0, 1.0);
+uniform float ring_sweep = 1.0;
+uniform vec3 ring_col : source_color = vec3(0.78, 0.84, 1.0);
 uniform float blow = 1.0;
 uniform float sparkle = 0.35;
 uniform float relief = 0.5;
@@ -864,6 +869,22 @@ void fragment() {
 	// lay bright three metres out, and every close shot in the bowl had a
 	// white floor behind it)
 	em += vec3(0.85, 0.9, 1.0) * glow * inner * exp(-d * 1.8) * 1.4;
+	// a Circle drawn on it in light (ring: where, how wide, how lit), lying
+	// on the snow and the glass as they lie; drawn round from ring_from both
+	// ways as ring_sweep goes 0 to 1
+	if (ring.w > 0.001) {
+		vec2 rp = p - ring.xy;
+		float rd = length(rp);
+		float off = abs(rd - ring.z);
+		float line = exp(-off * off / 0.0032);
+		float halo = exp(-off / 0.4) * 0.1;
+		float round_it = acos(clamp(dot(rp / max(rd, 0.0001), ring_from), -1.0, 1.0)) / 3.14159;
+		float drawn = 1.0 - smoothstep(ring_sweep - 0.04, ring_sweep, round_it);
+		float runes = 0.86 + 0.14 * sin(atan(rp.y, rp.x) * 30.0 + TIME * 1.1);
+		// (and where it's being drawn, a bright head on the line)
+		float head = exp(-abs(round_it - ring_sweep) / 0.02) * step(ring_sweep, 0.995);
+		em += ring_col * (line * (0.95 * runes + head * 2.2) + halo) * drawn * ring.w;
+	}
 	EMISSION = em;
 }
 """

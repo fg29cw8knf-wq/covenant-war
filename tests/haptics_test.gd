@@ -19,7 +19,7 @@ func _ready() -> void:
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["duel_3d"] = false
 	Game.settings["vibration"] = true
-	SummonVideo.set_mode("off")
+	Game.settings[SummonVideo.SETTING] = "off"   # (not set_mode: that saves it to this machine's Options)
 	ds = DuelScreen.new().configure({"decks": ["emberstorm", "tidegrove"], "names": ["You", "Rival"],
 		"profiles": [Lore.new_profile("You", "", 4), Lore.new_profile("Rival", "", 4)], "arena": "ashford",
 		"ai": [false, false], "seed": 7, "speed": 1.0, "first": 0, "no_arena_events": true, "field3d": false})

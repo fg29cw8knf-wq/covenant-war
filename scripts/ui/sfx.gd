@@ -358,6 +358,17 @@ static func _synth(sound: String) -> AudioStreamWAV:
 		"ice_shatter":
 			# a shard bursting: the break, then its splinters ringing down
 			samples = _mix(_mix(_noise(0.45, 0.6, 7500.0), _sweep(1500.0, 260.0, 0.4, 0.3, "sine")), _pings(46, 1.7, 2100.0, 7400.0, 0.2, 0.16, 23))
+		# (14 November, night: the two new moments before the opening's duel;
+		# stand-ins until Gary's are saved as assets/sfx/mark_wake.ogg and
+		# circle_draw.ogg)
+		"mark_wake":
+			# the mark over the child's heart answering the hunter's hand: a
+			# low warm note swelling up, a high one waking over it
+			samples = _ring([[196.0, 1.0, 0.0], [293.7, 0.7, 0.15], [392.0, 0.5, 0.4], [1174.7, 0.16, 0.7], [1568.0, 0.1, 0.95]], 2.8, 0.13)
+		"circle_draw":
+			# a Circle of light drawing itself in the snow: a line running
+			# round, rising, and a soft ring as it closes
+			samples = _mix(_mix(_sweep(420.0, 1250.0, 1.5, 0.07, "sine"), _noise(1.5, 0.03, 6000.0)), _ring([[1568.0, 0.8, 1.4], [2349.3, 0.45, 1.45], [3136.0, 0.25, 1.5]], 3.0, 0.11))
 		_:
 			samples = _tone([[880.0, 0.05]], 0.2, "sine")
 	var data := PackedByteArray()

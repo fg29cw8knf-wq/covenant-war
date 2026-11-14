@@ -28,6 +28,12 @@ extends Node
 ## (the child going down with him) and up as the Last Page is played, the ice
 ## breaking, the phone's buzzes asked for (Haptics.count) and the ice's
 ## sounds.
+##
+## (And that evening's four) the hunter's arm put out for the child and Bram
+## turning it away before "Not this one."; the lead-in (his cards up, the
+## Circle drawn in the snow); the caption before the duel; and the Summon's
+## video when the Last Page is played (asked for and begun: headless, a
+## video is over in a frame).
 
 var out_dir := "/tmp/white_sky"
 var every := 4.0
@@ -72,6 +78,9 @@ var _knee_head := Vector3.INF # his head from where he stands, down on his knee
 var _knee_drop := 0.0         # how far the child came down with him (m)
 var _baby_y := INF
 var _stilled := {}            # the new moments a still has been asked for
+var _reach_most := 0.0        # how far the hunter's arm came out (0..1)
+var _turned_most := 0.0       # how far Bram turned the child away (degrees)
+var _ring_drawn := 0.0        # how much of the Circle was drawn (0..1)
 const DrawHold = preload("res://tests/draw_hold.gd")
 var _keys := false
 var _body = null
@@ -97,6 +106,10 @@ func _ready() -> void:
 	get_window().size = Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
 	Game.settings["seen_white_sky"] = false
+	# (the Summon's video as a new game has it: on, and not seen yet; this
+	# machine's own Options may say otherwise)
+	Game.settings[SummonVideo.SETTING] = "full"
+	Game.v2.erase("summon_seen")
 	Sfx.listen = true
 	m = WhiteSky.new()
 	_late = args.has("late")
@@ -277,6 +290,8 @@ func _once(label: String, secs: float) -> void:
 
 ## What the second pass of 14 November added, watched as it plays ...
 func _watch_second_pass() -> void:
+	if not is_instance_valid(m._bram):
+		return   # (the memory's over, or skipped: the duel's screen has gone, and him with it)
 	if m._roam and m._open_k > 0.0:
 		_once("open_a", 1.2)
 		_once("open_b", 3.6)
@@ -287,6 +302,28 @@ func _watch_second_pass() -> void:
 		_once("rim_flash_b", 0.15)
 	if m.rim_eyes >= WhiteSky.RIM_EYES * 2:
 		_once("rim_eyes", 0.5)
+	if m.demanded and m._dir_f == null and is_instance_valid(m._hunter):
+		_once("demand_arm", 1.5)
+		_reach_most = maxf(_reach_most, m._hunter.reaching())
+	if m.shielded and m._dir_f == null:
+		_once("demand_mark", 0.0)
+		_once("demand_turned", WhiteSky.DEMAND_TURN + 0.2)
+		if m._bram is Figure3D and not m.led_in and m._bram_fan.is_empty():
+			var f: Vector3 = (m._bram as Figure3D).facing()
+			_turned_most = maxf(_turned_most, rad_to_deg(absf(Vector2(f.x, f.z).angle_to(Vector2(m._ad.x, m._ad.z)))))
+	if not m._bram_fan.is_empty():
+		_once("lead_cards", 0.9)
+	if m.led_in and m._dir_f == null:
+		_once("lead_circle", WhiteSky.LEAD_RING_SECS * 0.6)
+		_once("lead_circle_b", WhiteSky.LEAD_RING_SECS + 0.6)
+		if m._ground_mat != null:
+			var sw = m._ground_mat.get_shader_parameter("ring_sweep")
+			if sw != null:
+				_ring_drawn = maxf(_ring_drawn, float(sw))
+	if m.later_shown:
+		_once("later", 1.6)
+	if m._summon_clip:
+		_once("summon_video", 0.6)
 	if m.knelt:
 		_once("knee", WhiteSky.KNEE_AFTER + 0.2)
 		_once("knee_b", WhiteSky.KNEE_AFTER + WhiteSky.KNEE_DOWN + 0.5)
@@ -340,6 +377,20 @@ func _second_pass() -> bool:
 			fails.append("the hunter's arrival: lightning %s, %d pairs of eyes (wanted %d)" % [str(m.rim_flashed), m.rim_eyes, WhiteSky.RIM_EYES * 2])
 		if _knee_drop < 0.25:
 			fails.append("the child didn't go down on the knee with him (%.2f m)" % _knee_drop)
+		# (that evening's: what comes before "Not this one.", the lead-in, the caption)
+		print("white_sky_test: before his line: the hunter's arm out %.2f, Bram turned the child %.0f degrees away; the lead-in: %d of his cards up, the Circle drawn %.2f; the caption before the duel %s" % [
+			_reach_most, _turned_most, m._bram_fan.size(), _ring_drawn, str(m.later_shown)])
+		if not m.demanded or _reach_most < 0.9:
+			fails.append("the hunter's arm didn't come out for the child (%.2f)" % _reach_most)
+		if not m.shielded or _turned_most < WhiteSky.SHIELD_TURN * 0.7:
+			fails.append("Bram didn't turn the child away (%.0f degrees)" % _turned_most)
+		if not m.led_in or m._bram_fan.size() != WhiteSky.LEAD_CARDS or _ring_drawn < 0.95:
+			fails.append("the lead-in: %d of his cards, the Circle drawn %.2f" % [m._bram_fan.size(), _ring_drawn])
+		if not m.later_shown:
+			fails.append("no caption before the duel")
+	print("white_sky_test: the Summon's video: wanted %s, begun %d" % [str(m._clip_wanted), m.summon_clips])
+	if SummonVideo.has_clip(WhiteSkyDuel.SUMMON, "full") and SummonVideo.mode() != "off" and (not m._clip_wanted or m.summon_clips < 1):
+		fails.append("the Summon's video didn't play at the Last Page (wanted %s, begun %d)" % [str(m._clip_wanted), m.summon_clips])
 	print("white_sky_test: his knee: down %s, up %s; his head on it at %s from where he stands (the shots take it at %s); the child came down %.2f m" % [
 		str(m.knelt), str(m.rose), str(_knee_head), str(WhiteSky.HEAD_KNELT), _knee_drop])
 	if not m.knelt or not m.rose or m._kneeling:

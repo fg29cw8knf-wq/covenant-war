@@ -59,6 +59,10 @@ var human: DuelHuman
 var me := 0
 var rival := 1
 var speed := 1.0
+## A Summon's video is playing over the duel now, and how many have (a film
+## that directs the duel waits on it: WhiteSky).
+var summon_clip_on := false
+var summon_clips := 0
 var sfx: Sfx
 
 var stage: Control
@@ -4762,12 +4766,20 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 	# Sky directs its own Summon and lets the stinger ring on into the white).
 	# The clip has its own sound, so its stinger isn't started under it: two
 	# pieces of music at once (Orlanthe's clip has its own choir).
-	var clip := "" if _filmed() else SummonVideo.pick(card.id)
+	# (14 November, Gary: "when bram plays the summon we need to see the
+	# summons video": a film that asks for it has it too, spec.film_summon_clip;
+	# summon_clip_on tells the film it's the whole screen now.)
+	var clip := "" if (_filmed() and not bool(spec.get("film_summon_clip", false))) else SummonVideo.pick(card.id)
 	if clip == "" and not Music.stinger("summon_" + card.id):
 		sfx.play("summon")
 	_bars(true)   # (4 November: the black bars of a film, until the Demigod has landed)
 	if clip != "":
-		await SummonVideo.play(overlay, card.id)
+		summon_clip_on = true
+		# (a film's overlay is put away with the rest of the HUD: there the
+		# video goes on the screen itself, or nothing of it would be seen)
+		await SummonVideo.play(self if _filmed() else overlay, card.id)
+		summon_clip_on = false
+		summon_clips += 1
 	else:
 		var cine := SummonCine.new()
 		cine.card_id = card.id

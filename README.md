@@ -2041,6 +2041,93 @@ software renderer); `options_shot` (the switch is on the page);
 `duel_monkey`. **Not checked:** the frame rate with it on, on any real Mac;
 the phone's buzz in the hand.
 
+### Before "Not this one.", into the duel, and the Summon's video (14 November, night)
+
+Gary, having played the second pass: "need something before bram says not
+this one otherwise whole thing doesn't make much sense and maybe something
+that leads into the battle - as well as something that shows we are now
+seeing the end of the battle and when bram plays the summon we need to see
+the summons video". Four things, all in `WhiteSky`; the script
+(`docs/script/v7_prologue.md`) has them written in.
+
+- **What it has come for** (`_the_demand`). The hunter has no face and no
+  voice, so what it wants is shown. On the rim it puts out its long arm,
+  the hand open, at the child (`Hunter.reach_for`, `WhiteSky.Aim`: its model
+  has no clip for it, so its upper arm and forearm are turned to point at
+  the child over its idle). That is seen from beside it on the rim, close
+  against the sky: from Bram's side the arm comes straight at the camera
+  and is lost against its cloak. Then, from behind Bram: the mark over the
+  child's heart answers, its light spilling out round him through his coat
+  (`_mark_halo`, the child's own lamp raised), motes of it lifting off
+  towards the open hand (`_drawn_light`), and the child crying out. He
+  turns the child away, his back bent and both arms round it
+  (`SHIELD_TURN`), and the light is shut in. Then "Not this one." He turns
+  to his left, away from the camera behind his right shoulder, and isn't in
+  the shot of the arm at all: his face is still never seen.
+  **The motes going to the hunter's hand are new to the story**: nothing in
+  the script said the hunter draws at the mark. Gary has been told.
+- **The lead-in** (`_to_the_duel`). After his line and the pack's eyes, from
+  behind and above him: the hunter's cards rise as before; he squares to it
+  and his own come up in answer, a fan of gold light by his free hand
+  (`_raise_bram_cards`); and a Circle of light draws itself in the snow and
+  the glass between them, round from his feet both ways until it closes
+  under the rim. The snow's own shader draws it (`ShardSet.GROUND`'s
+  `ring`), so it lies on the bowl as the bowl lies.
+- **We join the duel at its end** (`_late_caption`, `LATER`). The white of
+  the cards goes to black and a caption stands on it as the opening's does:
+  "The end of the duel" / "Bram is down to his last cards." Then the black
+  lifts on the Circle. Cut to straight from the raised cards, the duel's
+  last three moves read as its beginning. **The words are mine**; Gary has
+  been asked whether he wants others.
+- **The Summon's video** (`spec.film_summon_clip`, `DuelScreen.fx_summon`,
+  `summon_clip_on`). A filmed duel played no Summon video (12 November: the
+  film directed its own Summon). This one asks for it: when the Last Page
+  is played, Orlanthe's video plays (the full one the first time, as in any
+  duel; "Summon videos: Off" in Options still means none). Because the video
+  is the whole screen from the moment the card is down, what was seen as
+  the card went down comes first now (`_before_summon_clip`,
+  `LAST_PAGE_FIRST`): low over his shoulder he comes up off his knee, the
+  card going down as he rises, his line with it; then the move is made and
+  the video begins. While it plays the film's clock stands (`FILM_MAX`, the
+  ten seconds the Last Page is given), the film's bars and the picture's
+  shaded corners are off it, the storm is out from under it, and a tap
+  skips it; when it ends the Last Page's own shot begins, Orlanthe comes
+  down on the field, and the white follows the blow as before.
+
+The first card is played about a minute and a half in now (it was 75
+seconds): the three new passages are about fourteen seconds between them.
+
+Two sounds of their own, stand-ins until Gary's are saved in `assets/sfx/`
+(`Sfx._synth`): `mark_wake` (the mark answering, about 3 s) and
+`circle_draw` (the Circle drawing itself and closing, about 3 s).
+
+Two things found by looking, not by the tests. **The video played unseen**:
+a filmed duel puts its `overlay` away with the rest of the HUD, and the
+Summon's video was put on the overlay, so the first drawn run held the shot
+of his shoulder for ten seconds while the test passed. In a film it goes on
+the duel's screen itself now (`fx_summon`). **The light round him**
+(`_mark_halo`): `Color * MARK_HALO` multiplied the alpha as well, squaring
+the number (2.6 was a hard white disc over him, 0.55 nothing); the alpha is
+kept at 1 and the number is 1.5.
+
+**Checked:** `white_sky_look ... demand` (the pick-up played, then the arm,
+the mark, the turn, the cards and the Circle), every still looked at, and
+changed by them (the arm couldn't be seen from his side; the first Circle
+was a string of blown-out beads; the shot of him turning cut him off at the
+neck; the light round him, above); the whole prologue drawn at a Mac's full
+settings, and the duel drawn again once the video could be seen (Orlanthe's
+video fills the screen from the card going down, then the Last Page lands
+and the ice bursts as before); `white_sky_test` checks all four (the arm
+out, the turn, his four cards and the Circle drawn, the caption, the video
+wanted and begun) and passes whole, `hurry`, `duel` and `body`, and skipped
+at each new moment (60, 62.5, 70, 76, 107, 109 s); `haptics_test`,
+`best_picture_test`, `summon_video_test`, `white_sky_play_probe`,
+`first_launch_test` (and `again`), `white_sky_world ... play`,
+`duel_sim -- 100`, `duel_monkey`: ok. **Not checked:** anything on a real
+Mac or iPhone (the apps play Gary's masters through their own player; here
+it was the small Theora copy); how the arm, the turn and the Circle look
+moving; the two stand-in sounds were measured, not heard.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

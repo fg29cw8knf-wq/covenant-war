@@ -372,6 +372,8 @@ func play() -> void:
 	if not _skipping:
 		await _the_hunter()
 	if not _skipping:
+		await _late_caption()
+	if not _skipping:
 		await _duel()
 	await _close()
 
@@ -488,7 +490,7 @@ func _open_step(delta: float) -> void:
 ## makes a stand-in the first time it's asked for: a tenth of a second's
 ## work each, which would be a catch in the walk).
 func _warm_ice_sounds() -> void:
-	for nm in ["ice_ring", "ice_crack", "ice_shatter"]:
+	for nm in ["ice_ring", "ice_crack", "ice_shatter", "mark_wake", "circle_draw"]:
 		Sfx.get_stream(nm)
 		await get_tree().process_frame
 
@@ -1062,19 +1064,23 @@ func _the_hunter() -> void:
 	_drift(c0, c1, form + Vector3(0, 1.8, 0), rim + Vector3(0, 1.9, 0), RIM_STEP + 4.0)
 	await _wait(RIM_STEP + 0.6)
 	_hunter.look_at_dir(_bram.position - _hunter.position)
+	# (14 November, evening) what it has come for, before his answer to it
+	await _the_demand(rim, b, rt)
+	if _skipping:
+		return
 	await _say(NOT_THIS)
 	if _skipping:
 		return
-	if _bram is Figure3D:
-		(_bram as Figure3D).eyes_on(null)
 	# (14 November) and it hasn't come alone: its pack's eyes open in the dark
 	# along the rim to either side of it, one pair after another
 	await _rim_pack(rim, b, rt)
 	if _skipping:
 		return
-	# it lifts a hand: cards rise from the snow about it, white
-	_hunter.raise_cards()
-	await _wait(1.6)
+	# its cards rise; his come up in answer, and the Circle draws itself in
+	# the snow between them
+	await _to_the_duel(rim, b, rt)
+	if _skipping:
+		return
 	var fl := create_tween()
 	fl.tween_property(_white, "modulate:a", 1.0, 0.5)
 	await fl.finished
@@ -1220,6 +1226,293 @@ func _rim_pack(rim: Vector3, b: Vector3, rt: Vector3) -> void:
 				_snd("cry_hound", _rng.randf_range(0.5, 0.62), -15.0)   # (low in a throat, off in the dark)
 			await _wait(RIM_EYES_EVERY * _rng.randf_range(0.7, 1.3))
 	await _wait(0.9)
+
+
+## What comes before "Not this one." (14 November, evening; Gary: "need
+## something before bram says not this one otherwise whole thing doesn't make
+## much sense"). The hunter has no face and no voice (the script), so what
+## it wants is shown. Stood on the rim looking down at him, it puts out its
+## long arm, the hand open, at the child in his coat (Hunter.reach_for; seen
+## from beside it on the rim, close against the sky: from his side the arm
+## comes straight at the camera). The mark over the child's heart answers it: its light spills out round him
+## through his coat and across the glass, motes of it lifting off towards
+## the open hand, and the child cries out (DEMAND_HOLD). Then he turns the
+## child away from it, his right shoulder to the hunter, his back bent and
+## both arms round the bundle; the light is shut in, the crying muffled. And
+## only then: "Not this one."
+## He isn't in the shot of its arm; every other is from behind his right
+## shoulder and he turns to his left, away from the camera, so his face is
+## never seen.
+const DEMAND_REACH := 1.8
+const DEMAND_HOLD := 1.5
+const DEMAND_TURN := 0.9
+const DEMAND_GLOW := 2.6
+## How bright the mark's light stands round his outline, seen from behind
+## (most of the sheet is behind his back: what shows is its soft edge).
+const MARK_HALO := 1.5
+const SHIELD_TURN := 32.0
+## It was asked for, and he turned the child away (the tests read them).
+var demanded := false
+var shielded := false
+var _motes: GPUParticles3D
+
+
+func _the_demand(rim: Vector3, b: Vector3, rt: Vector3) -> void:
+	demanded = true
+	var fig: Figure3D = _bram as Figure3D if _bram is Figure3D else null
+	var chest := b + Vector3(0, 1.22, 0) + _ad * 0.22
+	# its arm comes out at the child: seen from beside it on the rim, close,
+	# against the sky (from his side the arm comes straight at the camera
+	# and is lost against its cloak; and he isn't in this picture at all)
+	var hp := _hunter.global_position
+	var p0 := hp + rt * 3.3 - _ad * 1.0 + Vector3(0, 1.95, 0)
+	var p1 := p0 - rt * 0.35 + Vector3(0, -0.1, 0)
+	p0.y = maxf(p0.y, height(p0.x, p0.z) + 1.0)
+	p1.y = maxf(p1.y, height(p1.x, p1.z) + 1.0)
+	var arm_at := hp + Vector3(0, 1.72 * _hunter.scale.y, 0) - _ad * 0.45
+	_shot(p0, arm_at, 30.0)
+	_drift(p0, p1, arm_at, arm_at, DEMAND_REACH + 1.0)
+	await _wait(0.35)
+	_hunter.reach_for(chest, DEMAND_REACH)
+	await _wait(DEMAND_REACH + 0.25)
+	if _skipping:
+		return
+	# behind him again, from the knees up, the hunter over him with its hand
+	# out. The mark answers: its light out through his coat, the child crying
+	var s0 := b - _ad * 3.0 + rt * 0.95 + Vector3(0, 1.5, 0)
+	var s1 := b - _ad * 2.7 + rt * 0.85 + Vector3(0, 1.55, 0)
+	s0.y = maxf(s0.y, height(s0.x, s0.z) + 0.5)
+	s1.y = maxf(s1.y, height(s1.x, s1.z) + 0.5)
+	var up_at := b + _ad * 3.0 + Vector3(0, 1.7, 0)
+	_shot(s0, up_at, 40.0)
+	_drift(s0, s1, up_at, up_at, DEMAND_HOLD + DEMAND_TURN + 3.0)
+	var glow := _baby.get_node_or_null("MarkGlow") as OmniLight3D if is_instance_valid(_baby) else null
+	var glow_was := [0.15, 0.9]
+	if glow != null:
+		glow_was = [glow.light_energy, glow.omni_range]
+		var gt := create_tween().set_parallel(true)
+		gt.tween_property(glow, "light_energy", DEMAND_GLOW, 0.8).set_trans(Tween.TRANS_SINE)
+		gt.tween_property(glow, "omni_range", 3.4, 0.8)
+	if _cry != null:
+		_cry.volume_db = -10.0
+		_cry.pitch_scale = 1.0
+		_cry.play()
+	_snd("mark_wake", 1.0, -3.0)
+	var hand := hp + Vector3(0, 1.6 * _hunter.scale.y, 0) + (chest - hp).normalized() * 0.9
+	_motes = _drawn_light(chest + _ad * 0.3, hand)
+	# (and seen from behind him: the light of it round his outline)
+	var halo := _mark_halo(chest + _ad * 0.28)
+	var hm := (halo.mesh as QuadMesh).material as StandardMaterial3D
+	create_tween().tween_property(hm, "albedo_color", Color(0.62 * MARK_HALO, 0.7 * MARK_HALO, 1.0 * MARK_HALO, 1.0), 0.8).set_trans(Tween.TRANS_SINE)
+	await _wait(DEMAND_HOLD)
+	if _skipping:
+		return
+	# he turns it away, his back bent and both arms round it
+	shielded = true
+	if fig != null:
+		fig.face(_ad.rotated(Vector3.UP, deg_to_rad(SHIELD_TURN)), _cam)
+		if _lean == null:
+			_lean = _bend(fig, "Lean", GUST_LEAN)
+		if _lean != null:
+			create_tween().tween_property(_lean, "amount", 0.85, DEMAND_TURN).set_trans(Tween.TRANS_SINE)
+		# his free arm across it too
+		var hold := Node3D.new()
+		hold.name = "Shield"
+		_baby.add_child(hold)
+		hold.position = Vector3(0.0, 0.02, -0.1)
+		fig._reach("right", hold, DEMAND_TURN * 0.8)
+	if glow != null:
+		var gt2 := create_tween().set_parallel(true)
+		gt2.tween_property(glow, "light_energy", float(glow_was[0]), DEMAND_TURN)
+		gt2.tween_property(glow, "omni_range", float(glow_was[1]), DEMAND_TURN)
+	if _cry != null:
+		var ct := create_tween()
+		ct.tween_property(_cry, "volume_db", -24.0, DEMAND_TURN)
+		ct.tween_property(_cry, "volume_db", -40.0, 1.6)
+		ct.tween_callback(_cry.stop)
+	if is_instance_valid(_motes):
+		_motes.emitting = false
+		get_tree().create_timer(3.0, false).timeout.connect(_motes.queue_free)
+	var out := create_tween()
+	out.tween_property(hm, "albedo_color", Color(0, 0, 0), DEMAND_TURN * 0.8)
+	out.tween_callback(halo.queue_free)
+	await _wait(DEMAND_TURN + 0.5)
+
+
+## The mark's light seen from behind him: a soft sheet of it in front of his
+## chest at `at`, which his body stands black against (dark to begin with).
+func _mark_halo(at: Vector3) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(2.3, 2.3)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.disable_fog = true
+	m.albedo_texture = ShardSet.soft_tex()
+	m.albedo_color = Color(0, 0, 0)
+	q.material = m
+	mi.mesh = q
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.position = at
+	_set.add_child(mi)
+	return mi
+
+
+## Motes of the mark's light lifting off `from` towards `to` (the hunter's
+## open hand), thinning as they go.
+func _drawn_light(from: Vector3, to: Vector3) -> GPUParticles3D:
+	var p := GPUParticles3D.new()
+	p.amount = [14, 22, 30][clampi(quality, 0, 2)]
+	p.lifetime = 2.6
+	p.randomness = 1.0   # (not let go at even beats: they went up in a row like a string of pearls)
+	p.local_coords = false
+	var way := to - from
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.2
+	pm.direction = way.normalized()
+	pm.spread = 13.0
+	pm.initial_velocity_min = way.length() / 3.6
+	pm.initial_velocity_max = way.length() / 1.9
+	pm.gravity = Vector3.ZERO
+	pm.scale_min = 0.4
+	pm.scale_max = 1.5
+	var cr := Curve.new()
+	cr.add_point(Vector2(0.0, 0.0))
+	cr.add_point(Vector2(0.15, 1.0))
+	cr.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cr
+	pm.alpha_curve = ct
+	p.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.075, 0.075)
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	m.vertex_color_use_as_albedo = true
+	m.disable_fog = true
+	m.albedo_texture = _soft_dot()
+	m.albedo_color = Color(1.5, 1.6, 1.9)
+	q.material = m
+	p.draw_pass_1 = q
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.position = from
+	_set.add_child(p)
+	return p
+
+
+## What leads into the duel (the same evening; Gary: "and maybe something
+## that leads into the battle"). After his line and the pack's eyes, seen
+## from behind and above him with the bowl's floor between the two of them
+## in the picture: the hunter's arm drops and its cards rise about it, as
+## before. He squares to it again and his own come up in answer, a fan of
+## his god's light by his free hand (LEAD_CARDS). And the Circle draws
+## itself in the snow and the glass between them, a ring of light run round
+## from his feet both ways until it closes under the rim (the snow's own
+## shader draws it: ShardSet's "ring"). Then the white.
+const LEAD_CARDS := 4
+const LEAD_RING := 3.9         # the Circle's radius (m)
+const LEAD_RING_SECS := 1.5
+const LEAD_HOLD := 1.5
+## The colour of Bram's cards' light (his Totems are of the stars).
+const BRAM_LIGHT := Color(1.0, 0.86, 0.55)
+## His cards came up and the Circle was drawn (the tests read them).
+var led_in := false
+var _bram_fan: Array = []
+
+
+func _to_the_duel(rim: Vector3, b: Vector3, rt: Vector3) -> void:
+	var fig: Figure3D = _bram as Figure3D if _bram is Figure3D else null
+	var g0 := b - _ad * 4.6 + rt * 1.7 + Vector3(0, 2.7, 0)
+	var g1 := b - _ad * 4.0 + rt * 1.5 + Vector3(0, 2.5, 0)
+	g0.y = maxf(g0.y, height(g0.x, g0.z) + 0.6)
+	g1.y = maxf(g1.y, height(g1.x, g1.z) + 0.6)
+	var mid := b + _ad * 4.2 + Vector3(0, 0.9, 0)
+	_shot(g0, mid, 50.0)
+	_drift(g0, g1, mid, mid, 6.5)
+	# its cards
+	_hunter.drop_arm(0.7)
+	_hunter.raise_cards()
+	await _wait(1.2)
+	if _skipping:
+		return
+	# his, in answer
+	if fig != null:
+		fig.face(_ad, _cam)
+		fig.eyes_on(null)
+		if _lean != null and is_instance_valid(_lean):
+			create_tween().tween_property(_lean, "amount", 0.0, 0.6).set_trans(Tween.TRANS_SINE)
+	_raise_bram_cards(b, rt, fig)
+	_snd("card_draw", 0.9, 2.0)
+	await _wait(1.0)
+	if _skipping:
+		return
+	# the Circle
+	led_in = true
+	_snd("ward_set", 0.75, 1.0)
+	if _ground_mat != null:
+		var c := b + _ad * (LEAD_RING + 0.35)
+		_ground_mat.set_shader_parameter("ring", Vector4(c.x, c.z, LEAD_RING, 1.0))
+		_ground_mat.set_shader_parameter("ring_from", Vector2(-_ad.x, -_ad.z))
+		_ground_mat.set_shader_parameter("ring_col", Color(0.8, 0.86, 1.0))
+		var rt2 := create_tween()
+		rt2.tween_method(func(v: float) -> void: _ground_mat.set_shader_parameter("ring_sweep", v), 0.0, 1.0, LEAD_RING_SECS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		_snd("circle_draw", 1.0, -3.0)
+	await _wait(LEAD_RING_SECS + LEAD_HOLD)
+
+
+## His cards: LEAD_CARDS of light rising out of his coat into a fan by his
+## free hand, which comes up to them.
+func _raise_bram_cards(b: Vector3, rt: Vector3, fig: Figure3D) -> void:
+	var base := b + rt * 0.44 + _ad * 0.3
+	var yaw := atan2(_ad.x, _ad.z)
+	for i in LEAD_CARDS:
+		var c := sigil_card(BRAM_LIGHT)
+		c.scale = Vector3.ONE * 0.62
+		_set.add_child(c)
+		var a := (float(i) - (LEAD_CARDS - 1) * 0.5) * 0.3
+		c.position = base + Vector3(0, 0.95, 0)
+		c.rotation = Vector3(0, yaw, 0)
+		var to := base + rt * sin(a) * 0.36 + Vector3(0, 1.42 - absf(a) * 0.14, 0) + _ad * 0.05
+		var tw := create_tween()
+		tw.tween_interval(i * 0.1)
+		tw.tween_property(c, "position", to, 0.8).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(c, "rotation", Vector3(0.0, yaw - a * 0.9, -a * 0.55), 0.8)
+		_bram_fan.append(c)
+	if fig != null:
+		var grip := Node3D.new()
+		grip.name = "Fan"
+		_set.add_child(grip)
+		grip.position = base + Vector3(0, 1.12, 0) + _ad * 0.06
+		fig._reach("right", grip, 0.6)
+
+
+## Between the rim and the duel (the same evening; Gary: "something that
+## shows we are now seeing the end of the battle"). The duel that follows
+## is its last three moves: his Scrivener and Loomwarden hurt, the Last Page
+## in his hand. Cut to straight from the hunter's raised cards it read as
+## the duel's beginning. So the white of the cards goes to black, and a
+## caption stands on it as the opening's does (LATER), before the black
+## lifts on the Circle.
+const LATER := ["The end of the duel", "Bram is down to his last cards."]
+var later_shown := false
+
+
+func _late_caption() -> void:
+	later_shown = true
+	_black.modulate.a = 1.0   # (under the white)
+	var wt := create_tween()
+	wt.tween_property(_white, "modulate:a", 0.0, 0.7).set_trans(Tween.TRANS_SINE)
+	await wt.finished
+	if _skipping:
+		return
+	await _ov.caption(LATER[0], LATER[1], 2.8)
 
 
 ## A hound's whine far off in the dark: the hunter's pack, before anything
@@ -1946,6 +2239,11 @@ var _asked_secs := 0.0
 var _hushed_for_page := false
 const PAGE_HUSH_MAX := 600.0
 var _move_go := false
+## The Summon's video: playing now, wanted for this play of the Last Page,
+## and how many have played (the tests read it).
+var _summon_clip := false
+var _clip_wanted := false
+var summon_clips := 0
 var _hand: Control = null
 var _ring: MoveRing = null
 var _ring_of: DuelTotem = null
@@ -1971,6 +2269,13 @@ func _duel() -> void:
 		_bram.reparent(f.world, false)
 		_bram.position = BRAM_AT
 		_face(_bram, Vector3.FORWARD)
+		if _bram is Figure3D:
+			# (his free hand off the fan of cards he raised on the walk's set,
+			# his back straight, his eyes his own)
+			(_bram as Figure3D)._reach("right", null, 0.01)
+			(_bram as Figure3D).eyes_on(null)
+		if _lean != null and is_instance_valid(_lean):
+			_lean.amount = 0.0
 		_hunter.reparent(f.world, false)
 		_hunter_at = HUNTER_AT
 		_hunter.position = HUNTER_AT
@@ -1987,7 +2292,7 @@ func _duel() -> void:
 		if who == 0 and is_instance_valid(_bram) and (t.contains(" plays ") or t.contains(" calls ") or t.contains(" sets ") or t.contains(" casts ")):
 			if _kneeling and not rose:
 				_rise_to_play()   # (up off his knee with it)
-			elif not _kneeling:
+			elif not _kneeling and not (_clip_wanted and t.contains("calls down")):
 				_act(_bram, "play_card")
 		if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()) and st.called < 0.0:
 			st.called = _t
@@ -2010,7 +2315,12 @@ func _duel() -> void:
 	_duel_storm_to(1.0, 0.1)
 	var fade := create_tween()
 	fade.tween_interval(WHITE_HOLD)
-	fade.tween_property(_white, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if _black.modulate.a > 0.5:
+		# (after the caption: out of black)
+		_white.modulate.a = 0.0
+		fade.tween_property(_black, "modulate:a", 0.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		fade.tween_property(_white, "modulate:a", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	var start := _t
 	_asked_secs = 0.0
 	_cut_at = _t
@@ -2019,10 +2329,34 @@ func _duel() -> void:
 	while not _skipping and not st.over and _t - start - _asked_secs < FILM_MAX:
 		if f != null:
 			_hide_plates(f)
-		if f != null and st.called >= 0.0 and not _climax:
+		# (14 November, evening) the Summon's own video (DuelScreen.fx_summon):
+		# the film's clock stands while it plays, its bars and the picture's
+		# shaded corners are off it, a tap skips it, and the Last Page's own
+		# shot begins when it's over
+		var clip_on := is_instance_valid(_screen) and _screen.summon_clip_on
+		if clip_on != _summon_clip:
+			_summon_clip = clip_on
+			_film_bars(not clip_on, 0.25, BAR_CLIMAX if not clip_on else 0.0)
+			if _vignette != null:
+				_vignette.visible = not clip_on
+			# (the storm out from under it: the video has its own sound)
+			_wind_to(-60.0 if clip_on else WIND_DB + 3.0, 0.3 if clip_on else 0.6)
+			if clip_on:
+				summon_clips += 1
+				_tapped = false
+		if clip_on:
+			var dt := get_process_delta_time()
+			_asked_secs += dt
+			if st.called >= 0.0:
+				st.called += dt
+			if _tapped:
+				_tapped = false
+				_skip_summon_clip()
+		var clip_over: bool = summon_clips > 0 or (is_instance_valid(_screen) and _screen.summon_clips > 0)
+		if f != null and st.called >= 0.0 and not _climax and not clip_on and (not _clip_wanted or clip_over or _t - st.called > 1.5):
 			_climax = true
 			_climax_shot()
-		if f != null and not _climax and _asking == "" and _t - _cut_at > IDLE_WIDE:
+		if f != null and not _climax and _asking == "" and _t - _cut_at > IDLE_WIDE and not clip_on:
 			_wide_shot()
 		if st.called >= 0.0 and ((st.struck >= 0.0 and _t - st.struck > CLIMAX_HOLD) or _t - st.called > 10.0):
 			break
@@ -2048,6 +2382,40 @@ func _duel() -> void:
 
 
 # --- the player's three moves (12 November) -----------------------------------
+## A tap on the Summon's video: over (the Theora player's; the apps' own
+## player takes its taps itself).
+func _skip_summon_clip() -> void:
+	if not is_instance_valid(_screen):
+		return
+	for c in _screen.get_children():
+		if c is SummonVideo:
+			(c as SummonVideo)._done = true
+
+
+## The Last Page played, when its Summon's video is to come (the same
+## evening; Gary: "when bram plays the summon we need to see the summons
+## video"). The video is the whole screen from the moment the card is down,
+## so what was seen as the card went down would be lost under it: he comes
+## up off his knee first, low over his shoulder, the card going down as he
+## rises and his line with it (LAST_PAGE_FIRST), and only then is the move
+## made and the video begun. With no video to come (Summon videos Off in
+## Options, or no file) nothing waits, as before.
+const LAST_PAGE_FIRST := 1.7
+
+func _before_summon_clip() -> void:
+	_clip_wanted = SummonVideo.pick(WhiteSkyDuel.SUMMON) != ""
+	if not _clip_wanted:
+		return
+	var start := _over_bram(Vector3(0.0, 3.0, -6.0), 40.0, 1.6, 0.7, 0.15)
+	if not _face_seen(start[0], start[1], float(start[2])):
+		_take(start, 0.0, LAST_PAGE_FIRST + 0.5)
+	if _kneeling and not rose:
+		_rise_to_play()
+	elif is_instance_valid(_bram):
+		_act(_bram, "play_card")
+	await _wait(LAST_PAGE_FIRST)
+
+
 ## One of the player's three moves, waited for: called by Bram's side of the
 ## duel (WhiteSkyDuel.Staged.ask) with the move's name and the action it's
 ## about to make, and awaited; the action is made when this returns. The
@@ -2166,6 +2534,8 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	_move_film(gate)
 	_hint_home()
 	_move_line(gate)   # (not waited on)
+	if gate == WhiteSkyDuel.PLAY_GATES[-1]:
+		await _before_summon_clip()
 	# (and back at once: the move is made the moment this returns)
 
 
@@ -2814,7 +3184,7 @@ static func duel_spec() -> Dictionary:
 		"puzzle": D.play_board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "controllers": D.play_controllers(), "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
-		"film": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
+		"film": true, "film_summon_clip": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
 		"music": ["white_sky_duel", "white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
 
 
@@ -5439,6 +5809,31 @@ class Stoop:
 			sk.set_bone_pose_rotation(b, Quaternion.IDENTITY.slerp(t[1] as Quaternion, amount) * sk.get_bone_pose_rotation(b))
 
 
+## A limb turned to point at something, laid over whatever its clip has it
+## doing: the bone `bone` turned so that the next one down (`tip`) lies on
+## the line to `at` (a place in the world), by `amount` (0: the clip's own
+## .. 1: straight at it). The hunter's arm put out at the child: its model
+## has no clip for that.
+class Aim:
+	extends SkeletonModifier3D
+	var bone := -1
+	var tip := -1
+	var at := Vector3.ZERO
+	var amount := 0.0
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		var sk := get_skeleton()
+		if sk == null or bone < 0 or tip < 0 or amount <= 0.001:
+			return
+		var g := sk.get_bone_global_pose(bone)
+		var now := sk.get_bone_global_pose(tip).origin - g.origin
+		var want := sk.global_transform.affine_inverse() * at - g.origin
+		if now.length() < 0.001 or want.length() < 0.001:
+			return
+		var q := Quaternion.IDENTITY.slerp(Quaternion(now.normalized(), want.normalized()), clampf(amount, 0.0, 1.0))
+		sk.set_bone_global_pose(bone, Transform3D(Basis(q) * g.basis, g.origin))
+
+
 # ================================================================= hunter ===
 
 ## The faceless hunter: taller than a man, a ragged cloak the colour of old
@@ -5459,6 +5854,9 @@ class Hunter:
 	var _geometry: Array = []
 	## Gary's model's clips (null with the drawn hunter).
 	var _ap: AnimationPlayer
+	## Gary's model's bones, and its arm put out (reach_for).
+	var _skel: Skeleton3D
+	var _aims: Array = []
 	## How high the cards fan: by the hood of the drawn hunter (2.76 m) or
 	## of Gary's (2.29 m, tools/rig_villager.sh shard_hunter).
 	var _card_top := 2.6
@@ -5481,7 +5879,8 @@ class Hunter:
 			# (11 November, Gary: the hunter "before brams battle has deformed
 			# right hand": his clips curl his long fingers and the skin
 			# doesn't follow, Figure3D.FROZEN; kept as modelled)
-			Figure3D.keep_fingers(m.find_child("Skeleton3D", true, false) as Skeleton3D)
+			_skel = m.find_child("Skeleton3D", true, false) as Skeleton3D
+			Figure3D.keep_fingers(_skel)
 			for g in m.find_children("*", "GeometryInstance3D", true, false):
 				_geometry.append(g)
 			_card_top = 2.2
@@ -5634,6 +6033,39 @@ class Hunter:
 		var sm := get_node_or_null("Smoke") as GPUParticles3D
 		if sm != null:
 			sm.emitting = k > 0.05
+
+	## Its arm put out at `at` (a place in the world) over `secs`, and held
+	## there: the upper arm turned to it, the forearm straightened after it
+	## (WhiteSky.Aim, over its idle; only Gary's model has an arm to move).
+	## `arm`: "Right" or "Left".
+	func reach_for(at: Vector3, secs: float, arm := "Right") -> void:
+		if _skel == null:
+			return
+		if _aims.is_empty():
+			for pair in [[arm + "Arm", arm + "ForeArm", 1.0], [arm + "ForeArm", arm + "Hand", 0.8]]:
+				var b := _skel.find_bone(String(pair[0]))
+				var t := _skel.find_bone(String(pair[1]))
+				if b < 0 or t < 0:
+					continue
+				var aim := WhiteSky.Aim.new()
+				aim.bone = b
+				aim.tip = t
+				aim.set_meta("most", float(pair[2]))
+				_skel.add_child(aim)
+				_aims.append(aim)
+		for aim in _aims:
+			(aim as WhiteSky.Aim).at = at
+			create_tween().tween_property(aim, "amount", float((aim as Node).get_meta("most")), secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+	## And let fall again.
+	func drop_arm(secs: float) -> void:
+		for aim in _aims:
+			if is_instance_valid(aim):
+				create_tween().tween_property(aim, "amount", 0.0, secs).set_trans(Tween.TRANS_SINE)
+
+	## How far its arm is out, 0..1 (the tests read it).
+	func reaching() -> float:
+		return float((_aims[0] as WhiteSky.Aim).amount) if not _aims.is_empty() and is_instance_valid(_aims[0]) else 0.0
 
 	## Cards of white light rise out of the snow and fan above its hand.
 	func raise_cards() -> void:
