@@ -1045,6 +1045,13 @@ func _options() -> Control:
 		v.add_child(_check("Keep the frame rate smooth (draws the 3D a little smaller only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
 			Game.settings["smooth_auto"] = on
 			Gfx.setup(get_tree())))
+	# (14 November) the phone shaking in the hand on a big blow (Haptics); only
+	# where there's a motor to shake
+	if Haptics.can():
+		v.add_child(_check("Vibration (the phone shakes on the biggest blows)", Haptics.on(), func(on: bool) -> void:
+			Game.settings["vibration"] = on
+			if on:
+				Haptics.kind(Haptics.BLOW)))
 	v.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
 		Game.settings["show_fps"] = on
 		Gfx.FpsMeter.show_on(get_tree(), on)))

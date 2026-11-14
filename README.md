@@ -1845,6 +1845,139 @@ skipped at 20, 58, 65, 76 and 79 s; `white_sky_play_probe` ok;
 Mac or iPhone (the frame rate above all); the phone link's picture; the
 body sweep (no pose of his was changed).
 
+### The Shardlands, second pass: Gary's eight yeses (14 November, later)
+
+Gary said yes to eight of the suggestions that went with the look pass above
+("1 yes 4 yes", then "5 yes 6 yes 7 yes 8 yes 9 yes 10 yes 11 yes"), and
+while they were being built: "make sure you're running the prologue and the
+best possible graphics and visuals". All eight are in the Night of the White
+Sky (`scripts/story/white_sky.gd`), with the shared look in
+`scripts/story/shard_set.gd`. **Number 10 (choosing which hound to strike)
+was not built**, see the end.
+
+- **1. Driven to one knee** (`_to_knee`, `_rise_to_play`). When his second
+  Totem falls (the Loomwarden: `KNEE_AT`) he staggers as before and, as the
+  slow motion on the Totem runs out, the picture cuts to low behind him and
+  he goes down on his right knee in the snow, bent over the child, the snow
+  jumping where the knee lands; past his shoulder the hunter comes its pace
+  nearer. He stays down through the hush in which the Last Page is waited
+  for and comes up off the knee as it's played, his arm going up with the
+  card (the Last Page's own shot starts low over his shoulder, so it rises
+  with him). `Figure3D.kneel(..., upright)`, the one-knee kneel at its right
+  height. Three things had to follow him down: the child (`_carry_child`: it
+  was held at a fixed place in front of where his chest *stands*, so it
+  would have hung in the air over him; it's carried by his chest bone from
+  the fall on), the shots placed by his head (`_over_bram`) and the check
+  that keeps his face out of every shot (`_face_seen`), which take his head
+  from `_bram_head` (`HEAD_KNELT`, measured: `white_sky_test` fails if his
+  head on his knee is more than 22 cm from it).
+- **4. The phone shaking in the hand** (`scripts/ui/haptics.gd`, `Haptics`,
+  new): a short buzz of the phone's own motor on a big blow, a blow on a
+  duellist, a Totem broken, his knee landing, and a long one as the Last
+  Page lands. `Input.vibrate_handheld`; nothing happens on a Mac. Settings
+  has a **Vibration** switch where there's a motor (`Game.settings
+  ["vibration"]`, on by default). Only this memory asks for it so far.
+- **5. The opening's wide shot** (`_open_k`, `OPEN_FROM`, `OPEN_LOOK`). The
+  black lifts on the Shardlands from high and far behind him, him small in
+  the foot of the picture and the crater's column of light ahead; it hangs
+  there a moment (`OPEN_HANG`) and comes down behind his shoulder
+  (`OPEN_SECS`), where how to walk is shown. Gary's rule of 5 November
+  ("nothing should take the walk from him") stands: the walk is his from
+  the first frame, and steered (the pad, a key, a tap on the snow) he sets
+  off at once and the camera hurries in after him (`OPEN_HURRY`). Where it
+  starts was looked for among the shards: from behind his right one of the
+  great ones stood square in the middle of the picture with the crater's
+  light behind it, and from higher and further back two of them walled the
+  picture in. Morrowen's line waits until the camera is half way down
+  (`OPEN_LINE_AT`): spoken at once, its words lay across the foot of the
+  picture, over him.
+- **6. His coat and hair in the wind, snow on his shoulders**
+  (`ShardSet.weather`, `WEATHER`). His model is one skin over a walking
+  skeleton, so nothing in it moved but what the bones move. He wears a
+  shader of his own in this memory (his model's own textures, lit as
+  before), and where the wind can take hold is painted into his mesh's
+  vertex colours once, worked out from the model at rest
+  (`_weather_mesh`): the coat's skirt from nothing at the belt to all of it
+  at the hem (what stands clear of his legs; not his arms), and the hair
+  tied back behind his head. The skirt is pushed down the wind: pressed in
+  a little on the side the wind comes from, blown out and flapping on the
+  other, the hem lifting in a gust. Snow lies across his shoulders and
+  shoulder blades and dusts his hair, soft-edged, with a little driven onto
+  his windward side; it gathers as he walks (`SNOW_ON_SECS`) and stays on
+  him through the duel. Where it lies is painted in too (the vertex
+  colours' alpha: how each part of him faces the sky as he stands, and
+  across his back as a man bent into the wind): taken from the way he faced
+  the sky each frame, his whole back went white the moment he bent over the
+  child. **His hair is tied back tight in the model**, so there is only a
+  knot of it to stir: it moves, but it is small.
+- **7. The wind fights him** (`_gust_step`). Gusts on the walk: the first
+  three and a half seconds after he first sets off, then one every seven to
+  ten seconds, and one as the storm comes back after the hunter is
+  glimpsed. Each is heard rising, a sheet of snow drives across him, the
+  snow in the air and along the ground runs faster, the haze thickens, the
+  picture is buffeted, his coat is torn at, he leans into it (`_lean`) and
+  his pace drops to a little over half (`GUST_PACE`); then it eases. He
+  still goes where he's steered. (A gust that waited for the sky to open
+  never came: the walk to the crater is too short.)
+- **8. A bigger arrival for the hunter** (`_rim_flash`, `_rim_pack`).
+  Before the gust it forms in: a bolt comes down out beyond the rim, the
+  sky and the haze behind the rim are lit by it, twice, as lightning
+  flickers, the light from ahead flares so every shard's shadow is thrown
+  down the bowl at him, and for that moment the hunter stands on the rim, a
+  black shape against it. Then the dark, and the rim is empty; the gust and
+  the forming follow as before. After "Not this one." the picture goes wide
+  from behind him and the eyes of its pack open in the dark along the lip to
+  either side of it, one pair after another, a low growl among them; then
+  its cards rise. (`_eye_pair` is shared with the duel's pack.)
+- **9. The ice joins in.** The ice takes the torn sky's colours once it's
+  open (`ICE`'s `sky_k`, `ice_sky`: violet, teal and gold in the rims, the
+  points and the facets' edges, each facet its own). And as the Last Page
+  lands the nearest crystals across the Circle burst one after another as
+  the blow runs out to them (`_shatter_ice`: a flash at the heart, splinters
+  thrown up and out point-first, a puff of frost, a stump left standing);
+  four, six or eight of them by `Gfx.level()`.
+- **11. The ice's sounds.** `ice_ring` (a shard singing: in each gust on
+  the walk, and in the hush before the Last Page), `ice_crack` (at each
+  bolt: the rim's, and every time the duel's sky flares) and `ice_shatter`
+  (the crystals bursting). **They are stand-ins made by the game**
+  (`Sfx._synth`, `_ring`, `_pings`) until Gary's recordings are saved as
+  `assets/sfx/ice_ring.ogg` (and `_2`, `_3`), `ice_crack.ogg` (and `_2`)
+  and `ice_shatter.ogg`; his are used the moment they're there. The
+  stand-ins are made once, under the opening's black (`_warm_ice_sounds`).
+
+**10 was not built.** "Choose which hound to strike" contradicts Gary's own
+film brief (`docs/script/films_plan.md`): his shot of that move
+(`white_sky_move_2_4k.mp4`) and the whole duel shown later on the Thornwood
+road have the Unspent Hour bursting the Blazehound. He was told, and asked
+to say "10 anyway" if he still wants it (it would then be built so his clip
+plays only when the Blazehound is the one picked).
+
+**Checked** (14 November, later): the whole prologue played with the picture
+drawn as a Mac draws it at its full settings (`white_sky_test ... keys`: 42
+stills, PASS), the duel alone the same way, and its opening seconds again
+after the wide shot was moved, every still looked at; the new views of
+`white_sky_look` (`open`, `flash`, `eyes`, `close`), as a Mac draws them and
+as an iPhone's Smooth picture does (`-- --phone`). `white_sky_test` checks
+the eight itself now and fails without them (the wide shot starting high and
+coming down in time, steered or not: `hurry`; a gust that slows him; snow on
+him by the rim; the lightning and the eight pairs of eyes; the knee down and
+up and the child going down with him; the ice breaking; the buzzes asked
+for; the three sounds). Headless: PASS whole, `hurry` and `duel`; skipped at
+13 and 14 (the wide shot), 20.5 (a gust), 51.2 (the lightning), 61 (the eyes), 69.6
+(a blow's slow motion), 86.3 (going down on the knee), 90 (on it), 92.6
+(rising) and 95.4 s (the ice breaking), PASS each; `body`: eleven findings,
+eight his hands in the blanket at the lift as before and three on the knee
+(his left hand and his chest a few centimetres into the bundle held against
+it, which no shot sees: every shot of him is from behind).
+`white_sky_play_probe` ok; `white_sky_world -- <dir> play` to "done";
+`first_launch_test` and `-- again` ok; `options_shot -- <dir> -- --phone`
+(the Vibration switch is there); `load_all` 0 failed; `duel_sim -- 100` 0
+invariant errors; `puzzles_test` PASS; `ambience_test` ok. **Not checked:**
+anything on a real Mac or iPhone; the frame rate; whether the phone
+actually buzzes (there is no motor here: the test counts what was asked
+for); how the cloth and the gusts look moving (stills only); the phone's
+Smooth picture beyond those few stills; how the stand-in sounds sound.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

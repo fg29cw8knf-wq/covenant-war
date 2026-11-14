@@ -19,6 +19,15 @@ extends Node
 ## the filmed duel and the end; "skip_at=<s>" presses Skip then (32: in the
 ## crater, the duel built and waiting behind it); "max=<s>" stops after that much game time (a
 ## look at the walk in Forward+, where a frame takes seconds).
+##
+## (14 November, the second pass) it also checks: the opening's wide shot (the
+## camera starts high over him and comes down behind him; "hurry" steers him
+## from the first frame instead, and it must then come in quickly), a gust on
+## the walk that slows him, the snow gathering on him, the lightning and the
+## pack's eyes on the rim, Bram down on his knee when his second Totem falls
+## (the child going down with him) and up as the Last Page is played, the ice
+## breaking, the phone's buzzes asked for (Haptics.count) and the ice's
+## sounds.
 
 var out_dir := "/tmp/white_sky"
 var every := 4.0
@@ -52,6 +61,17 @@ var _line_was := false
 var _ask_hold := 0.0
 var _missed := false          # the tap off the mark has been tried for this move
 var _miss_failed: Array = []
+## (14 November, the second pass)
+var _hurry := false
+var _open_top := 0.0          # the highest the opening's camera stood over him (m)
+var _open_from := -1.0        # when the wide shot began, and when it was down
+var _open_down := -1.0
+var _gust_slow := INF         # his slowest pace in a gust at its height (m/s)
+var _snow_at_rim := -1.0
+var _knee_head := Vector3.INF # his head from where he stands, down on his knee
+var _knee_drop := 0.0         # how far the child came down with him (m)
+var _baby_y := INF
+var _stilled := {}            # the new moments a still has been asked for
 const DrawHold = preload("res://tests/draw_hold.gd")
 var _keys := false
 var _body = null
@@ -65,6 +85,8 @@ func _ready() -> void:
 		every = float(args[1])
 	_skip = args.has("skip")
 	_duel_only = args.has("duel")
+	_hurry = args.has("hurry")
+	Haptics.count = 0
 	for a in args:
 		if String(a).begins_with("max="):
 			_max = float(String(a).substr(4))
@@ -135,6 +157,9 @@ func _run() -> void:
 		if _move_lines != WhiteSky.MOVE_LINES.size():
 			print("white_sky_test: FAIL: Bram's lines at the moves: %d, not %d" % [_move_lines, WhiteSky.MOVE_LINES.size()])
 			ok = false
+		# (14 November, the second pass: the ice's sounds)
+		wanted.append_array(["ice_ring", "ice_crack", "ice_shatter"])
+		ok = _second_pass() and ok
 		for want: String in wanted:
 			if not names.has(want):
 				print("white_sky_test: FAIL: the sound '%s' was never played" % want)
@@ -177,9 +202,12 @@ func _process(delta: float) -> void:
 	# (in his arms: the bundle his, lifted off the snow to his chest)
 	if _stood_t < 0.0 and _prompt_t >= 0.0 and m._baby != null and m._bram != null and m._baby.get_parent() != m._set and m._baby.global_position.y - m._bram.global_position.y > 0.9:
 		_stood_t = _t
+	_watch_second_pass()
 	# walk on, the way the camera looks (the pad's up, as a key), whenever the
 	# walk is his (4 November: he walks about freely, no longer held forward)
-	if m._roam:
+	# (14 November: left alone until the opening's wide shot has come down,
+	# unless "hurry")
+	if m._roam and (_hurry or m._open_k <= 0.0):
 		Input.action_press("move_up")
 	else:
 		Input.action_release("move_up")
@@ -238,6 +266,95 @@ func _process(delta: float) -> void:
 	if _t >= _next_still:
 		_next_still = _t + every
 		_still("t%05.1f" % _t)
+
+
+## A still of one of the new moments, once.
+func _once(label: String, secs: float) -> void:
+	if not _stilled.has(label):
+		_stilled[label] = true
+		_still_later(label, secs)
+
+
+## What the second pass of 14 November added, watched as it plays ...
+func _watch_second_pass() -> void:
+	if m._roam and m._open_k > 0.0:
+		_once("open_a", 1.2)
+		_once("open_b", 3.6)
+	if m._gust_k > 0.5:
+		_once("gust", 0.9)
+	if m.rim_flashed:
+		_once("rim_flash", 0.0)
+		_once("rim_flash_b", 0.15)
+	if m.rim_eyes >= WhiteSky.RIM_EYES * 2:
+		_once("rim_eyes", 0.5)
+	if m.knelt:
+		_once("knee", WhiteSky.KNEE_AFTER + 0.2)
+		_once("knee_b", WhiteSky.KNEE_AFTER + WhiteSky.KNEE_DOWN + 0.5)
+	if m.rose:
+		_once("rise", 0.45)
+	if m.shattered > 0:
+		_once("shatter", 0.2)
+		_once("shatter_b", 0.5)
+	if not is_instance_valid(m._bram):
+		return   # (skipped: the duel's screen has gone, and him with it)
+	if m._roam and m._open_k > 0.0:
+		if _open_from < 0.0:
+			_open_from = _t
+		_open_top = maxf(_open_top, m._cam_pos.y - m._bram.position.y)
+	elif _open_from >= 0.0 and _open_down < 0.0:
+		_open_down = _t
+	if m._roam and m._gust_k > 0.97:
+		_gust_slow = minf(_gust_slow, m._vel.length())
+	if _snow_at_rim < 0.0 and _open_down >= 0.0 and not m._roam:
+		_snow_at_rim = m._snow_on
+	if m._dir_f != null and is_instance_valid(m._baby) and m._baby.is_inside_tree():
+		if not m.knelt:
+			_baby_y = m._baby.global_position.y
+		elif _baby_y != INF:
+			_knee_drop = maxf(_knee_drop, _baby_y - m._baby.global_position.y)
+	if m._kneeling and m.knelt and not m.rose and is_instance_valid(m._bram) and m._bram is Figure3D and m._asking != "":
+		# (settled on his knee: the Last Page is being waited for)
+		_knee_head = (m._bram as Figure3D).bone_pos("Head") - m._bram.global_position
+
+
+## ... and checked at the end.
+func _second_pass() -> bool:
+	var ok := true
+	var fails: Array = []
+	if not _duel_only:
+		print("white_sky_test: the opening's camera stood %.1f m over him and was down behind him %.1f s after the walk was his%s" % [
+			_open_top, _open_down - _open_from, " (steered from the first frame)" if _hurry else ""])
+		if _open_top < 9.0:
+			fails.append("the opening's wide shot didn't start high over him (%.1f m)" % _open_top)
+		var limit := WhiteSky.OPEN_HURRY + 0.5 if _hurry else WhiteSky.OPEN_HANG + WhiteSky.OPEN_SECS + 0.5
+		if _open_down < 0.0 or _open_down - _open_from > limit:
+			fails.append("the opening's camera took %.1f s to come down (at most %.1f)" % [_open_down - _open_from, limit])
+		print("white_sky_test: %d gusts on the walk, his pace down to %.2f m/s in one (%.2f without); the snow on him %.2f by the rim" % [
+			m.gusts, _gust_slow, WhiteSky.WALK_SPEED, _snow_at_rim])
+		if m.gusts < 1 or _gust_slow > WhiteSky.WALK_SPEED * 0.75:
+			fails.append("no gust slowed him on the walk")
+		if m._weather == null or _snow_at_rim < 0.15:
+			fails.append("no snow gathered on him (weather %s, %.2f)" % [str(m._weather != null), _snow_at_rim])
+		print("white_sky_test: the rim: lightning %s, %d pairs of eyes" % [str(m.rim_flashed), m.rim_eyes])
+		if not m.rim_flashed or m.rim_eyes != WhiteSky.RIM_EYES * 2:
+			fails.append("the hunter's arrival: lightning %s, %d pairs of eyes (wanted %d)" % [str(m.rim_flashed), m.rim_eyes, WhiteSky.RIM_EYES * 2])
+		if _knee_drop < 0.25:
+			fails.append("the child didn't go down on the knee with him (%.2f m)" % _knee_drop)
+	print("white_sky_test: his knee: down %s, up %s; his head on it at %s from where he stands (the shots take it at %s); the child came down %.2f m" % [
+		str(m.knelt), str(m.rose), str(_knee_head), str(WhiteSky.HEAD_KNELT), _knee_drop])
+	if not m.knelt or not m.rose or m._kneeling:
+		fails.append("Bram's knee: down %s, up %s, still down at the end %s" % [str(m.knelt), str(m.rose), str(m._kneeling)])
+	if _knee_head != Vector3.INF and (_knee_head - WhiteSky.HEAD_KNELT).length() > 0.22:
+		fails.append("his head on his knee is at %s, %.2f m from where the shots take it to be" % [str(_knee_head), (_knee_head - WhiteSky.HEAD_KNELT).length()])
+	print("white_sky_test: %d shards of ice burst; %d buzzes of the phone asked for (the last %s)" % [m.shattered, Haptics.count, str(Haptics.last)])
+	if m.shattered < 3:
+		fails.append("the ice didn't break on the Last Page (%d)" % m.shattered)
+	if Haptics.count < 4 or int(Haptics.last[0]) != int(Haptics.LONG[0]):
+		fails.append("the phone's buzzes: %d asked for, the last %s (wanted the Last Page's, %s)" % [Haptics.count, str(Haptics.last), str(Haptics.LONG)])
+	for f in fails:
+		print("white_sky_test: FAIL: ", f)
+		ok = false
+	return ok
 
 
 func _still_later(label: String, secs: float) -> void:

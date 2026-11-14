@@ -31,6 +31,8 @@ extends RefCounted
 ##   Prints             his footprints, filling in behind him
 ##   vignette()         the picture's corners drawn down a little
 ##   night()            the night's light and air
+##   weather()          a figure out in it: his coat's skirt and his hair
+##                      taken by the wind, the snow lying on him
 
 ## The way the storm blows (m/s).
 const WIND := Vector3(-5.5, -2.6, 1.6)
@@ -408,6 +410,226 @@ static func night(env: Environment, quality: int) -> void:
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.13
 	env.adjustment_saturation = 0.94
+
+
+# --- a figure out in it ---------------------------------------------------------
+## 14 November, Gary's yes to "his coat and hair moving in the wind, snow
+## settling on his shoulders". Bram's model is one skin over a walking
+## skeleton: nothing in it moves but what the bones move, so his long coat
+## hung like board and his hair never stirred in a storm, and an hour's walk
+## in driving snow left not a flake on him.
+##
+## weather() gives the figure's mesh a shader of its own (WEATHER: the
+## model's own colour and metal-roughness textures, lit as before) and paints
+## into its vertex colours where the wind can take hold, worked out once from
+## the model at rest (_weather_mesh):
+##   red    the coat's skirt, from nothing at the belt to all of it at the
+##          hem (what stands clear of the legs between the hips and the knee;
+##          not the arms or hands hanging beside it)
+##   green  the hair tied back behind his head
+##   blue   where round him it is (so the cloth ripples round the coat)
+##   alpha  how squarely that part of him faces the sky as he stands (his
+##          shoulders, the top of his head and arms): where snow settles.
+##          Taken as he stands, not as he's posed: lit by the way he faced
+##          the sky each frame, his whole back went white the moment he bent
+##          over the child. Less on his hair.
+## The shader pushes the skirt down the wind: pressed in a little on the side
+## the wind comes from, blown out and flapping on the other, the hem lifting
+## in a gust ("wind_k", 0 still .. 1 a gust; "wind_dir", the way it blows in
+## the world). And lays snow where he faces the sky (his shoulders, his head,
+## the tops of his arms and boots), patchy, with a dusting driven onto the
+## side the wind comes from ("snow_k", 0 none .. 1 white-shouldered).
+## Returns the material (null if the model isn't one it can dress: no skin,
+## more than one surface, no colour texture).
+const WEATHER := """
+shader_type spatial;
+render_mode specular_schlick_ggx;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform sampler2D mr_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform float metallic_k = 1.0;
+uniform float roughness_k = 1.0;
+uniform vec3 wind_dir = vec3(-1.0, 0.0, 0.0);
+uniform float wind_k = 0.4;
+uniform float snow_k = 0.0;
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+void vertex() {
+	float skirt = COLOR.r;
+	float hair = COLOR.g;
+	if (skirt + hair > 0.002) {
+		// the wind in his own frame (and his own size: the push is in metres)
+		vec3 wm = (wind_dir * mat3(MODEL_MATRIX)) / max(dot(MODEL_MATRIX[0].xyz, MODEL_MATRIX[0].xyz), 0.0001);
+		vec2 flat_w = normalize(wm.xz + vec2(0.00001));
+		float size = length(wm);
+		vec2 out_w = normalize(VERTEX.xz + vec2(0.00001));
+		// 1 on the side it blows out of, -1 on the side it blows onto
+		float lee = dot(out_w, flat_w);
+		float side = mix(0.1, 1.0, smoothstep(-0.35, 0.75, lee));
+		float ph = COLOR.b * 6.2832;
+		float flap = sin(TIME * 5.3 + ph * 2.0 + VERTEX.y * 7.0) * 0.6 + sin(TIME * 8.9 - ph * 3.0 + VERTEX.y * 13.0) * 0.4;
+		float push = skirt * (0.02 + 0.062 * wind_k) * side * (1.0 + 0.55 * flap);
+		VERTEX.xz += flat_w * size * push;
+		VERTEX.y += size * skirt * side * wind_k * (0.012 + 0.012 * flap);
+		float stir = sin(TIME * 9.0 + VERTEX.y * 40.0) * 0.6 + sin(TIME * 14.0 + VERTEX.x * 55.0) * 0.4;
+		VERTEX.xz += flat_w * size * hair * (0.006 + 0.022 * wind_k) * (1.0 + 0.7 * stir);
+	}
+}
+void fragment() {
+	vec4 a = texture(albedo_tex, UV);
+	vec4 mr = texture(mr_tex, UV);
+	float snow = 0.0;
+	if (snow_k > 0.001) {
+		vec3 nw = normalize((INV_VIEW_MATRIX * vec4(NORMAL, 0.0)).xyz);
+		// fine and soft-edged: seen from a hand's breadth when he lifts the child
+		float grain = n2(UV * 110.0) * 0.45 + n2(UV * 330.0) * 0.33 + n2(UV * 900.0) * 0.22;
+		// where he faces the sky as he stands (COLOR.a); further down his
+		// shoulders as it lies deeper
+		float up = COLOR.a + (grain - 0.5) * 0.5;
+		float lie = smoothstep(0.92 - 0.55 * snow_k, 1.22 - 0.55 * snow_k, up);
+		// and a dusting driven onto the side the wind comes from
+		float onto = clamp(dot(nw, -normalize(wind_dir)), 0.0, 1.0);
+		float dust = snow_k * 0.4 * smoothstep(0.45, 0.95, onto) * smoothstep(0.5, 0.85, grain);
+		snow = clamp(max(lie * smoothstep(0.0, 0.12, snow_k), dust), 0.0, 1.0);
+		// (thin at its edges: the cloth shows through it)
+		snow *= 0.82 + 0.18 * n2(UV * 1500.0);
+	}
+	ALBEDO = mix(a.rgb, vec3(0.82, 0.87, 0.96), snow);
+	METALLIC = mr.b * metallic_k * (1.0 - snow);
+	ROUGHNESS = mix(mr.g * roughness_k, 0.88, snow);
+}
+"""
+
+static var _weather_meshes := {}
+static var _weather_sh: Shader
+
+
+static func weather(model: Node3D) -> ShaderMaterial:
+	if model == null:
+		return null
+	var sk := model.find_child("Skeleton3D", true, false) as Skeleton3D
+	var found := model.find_children("*", "MeshInstance3D", true, false)
+	if sk == null or found.size() != 1:
+		return null
+	var mi := found[0] as MeshInstance3D
+	if mi.mesh == null or mi.skin == null or mi.mesh.get_surface_count() != 1:
+		return null
+	var src := mi.get_active_material(0) as StandardMaterial3D
+	if src == null or src.albedo_texture == null:
+		return null
+	var key := mi.mesh.resource_path if mi.mesh.resource_path != "" else str(mi.mesh.get_instance_id())
+	if not _weather_meshes.has(key):
+		_weather_meshes[key] = _weather_mesh(mi, sk)
+	var mesh := _weather_meshes[key] as ArrayMesh
+	if mesh == null:
+		return null
+	if _weather_sh == null:
+		_weather_sh = Shader.new()
+		_weather_sh.code = WEATHER
+	var m := ShaderMaterial.new()
+	m.shader = _weather_sh
+	m.set_shader_parameter("albedo_tex", src.albedo_texture)
+	m.set_shader_parameter("mr_tex", src.roughness_texture if src.roughness_texture != null else src.metallic_texture)
+	m.set_shader_parameter("metallic_k", src.metallic)
+	m.set_shader_parameter("roughness_k", src.roughness)
+	m.set_shader_parameter("wind_dir", Vector3(WIND.x, 0.0, WIND.z).normalized())
+	mi.mesh = mesh
+	mi.set_surface_override_material(0, m)
+	return m
+
+
+## The model's mesh again, with where the wind takes hold painted into its
+## vertex colours (weather(), above). Everything is measured on the model at
+## rest, in the mesh's own frame, from where its skin says the bones are.
+static func _weather_mesh(mi: MeshInstance3D, sk: Skeleton3D) -> ArrayMesh:
+	var src := mi.mesh as ArrayMesh
+	if src == null:
+		return null
+	var arr := src.surface_get_arrays(0)
+	var vs: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	if arr[Mesh.ARRAY_BONES] == null or arr[Mesh.ARRAY_WEIGHTS] == null or vs.is_empty():
+		return null
+	var bones: PackedInt32Array = arr[Mesh.ARRAY_BONES]
+	var wts: PackedFloat32Array = arr[Mesh.ARRAY_WEIGHTS]
+	var per := bones.size() / vs.size()
+	# the skin's bones: each one's name, and where it is at rest
+	var skin := mi.skin
+	var names := PackedStringArray()
+	var at := {}
+	for i in skin.get_bind_count():
+		var nm := String(skin.get_bind_name(i))
+		if nm == "":
+			var bi := skin.get_bind_bone(i)
+			nm = sk.get_bone_name(bi) if bi >= 0 and bi < sk.get_bone_count() else ""
+		names.append(nm)
+		at[nm] = skin.get_bind_pose(i).affine_inverse().origin
+	for need in ["LeftUpLeg", "LeftLeg", "LeftFoot", "RightUpLeg", "RightLeg", "RightFoot", "Head"]:
+		if not at.has(need):
+			return null
+	var hip_y: float = ((at["LeftUpLeg"] as Vector3).y + (at["RightUpLeg"] as Vector3).y) * 0.5
+	var knee_y: float = ((at["LeftLeg"] as Vector3).y + (at["RightLeg"] as Vector3).y) * 0.5
+	var legs := [[at["LeftUpLeg"], at["LeftLeg"]], [at["LeftLeg"], at["LeftFoot"]], [at["RightUpLeg"], at["RightLeg"]], [at["RightLeg"], at["RightFoot"]]]
+	var head: Vector3 = at["Head"]
+	var crown: Vector3 = at.get("HeadTop_End", head + Vector3(0, 0.24, 0))
+	var skull := (head + crown) * 0.5
+	# which of the skin's bones are an arm's or a hand's, and which the head's
+	var arm := PackedByteArray()
+	var of_head := PackedByteArray()
+	for nm in names:
+		arm.append(1 if (nm.contains("Arm") or nm.contains("Hand") or nm.contains("Shoulder")) else 0)
+		of_head.append(1 if nm.begins_with("Head") else 0)
+	var hem_y := knee_y - 0.095            # under this it's his boots
+	var belt_y := hip_y + 0.02
+	var tail_lo := head.y - 0.08           # the hair tied back: behind the skull, this band
+	var tail_hi := skull.y
+	var nrm: PackedVector3Array = arr[Mesh.ARRAY_NORMAL] if arr[Mesh.ARRAY_NORMAL] != null else PackedVector3Array()
+	# (the model faces +z: his back is -z; and where his shoulders are)
+	var lean_up := Vector3(0.0, 1.0, -0.62).normalized()
+	var yoke_y: float = (at["LeftArm"] as Vector3).y if at.has("LeftArm") else head.y - 0.2
+	var cols := PackedColorArray()
+	cols.resize(vs.size())
+	for i in vs.size():
+		var p := vs[i]
+		# the bone that moves it most
+		var top := 0
+		var top_w := -1.0
+		for k in per:
+			var wk := wts[i * per + k]
+			if wk > top_w:
+				top_w = wk
+				top = bones[i * per + k]
+		var skirt := 0.0
+		var hair := 0.0
+		if top >= 0 and top < arm.size():
+			if p.y >= hem_y and p.y < belt_y and arm[top] == 0 and absf(p.x) < 0.36:
+				var d := INF
+				for sg in legs:
+					var a: Vector3 = sg[0]
+					var ab: Vector3 = (sg[1] as Vector3) - a
+					var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 1e-9), 0.0, 1.0)
+					d = minf(d, p.distance_to(a + ab * t))
+				skirt = (1.0 - smoothstep(knee_y + 0.03, belt_y, p.y)) * smoothstep(0.105, 0.15, d)
+			elif of_head[top] == 1 and p.y > tail_lo and p.y < tail_hi:
+				hair = smoothstep(skull.z - 0.125, skull.z - 0.18, p.z)
+		# how squarely it faces the sky as he stands; and across his shoulder
+		# blades, how it faces the sky of a man walking bent into the wind
+		# (stood bolt upright only a ridge along each shoulder caught any).
+		# Less on his head: a dusting in his hair, not a cap of it.
+		var sky := 0.0
+		if i < nrm.size():
+			sky = clampf(nrm[i].y, 0.0, 1.0)
+			var bent := clampf(nrm[i].dot(lean_up), 0.0, 1.0) * smoothstep(yoke_y - 0.24, yoke_y - 0.04, p.y)
+			sky = maxf(sky, bent)
+		if top >= 0 and top < of_head.size() and of_head[top] == 1:
+			sky *= 0.72
+		cols[i] = Color(skirt, hair, atan2(p.x, p.z) / TAU + 0.5, sky)
+	arr[Mesh.ARRAY_COLOR] = cols
+	var out := ArrayMesh.new()
+	var flags: int = src.surface_get_format(0) & Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS
+	out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr, [], {}, flags)
+	return out
 
 
 ## The haze's colour at night, and with the sky open; and what the great

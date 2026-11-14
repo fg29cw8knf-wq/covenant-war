@@ -413,6 +413,7 @@ func _open() -> void:
 	var early := prep_early
 	if early:
 		_prepare_duel()
+	_warm_ice_sounds()   # (under the caption's black too; not waited for)
 	await _ov.caption(CAPTION[0], CAPTION[1], 2.6)
 	if _skipping:
 		return
@@ -420,13 +421,75 @@ func _open() -> void:
 	while early and not _prep_done and held < DUEL_WARM_MAX and not _skipping:
 		await get_tree().process_frame
 		held += get_process_delta_time()
-	_fade(_black, 0.0, 2.2)
+	# (14 November) it opens high and far off, him small in the Shardlands,
+	# and comes down behind him (_open_k: the roaming camera's own picture is
+	# what it comes down to). The walk is his from the first frame all the
+	# same: steered, he sets off at once and the camera hurries in after him.
+	# How to walk is shown as it arrives.
+	_open_k = 1.0
+	_open_t = 0.0
+	# (the black lifts quicker than it did, 1.4 s for 2.2: the wide shot is
+	# to be seen whole before it starts down)
+	_fade(_black, 0.0, 1.4)
 	_roam = true
-	_show_hint(HOW_WALK)
 	await _wait(0.8)
+	while _open_k > OPEN_LINE_AT and not _skipping:
+		await get_tree().process_frame
 	_line_over = false
 	_say_over(OPEN)
+	while _open_k > OPEN_HINT_AT and not _skipping:
+		await get_tree().process_frame
+	if not _skipping and _vel.length() < 0.05:
+		_show_hint(HOW_WALK)
 	while not _line_over and not _skipping:
+		await get_tree().process_frame
+
+
+## The opening's wide shot (14 November, Gary's yes to "an opening wide shot:
+## camera high and far with Bram tiny in the Shardlands, sweeping down behind
+## him before the player takes control"): where the camera is at first and
+## what it looks at, from where he stands (m: behind him, high, off to his
+## right; the crater's light ahead of him), its lens, how long it hangs
+## there as the black lifts and how long it takes to come down; steered
+## meanwhile (the pad, a key, a tap on the snow), it comes in in OPEN_HURRY
+## instead. _open_k: 1 up there .. 0 behind him.
+## (The place was looked for: from behind his right a great shard stood
+## square in the middle of the picture with the crater's light behind it;
+## from higher and further back two of them walled the picture in on either
+## side. From here none stands near, he's small in the foot of the picture a
+## little right of its middle, and the crater's light is at its heart.)
+## Morrowen's line waits for the camera to be half way down (OPEN_LINE_AT):
+## spoken at once, its words lay across the foot of the picture, over him.
+const OPEN_FROM := Vector3(-7.0, 10.0, 18.0)
+const OPEN_LOOK := Vector3(0.0, 1.0, -30.0)
+const OPEN_LENS := 44.0
+const OPEN_HANG := 1.9
+const OPEN_SECS := 4.6
+const OPEN_HURRY := 0.9
+const OPEN_LINE_AT := 0.5
+const OPEN_HINT_AT := 0.12
+var _open_k := 0.0
+var _open_t := 0.0
+
+
+## The wide shot's frame of time: hung, then down; hurried once he's steered.
+func _open_step(delta: float) -> void:
+	_open_t += delta
+	var steered := _vel.length() > 0.08 or _move_target != Vector3.INF
+	if steered:
+		_open_k = maxf(0.0, _open_k - delta / OPEN_HURRY)
+	elif _open_t > OPEN_HANG:
+		_open_k = maxf(0.0, _open_k - delta / OPEN_SECS)
+	if _skipping:
+		_open_k = 0.0
+
+
+## The ice's stand-in sounds made now, under the black, one a frame (Sfx
+## makes a stand-in the first time it's asked for: a tenth of a second's
+## work each, which would be a catch in the walk).
+func _warm_ice_sounds() -> void:
+	for nm in ["ice_ring", "ice_crack", "ice_shatter"]:
+		Sfx.get_stream(nm)
 		await get_tree().process_frame
 
 
@@ -679,6 +742,7 @@ var _glimpse_at := Vector3.INF   # where the roaming camera's eyes are drawn
 var _glimpse_look := 0.0         # 0..1: how far they're drawn there
 
 func _glimpse() -> void:
+	_glimpsing = true
 	var f := _heading()
 	var at := _bram.position + f * 9.0 - f.cross(Vector3.UP) * 7.5
 	at.y = height(at.x, at.z)
@@ -713,6 +777,10 @@ func _glimpse() -> void:
 		await _hunter.fade_to(0.0, 0.9)
 		_hunter.visible = false
 	_raining = true
+	# (14 November: and the storm's return is a gust on him too, _gust_step)
+	_glimpsing = false
+	_gust_next = _t
+	_gust_force = true
 
 
 ## The wind's loudness to `db` over `secs`.
@@ -725,6 +793,7 @@ func _wind_to(db: float, secs: float) -> void:
 ## (0..1 of how many there are, and how fast they go: at the hunter's coming
 ## the snow all but hangs in the air), over `secs`.
 func _storm_to(blown: float, fall: float, secs: float) -> void:
+	_walk_storm = blown
 	var tw := create_tween().set_parallel(true)
 	for pair in [[_blown, blown], [_mist, blown], [_snow, fall], [_near_snow, fall]]:
 		var p := pair[0] as GPUParticles3D
@@ -953,10 +1022,15 @@ func _the_hunter() -> void:
 	await _wait(RIM_SOUND - 0.5)
 	if _skipping:
 		return
-	# the snow lifts off the lip, and the shape of it stands in the gust,
-	# a little back from the edge
+	# (14 November) lightning out beyond the rim: for the length of the flash
+	# something stands up there, black against it; then the dark, and nothing
 	var form := rim + _ad * RIM_BACK
 	form.y = height(form.x, form.z)
+	await _rim_flash(form)
+	if _skipping:
+		return
+	# the snow lifts off the lip, and the shape of it stands in the gust,
+	# a little back from the edge
 	_gust(form)
 	_hunter.position = form
 	_hunter.look_at_dir(_bram.position - _hunter.position)
@@ -993,12 +1067,159 @@ func _the_hunter() -> void:
 		return
 	if _bram is Figure3D:
 		(_bram as Figure3D).eyes_on(null)
+	# (14 November) and it hasn't come alone: its pack's eyes open in the dark
+	# along the rim to either side of it, one pair after another
+	await _rim_pack(rim, b, rt)
+	if _skipping:
+		return
 	# it lifts a hand: cards rise from the snow about it, white
 	_hunter.raise_cards()
 	await _wait(1.6)
 	var fl := create_tween()
 	fl.tween_property(_white, "modulate:a", 1.0, 0.5)
 	await fl.finished
+
+
+## A bigger arrival for the hunter (14 November, Gary's yes to "lightning
+## behind it showing a black shape on the rim, then the pack's eyes opening
+## one by one along the rim before the duel").
+##
+## _rim_flash: before the gust it forms in, in the wide shot from behind
+## Bram: a bolt comes down out on the Shardlands beyond the rim and the sky
+## behind it is lit for a moment (RIM_FLASH of its own light, twice, as
+## lightning flickers), the haze behind the rim glows with it and the light
+## from ahead flares (every shard's shadow thrown down the bowl at him); and
+## for that moment the hunter is stood on the rim, whole and unlit, a black
+## shape against it; the ice cracks, thunder follows. Then the dark again (RIM_FLASH_DARK) and the rim is empty: the
+## gust and the forming come after, as before.
+##
+## _rim_pack: after "Not this one.", wide again from behind him with the
+## whole far rim in the picture: RIM_EYES pairs of eyes to either side of
+## the hunter open in the dark along the lip, working outwards from it, one
+## every RIM_EYES_EVERY or so, a low growl among them. Then its cards rise.
+const RIM_FLASH := 4.5
+const RIM_FLASH_LIGHT := 2.4
+const RIM_FLASH_SHEET := 1.05
+const RIM_FLASH_SECS := 0.8
+const RIM_FLASH_DARK := 0.9
+const RIM_EYES := 4
+const RIM_EYES_EVERY := 0.3
+## (Their glow's width, m: bigger than an eye, to be seen as eyes from the
+## bottom of the bowl on a phone; and how far open, of round: narrowed, they
+## read as eyes, where round and big they were a row of lamps.)
+const RIM_EYES_SIZE := 0.27
+const RIM_EYES_SQUINT := 0.5
+const RIM_EYES_LENS := 42.0
+## How many pairs of eyes have opened on the rim (the tests read it).
+var rim_eyes := 0
+var rim_flashed := false
+
+
+func _rim_flash(form: Vector3) -> void:
+	_rim_flash_on(form)
+	# struck, all but gone, struck again and held a moment (long enough for
+	# what's on the rim to be seen), dying away: as lightning flickers
+	var tw := create_tween()
+	tw.tween_method(_rim_light, 0.0, 1.0, 0.04)
+	tw.tween_method(_rim_light, 1.0, 0.22, 0.1)
+	tw.tween_method(_rim_light, 0.22, 0.9, 0.04)
+	tw.tween_method(_rim_light, 0.9, 0.7, 0.22)
+	tw.tween_method(_rim_light, 0.7, 0.0, 0.4)
+	_wash(Color(0.8, 0.84, 1.0), 0.22, 0.5)
+	_snd("ice_crack", _rng.randf_range(0.9, 1.1), -3.0)
+	get_tree().create_timer(0.5, false).timeout.connect(func() -> void:
+		if not _skipping and not _done:
+			_snd("thunder_far", _rng.randf_range(0.9, 1.05), -2.0))
+	await _wait(RIM_FLASH_SECS)
+	# gone with the light
+	if is_instance_valid(_hunter):
+		_hunter._set_fade(0.0)
+		_hunter.visible = false
+	_rim_light(0.0)
+	if is_instance_valid(_rim_sheet):
+		_rim_sheet.queue_free()
+	await _wait(RIM_FLASH_DARK)
+
+
+## The flash's things put in place, unlit: the hunter on the rim at `form`,
+## the bolt coming down out beyond it (straight behind it as the camera sees
+## it), and the haze behind the rim that the bolt lights (a soft sheet of
+## light it stands black against). _rim_light then lights them.
+var _rim_sheet: MeshInstance3D
+var _rim_bolt: ShardSet.SkyBolt
+var _rim_was := [1.0, 1.0]   # the sky's and the tear's light before it
+
+func _rim_flash_on(form: Vector3) -> void:
+	rim_flashed = true
+	_hunter.position = form
+	_hunter.look_at_dir(_bram.position - form)
+	_hunter.visible = true
+	_hunter._set_fade(1.0)
+	var away := form - _cam_pos
+	away.y = 0.0
+	away = away.normalized() if away.length() > 0.01 else _ad
+	var side := away.cross(Vector3.UP)
+	var foot := form + away * 42.0 + side * _rng.randf_range(3.0, 7.0) * (1.0 if _rng.randf() < 0.5 else -1.0)
+	_rim_bolt = ShardSet.SkyBolt.new()
+	_rim_bolt.a = foot + away * 6.0 + side * _rng.randf_range(-12.0, 12.0) + Vector3(0, 56.0, 0)
+	_rim_bolt.b = Vector3(foot.x, height(foot.x, foot.z), foot.z)
+	_rim_bolt.col = Color(0.8, 0.8, 1.0)
+	_rim_bolt.width = 0.9
+	_rim_bolt.secs = RIM_FLASH_SECS + 0.1
+	_rim_bolt.cam = _cam
+	_set.add_child(_rim_bolt)
+	_rim_sheet = MeshInstance3D.new()
+	var q := QuadMesh.new()
+	q.size = Vector2(30.0, 17.0)
+	var sm := StandardMaterial3D.new()
+	sm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	sm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	sm.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	sm.disable_fog = true
+	sm.albedo_texture = ShardSet.soft_tex()
+	sm.albedo_color = Color(0, 0, 0)
+	q.material = sm
+	_rim_sheet.mesh = q
+	_rim_sheet.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_rim_sheet.position = form + away * 9.0 + Vector3(0, 3.2, 0)
+	_set.add_child(_rim_sheet)
+	_rim_was = [_env.background_energy_multiplier, _moon.light_energy]
+
+
+## The flash at `v` of its height (0: the night as it was): the sky, the
+## haze behind the rim, and the light from ahead that everything this side
+## of it is edged with and throws its shadow down the bowl by.
+func _rim_light(v: float) -> void:
+	_env.background_energy_multiplier = float(_rim_was[0]) * (1.0 + (RIM_FLASH - 1.0) * v)
+	_moon.light_energy = float(_rim_was[1]) * (1.0 + RIM_FLASH_LIGHT * v)
+	if is_instance_valid(_rim_sheet):
+		((_rim_sheet.mesh as QuadMesh).material as StandardMaterial3D).albedo_color = Color(0.55, 0.62, 1.0) * (RIM_FLASH_SHEET * v)
+
+
+func _rim_pack(rim: Vector3, b: Vector3, rt: Vector3) -> void:
+	var e0 := b - _ad * 5.6 + rt * 1.3 + Vector3(0, 1.5, 0)
+	var e1 := b - _ad * 4.9 + rt * 1.15 + Vector3(0, 1.6, 0)
+	e0.y = maxf(e0.y, height(e0.x, e0.z) + 0.5)
+	e1.y = maxf(e1.y, height(e1.x, e1.z) + 0.5)
+	var look := Vector3(rim.x, height(rim.x, rim.z) + 0.9, rim.z)
+	_shot(e0, look, RIM_EYES_LENS)
+	_drift(e0, e1, look, look + Vector3(0, 0.3, 0), RIM_EYES * RIM_EYES_EVERY * 2.0 + 3.5)
+	await _wait(0.6)
+	var base := atan2(_ad.x, _ad.z)
+	for i in RIM_EYES:
+		for sgn in [-1.0, 1.0]:
+			if _skipping:
+				return
+			var ang: float = base + sgn * deg_to_rad(12.0 + 11.0 * i + _rng.randf_range(-4.0, 4.0))
+			var p := CRATER + Vector3(sin(ang), 0, cos(ang)) * (RIM_AT + _rng.randf_range(-0.3, 0.6))
+			p.y = height(p.x, p.z) + _rng.randf_range(0.45, 0.95)
+			_eye_pair(_set, p, b - p, 0.0, RIM_EYES_SIZE, RIM_EYES_SQUINT)
+			rim_eyes += 1
+			if rim_eyes % 4 == 2:
+				_snd("cry_hound", _rng.randf_range(0.5, 0.62), -15.0)   # (low in a throat, off in the dark)
+			await _wait(RIM_EYES_EVERY * _rng.randf_range(0.7, 1.3))
+	await _wait(0.9)
 
 
 ## A hound's whine far off in the dark: the hunter's pack, before anything
@@ -1292,42 +1513,54 @@ func _dress_duel(f: DuelField3D) -> void:
 func _pack_eyes(f: DuelField3D, n: int) -> void:
 	if f == null or not is_instance_valid(f) or f.world == null:
 		return
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	mat.billboard_keep_scale = true
-	mat.disable_fog = true
-	mat.albedo_texture = _soft_dot()
-	mat.albedo_color = Color(2.2, 2.7, 3.6)
-	var q := QuadMesh.new()
-	q.size = Vector2(0.13, 0.13)
-	q.material = mat
 	for i in n:
 		var near := clampf(float(_eyes.size()) / 16.0, 0.0, 1.0)
 		var ang := deg_to_rad(_rng.randf_range(-80.0, 80.0))
 		var dist := _rng.randf_range(lerpf(13.0, 9.5, near), lerpf(21.0, 14.0, near))
 		var p := Vector3(sin(ang) * dist, 0.0, -cos(ang) * dist - 1.5)
 		p.y = duel_height(p.x, p.z) + _rng.randf_range(0.5, 0.8)
-		var pair := Node3D.new()
-		pair.position = p
-		pair.rotation.y = atan2(-p.x, -p.z)   # (side by side as seen from the Circle)
-		for sx in [-0.095, 0.095]:
-			var e := MeshInstance3D.new()
-			e.mesh = q
-			e.position.x = sx
-			e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			pair.add_child(e)
-		pair.scale = Vector3(1.0, 0.01, 1.0)
-		f.world.add_child(pair)
-		_eyes.append(pair)
-		var tw := pair.create_tween()
-		tw.tween_interval(_rng.randf_range(0.0, 1.4))
-		tw.tween_property(pair, "scale:y", 1.0, 0.25)
-		var blink := pair.create_tween().set_loops()
-		blink.tween_interval(_rng.randf_range(2.2, 6.5))
-		blink.tween_property(pair, "scale:y", 0.02, 0.07)
-		blink.tween_property(pair, "scale:y", 1.0, 0.1)
+		# (side by side as seen from the Circle)
+		_eyes.append(_eye_pair(f.world, p, -p, _rng.randf_range(0.0, 1.4)))
+
+
+## One pair of eyes in the dark at `p` in `parent`, turned to look along
+## `toward`: pale, `size` across each, opening after `delay` s and blinking
+## now and then. (The duel's pack, and the pack on the crater's rim.)
+var _eye_mat: StandardMaterial3D
+
+func _eye_pair(parent: Node3D, p: Vector3, toward: Vector3, delay: float, size := 0.13, open := 1.0) -> Node3D:
+	if _eye_mat == null:
+		_eye_mat = StandardMaterial3D.new()
+		_eye_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_eye_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		_eye_mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+		_eye_mat.billboard_keep_scale = true
+		_eye_mat.disable_fog = true
+		_eye_mat.albedo_texture = _soft_dot()
+		_eye_mat.albedo_color = Color(2.2, 2.7, 3.6)
+	var q := QuadMesh.new()
+	q.size = Vector2(size, size)
+	q.material = _eye_mat
+	var pair := Node3D.new()
+	pair.position = p
+	pair.rotation.y = atan2(toward.x, toward.z)
+	for sx in [-0.73 * size, 0.73 * size]:
+		var e := MeshInstance3D.new()
+		e.mesh = q
+		e.position.x = sx
+		e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		pair.add_child(e)
+	pair.scale = Vector3(1.0, 0.01, 1.0)
+	parent.add_child(pair)
+	var tw := pair.create_tween()
+	if delay > 0.0:
+		tw.tween_interval(delay)
+	tw.tween_property(pair, "scale:y", open, 0.25)
+	var blink := pair.create_tween().set_loops()
+	blink.tween_interval(_rng.randf_range(2.2, 6.5))
+	blink.tween_property(pair, "scale:y", 0.02, 0.07)
+	blink.tween_property(pair, "scale:y", open, 0.1)
+	return pair
 
 
 ## Time slowed to `scale` for `hold` s and run back up over `ramp` s (as a
@@ -1385,6 +1618,10 @@ func _sky_flare(k: float, bolts := 1) -> void:
 	f.impact_glow(clampf(k * 0.5, 0.0, 1.0))
 	for i in bolts:
 		get_tree().create_timer(0.16 * i + _rng.randf() * 0.08, false).timeout.connect(_bolt)
+	# (the ice it strikes among cracks, a moment before the thunder gets here)
+	get_tree().create_timer(0.2, false).timeout.connect(func() -> void:
+		if not _skipping and not _done:
+			_snd("ice_crack", _rng.randf_range(0.85, 1.15), lerpf(-9.0, -3.0, clampf(k, 0.0, 1.0))))
 	get_tree().create_timer(0.55, false).timeout.connect(func() -> void:
 		if not _skipping and not _done:
 			_snd("thunder_far" if _rng.randf() < 0.5 else "thunder_far_2", _rng.randf_range(0.85, 1.05), lerpf(-5.0, 1.0, clampf(k, 0.0, 1.0))))
@@ -1431,6 +1668,10 @@ func _bram_loses_one() -> void:
 	var f := _dir_f
 	if f == null or not is_instance_valid(f):
 		return
+	_bram_lost += 1
+	var down := _bram_lost >= KNEE_AT and not _kneeling and not knelt and _bram is Figure3D
+	if down:
+		_carry_child(_bram as Figure3D)
 	_act(_bram, "hit_react")
 	if _cry != null:
 		_cry.volume_db = -11.0
@@ -1441,9 +1682,117 @@ func _bram_loses_one() -> void:
 		ct.tween_property(_cry, "volume_db", -40.0, 1.2)
 		ct.tween_callback(_cry.stop)
 	_pack_eyes(f, EYES_MORE)
-	if is_instance_valid(_hunter):
+	if down:
+		_to_knee()   # (the hunter's pace nearer is taken in its shot)
+	elif is_instance_valid(_hunter):
 		_hunter_at += Vector3(0, 0, HUNTER_STEP)
 		_hunter.walk_to(_hunter_at, 1.3)
+
+
+## Driven to one knee (14 November, Gary's yes to "Bram driven to one knee
+## when his second Totem falls, rising as he plays the Last Page").
+##
+## His Loomwarden breaks (the KNEE_AT-th of his to fall): he staggers as
+## before, and KNEE_AFTER later, as the slow motion on the Totem runs out,
+## the picture cuts to low behind him (never his face: _pick) and he goes
+## down on his right knee in the snow, bent over the child in his coat, the
+## snow jumping where the knee lands and the phone shaking in the hand; and
+## past his shoulder the hunter comes its pace nearer. He stays down through
+## the hush in which the Last Page is waited for (seen from over his back,
+## PLAY_SHOT), and comes up off the knee as it's played, his arm going up
+## with the card as he rises (_rise_to_play; the Last Page's own shot starts
+## low over his shoulder and so rises with him).
+##
+## The child goes down and comes up with him (_carry_child: it was carried
+## in his own frame, a fixed place in front of where his chest stands, which
+## would have left it in the air over him). The shots that are placed by his
+## head (_over_bram) and the check that keeps his face out of every shot
+## (_face_seen) take his head from where it is on his knee (_bram_head).
+const KNEE_AT := 2
+const KNEE_AFTER := 0.7
+const KNEE_DOWN := 0.55
+const KNEE_UP := 0.75
+const KNEE_LEAN := 0.45
+const KNEE_HOLD := 2.3
+## His head from where he stands, standing and down on his knee (m).
+const HEAD_UP := Vector3(0.0, 1.68, 0.0)
+const HEAD_KNELT := Vector3(0.0, 1.1, -0.15)
+var _bram_lost := 0
+var _kneeling := false
+var _carry_on := false
+## He went down on his knee, and came up off it (the tests read them).
+var knelt := false
+var rose := false
+
+
+func _bram_head() -> Vector3:
+	return BRAM_AT + (HEAD_KNELT if _kneeling else HEAD_UP)
+
+
+func _to_knee() -> void:
+	var fig := _bram as Figure3D
+	var f := _dir_f
+	_kneeling = true
+	knelt = true
+	await _wait(KNEE_AFTER)
+	if _skipping or _climax or f != _dir_f or f == null or not is_instance_valid(f) or not is_instance_valid(fig):
+		return
+	# low behind him, the whole of him in the foot of the picture (his knee
+	# in the snow: from nearer the film's bar cut him off at the thigh), the
+	# hunter coming on past his shoulder
+	var to := Vector3(-0.1, 1.0, -3.0)
+	var c := _pick([[BRAM_AT + Vector3(1.35, 0.85, 3.9), to, 38.0], [BRAM_AT + Vector3(-1.35, 0.85, 3.9), to + Vector3(0.2, 0, 0), 38.0]])
+	if not c.is_empty():
+		_take(c, 0.0, KNEE_HOLD)
+	fig.kneel(KNEE_DOWN, KNEE_LEAN, false, true)
+	if is_instance_valid(_hunter):
+		_hunter_at += Vector3(0, 0, HUNTER_STEP)
+		_hunter.walk_to(_hunter_at, 1.5)
+	await _wait(KNEE_DOWN * 0.75)
+	if _skipping or f != _dir_f or not is_instance_valid(f):
+		return
+	# his knee into the snow
+	f.burst(BRAM_AT + Vector3(0.14, 0.06, 0.0), Color(0.9, 0.93, 1.0), int(22 * DuelField3D.fx_scale()), 3.2, 0.7, 0.09, 0.8)
+	f.cam_shake(4.0)
+	_snd("step_snow", 0.7, 4.0)
+	Haptics.kind(Haptics.BLOW)
+
+
+## Up off his knee as the Last Page is played, the card going down as he
+## comes up.
+func _rise_to_play() -> void:
+	rose = true
+	if _bram is Figure3D:
+		(_bram as Figure3D).rise(KNEE_UP)
+	await _wait(KNEE_UP * 0.45)
+	if is_instance_valid(_bram) and not _skipping:
+		_act(_bram, "play_card")
+	await _wait(KNEE_UP * 0.55)
+	_kneeling = false
+
+
+## The child in his coat carried by his chest from here on (its place off
+## the chest bone as it is now, kept every time his bones are posed), so it
+## goes down on the knee and comes up with him.
+func _carry_child(fig: Figure3D) -> void:
+	var sk := fig._skel
+	if _carry_on or sk == null or not is_instance_valid(_baby):
+		return
+	var ci := sk.find_bone("Spine2")
+	if ci < 0:
+		ci = sk.find_bone("Spine1")
+	if ci < 0:
+		return
+	_carry_on = true
+	var held := [null]
+	sk.skeleton_updated.connect(func() -> void:
+		if not is_instance_valid(_baby) or not is_instance_valid(fig) or not _baby.is_inside_tree():
+			return
+		var chest := sk.global_transform * sk.get_bone_global_pose(ci)
+		if held[0] == null:
+			held[0] = chest.affine_inverse() * _baby.global_transform
+			return
+		_baby.global_transform = chest * (held[0] as Transform3D))
 
 
 ## The Last Page lands: the sky splits wide and stays so, three bolts, a wave
@@ -1453,6 +1802,8 @@ func _last_page_lands() -> void:
 	if f == null or not is_instance_valid(f) or _skipping:
 		return
 	var at := Vector3(0.0, 0.2, -0.8)
+	Haptics.kind(Haptics.LONG)
+	_shatter_ice(f)
 	_sky_flare(1.5, 3)
 	if _duel_sky != null:
 		create_tween().tween_method(func(v: float) -> void: _duel_sky.set_shader_parameter("aurora", v), 1.0, 1.5, 0.6)
@@ -1473,6 +1824,92 @@ func _last_page_lands() -> void:
 					(mi as MeshInstance3D).set_instance_shader_parameter("glow", v), from, from * 3.2, 0.5).set_ease(Tween.EASE_OUT)
 	if is_instance_valid(_hunter):
 		_hunter.lower_cards()
+
+
+## The ice breaks (14 November, Gary's yes to "shards near the Circle shatter
+## when the Last Page lands"): the nearest of the crystals across the Circle
+## from Bram (those the last shot has in its picture; not the great ones)
+## burst one after another as the blow runs out to them at SHATTER_WAVE,
+## SHATTER_N of them by Gfx.level(). Each: a flash at its heart, its
+## splinters thrown up and out and falling (the ice's own material, lit from
+## within), a puff of its frost, a stump left standing in the snow; and the
+## sound of it, the first few.
+const SHATTER_N := [4, 6, 8]
+const SHATTER_WAVE := 30.0
+const SHATTER_TALL := 7.5
+## How many have burst (the tests read it).
+var shattered := 0
+var _splinter: ArrayMesh
+
+
+func _shatter_ice(f: DuelField3D) -> void:
+	var near: Array = []
+	for mi in _duel_ice:
+		if not is_instance_valid(mi):
+			continue
+		var m := mi as MeshInstance3D
+		if m.position.z < 4.0 and m.mesh != null and m.mesh.get_aabb().size.y < SHATTER_TALL:
+			near.append(m)
+	near.sort_custom(func(a: MeshInstance3D, b: MeshInstance3D) -> bool: return a.position.length() < b.position.length())
+	var n := mini(int(SHATTER_N[clampi(quality, 0, 2)]), near.size())
+	for i in n:
+		var m: MeshInstance3D = near[i]
+		var wait := 0.1 + maxf(0.0, m.position.length() - 8.0) / SHATTER_WAVE
+		get_tree().create_timer(wait, false).timeout.connect(_shatter_one.bind(m, i))
+
+
+func _shatter_one(m: MeshInstance3D, i: int) -> void:
+	var f := _dir_f
+	if not is_instance_valid(m) or f == null or not is_instance_valid(f) or f.world == null or _done:
+		return
+	shattered += 1
+	var hgt := m.mesh.get_aabb().size.y
+	var mid := m.position + m.basis.y.normalized() * hgt * 0.45
+	# a stump left standing
+	m.scale = Vector3(1.0, 0.14, 1.0)
+	m.set_instance_shader_parameter("glow", 2.0)
+	if _splinter == null:
+		var r := RandomNumberGenerator.new()
+		r.seed = 5
+		_splinter = _crystal_mesh(r, 0.34, 0.045, 0)
+	var p := GPUParticles3D.new()
+	p.amount = maxi(8, int(clampf(hgt * 8.0, 14.0, 36.0) * DuelField3D.fx_scale()))
+	p.lifetime = 1.7
+	p.one_shot = true
+	p.explosiveness = 0.94
+	p.emitting = false
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	pm.emission_box_extents = Vector3(hgt * 0.09, hgt * 0.4, hgt * 0.09)
+	pm.direction = Vector3(0, 1, 0)
+	pm.spread = 70.0
+	pm.initial_velocity_min = 2.5
+	pm.initial_velocity_max = 10.5
+	pm.gravity = Vector3(0, -12.0, 0)
+	# (each pointing the way it flies: all stood upright, turning on the spot,
+	# they hung in the air like a shower of pins)
+	pm.particle_flag_align_y = true
+	pm.scale_min = 0.45
+	pm.scale_max = 1.5
+	var cr := Curve.new()
+	cr.add_point(Vector2(0.0, 1.0))
+	cr.add_point(Vector2(0.65, 1.0))
+	cr.add_point(Vector2(1.0, 0.0))
+	var ct := CurveTexture.new()
+	ct.curve = cr
+	pm.scale_curve = ct
+	p.process_material = pm
+	p.draw_pass_1 = _splinter
+	p.material_override = ice_material(quality, true)
+	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	p.position = mid
+	f.world.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(2.6, false).timeout.connect(p.queue_free)
+	f.flash_light(mid, Color(0.7, 0.86, 1.0), 7.0, 0.6, 15.0)
+	f.burst(mid, Color(0.86, 0.93, 1.0), int(36 * DuelField3D.fx_scale()), 8.0, 1.0, 0.1, 0.9)
+	if i < 3:
+		_snd("ice_shatter", _rng.randf_range(0.85, 1.15), -1.0 - 2.5 * i)
 
 
 ## Bram's duel, played (12 November; the note at the top, 5). The duel was
@@ -1543,11 +1980,15 @@ func _duel() -> void:
 		_hunter.visible = true
 		_hunter._set_fade(1.0)
 	_dir_f = f
+	ice_sky(1.0)   # (the sky's open over the duel: the ice round the Circle has its colours)
 	_film_bars(true)
 	var st := {"called": -1.0, "struck": -1.0, "over": false}
 	_screen.game.logged.connect(func(t: String, who: int) -> void:
 		if who == 0 and is_instance_valid(_bram) and (t.contains(" plays ") or t.contains(" calls ") or t.contains(" sets ") or t.contains(" casts ")):
-			_act(_bram, "play_card")
+			if _kneeling and not rose:
+				_rise_to_play()   # (up off his knee with it)
+			elif not _kneeling:
+				_act(_bram, "play_card")
 		if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()) and st.called < 0.0:
 			st.called = _t
 		# the Last Page's blow landing on the hunter's side
@@ -1662,6 +2103,10 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 		_hushed_for_page = true
 		if is_instance_valid(_hunter):
 			_hunter.raise_cards()
+		# (and in the quiet the ice round the Circle can be heard ringing)
+		get_tree().create_timer(1.1, false).timeout.connect(func() -> void:
+			if _hushed_for_page and not _skipping and not _done:
+				_snd("ice_ring", 0.8, -7.0))
 	# (the picture back behind him first: his hand came up over the last
 	# blow's close shot while the camera was still on its way)
 	await _wait(MOVE_SETTLE)
@@ -2058,7 +2503,7 @@ func _pick(cands: Array) -> Array:
 ## the drift and shake move it) with the camera anywhere but behind his
 ## shoulders. (Side-on counts: a profile is a face.)
 func _face_seen(pos: Vector3, look: Vector3, fov: float) -> bool:
-	var head := BRAM_AT + Vector3(0, 1.68, 0)
+	var head := _bram_head()
 	var fwd := Vector3.FORWARD
 	if is_instance_valid(_bram) and _bram is PaperDoll:
 		fwd = (_bram as PaperDoll).facing()
@@ -2092,7 +2537,7 @@ func _in_the_way(pos: Vector3) -> bool:
 
 ## Over Bram's right shoulder, past him at `at`: [camera, look, lens].
 func _over_bram(at: Vector3, fov := 36.0, back := 2.4, side := 0.9, up := 0.5) -> Array:
-	var head := BRAM_AT + Vector3(0, 1.68, 0)
+	var head := _bram_head()
 	var d := Vector3(at.x - head.x, 0, at.z - head.z)
 	d = d.normalized() if d.length() > 0.01 else Vector3.FORWARD
 	var r := d.cross(Vector3.UP)
@@ -2233,6 +2678,7 @@ func _beat_hit(t: DuelTotem, amount: int) -> void:
 	_wash(Color(0.75, 0.82, 1.0) if t.owner == 0 else Color(1.0, 0.9, 0.78), 0.2, 0.45)
 	f.floor_wave(foot, Color(0.82, 0.88, 1.0), 4.2, 0.55)
 	f.burst(foot + Vector3(0, 0.15, 0), Color(0.88, 0.92, 1.0), int(34 * DuelField3D.fx_scale()), 6.5, 0.8, 0.11, 1.0)
+	Haptics.kind(Haptics.BLOW)
 	_slow(0.08, 0.09, 0.14)
 
 
@@ -2249,6 +2695,7 @@ func _beat_life(pi: int, amount: int) -> void:
 		c = _pick([_on_hunter(28.0, 0.6), _on_hunter(24.0)])
 	_take(c, 0.0, HIT_HOLD)
 	f.cam_shake(10.0 if amount >= BIG_BLOW else 5.0)
+	Haptics.kind(Haptics.BLOW)
 
 
 ## A Totem broken: held close as it goes.
@@ -2257,6 +2704,7 @@ func _beat_ko(t: DuelTotem) -> void:
 	var k: Array = f.shot_ko(t.owner, t.slot)
 	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO], _behind_low(t, 0.8, 36.0), _side_on(t, 0.6, 28.0)]), 0.0, KO_HOLD)
 	f.cam_shake(6.0)
+	Haptics.kind(Haptics.HEAVY)
 	# (14 November) it breaks in slow motion and the sky answers; one of
 	# Bram's, and the night closes in on him (_bram_loses_one)
 	_slow(0.32, 0.42, 0.3)
@@ -2436,6 +2884,7 @@ static func height(x: float, z: float) -> float:
 func _build_set() -> void:
 	_set = Node3D.new()
 	_vp.add_child(_set)
+	ice_sky(0.0)   # (the ice dark again: the sky isn't open yet)
 	_env = Environment.new()
 	var sky := Sky.new()
 	_sky = ShaderMaterial.new()
@@ -2460,6 +2909,7 @@ func _build_set() -> void:
 	# the ice and his shoulders are edged with it and their shadows fall
 	# towards the camera)
 	ShardSet.night(_env, quality)
+	_fog_base = _env.fog_density
 	var we := WorldEnvironment.new()
 	we.environment = _env
 	_set.add_child(we)
@@ -2534,6 +2984,7 @@ func _build_set() -> void:
 	_bram.position = WALK_FROM
 	_face(_bram, Vector3.FORWARD)   # his back to us, from the first frame
 	_dress_bram.call_deferred()
+	_weather_bram.call_deferred()
 	# (14 November) lit from ahead of him he's a black cut-out from behind:
 	# a soft light of the snow's own colour on him alone (FILL_LAYER: it
 	# falls on nothing else, so no shadow on the snow is filled in by it)
@@ -2609,6 +3060,7 @@ func _set_sky_k(k: float) -> void:
 		_range_mat.set_shader_parameter("haze", ShardSet.FAR_NIGHT.lerp(ShardSet.FAR_TORN, k))
 	if _ground_mat != null:
 		_ground_mat.set_shader_parameter("sparkle", lerpf(0.3, 0.7, k))
+	ice_sky(k)   # (the ice picks its colours up)
 
 
 ## The sky torn, all at once: what _sigilfall brings in over three seconds
@@ -2779,8 +3231,19 @@ static func ice_material(q: int, fresh: bool) -> ShaderMaterial:
 		m.set_shader_parameter("ice", Color(0.5, 0.72, 1.0))
 		m.set_shader_parameter("inner_k", 1.6)
 		m.set_shader_parameter("frost_k", 0.0)
+	m.set_shader_parameter("sky_k", _ice_sky)
 	_ice_mats[key] = m
 	return m
+
+
+## How much of the torn sky's colour the ice has in it, 0..1 (every crystal,
+## the walk's and the duel's: _set_sky_k).
+static var _ice_sky := 0.0
+
+static func ice_sky(k: float) -> void:
+	_ice_sky = k
+	for key in _ice_mats:
+		(_ice_mats[key] as ShaderMaterial).set_shader_parameter("sky_k", k)
 
 
 ## A cluster of ice crystals, its foot at the origin, `hgt` tall: a prism of
@@ -3693,17 +4156,24 @@ func _step_sound(db: float) -> void:
 const STOOP := {"Spine": Vector3(55, 0, 0), "Spine1": Vector3(10, 0, 0), "Neck": Vector3(-20, 0, 0)}
 
 func _stoop(fig: Figure3D) -> Stoop:
+	return _bend(fig, "Stoop", STOOP)
+
+
+## A bend laid over his clip (Stoop), named `nm`, its bones' turns at full
+## from `table` (degrees about each bone): the stoop over the child, the lean
+## into a gust.
+func _bend(fig: Figure3D, nm: String, table: Dictionary) -> Stoop:
 	var sk := fig._skel
 	if sk == null:
 		return null
-	if sk.has_node("Stoop"):
-		return sk.get_node("Stoop") as Stoop
+	if sk.has_node(nm):
+		return sk.get_node(nm) as Stoop
 	var st := Stoop.new()
-	st.name = "Stoop"
-	for bone: String in STOOP:
+	st.name = nm
+	for bone: String in table:
 		var i := sk.find_bone(bone)
 		if i >= 0:
-			var e: Vector3 = STOOP[bone]
+			var e: Vector3 = table[bone]
 			st.turns.append([i, Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))])
 	sk.add_child(st)
 	# after the posture, before the hands reach
@@ -4089,6 +4559,123 @@ func _gust(at: Vector3) -> void:
 	get_tree().create_timer(3.0, false).timeout.connect(p.queue_free)
 
 
+# --- the wind fights him (14 November) -----------------------------------------
+## Gary's yes to "the wind fights him: gusts that make him lean in and slow,
+## snow thickening". Every so often on the walk a gust comes down the wind:
+## the first GUST_FIRST after he first sets off (the walk to the crater is
+## short: one that waited for the sky to open never came before the rim),
+## then one every GUST_EVERY or so, and one as the storm comes back after
+## the hunter is glimpsed (_glimpse: "the wind comes back with a gust").
+## It's heard rising and the ice about him sings in it;
+## a sheet of snow drives across him, the snow in the air and along the
+## ground runs faster, the haze thickens and the picture is buffeted; his
+## coat is torn at (ShardSet.weather), he leans into it (_lean: his back and
+## head down, GUST_LEAN) and his pace drops to GUST_PACE of itself. Then it
+## eases and he walks on. The walk stays his throughout: he goes where he's
+## steered, only slower. It's worked frame by frame (_gust_step), so it lets
+## go of him at once if the night hushes for the glimpse or the walk ends
+## under it; none within GUST_CLEAR of the
+## crater's lip, and none while he stands (but the one after the glimpse).
+const GUST_FIRST := 3.5
+const GUST_EVERY := [6.5, 10.5]
+const GUST_RISE := 0.7
+const GUST_HOLD := 1.5
+const GUST_FALL := 1.2
+const GUST_PACE := 0.55
+const GUST_CLEAR := 3.0
+const GUST_FOG := 0.6
+const GUST_LEAN := {"Spine": Vector3(13, 0, 0), "Spine1": Vector3(7, 0, 0), "Neck": Vector3(9, 0, 0), "Head": Vector3(6, 0, 0)}
+var _gust_k := 0.0        # how hard it's blowing now, 0..1
+var _gust_t := -1.0       # how long this one has blown (under 0: none)
+var _gust_next := INF
+var _gust_eased := false
+var _gust_force := false   # the next one comes wherever he is, walking or not
+var _glimpsing := false    # the night hushed for the glimpse of the hunter
+var _lean: Stoop
+var _fog_base := 0.021
+var _walk_storm := 1.0    # the walk's storm as _storm_to last left it (its driven snow, 0..1)
+## How many have blown (the tests read it).
+var gusts := 0
+
+
+func _gust_step(delta: float) -> void:
+	if _set == null or not is_instance_valid(_bram) or _bram.get_parent() != _set:
+		_gust_k = 0.0
+		return
+	var ok := _roam and not _glimpsing and not _skipping
+	var want := 0.0
+	if _gust_t >= 0.0:
+		_gust_t += delta
+		if not ok or _gust_t >= GUST_RISE + GUST_HOLD + GUST_FALL:
+			_gust_t = -1.0
+			_gust_next = _t + _rng.randf_range(float(GUST_EVERY[0]), float(GUST_EVERY[1]))
+		elif _gust_t < GUST_RISE + GUST_HOLD:
+			want = 1.0
+		elif not _gust_eased:
+			_gust_eased = true
+			_wind_to(WIND_DB, GUST_FALL)
+	elif ok and _gust_next == INF:
+		if _vel.length() > 0.4:
+			_gust_next = _t + GUST_FIRST   # (he's set off)
+	elif ok and _t >= _gust_next and (_gust_force or (_vel.length() > 0.4 and _crater_dist() > RIM_AT + GUST_CLEAR)):
+		_gust_force = false
+		_gust_t = 0.0
+		_gust_eased = false
+		gusts += 1
+		want = 1.0
+		_wind_to(WIND_DB + 5.0, GUST_RISE)
+		_snd("ice_ring", _rng.randf_range(0.82, 1.2), -8.0)
+		_gust(_bram.position + _heading() * 1.5)
+		if _lean == null and _bram is Figure3D:
+			_lean = _bend(_bram as Figure3D, "Lean", GUST_LEAN)
+	var was := _gust_k
+	_gust_k = move_toward(_gust_k, want, delta / (GUST_RISE if want > _gust_k else GUST_FALL))
+	if _gust_k == was and _gust_k <= 0.0:
+		return
+	var k := smoothstep(0.0, 1.0, _gust_k)
+	if _lean != null and is_instance_valid(_lean):
+		_lean.amount = k
+	if _env != null:
+		_env.fog_density = _fog_base * (1.0 + GUST_FOG * k)
+	if _ground_mat != null:
+		_ground_mat.set_shader_parameter("blow", 1.0 + 0.9 * k)
+	if ok:
+		for p in [_blown, _mist, _snow, _near_snow]:
+			if p != null and is_instance_valid(p):
+				(p as GPUParticles3D).speed_scale = 1.0 + 0.7 * k
+
+
+## His coat's skirt and his hair in the wind, the snow lying on him
+## (ShardSet.weather; 14 November, Gary's yes to "his coat and hair moving in
+## the wind, snow settling on his shoulders"). The wind has hold of them as
+## hard as the storm is blowing where he is: the walk's (all but still in the
+## hush before the glimpse and on the rim), a gust's on top of it, the
+## duel's. The snow gathers on him while he's out walking in it, SNOW_ON_SECS
+## to its most (SNOW_ON_MAX), and stays.
+const COAT_WIND := 0.42
+const SNOW_ON_SECS := 50.0
+const SNOW_ON_MAX := 0.85
+var _weather: ShaderMaterial
+var _coat_wind := COAT_WIND
+var _snow_on := 0.0
+
+
+func _weather_bram() -> void:
+	if _bram is Figure3D and (_bram as Figure3D).model != null:
+		_weather = ShardSet.weather((_bram as Figure3D).model)
+
+
+func _weather_step(delta: float) -> void:
+	if _weather == null:
+		return
+	var storm := clampf(_storm_k, 0.1, 1.5) if _dir_f != null else _walk_storm
+	_coat_wind = move_toward(_coat_wind, COAT_WIND * storm + 0.62 * _gust_k, delta * 1.4)
+	_weather.set_shader_parameter("wind_k", clampf(_coat_wind, 0.0, 1.25))
+	if _roam and _snow_on < SNOW_ON_MAX:
+		_snow_on = minf(SNOW_ON_MAX, _snow_on + delta * SNOW_ON_MAX / SNOW_ON_SECS)
+		_weather.set_shader_parameter("snow_k", _snow_on)
+
+
 # ================================================================ camera ===
 
 func _shot(pos: Vector3, look: Vector3, fov: float) -> void:
@@ -4137,6 +4724,8 @@ func _apply_cam() -> void:
 	if _cam == null:
 		return
 	var sway := Vector3(sin(_t * 0.7) * 0.02, sin(_t * 0.9) * 0.015, 0)
+	# (a gust buffets it)
+	sway += Vector3(sin(_t * 9.1) + sin(_t * 5.7), sin(_t * 7.3), 0) * 0.008 * _gust_k
 	_cam.position = _cam_pos + sway
 	if _cam_pos.distance_to(_cam_look) > 0.01:
 		_cam.look_at(_cam_look, Vector3.UP)
@@ -4149,8 +4738,10 @@ func _process(delta: float) -> void:
 	_t += delta
 	if _ring != null:
 		_place_ring()
+	_gust_step(delta)
 	if _roam:
 		_roam_step(delta)
+	_weather_step(delta)
 	if _cam_mode == "roam":
 		# behind him, over his right shoulder, the camera's heading easing
 		# round to his as he turns; with _sky_look up, its eyes lifted to the
@@ -4182,7 +4773,18 @@ func _process(delta: float) -> void:
 		if _glimpse_look > 0.001 and _glimpse_at != Vector3.INF:
 			_look_want = _look_want.lerp(_glimpse_at, smoothstep(0.0, 1.0, _glimpse_look) * GLIMPSE_EYES)
 		_cam.fov = 50.0 + 10.0 * up
-	if _cam_mode == "follow" or _cam_mode == "roam":
+		if _open_k > 0.0:
+			# the opening's wide shot, coming down to this picture (no
+			# springs: the way down is its own easing)
+			_open_step(delta)
+			var e := smoothstep(0.0, 1.0, _open_k)
+			var from := Vector3(WALK_FROM.x, height(WALK_FROM.x, WALK_FROM.z), WALK_FROM.z)
+			_cam_pos = _cam_want.lerp(from + OPEN_FROM, e)
+			_cam_look = _look_want.lerp(from + OPEN_LOOK, e)
+			_cam.fov = lerpf(_cam.fov, OPEN_LENS, e)
+			_cam_v = Vector3.ZERO
+			_look_v = Vector3.ZERO
+	if (_cam_mode == "follow" or _cam_mode == "roam") and not (_cam_mode == "roam" and _open_k > 0.0):
 		if _cam_pos == Vector3.ZERO:
 			_cam_pos = _cam_want
 			_cam_look = _look_want
@@ -4271,7 +4873,8 @@ func _roam_step(delta: float) -> void:
 	# Now his pace is worked up to and let go of, WALK_ACCEL, and a turn is
 	# walked round in an arc: what he's asked for is where his walking is
 	# headed, not where it is)
-	_vel = _vel.move_toward(dir * WALK_SPEED, WALK_ACCEL * delta)
+	# (and a gust takes his pace down: _gust_step)
+	_vel = _vel.move_toward(dir * WALK_SPEED * (1.0 - (1.0 - GUST_PACE) * _gust_k), WALK_ACCEL * delta)
 	var speed := _vel.length()
 	if speed > 0.05:
 		_hide_hint()
@@ -4650,6 +5253,7 @@ uniform vec3 vein : source_color = vec3(0.75, 0.9, 1.0);
 uniform vec3 rim_col : source_color = vec3(0.45, 0.7, 1.0);
 uniform float inner_k = 1.0;
 uniform float frost_k = 1.0;
+uniform float sky_k = 0.0;
 varying vec3 wp;
 varying vec3 lp;
 float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
@@ -4704,6 +5308,16 @@ void fragment() {
 	em += rim_col * fres * 0.9;
 	em += vein * e * (0.35 + 0.65 * tip) * 0.9;
 	em += vein * tip * tip * 0.35 * glow;
+	// (14 November) the sky's colours in it once the tear is open (sky_k): its
+	// violet, teal and gold, each facet its own by the way it faces and where
+	// it stands, drifting slowly; in the rim, the points and the facets' edges
+	if (sky_k > 0.001) {
+		float hue = n3(wp * 0.06 + nw * 0.9 + vec3(s, 0.0, TIME * 0.045));
+		vec3 sc = mix(vec3(0.55, 0.25, 1.0), vec3(0.15, 0.85, 0.95), smoothstep(0.3, 0.5, hue));
+		sc = mix(sc, vec3(1.0, 0.75, 0.3), smoothstep(0.56, 0.74, hue));
+		float caught = fres * 0.9 + tip * 0.5 + e * 0.4 + 0.1 * clamp(nw.y * 0.5 + 0.5, 0.0, 1.0);
+		em += sc * caught * sky_k * 0.8 * glow;
+	}
 	EMISSION = em * (1.0 - frost * 0.85);
 }
 """

@@ -9,7 +9,12 @@ extends Node
 ##
 ##   VK_ICD_FILENAMES=<lvp_icd.json> xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver vulkan \
 ##       --rendering-method forward_plus --resolution 1280x720 --fixed-fps 10 --path . \
-##       res://tests/white_sky_look.tscn -- <dir> [night torn mid wide back rim bowl held] [-- --phone]
+##       res://tests/white_sky_look.tscn -- <dir> [night open torn mid wide back rim bowl held flash eyes close] [-- --phone]
+##
+## (The second pass of 14 November: "open" the opening's wide shot, as it
+## begins, on its way down and nearly home; "flash" the lightning behind the
+## rim with the hunter black against it; "eyes" the pack's eyes open along
+## the rim; "close" Bram near, his coat in a gust and the snow on him.)
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
 ## picture; `--rendering-driver opengl3 --rendering-method gl_compatibility`
@@ -22,7 +27,8 @@ var _pos := Vector3.ZERO
 var _look := Vector3.ZERO
 var _fov := 50.0
 var _n := 0
-const ALL := ["night", "torn", "mid", "wide", "back", "rim", "bowl", "held"]
+var _blow := false
+const ALL := ["night", "open", "torn", "mid", "wide", "back", "rim", "bowl", "held", "flash", "eyes", "close"]
 
 
 func _ready() -> void:
@@ -41,6 +47,8 @@ func _ready() -> void:
 
 
 func _process(_d: float) -> void:
+	if _blow and m != null:
+		m._gust_k = 1.0   # (a gust held at its height for a still)
 	if _peek and m != null and m._cam != null:
 		m._cam_mode = "peek"
 		m._cam_pos = _pos
@@ -98,6 +106,16 @@ func _run() -> void:
 	if names.has("night"):
 		_stand(0.0, -2.0)
 		await _shot("night", 30)
+	if names.has("open"):
+		# the opening's wide shot (WhiteSky._open_k: 1, on its way, nearly home)
+		_stand(0.0, -2.0)
+		var op := m._bram.position
+		var roam_pos := op + Vector3(0.75, 1.85, 3.0)
+		var roam_look := op + Vector3(0.0, 1.35, -7.0)
+		for k: float in [1.0, 0.62, 0.3]:
+			var e := smoothstep(0.0, 1.0, k)
+			_at(roam_pos.lerp(op + WhiteSky.OPEN_FROM, e), roam_look.lerp(op + WhiteSky.OPEN_LOOK, e), lerpf(50.0, WhiteSky.OPEN_LENS, e))
+			await _shot("open_%03d" % int(k * 100.0), 20)
 	_tear()
 	if names.has("torn"):
 		_stand(0.0, -2.0)
@@ -154,5 +172,77 @@ func _run() -> void:
 		w0.y = maxf(w0.y, WhiteSky.height(w0.x, w0.z) + 0.4)
 		_at(w0, bottom2 + kd2 * 1.4 + Vector3(0, 1.9, 0), 46.0)
 		await _shot("held", 14)
+	if names.has("flash") or names.has("eyes"):
+		var kd3 := m._kneel_dir(Vector3.FORWARD)
+		var bottom3 := m._kneel_spot(kd3)
+		m._ad = kd3
+		m._bram.position = bottom3
+		if m._bram is Figure3D:
+			(m._bram as Figure3D).snap_face(kd3)
+		m._shaft_k = 0.0
+		m._child_beacon(false)
+		m._crater_k = 0.32
+		m._baby.visible = false   # (in his coat by now)
+		var rt3 := kd3.cross(Vector3.UP)
+		var rim3 := c + kd3 * WhiteSky.RIM_AT
+		if names.has("flash"):
+			# the lightning behind the rim, the hunter black against it (held
+			# at its brightest for the still: WhiteSky._rim_flash)
+			var w3 := bottom3 - kd3 * 5.6 + rt3 * 2.0 + Vector3(0, 1.0, 0)
+			w3.y = maxf(w3.y, WhiteSky.height(w3.x, w3.z) + 0.4)
+			_at(w3, bottom3 + kd3 * 1.8 + Vector3(0, 2.0, 0), 46.0)
+			var form := rim3 + kd3 * WhiteSky.RIM_BACK
+			form.y = WhiteSky.height(form.x, form.z)
+			await _shot("flash_before", 14)
+			m._cam_pos = w3   # (the bolt falls behind it as this camera sees it)
+			m._rim_flash_on(form)
+			m._rim_bolt.secs = 9.0
+			m._rim_light(1.0)
+			await _shot("flash", 1)
+			m._rim_light(0.0)
+			m._rim_bolt.queue_free()
+			m._rim_sheet.queue_free()
+			m._hunter.visible = false
+		if names.has("eyes"):
+			# the pack's eyes along the rim (the memory's own camera for it)
+			m._hunter.position = Vector3(rim3.x, WhiteSky.height(rim3.x, rim3.z), rim3.z)
+			m._hunter.look_at_dir(m._bram.position - m._hunter.position)
+			m._hunter.visible = true
+			m._hunter._set_fade(1.0)
+			_peek = false
+			m._rim_pack(rim3, bottom3, rt3)
+			await _shot("eyes", 44)
+			m._hunter.visible = false
+		m._baby.visible = true
+	if names.has("close"):
+		# him, near: from behind, from his side and from over his shoulder (his
+		# coat and hair in the wind, the snow lying on him)
+		if m._weather != null:
+			m._snow_on = 0.5   # (about what's on him by the crater)
+			m._weather.set_shader_parameter("snow_k", 0.5)
+		_stand(1.5, -15.0)
+		var bp := m._bram.position
+		var fw := (WhiteSky.CRATER - bp)
+		fw.y = 0.0
+		fw = fw.normalized()
+		var sd := -fw.cross(Vector3.UP)
+		_at(bp - fw * 2.3 + Vector3(0, 1.3, 0), bp + Vector3(0, 1.05, 0), 44.0)
+		await _shot("close_behind", 24)
+		_at(bp + sd * 2.4 - fw * 0.5 + Vector3(0, 1.3, 0), bp + Vector3(0, 1.05, 0), 44.0)
+		await _shot("close_side", 10)
+		# (and in a gust: WhiteSky._weather_step takes his coat's wind up with it)
+		_blow = true
+		await _shot("close_side_gust", 16)
+		_at(bp - fw * 2.3 + Vector3(0, 1.3, 0), bp + Vector3(0, 1.05, 0), 44.0)
+		await _shot("close_behind_gust", 8)
+		_blow = false
+		_at(bp - fw * 1.1 - sd * 0.5 + Vector3(0, 1.95, 0), bp + Vector3(0, 1.5, 0), 40.0)
+		await _shot("close_shoulder", 10)
+		# (and at its most, as after a long wander)
+		if m._weather != null:
+			m._weather.set_shader_parameter("snow_k", WhiteSky.SNOW_ON_MAX)
+		await _shot("close_shoulder_most", 6)
+		_at(bp - fw * 2.3 + Vector3(0, 1.3, 0), bp + Vector3(0, 1.05, 0), 44.0)
+		await _shot("close_behind_most", 6)
 	print("WHITE SKY LOOK: done in ", out)
 	get_tree().quit()

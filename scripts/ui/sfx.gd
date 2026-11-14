@@ -342,6 +342,22 @@ static func _synth(sound: String) -> AudioStreamWAV:
 		"frost_write":
 			# a fingertip squeaking over cold glass (the name in the frost)
 			samples = _mix(_sweep(1700.0, 2300.0, 0.16, 0.05, "sine"), _noise(0.16, 0.07, 5000.0))
+		# (14 November, Gary's yes to "ice that rings in the wind and cracks when
+		# lightning hits": stand-ins made here until his recordings are saved as
+		# assets/sfx/ice_ring.ogg (and _2, _3), ice_crack.ogg (and _2) and
+		# ice_shatter.ogg; made once, WhiteSky asks for them under its opening
+		# black)
+		"ice_ring":
+			# a shard singing in the wind: a few high glassy notes that swell
+			# and die away, not quite in tune with each other
+			samples = _ring([[1864.7, 1.0, 0.0], [2793.8, 0.6, 0.12], [3729.3, 0.34, 0.3], [4978.0, 0.2, 0.05], [2217.5, 0.4, 0.55]], 2.4, 0.11)
+		"ice_crack":
+			# the crack of ice split by a bolt: a hard snap, the split running
+			# on through it, a few last ticks
+			samples = _mix(_mix(_noise(0.05, 0.75, 9000.0), _sweep(2900.0, 700.0, 0.32, 0.3, "tri")), _pings(9, 0.75, 1800.0, 5200.0, 0.2, 0.05, 11))
+		"ice_shatter":
+			# a shard bursting: the break, then its splinters ringing down
+			samples = _mix(_mix(_noise(0.45, 0.6, 7500.0), _sweep(1500.0, 260.0, 0.4, 0.3, "sine")), _pings(46, 1.7, 2100.0, 7400.0, 0.2, 0.16, 23))
 		_:
 			samples = _tone([[880.0, 0.05]], 0.2, "sine")
 	var data := PackedByteArray()
@@ -408,6 +424,49 @@ static func _noise(dur: float, vol: float, cutoff: float) -> PackedFloat32Array:
 	for i in count:
 		y += a * (rng.randf_range(-1.0, 1.0) - y)
 		out.append(y * _env(float(i) / RATE, dur) * vol * 2.5)
+	return out
+
+
+## Notes that swell and die away together (glass, ice): each of `parts` is
+## [Hz, loudness, seconds late], `dur` long.
+static func _ring(parts: Array, dur: float, vol: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	var count := int(dur * RATE)
+	out.resize(count)
+	for part in parts:
+		var f: float = part[0]
+		var a: float = part[1]
+		var late: float = part[2]
+		var from := int(late * RATE)
+		var step := f / RATE * TAU
+		var beat := (0.7 + f * 0.0004) / RATE * TAU   # (a slow shimmer, each note's own)
+		for i in range(from, count):
+			var t := float(i - from) / RATE
+			var left := (dur - late - t) / maxf(0.001, dur - late)
+			var e := (1.0 - exp(-t / 0.22)) * exp(-t / (dur * 0.38)) * minf(1.0, left * 6.0)
+			out[i] += sin(step * (i - from)) * (0.8 + 0.2 * sin(beat * i)) * e * a * vol
+	return out
+
+
+## `n` short high pings scattered over `dur` (splinters, ticks), thinning
+## out towards its end: between `f_lo` and `f_hi` Hz, each up to `len` s.
+static func _pings(n: int, dur: float, f_lo: float, f_hi: float, vol: float, length: float, seed_v: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	var count := int(dur * RATE)
+	out.resize(count)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = seed_v
+	for k in n:
+		var at := pow(rng.randf(), 1.7) * (dur - length)
+		var f := rng.randf_range(f_lo, f_hi)
+		var len_s := length * rng.randf_range(0.35, 1.0)
+		var a := vol * rng.randf_range(0.35, 1.0) * (1.0 - 0.6 * at / dur)
+		var from := int(at * RATE)
+		var m := mini(int(len_s * RATE), count - from)
+		var step := f / RATE * TAU
+		for i in m:
+			var t := float(i) / RATE
+			out[from + i] += sin(step * i) * exp(-t / (len_s * 0.28)) * minf(1.0, t / 0.001) * a
 	return out
 
 
