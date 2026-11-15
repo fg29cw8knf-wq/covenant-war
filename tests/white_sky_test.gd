@@ -37,6 +37,12 @@ extends Node
 ## tune asked for (at the pick-up and at the small hand); and the title
 ## after Morrowen's last line. "duel" plays the duel, the walk out and the
 ## end. Skipped, the mark and the title still come.
+## (The same day, later) the first move is a choice of two cards, both
+## glowing: the first is taken by default; "serpent" taps the other. Either
+## must be called and break the hound. And the Last Page as it was rebuilt:
+## the calling before the Summon's video, the arrival after it, the pages
+## flung out at the blow with Orlanthe still standing. "page" plays the duel
+## to the Last Page's white and stops (the quick look at the summon).
 ##
 ## (And that evening's four) the hunter's arm put out for the child and Bram
 ## turning it away before "Not this one."; the lead-in (his cards up, the
@@ -102,7 +108,9 @@ func _ready() -> void:
 	if args.size() > 1:
 		every = float(args[1])
 	_skip = args.has("skip")
-	_duel_only = args.has("duel")
+	_page_only = args.has("page")
+	_duel_only = args.has("duel") or _page_only
+	_serpent = args.has("serpent")
 	_hurry = args.has("hurry")
 	Haptics.count = 0
 	for a in args:
@@ -125,6 +133,10 @@ func _ready() -> void:
 	# (the Summon's video as a new game has it: on, and not seen yet; this
 	# machine's own Options may say otherwise)
 	Game.settings[SummonVideo.SETTING] = "full"
+	# ("novideo": Summon videos Off in Options. The calling and the arrival
+	# are still played, one after the other.)
+	if args.has("novideo"):
+		Game.settings[SummonVideo.SETTING] = "off"
 	Game.v2.erase("summon_seen")
 	Sfx.listen = true
 	m = WhiteSky.new()
@@ -152,6 +164,13 @@ func _run() -> void:
 		m._ad = m._kneel_dir(Vector3.FORWARD)
 		m._bottom = m._kneel_spot(m._ad)
 		await m._duel()
+		if _page_only:
+			# ("page": the duel to the Last Page's white, for a look at the summon)
+			await _still("page_end")
+			print("white_sky_test: the Last Page: called %s, arrived %s, the pages flung out %s, Orlanthe standing at the blow %s (stopped at the white)" % [
+				str(m.page_called), str(m.page_arrived), str(m.page_blown), str(m.page_stood)])
+			get_tree().quit(0)
+			return
 		if not m._skipping:
 			await m._walk_out()
 		await m._close()
@@ -285,7 +304,17 @@ func _process(delta: float) -> void:
 		if _ask_hold > 2.0:
 			_asked[-1][2] = _t
 			_ask_hold = 0.0
-			m.play_move()
+			# ("serpent": the other of the first move's two cards, by a tap on it)
+			var other: Control = null
+			if ask == "call" and _serpent:
+				for c in m._hand_lit:
+					if is_instance_valid(c) and String(c.id) == String(WhiteSkyDuel.PLAY_CHOICE[1]):
+						other = c
+			if other != null:
+				m._tap_at = other.get_global_rect().get_center()
+				m._tapped = true
+			else:
+				m.play_move()
 	elif not _asked.is_empty() and float(_asked[-1][2]) < 0.0:
 		# (no longer asking, and the test didn't make the move: the stray tap did)
 		_miss_failed.append(_asked[-1][0])
@@ -294,6 +323,10 @@ func _process(delta: float) -> void:
 		_filmed = true
 		m._screen.game.logged.connect(func(t: String, who: int) -> void:
 			print("  [duel %5.1fs] %s%s" % [_t, "    " if who == 1 else "", t])
+			if who == 0 and t.contains(" calls ") and not t.contains("calls down"):
+				_first_call = t if _first_call == "" else _first_call
+			if t.contains("Blazehound is knocked out"):
+				_hound_broke = true
 			if who == 0 and t.contains("calls down") and t.contains(WhiteSkyDuel.summon_name()):
 				_called = true
 				_still_later("summon", 1.5)
@@ -322,6 +355,12 @@ func _once(label: String, secs: float) -> void:
 ## the walk out, the mark, the title) ...
 var _skip_out := -1.0
 var _skip_out_from := -1.0
+## (15 November) the first move's choice of two cards: "serpent" taps the
+## other one; what was called, and that the hound broke to it
+var _serpent := false
+var _page_only := false
+var _first_call := ""
+var _hound_broke := false
 var _flash_seen := 0
 var _fan_most := 0
 var _long_buzz := false
@@ -355,6 +394,16 @@ func _watch_third_pass() -> void:
 		if m.hunter_gone:
 			_once("out_hunter_gone", 1.5)
 			_once("out_mark_light", WhiteSky.OUT_GONE + WhiteSky.MARK_PUSH - 0.4)
+	# (the Last Page: the calling, the arrival, the blow)
+	if m.page_called:
+		for pair in [["page_call_a", 0.5], ["page_call_b", 1.4], ["page_call_c", 2.2], ["page_call_d", 3.2]]:
+			_once(String(pair[0]), float(pair[1]))
+	if m.page_arrived:
+		for pair in [["page_arrive_a", 0.4], ["page_arrive_b", 1.3], ["page_arrive_c", 2.2], ["page_arrive_d", 3.1]]:
+			_once(String(pair[0]), float(pair[1]))
+	if m.page_blown:
+		_once("page_blow_a", 0.1)
+		_once("page_blow_b", 0.4)
 	if m.mark_held:
 		_once("mark_held", 0.4)
 	if m.title_shown:
@@ -376,6 +425,16 @@ func _third_pass(skipped: bool) -> bool:
 	if not m.title_shown:
 		fails.append("the title wasn't shown")
 	if not skipped:
+		var want_id := String(WhiteSkyDuel.PLAY_CHOICE[1 if _serpent else 0])
+		var want_name := String(DuelCards.CARDS[want_id].name)
+		print("white_sky_test: the first move: %d cards offered, '%s' picked; the duel: \"%s\", the hound broken %s" % [m.call_offered, m.call_picked, _first_call, str(_hound_broke)])
+		if m.call_offered != WhiteSkyDuel.PLAY_CHOICE.size() or m.call_picked != want_id or not _first_call.contains(want_name) or not _hound_broke:
+			fails.append("the first move's choice: %d offered, '%s' picked (wanted '%s'), \"%s\", the hound broken %s" % [m.call_offered, m.call_picked, want_id, _first_call, str(_hound_broke)])
+		print("white_sky_test: the Last Page: called %s, arrived %s, the pages flung out %s, Orlanthe standing at the blow %s" % [
+			str(m.page_called), str(m.page_arrived), str(m.page_blown), str(m.page_stood)])
+		if not (m.page_called and m.page_arrived and m.page_blown and m.page_stood):
+			fails.append("the Last Page: called %s, arrived %s, the pages flung out %s, Orlanthe standing at the blow %s" % [
+				str(m.page_called), str(m.page_arrived), str(m.page_blown), str(m.page_stood)])
 		if not _duel_only:
 			print("white_sky_test: %d flashes of the fight before the caption" % m.flashes)
 			if m.flashes != 3:

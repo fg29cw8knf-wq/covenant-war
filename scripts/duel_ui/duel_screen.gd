@@ -4816,7 +4816,11 @@ func fx_summon(pi: int, card: DuelCard) -> void:
 		# the Demigod itself comes down onto the field
 		var hint_was := hint.visible
 		hint.visible = false
-		await field.summon_descend(card.id, col, minf(speed, 2.0), landing)
+		# (15 November: a film may bring it down at its own pace and keep it
+		# standing for the blow, spec.film_summon_speed, film_summon_stays)
+		var filmed := _filmed()
+		var down_speed := float(spec.get("film_summon_speed", minf(speed, 2.0))) if filmed else minf(speed, 2.0)
+		await field.summon_descend(card.id, col, down_speed, landing, filmed and bool(spec.get("film_summon_stays", false)))
 		hint.visible = hint_was
 	else:
 		landing.call()

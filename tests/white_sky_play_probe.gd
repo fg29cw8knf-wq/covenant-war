@@ -2,8 +2,9 @@ extends SceneTree
 ## Bram's duel as it's played (12 November: WhiteSkyDuel.PLAY_TURNS), run
 ## headless with nobody at the gates, and checked: every step made as
 ## written and none skipped; the Scrivener broken by the hunter's first
-## blow; the Unspent Hour called and the Blazehound broken on Bram's first
-## turn; one of his Totems lost to the pack's answer; the Last Page called
+## blow; the Totem the player chose called (15 November: once with each of
+## the two, WhiteSkyDuel.PLAY_CHOICE) and the Blazehound broken by it on
+## Bram's first turn; one of his Totems lost to the pack's answer; the Last Page called
 ## down on his second turn and its blow landing; Bram never beaten, and the
 ## duel not over before the Last Page.
 ## Run: godot --headless --path . --script res://tests/white_sky_play_probe.gd [-- log]
@@ -12,12 +13,26 @@ extends SceneTree
 
 func _initialize() -> void:
 	var show := "log" in OS.get_cmdline_user_args()
+	# (15 November) once with each of the two cards the player may call first
+	var all: Array = []
+	for pick: String in WhiteSkyDuel.PLAY_CHOICE:
+		var problems: Array = await _play(pick, show)
+		for pr in problems:
+			all.append("[%s] %s" % [pick, pr])
+	print("WHITE SKY PLAY: ", "ok" if all.is_empty() else "%d problems: %s" % [all.size(), "; ".join(all)])
+	quit(0 if all.is_empty() else 1)
+
+
+## The duel played through with `pick` called at the first move; its problems.
+func _play(pick: String, show: bool) -> Array:
 	var D := WhiteSkyDuel
 	var game := DuelGame.new()
 	game.stacked = [true, true]
 	game.puzzle = D.play_board()
 	game.story_rules = D.story_rules()
 	var cs: Array = D.play_controllers()
+	(cs[0] as WhiteSkyDuel.Staged).prefer = pick
+	print("  -- called first: ", pick)
 	game.setup([D.PLAY_BRAM_DECK.duplicate(), D.PLAY_HUNTER_DECK.duplicate()], ["Bram", "The hunter"], cs,
 		[D.bram_profile(), D.hunter_profile()], D.SEED)
 	game.life_floor = D.LIFE_FLOOR.duplicate()
@@ -71,5 +86,8 @@ func _initialize() -> void:
 	print("  Totems broken (turn, side, which): ", beats)
 	print("  Bram's Life %d, the hunter's %d; his hand at the end: %s" % [game.players[0].life, game.players[1].life,
 		game.players[0].hand.map(func(c): return c.id)])
-	print("WHITE SKY PLAY: ", "ok" if problems.is_empty() else "%d problems: %s" % [problems.size(), "; ".join(problems)])
-	quit(0 if problems.is_empty() else 1)
+	if (cs[0] as WhiteSkyDuel.Staged).called != pick:
+		problems.append("the Totem called first was '%s'" % (cs[0] as WhiteSkyDuel.Staged).called)
+	if not game.players[0].totems().any(func(t): return t.id() == pick):
+		problems.append("the Totem called first isn't standing at the end")
+	return problems

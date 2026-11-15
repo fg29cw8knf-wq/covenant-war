@@ -72,9 +72,10 @@ static func board() -> Dictionary:
 		"no_gift": true, "synergy": ["kin", "side", "react", "chain"]}
 
 
-## The story rule: a god's champion calls his Crystals without tribute.
+## The story rules: a god's champion calls his Crystals without tribute,
+## and (15 November) they strike the turn they're called.
 static func story_rules() -> Dictionary:
-	return {"free_call": 0}
+	return {"free_call": 0, "champion_swift": 0}
 
 
 ## How fast the filmed duel plays (DuelScreen.rate of the duel speed setting).
@@ -131,10 +132,16 @@ static func hunter_profile() -> Dictionary:
 ## that could lose it.
 ##   The hunter strikes first: the Infernal Warg's charge breaks the
 ##     Scrivener, already hurt (PLAY_BRAM_HURT).
-##   1. Bram calls the Unspent Hour into the gap (the player's first move:
-##      "call"). It's Swift: it can strike the turn it's called.
-##   2. It turns its glass on the Blazehound across from it and breaks it
-##      (the second: "attack").
+##   1. Bram calls a Totem into the gap (the player's first move: "call").
+##      (15 November, Gary's yes to "one real choice in Bram's duel: two
+##      glowing cards, and either works") It's the player's choice of the
+##      two in his hand, PLAY_CHOICE: the Unspent Hour or the Weft Serpent.
+##      Either strikes the turn it's called (the Hour is Swift; the story
+##      rule champion_swift lets the Serpent).
+##   2. It strikes the Blazehound across from it and breaks it (the second:
+##      "attack"; "@called" in a step is whichever was called): the Hour's
+##      Turn the Glass, or the Serpent's Weave Shut (5 to call and 4 to
+##      strike: the 9 Essence he has that turn).
 ##   The pack answers: the Veilfox and the Warg bring the Loomwarden down.
 ##   3. He draws the Last Page and calls it down (the third: "last_page");
 ##      as its blow lands the screen burns white (WhiteSky).
@@ -157,10 +164,11 @@ const PLAY_HUNTER_HURT := [40, 0, 0]
 const PLAY_HUNTER_DECK := ["cinderpup", "dreamfox", "sparkkit", "cinderpup", "dreamfox", "sparkkit"]
 ## The turns, [Bram's, the hunter's], each a list of steps (DuelHuman.Scripted's,
 ## and "summon"); a step with a "gate" is one of the player's three moves.
+const PLAY_CHOICE := ["unspent_hour", "weft_serpent"]
 const PLAY_TURNS := [
 	[
-		[{"type": "call", "card": "unspent_hour", "gate": "call"},
-			{"type": "attack", "attacker": "unspent_hour", "move": 1, "target": "blazehound", "gate": "attack"}],
+		[{"type": "call", "card": "unspent_hour", "choices": PLAY_CHOICE, "gate": "call"},
+			{"type": "attack", "attacker": "@called", "move": 1, "target": "blazehound", "gate": "attack"}],
 		[{"type": "summon", "card": "orlanthe", "target": "infernal_warg", "gate": "last_page"}],
 	],
 	[
@@ -191,8 +199,12 @@ static func play_controllers() -> Array:
 
 
 ## A side of the played duel: its turns as written, nothing else. A step
-## with a "gate" waits for `ask` (called with the gate's name and the action
-## about to be made; awaited) before it's made: the player's tap. A step that
+## with a "gate" waits for `ask` (called with the gate's name, the action
+## about to be made and the step's "choices", the cards it may be made
+## with instead; awaited) before it's made: the player's tap. What `ask`
+## hands back, if it's one of the choices, is the card the step is made
+## with (`called` keeps it; a later step's "@called" is that card). With
+## nobody to ask, `prefer` is taken if it's one of them. A step that
 ## can't be made is skipped and noted in `skipped`; with its turns all
 ## played it only ends its turn, or with `hold` waits where it is until the
 ## duel is ended from outside. It answers nothing and rerolls nothing.
@@ -202,6 +214,8 @@ class Staged:
 	var hold := false
 	var skipped: Array = []
 	var made: Array = []      # the gates passed, in order
+	var prefer := ""          # the choice taken when nobody's asked (the probe)
+	var called := ""          # the card a step with choices was made with
 
 	func _init(script_turns: Array) -> void:
 		super(script_turns, 1.0)
@@ -213,6 +227,13 @@ class Staged:
 			_scripted += 1
 		while not _queue.is_empty():
 			var step: Dictionary = _queue[0]
+			var choices: Array = step.get("choices", [])
+			if String(step.get("attacker", "")) == "@called" or (not choices.is_empty() and choices.has(prefer)):
+				step = step.duplicate()
+				if String(step.get("attacker", "")) == "@called":
+					step["attacker"] = called
+				else:
+					step["card"] = prefer
 			var a := _step(game, pi, step)
 			if DuelRules.phases and not a.is_empty() and game.phase_problem(String(a.type)) != "":
 				if game.next_phase(pi) != "end":
@@ -230,12 +251,22 @@ class Staged:
 				continue
 			if step.has("gate"):
 				if ask.is_valid():
-					await ask.call(String(step.gate), a)
+					var got = await ask.call(String(step.gate), a, choices)
+					if got is String and choices.has(got) and String(got) != String(step.get("card", "")):
+						# (the other of the two: the step made with it, if it can be)
+						var other := step.duplicate()
+						other["card"] = String(got)
+						var b := _step(game, pi, other)
+						if not b.is_empty() and game.action_problem(pi, b) == "":
+							a = b
+							step = other
 				made.append(String(step.gate))
 			else:
 				await _pause(THINK_ACTION)
 				if screen != null:
 					await screen.preview_ai_action(pi, a)
+			if not choices.is_empty():
+				called = String(step.get("card", ""))
 			return a
 		if hold and _scripted >= turns.size():
 			while not game.over:

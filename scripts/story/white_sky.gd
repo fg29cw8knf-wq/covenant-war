@@ -84,6 +84,11 @@ const MOVE_LINES := {
 	"attack": {"who": "bram", "say": "Get back from him."},
 	"last_page": {"who": "bram", "say": "Write it in my name, then."},
 }
+## (15 November) his line at the first move when the Weft Serpent is the one
+## called (the "call" line above is the Unspent Hour's: an hour he hasn't got).
+const CALL_LINES := {
+	"weft_serpent": {"who": "bram", "say": "Hold them off. Just a little longer."},
+}
 const CAPTION := ["The Shardlands", "Twenty years ago."]
 ## The falling Sigils' colours (the village's, Ashford.SIGIL_COLS).
 const SIGIL_COLS := [Color(1.0, 0.25, 0.12), Color(1.0, 0.55, 0.12), Color(1.0, 0.85, 0.35), Color(0.35, 0.7, 1.0),
@@ -105,6 +110,9 @@ const HOW_MOVE := {
 		"computer": "(Click the hound, or press E, to strike it.)", "controller": "(Press A to strike the hound.)"},
 	"last_page": {"phone": "(Tap the glowing card: the Last Page.)", "tablet": "(Tap the glowing card: the Last Page.)",
 		"computer": "(Click the glowing card, or press E: the Last Page.)", "controller": "(Press A to play the Last Page.)"},
+	# (15 November: the first move is a choice of two)
+	"choose": {"phone": "(Tap either glowing card to call a Totem.)", "tablet": "(Tap either glowing card to call a Totem.)",
+		"computer": "(Click either glowing card to call a Totem.)", "controller": "(Left or right to choose, then A to call a Totem.)"},
 }
 
 # ------------------------------------------------------------------ duel ---
@@ -2127,6 +2135,22 @@ func _last_page_lands() -> void:
 					(mi as MeshInstance3D).set_instance_shader_parameter("glow", v), from, from * 3.2, 0.5).set_ease(Tween.EASE_OUT)
 	if is_instance_valid(_hunter):
 		_hunter.lower_cards()
+	# (15 November) it lands with Orlanthe standing there; every page in the
+	# air is flung out over the pack, and the hounds are thrown back by it
+	page_stood = f.summon_standing != null and is_instance_valid(f.summon_standing)
+	if _page_fall != null and is_instance_valid(_page_fall):
+		_page_fall.blast(at + Vector3(0, 1.5, 0.8))
+		page_blown = true
+	for i in 3:
+		var slot = f.slots[1][i] if f.slots.size() > 1 and i < f.slots[1].size() else null
+		if slot != null and slot.model != null and is_instance_valid(slot.model) and slot.model.visible:
+			var body := f.body_world(1, i)
+			f.play_clip(1, i, "hit")
+			f.burst(body, PAGE_PAPER, int(34 * DuelField3D.fx_scale()), 7.0, 0.9, 0.11, 0.5)
+	if is_instance_valid(_page_beam):
+		create_tween().tween_method(func(v: float) -> void:
+			if is_instance_valid(_page_beam):
+				(_page_beam.material_override as ShaderMaterial).set_shader_parameter("k", v), PAGE_BEAM, PAGE_BEAM * 2.2, 0.25)
 
 
 ## The ice breaks (14 November, Gary's yes to "shards near the Circle shatter
@@ -2351,6 +2375,7 @@ func _duel() -> void:
 		var clip_over: bool = summon_clips > 0 or (is_instance_valid(_screen) and _screen.summon_clips > 0)
 		if f != null and st.called >= 0.0 and not _climax and not clip_on and (not _clip_wanted or clip_over or _t - st.called > 1.5):
 			_climax = true
+			_page_arrives()
 			_climax_shot()
 		if f != null and not _climax and _asking == "" and _t - _cut_at > IDLE_WIDE and not clip_on:
 			_wide_shot()
@@ -2388,20 +2413,61 @@ func _skip_summon_clip() -> void:
 			(c as SummonVideo)._done = true
 
 
-## The Last Page played, when its Summon's video is to come (the same
-## evening; Gary: "when bram plays the summon we need to see the summons
-## video"). The video is the whole screen from the moment the card is down,
-## so what was seen as the card went down would be lost under it: he comes
-## up off his knee first, low over his shoulder, the card going down as he
-## rises and his line with it (LAST_PAGE_FIRST), and only then is the move
-## made and the video begun. With no video to come (Summon videos Off in
-## Options, or no file) nothing waits, as before.
-const LAST_PAGE_FIRST := 1.7
+## The Last Page played (14 November: he comes up off his knee, low over
+## his shoulder, his line with it, before the move is made and the Summon's
+## video takes the whole screen; Gary: "when bram plays the summon we need to
+## see the summons video").
+##
+## (15 November, Gary: "can we make the whole summon process look more
+## magical and better". It was a plain shot of his back for a second and a
+## half, his video, and then a wide shot in which a wave of light came from
+## nowhere: Orlanthe had come down and gone again before its blow landed.)
+## Now, in three parts.
+##
+## The calling, before the video (_call_the_page, LAST_PAGE_FIRST): the card
+## leaves his hand as a page of light and climbs over his head, turning; a
+## ring of runes writes itself in the snow round his feet; letters lift off
+## the snow and pages of light turn up round him in a rising spiral
+## (PageSwirl); then the page takes fire, a thread of light goes up from it
+## into the tear, the sky answers, and the camera, which has drawn back and
+## low behind him, lifts its eyes up the light. The video comes in on that:
+## the stars coming down in it are the sky's answer.
+##
+## The arrival, after it (_page_arrives): the great ring of runes on the
+## Circle's snow, a column of light standing in it from the sky, pages
+## coming slowly down all over the Circle; Orlanthe comes down the light at
+## its own pace (PAGE_DOWN of a duel's) and stays, seen from low behind him
+## (CLIMAX_LOW).
+##
+## The blow (_last_page_lands, as before, and): it lands with Orlanthe
+## standing there; every page in the air is flung out over the pack, and the
+## hounds are thrown back by it.
+## With no video (Summon videos Off in Options) the calling and the arrival
+## are played all the same, one after the other.
+const LAST_PAGE_FIRST := 3.6
+const PAGE_LIGHT := Color(0.86, 0.91, 1.0)
+const PAGE_PAPER := Color(1.0, 0.93, 0.78)
+const PAGE_RING := 2.3
+const PAGE_GREAT_RING := 4.6
+const PAGE_DOWN := 0.75
+## The column of light it comes down: how bright (ShardSet.shaft's k; at
+## 0.85 and half as wide again it was a white wall across the middle of the
+## picture, and nothing of what stood in it could be seen).
+const PAGE_BEAM := 0.42
+const CLIMAX_LOW := [Vector3(2.0, 1.0, 12.2), Vector3(0.0, 3.5, -0.8), 48.0]
+## What the tests read: the calling played, the arrival played, the pages
+## flung out at the blow, the Summon standing when it landed.
+var page_called := false
+var page_arrived := false
+var page_blown := false
+var page_stood := false
+var _page_card: Node3D
+var _page_swirl: PageSwirl
+var _page_fall: PageSwirl
+var _page_beam: MeshInstance3D
 
 func _before_summon_clip() -> void:
 	_clip_wanted = SummonVideo.pick(WhiteSkyDuel.SUMMON) != ""
-	if not _clip_wanted:
-		return
 	var start := _over_bram(Vector3(0.0, 3.0, -6.0), 40.0, 1.6, 0.7, 0.15)
 	if not _face_seen(start[0], start[1], float(start[2])):
 		_take(start, 0.0, LAST_PAGE_FIRST + 0.5)
@@ -2409,7 +2475,131 @@ func _before_summon_clip() -> void:
 		_rise_to_play()
 	elif is_instance_valid(_bram):
 		_act(_bram, "play_card")
-	await _wait(LAST_PAGE_FIRST)
+	await _call_the_page(start)
+
+
+## The calling (see above): `start` is the shot it begins in.
+func _call_the_page(start: Array) -> void:
+	var f := _dir_f
+	if f == null or not is_instance_valid(f) or f.world == null or _skipping:
+		return
+	page_called = true
+	var head := _bram_head()
+	var hand := head + Vector3(0.38, 0.1, -0.4)
+	if _bram is Figure3D:
+		hand = (_bram as Figure3D).bone_pos("RightHand")
+	var over := Vector3(BRAM_AT.x + 0.1, head.y + 1.25, BRAM_AT.z - 0.7)
+	# the page: up out of his hand, turning, to stand over him
+	var page := sigil_card(PAGE_LIGHT, WhiteSkyDuel.SUMMON)
+	page.scale = Vector3.ONE * 0.5
+	page.position = hand
+	page.rotation = Vector3(0.0, 0.0, 0.0)   # (its painting to the camera behind him, at the turn's end as at its start)
+	f.world.add_child(page)
+	_page_card = page
+	var pt := create_tween().set_parallel(true)
+	pt.tween_property(page, "position", over, 1.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	pt.tween_property(page, "scale", Vector3.ONE * 1.25, 1.3).set_trans(Tween.TRANS_SINE)
+	pt.tween_property(page, "rotation", Vector3(-0.2, TAU, 0.0), 2.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	var lamp := OmniLight3D.new()
+	lamp.light_color = PAGE_PAPER
+	lamp.light_energy = 0.0
+	lamp.omni_range = 7.0
+	lamp.shadow_enabled = false
+	page.add_child(lamp)
+	create_tween().tween_property(lamp, "light_energy", 2.2, 1.4)
+	# the ring of runes writing itself in the snow round his feet
+	_page_ring(BRAM_AT, PAGE_RING, 1.4)
+	_snd("circle_draw", 1.15, -3.0)
+	# letters off the snow, and pages turning up round him
+	# (few, and close in round him: the camera stands a pace behind him, and
+	# a ring of them as wide as the runes put great soft discs across the lens)
+	f.rise(BRAM_AT + Vector3(0, 0.05, -0.6), PAGE_LIGHT, int(24 * DuelField3D.fx_scale()), 2.6, 0.9)
+	_page_swirl = PageSwirl.new()
+	_page_swirl.mode = "rise"
+	_page_swirl.centre = BRAM_AT
+	_page_swirl.radius = PAGE_RING * 0.9
+	_page_swirl.top = 7.5
+	_page_swirl.n = [18, 28, 38][clampi(quality, 0, 2)]
+	_page_swirl.col = PAGE_PAPER
+	f.world.add_child(_page_swirl)
+	# the camera back and low behind him, its eyes going up the light
+	var d := Vector3(0, 0, -1)
+	var r := d.cross(Vector3.UP)
+	var back := [head - d * 4.4 + r * 1.15 + Vector3(0, -0.55, 0), over + Vector3(0.0, 1.6, -1.2), 46.0]
+	if not _face_seen(back[0], back[1], float(back[2])) and not _in_the_way(back[0]):
+		_home_on(back)
+		f.cam_shot(back[0], back[1], LAST_PAGE_FIRST - 0.2, float(back[2]))
+	await _wait(1.7)
+	if _skipping or not is_instance_valid(f):
+		return
+	# the page takes fire: a thread of light up into the tear, and the sky answers
+	f.pillar(over, PAGE_LIGHT, 46.0, 1.3, LAST_PAGE_FIRST - 1.7 + 0.8)
+	f.flash_light(over, PAGE_LIGHT, 9.0, 1.4, 12.0)
+	f.flash_sprite(over, PAGE_PAPER, 2.4, 0.5)
+	f.burst(over, PAGE_PAPER, int(50 * DuelField3D.fx_scale()), 5.0, 1.1, 0.1, 0.6)
+	_sky_flare(1.2, 0)
+	if _duel_sky != null:
+		create_tween().tween_method(func(v: float) -> void: _duel_sky.set_shader_parameter("aurora", v), 1.0, 1.35, 0.8)
+	_wash(PAGE_LIGHT, 0.3, 0.9)
+	_snd("rite_cast", 0.9, -1.0)
+	Haptics.kind(Haptics.BLOW)
+	var up := [back[0] + Vector3(0.0, -0.1, 0.5), over + Vector3(0.0, 9.0, -3.0), 50.0]
+	if not _face_seen(up[0], up[1], float(up[2])) and not _in_the_way(up[0]):
+		f.cam_shot(up[0], up[1], LAST_PAGE_FIRST - 1.7, float(up[2]))
+	await _wait(LAST_PAGE_FIRST - 1.7)
+
+
+## A ring of runes in the duel's snow about `at` (the field's own place),
+## `radius` across, written round over `secs` (0: there at once).
+func _page_ring(at: Vector3, radius: float, secs: float) -> void:
+	if _duel_ground == null:
+		return
+	_duel_ground.set_shader_parameter("ring", Vector4(at.x, at.z, radius, 1.0))
+	_duel_ground.set_shader_parameter("ring_from", Vector2(0.0, 1.0))
+	_duel_ground.set_shader_parameter("ring_col", PAGE_LIGHT)
+	if secs <= 0.0:
+		_duel_ground.set_shader_parameter("ring_sweep", 1.0)
+		return
+	create_tween().tween_method(func(v: float) -> void:
+		_duel_ground.set_shader_parameter("ring_sweep", v), 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+
+
+## The arrival (see above): the calling's page and its spiral put away, the
+## great ring on the Circle, the column of light from the sky, the pages
+## coming down. Orlanthe's coming down it is the duel screen's own
+## (DuelScreen.fx_summon, at this film's pace, and left standing).
+func _page_arrives() -> void:
+	var f := _dir_f
+	if f == null or not is_instance_valid(f) or f.world == null or _skipping:
+		return
+	page_arrived = true
+	if _page_card != null and is_instance_valid(_page_card):
+		_page_card.queue_free()
+	_page_card = null
+	if _page_swirl != null and is_instance_valid(_page_swirl):
+		_page_swirl.queue_free()
+	_page_swirl = null
+	var at := Vector3(0.0, 0.0, -0.8)
+	_page_ring(at, PAGE_GREAT_RING, 0.0)
+	_page_beam = ShardSet.shaft(70.0, 4.2, PAGE_LIGHT)
+	_page_beam.position = at + Vector3(0, -0.3, 0)
+	(_page_beam.material_override as ShaderMaterial).set_shader_parameter("k", 0.0)
+	f.world.add_child(_page_beam)
+	create_tween().tween_method(func(v: float) -> void:
+		if is_instance_valid(_page_beam):
+			(_page_beam.material_override as ShaderMaterial).set_shader_parameter("k", v), 0.0, PAGE_BEAM, 0.5).set_trans(Tween.TRANS_SINE)
+	_page_fall = PageSwirl.new()
+	_page_fall.mode = "fall"
+	_page_fall.centre = at
+	_page_fall.radius = 9.0
+	_page_fall.top = 9.0
+	_page_fall.n = [30, 50, 70][clampi(quality, 0, 2)]
+	_page_fall.col = PAGE_PAPER
+	f.world.add_child(_page_fall)
+	f.flash_light(at + Vector3(0, 3.0, 0), PAGE_LIGHT, 8.0, 1.6, 20.0)
+	_wash(PAGE_LIGHT, 0.35, 1.0)
+	_snd("page_turn", 0.8, 1.0)
+	_wind_to(WIND_DB + 1.0, 0.6)
 
 
 ## One of the player's three moves, waited for: called by Bram's side of the
@@ -2437,18 +2627,33 @@ func asking() -> String:
 	return _asking
 
 
-func play_move() -> void:
+## (`pick`: which of a choice of cards; "" the one that's chosen now.)
+func play_move(pick := "") -> void:
 	if _asking != "":
+		_move_pick = pick
 		_move_go = true
 
 
-func _ask_move(gate: String, action: Dictionary) -> void:
+## (15 November, Gary's yes to "one real choice in Bram's duel: two glowing
+## cards, and either works") The first move's cards: both of the two in his
+## hand are lifted and glowing, and whichever is tapped is the one called
+## (left and right choose between them for a key or a controller's button,
+## the chosen one a little higher). What was called (the tests, and his line
+## and Gary's own shots of the moves, which are of the Unspent Hour).
+var call_picked := ""
+var call_offered := 0
+var _move_pick := ""
+var _hand_lit: Array = []
+var _hand_sel := 0
+
+
+func _ask_move(gate: String, action: Dictionary, choices: Array = []) -> String:
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
-		return
+		return ""
 	while (_t < _free_at or _clip_on) and not _skipping:
 		await get_tree().process_frame
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f):
-		return
+		return ""
 	# (the last move's line gone first: the overlay holds taps while it's up)
 	while _move_line_on and not _skipping:
 		await get_tree().process_frame
@@ -2476,13 +2681,17 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	await _wait(MOVE_SETTLE)
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
 		_asking = ""
-		return
+		return ""
 	var card: Control = null
+	var choosing := false
 	if gate == "attack":
 		_show_ring(action.get("target"))
 		_snd("ward_set", 1.25, -5.0)   # (the mark closing on the hound)
 	elif action.get("card") is DuelCard:
-		card = _show_hand(String((action.card as DuelCard).id))
+		card = _show_hand(String((action.card as DuelCard).id), choices)
+		choosing = _hand_lit.size() > 1
+		if choosing:
+			call_offered = _hand_lit.size()
 		_snd("card_draw")   # (his hand coming up)
 	await _wait(MOVE_SHOWN)
 	# (just over his hand when it's up; where the walk's and the pick-up's
@@ -2490,21 +2699,43 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	if card != null:
 		_hint.offset_bottom = -(card.size.y * 0.96 + 14.0)
 		_hint.offset_top = _hint.offset_bottom - 60.0
-	_show_hint(HOW_MOVE.get(gate, HOW_MOVE["call"]))
+	_show_hint(HOW_MOVE["choose"] if choosing else HOW_MOVE.get(gate, HOW_MOVE["call"]))
 	_tapped = false
 	_move_go = false
+	_move_pick = ""
 	while not _skipping:
 		await get_tree().process_frame
 		_asked_secs += get_process_delta_time()
+		if choosing:
+			# (a key or a controller: left and right choose between them)
+			var turn := int(Input.is_action_just_pressed("move_right")) - int(Input.is_action_just_pressed("move_left"))
+			if turn != 0:
+				_choose_card(_hand_sel + turn)
 		if _move_go:
+			if choosing and _move_pick != "":
+				for i in _hand_lit.size():
+					if is_instance_valid(_hand_lit[i]) and String((_hand_lit[i] as PlayCard).id) == _move_pick:
+						_choose_card(i)
 			break
 		if _tapped:
 			_tapped = false
 			if card != null and not is_instance_valid(card):
 				card = null
-			if _tap_at == Vector2.INF or _on_move(_tap_at, card):
+			if choosing and _tap_at != Vector2.INF:
+				var hit := _card_at(_tap_at)
+				if hit >= 0:
+					_choose_card(hit)
+					break
+			elif _tap_at == Vector2.INF or _on_move(_tap_at, card):
 				break
 	_move_go = false
+	var picked := ""
+	if choosing and _hand_sel >= 0 and _hand_sel < _hand_lit.size() and is_instance_valid(_hand_lit[_hand_sel]):
+		card = _hand_lit[_hand_sel]
+		picked = String((card as PlayCard).id)
+		call_picked = picked
+	elif gate == "call" and action.get("card") is DuelCard:
+		call_picked = String((action.card as DuelCard).id)
 	_hide_hint()
 	_asking = ""
 	_free_at = _t   # (the move's own shot may cut in at once)
@@ -2516,7 +2747,7 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 		_drop_hand(0.0)
 		_drop_ring()
 		_hint_home()
-		return
+		return ""
 	_film_bars(true, 0.4)
 	if _hushed_for_page:
 		# the storm back at once, harder than before, as the page turns
@@ -2527,12 +2758,47 @@ func _ask_move(gate: String, action: Dictionary) -> void:
 	_move_sound(gate, action)
 	_play_hand(card)
 	_drop_ring()
-	_move_film(gate)
+	# (Gary's own shots of the first two moves are of the Unspent Hour: not
+	# shown over the Weft Serpent's)
+	if gate == WhiteSkyDuel.PLAY_GATES[-1] or call_picked == "" or call_picked == String(WhiteSkyDuel.PLAY_CHOICE[0]):
+		_move_film(gate)
 	_hint_home()
 	_move_line(gate)   # (not waited on)
 	if gate == WhiteSkyDuel.PLAY_GATES[-1]:
 		await _before_summon_clip()
 	# (and back at once: the move is made the moment this returns)
+	return picked
+
+
+## The card of the lit ones under a tap at `pos` (the nearest, where two
+## overlap; MOVE_NEAR px round each counts), or -1.
+func _card_at(pos: Vector2) -> int:
+	var best := -1
+	var best_d := INF
+	for i in _hand_lit.size():
+		var c: Control = _hand_lit[i]
+		if not is_instance_valid(c):
+			continue
+		var r := c.get_global_rect()
+		if r.grow(MOVE_NEAR * SafeArea.ui_scale()).has_point(pos):
+			var d := absf(pos.x - r.get_center().x)
+			if d < best_d:
+				best_d = d
+				best = i
+	return best
+
+
+## The `i`-th of the lit cards chosen: a little higher than the other.
+func _choose_card(i: int) -> void:
+	if _hand_lit.is_empty():
+		return
+	_hand_sel = clampi(i, 0, _hand_lit.size() - 1)
+	for k in _hand_lit.size():
+		var c: Control = _hand_lit[k]
+		if not is_instance_valid(c) or not c.has_meta("home_y"):
+			continue
+		var y := float(c.get_meta("home_y")) - (c.size.y * 0.07 if k == _hand_sel else 0.0)
+		create_tween().tween_property(c, "position:y", y, 0.14).set_trans(Tween.TRANS_SINE)
 
 
 ## His line for a move (MOVE_LINES), over the move as it's made: up for its
@@ -2544,6 +2810,8 @@ func _move_line(gate: String) -> void:
 	if not MOVE_LINES.has(gate) or _skipping:
 		return
 	var line: Dictionary = MOVE_LINES[gate]
+	if gate == "call" and CALL_LINES.has(call_picked):
+		line = CALL_LINES[call_picked]
 	_move_line_on = true
 	await _wait(0.35)   # (the card down first)
 	if not _skipping:
@@ -2605,9 +2873,12 @@ func _on_move(pos: Vector2, card: Control) -> bool:
 
 ## Bram's hand along the bottom of the picture, as paintings (PlayCard: no
 ## names, costs or numbers), the card to play (`glow_id`) lifted and glowing
-## and the rest dimmed. Returns the glowing card (null if it isn't there).
-func _show_hand(glow_id: String) -> Control:
+## and the rest dimmed; with a choice, `also`'s cards lifted and glowing too
+## (_hand_lit: all of them). Returns the glowing card (null if it isn't there).
+func _show_hand(glow_id: String, also: Array = []) -> Control:
 	_drop_hand(0.0)
+	_hand_lit = []
+	_hand_sel = 0
 	if not is_instance_valid(_screen) or _screen.game == null:
 		return null
 	var ids: Array = []
@@ -2632,7 +2903,7 @@ func _show_hand(glow_id: String) -> Control:
 		pc.element = String(DuelCards.CARDS.get(ids[i], {}).get("element", ""))
 		pc.size = Vector2(wid, hgt)
 		var off := float(i) - float(n - 1) * 0.5
-		var lit: bool = ids[i] == glow_id and picked == null
+		var lit: bool = (ids[i] == glow_id and picked == null) or (also.has(ids[i]) and ids[i] != glow_id and not _hand_lit.any(func(c): return String(c.id) == ids[i]))
 		pc.position = Vector2(sz.x * 0.5 + off * step - wid * 0.5, sz.y - hgt * (0.96 if lit else 0.78) + absf(off) * hgt * 0.03)
 		pc.pivot_offset = Vector2(wid * 0.5, hgt)
 		pc.rotation = deg_to_rad(off * 4.5)
@@ -2641,9 +2912,13 @@ func _show_hand(glow_id: String) -> Control:
 			pc.modulate = Color(0.5, 0.52, 0.62)
 		_hand.add_child(pc)
 		if lit:
-			picked = pc
+			pc.set_meta("home_y", pc.position.y)
+			_hand_lit.append(pc)
+			if ids[i] == glow_id:
+				picked = pc
 	if picked != null:
 		_hand.move_child(picked, -1)
+		_hand_sel = _hand_lit.find(picked)
 	_hand.position.y = hgt
 	create_tween().tween_property(_hand, "position:y", 0.0, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	return picked
@@ -3118,7 +3393,11 @@ func _wide_shot() -> void:
 ## deeper.
 func _climax_shot() -> void:
 	var f := _dir_f
-	var c: Array = CLIMAX
+	# (15 November: low, looking up at what has come down, where his face
+	# can't be seen from there; CLIMAX otherwise, as before)
+	var c: Array = CLIMAX_LOW
+	if _face_seen(c[0], c[1], float(c[2])) or _in_the_way(c[0]):
+		c = CLIMAX
 	var start := _over_bram(Vector3(0.0, 3.0, -6.0), 40.0, 1.6, 0.7, 0.15)
 	if not _face_seen(start[0], start[1], float(start[2])):
 		f.cam_shot(start[0], start[1], 0.0, float(start[2]), true)
@@ -3180,7 +3459,7 @@ static func duel_spec() -> Dictionary:
 		"puzzle": D.play_board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "controllers": D.play_controllers(), "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
-		"film": true, "film_summon_clip": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
+		"film": true, "film_summon_clip": true, "film_summon_speed": PAGE_DOWN, "film_summon_stays": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
 		"music": ["white_sky_duel", "white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
 
 
@@ -6855,6 +7134,132 @@ class Stoop:
 		for t in turns:
 			var b: int = t[0]
 			sk.set_bone_pose_rotation(b, Quaternion.IDENTITY.slerp(t[1] as Quaternion, amount) * sk.get_bone_pose_rotation(b))
+
+
+## Pages of light in the air (15 November: the Last Page). `mode`:
+## "rise": turning up round `centre` in a spiral, drawn in as they climb to
+## `top` and coming again from the snow; "fall": coming slowly down all over
+## a round `radius` across, from `top`; "blast" (blast(from)): every one
+## flung out from a point, tumbling, and gone. `n` of them, of `col`.
+class PageSwirl:
+	extends Node3D
+	var mode := "rise"
+	var centre := Vector3.ZERO
+	var radius := 2.0
+	var top := 7.0
+	var n := 30
+	var col := Color(1.0, 0.93, 0.78)
+	var _bits: Array = []   # each [page, angle, r, y, speed, turn, tumble (Vector3), out (Vector3)]
+	var _t := 0.0
+	var _rng := RandomNumberGenerator.new()
+	static var _mesh: QuadMesh
+	static var _mats := {}
+
+	func _ready() -> void:
+		_rng.seed = 77 + n
+		if _mesh == null:
+			_mesh = QuadMesh.new()
+			_mesh.size = Vector2(0.25, 0.35)
+		var key := col.to_html()
+		if not _mats.has(key):
+			var m := StandardMaterial3D.new()
+			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			m.cull_mode = BaseMaterial3D.CULL_DISABLED
+			m.albedo_texture = _paper()
+			# (its own colour, no brighter: half as bright again they were
+			# blank white cards, their writing burned out)
+			m.albedo_color = Color(col.r * 0.96, col.g * 0.96, col.b * 0.96)
+			_mats[key] = m
+		for i in n:
+			var mi := MeshInstance3D.new()
+			mi.mesh = _mesh
+			mi.material_override = _mats[key]
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			mi.scale = Vector3.ONE * _rng.randf_range(0.7, 1.25)
+			add_child(mi)
+			var bit := [mi, _rng.randf() * TAU, 0.0, 0.0, 0.0, 0.0,
+				Vector3(_rng.randf_range(-3.0, 3.0), _rng.randf_range(-4.0, 4.0), _rng.randf_range(-3.0, 3.0)), Vector3.ZERO]
+			_spawn(bit, true)
+			_bits.append(bit)
+		_place()
+
+	## A page set off again (`first`: anywhere on its way, as the picture opens).
+	func _spawn(bit: Array, first := false) -> void:
+		if mode == "rise":
+			bit[2] = radius * _rng.randf_range(0.75, 1.15)
+			bit[3] = (_rng.randf() * top * 0.45) if first else 0.05
+			bit[4] = _rng.randf_range(1.3, 2.4)      # up, m/s
+			bit[5] = _rng.randf_range(1.7, 2.9)      # round, rad/s
+		else:
+			bit[1] = _rng.randf() * TAU
+			bit[2] = radius * sqrt(_rng.randf())
+			bit[3] = (_rng.randf() * top) if first else top * _rng.randf_range(0.9, 1.1)
+			bit[4] = _rng.randf_range(0.55, 1.15)    # down, m/s
+			bit[5] = _rng.randf_range(-0.25, 0.25)
+
+	func blast(from: Vector3) -> void:
+		mode = "blast"
+		for bit in _bits:
+			var mi: MeshInstance3D = bit[0]
+			var out := mi.global_position - from
+			out.y = absf(out.y) * 0.3 + 0.6
+			bit[7] = out.normalized() * _rng.randf_range(4.5, 10.0)
+			bit[6] = (bit[6] as Vector3) * 3.0
+
+	func _process(delta: float) -> void:
+		_t += delta
+		for bit in _bits:
+			match mode:
+				"rise":
+					bit[3] = float(bit[3]) + float(bit[4]) * delta
+					bit[1] = float(bit[1]) + float(bit[5]) * delta
+					if float(bit[3]) > top:
+						_spawn(bit)
+				"fall":
+					bit[3] = float(bit[3]) - float(bit[4]) * delta
+					bit[1] = float(bit[1]) + float(bit[5]) * delta
+					if float(bit[3]) < 0.06:
+						_spawn(bit)
+				"blast":
+					var mi: MeshInstance3D = bit[0]
+					mi.position += (bit[7] as Vector3) * delta
+					bit[7] = (bit[7] as Vector3) * (1.0 - 0.25 * delta) + Vector3(0, -0.8, 0) * delta
+			var page: MeshInstance3D = bit[0]
+			page.rotation += (bit[6] as Vector3) * delta
+		if mode != "blast":
+			_place()
+
+	func _place() -> void:
+		for bit in _bits:
+			var page: MeshInstance3D = bit[0]
+			var y := float(bit[3])
+			var r := float(bit[2])
+			if mode == "rise":
+				# (drawn in towards the light as they climb)
+				r = lerpf(r, 0.35, smoothstep(0.0, 1.0, y / top) * 0.85)
+			var sway := Vector3(sin(_t * 0.9 + float(bit[1]) * 3.0), 0.0, cos(_t * 0.7 + float(bit[1]) * 2.0)) * (0.25 if mode == "fall" else 0.0)
+			page.position = centre + Vector3(cos(float(bit[1])) * r, y, sin(float(bit[1])) * r) + sway
+
+	## A sheet of paper: cream, a few lines of writing, its edges a little dark.
+	static var _paper_tex: Texture2D
+
+	static func _paper() -> Texture2D:
+		if _paper_tex != null:
+			return _paper_tex
+		var w := 48
+		var h := 64
+		var img := Image.create(w, h, false, Image.FORMAT_RGBA8)
+		for y in h:
+			for x in w:
+				var edge := minf(minf(x, w - 1 - x), minf(y, h - 1 - y)) / 5.0
+				var v := 0.8 + 0.2 * clampf(edge, 0.0, 1.0)
+				# (lines of writing, ragged at their ends)
+				var row := y % 7
+				if y > 8 and y < h - 8 and row < 2 and x > 6 and x < w - 7 - ((y * 13) % 11):
+					v *= 0.62
+				img.set_pixel(x, y, Color(v, v, v, 1.0))
+		_paper_tex = ImageTexture.create_from_image(img)
+		return _paper_tex
 
 
 ## A limb turned to point at something, laid over whatever its clip has it

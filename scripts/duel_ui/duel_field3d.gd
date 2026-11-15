@@ -1601,7 +1601,12 @@ static func has_summon_model(id: String) -> bool:
 ## The Demigod comes down onto the middle of the field, lands with a shock,
 ## roars its attack, then lifts away. Awaitable; `on_land` is called at the
 ## moment it touches down so the screen can fire its own effects.
-func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callable = Callable()) -> void:
+## (15 November: `stay`, a film's: it doesn't go back up the beam; it's left
+## standing where it landed, summon_standing, part way through its roar, for
+## the blow to land with it there. The Night of the White Sky's Last Page.)
+var summon_standing: Node3D
+
+func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callable = Callable(), stay := false) -> void:
 	var scene: PackedScene = _model_scene("res://assets/models/summons/%s.glb" % id)
 	if scene == null:
 		return
@@ -1669,6 +1674,10 @@ func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callabl
 			anim.speed_scale = 1.0 * speed
 			anim.play(atk, 0.1)
 			hold = anim.get_animation(atk).length / speed + 0.3 / speed
+	if stay:
+		summon_standing = holder
+		await get_tree().create_timer(hold * 0.5).timeout
+		return
 	await get_tree().create_timer(hold).timeout
 	# and away, back up the beam
 	var lift := 0.9 / speed

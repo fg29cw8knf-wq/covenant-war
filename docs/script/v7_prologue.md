@@ -135,36 +135,68 @@ Sigil light. Nothing is on the screen but the duel: no Life, no names, no number
 _(The hunter strikes first. The Warg's charge breaks the Scrivener.)_
 
 [GAME] The player is Bram. His hand comes up along the bottom of the picture as
-paintings alone; one card is lifted and glowing.
-**(Tap the glowing card to call a Totem.)** / **(Click the glowing card, or press
-E, to call a Totem.)** / **(Press A to call a Totem.)**
+paintings alone. **(changed, 15 November; Gary: "14 yes", "one real choice in
+Bram's duel: two glowing cards, and either works")** Both of his cards are lifted
+and glowing, the Unspent Hour and the Weft Serpent, and the player calls whichever
+he taps.
+**(Tap either glowing card to call a Totem.)** / **(Click either glowing card to
+call a Totem.)** / **(Left or right to choose, then A to call a Totem.)**
 
 _(The Unspent Hour, a winged hourglass of glass and starlit sand, rises in the gap
-where the Scrivener stood.)_
+where the Scrivener stood; or the Weft Serpent, a great serpent woven of grey and
+silver thread.)_
+
+**[BRAM] (as he calls it; new, 12 November):** "One more hour. That's all I need."
+_(the Unspent Hour)_ / **(new, 15 November, Claude's):** "Hold them off. Just a
+little longer." _(the Weft Serpent)_
 
 [GAME] A ring of light closes on the Blazehound across from it.
 **(Tap the hound to strike it.)** / **(Click the hound, or press E, to strike
 it.)** / **(Press A to strike the hound.)**
 
-_(The Unspent Hour turns its glass on the hound, and the hound bursts into smoke.
-The pack answers: the Veilfox's mirage, then the Warg's charge, and the Loomwarden
-comes down. Bram staggers, his arm going round the child.)_
+**[BRAM] (new, 12 November):** "Get back from him."
+
+_(The Totem he called strikes the hound, the Hour turning its glass on it or the
+Serpent closing its coils, and the hound bursts into smoke. The pack answers: the
+Veilfox's mirage, then the Warg's charge, and the Loomwarden comes down. Bram
+staggers, his arm going round the child, and goes down on one knee.)_
 
 [GAME] His hand again; the card he has just drawn is glowing.
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
 E: the Last Page.)** / **(Press A to play the Last Page.)**
 
-_(He comes up off his knee as he plays it. Orlanthe's Summon video plays
-(changed, 14 November; Gary: "when bram plays the summon we need to see the
-summons video"); then Orlanthe, the Last Page, comes down on the field, and as its
-blow lands the screen burns white.)_
+**[BRAM] (new, 12 November):** "Write it in my name, then."
+
+_(changed, 15 November; Gary: "can we make the whole summon process look more
+magical and better".)_
+
+_(The calling. He comes up off his knee as he plays it. The card leaves his hand
+as a page of light and climbs over his head, turning. A ring of runes writes
+itself in the snow round his feet; pages of light turn up round him in a rising
+spiral. The page takes fire, a thread of light goes up from it into the tear in
+the sky, and the picture lifts its eyes up the light.)_
+
+_(Orlanthe's Summon video plays (14 November; Gary: "when bram plays the summon we
+need to see the summons video").)_
+
+_(The arrival. A great ring of runes lies on the Circle's snow and a column of
+light stands in it from the sky; pages come slowly down all over the Circle.
+Orlanthe, the Last Page, comes down the light, tall, in its robe of pages, one
+hand raised, and stands there.)_
+
+_(The blow. It lands with Orlanthe standing over the Circle: every page in the air
+is flung out over the pack, the hounds are thrown back, the ice round the Circle
+bursts, and the screen burns white.)_
 
 [GAME] Each of the three waits for the player; nothing else moves the duel on, and
 nothing the player can do loses it. Every move of the duel is written out and
 played by the real rules (the game's `WhiteSkyDuel.PLAY_TURNS`). Each move's
 payoff is filmed by the game; Gary's own shot of each plays over it once he has
-made it (`white_sky_move_1`, `_2`, `_3`: docs/script/films_plan.md). His whole
-film of the duel plays later, on the Thornwood road (P5).
+made it (`white_sky_move_1`, `_2`, `_3`: docs/script/films_plan.md). **(15
+November: his shots of the first two moves are of the Unspent Hour, so they play
+only when the Hour is the one called; with the Weft Serpent the game's own
+filming is what's seen.)** His whole film of the duel plays later, on the
+Thornwood road (P5).
 
 ### The walk out (new, 15 November)
 

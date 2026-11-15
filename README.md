@@ -2249,6 +2249,80 @@ out, the small hand and the title are judged from stills and timings); the
 stand-in tune was measured, not heard; whether the title's theme and the
 tune sit well against Gary's music.
 
+### A choice of card in Bram's duel, and the Last Page made more magical (15 November, later)
+
+Gary, to the review of the prologue he'd asked for: "14 yes" (one real
+choice in Bram's duel: two glowing cards, and either works) and "can we make
+the whole summon process look more magical and better". (12, a Skip the
+first time: no. His "2 yes" matched nothing in the list he was answering and
+was asked about, not built. He asked how showing the price could keep the
+story's secret, and whether lines during the duel were worth having: both
+answered in the conversation, neither built; `docs/handover/2026-11-15.md`.)
+
+- **The choice** (`WhiteSkyDuel.PLAY_CHOICE`). At the first of the player's
+  three moves both cards in Bram's hand are lifted and glowing, the Unspent
+  Hour and the Weft Serpent, and whichever is tapped is the one called
+  (`WhiteSky._ask_move` hands the card back to the duel's `Staged` side,
+  whose step has "choices"; `_card_at`, `_choose_card`: left and right
+  choose for a key or a controller). The duel is still written out and
+  played by the real rules, and the rest of it is the same either way: the
+  Totem called strikes the Blazehound that turn and breaks it (the second
+  step's attacker is "@called": Turn the Glass, or Weave Shut, 5 to call and
+  4 to strike, the 9 Essence he has that turn). For the Serpent to strike
+  the turn it's called there's a story rule, `champion_swift`
+  (`DuelGame`: "a god's champion's Totems strike the turn they're called"),
+  beside `free_call`. His line at the call is the Hour's ("One more hour.
+  That's all I need.") or, for the Serpent, one of Claude's (`CALL_LINES`:
+  "Hold them off. Just a little longer."). **Gary's own shots of the first
+  two moves (`white_sky_move_1`, `_2`) are of the Unspent Hour: they play
+  only when the Hour is called.**
+- **The Last Page** (`WhiteSky._before_summon_clip`, `_call_the_page`,
+  `_page_arrives`, `_last_page_lands`; `PageSwirl`). It was a second and a
+  half of his back, his video, and then a wide shot in which a wave of light
+  came from nowhere: Orlanthe came down and went back up again before its
+  blow landed. Now three parts. *The calling*, before the video: the card
+  leaves his hand as a page of light (`sigil_card` with Orlanthe's
+  painting) and climbs over his head, turning; a ring of runes writes itself
+  in the snow round his feet (the ground's `ring`, on the duel's snow now
+  too); pages of light with writing on them turn up round him in a rising
+  spiral; the page takes fire and a thread of light goes up into the tear,
+  the sky answering, as the camera draws back low behind him and lifts its
+  eyes up the light; the video comes in on that. *The arrival*, after it: a
+  great ring of runes on the Circle, a column of light from the sky
+  (`ShardSet.shaft`), pages coming slowly down all over the Circle, and
+  Orlanthe coming down the light at three quarters of a duel's pace and
+  **staying** (`DuelField3D.summon_descend(..., stay)`,
+  `spec.film_summon_speed`, `film_summon_stays`), seen from low behind him
+  (`CLIMAX_LOW`). *The blow*: it lands with Orlanthe standing there, every
+  page in the air flung out over the pack (`PageSwirl.blast`), the hounds
+  thrown back. With Summon videos Off the calling and the arrival are still
+  played, one after the other. About two seconds longer than it was.
+
+Found by looking. The pages were blank white cards until their colour was
+brought down to paper's (half as bright again, their writing burned out).
+The column of light was a white wall across the middle of the picture until
+it was narrowed and dimmed (`PAGE_BEAM`). A ring of rising motes as wide as
+the runes put great soft discs across the lens, which stands a pace behind
+him. The card turned its back to the camera at the end of its turn.
+
+**Checked:** `white_sky_play_probe` plays the duel with each of the two
+cards (every step made, the Blazehound broken on his first turn, the Last
+Page called on turn 4): ok; `white_sky_test` checks the choice (two cards
+offered, the one picked called, the hound broken) and the Last Page (called,
+arrived, the pages flung out, Orlanthe standing at the blow) and passes
+whole, `duel`, `duel serpent` (the other card, by a tap on it), `body`,
+`page novideo` (Summon videos Off) and skipped during the calling and the
+video (110.5, 113.5 s); the duel drawn to the Last Page's white at a Mac's
+full settings twice (`page`, new: every still of the choice, the calling,
+the arrival and the blow looked at); `mark_wake_test`, `haptics_test`,
+`best_picture_test`, `summon_video_test`, `first_launch_test`,
+`white_sky_world ... play`, `duel_sim -- 100`, `duel_monkey`: ok.
+**Not checked:** anything on a real Mac or iPhone; anything moving (the
+turn of the page, the spiral, the descent are judged from stills); how the
+calling's last picture cuts to the first of Gary's video and his last to the
+arrival's first (his video here is the small Theora copy, and in a stills
+run it goes by between stills).
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

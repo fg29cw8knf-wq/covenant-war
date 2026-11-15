@@ -1398,7 +1398,11 @@ func ready_problem(pi: int, t) -> String:
 		return "%s is resting this turn." % t.card_name()
 	if turn == 1 and not bool(puzzle.get("attack_first", false)):
 		return "Nobody can attack on the first turn of the duel."
+	# (the Night of the White Sky, 15 November: a god's champion's Totems
+	# strike the turn they're called, story_rules.champion_swift his side, so
+	# either of the two the player may call there can break the hound)
 	if t.called_turn == turn and not t.has_keyword("swift") and not kin_active(t, "cat") \
+			and int(story_rules.get("champion_swift", -1)) != t.owner \
 			and not (t.element() == "storm" and not standing(pi, "storm_swift").is_empty()):
 		return "%s was called this turn. It can attack next turn." % t.card_name()
 	if t.asleep:
