@@ -414,6 +414,9 @@ func fade(to_alpha: float, secs := 0.8) -> void:
 ## been tapped on (or, `timed`, when `hold` seconds are up: a voiced line
 ## held for its recording, which a tap still skips).
 func say(who: String, text: String, hold := -1.0, timed := false) -> void:
+	if _pass_out != null:
+		_pass_out.kill()   # (a say_over's line going out as this one comes)
+		_pass_out = null
 	_who.text = who.to_upper()
 	_who.visible = who != ""
 	_line.text = "[center]%s[/center]" % (text if who != "" else "[i]%s[/i]" % text)
@@ -447,6 +450,60 @@ func say(who: String, text: String, hold := -1.0, timed := false) -> void:
 	_waiting = false
 	_catch.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_hide_line()
+
+
+## A line over something the player is doing (15 November: Bram's "Come on
+## then, Sprout." as the walk out of the crater begins): up for `secs` and
+## gone by itself. Unlike say it doesn't wait for a tap and doesn't take
+## one: a press on the screen then is the walk's, and the line stays up. A
+## say or another say_over meanwhile takes its place. `passing` is true
+## while it's up.
+var passing := false
+var _pass_no := 0
+var _pass_out: Tween
+
+func say_over(who: String, text: String, secs: float) -> void:
+	if _pass_out != null:
+		_pass_out.kill()
+		_pass_out = null
+	_who.text = who.to_upper()
+	_who.visible = who != ""
+	_line.text = "[center]%s[/center]" % (text if who != "" else "[i]%s[/i]" % text)
+	_place_line()
+	_line.modulate.a = 0.0
+	_who.modulate.a = 0.0
+	_hint.modulate.a = 0.0
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(_line, "modulate:a", 1.0, 0.25)
+	tw.tween_property(_who, "modulate:a", 1.0, 0.25)
+	_line_no += 1
+	var this_line := _line_no
+	_pass_no = this_line
+	passing = true
+	await get_tree().create_timer(maxf(0.3, secs), false).timeout
+	if _line_no != this_line:
+		# (another line has its place, or it was ended: end_over)
+		if _pass_no == this_line:
+			passing = false
+		return
+	tw.kill()
+	_pass_out = create_tween().set_parallel(true)
+	_pass_out.tween_property(_line, "modulate:a", 0.0, 0.3)
+	_pass_out.tween_property(_who, "modulate:a", 0.0, 0.3)
+	await get_tree().create_timer(0.3, false).timeout
+	if _pass_no == this_line:
+		passing = false
+
+
+## Takes a say_over's line down now (the memory skipped under it).
+func end_over() -> void:
+	if passing and _pass_no == _line_no and not _waiting:
+		_line_no += 1
+		if _pass_out != null:
+			_pass_out.kill()
+			_pass_out = null
+		_hide_line()
+	passing = false
 
 
 func _place_line() -> void:

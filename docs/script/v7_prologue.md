@@ -211,6 +211,13 @@ has closed, the stars are going, a low warm light lies along the horizon. Bram
 stands in the bottom of the crater with the child in his coat, his back to the
 rim the hunter stood on. Behind him, on that rim, the hunter stands watching.)_
 
+**[BRAM] (new, 15 November; Gary: "7 yes"; to the child, his head down to it):**
+"Come on then, Sprout."
+
+_(The first time the name is heard: twenty years on the hero says "Bram still
+calls me Sprout." It's said over the walk and waits for nothing: the player can
+set off before it, under it, or stand through it.)_
+
 [GAME] The player is Bram again. He walks only while it's held, a little slower
 than he came: up out of the crater towards the light, his prints the one line in
 the new snow. He can't walk up to the hunter.

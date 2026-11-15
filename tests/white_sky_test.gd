@@ -369,6 +369,15 @@ var _out_walked := 0.0
 var _out_stood := 0.0
 var _hunter_near := INF
 var _seal_at := Vector2.ZERO
+## (15 November, later) "Come on then, Sprout." over the start of the walk
+## out: when it came up and when it was last up, whether it ever waited for
+## a tap or took one, the press on the screen put in under it, and whether
+## it was left up over a skip
+var _sprout_from := -1.0
+var _sprout_to := -1.0
+var _sprout_caught := false
+var _sprout_pressed := false
+var _sprout_stuck := false
 
 func _watch_third_pass() -> void:
 	_fan_most = maxi(_fan_most, m._bram_fan.size())
@@ -381,6 +390,26 @@ func _watch_third_pass() -> void:
 		if _out_from < 0.0 and m._white.modulate.a < 0.5:
 			_out_from = _t
 			_still_later("out_first_light", 1.2)
+		var ov: CineOverlay = m._ov
+		if ov != null and ov.passing and ov._line.text.contains("Sprout"):
+			if m._skipping:
+				_sprout_stuck = true
+			if _sprout_from < 0.0:
+				_sprout_from = _t
+				_still_later("out_line", 0.6)
+			_sprout_to = _t
+			if ov._waiting or ov._catch.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+				_sprout_caught = true
+			# (a press on the screen under it, as a player setting off would
+			# make: it's the walk's, and the line stays)
+			if not _sprout_pressed and _t - _sprout_from > 0.7 and not m._skipping:
+				_sprout_pressed = true
+				for down: bool in [true, false]:
+					var ev := InputEventMouseButton.new()
+					ev.button_index = MOUSE_BUTTON_LEFT
+					ev.pressed = down
+					ev.position = get_viewport().get_visible_rect().size * Vector2(0.5, 0.2)
+					get_viewport().push_input(ev)
 		if m._roam:
 			_out_walked = maxf(_out_walked, m._crater_dist())
 			if is_instance_valid(m._hunter) and m._hunter.visible:
@@ -443,6 +472,17 @@ func _third_pass(skipped: bool) -> bool:
 			_out_walked, WhiteSky.OUT_AT, _hunter_near, str(m.hand_caught), str(m.hunter_gone), m.tune_played])
 		if not m.walked_out or _out_walked < WhiteSky.OUT_AT - 0.3:
 			fails.append("the walk out wasn't walked (%s, %.1f m)" % [str(m.walked_out), _out_walked])
+		# ("Come on then, Sprout.": said, up for its reading time through a
+		# press on the screen, holding nothing)
+		var read := CineOverlay.READ_BASE + String(WhiteSky.COME_ON.say).length() * CineOverlay.READ_PER_CHAR
+		print("white_sky_test: \"%s\": said %s, up for %.1f s (its reading time %.1f); a press under it %s; it waited for or took a tap %s" % [
+			String(WhiteSky.COME_ON.say), str(m.out_line_said), _sprout_to - _sprout_from, read, str(_sprout_pressed), str(_sprout_caught)])
+		if not m.out_line_said or _sprout_from < 0.0:
+			fails.append("\"%s\" was never said on the walk out" % String(WhiteSky.COME_ON.say))
+		elif not _sprout_pressed or _sprout_to - _sprout_from < read - 0.2:
+			fails.append("\"%s\" was up for %.1f s of its %.1f (pressed under it: %s)" % [String(WhiteSky.COME_ON.say), _sprout_to - _sprout_from, read, str(_sprout_pressed)])
+		if _sprout_caught:
+			fails.append("\"%s\" waited for a tap, or took one from the walk" % String(WhiteSky.COME_ON.say))
 		if _hunter_near < WhiteSky.HUNTER_KEEP - 0.3:
 			fails.append("he came within %.1f m of the hunter on the walk out" % _hunter_near)
 		if not m.hand_caught:
@@ -453,6 +493,8 @@ func _third_pass(skipped: bool) -> bool:
 			fails.append("the child's tune was asked for %d times" % m.tune_played)
 		if not Sfx.heard.any(func(h): return String(h[1]) == "child_tune"):
 			fails.append("the sound 'child_tune' was never played")
+	if _sprout_stuck or (m._ov != null and m._ov.passing):
+		fails.append("\"%s\" was left up over a skip, or at the end" % String(WhiteSky.COME_ON.say))
 	for f in fails:
 		print("white_sky_test: FAIL: ", f)
 	return fails.is_empty()

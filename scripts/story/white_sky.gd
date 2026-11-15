@@ -74,6 +74,10 @@ const OPEN := {"who": "morrowen", "say": "Every soul in my book starts with a de
 const HUSH := {"who": "bram", "say": "Hush, now. I've got you."}
 const NOT_THIS := {"who": "bram", "say": "Not this one."}
 const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the debt came due."}
+## (15 November, Gary's "7 yes": where "Sprout" begins) to the child in his
+## coat as the walk out of the crater starts: the first time the name is
+## heard, twenty years before the attic's "Bram still calls me Sprout."
+const COME_ON := {"who": "bram", "say": "Come on then, Sprout."}
 ## What he says under his breath as each of the three moves is made (12
 ## November, Gary's yes to "a short remembered Bram line at each move"): the
 ## Unspent Hour called, an hour he hasn't got; the hound struck as it comes
@@ -404,6 +408,10 @@ func skip() -> void:
 		_skip_btn.visible = false
 	if _ov != null and _ov._waiting:
 		_ov._next.emit()
+	if _ov != null and _ov.passing:
+		# (a line said over the walk: down with it, and its voice)
+		_ov.end_over()
+		VoiceLines.stop(w if w != null else self)
 	_tapped = true
 
 
@@ -512,6 +520,23 @@ func _warm_ice_sounds() -> void:
 func _say_over(line: Dictionary) -> void:
 	await _say(line)
 	_line_over = true
+
+
+## A line said over the walk that neither waits for a tap nor takes one
+## (CineOverlay.say_over): up for its recording's length, or with none for
+## its reading time, and gone by itself. A press on the screen while it's up
+## is the walk's (_say's line would be tapped past by it).
+func _say_passing(line: Dictionary) -> void:
+	if _skipping:
+		return
+	var who := String(line.who)
+	var host: Node = w if w != null else self
+	var secs := VoiceLines.play(host, who, String(line.say), String(line.get("vo", "")))
+	var nm: String = w._speaker(who) if w != null else who.capitalize()
+	var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
+	var speed := maxf(0.4, float(Game.settings.get("text_speed", 1.0)))
+	var read := (CineOverlay.READ_BASE + text.length() * CineOverlay.READ_PER_CHAR) / speed
+	await _ov.say_over(nm, text, secs if secs > 0.0 else read)
 
 
 ## What the tear first brings, drawn once under the caption's black and
@@ -3745,6 +3770,12 @@ func _stage_duellists(f: DuelField3D) -> void:
 ## the rim behind, watching him go; turned round, it's there (he can't walk up
 ## to it: HUNTER_KEEP).
 ##
+## As the picture clears he says it to the child, his head down to it: "Come
+## on then, Sprout." (COME_ON; 15 November, Gary's "7 yes": where "Sprout"
+## begins). It's said over the walk (_say_passing): it waits for nothing, a
+## press on the screen under it is the walk's and doesn't put it out, and how
+## to walk isn't shown till it's gone.
+##
 ## On the way (HAND_AT from the crater's middle: over the lip, on level
 ## snow; on the bowl's steep side the camera, a spring behind him, hung low
 ## and the hand stood in the top of the picture) one of the last of the
@@ -3766,6 +3797,12 @@ const OUT_AT := 13.0
 const OUT_PACE := 0.84
 const OUT_WHITE := 2.4
 const OUT_HINT_AFTER := 2.6
+## "Come on then, Sprout." (COME_ON): how long after the white starts to
+## lift (by then the picture's nearly clear of it: his words are white), and
+## how long his head stays down to the child for it.
+const OUT_LINE_AT := 1.7
+const OUT_LINE_LOOK := 2.1
+const OUT_LINE_ASIDE := 0.18   # (m to his left of straight ahead, at 0.55 m: about 18 degrees)
 const OUT_WATCH := 3.0
 const OUT_GONE := 1.9
 const HUNTER_KEEP := 4.5
@@ -3790,6 +3827,7 @@ const DAWN_ENERGY := 0.7
 var walked_out := false
 var hunter_gone := false
 var mark_held := false
+var out_line_said := false
 var _calm := false           # the storm's over: no gusts
 var _out := false            # the walk out is on (his pace, the trail, the hunter kept clear of)
 var _auto_on := false        # he walks on by himself, _auto's way (ZERO: he comes to a stand)
@@ -3873,10 +3911,31 @@ func _walk_out() -> void:
 	# the walk, his
 	var el := 0.0
 	var hinted := false
+	var looked := false
 	while _crater_dist() < OUT_AT and not _skipping:
 		await get_tree().process_frame
 		el += get_process_delta_time()
-		if not hinted and el > OUT_HINT_AFTER and _vel.length() < 0.1:
+		# (15 November, Gary's "7 yes") "Come on then, Sprout.": to the child,
+		# his head down to it, as the picture clears. It's said over the walk
+		# and holds nothing: he can be walked off before it, under it, or
+		# stood there through it.
+		if not out_line_said and el > OUT_LINE_AT:
+			out_line_said = true
+			_say_passing(COME_ON)
+		if out_line_said and not looked and _bram is Figure3D:
+			var fig := _bram as Figure3D
+			if el < OUT_LINE_AT + OUT_LINE_LOOK:
+				# (down in front of him and a little to the arm it lies in:
+				# at the child itself his head came so far round that his
+				# cheek showed from behind, and his face is never seen)
+				var fwd := fig.facing()
+				fig.eyes_on(fig.global_position + fwd * 0.55 + Vector3.UP.cross(fwd) * OUT_LINE_ASIDE + Vector3(0, 1.0, 0))
+			else:
+				looked = true
+				fig.eyes_on(null)
+		# (how to walk, if he's still standing there once the line has gone:
+		# the two would lie over each other)
+		if not hinted and el > OUT_HINT_AFTER and out_line_said and not _ov.passing and _vel.length() < 0.1:
 			hinted = true
 			_show_hint(HOW_WALK)
 		if not hand_caught and not _hand_on and _crater_dist() > HAND_AT and el > OUT_WHITE * 0.7:
@@ -3886,6 +3945,8 @@ func _walk_out() -> void:
 	# (the small hand, to its end: the walk's still his under it)
 	while _hand_on and not _skipping:
 		await get_tree().process_frame
+	if not looked and _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(null)
 	_hide_hint()
 	_roam = false
 	_move_target = Vector3.INF

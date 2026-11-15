@@ -405,8 +405,10 @@ func _out_view(c: Vector3) -> void:
 		await m._walk_out()
 		done[0] = true
 	run.call()
-	Input.action_press("move_up")
 	_tt = 0.0
+	# (15 November, later: he stands through the first of "Come on then,
+	# Sprout.", his head down to the child, then sets off under it)
+	var walking := false
 	var got := {}
 	var at := {}
 	var want := func(nm: String, when: bool, after := 0.0) -> bool:
@@ -421,7 +423,14 @@ func _out_view(c: Vector3) -> void:
 	while not done[0] and _tt < 90.0:
 		await get_tree().process_frame
 		_tt += 0.1
-		if want.call("out_1_first_light", _tt > 3.4):
+		if want.call("out_0_come_on_then", m.out_line_said, 1.0):
+			await _key("out_0_come_on_then")
+		if not walking and (got.has("out_0_come_on_then") or _tt > 6.0):
+			walking = true
+			Input.action_press("move_up")
+		if want.call("out_0b_setting_off", walking, 0.9):
+			await _key("out_0b_setting_off")
+		if want.call("out_1_first_light", _tt > 3.4 and walking, 1.6):
 			await _key("out_1_first_light")
 		if want.call("out_2_climbing", _tt > 3.4 and m._crater_dist() > 3.2 and m._hand_k < 0.01):
 			await _key("out_2_climbing")

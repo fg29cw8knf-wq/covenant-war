@@ -2323,6 +2323,48 @@ calling's last picture cuts to the first of Gary's video and his last to the
 arrival's first (his video here is the small Theora copy, and in a stills
 run it goes by between stills).
 
+### "Come on then, Sprout." (15 November, later still)
+
+Gary: "7 yes I mean" (what his "2 yes" had meant: suggestion 7 of the
+morning's list, "Where 'Sprout' begins: 'Come on then, Sprout.' as he walks
+out").
+
+- **The line** (`WhiteSky.COME_ON`, Bram's). On the walk out, as the white
+  lifts and the picture clears (`OUT_LINE_AT`, 1.7 s: his words are white, and
+  before that so is the picture): he says it to the child in his coat, his
+  head tipped down and a little to the arm it lies in for two seconds
+  (`OUT_LINE_LOOK`, `OUT_LINE_ASIDE`: looking at the child itself his head
+  came so far round that his cheek showed from behind, and his face is never
+  seen). It's the first time the name is heard; twenty years on the hero's
+  first thought in the attic is "Bram still calls me Sprout."
+- **It holds nothing** (`WhiteSky._say_passing`, `CineOverlay.say_over`,
+  new). Every other line waits for a tap, or with a recording for its length,
+  and a tap puts it out; a press on the screen is also how the walk is
+  walked, so this one neither waits for a tap nor takes one: it's up for its
+  recording's length, or with none its reading time (2.7 s), and goes by
+  itself. He can be walked off before it, under it, or stood there through
+  it. "How to walk" isn't shown until it has gone (the two lie in the same
+  place). A Skip takes it down, and its voice (`CineOverlay.end_over`).
+- **His voice.** No recording yet: it shows as words only. Its file is
+  `assets/audio/vo/ashford/bram/f11e5498.ogg` (line 0005 of
+  `docs/script/vo_lines.md`, written again by `tools/vo_sheet.py`, which
+  also has the Weft Serpent's line now, 0009, `40c7b305`; every number after
+  0004 has moved up, the ids haven't).
+
+**Checked:** `white_sky_test` whole, `duel`, and skipped 1, 2.5 and 3.9 s
+into the walk out (before the line, and twice under it): PASS; it checks the
+line is said, is up for its reading time through a press on the screen put
+in under it, never waits for a tap or takes one, and isn't left up over a
+skip ("said true, up for 3.0 s (its reading time 2.7); a press under it
+true; it waited for or took a tap false"). The walk out drawn at a Mac's
+full settings (`white_sky_look -- <dir> out`, two new stills: him standing
+through the line, and setting off under it), all seventeen stills looked
+at. `voice_lines_test`, `mark_wake_test`, `first_launch_test`,
+`haptics_test`, `summon_video_test`, `best_picture_test`,
+`story_film_test`, `white_sky_world ... play`: ok. **Not checked:** on a
+real Mac or iPhone; moving (his head going down and coming up is judged from
+two stills); with a recording (there isn't one).
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the
