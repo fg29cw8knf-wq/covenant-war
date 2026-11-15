@@ -1502,7 +1502,13 @@ static func _attic(w: World) -> void:
 		vp.disable_3d = false
 		m.queue_free()
 		await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
-		if not w.music.is_empty():
+		if SealMark.held(w.get_tree()) != null:
+			# (15 November: the memory left the child's mark up on the black,
+			# and the title's theme playing. The theme goes out here; the
+			# village's music comes in as he wakes under the mark,
+			# _wake_on_the_mark, after the child's tune)
+			Music.stop(1.6)
+		elif not w.music.is_empty():
 			Music.play(w.music, 4.0, true)
 	else:
 		await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
@@ -1522,17 +1528,25 @@ static func _attic(w: World) -> void:
 	# Gary: "Bed scene looks much better, can we now make it slightly faster":
 	# a quarter off again, RISE_STIR to STRETCH_SECS, every movement the same)
 	await Cine.wait(w, 0.2)
-	if memory:
-		# the mark under his collar still glowing from the dream, fading as
-		# he comes round (it was the mark that showed him the night)
-		SealMark.blaze(w, 0.45, 0.01)
-		w.get_tree().create_timer(0.9, false).timeout.connect(func() -> void:
-			if is_instance_valid(w):
-				SealMark.blaze(w, 0.0, 2.2))
-		w.get_tree().create_timer(3.4, false).timeout.connect(func() -> void:
-			if is_instance_valid(w):
-				SealMark.show_on(w, false))
-	Cine.fade(w, 0.0, 1.0)
+	var held: SealMark.Held = SealMark.held(w.get_tree()) if memory else null
+	if held != null and SealMark.on_hero(w) != null:
+		# (15 November, Gary's yes to "the mark links the two times") the
+		# attic's first picture is his own mark, under the child's
+		await _wake_on_the_mark(w, a, root, held)
+	else:
+		if held != null:
+			held.let_go(0.8)
+		if memory:
+			# the mark under his collar still glowing from the dream, fading as
+			# he comes round (it was the mark that showed him the night)
+			SealMark.blaze(w, 0.45, 0.01)
+			w.get_tree().create_timer(0.9, false).timeout.connect(func() -> void:
+				if is_instance_valid(w):
+					SealMark.blaze(w, 0.0, 2.2))
+			w.get_tree().create_timer(3.4, false).timeout.connect(func() -> void:
+				if is_instance_valid(w):
+					SealMark.show_on(w, false))
+		Cine.fade(w, 0.0, 1.0)
 	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
 		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
 	await Cine.wait(w, RISE_STIR)
@@ -1677,6 +1691,79 @@ static func _hand_can(f: Figure3D, side: String, to: Vector3) -> Vector3:
 ## (test_memory: tests/ashford_test.gd plays it; the attic's own stills and
 ## checks start from the attic as they always have).
 static var test_memory := false
+
+
+## The attic's first picture when the memory has just been played (15
+## November, Gary's yes to "the mark links the two times": "The last picture
+## of the memory is the child's mark glowing. The first picture of the attic
+## is the same mark on the grown hero, in the same place on screen."). The
+## memory left the child's mark up on the black (SealMark.Held: `held`). The
+## camera is set square on the hero's own mark where he lies asleep, at the
+## held mark's place on the screen and its size (SealMark.frame), his mark
+## lit as the child's was; the attic comes up out of the black round it, the
+## picture of the mark gives way to his own, and the child's tune is heard
+## again (Sfx "child_tune"). Then the camera draws a little way back as his
+## mark goes out, the village's music coming in, and the picture goes
+## through the dark to the bed's own shot, where he wakes as before. How
+## many times it has been played (the tests).
+const MARK_WAKE_LENS := 30.0
+const MARK_WAKE_HOLD := 1.9
+const MARK_WAKE_BACK := 2.4
+## How much smaller his mark is on the picture when the camera has drawn back
+## from it (of the held mark's size).
+const MARK_WAKE_AWAY := 0.93
+static var mark_wakes := 0
+
+static func _wake_on_the_mark(w: World, a: Dictionary, root: Node3D, held: SealMark.Held) -> void:
+	var mi := SealMark.on_hero(w)
+	mark_wakes += 1
+	# (his collar lies over it where he sleeps: its light is seen through the cloth)
+	SealMark.through(w, true)
+	SealMark.blaze(w, 0.55, 0.01)
+	var view := w.get_viewport().get_visible_rect().size
+	var mark := Transform3D(mi.global_transform.basis.orthonormalized(), mi.global_position)
+	var close := SealMark.frame(mark, SealMark.SIZE, MARK_WAKE_LENS, held.at, held.size, view.x / maxf(view.y, 1.0))
+	var wide_pos := root.to_global(Vector3(2.45, 1.6, 1.3))
+	var wide_look: Vector3 = a.bed + Vector3(0.2, 0.15, 0.0)
+	var held_at := held.at
+	var held_size := held.size
+	w.cine = true
+	var token := Cine.take_camera(w)
+	w.cam.global_transform = close
+	w.cam.fov = MARK_WAKE_LENS
+	Cine.light_shot(w, mi.global_position)
+	Sfx.shared().play("child_tune", 1.0, -3.0)
+	# (a film's bars on this one shot: under the lower one, the sliver of his
+	# cuff that comes through the blanket at the foot of so close a picture)
+	var ov := Cine.overlay(w)
+	ov.bars(true, 0.01)
+	Cine.fade(w, 0.0, 1.4)
+	await Cine.wait(w, 0.8)
+	if is_instance_valid(held):
+		held.let_go(1.2)
+	await Cine.wait(w, MARK_WAKE_HOLD - 0.8)
+	if not is_instance_valid(w) or not w.is_inside_tree():
+		return
+	SealMark.go_out(w, MARK_WAKE_BACK * 0.55)
+	if not w.music.is_empty():
+		Music.play(w.music, 5.0, true)
+	# a little way back from it, square on still, as it goes out; then
+	# through the dark to the bed's own shot. (Drawn back and round to that
+	# shot in one move, the camera passed close over him where his hands and
+	# waistcoat come through the blanket: a thing too small to see from the
+	# bed's shot filled the middle of the picture.)
+	var back := SealMark.frame(mark, SealMark.SIZE, MARK_WAKE_LENS, held_at, held_size * MARK_WAKE_AWAY, view.x / maxf(view.y, 1.0))
+	w.create_tween().tween_method(func(u: float) -> void:
+		if not Cine.has_camera(w, token):
+			return
+		w.cam.global_transform = close.interpolate_with(back, u), 0.0, 1.0, MARK_WAKE_BACK).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await w.get_tree().create_timer(MARK_WAKE_BACK - 0.5, false).timeout
+	await Cine.fade(w, 1.0, 0.5)
+	if not is_instance_valid(w) or not w.is_inside_tree():
+		return
+	ov.bars(false, 0.01)
+	Cine.shot(w, wide_pos, wide_look, 46.0)
+	Cine.fade(w, 0.0, 0.8)
 
 
 static func _memory_wanted(w: World) -> bool:

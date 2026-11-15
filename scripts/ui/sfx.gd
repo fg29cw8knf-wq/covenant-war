@@ -369,6 +369,17 @@ static func _synth(sound: String) -> AudioStreamWAV:
 			# a Circle of light drawing itself in the snow: a line running
 			# round, rising, and a soft ring as it closes
 			samples = _mix(_mix(_sweep(420.0, 1250.0, 1.5, 0.07, "sine"), _noise(1.5, 0.03, 6000.0)), _ring([[1568.0, 0.8, 1.4], [2349.3, 0.45, 1.45], [3136.0, 0.25, 1.5]], 3.0, 0.11))
+		# (15 November, Gary's yes to "a tune for the child": a few soft notes
+		# when Bram picks the child up, again when the small hand closes on the
+		# light, and when the hero wakes in the attic. A stand-in, like a
+		# music box, until his own is saved as assets/sfx/child_tune.ogg)
+		"child_tune":
+			var beat := 0.5
+			var tune := [[880.0, 0.0, 1.0], [739.99, 1.0, 0.8], [587.33, 2.0, 0.85], [659.25, 3.0, 0.75], [739.99, 4.0, 1.0],
+				[880.0, 6.0, 0.9], [987.77, 7.0, 0.8], [880.0, 8.0, 0.85], [739.99, 9.0, 0.8], [587.33, 10.0, 1.0], [293.66, 10.0, 0.5]]
+			for note in tune:
+				note[1] = float(note[1]) * beat
+			samples = _chime(tune, 7.0, 0.075)
 		_:
 			samples = _tone([[880.0, 0.05]], 0.2, "sine")
 	var data := PackedByteArray()
@@ -456,6 +467,33 @@ static func _ring(parts: Array, dur: float, vol: float) -> PackedFloat32Array:
 			var left := (dur - late - t) / maxf(0.001, dur - late)
 			var e := (1.0 - exp(-t / 0.22)) * exp(-t / (dur * 0.38)) * minf(1.0, left * 6.0)
 			out[i] += sin(step * (i - from)) * (0.8 + 0.2 * sin(beat * i)) * e * a * vol
+	return out
+
+
+## A tune on small bells (a music box): each of `notes` is [Hz, seconds in,
+## loudness], struck softly and left to ring; `dur` long.
+static func _chime(notes: Array, dur: float, vol: float) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	var count := int(dur * RATE)
+	out.resize(count)
+	for note in notes:
+		var f: float = note[0]
+		var from := int(float(note[1]) * RATE)
+		var a: float = note[2]
+		# (the note, its octave and a bell's sharp third partial, each dying faster)
+		for part in [[1.0, 1.0, 1.1], [2.0, 0.28, 0.6], [3.01, 0.1, 0.3]]:
+			var step := f * float(part[0]) / RATE * TAU
+			var ring := float(part[2])
+			var amp := a * float(part[1]) * vol
+			for i in range(from, count):
+				var t := float(i - from) / RATE
+				if t > ring * 5.0:
+					break
+				out[i] += sin(step * (i - from)) * exp(-t / ring) * minf(1.0, t / 0.004) * amp
+	# (no click at its end)
+	var tail := int(0.3 * RATE)
+	for i in tail:
+		out[count - 1 - i] *= float(i) / tail
 	return out
 
 

@@ -2128,6 +2128,127 @@ Mac or iPhone (the apps play Gary's masters through their own player; here
 it was the small Theora copy); how the arm, the turn and the Circle look
 moving; the two stand-in sounds were measured, not heard.
 
+### Flashes of the fight, the walk out, the mark, the title and the child's tune (15 November)
+
+Gary, having played the build with the four changes above: "i still feel
+something more is missing from the prologue any ideas?" He was given six
+ideas and then five more, and said yes to six of them: **2** the walk out,
+**4** the mark links the two times, **5** the title after the memory, **6** a
+tune for the child, **8** a small hand, **11** three flashes of the fight.
+(Not asked for, still his to say yes to: showing the price in Morrowen's
+book; the player shielding the child; where "Sprout" begins; snow filling
+his prints; one card left glowing in the snow.) All in `WhiteSky` but the
+attic's half of the mark; the script (`docs/script/v7_prologue.md`) has them
+written in. The opening is about 40 seconds longer.
+
+- **Three flashes of the fight** (`_flashes`, before `_late_caption`). The
+  Circle closes and the picture goes white, as before; then three cuts of the
+  duel, `FLASH_SECS` each with a white flash between: the pack coming at him
+  from low behind his shoulder; one of his Totems, a Weft Serpent, struck by
+  a bolt from the hunter's cards and gone into light; a hound in the air at
+  him and the blow landing at his feet, the child crying out. They're played
+  on the duel's own field, which has been built and waiting since the
+  opening's black, with creatures of their own (`_flash_model`: the duel's
+  models, dressed as the duel dresses them, the hunter's as white smoke),
+  taken away before the duel's set board is drawn. He and the hunter are
+  stood on the field for them (`_stage_duellists`, which `_duel` uses too).
+- **The walk out** (`_walk_out`, after `_duel`). The memory ended on the Last
+  Page's white and went to black. Now the white lifts on first light
+  (`_first_light`: the tear closed, the sky's own `dawn` turned part way up
+  with its sun under the horizon the way he came, the light low and warm from
+  there, the storm down to a few slow flakes). He's in the bowl with the child,
+  his back to the hunter's rim, and the walk is the player's again
+  (`OUT_PACE` of his pace), his prints the one line in the snow
+  (`ShardSet.Prints.long_lived`). The hunter stands on its rim behind,
+  turning to watch him; he can't walk up to it (`HUNTER_KEEP`). Past `OUT_AT`
+  the walk is over: from behind the hunter on a long lens, him small beyond
+  the far lip, walking on (`_auto_step`), his line of prints up out of the
+  bowl (`_track_step`: a soft dark furrow, because prints are a few pixels
+  from there; the side of the hunter the shot is taken from is the one whose
+  way to him is clearest of the ice, `_sight_clear`); a gust, and the hunter
+  isn't there. **It's now seen that Bram got away** (the script said "nobody
+  sees who won"); what became of the hunter still isn't.
+- **A small hand** (`_small_hand`, on the walk out, once he's over the lip:
+  `HAND_AT`). One of the last of the night's lights comes down to them; the
+  walk's own camera comes in over his left shoulder (`_hand_k`: the walk
+  stays his under it); a small hand in a bunched woollen sleeve comes up by
+  his shoulder, open, and closes on the light (`_make_tiny_hand`: a wrist, a
+  palm, four fingers and a thumb on knuckles of their own, a third bigger
+  than life so it reads); the child's tune; it goes back down into his coat.
+- **The mark links the two times.** The last picture of the memory: behind
+  him, stopped, his head down to the child; the mark's light comes up round
+  him (`_mark_halo`), the picture closes to black about it and a picture of
+  the mark is left up alone (`SealMark.hold`: a layer of its own over the
+  subtitles and captions, belonging to the world so it outlives the memory).
+  It stays through Morrowen's line, the title and the attic's caption. Then
+  the attic's first picture (`AshfordP1._wake_on_the_mark`): the camera is
+  set square on the sleeping hero's own mark at the held mark's place on the
+  screen and its size (`SealMark.frame`), his mark lit and seen through his
+  shirt (`SealMark.through`: his collar lies over it; a film's bars on this
+  one shot), the attic comes up
+  round it and the held picture lets go; then the camera draws a little way
+  back as his mark goes out (`SealMark.go_out`) and the picture goes through
+  the dark to the bed's own shot, where he wakes as before (the walk is his
+  about four seconds later than it was). Skipped, the mark still comes up on
+  the black (`_close`).
+- **The title after the memory** (`_title_card`). After "Twenty years later,
+  the debt came due.", under the mark: THE / COVENANT WAR / THRONE OF AGES in
+  the title screen's lettering and gold, with the title screen's theme
+  (`menu_theme`); `TITLE_HOLD` seconds, or a tap. The theme goes out under the
+  attic's caption and the village's music comes in as he wakes.
+- **A tune for the child** (Sfx `child_tune`). A few soft notes, three
+  times: as the child goes quiet in his arms (the walk's music dipped under
+  it), as the small hand closes on its light, and as the attic comes up on
+  the hero's mark. A stand-in like a music box (`Sfx._chime`, ten notes,
+  about seven seconds) until Gary's own is saved as
+  `assets/sfx/child_tune.ogg`.
+
+Found by looking, not by the tests. **The sky went black** on the walk out,
+with a white glow round everything that stood against it: the moon had been
+put "straight down", and the sky's shader takes a cross product of the
+moon's direction with "up", so every pixel of the sky was not-a-number.
+**The small hand** was first a pale dot on a grey post, then, lit, a candle:
+it's bigger than life, its sleeve is bunched folds, its light is small, and
+it happens on level snow (on the bowl's steep side the camera, a spring
+behind him, hung low and the hand stood in the top of the picture). **The
+mark came up on Bram's back** as if it were his while he could still be
+seen: it comes as the last of the light goes. **The hero's mark couldn't be
+seen** in bed (his shirt is over it): it's drawn through the cloth for that
+shot, and goes out rather than fading to ash. **The camera's way back from
+the mark** was one move round to the bed's shot: it passed close over him
+where his hands and waistcoat come through the blanket (too small to see
+from the bed's shot), so it draws back a little and goes through the dark
+instead. **The second flash's Totem**, the Glyph
+Warden, read as the hunter from behind; squashed flat as it broke, it lay
+there like a dropped cloak. **The third flash's hound** was hidden behind
+him.
+
+**Checked:** `white_sky_look ... out` and `... fight` (new: the pick-up
+played, then the walk out to the title, and the three flashes), every still
+looked at, six and three times over as they were changed; the whole
+prologue drawn at a Mac's full settings (75 stills: the flashes, the walk
+out, the hand, the hunter gone, the mark, the line, the title, in their
+places); `tests/mark_wake_test.tscn` (new: the memory skipped to its end in
+a new game, the mark, the title and the caption, the attic opening on his
+own mark at the held one's place and size, and the walk his at the
+washbasin) headless and drawn; `white_sky_test` checks the new parts
+(three flashes; the walk out walked past `OUT_AT` and never within
+`HUNTER_KEEP` of the hunter; the small hand; the hunter gone; the mark left
+up; the tune asked for twice; the title) and passes whole, `hurry`, `duel`
+and `body` (the body check's only findings are his arm against the bundle
+he's carrying, as at the pick-up), skipped at 60, 77 (in the flashes), 81,
+100.5 and 109 s and 1, 6, 10, 16 and 21 s into the walk out (`skip_out=`);
+`haptics_test`, `best_picture_test`, `summon_video_test`,
+`white_sky_play_probe`, `first_launch_test` (and `again`),
+`white_sky_world ... play`, `duel_sim -- 100`, `duel_monkey`: ok.
+**Not passing, and not from this:** `ashford_test ... opening` run headless
+times out waiting for the mirror, on the code of the 14th as well (run both
+ways to be sure); not looked into. **Not checked:** anything on a real Mac
+or iPhone; anything moving (stills only: the pace of the flashes, the walk
+out, the small hand and the title are judged from stills and timings); the
+stand-in tune was measured, not heard; whether the title's theme and the
+tune sit well against Gary's music.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

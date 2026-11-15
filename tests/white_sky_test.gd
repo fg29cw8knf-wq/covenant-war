@@ -29,6 +29,15 @@ extends Node
 ## breaking, the phone's buzzes asked for (Haptics.count) and the ice's
 ## sounds.
 ##
+## (15 November: "i still feel something more is missing from the prologue")
+## the three flashes of the fight before the caption; after the Last Page,
+## the walk out (walked by the up key as the walk in is: out of the crater,
+## the small hand closing on its light, the hunter watching from its rim and
+## gone, the mark's light round him); the mark left up on black; the child's
+## tune asked for (at the pick-up and at the small hand); and the title
+## after Morrowen's last line. "duel" plays the duel, the walk out and the
+## end. Skipped, the mark and the title still come.
+##
 ## (And that evening's four) the hunter's arm put out for the child and Bram
 ## turning it away before "Not this one."; the lead-in (his cards up, the
 ## Circle drawn in the snow); the caption before the duel; and the Summon's
@@ -102,6 +111,13 @@ func _ready() -> void:
 		if String(a).begins_with("skip_at="):
 			_skip = true
 			_skip_at = float(String(a).substr(8))
+		# (15 November) "skip_out=<s>": Skip pressed that long into the walk out
+		# (the Summon's video before it runs by the wall's clock, so its
+		# place in the test's own time isn't known beforehand)
+		if String(a).begins_with("skip_out="):
+			_skip = true
+			_skip_at = INF
+			_skip_out = float(String(a).substr(9))
 	DirAccess.make_dir_recursive_absolute(out_dir)
 	get_window().size = Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
@@ -132,7 +148,12 @@ func _run() -> void:
 	if _duel_only:
 		m._ov = m._own_overlay()
 		m._black.modulate.a = 0.0
+		# (where he'd have knelt to the child, for the walk out to start from)
+		m._ad = m._kneel_dir(Vector3.FORWARD)
+		m._bottom = m._kneel_spot(m._ad)
 		await m._duel()
+		if not m._skipping:
+			await m._walk_out()
 		await m._close()
 	else:
 		await m.play()
@@ -173,10 +194,13 @@ func _run() -> void:
 		# (14 November, the second pass: the ice's sounds)
 		wanted.append_array(["ice_ring", "ice_crack", "ice_shatter"])
 		ok = _second_pass() and ok
+		ok = _third_pass(false) and ok
 		for want: String in wanted:
 			if not names.has(want):
 				print("white_sky_test: FAIL: the sound '%s' was never played" % want)
 				ok = false
+	if _skip:
+		ok = _third_pass(true) and ok
 	if not _duel_only and not _skip:
 		print("white_sky_test: the duel built at %.1f s and warmed by %.1f s; the walk began at %.1f s, the pick-up prompt at %.1f s, the child in his arms by %.1f s (%s)" % [
 			_built_t, _warm_t, _roam_t, _prompt_t, _stood_t, "built at the prompt, the before" if _late else "built under the opening's black"])
@@ -216,6 +240,7 @@ func _process(delta: float) -> void:
 	if _stood_t < 0.0 and _prompt_t >= 0.0 and m._baby != null and m._bram != null and m._baby.get_parent() != m._set and m._baby.global_position.y - m._bram.global_position.y > 0.9:
 		_stood_t = _t
 	_watch_second_pass()
+	_watch_third_pass()
 	# walk on, the way the camera looks (the pad's up, as a key), whenever the
 	# walk is his (4 November: he walks about freely, no longer held forward)
 	# (14 November: left alone until the opening's wide shot has come down,
@@ -276,6 +301,11 @@ func _process(delta: float) -> void:
 		_still_later("duel_start", 2.0)
 	if _skip and _t > _skip_at and not m._skipping:
 		m.skip()
+	if _skip_out >= 0.0 and m._out and not m._skipping:
+		if _skip_out_from < 0.0:
+			_skip_out_from = _t
+		elif _t - _skip_out_from > _skip_out:
+			m.skip()
 	if _t >= _next_still:
 		_next_still = _t + every
 		_still("t%05.1f" % _t)
@@ -286,6 +316,87 @@ func _once(label: String, secs: float) -> void:
 	if not _stilled.has(label):
 		_stilled[label] = true
 		_still_later(label, secs)
+
+
+## What 15 November added, watched as it plays (the flashes of the fight,
+## the walk out, the mark, the title) ...
+var _skip_out := -1.0
+var _skip_out_from := -1.0
+var _flash_seen := 0
+var _fan_most := 0
+var _long_buzz := false
+var _out_from := -1.0
+var _out_walked := 0.0
+var _out_stood := 0.0
+var _hunter_near := INF
+var _seal_at := Vector2.ZERO
+
+func _watch_third_pass() -> void:
+	_fan_most = maxi(_fan_most, m._bram_fan.size())
+	if int(Haptics.last[0]) == int(Haptics.LONG[0]):
+		_long_buzz = true
+	if m.flashes > _flash_seen:
+		_flash_seen = m.flashes
+		_still_later("flash_%d" % _flash_seen, 0.35)
+	if m._out and is_instance_valid(m._bram):
+		if _out_from < 0.0 and m._white.modulate.a < 0.5:
+			_out_from = _t
+			_still_later("out_first_light", 1.2)
+		if m._roam:
+			_out_walked = maxf(_out_walked, m._crater_dist())
+			if is_instance_valid(m._hunter) and m._hunter.visible:
+				_hunter_near = minf(_hunter_near, m._hunter.position.distance_to(m._bram.position))
+		if m._hand_k > 0.9 and m._tiny_rise > 0.9 and m._tiny_curl < 0.2:
+			_once("out_hand_open", 0.1)
+		if m._tiny_curl > 0.9:
+			_once("out_hand_closed", 0.5)
+		if m.walked_out:
+			_once("out_hunter_watching", 1.5)
+		if m.hunter_gone:
+			_once("out_hunter_gone", 1.5)
+			_once("out_mark_light", WhiteSky.OUT_GONE + WhiteSky.MARK_PUSH - 0.4)
+	if m.mark_held:
+		_once("mark_held", 0.4)
+	if m.title_shown:
+		_once("title", 2.8)
+	var held := SealMark.held(get_tree())
+	if held != null:
+		_seal_at = held.at
+
+
+## ... and checked at the end (`skipped`: only what a skipped memory still shows).
+func _third_pass(skipped: bool) -> bool:
+	var fails: Array = []
+	var held := SealMark.held(get_tree())
+	print("white_sky_test: the end: the mark held on black %s (at %.2f, %.2f), the title shown %s" % [str(held != null), _seal_at.x, _seal_at.y, str(m.title_shown)])
+	if not m.mark_held or held == null or held.k < 0.9:
+		fails.append("the mark wasn't left up on the black")
+	elif absf(_seal_at.x - 0.5) > 0.21 or _seal_at.y < 0.2 or _seal_at.y > 0.44:
+		fails.append("the held mark is at (%.2f, %.2f), where the title or a caption goes" % [_seal_at.x, _seal_at.y])
+	if not m.title_shown:
+		fails.append("the title wasn't shown")
+	if not skipped:
+		if not _duel_only:
+			print("white_sky_test: %d flashes of the fight before the caption" % m.flashes)
+			if m.flashes != 3:
+				fails.append("the flashes of the fight: %d, not 3" % m.flashes)
+		print("white_sky_test: the walk out: walked to %.1f m from the crater's middle (the walk ends at %.1f), never nearer the hunter than %.1f m; the small hand %s; the hunter gone %s; the child's tune asked for %d times" % [
+			_out_walked, WhiteSky.OUT_AT, _hunter_near, str(m.hand_caught), str(m.hunter_gone), m.tune_played])
+		if not m.walked_out or _out_walked < WhiteSky.OUT_AT - 0.3:
+			fails.append("the walk out wasn't walked (%s, %.1f m)" % [str(m.walked_out), _out_walked])
+		if _hunter_near < WhiteSky.HUNTER_KEEP - 0.3:
+			fails.append("he came within %.1f m of the hunter on the walk out" % _hunter_near)
+		if not m.hand_caught:
+			fails.append("the small hand never closed on its light")
+		if not m.hunter_gone or (is_instance_valid(m._hunter) and m._hunter.visible):
+			fails.append("the hunter was still on its rim at the end")
+		if m.tune_played < (1 if _duel_only else 2):
+			fails.append("the child's tune was asked for %d times" % m.tune_played)
+		if not Sfx.heard.any(func(h): return String(h[1]) == "child_tune"):
+			fails.append("the sound 'child_tune' was never played")
+	for f in fails:
+		print("white_sky_test: FAIL: ", f)
+	return fails.is_empty()
 
 
 ## What the second pass of 14 November added, watched as it plays ...
@@ -379,13 +490,13 @@ func _second_pass() -> bool:
 			fails.append("the child didn't go down on the knee with him (%.2f m)" % _knee_drop)
 		# (that evening's: what comes before "Not this one.", the lead-in, the caption)
 		print("white_sky_test: before his line: the hunter's arm out %.2f, Bram turned the child %.0f degrees away; the lead-in: %d of his cards up, the Circle drawn %.2f; the caption before the duel %s" % [
-			_reach_most, _turned_most, m._bram_fan.size(), _ring_drawn, str(m.later_shown)])
+			_reach_most, _turned_most, _fan_most, _ring_drawn, str(m.later_shown)])
 		if not m.demanded or _reach_most < 0.9:
 			fails.append("the hunter's arm didn't come out for the child (%.2f)" % _reach_most)
 		if not m.shielded or _turned_most < WhiteSky.SHIELD_TURN * 0.7:
 			fails.append("Bram didn't turn the child away (%.0f degrees)" % _turned_most)
-		if not m.led_in or m._bram_fan.size() != WhiteSky.LEAD_CARDS or _ring_drawn < 0.95:
-			fails.append("the lead-in: %d of his cards, the Circle drawn %.2f" % [m._bram_fan.size(), _ring_drawn])
+		if not m.led_in or _fan_most != WhiteSky.LEAD_CARDS or _ring_drawn < 0.95:
+			fails.append("the lead-in: %d of his cards, the Circle drawn %.2f" % [_fan_most, _ring_drawn])
 		if not m.later_shown:
 			fails.append("no caption before the duel")
 	print("white_sky_test: the Summon's video: wanted %s, begun %d" % [str(m._clip_wanted), m.summon_clips])
@@ -400,8 +511,10 @@ func _second_pass() -> bool:
 	print("white_sky_test: %d shards of ice burst; %d buzzes of the phone asked for (the last %s)" % [m.shattered, Haptics.count, str(Haptics.last)])
 	if m.shattered < 3:
 		fails.append("the ice didn't break on the Last Page (%d)" % m.shattered)
-	if Haptics.count < 4 or int(Haptics.last[0]) != int(Haptics.LONG[0]):
-		fails.append("the phone's buzzes: %d asked for, the last %s (wanted the Last Page's, %s)" % [Haptics.count, str(Haptics.last), str(Haptics.LONG)])
+	# (15 November: the last is the small hand's tap on the walk out now; the
+	# Last Page's long one is watched for as it goes by)
+	if Haptics.count < 5 or not _long_buzz or int(Haptics.last[0]) != int(Haptics.TAP[0]):
+		fails.append("the phone's buzzes: %d asked for, the Last Page's long one %s, the last %s (wanted the small hand's, %s)" % [Haptics.count, str(_long_buzz), str(Haptics.last), str(Haptics.TAP)])
 	for f in fails:
 		print("white_sky_test: FAIL: ", f)
 		ok = false

@@ -9,7 +9,7 @@ extends Node
 ##
 ##   VK_ICD_FILENAMES=<lvp_icd.json> xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver vulkan \
 ##       --rendering-method forward_plus --resolution 1280x720 --fixed-fps 10 --path . \
-##       res://tests/white_sky_look.tscn -- <dir> [night open torn mid wide back rim bowl held flash eyes close] [-- --phone]
+##       res://tests/white_sky_look.tscn -- <dir> [night open torn mid wide back rim bowl held flash eyes close demand out fight] [-- --phone]
 ##
 ## (The second pass of 14 November: "open" the opening's wide shot, as it
 ## begins, on its way down and nearly home; "flash" the lightning behind the
@@ -19,6 +19,13 @@ extends Node
 ## put out for it, the mark's light and him turning it away, and the lead-in
 ## to the duel: its cards, his, and the Circle drawn in the snow. Slow: the
 ## pick-up is played.)
+##
+## (15 November) "fight": the three flashes of the fight before "The end of
+## the duel", two stills of each. "out": the walk out after the Last Page
+## (first light, the small hand, the hunter watching and gone, the mark's
+## light, the mark held on black, Morrowen's line and the title). Both play
+## the pick-up first and draw only the frames they keep; five to seven
+## minutes each.
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
 ## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
@@ -32,7 +39,9 @@ var _look := Vector3.ZERO
 var _fov := 50.0
 var _n := 0
 var _blow := false
-const ALL := ["night", "open", "torn", "mid", "wide", "back", "rim", "bowl", "held", "flash", "eyes", "close", "demand"]
+var _tt := 0.0   # the "out" view's clock (a lambda keeps a copy of a local, not the local)
+const ALL := ["night", "open", "torn", "mid", "wide", "back", "rim", "bowl", "held", "flash", "eyes", "close", "demand", "out", "fight"]
+const DrawHold = preload("res://tests/draw_hold.gd")
 
 
 func _ready() -> void:
@@ -300,5 +309,167 @@ func _run() -> void:
 		await _shot("lead_2_his_cards", 12)
 		await _shot("lead_3_the_circle", 12)
 		await _shot("lead_4_closed", 14)
+	if names.has("out"):
+		await _out_view(c)
+	if names.has("fight"):
+		await _fight_view()
 	print("WHITE SKY LOOK: done in ", out)
 	get_tree().quit()
+
+
+## One frame drawn and kept (the rest of an "out" run isn't drawn: far quicker).
+func _key(nm: String) -> void:
+	DrawHold.hold()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	DrawHold.release()
+	_n += 1
+	get_viewport().get_texture().get_image().save_png(out.path_join("%02d_%s.png" % [_n, nm]))
+	print("white_sky_look: ", nm)
+
+
+## "fight" (15 November): the three flashes of the fight before "The end of
+## the duel", played as the memory plays them (the pick-up first, so the
+## child's in his coat; the duel's screen built and warmed, as it is by then):
+## two stills of each.
+func _fight_view() -> void:
+	DrawHold.start_keys()
+	var kd := m._kneel_dir(Vector3.FORWARD)
+	var bottom := m._kneel_spot(kd)
+	m._ad = kd
+	m._bottom = bottom
+	m._bram.position = bottom
+	if m._bram is Figure3D:
+		(m._bram as Figure3D).snap_face(kd)
+	m._shaft_k = 0.0
+	m._child_beacon(false)
+	m._raining = false
+	_peek = false
+	var rt := kd.cross(Vector3.UP)
+	m._shot(bottom - kd * 1.9 + rt * 1.45 + Vector3(0, 1.15, 0), m._baby.position + Vector3(0, 0.2, 0), 40.0)
+	await m._lift_child()
+	m._tuck()
+	for k in 14:
+		await get_tree().process_frame
+	m._prepare_duel()
+	var waited := 0
+	while not m._prep_done and waited < 400:
+		await get_tree().process_frame
+		waited += 1
+	m._white.modulate.a = 1.0
+	var done := [false]
+	var run := func() -> void:
+		await m._flashes()
+		done[0] = true
+	run.call()
+	var seen := 0
+	while not done[0]:
+		await get_tree().process_frame
+		if m.flashes > seen and m._white.modulate.a < 0.2:
+			seen = m.flashes
+			await _key("fight_%d_a" % seen)
+			await get_tree().process_frame
+			await _key("fight_%d_b" % seen)
+	print("white_sky_look: %d flashes of the fight" % m.flashes)
+
+
+## "out" (15 November): the walk out after the Last Page, played as the
+## memory plays it (the pick-up first, so the child's in his coat): first
+## light in the bowl, the climb, the small hand and its light, over the lip,
+## the hunter watching from its rim and gone, the mark's light round him,
+## the mark held on black, Morrowen's line under it and the title.
+func _out_view(c: Vector3) -> void:
+	DrawHold.start_keys()
+	var kd := m._kneel_dir(Vector3.FORWARD)
+	var bottom := m._kneel_spot(kd)
+	m._ad = kd
+	m._bottom = bottom
+	m._bram.position = bottom
+	if m._bram is Figure3D:
+		(m._bram as Figure3D).snap_face(kd)
+	m._shaft_k = 0.0
+	m._child_beacon(false)
+	m._crater_k = 0.32
+	m._raining = false
+	_peek = false
+	var rt := kd.cross(Vector3.UP)
+	m._shot(bottom - kd * 1.9 + rt * 1.45 + Vector3(0, 1.15, 0), m._baby.position + Vector3(0, 0.2, 0), 40.0)
+	await m._lift_child()
+	m._tuck()
+	for k in 14:
+		await get_tree().process_frame
+	m._white.modulate.a = 1.0
+	var done := [false]
+	var run := func() -> void:
+		await m._walk_out()
+		done[0] = true
+	run.call()
+	Input.action_press("move_up")
+	_tt = 0.0
+	var got := {}
+	var at := {}
+	var want := func(nm: String, when: bool, after := 0.0) -> bool:
+		if got.has(nm) or not when:
+			return false
+		if not at.has(nm):
+			at[nm] = _tt
+		if _tt - float(at[nm]) < after:
+			return false
+		got[nm] = true
+		return true
+	while not done[0] and _tt < 90.0:
+		await get_tree().process_frame
+		_tt += 0.1
+		if want.call("out_1_first_light", _tt > 3.4):
+			await _key("out_1_first_light")
+		if want.call("out_2_climbing", _tt > 3.4 and m._crater_dist() > 3.2 and m._hand_k < 0.01):
+			await _key("out_2_climbing")
+		if want.call("hand_1_light_coming", m._hand_k > 0.97 and m._tiny_rise < 0.2):
+			await _key("hand_1_light_coming")
+		if want.call("hand_2_open", m._tiny_rise > 0.97 and m._tiny_curl < 0.1, 0.1):
+			await _key("hand_2_open")
+		if want.call("hand_3_closed", m._tiny_curl > 0.97, 0.5):
+			await _key("hand_3_closed")
+		if want.call("out_3_over_the_lip", m.hand_caught and m._hand_k < 0.02 and m._crater_dist() > 8.6):
+			await _key("out_3_over_the_lip")
+		if want.call("far_1_watching", m.walked_out, 1.4):
+			await _key("far_1_watching")
+		if want.call("far_2_going", m.hunter_gone, 0.5):
+			await _key("far_2_going")
+		if want.call("far_3_gone", m.hunter_gone, 1.6):
+			await _key("far_3_gone")
+		var marking: bool = m.hunter_gone and m._cam != null and absf(m._cam.fov - WhiteSky.MARK_LENS) < 0.01
+		if want.call("mark_1_behind_him", marking, 0.5):
+			await _key("mark_1_behind_him")
+		if want.call("mark_2_its_light", marking, WhiteSky.MARK_PUSH - 0.2):
+			await _key("mark_2_its_light")
+		if want.call("mark_3_closing", marking, WhiteSky.MARK_PUSH + WhiteSky.MARK_DARK * 0.55):
+			await _key("mark_3_closing")
+	Input.action_release("move_up")
+	print("white_sky_look: walked out %s, the small hand %s, the hunter gone %s, the mark held %s, the tune %d, %.1f s" % [
+		str(m.walked_out), str(m.hand_caught), str(m.hunter_gone), str(m.mark_held), m.tune_played, _tt])
+	await _key("mark_4_held")
+	var closed := [false]
+	var end := func() -> void:
+		await m._close()
+		closed[0] = true
+	end.call()
+	var line_t := 0.0
+	var title_t := 0.0
+	_tt = 0.0
+	while not closed[0] and _tt < 40.0:
+		await get_tree().process_frame
+		_tt += 0.1
+		if m._ov != null and m._ov._waiting:
+			line_t += 0.1
+			if want.call("end_1_line", line_t > 0.8):
+				await _key("end_1_line")
+			if line_t > 1.6:
+				line_t = 0.0
+				m._ov._next.emit()
+		if m.title_shown:
+			title_t += 0.1
+			if want.call("end_2_title", title_t > 2.8):
+				await _key("end_2_title")
+	print("white_sky_look: the title shown %s, closed %s" % [str(m.title_shown), str(closed[0])])

@@ -77,7 +77,10 @@ broken seal.)_
 [GAME] **(Press E, or click, to pick up the child.)** / **(Tap the screen to pick
 up the child.)** / **(Press A to pick up the child.)**
 
-_(He lifts the child. The crying stops.)_
+_(He lifts the child. The crying stops. A few soft notes, like a music box: the
+child's tune (new, 15 November; Gary: "6 yes"). It's heard three times: here,
+when the small hand closes on its light on the walk out, and when the hero wakes
+in the attic.)_
 
 **[BRAM] (new, very quietly):** "Hush, now. I've got you."
 
@@ -104,6 +107,13 @@ pair after another. The hunter lifts its other hand. Cards rise out of the snow
 round it, white. Bram squares to it and his own come up in answer, a fan of gold
 light by his free hand. A Circle of light draws itself in the snow and the glass
 between them, round from his feet until it closes under the rim.)_
+
+_(White. Then, out of the white, three flashes of the fight (new, 15 November;
+Gary: "11 yes"), under a second each with a white flash between: the hunter's
+pack coming at Bram across the Circle, seen from behind his shoulder; one of his
+Totems, a Weft Serpent, struck by a bolt from the hunter's cards and breaking into
+light; a hound in the air at him and the blow landing at his feet, the child
+crying out.)_
 
 _(White; then black.)_ **[CAPTION]** The end of the duel / Bram is down to his
 last cards.
@@ -147,7 +157,7 @@ E: the Last Page.)** / **(Press A to play the Last Page.)**
 _(He comes up off his knee as he plays it. Orlanthe's Summon video plays
 (changed, 14 November; Gary: "when bram plays the summon we need to see the
 summons video"); then Orlanthe, the Last Page, comes down on the field, and as its
-blow lands the screen burns white. Nobody sees who won.)_
+blow lands the screen burns white.)_
 
 [GAME] Each of the three waits for the player; nothing else moves the duel on, and
 nothing the player can do loses it. Every move of the duel is written out and
@@ -156,9 +166,41 @@ payoff is filmed by the game; Gary's own shot of each plays over it once he has
 made it (`white_sky_move_1`, `_2`, `_3`: docs/script/films_plan.md). His whole
 film of the duel plays later, on the Thornwood road (P5).
 
-_(Black.)_
+### The walk out (new, 15 November)
+
+_(Gary, 15 November: "i still feel something more is missing from the prologue",
+and his yes to the walk out, the small hand, the mark linking the two times, the
+title after the memory and a tune for the child. Until then the white went to
+black and nobody saw who won. Now it's seen that Bram got away; what became of
+the hunter still isn't.)_
+
+_(The white lifts. The storm is over and it's first light: the tear in the sky
+has closed, the stars are going, a low warm light lies along the horizon. Bram
+stands in the bottom of the crater with the child in his coat, his back to the
+rim the hunter stood on. Behind him, on that rim, the hunter stands watching.)_
+
+[GAME] The player is Bram again. He walks only while it's held, a little slower
+than he came: up out of the crater towards the light, his prints the one line in
+the new snow. He can't walk up to the hunter.
+
+_(Over the lip, one of the last of the night's lights comes drifting down to
+them. A small hand comes up out of his coat by his shoulder, open, and closes on
+it. The child's tune. The light shows between its fingers; the hand goes back
+down into his coat with it.)_
+
+_(Past the crater the walk is over. From behind the hunter on its rim: Bram small
+beyond the far lip, walking on into the light, his line of prints up out of the
+bowl. A gust of snow, and the hunter isn't there.)_
+
+_(Behind Bram, stopped, his head down to the child. The mark's light comes up
+round him. The picture closes to black about it, and the mark is all that's left,
+glowing: the last picture of the memory.)_
 
 **[NARRATOR – MORROWEN] (V.O., new):** "Twenty years later, the debt came due."
+
+_(Under the mark, the game's name comes up in gold with the main theme: THE
+COVENANT WAR / THRONE OF AGES (new, 15 November; Gary: "5 yes"). It fades; the
+mark stays.)_
 
 _(The attic.)_
 
@@ -168,10 +210,17 @@ _(The attic.)_
 
 _(Black.)_ **[CAPTION]** Ashford / The last night of the Age.
 
+_(changed, 15 November; Gary: "4 yes": "The last picture of the memory is the
+child's mark glowing. The first picture of the attic is the same mark on the
+grown hero, in the same place on screen." The mark from the memory is still up
+on the black, over the caption. The attic comes up round it: close on the sleeping
+hero's chest, his own mark glowing through his shirt exactly where the child's
+was. The child's tune again. Then the picture draws back to the bed as his mark
+goes out, and he wakes.)_
+
 _(The protagonist awakens on a cot under bare timber rafters. Pale morning light
 filters through a frost-cracked shutter. On the washbasin opposite the bed sits
-an oval mirror veiled in cold grey condensation. (new) As he wakes, the mark under
-his collar is glowing faintly; it fades to ash-grey as he sits up.)_
+an oval mirror veiled in cold grey condensation.)_
 
 _(changed, 3 November: Morrowen's line, "Every soul in my book starts with a
 debt...", is spoken over the sky of the Shardlands at the start of P0 now, not

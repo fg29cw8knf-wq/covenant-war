@@ -696,6 +696,13 @@ class Prints:
 		for mi in _pool:
 			(mi as MeshInstance3D).set_instance_shader_parameter("born", -1000.0)
 
+	## Prints that stay `secs` from here on (the walk out of the crater: the
+	## one line of them is there to the end).
+	func long_lived(secs: float) -> void:
+		life = secs
+		if _mat != null:
+			_mat.set_shader_parameter("life", secs)
+
 
 ## A bolt of lightning out of the torn sky, a long way off: `a` in the sky to
 ## `b` on the ground, jagged by its length, with a fork or two, struck twice
