@@ -2552,6 +2552,26 @@ anything moving (judged from stills and timings); the midnight blaze's close
 shot of the mark (its framing comes from the mark's own place now); the gate
 at Solhaven (his right hand to his collar).
 
+### His hand to his neck as he wakes (15 November, late)
+
+Gary, "31 yes" ("When he wakes, his hand goes to his neck where the mark
+was"). `AshfordP1._hand_to_neck`, `NECK_HAND_*`, `hand_to_neck`; called from
+`_attic` when he's woken on the mark, before the camera goes round to the bed.
+With the camera held on the whole of him (easing in a little towards his
+head), his **left** hand comes up across his chest to the right side of his
+neck, where the mark was glowing, rests there 1.2 s and goes back down; then
+the rise as before. The right hand was tried first: lying on his back the
+place is a hand's width from that shoulder, the arm couldn't fold that tight
+and stood up off the bed instead. The elbow is put low on his chest towards
+his feet (`elbow_to`) and given back after.
+
+**Checked:** `load_all`: 0 failed. `mark_wake_test` drawn (compatibility):
+PASS, stills 7b (the hand going up) and 7c (on his neck); drawn as looks c and
+d too (her hand clear of the braid; his at the front of the throat, where his
+mark is); headless as all four looks: PASS. (Its bones are read before the
+arm's reach is put on them, so where the hand got to is judged from the
+stills, not measured.)
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

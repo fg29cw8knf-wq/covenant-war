@@ -128,12 +128,19 @@ func _process(delta: float) -> void:
 		# him": drawn back from the mark to the whole of him, head to foot,
 		# held, then round to the bed's shot as he stirs)
 		var whole_at := AshfordP1.MARK_WAKE_HOLD + AshfordP1.MARK_WAKE_BACK
+		# (and "31 yes": the first thing he does, his hand to his neck where
+		# the mark was, before the camera goes round to the bed)
+		var hand_at := whole_at + AshfordP1.MARK_WAKE_WHOLE_HOLD
+		var round_at := hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD + AshfordP1.NECK_HAND_DOWN
 		for pair in [["4_attic_coming_up", 0.5], ["5_his_own_mark", 1.7], ["6_drawing_back", AshfordP1.MARK_WAKE_HOLD + AshfordP1.MARK_WAKE_BACK * 0.5],
-				["7_the_whole_of_him", whole_at + 0.4], ["8_round_to_the_bed", whole_at + AshfordP1.MARK_WAKE_WHOLE_HOLD + 1.2], ["9_waking", whole_at + 4.5]]:
+				["7_the_whole_of_him", whole_at + 0.4], ["7b_hand_going_up", hand_at + AshfordP1.NECK_HAND_UP * 0.5],
+				["7c_hand_on_his_neck", hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD * 0.5],
+				["8_round_to_the_bed", round_at + 1.2], ["9_waking", round_at + 4.5]]:
 			if since > float(pair[1]):
 				_still(String(pair[0]))
 		if since > whole_at + 0.3 and _whole_in < 0.0:
 			_whole_in = _in_picture()
+
 		if _lesson or since > 40.0:
 			_finish()
 
@@ -167,6 +174,11 @@ func _finish() -> void:
 	_done = true
 	var fails: Array = []
 	print("mark_wake_test: the whole of him in the picture when it had drawn back: %.2f (out of it: %s)" % [_whole_in, str(_whole_misses)])
+	# (where the hand got to is seen in the stills, 7b and 7c: the bones read
+	# here are the clip's, before the arm's reach is put on them)
+	print("mark_wake_test: his hand to his neck where the mark was: %d time(s)" % AshfordP1.hand_to_neck)
+	if AshfordP1.hand_to_neck != AshfordP1.mark_wakes:
+		fails.append("his hand didn't go to his neck as he woke on the mark")
 	if _whole_in < 0.99:
 		fails.append("the camera didn't draw back to all of him (%.2f in the picture; out: %s)" % [_whole_in, str(_whole_misses)])
 	if not _held_seen:

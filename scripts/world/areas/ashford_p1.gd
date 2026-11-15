@@ -1548,9 +1548,12 @@ static func _attic(w: World) -> void:
 					SealMark.show_on(w, false))
 		Cine.fade(w, 0.0, 1.0)
 	if not whole_shot.is_empty():
-		# (woken on the mark: from the whole of him the camera glides round to
-		# the bed's own shot as he stirs, its eyes on him; it went there
-		# through the dark until 15 November)
+		# (woken on the mark: the first thing he does is put his hand to his
+		# neck, where it was, _hand_to_neck; then from the whole of him the
+		# camera glides round to the bed's own shot as he stirs, its eyes on
+		# him; it went there through the dark until 15 November)
+		if pf is Figure3D:
+			await _hand_to_neck(w, pf as Figure3D)
 		Cine.move(w, root.to_global(Vector3(2.15, 1.5, 1.1)), a.bed + Vector3(0.3, 0.2, 0.2), RISE_STIR + 1.5, 46.0)
 		whole_shot = []
 	else:
@@ -1802,6 +1805,60 @@ static func _wake_on_the_mark(w: World, a: Dictionary, root: Node3D, held: SealM
 		return
 	if not bars_off[0]:
 		ov.bars(false, 0.01)
+
+
+## (15 November, evening, Gary: "31 yes": "When he wakes, his hand goes to
+## his neck where the mark was"). The first thing he does, lying there as the
+## camera has drawn back to the whole of him: his left hand comes up across
+## his chest to the right side of his neck, to the place the mark was
+## glowing, and rests there a moment, the back of his hand to us; then it
+## goes back down and he gets up as before. (His right hand, on the same
+## side, was tried first: lying on his back the place is a hand's width from
+## that shoulder, and the arm couldn't fold that tight; it stood up off the
+## bed instead. Across with the other hand is how anyone lying down does it.)
+## The elbow rests low on his chest, towards his feet (NECK_HAND_ELBOW: m
+## down his body from the left shoulder, up off it); the palm a little off
+## the skin (NECK_HAND_OUT). The camera eases in a little towards his head
+## while it does. How long the hand takes up, rests, and takes down; and that
+## it did (the tests read it).
+const NECK_HAND_UP := 0.7
+const NECK_HAND_HOLD := 1.2
+const NECK_HAND_DOWN := 0.6
+const NECK_HAND_OUT := 0.035
+const NECK_HAND_ELBOW := Vector2(0.24, 0.1)
+static var hand_to_neck := 0
+
+static func _hand_to_neck(w: World, fig: Figure3D) -> void:
+	var mi := SealMark.on_hero(w)
+	if mi == null:
+		return
+	var n := mi.global_transform.basis.z.normalized()
+	var head := fig.bone_pos("Head")
+	var to_feet := fig.bone_pos("Hips") - head
+	to_feet = to_feet.normalized() if to_feet.length() > 0.01 else Vector3.DOWN
+	var t := Node3D.new()
+	t.name = "NeckHand"
+	w.add_child(t)
+	t.global_position = mi.global_position + n * NECK_HAND_OUT
+	# (the elbow low on his chest, towards his feet: off his left shoulder,
+	# down his body and a little up off it, the way his chest faces)
+	var chest_up := fig.bone_pos("Spine2") - fig.bone_pos("Hips")
+	chest_up = (chest_up - to_feet * chest_up.dot(to_feet))
+	var up_off: Vector3 = (n - to_feet * n.dot(to_feet)).normalized() if chest_up.length() < 0.01 else Vector3.UP
+	fig.elbow_to("left", fig.bone_pos("LeftArm") + to_feet * NECK_HAND_ELBOW.x + up_off * NECK_HAND_ELBOW.y)
+	hand_to_neck += 1
+	var secs := NECK_HAND_UP + NECK_HAND_HOLD + NECK_HAND_DOWN
+	if not whole_shot.is_empty():
+		var cam_at: Vector3 = whole_shot[0]
+		var mid: Vector3 = whole_shot[1]
+		Cine.move(w, cam_at.lerp(head, 0.22), mid.lerp(head, 0.35), secs + 0.3, float(whole_shot[2]) - 4.0)
+	fig.reach(t, null, NECK_HAND_UP)
+	await Cine.wait(w, NECK_HAND_UP + NECK_HAND_HOLD)
+	fig.reach(null, null, NECK_HAND_DOWN)
+	await Cine.wait(w, NECK_HAND_DOWN)
+	fig.elbow("left", Vector3.INF, 0.01)
+	if is_instance_valid(t):
+		t.queue_free()
 
 
 ## The shot of the whole of him asleep, head to foot: [camera, looking at,
