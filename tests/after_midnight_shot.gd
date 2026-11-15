@@ -32,7 +32,7 @@ extends Node
 ##           arm (note 13).
 ##
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 960x540 --fixed-fps 10 --path . res://tests/after_midnight_shot.tscn -- <out_dir> bed|dawn|cellar [every=10] [choice=0] [nomesh] [warmonly]
+##       --resolution 960x540 --fixed-fps 10 --path . res://tests/after_midnight_shot.tscn -- <out_dir> bed|dawn|cellar [every=10] [choice=0] [nomesh] [warmonly] [mark]
 ## Ends with "AFTER MIDNIGHT: ok" or the problems.
 
 var out := "/tmp/after_midnight"
@@ -132,6 +132,13 @@ func _finish() -> void:
 
 func _process(_d: float) -> void:
 	_frame += 1
+	# ("mark": a still of the game's picture every few frames while the hero's
+	# mark is shown, 15 November: it moved to his neck, and the close shot of
+	# it on the bed's edge looks at it there)
+	if "mark" in OS.get_cmdline_user_args() and world != null and _frame % 4 == 0:
+		var mk := SealMark.on_hero(world)
+		if mk != null and mk.visible:
+			_mark_still("mark_f%05d" % _frame)
 	if world == null or _done:
 		return
 	var now := Time.get_ticks_usec()
@@ -560,6 +567,11 @@ func _bed_frame() -> void:
 
 ## The game's shot, then close on the hand from in front of the two of them
 ## and from above Bram's side.
+func _mark_still(tag: String) -> void:
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png(out.path_join(tag + ".png"))
+
+
 func _bed_still(tag: String, bf: Figure3D, pf: Figure3D, hand: Vector3) -> void:
 	if _busy:
 		return

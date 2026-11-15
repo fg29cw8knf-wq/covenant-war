@@ -29,6 +29,9 @@ extends Node
 ## breaking, the phone's buzzes asked for (Haptics.count) and the ice's
 ## sounds.
 ##
+## (15 November, evening) "knee_only" stops once his word to the child on
+## his knee has been seen (with "page keys": a few minutes to look at it).
+##
 ## (15 November: "i still feel something more is missing from the prologue")
 ## the three flashes of the fight before the caption; after the Last Page,
 ## the walk out (walked by the up key as the walk in is: out of the crater,
@@ -163,6 +166,9 @@ func _run() -> void:
 		# (where he'd have knelt to the child, for the walk out to start from)
 		m._ad = m._kneel_dir(Vector3.FORWARD)
 		m._bottom = m._kneel_spot(m._ad)
+		# (and the child in his coat, in his left arm, as the pick-up leaves it:
+		# his word to it on his knee is filmed down at it)
+		_carry(m)
 		await m._duel()
 		if _page_only:
 			# ("page": the duel to the Last Page's white, for a look at the summon)
@@ -346,6 +352,24 @@ func _process(delta: float) -> void:
 		_still("t%05.1f" % _t)
 
 
+## The child put straight into his coat, held in his left arm as WhiteSky's
+## pick-up and _tuck leave it (the duel played on its own has no pick-up).
+func _carry(ws: WhiteSky) -> void:
+	if not (ws._bram is Figure3D) or not is_instance_valid(ws._baby):
+		return
+	var fig := ws._bram as Figure3D
+	ws._baby.reparent(fig._pivot, false)
+	ws._baby.basis = Basis(Vector3.UP, -PI * 0.5)
+	ws._baby.position = fig.hold_point(0.2, 0.42) + Vector3(0.03, 0, 0)
+	var l := Node3D.new()
+	ws._baby.add_child(l)
+	l.position = Vector3(0.0, -0.08, 0.05)
+	fig.reach(l, null, 0.01)
+	var glow := ws._baby.get_node_or_null("MarkGlow") as OmniLight3D
+	if glow != null:
+		glow.light_energy = 0.15
+
+
 ## A still of one of the new moments, once.
 func _once(label: String, secs: float) -> void:
 	if not _stilled.has(label):
@@ -363,6 +387,13 @@ var _serpent := false
 var _page_only := false
 var _first_call := ""
 var _hound_broke := false
+## (15 November, evening) when the shot down at the child came, and whether
+## the child was still crying then
+var _child_cry_at := -1.0
+var _child_crying := false
+var _pack_checked := false
+var _knee_done := false
+var _pack_left: Array = []
 var _flash_seen := 0
 var _fan_most := 0
 var _long_buzz := false
@@ -427,6 +458,8 @@ func _watch_third_pass() -> void:
 			_once("out_hand_open", 0.1)
 		if m._tiny_curl > 0.9:
 			_once("out_hand_closed", 0.5)
+		if m.card_whitened:
+			_once("out_card_white", 0.1)
 		if m.walked_out:
 			_once("out_hunter_watching", 1.5)
 		if m.hunter_gone:
@@ -452,6 +485,39 @@ func _watch_third_pass() -> void:
 	if m.page_blown:
 		_once("page_blow_a", 0.1)
 		_once("page_blow_b", 0.4)
+	# (15 November, evening) his word to the child, down into his coat; the
+	# end of the duel: the pack wiped out, the hunter burned away, Orlanthe
+	# back up its light
+	# ("knee_only": stop once his word to the child has been seen, for a
+	# quick look at it)
+	if "knee_only" in OS.get_cmdline_user_args() and _stilled.has("knee_child_b") and not _knee_done:
+		_knee_done = true
+		get_tree().create_timer(2.0).timeout.connect(func() -> void: get_tree().quit(0))
+	if m.to_child_shot:
+		_once("knee_child_a", 0.4)
+		_once("knee_child_b", 1.6)
+		if _child_cry_at < 0.0 and m._cry != null:
+			_child_cry_at = _t
+			_child_crying = m._cry.playing
+	if m.pack_wiped > 0:
+		_once("fin_pack_a", 0.15)
+		_once("fin_pack_b", 0.7)
+		_once("fin_pack_c", 1.4)
+	if m.cards_burned:
+		_once("fin_hunter_a", 0.2)
+		_once("fin_hunter_b", 0.9)
+		_once("fin_hunter_c", 1.5)
+		_once("fin_hunter_d", 2.1)
+		_once("fin_hunter_e", 2.7)
+	if m.page_departed:
+		_once("fin_depart_a", 0.2)
+		_once("fin_depart_b", 0.8)
+		if not _pack_checked and is_instance_valid(m._screen) and m._screen.field != null:
+			_pack_checked = true
+			for i in m._screen.field.slots[1].size():
+				var sl = m._screen.field.slots[1][i]
+				if sl != null and String(sl.card_id) != "" and sl.model != null and is_instance_valid(sl.model) and sl.model.visible and not sl.dying:
+					_pack_left.append(String(sl.card_id))
 	if m.mark_held:
 		_once("mark_held", 0.4)
 	if m.title_shown:
@@ -472,7 +538,24 @@ func _third_pass(skipped: bool) -> bool:
 		fails.append("the held mark is at (%.2f, %.2f), where the title or a caption goes" % [_seal_at.x, _seal_at.y])
 	if not m.title_shown:
 		fails.append("the title wasn't shown")
+	elif TitleScreen.has_art() and not m.title_backdrop:
+		fails.append("the title came up without the title screen's painting behind it")
 	if not skipped:
+		# (15 November, evening) his word to the child was filmed down at the
+		# child, crying as he began it; and the end of the duel played out
+		print("white_sky_test: \"%s\": the shot down at the child %s, the child crying as it began %s" % [
+			String(WhiteSky.BEAT_LINES.knee.say), str(m.to_child_shot), str(_child_crying)])
+		if not m.to_child_shot:
+			fails.append("his word to the child wasn't filmed down at the child")
+		elif m._cry != null and not _child_crying:
+			fails.append("the child had stopped crying before he spoke to it")
+		print("white_sky_test: the end of the duel: %d of the pack wiped out by the light, the hunter's cards burned %s, the hunter burned away %s, Orlanthe gone back up %s, done %s" % [
+			m.pack_wiped, str(m.cards_burned), str(m.hunter_burned), str(m.page_departed), str(m.finale_done)])
+		if m.pack_wiped < 1 or not m.cards_burned or not m.hunter_burned or not m.page_departed or not m.finale_done:
+			fails.append("the end of the duel: %d wiped out, cards burned %s, hunter burned %s, Orlanthe up %s, done %s" % [
+				m.pack_wiped, str(m.cards_burned), str(m.hunter_burned), str(m.page_departed), str(m.finale_done)])
+		for id in _pack_left:
+			fails.append("one of the pack (%s) still stood as Orlanthe went back up" % id)
 		var want_id := String(WhiteSkyDuel.PLAY_CHOICE[1 if _serpent else 0])
 		var want_name := String(DuelCards.CARDS[want_id].name)
 		print("white_sky_test: the first move: %d cards offered, '%s' picked; the duel: \"%s\", the hound broken %s" % [m.call_offered, m.call_picked, _first_call, str(_hound_broke)])
@@ -518,6 +601,10 @@ func _third_pass(skipped: bool) -> bool:
 			fails.append("he came within %.1f m of the hunter on the walk out" % _hunter_near)
 		if not m.hand_caught:
 			fails.append("the small hand never closed on its light")
+		elif not m.card_whitened:
+			fails.append("the card in the small hand never turned white")
+		elif m._mote_white > 0.01 and is_instance_valid(m._mote):
+			fails.append("the card in the small hand was still white as it went into his coat")
 		if not m.hunter_gone or (is_instance_valid(m._hunter) and m._hunter.visible):
 			fails.append("the hunter was still on its rim at the end")
 		if m.tune_played < (1 if _duel_only else 2):

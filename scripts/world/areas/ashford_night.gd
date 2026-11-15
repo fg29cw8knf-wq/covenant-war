@@ -348,7 +348,7 @@ static func awakening(w: World) -> void:
 		await Cine.say(w, "bram", "The gods didn't create this world, they borrowed it, and the Covenant is the loan agreement.")
 		asked[0] = true, "")
 	if asked[0]:
-		var more := await Cine.choose(w, ["And what does a blank space at the bottom of a loan do?", "But my chest was on fire. I thought it was going to kill me."])
+		var more := await Cine.choose(w, ["And what does a blank space at the bottom of a loan do?", "But the mark burned like fire. I thought it was going to kill me."])
 		if more == 0:
 			# he looks at you a moment too long (sat as he is, his hand on
 			# their shoulder: turning his whole body round to them on the
@@ -357,14 +357,14 @@ static func awakening(w: World) -> void:
 			await Cine.say(w, "bram", "Enough that every god in Veyl will want it, and every bank that lends to them. That's all you need tonight.")
 			Game.set_flag("bram_holds_back")
 			await Cine.say(w, "", "[i](Morrowen's Ledger: Bram knows more than he is saying.)[/i]")
-			await Cine.say(w, "player", "But my chest was on fire. I thought it was going to kill me.")
+			await Cine.say(w, "player", "But the mark burned like fire. I thought it was going to kill me.")
 	else:
-		await Cine.say(w, "player", "But my chest was on fire. I thought it was going to kill me.")
+		await Cine.say(w, "player", "But the mark burned like fire. I thought it was going to kill me.")
 	Cine.drift(w, front + Vector3(0.2, 1.05, 0.95), front + Vector3(0.35, 1.0, 0.85), two + Vector3(0, 0.95, 0), two + Vector3(0, 0.95, 0), 6.0, 40.0)
 	await Cine.say(w, "bram", "I thought so too. The resonance should have stopped your heart, but it didn't. Tell me, how do you feel now? Is the mark burning?")
 	await Cine.say(w, "player", "No... I feel fine. Actually... I feel better than I ever have.")
 	# they look at their hands: the exhaustion gone, a strange vitality, the
-	# mark under the collar (his hand comes off their shoulder, up and out
+	# mark on their neck (his hand comes off their shoulder, up and out
 	# the way it came, back to his knee, as they lean forward over their
 	# hands)
 	if bed_sh != null:
@@ -376,7 +376,15 @@ static func awakening(w: World) -> void:
 		_hands_up(w, pf as Figure3D)
 		(pf as Figure3D).pose("play_card", 0.4, 0.6)
 	var neck: Vector3 = (pf as Figure3D).bone_pos("Neck") if pf is Figure3D else w.player.global_position + Vector3(0, 1.0, 0)
-	Cine.drift(w, neck + Vector3(0.15, 0.05, 0.75), neck + Vector3(0.1, 0.0, 0.6), neck + Vector3(0, -0.12, 0), neck + Vector3(0, -0.15, 0), 3.0, 32.0)
+	# (15 November: the mark's on his neck now, not his collarbone: the shot
+	# looks at it there, from in front of him and out on its side)
+	var mk = SealMark.close_shot(w, 0.78, (pf as Figure3D).facing() if pf is Figure3D else Vector3.BACK, 0.5)
+	if mk != null:
+		var mp: Vector3 = mk[0]
+		var ml: Vector3 = mk[1]
+		Cine.drift(w, mp, ml + (mp - ml) * 0.82, ml + Vector3(0, -0.01, 0), ml + Vector3(0, -0.03, 0), 3.0, 32.0)
+	else:
+		Cine.drift(w, neck + Vector3(0.15, 0.05, 0.75), neck + Vector3(0.1, 0.0, 0.6), neck + Vector3(0, 0.02, 0), neck + Vector3(0, 0.0, 0), 3.0, 32.0)
 	SealMark.show_on(w, true)
 	await Cine.wait(w, 2.0)
 	if pf is Figure3D:

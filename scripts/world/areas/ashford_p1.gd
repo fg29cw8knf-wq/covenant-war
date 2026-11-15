@@ -1547,8 +1547,15 @@ static func _attic(w: World) -> void:
 				if is_instance_valid(w):
 					SealMark.show_on(w, false))
 		Cine.fade(w, 0.0, 1.0)
-	Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
-		a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
+	if not whole_shot.is_empty():
+		# (woken on the mark: from the whole of him the camera glides round to
+		# the bed's own shot as he stirs, its eyes on him; it went there
+		# through the dark until 15 November)
+		Cine.move(w, root.to_global(Vector3(2.15, 1.5, 1.1)), a.bed + Vector3(0.3, 0.2, 0.2), RISE_STIR + 1.5, 46.0)
+		whole_shot = []
+	else:
+		Cine.drift(w, root.to_global(Vector3(2.45, 1.6, 1.3)), root.to_global(Vector3(2.15, 1.5, 1.1)),
+			a.bed + Vector3(0.2, 0.15, 0.0), a.bed + Vector3(0.3, 0.2, 0.2), 2.4, 46.0)
 	await Cine.wait(w, RISE_STIR)
 	# wakes to the drum: sits up, throws the blanket back, swings his legs
 	# over the side of the bed, sits there a breath, then stands up off it
@@ -1702,39 +1709,54 @@ static var test_memory := false
 ## held mark's place on the screen and its size (SealMark.frame), his mark
 ## lit as the child's was; the attic comes up out of the black round it, the
 ## picture of the mark gives way to his own, and the child's tune is heard
-## again (Sfx "child_tune"). Then the camera draws a little way back as his
-## mark goes out, the village's music coming in, and the picture goes
-## through the dark to the bed's own shot, where he wakes as before. How
-## many times it has been played (the tests).
+## again (Sfx "child_tune").
+##
+## (15 November, evening, Gary: "When we first see player lying in bed have
+## camera draw back to show all of him also the glowing mark is meant to be
+## on his neck not chest". It drew a little way back and then went through
+## the dark to the bed's own shot, and he was never seen whole.) Then the
+## camera draws back from the mark in one move, out and up over the bed on
+## the room's side of it, his mark going out and the village's music coming
+## in, until all of him lies in the picture, head to foot (_whole_shot); it
+## holds there a moment, and as he stirs glides on round to the bed's own
+## shot, where he gets up as before (_attic). The way back is away from him
+## first, then round: out from his neck and up before it turns towards the
+## room, so it never passes close over him (two earlier tries at one move
+## to the bed's shot passed low over his hands and waistcoat). How many times
+## it has been played (the tests), and the whole-of-him shot it drew back to.
 const MARK_WAKE_LENS := 30.0
 const MARK_WAKE_HOLD := 1.9
-const MARK_WAKE_BACK := 2.4
-## How much smaller his mark is on the picture when the camera has drawn back
-## from it (of the held mark's size).
-const MARK_WAKE_AWAY := 0.93
+const MARK_WAKE_BACK := 3.4
+const MARK_WAKE_WHOLE_HOLD := 0.9
+## The whole of him: the lens, how much of the picture's width he fills
+## head to foot, and how high over him the camera looks down (degrees).
+const WHOLE_LENS := 44.0
+const WHOLE_FILL := 0.7
+const WHOLE_TILT := 36.0
 static var mark_wakes := 0
+static var whole_shot: Array = []
 
 static func _wake_on_the_mark(w: World, a: Dictionary, root: Node3D, held: SealMark.Held) -> void:
 	var mi := SealMark.on_hero(w)
 	mark_wakes += 1
-	# (his collar lies over it where he sleeps: its light is seen through the cloth)
+	# (what lies over it where he sleeps, the pillow or his collar: its light
+	# is seen through)
 	SealMark.through(w, true)
 	SealMark.blaze(w, 0.55, 0.01)
 	var view := w.get_viewport().get_visible_rect().size
+	var aspect := view.x / maxf(view.y, 1.0)
 	var mark := Transform3D(mi.global_transform.basis.orthonormalized(), mi.global_position)
-	var close := SealMark.frame(mark, SealMark.SIZE, MARK_WAKE_LENS, held.at, held.size, view.x / maxf(view.y, 1.0))
-	var wide_pos := root.to_global(Vector3(2.45, 1.6, 1.3))
-	var wide_look: Vector3 = a.bed + Vector3(0.2, 0.15, 0.0)
-	var held_at := held.at
-	var held_size := held.size
+	var close := SealMark.frame(mark, SealMark.SIZE, MARK_WAKE_LENS, held.at, held.size, aspect)
+	var whole := _whole_shot(w, a, root, aspect)
+	whole_shot = whole
 	w.cine = true
 	var token := Cine.take_camera(w)
 	w.cam.global_transform = close
 	w.cam.fov = MARK_WAKE_LENS
 	Cine.light_shot(w, mi.global_position)
 	Sfx.shared().play("child_tune", 1.0, -3.0)
-	# (a film's bars on this one shot: under the lower one, the sliver of his
-	# cuff that comes through the blanket at the foot of so close a picture)
+	# (a film's bars on the close shot: under the lower one, anything of his
+	# clothes that comes through the blanket at the foot of so close a picture)
 	var ov := Cine.overlay(w)
 	ov.bars(true, 0.01)
 	Cine.fade(w, 0.0, 1.4)
@@ -1744,26 +1766,80 @@ static func _wake_on_the_mark(w: World, a: Dictionary, root: Node3D, held: SealM
 	await Cine.wait(w, MARK_WAKE_HOLD - 0.8)
 	if not is_instance_valid(w) or not w.is_inside_tree():
 		return
-	SealMark.go_out(w, MARK_WAKE_BACK * 0.55)
+	SealMark.go_out(w, MARK_WAKE_BACK * 0.45)
 	if not w.music.is_empty():
 		Music.play(w.music, 5.0, true)
-	# a little way back from it, square on still, as it goes out; then
-	# through the dark to the bed's own shot. (Drawn back and round to that
-	# shot in one move, the camera passed close over him where his hands and
-	# waistcoat come through the blanket: a thing too small to see from the
-	# bed's shot filled the middle of the picture.)
-	var back := SealMark.frame(mark, SealMark.SIZE, MARK_WAKE_LENS, held_at, held_size * MARK_WAKE_AWAY, view.x / maxf(view.y, 1.0))
+	# drawn back to the whole of him: straight back from the mark first, then
+	# out over the room's side of the bed and up, its eyes going from the mark
+	# to the middle of him, the picture turning upright as it goes
+	var n := mark.basis.z.normalized()
+	var p0 := close.origin
+	var p1 := p0 + n * 0.55 + Vector3(0, 0.25, 0)
+	var p3: Vector3 = whole[0]
+	var p2 := p3 + (p1 - p3) * 0.25 + Vector3(0, 0.1, 0)
+	var look0 := mark.origin
+	var look1: Vector3 = whole[1]
+	var up0 := close.basis.y.normalized()
+	var bars_off := [false]
 	w.create_tween().tween_method(func(u: float) -> void:
 		if not Cine.has_camera(w, token):
 			return
-		w.cam.global_transform = close.interpolate_with(back, u), 0.0, 1.0, MARK_WAKE_BACK).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await w.get_tree().create_timer(MARK_WAKE_BACK - 0.5, false).timeout
-	await Cine.fade(w, 1.0, 0.5)
+		var v := 1.0 - u
+		var pos := p0 * v * v * v + p1 * 3.0 * v * v * u + p2 * 3.0 * v * u * u + p3 * u * u * u
+		var look := look0.lerp(look1, smoothstep(0.05, 0.85, u))
+		var up := up0.lerp(Vector3.UP, smoothstep(0.0, 0.55, u)).normalized()
+		var fwd := (look - pos).normalized()
+		if absf(fwd.dot(up)) > 0.98:
+			up = Vector3.UP if absf(fwd.y) < 0.9 else Vector3.FORWARD
+		w.cam.global_transform = Transform3D(Basis.looking_at(fwd, up), pos)
+		w.cam.fov = lerpf(MARK_WAKE_LENS, float(whole[2]), smoothstep(0.0, 1.0, u))
+		Cine.light_shot(w, look)
+		if u > 0.3 and not bars_off[0]:
+			bars_off[0] = true
+			ov.bars(false, 0.8), 0.0, 1.0, MARK_WAKE_BACK).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await w.get_tree().create_timer(MARK_WAKE_BACK + MARK_WAKE_WHOLE_HOLD, false).timeout
 	if not is_instance_valid(w) or not w.is_inside_tree():
 		return
-	ov.bars(false, 0.01)
-	Cine.shot(w, wide_pos, wide_look, 46.0)
-	Cine.fade(w, 0.0, 0.8)
+	if not bars_off[0]:
+		ov.bars(false, 0.01)
+
+
+## The shot of the whole of him asleep, head to foot: [camera, looking at,
+## lens]. From the room's side of the bed (it stands against the north wall),
+## square on to the line of him, high enough to look down over the blanket
+## (WHOLE_TILT), back far enough for him to fill WHOLE_FILL of the picture's
+## width; kept under the collar beams and inside the room.
+static func _whole_shot(w: World, a: Dictionary, root: Node3D, aspect: float) -> Array:
+	var pf = w.player_doll
+	var head: Vector3 = a.bed_head
+	var feet: Vector3 = (a.bed as Vector3) + ((a.bed as Vector3) - head)
+	if pf is Figure3D:
+		var fig := pf as Figure3D
+		head = fig.bone_pos("Head")
+		var lf := fig.bone_pos("LeftFoot")
+		var rf := fig.bone_pos("RightFoot")
+		if lf != Vector3.ZERO and rf != Vector3.ZERO:
+			feet = (lf + rf) * 0.5
+	var along := feet - head
+	along.y = 0.0
+	var length := along.length() + 0.45
+	along = along.normalized() if along.length() > 0.01 else Vector3.RIGHT
+	var mid := (head + feet) * 0.5 + Vector3(0, 0.08, 0)
+	var side := along.cross(Vector3.UP).normalized()
+	var room := root.global_position - mid
+	room.y = 0.0
+	if side.dot(room) < 0.0:
+		side = -side
+	var half_w := atan(tan(deg_to_rad(WHOLE_LENS) * 0.5) * aspect)
+	var d := (length / WHOLE_FILL) * 0.5 / tan(half_w)
+	var tilt := deg_to_rad(WHOLE_TILT)
+	var pos := mid + side * d * cos(tilt) + Vector3.UP * d * sin(tilt)
+	# (under the collar beams: their undersides stand at 1.93 m)
+	var lp := root.to_local(pos)
+	lp.y = minf(lp.y, 1.82)
+	lp.z = clampf(lp.z, -1.2, 1.6)
+	pos = root.to_global(lp)
+	return [pos, mid, WHOLE_LENS]
 
 
 static func _memory_wanted(w: World) -> bool:
@@ -1877,7 +1953,7 @@ const STRETCH_SECS := 2.0
 const LIFT_IN := 0.28
 ## Master Script v7 (with Gary's 24 October change to Q0): at the washbasin
 ## he wipes the frost off the oval glass with his palm and sees the ash-grey
-## mark on his collarbone; the frost creeps back and he writes his name in it
+## mark on his neck (on his collarbone until 15 November); the frost creeps back and he writes his name in it
 ## (the name screen: "Write your name in the frost"); then the reflection hub
 ## (the mark, twenty years under Bram's roof, step away), and Bram calling up
 ## through the floorboards.
@@ -1922,7 +1998,7 @@ static func _at_the_glass(w: World, a: Dictionary) -> void:
 	if pf is Figure3D:
 		(pf as Figure3D).let_go(0.4)
 	# the camera in the glass, looking back at him through the mirror's
-	# oval: the face, and under the collar the mark like a broken seal. A cut
+	# oval: the face, and on his neck the mark like a broken seal. A cut
 	# (until 25 October the camera glided there through his head and came
 	# out as a wide shot up his chin: Gary, "the camera angle goes weird");
 	# the picture is masked to the oval, so it reads as his reflection.

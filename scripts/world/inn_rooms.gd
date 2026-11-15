@@ -1088,8 +1088,10 @@ static func _quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector
 	_tri(st, a, Vector2(0, 0), c, Vector2(1, 1), d, Vector2(0, 1))
 
 
-## (the length of the blanket that lies over the body, head end first)
+## (the length of the blanket that lies over the body, head end first; and
+## how much higher it lies over the sleeper's middle)
 const BLANKET_BODY := 1.3
+const BLANKET_BELLY := 0.05
 
 
 ## A blanket lying over someone on their back: `L` long (x, the head at -x)
@@ -1109,6 +1111,10 @@ static func _blanket_points(L: float, W: float) -> Array:
 		# over the toes of the boots and down to the mattress at its end
 		var ub := minf(u * L / BLANKET_BODY, 1.0)
 		var h := 0.25 - 0.14 * ub + 0.03 * sin(ub * PI) + 0.09 * smoothstep(0.65, 1.0, ub)
+		# (15 November, evening: a little higher over his middle, where the
+		# point of his waistcoat and his belt's buckle came through it; seen
+		# now the attic's first shot draws back to the whole of him)
+		h += BLANKET_BELLY * smoothstep(0.02, 0.1, ub) * smoothstep(0.42, 0.2, ub)
 		h *= smoothstep(L, BLANKET_BODY + 0.03, u * L)
 		var row: Array = []
 		for j in nz + 1:

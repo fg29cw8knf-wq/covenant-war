@@ -2037,7 +2037,10 @@ func _bram_loses_one() -> void:
 		_cry.pitch_scale = 1.0
 		_cry.play()
 		var ct := create_tween()
-		ct.tween_interval(1.5)
+		# (15 November, evening) going down on his knee, the crying goes on
+		# until he speaks to the child (_to_the_child hushes it); a long
+		# while on, it's let die away anyway
+		ct.tween_interval(1.5 if not down else 5.5)
 		ct.tween_property(_cry, "volume_db", -40.0, 1.2)
 		ct.tween_callback(_cry.stop)
 	_pack_eyes(f, EYES_MORE)
@@ -2115,7 +2118,96 @@ func _to_knee() -> void:
 	f.cam_shake(4.0)
 	_snd("step_snow", 0.7, 4.0)
 	Haptics.kind(Haptics.BLOW)
-	_beat_line("knee", 0.4)   # (bent over the child: "I've got you. I've got you.")
+	_to_the_child(f)   # (bent over the child: "I've got you. I've got you.")
+
+
+## (15 November, evening, Gary: "When Bram talks to baby during duel we need to
+## make it clearer it's the baby he's talking to".) His line on his knee, to
+## the child, used to be said over the low shot behind him with the hunter
+## coming on past his shoulder: it could have been to anyone. Now, a moment
+## after the knee lands, the picture cuts in close at his left side: the old
+## man bowed over the bundle in his arm, the child's face in its hood under
+## his (the side of his face is seen: Gary, earlier that day, "we can see the
+## side of the face it will be clear who he is anyway"; from behind, his
+## shoulders hid the child altogether, and from above it too). The fight
+## falls away round them (the wind and the music down, the snow all but
+## still); the child's crying, which began as his Totem fell, is still going;
+## he says it to the child, and it quietens under his words; the child's
+## mark answers with a soft light in its hood. Then the hush before the Last
+## Page (_ask_move), the hunter a pace nearer. TO_CHILD_CAM: where the camera
+## stands from his head (m: out to his left, up, back), and how far from his
+## head down to the child it looks.
+const TO_CHILD_AFTER := 0.55
+const TO_CHILD_LENS := 34.0
+const TO_CHILD_HUSH := 0.6
+const TO_CHILD_CAM := Vector3(-1.6, 0.0, 0.03)
+const TO_CHILD_LOOK := 0.62
+const TO_CHILD_GLOW := 0.38
+## What the tests read: the shot of him and the child was taken for the line.
+var to_child_shot := false
+
+
+func _to_the_child(f: DuelField3D) -> void:
+	await _wait(TO_CHILD_AFTER)
+	if _skipping or _climax or f != _dir_f or f == null or not is_instance_valid(f) or not is_instance_valid(_baby):
+		_hush_child(1.0)
+		return
+	var head := _bram_head()
+	if _bram is Figure3D:
+		head = (_bram as Figure3D).bone_pos("Head")
+	var child := _baby.global_position
+	# (only when the child's in his coat: on its own, the duel played without
+	# the walk before it, it's still lying in the crater)
+	var with_him := f.world.is_ancestor_of(_baby) and child.distance_to(head) < 1.0
+	var look := head.lerp(child, TO_CHILD_LOOK)
+	var cam := head + TO_CHILD_CAM
+	if with_him and not _in_the_way(cam):
+		_take([cam, look, TO_CHILD_LENS], 0.0, 3.0)
+		f.cam_shot(cam.lerp(look, 0.12), look, 3.2, TO_CHILD_LENS - 2.0)
+		to_child_shot = true
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(child)
+	# the fight falls away round them for it
+	var wind_was := WIND_DB
+	var storm_was := _storm_k
+	_wind_to(WIND_HUSH_DB, TO_CHILD_HUSH)
+	_duel_storm_to(0.25, TO_CHILD_HUSH)
+	Music.duck(3.4, 8.0)
+	var glow := _baby.get_node_or_null("MarkGlow") as OmniLight3D
+	if glow != null:
+		var gt := create_tween()
+		gt.tween_property(glow, "light_energy", TO_CHILD_GLOW, 0.8).set_trans(Tween.TRANS_SINE)
+		gt.tween_interval(1.6)
+		gt.tween_property(glow, "light_energy", 0.15, 1.2).set_trans(Tween.TRANS_SINE)
+	await _wait(0.2)
+	if _skipping or _climax or f != _dir_f:
+		_hush_child(0.5)
+		return
+	# his word, to it; it quietens under it
+	_hush_child(1.8)
+	await _beat_line("knee")
+	if _skipping or f != _dir_f:
+		return
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(null)
+	# (the storm back, unless the hush before the Last Page has come in the
+	# meantime: in Bram's duel it follows this at once, and the night stays
+	# still from his word to the child into it)
+	await _wait(1.2)
+	if _skipping or f != _dir_f or _hushed_for_page or _climax:
+		return
+	_wind_to(wind_was, 0.8)
+	_duel_storm_to(storm_was, 0.8)
+
+
+## The child's crying (begun as his Totem fell, _bram_loses_one) let die away
+## over `secs`.
+func _hush_child(secs: float) -> void:
+	if _cry == null or not _cry.playing:
+		return
+	var ct := create_tween()
+	ct.tween_property(_cry, "volume_db", -40.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	ct.tween_callback(_cry.stop)
 
 
 ## His line at one of the duel's beats (BEAT_LINES), `after` a moment: said
@@ -2209,8 +2301,8 @@ func _last_page_lands() -> void:
 			gt.tween_method(func(v: float) -> void:
 				if is_instance_valid(mi):
 					(mi as MeshInstance3D).set_instance_shader_parameter("glow", v), from, from * 3.2, 0.5).set_ease(Tween.EASE_OUT)
-	if is_instance_valid(_hunter):
-		_hunter.lower_cards()
+	# (15 November, later: the hunter's fan of cards isn't put away here any
+	# more; it burns in its hand when the light reaches it, _finale)
 	# (15 November) it lands with Orlanthe standing there; every page in the
 	# air is flung out over the pack, and the hounds are thrown back by it
 	page_stood = f.summon_standing != null and is_instance_valid(f.summon_standing)
@@ -2227,6 +2319,309 @@ func _last_page_lands() -> void:
 		create_tween().tween_method(func(v: float) -> void:
 			if is_instance_valid(_page_beam):
 				(_page_beam.material_override as ShaderMaterial).set_shader_parameter("k", v), PAGE_BEAM, PAGE_BEAM * 2.2, 0.25)
+	_finale(f)
+
+
+# --- the end of the duel (15 November, evening) ---------------------------------
+## Gary (15 November, having seen the Last Page rebuilt): "When the summon
+## happens can we animate it anymore after the video and make the finish of
+## the battle look more dramatic and powerful that wipes out the rest of the
+## cards and makes the hooded figure disappear". The blow used to land and
+## the white came a second later: the pack still stood, the hunter still
+## stood, and it was gone from its rim on the walk out with a gust.
+##
+## Now, from the blow (_last_page_lands, above):
+##   1. FIN_HOLD on Orlanthe standing as its blow lands (the shot it came
+##      down in, low, looking up at it).
+##   2. The pack wiped out: a cut to wide over the Circle from the pack's
+##      flank, and a wall of Orlanthe's light rolls out across the snow from
+##      its feet (FIN_WAVE_SPEED). Each of the hunter's Totems still standing
+##      turns to glass and bursts as it passes (the game's own breaking,
+##      DuelField3D.crystal_death); the pack's eyes out in the dark beyond
+##      the Circle go out as it reaches them; the ice beyond flares.
+##   3. The hunter: a cut to it, close, on a long lens, as the light reaches
+##      it. Its fan of white cards is torn out of its hand and burns; it puts
+##      an arm up against the light and is driven back a step; and it burns
+##      away from the hem up, ash and embers streaming off it on the wind,
+##      the empty hood last of all (Hunter.burn_away). A last flare where
+##      the hood was, and the ash blowing away.
+##   4. Wide behind Bram: the Circle empty but for Orlanthe, still in its
+##      column of light. It goes back up the light (_page_departs) and the
+##      white comes down out of it.
+## Nothing of the duel's rules changes: the duel holds after the Last Page
+## (WhiteSkyDuel: Bram's side waits, the hunter's never moves again), so
+## this is the film's alone. Skipped, it's gone with the rest.
+const FIN_HOLD := 0.75
+const FIN_WAVE_SPEED := 11.0
+const FIN_PACK_SECS := 1.9
+const FIN_HUNTER_SECS := 3.1
+const FIN_BURN := 1.9
+const FIN_LAST := 1.25
+## The wide over the Circle from the pack's flank (Orlanthe on the left of
+## the picture, the pack across the middle, the hunter beyond: from behind
+## Bram, Orlanthe stood in front of the pack's middle), and the others tried
+## if that one would show his face or stand in something.
+const FIN_WIDE := [
+	[Vector3(9.4, 4.6, 4.6), Vector3(-1.3, 0.9, -4.6), 40.0],
+	[Vector3(-7.6, 3.6, 2.2), Vector3(1.0, 0.9, -4.4), 46.0],
+	[Vector3(3.0, 7.5, 12.0), Vector3(0.0, 0.6, -4.2), 44.0],
+]
+## The hunter close as the light reaches it: from in front of it and off to
+## its left, low, on a long lens (from the hunter: m).
+const FIN_ON_HUNTER := [Vector3(-2.3, 1.15, 4.6), Vector3(0.0, 1.55, 0.0), 30.0]
+## The last picture before the white: behind Bram and low on his left, the
+## empty Circle and Orlanthe in its light.
+const FIN_END := [Vector3(-3.4, 1.4, 10.4), Vector3(0.3, 2.0, -3.6), 40.0]
+## What the tests read: the pack broken by the light (how many), the
+## hunter's cards burned, the hunter burned away, Orlanthe gone back up, the
+## finale done.
+var pack_wiped := 0
+var cards_burned := false
+var hunter_burned := false
+var page_departed := false
+var finale_done := false
+var _finale_on := false
+
+
+func _finale(f: DuelField3D) -> void:
+	if _finale_on or _skipping:
+		return
+	_finale_on = true
+	await _wait(FIN_HOLD)
+	if _skipping or f != _dir_f or not is_instance_valid(f):
+		finale_done = true
+		return
+	# 2. the pack wiped out
+	var wide: Array = []
+	for c in FIN_WIDE:
+		if not _face_seen(c[0], c[1], float(c[2])) and not _in_the_way(c[0]):
+			wide = c
+			break
+	if not wide.is_empty():
+		_home_on(wide)
+		f.cam_shot(wide[0], wide[1], 0.0, float(wide[2]), true)
+		f.cam_shot((wide[0] as Vector3).lerp(wide[1], 0.08), wide[1], FIN_PACK_SECS + 0.4, float(wide[2]) - 2.0)
+	_film_bars(true, 0.3, BAR_CLIMAX)
+	var at := Vector3(0.0, 0.15, -0.8)
+	f.floor_wave(at, PAGE_LIGHT, 26.0, 26.0 / FIN_WAVE_SPEED)
+	f.floor_wave(at, PAGE_PAPER, 18.0, 18.0 / FIN_WAVE_SPEED * 1.15)
+	f.flash_light(at + Vector3(0, 2.0, 0), PAGE_PAPER, 10.0, 1.4, 22.0)
+	_wash(PAGE_PAPER, 0.4, 1.1)
+	_snd("summon_boom", 0.7, -2.0)
+	_snd("cast_wind", 0.6, -1.0)
+	Haptics.kind(Haptics.HEAVY)
+	_wipe_pack(f, at)
+	_put_out_eyes(at)
+	await _wait(FIN_PACK_SECS)
+	if _skipping or f != _dir_f or not is_instance_valid(f):
+		finale_done = true
+		return
+	# 3. the hunter
+	if is_instance_valid(_hunter) and _hunter.visible:
+		var hp := _hunter.position
+		var c := [hp + FIN_ON_HUNTER[0], hp + FIN_ON_HUNTER[1] * HUNTER_SCALE, FIN_ON_HUNTER[2]]
+		if not _face_seen(c[0], c[1], float(c[2])) and not _in_the_way(c[0]):
+			_home_on(c)
+			f.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+			f.cam_shot((c[0] as Vector3).lerp(c[1], 0.12), c[1], FIN_HUNTER_SECS, float(c[2]) - 3.0)
+		await _hunter_burns(f)
+	else:
+		await _wait(FIN_HUNTER_SECS)
+	if _skipping or f != _dir_f or not is_instance_valid(f):
+		finale_done = true
+		return
+	# 4. the Circle empty, and Orlanthe goes back up its light
+	if not _face_seen(FIN_END[0], FIN_END[1], float(FIN_END[2])):
+		_home_on(FIN_END)
+		f.cam_shot(FIN_END[0], FIN_END[1], 0.0, float(FIN_END[2]), true)
+		f.cam_shot((FIN_END[0] as Vector3).lerp(FIN_END[1], 0.06), FIN_END[1] + Vector3(0, 1.5, 0), FIN_LAST + 1.5, float(FIN_END[2]))
+	_duel_storm_to(0.25, 1.0)
+	_wind_to(WIND_HUSH_DB, 1.0)
+	await _wait(FIN_LAST * 0.45)
+	_page_departs(f)
+	await _wait(FIN_LAST * 0.55)
+	finale_done = true
+
+
+## Every one of the hunter's Totems still standing breaks as the wall of light
+## reaches it (its distance from `at` over FIN_WAVE_SPEED), in the game's own
+## way (DuelField3D.crystal_death), tinted with the light. One the duel itself
+## has knocked out already (the Last Page's own target, if its blow broke it)
+## is left to the duel's screen.
+func _wipe_pack(f: DuelField3D, at: Vector3) -> void:
+	if f.slots.size() < 2:
+		return
+	for i in f.slots[1].size():
+		var s = f.slots[1][i]
+		if s == null or String(s.card_id) == "" or s.model == null or not is_instance_valid(s.model) or not s.model.visible:
+			continue
+		var foot := f.foot_world(1, i)
+		var delay: float = 0.12 + Vector2(foot.x - at.x, foot.z - at.z).length() / FIN_WAVE_SPEED + 0.08 * float(i)
+		get_tree().create_timer(delay, false).timeout.connect(_wipe_one.bind(f, i))
+
+
+func _wipe_one(f: DuelField3D, i: int) -> void:
+	if _skipping or _done or f == null or not is_instance_valid(f) or f.slots.size() < 2:
+		return
+	var s = f.slots[1][i]
+	if s == null or String(s.card_id) == "" or bool(s.dying) or s.model == null or not is_instance_valid(s.model):
+		return
+	# (knocked out by the duel itself: its screen breaks it)
+	if is_instance_valid(_screen) and _screen.game != null:
+		for t in _screen.game.players[1].totems():
+			if t != null and int(t.slot) == i and t.is_knocked_out():
+				return
+	pack_wiped += 1
+	var body := f.body_world(1, i)
+	f.play_clip(1, i, "hit")
+	f.flash_sprite(body, PAGE_PAPER, 2.8, 0.3)
+	f.burst(body, PAGE_PAPER, int(40 * DuelField3D.fx_scale()), 8.0, 0.9, 0.12, 0.6)
+	f.crystal_death(1, i, "astral", 1.5, func(stage: String) -> void:
+		if stage == "crack":
+			_snd("shield_block", 1.5, -5.0)
+		elif stage == "burst":
+			_snd("ko", _rng.randf_range(0.8, 0.95), -2.0 - 1.5 * pack_wiped)
+			_snd("ice_shatter", _rng.randf_range(0.9, 1.1), -4.0)
+			Haptics.kind(Haptics.BLOW))
+	_snd("cry_hound", _rng.randf_range(0.7, 0.85), -6.0)
+
+
+## The pack's eyes out in the dark beyond the Circle shut as the light
+## reaches them, each with a wisp of smoke where it was.
+func _put_out_eyes(at: Vector3) -> void:
+	var f := _dir_f
+	for e in _eyes:
+		if not is_instance_valid(e):
+			continue
+		var p := (e as Node3D).position
+		var delay := 0.1 + Vector2(p.x - at.x, p.z - at.z).length() / FIN_WAVE_SPEED
+		var tw := create_tween()
+		tw.tween_interval(delay)
+		tw.tween_property(e, "scale:y", 0.01, 0.12)
+		tw.tween_callback(func() -> void:
+			if f != null and is_instance_valid(f) and is_instance_valid(e):
+				f.burst((e as Node3D).position, Color(0.8, 0.84, 0.95), int(8 * DuelField3D.fx_scale()), 1.4, 0.8, 0.12, 1.0)
+				(e as Node3D).visible = false)
+
+
+## The hunter as the light reaches it: its cards torn out of its hand and
+## burned, its arm up against the light, driven back a step; then it burns
+## away from the hem up (Hunter.burn_away), the hood last, and a last flare
+## where the hood was.
+func _hunter_burns(f: DuelField3D) -> void:
+	var hp := _hunter.position
+	var hood := hp + Vector3(0, 2.15 * HUNTER_SCALE, 0)
+	var light_from := Vector3(0.0, 2.5, -0.8)
+	f.flash_light(hp + Vector3(0, 1.6, 1.2), PAGE_PAPER, 9.0, 1.2, 9.0)
+	_wash(PAGE_PAPER, 0.3, 0.6)
+	await _wait(0.2)   # (its cards seen whole in its hand first)
+	if _skipping or not is_instance_valid(_hunter):
+		return
+	_hunter.burn_cards(light_from)
+	cards_burned = true
+	_snd("rite_cast", 0.7, -3.0)
+	_snd("cast_fire", 0.8, -4.0)
+	await _wait(0.3)
+	if _skipping or not is_instance_valid(_hunter):
+		return
+	# an arm up against it, and driven back
+	_hunter.reach_for(hood + Vector3(0.0, 0.25, 1.2), 0.35, "Left")
+	var back := hp + Vector3(0.0, 0.0, -0.55)
+	back.y = duel_height(back.x, back.z)
+	create_tween().tween_property(_hunter, "position", back, 0.5).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	f.cam_shake(6.0)
+	_snd("hound_whine", 0.55, -2.0)
+	await _wait(0.35)
+	if _skipping or not is_instance_valid(_hunter):
+		return
+	_snd("cast_fire", 0.6, -2.0)
+	_snd("storm_wind", 1.3, -6.0)
+	Haptics.kind(Haptics.LONG)
+	_hunter.burn_away(FIN_BURN, PAGE_PAPER)
+	await _wait(FIN_BURN * 0.92)
+	if _skipping or not is_instance_valid(_hunter):
+		return
+	# the hood, last, flares and is gone
+	var top := _hunter.position + Vector3(0, 2.1 * HUNTER_SCALE, 0)
+	f.flash_sprite(top, PAGE_PAPER, 2.2, 0.35)
+	f.flash_light(top, PAGE_PAPER, 7.0, 0.6, 8.0)
+	f.burst(top, Color(0.4, 0.38, 0.4), int(40 * DuelField3D.fx_scale()), 3.0, 1.6, 0.1, 0.4)
+	f.burst(top, PAGE_PAPER, int(26 * DuelField3D.fx_scale()), 4.0, 0.8, 0.08, 0.8)
+	_snd("ice_shatter", 0.7, -3.0)
+	hunter_burned = true
+	hunter_gone = true
+	# (its node is left up, hidden of itself (Hunter.burn_away), so the ash
+	# off it drifts on; the walk out puts it away)
+	await _wait(maxf(0.0, FIN_HUNTER_SECS - 0.95 - FIN_BURN * 0.92))
+
+
+## Orlanthe back up its column of light, smaller as it goes, and the column
+## flaring white behind it (the white comes down out of it: _duel).
+func _page_departs(f: DuelField3D) -> void:
+	var god := f.summon_standing
+	if god == null or not is_instance_valid(god):
+		return
+	page_departed = true
+	var at := Vector3(0.0, 0.0, -0.8)
+	f.pillar(at, PAGE_LIGHT, 40.0, 3.0, 1.6)
+	f.flash_light(at + Vector3(0, 3.0, 0), PAGE_PAPER, 10.0, 1.4, 16.0)
+	f.rise(at, PAGE_PAPER, int(50 * DuelField3D.fx_scale()), 1.6, 3.0)
+	_snd("ascend", 0.8, -2.0)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_property(god, "position:y", 14.0, 1.6).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_CUBIC)
+	tw.tween_property(god, "scale", Vector3.ONE * 0.45, 1.6).set_ease(Tween.EASE_IN)
+	if is_instance_valid(_page_beam):
+		tw.tween_method(func(v: float) -> void:
+			if is_instance_valid(_page_beam):
+				(_page_beam.material_override as ShaderMaterial).set_shader_parameter("k", v), PAGE_BEAM * 2.2, PAGE_BEAM * 3.5, 1.4)
+
+
+## The burn Gary's hunter goes in (Hunter.burn_away): its own paint
+## (albedo_tex, or `tint` alone), cut away by a ragged line that climbs it
+## from `y0` to `y1` (world heights: the hem to the top of the hood) as
+## `burn` goes from 0 to 1, charred just above the line and glowing along it
+## in `edge_col`. Made once.
+static var _burn_sh: Shader
+
+static func burn_shader() -> Shader:
+	if _burn_sh != null:
+		return _burn_sh
+	_burn_sh = Shader.new()
+	_burn_sh.code = """shader_type spatial;
+render_mode cull_disabled;
+uniform sampler2D albedo_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform bool has_tex = false;
+uniform vec4 tint : source_color = vec4(1.0);
+uniform float burn = 0.0;
+uniform float y0 = 0.0;
+uniform float y1 = 2.6;
+uniform vec3 edge_col : source_color = vec3(1.0, 0.93, 0.78);
+varying vec3 wpos;
+float h3(vec3 p) { return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
+float n3(vec3 p) {
+	vec3 i = floor(p); vec3 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	float a = mix(mix(h3(i), h3(i + vec3(1, 0, 0)), f.x), mix(h3(i + vec3(0, 1, 0)), h3(i + vec3(1, 1, 0)), f.x), f.y);
+	float b = mix(mix(h3(i + vec3(0, 0, 1)), h3(i + vec3(1, 0, 1)), f.x), mix(h3(i + vec3(0, 1, 1)), h3(i + vec3(1, 1, 1)), f.x), f.y);
+	return mix(a, b, f.z);
+}
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
+void fragment() {
+	vec4 c = has_tex ? texture(albedo_tex, UV) * tint : tint;
+	float hk = clamp((wpos.y - y0) / max(y1 - y0, 0.01), 0.0, 1.0);
+	float n = n3(wpos * 5.0) * 0.6 + n3(wpos * 13.0) * 0.4;
+	float v = hk * 0.78 + n * 0.22;
+	float cut = burn * 1.3 - 0.12;
+	if (burn > 0.0 && v < cut) { discard; }
+	float edge = burn > 0.0 ? 1.0 - smoothstep(0.0, 0.07, v - cut) : 0.0;
+	float charred = burn > 0.0 ? 1.0 - smoothstep(0.0, 0.2, v - cut) : 0.0;
+	ALBEDO = mix(c.rgb, vec3(0.015, 0.012, 0.012), charred * 0.85);
+	ROUGHNESS = 0.92;
+	EMISSION = edge_col * edge * edge * 6.0;
+}
+"""
+	return _burn_sh
 
 
 ## The ice breaks (14 November, Gary's yes to "shards near the Circle shatter
@@ -2455,7 +2850,10 @@ func _duel() -> void:
 			_climax_shot()
 		if f != null and not _climax and _asking == "" and _t - _cut_at > IDLE_WIDE and not clip_on:
 			_wide_shot()
-		if st.called >= 0.0 and ((st.struck >= 0.0 and _t - st.struck > CLIMAX_HOLD) or _t - st.called > 10.0):
+		# (15 November, evening) after the blow, the end of the duel plays out
+		# (_finale: the pack wiped out, the hunter burned away, Orlanthe gone
+		# back up its light) before the white
+		if st.called >= 0.0 and ((st.struck >= 0.0 and (finale_done or _t - st.struck > FINALE_MAX)) or _t - st.called > 10.0 + FINALE_MAX):
 			break
 		await get_tree().process_frame
 	# (Gary's shot of the last move, to its end: it ends on the white too)
@@ -3149,7 +3547,10 @@ const BAR_MAX := 0.1
 const BAR_CLIMAX := 0.025
 ## How long the Last Page's blow is held before the white comes (s; 0.5
 ## until 8 November, when the Last Page was barely seen before the white).
+## (15 November, evening: the end of the duel plays out after it, _finale;
+## FINALE_MAX the longest it may take before the white comes anyway.)
 const CLIMAX_HOLD := 1.0
+const FINALE_MAX := 9.0
 
 var _dir_f: DuelField3D = null
 var _cut_at := 0.0        # when the last cut came
@@ -3849,9 +4250,12 @@ func _stage_duellists(f: DuelField3D) -> void:
 ## he came). Bram stands in the bowl with the child in his coat, his back to
 ## the rim the hunter stood on, and the walk is the player's again (OUT_PACE
 ## of his pace: a tired man carrying a child): up out of the crater towards
-## the light, his prints the one line in the new snow. The hunter stands on
-## the rim behind, watching him go; turned round, it's there (he can't walk up
-## to it: HUNTER_KEEP).
+## the light, his prints the one line in the new snow. (15 November,
+## evening: the hunter burned away in the Last Page's light at the end of
+## the duel, _finale. Until then it stood on the rim behind him here,
+## watching him go, and went with a gust as he walked on: Gary, "makes the
+## hooded figure disappear". The rim it stood on is empty: a scorch in the
+## snow where it was, HUNTER_KEEP still keeping him off it.)
 ##
 ## On the way (HAND_AT from the crater's middle: over the lip, on level
 ## snow; on the bowl's steep side the camera, a spring behind him, hung low
@@ -3865,9 +4269,10 @@ func _stage_duellists(f: DuelField3D) -> void:
 ## it waits for nothing, and a press on the screen under it is the walk's
 ## and doesn't put it out.)
 ##
-## Past OUT_AT the walk is over. From behind the hunter on its rim: him
-## small beyond the far lip, walking on into the light, the line of his
-## prints up out of the bowl (_track); a gust, and the hunter isn't there.
+## Past OUT_AT the walk is over. From the rim where the hunter stood, low
+## over its scorch in the snow: him small beyond the far lip, walking on
+## into the light, the line of his prints up out of the bowl (_track); a
+## gust takes the last of its ash off the rim.
 ## Then behind him, stopped, his head down to the child: the mark's light
 ## comes up round him, the picture closes to black about it, and the mark is
 ## all that's left (SealMark.hold): the last picture of the memory, held
@@ -3954,7 +4359,9 @@ func _walk_out() -> void:
 	var grip := _set.get_node_or_null("Fan")
 	if grip != null:
 		grip.queue_free()
-	# the hunter on its rim, as it stood before the duel, its cards down
+	# where the hunter stood on its rim before the duel: gone (it burned
+	# away in the Last Page's light, _finale), a scorch in the snow and the
+	# last of its ash there (15 November, evening)
 	var rim := CRATER + _ad * RIM_AT
 	rim.y = height(rim.x, rim.z)
 	_hunter_at = rim
@@ -3963,8 +4370,9 @@ func _walk_out() -> void:
 	_hunter.lower_cards()
 	_hunter.drop_arm(0.01)
 	_hunter.look_at_dir(_bram.position - rim)
-	_hunter.visible = true
-	_hunter._set_fade(1.0)
+	_hunter.visible = false
+	hunter_gone = true
+	_scorch(rim)
 	_first_light(away)
 	_prints.clear()
 	_prints.long_lived(600.0)
@@ -3995,8 +4403,6 @@ func _walk_out() -> void:
 			_show_hint(HOW_WALK)
 		if not hand_caught and not _hand_on and _crater_dist() > HAND_AT and el > OUT_WHITE * 0.7:
 			_small_hand()
-		if is_instance_valid(_hunter):
-			_hunter.look_at_dir(_bram.position - _hunter.position)   # (it watches him go)
 	# (the small hand, to its end, and his line over it: the walk's still his
 	# under them)
 	while (_hand_on or _ov.passing) and not _skipping:
@@ -4015,13 +4421,13 @@ func _walk_out() -> void:
 	on = on.normalized()
 	_auto = on
 	_auto_on = true
-	# from behind the hunter on its rim: him small beyond the far lip, the
-	# line of his prints up out of the bowl
+	# from the rim where the hunter stood, low over its scorch: him small
+	# beyond the far lip, the line of his prints up out of the bowl
 	var side := on.cross(Vector3.UP)
 	if _track != null:
 		create_tween().tween_property(_track.material_override, "albedo_color:a", TRACK_SEEN, 0.01)
 	var far := _bram.position + on * 2.0 + Vector3(0, 1.0, 0)
-	# (on a long lens, its hood in the near corner of the picture; from
+	# (on a long lens, the scorch in the near corner of the picture; from
 	# whichever side of it, and how far back, the way to him is clearest of
 	# the ice)
 	var best := [1.0, 4.4]
@@ -4041,16 +4447,13 @@ func _walk_out() -> void:
 		_out = false
 		_auto_on = false
 		return
-	# a gust, and it isn't there
+	# a gust takes the last of its ash off the rim
 	_gust(hp)
+	_ash_off(hp)
 	_wind_to(-17.0, 0.5)
-	_hunter.fade_to(0.0, 1.1)
-	hunter_gone = true
 	await _wait(0.9)
 	_wind_to(-27.0, 1.2)
 	await _wait(OUT_GONE - 0.9)
-	if is_instance_valid(_hunter):
-		_hunter.visible = false
 	if _skipping:
 		_out = false
 		_auto_on = false
@@ -4110,6 +4513,65 @@ func _walk_out() -> void:
 	_out = false
 	if is_instance_valid(halo):
 		halo.queue_free()
+
+
+## Where the hunter stood on the rim (15 November, evening: it burned away in
+## the Last Page's light): a scorch in the new snow, dark and ragged, with a
+## thread of ash still lifting off it.
+var _scorch_node: Node3D
+
+func _scorch(at: Vector3) -> void:
+	if _scorch_node != null and is_instance_valid(_scorch_node):
+		_scorch_node.queue_free()
+	var root := Node3D.new()
+	root.position = at + Vector3(0, 0.03, 0)
+	_set.add_child(root)
+	_scorch_node = root
+	var q := QuadMesh.new()
+	q.size = Vector2(2.2, 2.2)
+	q.orientation = PlaneMesh.FACE_Y
+	var m := StandardMaterial3D.new()
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.albedo_texture = ShardSet.soft_tex()
+	m.albedo_color = Color(0.05, 0.045, 0.05, 0.72)
+	m.roughness = 1.0
+	var mi := MeshInstance3D.new()
+	mi.mesh = q
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(mi)
+	var wisp := DuelField3D.snow_particles(int(24 * DuelField3D.fx_scale()) + 6, Vector3(0.4, 0.05, 0.4), Vector3(-0.6, 0.7, 0.2))
+	(wisp.draw_pass_1 as QuadMesh).size = Vector2(0.06, 0.06)
+	var wm := (wisp.draw_pass_1 as QuadMesh).material
+	if wm is StandardMaterial3D:
+		wm = (wm as StandardMaterial3D).duplicate()
+		(wm as StandardMaterial3D).albedo_color = Color(0.22, 0.21, 0.22, 0.8)
+		(wisp.draw_pass_1 as QuadMesh).material = wm
+	wisp.lifetime = 2.5
+	root.add_child(wisp)
+
+
+## A gust taking the last of the hunter's ash off the rim.
+func _ash_off(at: Vector3) -> void:
+	var p := DuelField3D.snow_particles([60, 110, 170][clampi(quality, 0, 2)], Vector3(0.7, 1.2, 0.7), Vector3(-4.5, 1.2, 1.0))
+	p.one_shot = true
+	p.explosiveness = 0.7
+	p.lifetime = 2.4
+	p.preprocess = 0.0
+	(p.draw_pass_1 as QuadMesh).size = Vector2(0.07, 0.07)
+	var pm := (p.draw_pass_1 as QuadMesh).material
+	if pm is StandardMaterial3D:
+		pm = (pm as StandardMaterial3D).duplicate()
+		(pm as StandardMaterial3D).albedo_color = Color(0.2, 0.19, 0.2, 0.85)
+		(p.draw_pass_1 as QuadMesh).material = pm
+	p.position = at + Vector3(0, 1.2, 0)
+	_set.add_child(p)
+	p.emitting = true
+	get_tree().create_timer(3.0, false).timeout.connect(p.queue_free)
+	if _scorch_node != null and is_instance_valid(_scorch_node):
+		for c in _scorch_node.get_children():
+			if c is GPUParticles3D:
+				(c as GPUParticles3D).emitting = false
 
 
 ## How clear of the glass the straight way from `a` to `b` is, on the plan
@@ -4281,10 +4743,16 @@ func _track_step() -> void:
 ## hand comes up out of his coat like a shoot, catches its light, and then
 ## 'Come on then, Sprout.'": "yes but we want to clearly see the hand take
 ## the card", and then, shown it as one of the night's Sigils with the
-## game's card back on it: "card in hand should be the white card"). What
-## comes down is the white card: the blank card that comes down to the hero
-## at midnight twenty years on (InnRooms.blank_card; plain white, faintly
-## glowing, nothing on it), turning over as it flutters down. The hand is
+## game's card back on it: "card in hand should be the white card"; and that
+## evening: "we need to make it so the baby doesnt catch the white card let
+## it be a normal card that lands in his hand then turns white", turning
+## white straight away, for a moment). What comes down is one of the night's
+## own Sigils, its painted face to the camera (_make_held_card), turning over
+## as it flutters down. Once the small hand has it, the white climbs it from
+## the fingers to its top (_mote_white, HAND_WHITE_*): for a moment it's the
+## white card, the one that comes down to the hero at midnight twenty years
+## on, a sign of it; and as the hand takes it down into his coat the white
+## goes out of it, an ordinary card again. The hand is
 ## up and open, its back to the camera and its palm ahead; the card comes
 ## down beyond it and settles upright against the palm, so the hand is seen
 ## against the white of it; the fingers come together onto its near face and
@@ -4297,7 +4765,8 @@ func _track_step() -> void:
 ## same day, "we can see the side of the face it will be clear who he is
 ## anyway"), and HAND_LINE_AFTER the take he says it: "Come on then,
 ## Sprout." (COME_ON; said over the walk, _say_passing: nothing waits for
-## it). Then the hand takes the card down into his coat.
+## it), the card white in the small fist. Then the hand takes the card down
+## into his coat, the white going out of it.
 const HAND_AT := 7.9
 const HAND_LENS := 25.0
 ## The camera for it, from where he stands: to his left, up, behind (m).
@@ -4307,12 +4776,13 @@ const HAND_CAM := Vector3(0.27, 1.72, 1.1)
 ## starts.
 const TINY_AT := Vector3(0.02, 0.15, 0.05)
 const TINY_DOWN := 0.3
-## The white card: its size (of a falling Sigil's, CARD_SIZE: 8.2 by 11.5
-## cm, the game's own white card's shape and a little bigger than its 6.3 by
-## 8.8, to be seen in so small a hand), the colour of its light (the white
-## light's at midnight, Ashford._the_white_light), how bright its own face
-## is (the game's is 0.6: in this dawn that was the grey of the snow behind
-## it; at 1.3 its glow spread over the fingers on it), the glow about it and the light it gives, and where its middle sits
+## The card in the small hand: its size (of a falling Sigil's, CARD_SIZE:
+## 8.2 by 11.5 cm, a little bigger than the game's 6.3 by 8.8, to be seen in
+## so small a hand), the colour of its light once it's turned white (the
+## white light's at midnight, Ashford._the_white_light), how bright the white
+## card's own face was (LAST_CARD_SHINE: until the evening of 15 November,
+## when it was the white card that came down), the glow about it and the
+## light it gives, and where its middle sits
 ## in the hand's own frame once it's held (its lower edge down by the
 ## thumb, just clear of the palm, ahead of it).
 const LAST_CARD := 0.273
@@ -4323,8 +4793,16 @@ const LAST_CARD_LIGHT := 0.14
 const LAST_CARD_HELD := Vector3(0.0, 0.093, 0.0195)
 ## How long the card is held up in the fist before it's taken down, and how
 ## long after the take he speaks.
-const HAND_HOLD := 2.8
-const HAND_LINE_AFTER := 1.1
+const HAND_HOLD := 3.9
+const HAND_LINE_AFTER := 1.9
+## (15 November, evening) its turning white: how long after the take it
+## begins, how long the white takes to climb it, how long it takes to go out
+## of it as the hand goes down; and that it did (the tests read it).
+const HAND_WHITE_AFTER := 0.45
+const HAND_WHITE_IN := 1.15
+const HAND_WHITE_OUT := 0.9
+var card_whitened := false
+var _mote_white := 0.0
 var hand_caught := false
 ## The child's tune (Sfx "child_tune"): how long it is, and how many times
 ## it's been asked for (the tests read it).
@@ -4351,10 +4829,11 @@ func _small_hand() -> void:
 	_tiny_rise = 0.0
 	_tiny_curl = 0.0
 	_tiny.visible = true
-	_mote = _make_last_card(LAST_CARD_COL)
+	_mote = _make_held_card()
 	_set.add_child(_mote)
 	_mote_k = 0.0
 	_mote_heat = 1.0
+	_mote_white = 0.0
 	_tiny_step()
 	create_tween().tween_property(self, "_hand_k", 1.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_mote_k", 1.0, 2.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
@@ -4376,6 +4855,13 @@ func _small_hand() -> void:
 	hand_caught = true
 	# his head round to it
 	_hand_look = true
+	# (15 November, evening) and in the small hand the card turns white: the
+	# white climbs it from the fingers to its top, for a moment, a sign of the
+	# white card that comes down to him at midnight twenty years on
+	var wt := create_tween()
+	wt.tween_interval(HAND_WHITE_AFTER)
+	wt.tween_property(self, "_mote_white", 1.0, HAND_WHITE_IN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	wt.tween_callback(func() -> void: card_whitened = true)
 	await _wait(HAND_LINE_AFTER)
 	# "Come on then, Sprout.": where the name begins (over the walk: nothing
 	# waits for it)
@@ -4383,7 +4869,9 @@ func _small_hand() -> void:
 		out_line_said = true
 		_say_passing(COME_ON)
 	await _wait(HAND_HOLD - HAND_LINE_AFTER)
-	# back down into his coat with it
+	# back down into his coat with it, the white going out of it as it goes:
+	# an ordinary card again (the white was a moment's)
+	create_tween().tween_property(self, "_mote_white", 0.0, HAND_WHITE_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_tiny_rise", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _wait(1.05)
@@ -4411,8 +4899,9 @@ func _hand_point() -> Vector3:
 
 ## The small hand and its card, a frame of them: the hand carried over his
 ## left shoulder joint, its back to the camera behind him, up by _tiny_rise
-## and closed by _tiny_curl; the white card fluttering down beyond it to its
-## palm (_mote_k), turning over as it comes, then held upright against it.
+## and closed by _tiny_curl; the night's card fluttering down beyond it to
+## its palm (_mote_k), turning over as it comes, then held upright against
+## it, and turning white in it for a moment (_mote_white).
 func _tiny_step() -> void:
 	if _tiny == null or not is_instance_valid(_tiny) or not _tiny.visible or not (_bram is Figure3D):
 		return
@@ -4447,16 +4936,22 @@ func _tiny_step() -> void:
 		_mote.global_transform = Transform3D(held.basis.orthonormalized() * turn, start.lerp(held.origin, mk) + sway)
 		# (its own light, the glow about it and the light it gives: up as
 		# it's taken, _mote_heat)
+		# (a Sigil of the night's, turning white for a moment in the hand:
+		# _mote_white)
+		var wk := smoothstep(0.0, 1.0, _mote_white)
+		var col: Color = (_mote.get_meta("col", LAST_CARD_COL) as Color).lerp(LAST_CARD_COL, wk)
 		var card := _mote.get_node_or_null("Card") as MeshInstance3D
-		if card != null and card.material_override is StandardMaterial3D:
-			(card.material_override as StandardMaterial3D).emission_energy_multiplier = LAST_CARD_SHINE * _mote_heat
+		if card != null:
+			card.set_instance_shader_parameter("heat", _mote_heat)
+			card.set_instance_shader_parameter("white_k", _mote_white)
 		var gl := _mote.get_node_or_null("Glow") as MeshInstance3D
 		if gl != null and gl.material_override is StandardMaterial3D:
-			var gk := LAST_CARD_GLOW * _mote_heat
-			(gl.material_override as StandardMaterial3D).albedo_color = Color(LAST_CARD_COL.r * gk, LAST_CARD_COL.g * gk, LAST_CARD_COL.b * gk, 1.0)
+			var gk := LAST_CARD_GLOW * _mote_heat * (1.0 + 0.4 * wk)
+			(gl.material_override as StandardMaterial3D).albedo_color = Color(col.r * gk, col.g * gk, col.b * gk, 1.0)
 		var ml := _mote.get_node_or_null("Light") as OmniLight3D
 		if ml != null:
-			ml.light_energy = LAST_CARD_LIGHT * _mote_heat
+			ml.light_color = col
+			ml.light_energy = LAST_CARD_LIGHT * _mote_heat * (1.0 + 0.5 * wk)
 
 
 ## The small hand: a soft sleeve of the blanket's wool, a wrist, a palm,
@@ -4562,25 +5057,29 @@ func _make_tiny_hand() -> Node3D:
 	return root
 
 
-## The white card (Gary, 15 November: "card in hand should be the white
-## card"): the game's own (InnRooms.blank_card: plain white, glowing,
-## nothing on it, the card that comes down to the hero at midnight twenty
-## years on); a soft glow about it and the light it gives ("Card", "Glow",
-## "Light").
-func _make_last_card(col: Color) -> Node3D:
+## The card the small hand takes (15 November, evening, Gary: "we need to
+## make it so the baby doesnt catch the white card let it be a normal card
+## that lands in his hand then turns white", and, asked, that it turns white
+## straight away, for a moment, as a sign of what's coming). One of the
+## night's own Sigils (WhiteSky.sigil_card: the gold one, its painting the
+## Gilded Sentinel, HELD_CARD), its painted face to the camera, a little of
+## its own colour in the glow about it and the light it gives ("Card",
+## "Glow", "Light"). Its white (_mote_white) is the card shader's white_k:
+## the white climbs it from the small fingers to its top, and the glow and
+## the light go from its colour to the white card's (LAST_CARD_COL).
+## (Until then, that day: the white card itself, InnRooms.blank_card's look.)
+const HELD_CARD := 2
+func _make_held_card() -> Node3D:
 	var root := Node3D.new()
 	root.name = "LastLight"
-	# (its look is the game's white card's own, on a card's shape: that one
-	# is a plain box, and this close a card's rounded corners are what make
-	# a white oblong a card)
-	var white := InnRooms.blank_card(null)
-	var card := MeshInstance3D.new()
+	var col: Color = SIGIL_COLS[HELD_CARD]
+	var card := sigil_card(col)
 	card.name = "Card"
-	card.mesh = _card_shape_mesh()
-	card.material_override = white.material_override
-	card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	card.scale = Vector3.ONE * LAST_CARD
-	white.free()
+	# (its painted face to the camera behind him: as it's held, the card's
+	# back was the side the camera saw)
+	card.rotation.y = PI
+	card.set_instance_shader_parameter("white_k", 0.0)
 	root.add_child(card)
 	var glow := MeshInstance3D.new()
 	glow.name = "Glow"
@@ -4611,6 +5110,7 @@ func _make_last_card(col: Color) -> Node3D:
 	# shone through them till they were one bright blur)
 	l.position = Vector3(0.0, 0.09, -0.04)
 	root.add_child(l)
+	root.set_meta("col", col)
 	return root
 
 
@@ -4625,16 +5125,43 @@ const TITLE_OUT := 1.1
 var title_shown := false
 
 
+## (15 November, evening, Gary: "When it shows the title after Bram show the
+## background image aswell.") Behind the lettering now, the title screen's
+## own painting of the Throne, alive as it is there (TitleScreen.Backdrop:
+## its rivers of gold light, its rays, the eight lights, the cloud, the
+## motes), coming up out of the black with the name, a soft shade over it
+## so the gold lettering reads, and drifting slowly in towards the Throne
+## while it's up. The mark stays where it was held, over the Throne's
+## shaft of light. Without the painting (it isn't in the game yet) the
+## black, as before.
+const TITLE_PUSH := 0.12
+var title_backdrop := false
+
+
 func _title_card() -> void:
+	var card_root := Control.new()
+	card_root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card_root.modulate.a = 0.0
+	_root.add_child(card_root)
+	var back: TitleScreen.Backdrop = null
+	if TitleScreen.has_art():
+		back = TitleScreen.Backdrop.new()
+		back.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		card_root.add_child(back)
+		card_root.add_child(_title_shade())
+		title_backdrop = true
 	var card := TitleCard.new()
 	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	card.modulate.a = 0.0
-	_root.add_child(card)
+	card_root.add_child(card)
 	Music.play(["menu_theme"], 1.0)
 	title_shown = true
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(card, "modulate:a", 1.0, TITLE_IN).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(card_root, "modulate:a", 1.0, TITLE_IN).set_trans(Tween.TRANS_SINE)
 	tw.tween_method(card.set_sweep, -0.6, 1.8, TITLE_IN + 1.8)
+	if back != null:
+		# (a slow drift in towards the Throne while it's up)
+		tw.tween_property(back, "push", TITLE_PUSH, TITLE_IN + TITLE_HOLD + TITLE_OUT).set_trans(Tween.TRANS_SINE)
 	_tapped = false
 	var el := 0.0
 	while el < TITLE_IN + TITLE_HOLD:
@@ -4643,9 +5170,28 @@ func _title_card() -> void:
 		if _tapped and el > TITLE_IN + 0.8:
 			break
 	var out := create_tween()
-	out.tween_property(card, "modulate:a", 0.0, TITLE_OUT).set_trans(Tween.TRANS_SINE)
+	out.tween_property(card_root, "modulate:a", 0.0, TITLE_OUT).set_trans(Tween.TRANS_SINE)
 	await out.finished
-	card.queue_free()
+	card_root.queue_free()
+
+
+## The shade over the painting behind the title: deeper towards the foot,
+## where the name stands, and at the edges.
+func _title_shade() -> ColorRect:
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sh := Shader.new()
+	sh.code = """shader_type canvas_item;
+void fragment() {
+	float band = smoothstep(0.38, 0.62, UV.y) * (1.0 - smoothstep(0.86, 1.0, UV.y) * 0.3);
+	float edge = smoothstep(0.32, 0.0, min(min(UV.x, 1.0 - UV.x), min(UV.y, 1.0 - UV.y)) * 2.0);
+	COLOR = vec4(0.015, 0.012, 0.03, clamp(0.18 + band * 0.5 + edge * 0.35, 0.0, 0.85));
+}"""
+	var sm := ShaderMaterial.new()
+	sm.shader = sh
+	shade.material = sm
+	return shade
 
 
 ## The game's name, in the middle of the screen under the held mark: the
@@ -7111,6 +7657,13 @@ uniform sampler2D rune_tex : source_color, filter_linear_mipmap, repeat_disable;
 uniform float has_face = 0.0;
 instance uniform float phase = 0.0;
 instance uniform float heat = 1.0;
+// (15 November, evening) the hunter's cards burning at the end of the duel:
+// a flare, then charred from the edges in, eaten away with a glowing edge
+instance uniform float burn_k = 0.0;
+// (15 November, evening) the card in the child's hand turning white: the
+// white climbs it from its lower edge (where the small fingers hold it) to
+// its top, a line of light along the turning; 0 the card as it is, 1 white
+instance uniform float white_k = 0.0;
 void fragment() {
 	float part = COLOR.r;
 	vec2 uv = UV;
@@ -7141,10 +7694,29 @@ void fragment() {
 		em = b * mix(vec3(1.0), c * 1.4, 0.6) * (0.45 + 0.2 * pulse);
 	}
 	em += c * line * 2.6;
+	float glow = 0.0;
+	if (white_k > 0.0) {
+		float front = 1.08 - white_k * 1.22;
+		float wh = smoothstep(front - 0.06, front + 0.06, uv.y);
+		float band = (1.0 - smoothstep(0.0, 0.07, abs(uv.y - front))) * step(white_k, 0.999);
+		alb = mix(alb, vec3(0.93, 0.94, 0.96), wh);
+		em = mix(em, vec3(0.86, 0.9, 1.0) * 1.25, wh) + vec3(0.9, 0.94, 1.0) * band * 3.0;
+	}
+	if (burn_k > 0.0) {
+		float n = fract(sin(dot(floor(uv * vec2(14.0, 20.0)), vec2(12.9898, 78.233))) * 43758.5453);
+		float d = clamp(edge / 0.15, 0.0, 1.0) * 0.72 + n * 0.28;
+		float cut = smoothstep(0.3, 1.0, burn_k) * 1.15;
+		if (d < cut) { discard; }
+		glow = 1.0 - smoothstep(0.0, 0.09, d - cut);
+		float flare = burn_k < 0.25 ? burn_k / 0.25 : 1.0 - smoothstep(0.25, 0.55, burn_k);
+		float chr = smoothstep(0.2, 0.6, burn_k);
+		alb = mix(alb, vec3(0.03, 0.025, 0.025), chr * 0.9);
+		em = em * (1.0 + flare * 2.5) * (1.0 - chr * 0.95);
+	}
 	ALBEDO = alb;
 	ROUGHNESS = 0.32;
 	SPECULAR = 0.6;
-	EMISSION = em * heat;
+	EMISSION = em * heat + vec3(1.0, 0.62, 0.3) * glow * 5.0;
 }
 """
 
@@ -7759,6 +8331,205 @@ class Hunter:
 				(c as Node).queue_free()
 		_cards.clear()
 
+	## (15 November, evening: the end of the duel) its fan of cards torn out
+	## of its hand by the light coming from `from` (a place in the world):
+	## each thrown back and up, turning, flaring, and burned to nothing.
+	func burn_cards(from: Vector3) -> void:
+		var i := 0
+		for c in _cards:
+			if not is_instance_valid(c):
+				continue
+			var card := c as Node3D
+			var away := card.global_position - from
+			away.y = 0.0
+			away = away.normalized() if away.length() > 0.01 else Vector3.BACK
+			# (pushed back a little and up off the fan, turning, as they catch:
+			# then they flare, blacken and crumble into embers on the wind)
+			var to := card.position + (global_transform.basis.inverse() * away) * randf_range(0.4, 0.8) + Vector3(randf_range(-0.25, 0.25), randf_range(0.3, 0.6), 0.0)
+			var lag := 0.07 * i
+			var tw := card.create_tween()
+			tw.tween_interval(lag)
+			tw.tween_property(card, "position", to, 1.1).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+			tw.parallel().tween_property(card, "rotation", card.rotation + Vector3(randf_range(-1.6, 1.6), randf_range(-2.0, 2.0), randf_range(-1.6, 1.6)), 1.1)
+			tw.parallel().tween_property(card, "scale", Vector3.ONE * 0.5, 0.6).set_delay(0.5).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+			tw.tween_callback(card.queue_free)
+			_char(card, lag)
+			_ember_puff(card, lag + 0.35)
+			_ember_puff(card, lag + 0.8)
+			i += 1
+		_cards.clear()
+
+	## A card of white light catching: brighter, then charred dark.
+	func _char(card: Node3D, after: float) -> void:
+		if card is GeometryInstance3D:
+			var gi := card as GeometryInstance3D
+			var tw := gi.create_tween()
+			tw.tween_interval(after)
+			tw.tween_method(func(k: float) -> void:
+				if is_instance_valid(gi):
+					gi.set_instance_shader_parameter("burn_k", k), 0.0, 1.0, 1.05)
+		var l := OmniLight3D.new()
+		l.light_color = Color(1.0, 0.75, 0.45)
+		l.light_energy = 0.0
+		l.omni_range = 1.4
+		card.add_child(l)
+		var lt := l.create_tween()
+		lt.tween_interval(after)
+		lt.tween_property(l, "light_energy", 2.4, 0.2)
+		lt.tween_property(l, "light_energy", 0.0, 0.7)
+
+	## A puff of embers where `n` is, `after` s on.
+	func _ember_puff(n: Node3D, after: float) -> void:
+		get_tree().create_timer(after, false).timeout.connect(func() -> void:
+			if not is_instance_valid(n) or not n.is_inside_tree():
+				return
+			var p := _embers(18, 0.9, Vector3(0.12, 0.16, 0.05), Vector3(0, 1, 0), 1.5, 3.5, true)
+			var at := n.global_position
+			get_parent().add_child(p)
+			p.global_position = at
+			p.emitting = true
+			get_tree().create_timer(1.6, false).timeout.connect(p.queue_free))
+
+	## Burns away (15 November, evening: the end of the duel) from the hem up
+	## over `secs`, the edge of the burning lit in `col`, ash and embers
+	## streaming off it on the wind, the hood last: Gary's model's every
+	## surface given a burn of its own (its own paint, cut away by a rising
+	## ragged line, charred and glowing along it); the drawn hunter's cloak
+	## burns in its own shader. It's left hidden.
+	var burning := 0.0
+	var _burn_mats: Array = []
+	var _ash: GPUParticles3D
+	var _ember_p: GPUParticles3D
+
+	func burn_away(secs: float, col: Color) -> void:
+		var y0 := global_position.y - 0.05
+		var y1 := global_position.y + (_card_top + 0.25) * global_transform.basis.get_scale().y
+		if _burn_mats.is_empty():
+			for g in _geometry:
+				var mi := g as MeshInstance3D
+				if mi == null or not is_instance_valid(mi) or mi.mesh == null:
+					continue
+				mi.transparency = 0.0
+				for si in mi.mesh.get_surface_count():
+					var was := mi.get_active_material(si)
+					var bm := ShaderMaterial.new()
+					bm.shader = WhiteSky.burn_shader()
+					var tex: Texture2D = null
+					var tint := Color.WHITE
+					if was is BaseMaterial3D:
+						tex = (was as BaseMaterial3D).albedo_texture
+						tint = (was as BaseMaterial3D).albedo_color
+					elif was is ShaderMaterial:
+						for nm in ["albedo_tex", "albedo_texture", "tex", "texture_albedo"]:
+							var v = (was as ShaderMaterial).get_shader_parameter(nm)
+							if v is Texture2D:
+								tex = v
+								break
+					bm.set_shader_parameter("has_tex", tex != null)
+					if tex != null:
+						bm.set_shader_parameter("albedo_tex", tex)
+					bm.set_shader_parameter("tint", tint)
+					mi.set_surface_override_material(si, bm)
+					_burn_mats.append(bm)
+		for m in _burn_mats:
+			var sm := m as ShaderMaterial
+			sm.set_shader_parameter("y0", y0)
+			sm.set_shader_parameter("y1", y1)
+			sm.set_shader_parameter("edge_col", col)
+			sm.set_shader_parameter("burn", 0.0)
+		if _cloth != null:
+			_cloth.set_shader_parameter("y0", y0)
+			_cloth.set_shader_parameter("y1", y1)
+			_cloth.set_shader_parameter("edge_col", col)
+		# ash and embers off the burning edge, blown back off it on the wind
+		var tall := y1 - y0
+		_ash = _embers(int(90 * DuelField3D.fx_scale()), 1.6, Vector3(0.55, 0.12, 0.4), Vector3(0.0, 0.7, -1.0), 1.2, 3.2, false)
+		add_child(_ash)
+		_ember_p = _embers(int(140 * DuelField3D.fx_scale()), 1.0, Vector3(0.5, 0.1, 0.38), Vector3(0.0, 0.9, -0.6), 1.5, 4.0, true)
+		add_child(_ember_p)
+		for p in [_ash, _ember_p]:
+			(p as GPUParticles3D).position = Vector3(0, 0.1, 0)
+			(p as GPUParticles3D).emitting = true
+		var sm := get_node_or_null("Smoke") as GPUParticles3D
+		var tw := create_tween()
+		tw.tween_method(func(k: float) -> void:
+			burning = k
+			for m in _burn_mats:
+				(m as ShaderMaterial).set_shader_parameter("burn", k)
+			if _cloth != null:
+				_cloth.set_shader_parameter("burn", k)
+			# the ash comes off where it's burning: the line climbs it
+			var at_y := lerpf(0.05, tall / maxf(global_transform.basis.get_scale().y, 0.01), clampf(k * 1.08 - 0.04, 0.0, 1.0))
+			for p in [_ash, _ember_p]:
+				if is_instance_valid(p):
+					(p as GPUParticles3D).position.y = at_y
+			if sm != null and k > 0.45:
+				sm.emitting = false, 0.0, 1.0, secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await tw.finished
+		for p in [_ash, _ember_p]:
+			if is_instance_valid(p):
+				(p as GPUParticles3D).emitting = false
+		for g in _geometry:
+			if is_instance_valid(g):
+				(g as GeometryInstance3D).visible = false
+
+	## Ash (grey flakes) or embers (sparks, added as light), off a box
+	## `box` about it, going `dir` (its own frame) at `v0`..`v1` m/s.
+	func _embers(n: int, life: float, box: Vector3, dir: Vector3, v0: float, v1: float, hot: bool) -> GPUParticles3D:
+		var p := GPUParticles3D.new()
+		p.amount = maxi(6, n)
+		p.lifetime = life
+		p.emitting = false
+		p.local_coords = false
+		var pm := ParticleProcessMaterial.new()
+		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+		pm.emission_box_extents = box
+		pm.direction = dir.normalized()
+		pm.spread = 35.0
+		pm.initial_velocity_min = v0
+		pm.initial_velocity_max = v1
+		pm.gravity = Vector3(0, 0.6 if hot else -0.4, 0)
+		pm.damping_min = 0.4
+		pm.damping_max = 1.2
+		pm.turbulence_enabled = true
+		pm.turbulence_noise_strength = 1.2
+		pm.turbulence_noise_scale = 2.4
+		pm.scale_min = 0.4
+		pm.scale_max = 1.2
+		var cr := Curve.new()
+		cr.add_point(Vector2(0, 0.0))
+		cr.add_point(Vector2(0.15, 1.0))
+		cr.add_point(Vector2(1, 0.0))
+		var ct := CurveTexture.new()
+		ct.curve = cr
+		pm.alpha_curve = ct
+		var g := Gradient.new()
+		if hot:
+			g.set_color(0, Color(1.0, 0.97, 0.88))
+			g.set_color(1, Color(1.0, 0.55, 0.2))
+		else:
+			g.set_color(0, Color(0.32, 0.3, 0.3))
+			g.set_color(1, Color(0.12, 0.12, 0.13))
+		var gt := GradientTexture1D.new()
+		gt.gradient = g
+		pm.color_ramp = gt
+		p.process_material = pm
+		var q := QuadMesh.new()
+		q.size = Vector2(0.035, 0.035) if hot else Vector2(0.09, 0.07)
+		var m := StandardMaterial3D.new()
+		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		if hot:
+			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		m.albedo_texture = DuelFX.dot_tex()
+		m.vertex_color_use_as_albedo = true
+		m.albedo_color = Color(2.2, 2.0, 1.7, 1.0) if hot else Color(1, 1, 1, 0.85)
+		q.material = m
+		p.draw_pass_1 = q
+		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		return p
+
 	func _process(delta: float) -> void:
 		_t += delta
 		if _cloth != null:
@@ -7773,28 +8544,40 @@ shader_type spatial;
 render_mode cull_disabled, depth_prepass_alpha;
 uniform float t = 0.0;
 uniform float fade = 1.0;
+// (15 November, evening) burned away from the hem up, as Gary's model is (WhiteSky.burn_shader)
+uniform float burn = 0.0;
+uniform float y0 = 0.0;
+uniform float y1 = 2.8;
+uniform vec3 edge_col : source_color = vec3(1.0, 0.93, 0.78);
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
 }
 varying float hem;
+varying vec3 wpos;
 void vertex() {
 	// the lower it is, the more the wind takes it
 	hem = clamp(1.0 - (VERTEX.y + 1.0) / 2.0, 0.0, 1.0);
 	float wv = sin(t * 2.3 + VERTEX.y * 3.0 + VERTEX.x * 2.0) * 0.5 + sin(t * 3.7 + VERTEX.z * 4.0) * 0.3;
 	VERTEX.x -= hem * hem * (0.18 + wv * 0.08);
 	VERTEX.z += hem * hem * wv * 0.05;
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment() {
 	float n = n2(UV * vec2(18.0, 7.0) + vec2(0.0, t * 0.05));
 	// ragged at the hem
 	if (hem > 0.78 && n2(vec2(UV.x * 42.0, 3.0)) * 0.22 + 0.8 < hem) { discard; }
+	float hk = clamp((wpos.y - y0) / max(y1 - y0, 0.01), 0.0, 1.0);
+	float v = hk * 0.78 + n2(wpos.xz * 5.0 + wpos.y * 3.0) * 0.22;
+	float cut = burn * 1.3 - 0.12;
+	if (burn > 0.0 && v < cut) { discard; }
+	float edge = burn > 0.0 ? 1.0 - smoothstep(0.0, 0.07, v - cut) : 0.0;
 	vec3 c = mix(vec3(0.035, 0.035, 0.04), vec3(0.11, 0.11, 0.12), n);
-	ALBEDO = c;
+	ALBEDO = mix(c, vec3(0.01), edge);
 	ROUGHNESS = 0.95;
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	EMISSION = vec3(0.5, 0.58, 0.85) * rim * 0.35;
+	EMISSION = vec3(0.5, 0.58, 0.85) * rim * 0.35 + edge_col * edge * edge * 5.0;
 	ALPHA = fade;
 }
 """

@@ -55,7 +55,7 @@ const ACCOUNTS := [
 		]]},
 	{"id": "p_sigilfall", "title": "The Sigilfall", "place": "Ashford", "kind": "story", "when": "ash_marked", "open": "!ash_marked",
 		"parts": [[
-			["", "At midnight the sky tore open. You pulled Corin out from under a cart, and then one streak of white came down to you and no one else, and left a blank white card in your hand. The mark on your collarbone burned white."],
+			["", "At midnight the sky tore open. You pulled Corin out from under a cart, and then one streak of white came down to you and no one else, and left a blank white card in your hand. The mark on your neck burned white."],
 		]]},
 	{"id": "p_herald", "title": "The Pale Herald", "place": "Ashford", "kind": "story",
 		"when": "pro_part=taproom,burning,cellar,that_day,reckoning,tunnel | pro_tunnel_done | arrived_thornwood", "open": "!ash_marked",

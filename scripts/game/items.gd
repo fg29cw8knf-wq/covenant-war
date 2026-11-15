@@ -21,7 +21,7 @@ const ATTRIBUTE_CAP := 10
 const ITEMS := {
 	# ---- story items: shown while their flag is set -------------------------------
 	"blank_sigil": {"kind": "story", "name": "The white card", "flag": "ash_marked",
-		"text": "A pristine white card with nothing on it, impossibly heavy for its size. It fell into your hand at midnight in Ashford, and the mark on your collarbone blazed white. It can't be played, and it can't be put down. Bram calls it the Last Seal, and won't say much more."},
+		"text": "A pristine white card with nothing on it, impossibly heavy for its size. It fell into your hand at midnight in Ashford, and the mark on your neck blazed white. It can't be played, and it can't be put down. Bram calls it the Last Seal, and won't say much more."},
 	"corin_button": {"kind": "story", "name": "Corin's button", "flag": "corin_button",
 		"text": "An iron-plated button off Corin's new coat. \"Best button in Ashford. When I'm rich and horrible in the city, you can sell it and buy a cow.\""},
 	"bram_deck": {"kind": "story", "name": "Bram's old deck", "flag": "bram_deck",

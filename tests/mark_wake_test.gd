@@ -49,6 +49,10 @@ func _ready() -> void:
 	Game.new_game("Sprout", "")
 	Game.settings["first_steps"] = 0
 	Game.settings["seen_white_sky"] = true   # (so it can be skipped)
+	# ("look=<b|c|d>": as another of the four looks, Gary's standing rule)
+	for a in args:
+		if String(a).begins_with("look="):
+			DollArt.test_look = String(a).substr(5)
 	AshfordP1.test_memory = true
 	AshfordP1.mark_wakes = 0
 	world = World.new().setup("ashford", "green")
@@ -120,16 +124,51 @@ func _process(delta: float) -> void:
 			_size_k = (SealMark.SIZE / tall) / maxf(_held_size, 0.001)
 	if _wake_t >= 0.0:
 		var since := _t - _wake_t
-		for pair in [["4_attic_coming_up", 0.5], ["5_his_own_mark", 1.7], ["6_drawing_back", 3.5], ["7_the_bed", 5.8], ["8_waking", 8.4]]:
+		# (15 November, evening, Gary: "have camera draw back to show all of
+		# him": drawn back from the mark to the whole of him, head to foot,
+		# held, then round to the bed's shot as he stirs)
+		var whole_at := AshfordP1.MARK_WAKE_HOLD + AshfordP1.MARK_WAKE_BACK
+		for pair in [["4_attic_coming_up", 0.5], ["5_his_own_mark", 1.7], ["6_drawing_back", AshfordP1.MARK_WAKE_HOLD + AshfordP1.MARK_WAKE_BACK * 0.5],
+				["7_the_whole_of_him", whole_at + 0.4], ["8_round_to_the_bed", whole_at + AshfordP1.MARK_WAKE_WHOLE_HOLD + 1.2], ["9_waking", whole_at + 4.5]]:
 			if since > float(pair[1]):
 				_still(String(pair[0]))
+		if since > whole_at + 0.3 and _whole_in < 0.0:
+			_whole_in = _in_picture()
 		if _lesson or since > 40.0:
 			_finish()
+
+
+## How much of him is in the picture now, head to foot: his head, hips, both
+## hands and both feet each inside the screen (with a margin), as a share.
+var _whole_in := -1.0
+var _whole_misses: Array = []
+
+func _in_picture() -> float:
+	var pf = world.player_doll
+	if not (pf is Figure3D) or world.cam == null:
+		return 0.0
+	var view := world.get_viewport().get_visible_rect().size
+	var n := 0
+	var bones := ["Head", "Hips", "LeftHand", "RightHand", "LeftFoot", "RightFoot", "LeftToeBase", "RightToeBase"]
+	for b in bones:
+		var p := (pf as Figure3D).bone_pos(b)
+		if world.cam.is_position_behind(p):
+			_whole_misses.append(b)
+			continue
+		var px := world.cam.unproject_position(p)
+		if px.x > view.x * 0.03 and px.x < view.x * 0.97 and px.y > view.y * 0.05 and px.y < view.y * 0.95:
+			n += 1
+		else:
+			_whole_misses.append(b)
+	return float(n) / float(bones.size())
 
 
 func _finish() -> void:
 	_done = true
 	var fails: Array = []
+	print("mark_wake_test: the whole of him in the picture when it had drawn back: %.2f (out of it: %s)" % [_whole_in, str(_whole_misses)])
+	if _whole_in < 0.99:
+		fails.append("the camera didn't draw back to all of him (%.2f in the picture; out: %s)" % [_whole_in, str(_whole_misses)])
 	if not _held_seen:
 		fails.append("the mark never came up on the black")
 	if not _held_gone:

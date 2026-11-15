@@ -98,7 +98,7 @@ The times below are where each shot and line falls in its own part.
 |---|---|---|---|---|---|
 | wl_01 | 0:00.0 | 9 s |  | By the cart, one light falls differently: white, slow, silent. Time slows. It passes Bram across the green. It passes Corin. |  |
 | wl_02 | 0:09.0 | 6 s | yes | His open palm, and the white streak settling into it: a card with nothing on it. Every other light in the sky goes out at once. |  |
-| wl_03 | 0:15.0 | 4 s | yes | Close: under his collarbone the ash-grey broken seal he has hidden all his life blazes with white fire. He doubles over. |  |
+| wl_03 | 0:15.0 | 4 s | yes | Close: on the side of his neck the ash-grey broken seal he has hidden all his life blazes with white fire. He doubles over. |  |
 | wl_04 | 0:19.0 | 7 s |  | Corin, staring at the card, then down at his own empty hand. | 0:19.4 Corin: "It came to you."<br>0:22.6 Corin: "It just came to you." |
 | wl_05 | 0:26.0 | 7 s | yes | Bram shoves through the screaming crowd, his face pale with terror, throws his heavy wool coat over him and closes his fingers over the card. | 0:29.4 Bram: "Close your fist. Don't look at it. Hide it. Now." |
 | wl_06 | 0:33.0 | 5 s | yes | The card's glow dies between their hands. His vision swims, and he goes down into the mud. Black. |  |
@@ -116,7 +116,7 @@ The times below are where each shot and line falls in its own part.
 | her_07 | 0:49.0 | 6 s |  | In its mist, a knight kneeling in a sun chapel (Ser Aldric Vane). | 0:49.3 Herald: "Solhaven, for Solmaris: Ser Aldric Vane." |
 | her_08 | 0:55.0 | 6 s | yes | A grey scholar's face in the mist (Magister Tobias Crane); at the name, Bram's hand tightens on his shoulder. | 0:55.3 Herald: "Glyphmere, for Aldrith: Magister Tobias Crane." |
 | her_09 | 1:01.0 | 5 s |  | Five more faces in the mist, too quick to hold: a scarred warlord, a young king on an ice throne, a grinning captain, a silk mask in the dark, a blindfolded priestess. The camera stays on Ashford's faces. |  |
-| her_10 | 1:06.0 | 6 s | yes | A suffocating heat in his chest: the mark on his collarbone blazes bright white through his shirt. Every head turns. The Herald stops mid-word, and its hood snaps down onto him. |  |
+| her_10 | 1:06.0 | 6 s | yes | A suffocating heat in his throat: the mark on his neck blazes bright white above his collar. Every head turns. The Herald stops mid-word, and its hood snaps down onto him. |  |
 | her_11 | 1:12.0 | 17 s |  | The hood, facing him; its grinding voice stutters, as if the old laws are rewriting themselves. | 1:12.3 Herald: "The Covenant updates. An eighth Seat is forged. The holder of the Last Seal claims this position. Unmarked by any god, until challenged and broken... they are witnessed. I name the Unsworn." |
 | her_12 | 1:29.0 | 5 s |  | It dissolves into a thick grey mist, and the mist goes. |  |
 | her_13 | 1:34.0 | 7 s | yes | The silence on the green. Tam looks at the ground. Nell quietly pulls Tilly away; the villagers step back from him. Bram steps firmly into the empty space between him and the village. (The game takes over: the Hero note, and Bram.) |  |

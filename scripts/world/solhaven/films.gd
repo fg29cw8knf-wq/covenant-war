@@ -243,8 +243,9 @@ static func _ots(w: World, from: String, to: String, side := 1.0, fov := 30.0) -
 	Cine.over_shoulder(w, from, to, side, fov)
 
 
-## The player pulls their collar aside and the mark on the collarbone glows
-## white (Master Script v7: the mark is there, not on the hand).
+## The player pulls their collar aside and the mark on the side of the neck
+## glows white (Master Script v7: the mark is there, not on the hand; on the
+## neck, not the collarbone, since 15 November).
 static func _raise_mark(w: World) -> Node3D:
 	var glow := Node3D.new()
 	var l := OmniLight3D.new()
@@ -254,15 +255,19 @@ static func _raise_mark(w: World) -> Node3D:
 	glow.add_child(l)
 	var f = Cine.fig(w, "player")
 	w.player.add_child(glow)
-	glow.position = Vector3(0.05, 1.42, 0.18)
+	glow.position = Vector3(-0.05, 1.5, 0.12)
 	glow.name = "MarkGlow"
+	var mi := SealMark.on_hero(w)
+	if mi != null:
+		glow.global_position = mi.global_position + mi.global_transform.basis.z.normalized() * 0.06
 	if f is Figure3D:
-		# a hand up to the collar, drawing it aside
+		# his right hand up to the collar under it, drawing it down and aside
 		var collar := Node3D.new()
 		collar.name = "CollarHand"
-		glow.add_child(collar)
-		collar.position = Vector3(0.08, -0.02, 0.02)
-		(f as Figure3D).reach(collar, null, 0.4)
+		w.player.add_child(collar)
+		collar.global_position = glow.global_position + Vector3(0, -0.09, 0)
+		glow.set_meta("collar_hand", collar)
+		(f as Figure3D).reach(null, collar, 0.4)
 	SealMark.show_on(w, true)
 	SealMark.blaze(w, 0.9, 0.5)
 	w.create_tween().tween_property(l, "light_energy", 2.2, 0.6)
@@ -277,7 +282,7 @@ static func _lower_mark(w: World) -> void:
 	SealMark.blaze(w, 0.0, 0.6)
 	SealMark.show_on(w, false)
 	for c in w.player.get_children():
-		if c is Node3D and String(c.name) == "MarkGlow":
+		if c is Node3D and (String(c.name) == "MarkGlow" or String(c.name).begins_with("CollarHand")):
 			c.queue_free()
 
 
@@ -515,7 +520,7 @@ static func _gate_meeting(w: World) -> void:
 	Cine.look(w, "bram", HALE_AT)
 	var mark := _raise_mark(w)
 	Cine.shot(w, w.player.global_position + Vector3(1.6, 1.5, 1.4), w.player.global_position + Vector3(0.1, 1.45, -0.3), 30.0)
-	await _narrate(w, "You pull your collar aside. The mark on your collarbone glows white.")
+	await _narrate(w, "You pull your collar aside. The mark on your neck glows white.")
 	# he looks closer
 	Cine.shot(w, w.player.global_position + Vector3(-1.4, 1.7, 1.8), HALE_AT + Vector3(0, 1.4, 0), 32.0)
 	await Cine.walk(w, "hale_gate", HALE_AT + Vector3(0, 0, 2.6), 1.0)
@@ -569,7 +574,7 @@ static func _gate_after(w: World) -> void:
 			_front(w, "hale_gate", w.player.global_position, 28.0)
 			await Cine.say(w, "hale_gate", "The Hierarch's orders are —", 1.6)
 			Cine.shot(w, HALE_AT + Vector3(-1.2, 1.6, 0.2), w.player.global_position + Vector3(0, 1.5, 0), 30.0)
-			await _narrate(w, "You hold his eye. He's just opened his gate for a mark on your collarbone.")
+			await _narrate(w, "You hold his eye. He's just opened his gate for a mark on your neck.")
 			await _narrate(w, "Behind you are people whose homes burned the same night yours did.")
 			# a long breath; then, to his guards
 			_front(w, "hale_gate", w.player.global_position, 30.0)

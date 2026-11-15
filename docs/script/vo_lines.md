@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 568 lines, 18 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-15 (410839d); run it again after the words change.
+Every line the game speaks, in the order it's played: 568 lines, 18 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-15 (f3025a0); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -505,7 +505,7 @@ Every line the game speaks, in the order it's played: 568 lines, 18 of them reco
 | 0277 | Another refugee | We pray to the Rootmother where we're from. Seems that's the wrong god this year. | `83c9a0b6` |
 | 0278 | Warden Hale | Gate's closed. During the Turning, by the Hierarch's order, Solhaven admits sun-marked pilgrims and nobody else. | `d18fcd14` |
 | 0279 | Bram | We're not pilgrims. Show him, Sprout. | `fc9de3b9` |
-| 0280 | Narrator | You pull your collar aside. The mark on your collarbone glows white. | `1c36658a` |
+| 0280 | Narrator | You pull your collar aside. The mark on your neck glows white. | `224da3e3` |
 | 0281 | Warden Hale | They sell those in the Shardlands. Paint and a pinch of Spark-dust. Crown a dozen. | `f4fa0b76` |
 | 0282 | Bram | A Pale Herald called this one by name. In front of a whole village. | `5c587b61` |
 | 0283 | Warden Hale | Then it won't mind being tested. | `197b479b` |
@@ -520,7 +520,7 @@ Every line the game speaks, in the order it's played: 568 lines, 18 of them reco
 | 0287 | Warden Hale | Not paint. | `8316161e` |
 | 0288 | Warden Hale | The gate's open to you, and whoever's with you. | `99c2e1d9` |
 | 0289 | Warden Hale | The Hierarch's orders are — | `95120507` |
-| 0290 | Narrator | You hold his eye. He's just opened his gate for a mark on your collarbone. | `c0536be1` |
+| 0290 | Narrator | You hold his eye. He's just opened his gate for a mark on your neck. | `1078b674` |
 | 0291 | Narrator | Behind you are people whose homes burned the same night yours did. | `2f90e30e` |
 | 0292 | Warden Hale | Open it. All the way. | `90a98852` |
 | 0293 | Warden Hale | Get them off the road before His Grace is up. | `cd93875a` |

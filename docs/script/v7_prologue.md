@@ -163,10 +163,19 @@ Serpent closing its coils, and the hound bursts into smoke. The pack answers: th
 Veilfox's mirage, then the Warg's charge, and the Loomwarden comes down. Bram
 staggers, his arm going round the child, and goes down on one knee.)_
 
-**[BRAM] (new, 15 November; Gary: "17 yes"; on his knee, bent over the child in
+_(changed, 15 November, evening; Gary: "When Bram talks to baby during duel we
+need to make it clearer it's the baby he's talking to".)_
+
+_(The child cries out in his coat as the Loomwarden falls, and is still crying
+as he goes down. The picture cuts in close over his shoulder, down into his coat
+at the child in his arm, his head bowed to it. The fight falls away round them:
+the wind drops, the snow all but hangs.)_
+
+**[BRAM] (new, 15 November; Gary: "17 yes"; on his knee, softly, to the child in
 his coat):** "I've got you. I've got you."
 
-_(The night goes still.)_
+_(The crying quietens under his words. The child's mark answers with a soft
+light through his coat. The night stays still.)_
 
 [GAME] His hand again, once he has said it; the card he has just drawn is glowing.
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
@@ -202,7 +211,25 @@ hand raised, and stands there.)_
 
 _(The blow. It lands with Orlanthe standing over the Circle: every page in the air
 is flung out over the pack, the hounds are thrown back, the ice round the Circle
-bursts, and the screen burns white.)_
+bursts.)_
+
+_(new, 15 November, evening; Gary: "make the finish of the battle look more
+dramatic and powerful that wipes out the rest of the cards and makes the hooded
+figure disappear".)_
+
+_(Wide over the Circle from the pack's flank. A wall of Orlanthe's light rolls out
+across the snow from its feet. Each of the hunter's hounds still standing turns to
+glass and bursts as it passes; out in the dark beyond the Circle the pack's eyes
+go out, one pair after another.)_
+
+_(Close on the hunter as the light reaches it. Its fan of white cards is torn out
+of its hand and burns. It puts an arm up against the light and is driven back a
+step, and it burns away from the hem up, ash and embers streaming off it on the
+wind, the empty hood last of all. A last flare where the hood was; the ash blows
+away.)_
+
+_(Behind Bram: the Circle empty but for Orlanthe in its column of light. It goes
+back up the light, and the white comes down out of it.)_
 
 [GAME] Each of the three waits for the player; nothing else moves the duel on, and
 nothing the player can do loses it. Every move of the duel is written out and
@@ -219,41 +246,50 @@ Thornwood road (P5).
 _(Gary, 15 November: "i still feel something more is missing from the prologue",
 and his yes to the walk out, the small hand, the mark linking the two times, the
 title after the memory and a tune for the child. Until then the white went to
-black and nobody saw who won. Now it's seen that Bram got away; what became of
-the hunter still isn't.)_
+black and nobody saw who won. Now it's seen that Bram got away. (15 November,
+evening) The hunter burned away in the Last Page's light; whether that was its
+end isn't said.)_
 
 _(The white lifts. The storm is over and it's first light: the tear in the sky
 has closed, the stars are going, a low warm light lies along the horizon. Bram
 stands in the bottom of the crater with the child in his coat, his back to the
-rim the hunter stood on. Behind him, on that rim, the hunter stands watching.)_
+rim the hunter stood on. That rim is empty now: a dark scorch in the snow where it
+stood, a thread of ash lifting off it.)_
 
 [GAME] The player is Bram again. He walks only while it's held, a little slower
 than he came: up out of the crater towards the light, his prints the one line in
-the new snow. He can't walk up to the hunter.
+the new snow. He can't walk onto the scorch where it stood.
 
 _(changed, 15 November; Gary: "22 yes but we want to clearly see the hand take
 the card", "card in hand should be the white card", and, of the first picture of
 it, the "child's fingers are going through white card".)_
 
+_(changed again, 15 November, evening; Gary: "we need to make it so the baby
+doesnt catch the white card let it be a normal card that lands in his hand then
+turns white", and, asked, that it turns white straight away, for a moment, as a
+sign of what's coming.)_
+
 _(Over the lip, a last light comes drifting down to them, turning over as it
-comes: the white card, blank, glowing. A small hand comes up out of his coat by
-his shoulder like a shoot, open, its back to us. The card comes down beyond it
-and settles against its palm, the hand seen against the white of it; the
-fingers close together onto the card and the thumb goes round behind it. It
-stands up over the small hand, brighter for a moment as it's taken. The child's
-tune. Bram's head comes round to it; the side of his face is seen.)_
+comes: one of the night's own cards, gold, a painting on its face. A small hand
+comes up out of his coat by his shoulder like a shoot, open, its back to us. The
+card comes down beyond it and settles against its palm; the fingers close
+together onto the card and the thumb goes round behind it. It stands up over the
+small hand, brighter for a moment as it's taken. The child's tune. Then, from
+the small fingers up, the card turns white: for a moment it's the white card.
+Bram's head comes round to it; the side of his face is seen.)_
 
 **[BRAM] (new, 15 November; Gary: "7 yes"; to the child, the card still held
 up in its fist):** "Come on then, Sprout."
 
 _(The first time the name is heard: twenty years on the hero says "Bram still
 calls me Sprout." It's said over the walk and waits for nothing. Then the hand
-takes the white card down into his coat. It's the card that comes down to the
-hero again at midnight, twenty years later.)_
+takes the card down into his coat, and the white goes out of it as it goes: an
+ordinary card again. The white card itself comes down to the hero at midnight,
+twenty years later.)_
 
-_(Past the crater the walk is over. From behind the hunter on its rim: Bram small
+_(Past the crater the walk is over. From the rim where the hunter stood: Bram small
 beyond the far lip, walking on into the light, his line of prints up out of the
-bowl. A gust of snow, and the hunter isn't there.)_
+bowl. A gust takes the last of its ash off the rim.)_
 
 _(Behind Bram, stopped, his head down to the child. The mark's light comes up
 round him. The picture closes to black about it, and the mark is all that's left,
@@ -262,8 +298,10 @@ glowing: the last picture of the memory.)_
 **[NARRATOR – MORROWEN] (V.O., new):** "Twenty years later, the debt came due."
 
 _(Under the mark, the game's name comes up in gold with the main theme: THE
-COVENANT WAR / THRONE OF AGES (new, 15 November; Gary: "5 yes"). It fades; the
-mark stays.)_
+COVENANT WAR / THRONE OF AGES (new, 15 November; Gary: "5 yes"), and behind it
+the title screen's painting of the Throne, alive, drifting slowly in (15
+November, evening; Gary: "When it shows the title after Bram show the background
+image aswell"). It fades; the mark stays.)_
 
 _(The attic.)_
 
@@ -277,9 +315,13 @@ _(changed, 15 November; Gary: "4 yes": "The last picture of the memory is the
 child's mark glowing. The first picture of the attic is the same mark on the
 grown hero, in the same place on screen." The mark from the memory is still up
 on the black, over the caption. The attic comes up round it: close on the sleeping
-hero's chest, his own mark glowing through his shirt exactly where the child's
-was. The child's tune again. Then the picture draws back to the bed as his mark
-goes out, and he wakes.)_
+hero's neck, his own mark glowing there exactly where the child's was on the
+screen. The child's tune again. Then the camera draws back from it, out and up
+over the bed, as his mark goes out, until all of him lies in the picture, head to
+foot (changed, 15 November, evening; Gary: "When we first see player lying in bed
+have camera draw back to show all of him also the glowing mark is meant to be on
+his neck not chest"). It holds a moment, and goes on round to the bed as he
+wakes.)_
 
 _(The protagonist awakens on a cot under bare timber rafters. Pale morning light
 filters through a frost-cracked shutter. On the washbasin opposite the bed sits
@@ -297,7 +339,7 @@ _(The protagonist steps up to the mirror and presses E/X to inspect their reflec
 ### Interactive reflection hub
 
 _(The protagonist wipes the frost from the glass with a bare palm, studying their
-reflection. The ash-grey mark on his collarbone resembles a broken seal.)_
+reflection. The ash-grey mark on the side of his neck resembles a broken seal.)_
 
 **Q0 (required, changed: so it doesn't sound as if he's lost his memory):**
 _(The frost is already creeping back across the glass. Without thinking, he
@@ -742,7 +784,7 @@ _(A single streak of white light separates from the tear above. It plummets
 directly toward you. Time slows. The light crashes silently into your open palm.
 It feels impossibly heavy. A pristine, blank white card rests in your hand.)_
 
-_(An instant later, a searing agony erupts beneath your collarbone. The ash-grey
+_(An instant later, a searing agony erupts in the side of your neck. The ash-grey
 broken seal you've hidden your whole life blazes with white fire. Bram shoves his
 way through the screaming crowd. His face is pale with terror. He throws his
 heavy wool coat over you.)_
@@ -823,7 +865,7 @@ loan agreement."
 in Veyl will want it, and every bank that lends to them. That's all you need
 tonight." [GAME] (Morrowen's Ledger: "Bram knows more than he is saying.")
 
-**Option 3:** "But my chest was on fire. I thought it was going to kill me." _(Progress)_
+**Option 3:** "But the mark burned like fire. I thought it was going to kill me." _(Progress)_
 **[BRAM] (changed: Gary's line, 24 October):** "I thought so too. The resonance
 should have stopped your heart, but it didn't. Tell me, how do you feel now? Is
 the mark burning?"
@@ -859,7 +901,7 @@ Ser Aldric Vane for Solmaris, Magister Tobias Crane for Aldrith, and the other f
 too quick to hold.
 
 _(Suddenly, a suffocating heat rises in your chest. The Last Seal in your coat
-hums with a violent Resonance. The mark on your collarbone blazes bright white.
+hums with a violent Resonance. The mark on your neck blazes bright white.
 The Pale Herald stops speaking mid-sentence. It pauses in absolute silence. The
 featureless grey hood snaps directly down to lock onto you. Its grinding voice
 stutters, as if the ancient laws of Veyl are rewriting themselves in real-time.)_
@@ -1316,7 +1358,7 @@ first half** is the blank card: the signature space itself, which fell at the
 Turning and came to the one thing in Veyl it could recognise. **The second half**
 is the protagonist. Twenty years ago, the night the sky burned white over the
 Shards, the broken seal's impression was pressed into a newborn: the ash-grey
-mark on his collarbone is the wax, not a scar. That is why the gods have no
+mark on his neck is the wax, not a scar. That is why the gods have no
 mortgage on his soul and Ironvault has no receipt for his birth, why magic bends
 toward him, and why the card can't simply be taken from him (it has to be staged
 and lost in a sworn duel, or he has to die). Whoever brings the two halves

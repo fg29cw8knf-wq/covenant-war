@@ -1,23 +1,39 @@
 class_name SealMark
 extends RefCounted
-## The mark on the hero's collarbone (Master Script v6/v7): ash-grey, like a
-## broken seal, hidden under his collar all his life; it blazes white when the
-## Last Seal falls into his hand at midnight and again when the Pale Herald
-## turns to him. A small painted disc on the skin over the left collarbone,
-## carried on the Neck bone so it moves with him; drawn here (a broken ring
-## round a sigil, the break a jagged gap) until Gary paints one
+## The mark on the hero's neck (Master Script v6/v7 had it on the collarbone;
+## 15 November, Gary: "the glowing mark is meant to be on his neck not
+## chest"): ash-grey, like a broken seal, kept under his collar all his life;
+## it blazes white when the Last Seal falls into his hand at midnight and
+## again when the Pale Herald turns to him. A small painted disc on the skin
+## of the right side of his neck, under the jaw and above the collar, carried
+## on the Neck bone so it moves with him; drawn here (a broken ring round a
+## sigil, the break a jagged gap) until Gary paints one
 ## (assets/art/fx/seal_mark.png is used when it exists).
 ##
 ##   SealMark.show_on(w, true)     # seen (the mirror, the close-ups)
 ##   SealMark.blaze(w, 1.0, 0.4)   # white fire (0 back to ash-grey)
 
 const ART := "res://assets/art/fx/seal_mark.png"
-## Where it sits from the Neck bone, in the bone's own frame (m, rad): down
-## to the collarbone, forward onto the skin, a little to his left. Tuned on
-## Player A's model.
-const AT := Vector3(0.055, -0.075, 0.075)
-const ROT := Vector3(-0.35, 0.0, 0.0)
-const SIZE := 0.05
+## Where it sits from the Neck bone, in the bone's own frame (m, rad; the
+## bone's +x is his left): up the neck, out to his right and a little forward
+## onto the skin, turned to face out from it there. (His right: asleep in the
+## attic he lies on his back with his head to the west, and his right side
+## is the one turned to the room; his left is to the wall.) Tuned on Player
+## A's model; the other looks' necks have their own (AT_BY:
+## tests/mark_neck_look.gd shows each).
+## (Until 15 November: (0.055, -0.075, 0.075), turned (-0.35, 0, 0): down on
+## the collarbone, under his collar.)
+const AT := Vector3(-0.07, 0.077, 0.058)
+const ROT := Vector3(0.0, -0.87, 0.0)
+## Each look's own place and turn for it, where Player A's doesn't sit on
+## that look's neck (the skin found round each one's Neck bone: Player C's
+## neck is slimmer, Player D's shorter and thicker under his beard).
+const AT_BY := {
+	"player_b": [Vector3(-0.068, 0.093, 0.06), Vector3(0.0, -0.85, 0.0)],
+	"player_c": [Vector3(-0.03, 0.06, 0.066), Vector3(0.0, -0.43, 0.0)],
+	"player_d": [Vector3(-0.044, 0.055, 0.098), Vector3(0.0, -0.44, 0.0)],
+}
+const SIZE := 0.042
 const ASH := Color(0.42, 0.41, 0.4)
 const WHITE := Color(1.0, 0.98, 0.92)
 
@@ -28,7 +44,14 @@ static func _mark(w: World) -> MeshInstance3D:
 	var pf = w.player_doll
 	if not (pf is Figure3D) or (pf as Figure3D).model == null:
 		return null
-	var sk := (pf as Figure3D).model.find_child("Skeleton3D", true, false) as Skeleton3D
+	return mark_on(pf as Figure3D)
+
+
+## The mark on a figure (made the first time it's asked for, hidden).
+static func mark_on(fig: Figure3D) -> MeshInstance3D:
+	if fig == null or fig.model == null:
+		return null
+	var sk := fig.model.find_child("Skeleton3D", true, false) as Skeleton3D
 	if sk == null:
 		return null
 	var got := sk.find_child("SealMark", true, false) as MeshInstance3D
@@ -57,8 +80,9 @@ static func _mark(w: World) -> MeshInstance3D:
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ba.add_child(mi)
-	mi.position = AT
-	mi.rotation = ROT
+	var own: Array = AT_BY.get(fig._model_name, [AT, ROT])
+	mi.position = own[0]
+	mi.rotation = own[1]
 	mi.visible = false
 	return mi
 
@@ -242,9 +266,9 @@ static func frame(mark: Transform3D, size_m: float, fov: float, at: Vector2, siz
 	return Transform3D(Basis(side, up, n), pos)
 
 
-## The hero's mark seen through his shirt (on), as light is seen through
-## cloth: lying in bed his collar covers it (it's "hidden under his collar"),
-## and the attic's first picture is of it glowing. Off: under his collar again.
+## The hero's mark seen through whatever lies over it (on), as light is seen
+## through cloth: lying in bed his collar and the blanket may cover it, and
+## the attic's first picture is of it glowing. Off: as it was again.
 static func through(w: World, on: bool) -> void:
 	var mi := _mark(w)
 	if mi == null:
@@ -255,7 +279,7 @@ static func through(w: World, on: bool) -> void:
 
 
 ## Its light going out over `secs` where it's seen through his shirt
-## (through): fainter and gone, then under his collar again and put away.
+## (through): fainter and gone, then hidden again and put away.
 ## (Faded to ash-grey as blaze does it, it was left lying on the cloth, and
 ## on the blanket as the camera drew back, like a grey stamp.)
 static func go_out(w: World, secs: float) -> void:
@@ -282,6 +306,30 @@ static func go_out(w: World, secs: float) -> void:
 ## The hero's own mark, where it lies now (null if he has no model).
 static func on_hero(w: World) -> MeshInstance3D:
 	return _mark(w)
+
+
+## Where the hero's mark is (its middle, in the world), or `or_else` if he
+## has no model to carry it.
+static func where(w: World, or_else: Vector3) -> Vector3:
+	var mi := _mark(w)
+	return mi.global_position if mi != null else or_else
+
+
+## A close shot of the hero's mark: [camera, looking at], the camera `dist`
+## off it, out along its face and towards `fwd` (the way he faces) by
+## `toward`, so it's seen on his neck rather than square on (15 November: the
+## mark moved up onto his neck; the close shots of it looked under the Neck
+## bone, at the collarbone, where it had been). Null without his model.
+static func close_shot(w: World, dist: float, fwd: Vector3, toward := 0.45):
+	var mi := _mark(w)
+	if mi == null:
+		return null
+	var at := mi.global_position
+	var n := mi.global_transform.basis.z.normalized()
+	fwd.y = 0.0
+	fwd = fwd.normalized() if fwd.length() > 0.01 else n
+	var out := n.lerp(fwd, toward).normalized()
+	return [at + out * dist + Vector3(0, 0.03, 0), at]
 
 
 static var _soft_tex: Texture2D

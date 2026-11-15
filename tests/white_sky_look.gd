@@ -438,9 +438,15 @@ func _out_view(c: Vector3, hand_only := false) -> void:
 			await _key("hand_2_open")
 		if want.call("hand_3_taken", m._tiny_curl > 0.97, 0.3):
 			await _key("hand_3_taken")
+		# (15 November, evening: it's one of the night's own cards, and it turns
+		# white in the small hand for a moment, and back as it goes down)
+		if want.call("hand_3b_turning_white", m._mote_white > 0.45 and m._mote_white < 0.75):
+			await _key("hand_3b_turning_white")
+		if want.call("hand_3c_white", m.card_whitened, 0.2):
+			await _key("hand_3c_white")
 		if want.call("hand_4_come_on_then", m.out_line_said and m._ov.passing, 0.9):
 			await _key("hand_4_come_on_then")
-		if want.call("hand_5_going_down", m.hand_caught and m._tiny_curl > 0.97 and m._tiny_rise < 0.62):
+		if want.call("hand_5_going_down", m.hand_caught and m._tiny_curl > 0.97 and m._tiny_rise < 0.62 and m._mote_white < 0.6):
 			await _key("hand_5_going_down")
 			if hand_only:
 				break

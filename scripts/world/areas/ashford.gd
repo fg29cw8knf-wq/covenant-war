@@ -2708,7 +2708,7 @@ static func _herald_film(w: World) -> bool:
 ## stop, the sky tears, the shockwave shatters the carts; Corin is pinned
 ## under Tam's cart (Find Corin) and heaved clear; one white light comes down
 ## to the player, and leaves them a blank card and the mark blazing on their
-## collarbone. Each film (midnight, white_light) plays in place of its 3D
+## neck. Each film (midnight, white_light) plays in place of its 3D
 ## stretch when it's there.
 static func _midnight(w: World) -> void:
 	await Cine.begin(w)
@@ -3634,13 +3634,19 @@ static func _the_white_light(w: World) -> void:
 	w.set_meta("blank_card_glow", g)
 	Cine.shot(w, hand + pfwd * 0.7 + pside * 0.35 + Vector3(0, 0.22, 0), hand - pfwd * 0.1 + Vector3(0, 0.02, 0), 34.0)
 	await Cine.wait(w, 1.1)
-	# an instant later, a searing agony under the collarbone: the ash-grey
-	# broken seal he's hidden all his life blazes with white fire (v7)
+	# an instant later, a searing agony in the side of his neck: the ash-grey
+	# broken seal he's hidden all his life blazes with white fire (v7; on his
+	# neck since 15 November, Gary: "the glowing mark is meant to be on his
+	# neck not chest")
 	SealMark.show_on(w, true)
 	if pf is Figure3D:
 		(pf as Figure3D).pose("defeat", 0.3, 0.25)
 	var neck: Vector3 = (pf as Figure3D).bone_pos("Neck") if pf is Figure3D else p + Vector3(0, 1.45, 0)
-	Cine.shot(w, neck + pfwd * 0.75 + pside * 0.25 + Vector3(0, 0.02, 0), neck + Vector3(0, -0.08, 0) + pfwd * 0.05, 30.0)
+	var mk = SealMark.close_shot(w, 0.72, pfwd, 0.55)
+	if mk != null:
+		Cine.shot(w, mk[0], mk[1], 30.0)
+	else:
+		Cine.shot(w, neck + pfwd * 0.75 + pside * 0.25 + Vector3(0, 0.02, 0), neck + Vector3(0, 0.04, 0) + pfwd * 0.05, 30.0)
 	SealMark.blaze(w, 1.0, 0.2)
 	_sfx(w, "sigil_strike", 1.7)
 	w.flash(Color(0.95, 0.97, 1.0), 0.04, 0.6)
@@ -4062,7 +4068,7 @@ static func _herald_3d(w: World) -> Dictionary:
 	fo.tween_callback(flick.queue_free)
 	herald.lantern_flare(0.0)
 	# a suffocating heat in your chest; the Last Seal in your coat hums; the
-	# mark on your collarbone blazes bright white. The Herald stops mid-word.
+	# mark on your neck blazes bright white. The Herald stops mid-word.
 	var p := w.player.global_position
 	SealMark.show_on(w, true)
 	SealMark.blaze(w, 1.0, 0.3)

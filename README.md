@@ -2437,6 +2437,121 @@ thumb's way round the card's corner as it closes isn't seen in any); any of
 the eight lines with a recording (there are none); the cuts into and out of
 his Summon video.
 
+### His word to the child, the end of the duel, the title's painting, the mark on his neck (15 November, evening)
+
+Gary (15 November, evening): "When Bram talks to baby during duel we need to
+make it clearer it's the baby he's talking to. When the summon happens can we
+animate it anymore after the video and make the finish of the battle look more
+dramatic and powerful that wipes out the rest of the cards and makes the hooded
+figure disappear. When it shows the title after Bram show the background image
+aswell. When we first see player lying in bed have camera draw back to show all
+of him also the glowing mark is meant to be on his neck not chest." And, while
+it was being built: "we need to make it so the baby doesnt catch the white card
+let it be a normal card that lands in his hand then turns white" (asked, he
+chose: it turns white straight away, in the small hand, for a moment).
+
+- **His word to the child** (`WhiteSky._to_the_child`, `TO_CHILD_*`,
+  `_hush_child`). 0.55 s after his knee lands the picture cuts in at his left
+  side, 1.6 m off: the old man bowed over the bundle in his arm, the child's
+  face in its hood under his, and he says it ("I've got you. I've got you.").
+  The fight falls away for it (wind, music and snow down); the child, crying
+  since his Totem fell (`_bram_loses_one` now leaves the crying going when he
+  goes down), quietens under his words; its mark answers with a soft light
+  (`TO_CHILD_GLOW`). The side of his face is seen, as Gary allowed for the walk
+  out; from behind or above, his shoulders hid the child (seven places were
+  tried and looked at). The storm comes back only if the hush before the Last
+  Page hasn't come in meanwhile (in this duel it follows at once).
+- **The end of the duel** (`WhiteSky._finale`, `_wipe_pack`, `_wipe_one`,
+  `_put_out_eyes`, `_hunter_burns`, `_page_departs`; `Hunter.burn_cards`,
+  `burn_away`, `_embers`; `WhiteSky.burn_shader()`; the card shader's
+  `burn_k`). After the blow (`_last_page_lands`, which calls it): FIN_HOLD on
+  Orlanthe; a cut to the wide over the Circle (`FIN_WIDE`) as a wall of its
+  light rolls out from its feet (`FIN_WAVE_SPEED`), each of the hunter's
+  Totems still standing breaking in the game's own way as it passes
+  (`DuelField3D.crystal_death`, tinted; one the duel has already knocked out
+  is left to the screen), the pack's eyes in the dark going out; a cut to the
+  hunter close (`FIN_ON_HUNTER`): its fan of cards catches, chars from the
+  edges in and crumbles to embers, it puts an arm up against the light and is
+  driven back a step, and it burns away from the hem up (its own paint cut
+  away by a ragged glowing line, ash and embers streaming off it on the wind,
+  the hood last), a last flare where the hood was; then wide behind Bram
+  (`FIN_END`): the Circle empty, Orlanthe goes back up its column of light and
+  the white comes down out of it. About 7 s; the duel's loop waits for
+  `finale_done` (at most `FINALE_MAX`). Nothing of the rules changes: Bram's
+  side holds after the Last Page and the hunter never moves again.
+- **The hunter is gone on the walk out.** It isn't put back on its rim: a
+  scorch in the snow where it stood with a thread of ash off it (`_scorch`),
+  and the shot from the rim (the same place, the same long lens) has a gust
+  take the last of the ash (`_ash_off`). HUNTER_KEEP no longer applies (the
+  check is on its being seen).
+- **The title's painting** (`_title_card`, `_title_shade`). The title screen's
+  own living painting of the Throne (`TitleScreen.Backdrop`) comes up behind
+  the name with it, under a soft shade so the gold reads, drifting in towards
+  the Throne (`TITLE_PUSH`); the mark stays where it's held, over the Throne's
+  shaft of light. Without the painting, black as before.
+- **The attic's first shot draws back to all of him** (`AshfordP1._wake_on_the_mark`,
+  `_whole_shot`, `MARK_WAKE_*`, `WHOLE_*`). From his mark the camera goes
+  straight back off his neck and then out and up over the room's side of the
+  bed in one move (a curve, its eyes going from the mark to the middle of him,
+  the picture turning upright), 3.4 s, to a shot of him head to foot
+  (`WHOLE_FILL` of the picture's width, from `WHOLE_TILT` up, under the collar
+  beams), held 0.9 s; then, as he stirs, it glides round to the bed's own shot
+  (`Cine.move`), where he gets up as before. No more cut through the dark.
+- **The blanket a little higher over his middle** (`InnRooms.BLANKET_BELLY`):
+  the point of his waistcoat and his belt buckle came through it, seen now.
+- **The mark is on his neck** (`SealMark.AT`, `ROT`, `AT_BY`, `SIZE`; `mark_on`,
+  `where`, `close_shot`). On the right side of his neck, under the jaw, above
+  the collar (his right: asleep he lies on his back, head to the west, and his
+  right side is the one to the room; his left is to the wall). Each look's
+  own place (`AT_BY`): Player B's a little higher, above his turned-up collar;
+  C's further forward, clear of her braid; D's at the front of the throat,
+  clear of his beard and scarf (`tests/mark_neck_look.gd`). The close shots of
+  it (the midnight blaze, `Ashford`; the bed's edge the morning after,
+  `AshfordNight`) look at it where it is (`close_shot`), not under the Neck
+  bone; at Solhaven's gate the right hand draws the collar down from it
+  (`Films._raise_mark`). Every word that said "collarbone" says "neck": the
+  narration at the gate ("The mark on your neck glows white."), the Ledger,
+  the Last Seal's description, Fen's painted mark, the films' shot list, the
+  master script; the player's "But my chest was on fire." is "But the mark
+  burned like fire." The recording sheet is written again (0280 and 0290 have
+  new ids; neither was recorded).
+- **The card in the small hand** (`_make_held_card`, `HELD_CARD`,
+  `_mote_white`, `HAND_WHITE_*`; the card shader's `white_k`). What comes down
+  is one of the night's own Sigils, the gold one (the Gilded Sentinel's
+  painting), its painted face to the camera. Once the hand has it the white
+  climbs it from the fingers to its top (a line of light along the turning),
+  its glow and light going from gold to the white card's; it's white while he
+  says "Come on then, Sprout." (`HAND_LINE_AFTER` 1.9 s, `HAND_HOLD` 3.9 s),
+  and as the hand takes it down into his coat the white goes out of it. The
+  white card itself still first comes at midnight.
+
+**Checked:** `load_all`: 0 failed. `white_sky_test` whole, headless: PASS (the
+shot of him and the child true, the child crying as it began true; 2 of the
+pack wiped out, the cards burned, the hunter burned away, Orlanthe gone back
+up, done; the walk out with the hunter gone; the mark and the title; new
+checks: the card turned white and wasn't still white going into his coat; the
+title had the painting behind it). Drawn (Forward+ through lavapipe):
+`white_sky_test ... duel keys` (the whole duel, the finale, the walk out, the
+mark and the title: PASS, 62 stills), `page keys` again after the first look
+(the wide moved out, the cards' burn slowed and made visible, smaller embers),
+`page keys knee_only` three times for his word to the child (and once with
+seven camera places tried), `white_sky_look ... hand` (the gold card coming
+down, taken, turning white, white under his line, gold again going down).
+`mark_neck_look` (new) for all four looks, with and without the mark drawn
+through what's over it. `mark_wake_test` drawn (compatibility: Forward+ was
+killed for memory loading Ashford on this machine) and headless as looks b, c
+and d: PASS, "the whole of him in the picture when it had drawn back: 1.00".
+`white_sky_test ... body`: PASS (its findings are Bram's hands in the bundle
+as he lifts and carries it, as before). `voice_lines_test`,
+`first_launch_test`, `summon_video_test`, `best_picture_test`,
+`story_film_test`, `haptics_test`, `white_sky_play_probe`, `duel_sim -- 100`,
+`duel_monkey`: ok. `after_midnight_shot ... bed mark` (new `mark`: stills
+while the mark is shown): the morning-after close shot has the mark on the
+side of his neck under his jaw. **Not checked:** a real Mac or iPhone;
+anything moving (judged from stills and timings); the midnight blaze's close
+shot of the mark (its framing comes from the mark's own place now); the gate
+at Solhaven (his right hand to his collar).
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

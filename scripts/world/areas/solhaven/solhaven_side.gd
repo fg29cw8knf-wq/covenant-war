@@ -961,7 +961,7 @@ static func talk_fen(w: World, _npc = null) -> void:
 	await _cut(w, {"player": [SQ.fen_player, "fen"]}, SQ.fen_cam, SQ.fen_look, 38.0)
 	for i in 5:
 		_face(w, "crowd_%d" % (i + 1), SQ.fen)
-	await _see(w, "A crowd round a fountain. A young man stands on the rim with a white mark painted at his collarbone, touching people's foreheads for a copper each.")
+	await _see(w, "A crowd round a fountain. A young man stands on the rim with a white mark painted on his neck, touching people's foreheads for a copper each.")
 	await _say(w, "fen", "Owe nothing! Kneel to nobody! The Unsworn's blessing, a copper a time, and nobody's hand on your collar after!")
 	_face(w, "fen", "player")
 	for i in 5:
