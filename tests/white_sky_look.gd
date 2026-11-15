@@ -22,10 +22,11 @@ extends Node
 ##
 ## (15 November) "fight": the three flashes of the fight before "The end of
 ## the duel", two stills of each. "out": the walk out after the Last Page
-## (first light, the small hand, the hunter watching and gone, the mark's
-## light, the mark held on black, Morrowen's line and the title). Both play
-## the pick-up first and draw only the frames they keep; five to seven
-## minutes each.
+## (first light, the small hand taking its card and his line over it, the
+## hunter watching and gone, the mark's light, the mark held on black,
+## Morrowen's line and the title). Both play the pick-up first and draw only
+## the frames they keep; five to seven minutes each. "hand" (not one of
+## "all"): "out" as far as the hand going back down with its card.
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
 ## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
@@ -111,7 +112,7 @@ func _tear() -> void:
 
 
 func _run() -> void:
-	var names: Array = Array(OS.get_cmdline_user_args()).slice(1).filter(func(a): return ALL.has(String(a)))
+	var names: Array = Array(OS.get_cmdline_user_args()).slice(1).filter(func(a): return ALL.has(String(a)) or String(a) == "hand")
 	if names.is_empty():
 		names = ALL.duplicate()
 	await get_tree().process_frame
@@ -311,6 +312,8 @@ func _run() -> void:
 		await _shot("lead_4_closed", 14)
 	if names.has("out"):
 		await _out_view(c)
+	elif names.has("hand"):
+		await _out_view(c, true)   # (the walk out as far as the small hand has taken its card)
 	if names.has("fight"):
 		await _fight_view()
 	print("WHITE SKY LOOK: done in ", out)
@@ -379,7 +382,7 @@ func _fight_view() -> void:
 ## light in the bowl, the climb, the small hand and its light, over the lip,
 ## the hunter watching from its rim and gone, the mark's light round him,
 ## the mark held on black, Morrowen's line under it and the title.
-func _out_view(c: Vector3) -> void:
+func _out_view(c: Vector3, hand_only := false) -> void:
 	DrawHold.start_keys()
 	var kd := m._kneel_dir(Vector3.FORWARD)
 	var bottom := m._kneel_spot(kd)
@@ -405,10 +408,8 @@ func _out_view(c: Vector3) -> void:
 		await m._walk_out()
 		done[0] = true
 	run.call()
+	Input.action_press("move_up")
 	_tt = 0.0
-	# (15 November, later: he stands through the first of "Come on then,
-	# Sprout.", his head down to the child, then sets off under it)
-	var walking := false
 	var got := {}
 	var at := {}
 	var want := func(nm: String, when: bool, after := 0.0) -> bool:
@@ -423,23 +424,26 @@ func _out_view(c: Vector3) -> void:
 	while not done[0] and _tt < 90.0:
 		await get_tree().process_frame
 		_tt += 0.1
-		if want.call("out_0_come_on_then", m.out_line_said, 1.0):
-			await _key("out_0_come_on_then")
-		if not walking and (got.has("out_0_come_on_then") or _tt > 6.0):
-			walking = true
-			Input.action_press("move_up")
-		if want.call("out_0b_setting_off", walking, 0.9):
-			await _key("out_0b_setting_off")
-		if want.call("out_1_first_light", _tt > 3.4 and walking, 1.6):
+		if want.call("out_1_first_light", _tt > 3.4):
 			await _key("out_1_first_light")
 		if want.call("out_2_climbing", _tt > 3.4 and m._crater_dist() > 3.2 and m._hand_k < 0.01):
 			await _key("out_2_climbing")
-		if want.call("hand_1_light_coming", m._hand_k > 0.97 and m._tiny_rise < 0.2):
-			await _key("hand_1_light_coming")
+		# (15 November, later: the card coming down, the open hand, the take,
+		# his line over it held in the fist, and down into his coat)
+		if want.call("hand_1_card_coming", m._hand_k > 0.6 and m._mote_k > 0.35 and m._tiny_curl < 0.1):
+			await _key("hand_1_card_coming")
+		if want.call("hand_1b_card_nearer", m._hand_k > 0.9 and m._mote_k > 0.7 and m._tiny_curl < 0.1):
+			await _key("hand_1b_card_nearer")
 		if want.call("hand_2_open", m._tiny_rise > 0.97 and m._tiny_curl < 0.1, 0.1):
 			await _key("hand_2_open")
-		if want.call("hand_3_closed", m._tiny_curl > 0.97, 0.5):
-			await _key("hand_3_closed")
+		if want.call("hand_3_taken", m._tiny_curl > 0.97, 0.3):
+			await _key("hand_3_taken")
+		if want.call("hand_4_come_on_then", m.out_line_said and m._ov.passing, 0.9):
+			await _key("hand_4_come_on_then")
+		if want.call("hand_5_going_down", m.hand_caught and m._tiny_curl > 0.97 and m._tiny_rise < 0.62):
+			await _key("hand_5_going_down")
+			if hand_only:
+				break
 		if want.call("out_3_over_the_lip", m.hand_caught and m._hand_k < 0.02 and m._crater_dist() > 8.6):
 			await _key("out_3_over_the_lip")
 		if want.call("far_1_watching", m.walked_out, 1.4):
@@ -458,6 +462,8 @@ func _out_view(c: Vector3) -> void:
 	Input.action_release("move_up")
 	print("white_sky_look: walked out %s, the small hand %s, the hunter gone %s, the mark held %s, the tune %d, %.1f s" % [
 		str(m.walked_out), str(m.hand_caught), str(m.hunter_gone), str(m.mark_held), m.tune_played, _tt])
+	if hand_only:
+		return
 	await _key("mark_4_held")
 	var closed := [false]
 	var end := func() -> void:

@@ -9,7 +9,10 @@ extends CanvasLayer
 ##      over the snow, Morrowen's line ("Every soul in my book starts with a
 ##      debt...") over it.
 ##   2. The sky tears white over the Shardlands and cards rain down as Sigils.
-##   3. The player walks as Bram, seen from behind and never his face, through
+##   3. The player walks as Bram, seen from behind and never his face (15
+##      November, Gary: "we can see the side of the face it will be clear who
+##      he is anyway": where his head turns to the child the side of it is
+##      seen, _small_hand; from the front it still isn't shown), through
 ##      the storm towards the light of a crater: free to walk about (the pad,
 ##      the keys, a tap on the snow) from the first moment, while Morrowen
 ##      speaks; once she stops the sky tears over him as he walks (nothing
@@ -74,9 +77,11 @@ const OPEN := {"who": "morrowen", "say": "Every soul in my book starts with a de
 const HUSH := {"who": "bram", "say": "Hush, now. I've got you."}
 const NOT_THIS := {"who": "bram", "say": "Not this one."}
 const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the debt came due."}
-## (15 November, Gary's "7 yes": where "Sprout" begins) to the child in his
-## coat as the walk out of the crater starts: the first time the name is
-## heard, twenty years before the attic's "Bram still calls me Sprout."
+## (15 November, Gary's "7 yes": where "Sprout" begins) to the child on the
+## walk out of the crater, when its small hand has come up out of his coat
+## like a shoot and taken the white card (_small_hand): the first time the
+## name is heard, twenty years before the attic's "Bram still calls me
+## Sprout."
 const COME_ON := {"who": "bram", "say": "Come on then, Sprout."}
 ## What he says under his breath as each of the three moves is made (12
 ## November, Gary's yes to "a short remembered Bram line at each move"): the
@@ -92,6 +97,19 @@ const MOVE_LINES := {
 ## called (the "call" line above is the Unspent Hour's: an hour he hasn't got).
 const CALL_LINES := {
 	"weft_serpent": {"who": "bram", "say": "Hold them off. Just a little longer."},
+}
+## (15 November, Gary's yes to 16, 17 and 18; he'd asked "is it worth adding
+## dialogue during the duel to make it more action and story led?") His
+## lines at three of the duel's beats: when the first of his Totems breaks;
+## down on his knee, to the child in his coat; and coming up off it, to the
+## hunter, before the Last Page is called ("Write it in my name, then."
+## follows it). With the moves' lines the duel has six of his: Not yet. /
+## One more hour. / Get back from him. / I've got you. / You'll not have
+## him. / Write it in my name, then.
+const BEAT_LINES := {
+	"first_loss": {"who": "bram", "say": "Not yet. Not yet."},
+	"knee": {"who": "bram", "say": "I've got you. I've got you."},
+	"rise": {"who": "bram", "say": "You'll not have him."},
 }
 const CAPTION := ["The Shardlands", "Twenty years ago."]
 ## The falling Sigils' colours (the village's, Ashford.SIGIL_COLS).
@@ -524,9 +542,10 @@ func _say_over(line: Dictionary) -> void:
 
 ## A line said over the walk that neither waits for a tap nor takes one
 ## (CineOverlay.say_over): up for its recording's length, or with none for
-## its reading time, and gone by itself. A press on the screen while it's up
-## is the walk's (_say's line would be tapped past by it).
-func _say_passing(line: Dictionary) -> void:
+## its reading time (`brisk`: a shorter one), and gone by itself. A press on
+## the screen while it's up is the walk's (_say's line would be tapped past
+## by it).
+func _say_passing(line: Dictionary, brisk := false) -> void:
 	if _skipping:
 		return
 	var who := String(line.who)
@@ -536,6 +555,8 @@ func _say_passing(line: Dictionary) -> void:
 	var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
 	var speed := maxf(0.4, float(Game.settings.get("text_speed", 1.0)))
 	var read := (CineOverlay.READ_BASE + text.length() * CineOverlay.READ_PER_CHAR) / speed
+	if brisk:
+		read = (1.2 + text.length() * 0.045) / speed   # (a word in a fight: as the moves' lines, _move_line)
 	await _ov.say_over(nm, text, secs if secs > 0.0 else read)
 
 
@@ -2005,6 +2026,8 @@ func _bram_loses_one() -> void:
 	if f == null or not is_instance_valid(f):
 		return
 	_bram_lost += 1
+	if _bram_lost == 1:
+		_beat_line("first_loss", 0.45)   # ("Not yet. Not yet.")
 	var down := _bram_lost >= KNEE_AT and not _kneeling and not knelt and _bram is Figure3D
 	if down:
 		_carry_child(_bram as Figure3D)
@@ -2092,14 +2115,42 @@ func _to_knee() -> void:
 	f.cam_shake(4.0)
 	_snd("step_snow", 0.7, 4.0)
 	Haptics.kind(Haptics.BLOW)
+	_beat_line("knee", 0.4)   # (bent over the child: "I've got you. I've got you.")
+
+
+## His line at one of the duel's beats (BEAT_LINES), `after` a moment: said
+## over the film as it runs (_say_passing: it holds nothing and takes no
+## tap); the next move isn't asked for till it's been said (_ask_move).
+## beat_lines_said: which have been (the tests read it).
+var beat_lines_said: Array = []
+
+func _beat_line(key: String, after := 0.0) -> void:
+	if not BEAT_LINES.has(key) or _skipping:
+		return
+	var f := _dir_f
+	if after > 0.0:
+		await _wait(after)
+	if _skipping or _climax or f != _dir_f or f == null or not is_instance_valid(f):
+		return
+	beat_lines_said.append(key)
+	await _say_passing(BEAT_LINES[key], true)
 
 
 ## Up off his knee as the Last Page is played, the card going down as he
-## comes up.
-func _rise_to_play() -> void:
+## comes up. `card_after` (15 November): he's up first, with a word for the
+## hunter, and his arm goes up with the card that long after he starts to
+## rise (as the page is called: _before_summon_clip).
+func _rise_to_play(card_after := 0.0) -> void:
 	rose = true
 	if _bram is Figure3D:
 		(_bram as Figure3D).rise(KNEE_UP)
+	if card_after > KNEE_UP:
+		await _wait(KNEE_UP)
+		_kneeling = false
+		await _wait(card_after - KNEE_UP - RISE_CARD_LEAD)
+		if is_instance_valid(_bram) and not _skipping:
+			_act(_bram, "play_card")
+		return
 	await _wait(KNEE_UP * 0.45)
 	if is_instance_valid(_bram) and not _skipping:
 		_act(_bram, "play_card")
@@ -2470,6 +2521,11 @@ func _skip_summon_clip() -> void:
 ## With no video (Summon videos Off in Options) the calling and the arrival
 ## are played all the same, one after the other.
 const LAST_PAGE_FIRST := 3.6
+## How long he has, coming up off his knee, for his word to the hunter
+## before the page is called, and how long before the calling his arm starts
+## up with the card.
+const RISE_WORD := 1.4
+const RISE_CARD_LEAD := 0.35
 const PAGE_LIGHT := Color(0.86, 0.91, 1.0)
 const PAGE_PAPER := Color(1.0, 0.93, 0.78)
 const PAGE_RING := 2.3
@@ -2495,21 +2551,31 @@ func _before_summon_clip() -> void:
 	_clip_wanted = SummonVideo.pick(WhiteSkyDuel.SUMMON) != ""
 	var start := _over_bram(Vector3(0.0, 3.0, -6.0), 40.0, 1.6, 0.7, 0.15)
 	if not _face_seen(start[0], start[1], float(start[2])):
-		_take(start, 0.0, LAST_PAGE_FIRST + 0.5)
+		_take(start, 0.0, LAST_PAGE_FIRST + 0.5 + RISE_WORD)
+	# (where the calling is placed from: his head as it is now, on his knee,
+	# as it always was; he's up by the time it starts)
+	var head := _bram_head()
+	# (15 November, Gary's yes to 18) up off his knee first, with a word for
+	# the hunter across the Circle, "You'll not have him." (_move_line says
+	# it); RISE_WORD later the card goes up and the page is called, and over
+	# that his own: "Write it in my name, then."
 	if _kneeling and not rose:
-		_rise_to_play()
+		_rise_to_play(RISE_WORD)
 	elif is_instance_valid(_bram):
-		_act(_bram, "play_card")
-	await _call_the_page(start)
+		get_tree().create_timer(RISE_WORD - RISE_CARD_LEAD, false).timeout.connect(func() -> void:
+			if is_instance_valid(_bram) and not _skipping and not _done:
+				_act(_bram, "play_card"))
+	await _wait(RISE_WORD)
+	await _call_the_page(start, head)
 
 
-## The calling (see above): `start` is the shot it begins in.
-func _call_the_page(start: Array) -> void:
+## The calling (see above): `start` is the shot it begins in, `head` where
+## his head is taken to be for placing it.
+func _call_the_page(start: Array, head: Vector3) -> void:
 	var f := _dir_f
 	if f == null or not is_instance_valid(f) or f.world == null or _skipping:
 		return
 	page_called = true
-	var head := _bram_head()
 	var hand := head + Vector3(0.38, 0.1, -0.4)
 	if _bram is Figure3D:
 		hand = (_bram as Figure3D).bone_pos("RightHand")
@@ -2704,6 +2770,10 @@ func _ask_move(gate: String, action: Dictionary, choices: Array = []) -> String:
 	# (the picture back behind him first: his hand came up over the last
 	# blow's close shot while the camera was still on its way)
 	await _wait(MOVE_SETTLE)
+	# (a line of his over the beat before, said out first: his hand of cards
+	# comes up where its words are)
+	while _ov != null and _ov.passing and not _skipping:
+		await get_tree().process_frame
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
 		_asking = ""
 		return ""
@@ -2829,17 +2899,30 @@ func _choose_card(i: int) -> void:
 ## His line for a move (MOVE_LINES), over the move as it's made: up for its
 ## recording's length, or for its reading time if there's none, and gone by
 ## itself (a line elsewhere waits for a tap; this one mustn't hold the duel).
+## The Last Page has two, one after the other: his word to the hunter
+## (BEAT_LINES "rise") and then its own.
 var _move_line_on := false
 
 func _move_line(gate: String) -> void:
 	if not MOVE_LINES.has(gate) or _skipping:
 		return
-	var line: Dictionary = MOVE_LINES[gate]
+	var lines: Array = [MOVE_LINES[gate]]
 	if gate == "call" and CALL_LINES.has(call_picked):
-		line = CALL_LINES[call_picked]
+		lines = [CALL_LINES[call_picked]]
+	var first := 0.35   # (the card down first)
+	if gate == WhiteSkyDuel.PLAY_GATES[-1]:
+		# (15 November) at the Last Page he has a word for the hunter
+		# first, as he comes up off his knee; the move's own line is said
+		# over the calling that follows (RISE_WORD)
+		lines.push_front(BEAT_LINES["rise"])
+		first = 0.15
 	_move_line_on = true
-	await _wait(0.35)   # (the card down first)
-	if not _skipping:
+	await _wait(first)
+	for line: Dictionary in lines:
+		if _skipping:
+			break
+		if line == BEAT_LINES["rise"]:
+			beat_lines_said.append("rise")
 		var who := String(line.who)
 		var host: Node = w if w != null else self
 		var secs := VoiceLines.play(host, who, String(line.say), String(line.get("vo", "")))
@@ -3770,19 +3853,17 @@ func _stage_duellists(f: DuelField3D) -> void:
 ## the rim behind, watching him go; turned round, it's there (he can't walk up
 ## to it: HUNTER_KEEP).
 ##
-## As the picture clears he says it to the child, his head down to it: "Come
-## on then, Sprout." (COME_ON; 15 November, Gary's "7 yes": where "Sprout"
-## begins). It's said over the walk (_say_passing): it waits for nothing, a
-## press on the screen under it is the walk's and doesn't put it out, and how
-## to walk isn't shown till it's gone.
-##
 ## On the way (HAND_AT from the crater's middle: over the lip, on level
 ## snow; on the bowl's steep side the camera, a spring behind him, hung low
 ## and the hand stood in the top of the picture) one of the last of the
-## falling lights comes down to them, and a small hand comes up out of his
-## coat and closes on it (_small_hand: the picture comes in over his shoulder
-## for it and the child's tune is heard; he walks on under it, or stands, as
-## the player has him).
+## night's lights comes down to them, the white card, and a small hand comes
+## up out of his coat and takes it (_small_hand: the picture comes in over his
+## shoulder for it and the child's tune is heard; he walks on under it, or
+## stands, as the player has him). His head comes round to it, and he says
+## it: "Come on then, Sprout." (COME_ON; 15 November, Gary's "7 yes", and
+## then "22 yes": where "Sprout" begins. Said over the walk, _say_passing:
+## it waits for nothing, and a press on the screen under it is the walk's
+## and doesn't put it out.)
 ##
 ## Past OUT_AT the walk is over. From behind the hunter on its rim: him
 ## small beyond the far lip, walking on into the light, the line of his
@@ -3797,12 +3878,6 @@ const OUT_AT := 13.0
 const OUT_PACE := 0.84
 const OUT_WHITE := 2.4
 const OUT_HINT_AFTER := 2.6
-## "Come on then, Sprout." (COME_ON): how long after the white starts to
-## lift (by then the picture's nearly clear of it: his words are white), and
-## how long his head stays down to the child for it.
-const OUT_LINE_AT := 1.7
-const OUT_LINE_LOOK := 2.1
-const OUT_LINE_ASIDE := 0.18   # (m to his left of straight ahead, at 0.55 m: about 18 degrees)
 const OUT_WATCH := 3.0
 const OUT_GONE := 1.9
 const HUNTER_KEEP := 4.5
@@ -3911,42 +3986,21 @@ func _walk_out() -> void:
 	# the walk, his
 	var el := 0.0
 	var hinted := false
-	var looked := false
 	while _crater_dist() < OUT_AT and not _skipping:
 		await get_tree().process_frame
 		el += get_process_delta_time()
-		# (15 November, Gary's "7 yes") "Come on then, Sprout.": to the child,
-		# his head down to it, as the picture clears. It's said over the walk
-		# and holds nothing: he can be walked off before it, under it, or
-		# stood there through it.
-		if not out_line_said and el > OUT_LINE_AT:
-			out_line_said = true
-			_say_passing(COME_ON)
-		if out_line_said and not looked and _bram is Figure3D:
-			var fig := _bram as Figure3D
-			if el < OUT_LINE_AT + OUT_LINE_LOOK:
-				# (down in front of him and a little to the arm it lies in:
-				# at the child itself his head came so far round that his
-				# cheek showed from behind, and his face is never seen)
-				var fwd := fig.facing()
-				fig.eyes_on(fig.global_position + fwd * 0.55 + Vector3.UP.cross(fwd) * OUT_LINE_ASIDE + Vector3(0, 1.0, 0))
-			else:
-				looked = true
-				fig.eyes_on(null)
-		# (how to walk, if he's still standing there once the line has gone:
-		# the two would lie over each other)
-		if not hinted and el > OUT_HINT_AFTER and out_line_said and not _ov.passing and _vel.length() < 0.1:
+		# (how to walk, if he's standing there; not over a line of his)
+		if not hinted and el > OUT_HINT_AFTER and not _ov.passing and _vel.length() < 0.1:
 			hinted = true
 			_show_hint(HOW_WALK)
 		if not hand_caught and not _hand_on and _crater_dist() > HAND_AT and el > OUT_WHITE * 0.7:
 			_small_hand()
 		if is_instance_valid(_hunter):
 			_hunter.look_at_dir(_bram.position - _hunter.position)   # (it watches him go)
-	# (the small hand, to its end: the walk's still his under it)
-	while _hand_on and not _skipping:
+	# (the small hand, to its end, and his line over it: the walk's still his
+	# under them)
+	while (_hand_on or _ov.passing) and not _skipping:
 		await get_tree().process_frame
-	if not looked and _bram is Figure3D:
-		(_bram as Figure3D).eyes_on(null)
 	_hide_hint()
 	_roam = false
 	_move_target = Vector3.INF
@@ -4214,15 +4268,36 @@ func _track_step() -> void:
 
 # --- a small hand (15 November) -------------------------------------------------
 ## Gary's yes to "a small hand: on the walk out, a tiny hand comes up out of
-## his coat and catches one of the last falling lights". One of the last of
-## the night's lights drifts down to them as he climbs out of the bowl; the
+## his coat and catches one of the last falling lights". A last light comes
+## down to them as he climbs out of the bowl (the white card: below); the
 ## picture comes in over his left shoulder from behind (_hand_k: the walk's
 ## own camera, drawn in; the walk stays his under it); a small hand in a
-## sleeve of the blanket's wool comes up by his shoulder, open, and closes on
-## the light as it reaches it; the child's tune is heard (Sfx "child_tune":
-## Gary's, or the stand-in); the light shows between its fingers, and it goes
-## back down into his coat with it. Made here (a wrist, a palm, four fingers
-## and a thumb that close), carried over his left shoulder joint.
+## sleeve of the blanket's wool comes up by his shoulder, open, and takes it;
+## the child's tune is heard (Sfx "child_tune": Gary's, or the stand-in); and
+## it goes back down into his coat with it. Made here (a wrist, a palm, four
+## fingers and a thumb that close), carried over his left shoulder joint.
+##
+## 15 November, later (Gary, to "the line after the small hand instead: the
+## hand comes up out of his coat like a shoot, catches its light, and then
+## 'Come on then, Sprout.'": "yes but we want to clearly see the hand take
+## the card", and then, shown it as one of the night's Sigils with the
+## game's card back on it: "card in hand should be the white card"). What
+## comes down is the white card: the blank card that comes down to the hero
+## at midnight twenty years on (InnRooms.blank_card; plain white, faintly
+## glowing, nothing on it), turning over as it flutters down. The hand is
+## up and open, its back to the camera and its palm ahead; the card comes
+## down beyond it and settles upright against the palm, so the hand is seen
+## against the white of it; the fingers come together onto its near face and
+## the thumb goes round under its lower edge behind it: it's held between
+## them, standing up over the hand, flaring as it's taken. (Held the other
+## way round first, palm to the camera and the fingers curled over the
+## card's edge: single joints, they went through it, and Gary saw it.) It's
+## held there HAND_HOLD seconds. Bram's
+## head comes round and down to it (the side of his face is seen: Gary, the
+## same day, "we can see the side of the face it will be clear who he is
+## anyway"), and HAND_LINE_AFTER the take he says it: "Come on then,
+## Sprout." (COME_ON; said over the walk, _say_passing: nothing waits for
+## it). Then the hand takes the card down into his coat.
 const HAND_AT := 7.9
 const HAND_LENS := 25.0
 ## The camera for it, from where he stands: to his left, up, behind (m).
@@ -4232,6 +4307,24 @@ const HAND_CAM := Vector3(0.27, 1.72, 1.1)
 ## starts.
 const TINY_AT := Vector3(0.02, 0.15, 0.05)
 const TINY_DOWN := 0.3
+## The white card: its size (of a falling Sigil's, CARD_SIZE: 8.2 by 11.5
+## cm, the game's own white card's shape and a little bigger than its 6.3 by
+## 8.8, to be seen in so small a hand), the colour of its light (the white
+## light's at midnight, Ashford._the_white_light), how bright its own face
+## is (the game's is 0.6: in this dawn that was the grey of the snow behind
+## it; at 1.3 its glow spread over the fingers on it), the glow about it and the light it gives, and where its middle sits
+## in the hand's own frame once it's held (its lower edge down by the
+## thumb, just clear of the palm, ahead of it).
+const LAST_CARD := 0.273
+const LAST_CARD_COL := Color(0.85, 0.9, 1.0)
+const LAST_CARD_SHINE := 1.1
+const LAST_CARD_GLOW := 0.22
+const LAST_CARD_LIGHT := 0.14
+const LAST_CARD_HELD := Vector3(0.0, 0.093, 0.0195)
+## How long the card is held up in the fist before it's taken down, and how
+## long after the take he speaks.
+const HAND_HOLD := 2.8
+const HAND_LINE_AFTER := 1.1
 var hand_caught := false
 ## The child's tune (Sfx "child_tune"): how long it is, and how many times
 ## it's been asked for (the tests read it).
@@ -4239,11 +4332,13 @@ const TUNE_SECS := 6.6
 var tune_played := 0
 var _hand_on := false
 var _hand_k := 0.0
+var _hand_look := false   # his head round to the hand and its card
 var _tiny: Node3D
 var _tiny_rise := 0.0
 var _tiny_curl := 0.0
 var _mote: Node3D
 var _mote_k := 0.0
+var _mote_heat := 1.0
 
 
 func _small_hand() -> void:
@@ -4256,24 +4351,38 @@ func _small_hand() -> void:
 	_tiny_rise = 0.0
 	_tiny_curl = 0.0
 	_tiny.visible = true
-	_mote = _make_mote(Color(1.0, 0.84, 0.56))
+	_mote = _make_last_card(LAST_CARD_COL)
 	_set.add_child(_mote)
 	_mote_k = 0.0
+	_mote_heat = 1.0
 	_tiny_step()
 	create_tween().tween_property(self, "_hand_k", 1.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_mote_k", 1.0, 2.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	await _wait(1.2)
-	# the hand comes up for it
+	# the hand comes up for it, open
 	create_tween().tween_property(self, "_tiny_rise", 1.0, 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	await _wait(1.35)
-	# and closes on it
+	# and takes it: the fingers close over the card's lower edge, and it flares
 	create_tween().tween_property(self, "_tiny_curl", 1.0, 0.34).set_trans(Tween.TRANS_SINE)
+	var ht := create_tween()
+	# (a little: flared to twice itself its glow spread over the fingers
+	# lying on it, at the moment they're to be seen taking it)
+	ht.tween_property(self, "_mote_heat", 1.45, 0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	ht.tween_property(self, "_mote_heat", 1.1, 0.9).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if not _skipping:
 		_snd("child_tune", 1.0, -1.0)
 		tune_played += 1
 		Haptics.kind(Haptics.TAP)
 	hand_caught = true
-	await _wait(2.0)
+	# his head round to it
+	_hand_look = true
+	await _wait(HAND_LINE_AFTER)
+	# "Come on then, Sprout.": where the name begins (over the walk: nothing
+	# waits for it)
+	if not _skipping and not out_line_said:
+		out_line_said = true
+		_say_passing(COME_ON)
+	await _wait(HAND_HOLD - HAND_LINE_AFTER)
 	# back down into his coat with it
 	create_tween().tween_property(self, "_tiny_rise", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -4283,23 +4392,27 @@ func _small_hand() -> void:
 	_mote = null
 	if is_instance_valid(_tiny):
 		_tiny.visible = false
+	_hand_look = false
+	if _bram is Figure3D:
+		(_bram as Figure3D).eyes_on(null)
 	await _wait(0.5)
 	_hand_k = 0.0 if _skipping else _hand_k
 	_hand_on = false
 
 
-## Where the small hand is now (the middle of its palm).
+## Where the small hand is now (between its palm and the middle of the card it takes).
 func _hand_point() -> Vector3:
 	if _bram is Figure3D:
 		var fig := _bram as Figure3D
 		var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
-		return fig.bone_pos("LeftArm") + own * (TINY_AT + Vector3(0.03, 0.05, 0.0))
+		return fig.bone_pos("LeftArm") + own * (TINY_AT + Vector3(0.03, 0.085, 0.0))
 	return _bram.position + Vector3(0, 1.7, 0)
 
 
-## The small hand and its light, a frame of them: the hand carried over his
-## left shoulder joint, up by _tiny_rise and closed by _tiny_curl; the light
-## coming down to its palm (_mote_k), then held in it.
+## The small hand and its card, a frame of them: the hand carried over his
+## left shoulder joint, its back to the camera behind him, up by _tiny_rise
+## and closed by _tiny_curl; the white card fluttering down beyond it to its
+## palm (_mote_k), turning over as it comes, then held upright against it.
 func _tiny_step() -> void:
 	if _tiny == null or not is_instance_valid(_tiny) or not _tiny.visible or not (_bram is Figure3D):
 		return
@@ -4310,24 +4423,40 @@ func _tiny_step() -> void:
 	# (unsteady, as a baby's reach is)
 	var wob := Vector3(sin(_t * 5.3) * 0.007, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.007) * k
 	var at := sh + own * (TINY_AT + Vector3(0.0, -TINY_DOWN * (1.0 - k), 0.0) + wob)
-	# (reaching up and a little out from him, not straight up like a post)
+	# (reaching up and a little out from him, not straight up like a post;
+	# the back of the hand to the camera behind him, its palm ahead)
 	_tiny.global_transform = Transform3D(own * Basis.from_euler(Vector3(0.15, 0.0, -0.42)), at)
 	for i in _tiny.get_meta("fingers", []).size():
 		var pv: Node3D = _tiny.get_meta("fingers")[i]
 		var open: Vector3 = pv.get_meta("open")
 		var shut: Vector3 = pv.get_meta("shut")
 		pv.rotation = open.lerp(shut, smoothstep(0.0, 1.0, _tiny_curl))
+	if _hand_look:
+		fig.eyes_on(_hand_point())
 	if _mote != null and is_instance_valid(_mote):
-		var palm := _tiny.global_transform * Vector3(0.0, 0.05, 0.014)
-		var start := palm + Vector3(0.0, 0.8, 0.0) + own * Vector3(0.3, 0.0, 0.45)
+		# (held: upright against the palm)
+		var held := _tiny.global_transform * Transform3D(Basis.IDENTITY, LAST_CARD_HELD)
 		var mk := _mote_k
+		# (from above and ahead of his shoulder: it comes down into the
+		# picture from its top, and slides down beyond the open hand)
+		var start := held.origin + Vector3(0.0, 0.8, 0.0) + own * Vector3(0.22, 0.0, 0.25)
 		var sway := Vector3(sin(_t * 1.9) * 0.06, 0.0, cos(_t * 1.3) * 0.05) * (1.0 - mk)
-		_mote.global_position = start.lerp(palm, mk) + sway
-		# (in its fist: smaller, the light of it between its fingers)
-		_mote.scale = Vector3.ONE * (1.0 - 0.62 * _tiny_curl)
+		# (turning over and rocking like a leaf, less and less as it settles)
+		var loose := 1.0 - smoothstep(0.0, 1.0, mk)
+		var turn := Basis(Vector3.UP, loose * TAU * 1.5) * Basis.from_euler(Vector3(sin(_t * 2.3) * 0.5, 0.0, cos(_t * 1.7) * 0.4) * loose)
+		_mote.global_transform = Transform3D(held.basis.orthonormalized() * turn, start.lerp(held.origin, mk) + sway)
+		# (its own light, the glow about it and the light it gives: up as
+		# it's taken, _mote_heat)
+		var card := _mote.get_node_or_null("Card") as MeshInstance3D
+		if card != null and card.material_override is StandardMaterial3D:
+			(card.material_override as StandardMaterial3D).emission_energy_multiplier = LAST_CARD_SHINE * _mote_heat
+		var gl := _mote.get_node_or_null("Glow") as MeshInstance3D
+		if gl != null and gl.material_override is StandardMaterial3D:
+			var gk := LAST_CARD_GLOW * _mote_heat
+			(gl.material_override as StandardMaterial3D).albedo_color = Color(LAST_CARD_COL.r * gk, LAST_CARD_COL.g * gk, LAST_CARD_COL.b * gk, 1.0)
 		var ml := _mote.get_node_or_null("Light") as OmniLight3D
 		if ml != null:
-			ml.light_energy = 0.55 * (1.0 - 0.5 * _tiny_curl)
+			ml.light_energy = LAST_CARD_LIGHT * _mote_heat
 
 
 ## The small hand: a soft sleeve of the blanket's wool, a wrist, a palm,
@@ -4392,7 +4521,13 @@ func _make_tiny_hand() -> Node3D:
 		pv.position = Vector3(u * 0.0128, 0.054 - absf(u) * 0.004, 0.0)
 		# (open: spread wide and bent back a little; shut: curled into the palm)
 		pv.set_meta("open", Vector3(-0.2, 0.0, -u * 0.3))
-		pv.set_meta("shut", Vector3(1.8, 0.0, -u * 0.05))
+		# (not a fist: there's a card behind them. Brought together and
+		# bent forward this far, their ends rest on the card's near face
+		# and nothing of them goes into it. 15 November, Gary: the "child's
+		# fingers are going through white card": curled 1.4 with the palm
+		# to the camera, single joints as they are, they went in at its
+		# face and came out at the front)
+		pv.set_meta("shut", Vector3(0.4, 0.0, -u * 0.04))
 		root.add_child(pv)
 		var fm := CapsuleMesh.new()
 		fm.radius = 0.0068
@@ -4407,7 +4542,9 @@ func _make_tiny_hand() -> Node3D:
 	var tp := Node3D.new()
 	tp.position = Vector3(-0.024, 0.026, 0.004)
 	tp.set_meta("open", Vector3(-0.1, 0.0, 1.1))
-	tp.set_meta("shut", Vector3(0.9, 0.0, 0.3))
+	# (shut: forward under the card's lower edge and round behind it, out
+	# of the camera's sight: the card is held between it and the fingers)
+	tp.set_meta("shut", Vector3(1.6, 0.0, 0.15))
 	root.add_child(tp)
 	var tm := CapsuleMesh.new()
 	tm.radius = 0.0076
@@ -4425,33 +4562,54 @@ func _make_tiny_hand() -> Node3D:
 	return root
 
 
-## One of the last of the falling lights: a small soft star and the light
-## it gives.
-func _make_mote(col: Color) -> Node3D:
+## The white card (Gary, 15 November: "card in hand should be the white
+## card"): the game's own (InnRooms.blank_card: plain white, glowing,
+## nothing on it, the card that comes down to the hero at midnight twenty
+## years on); a soft glow about it and the light it gives ("Card", "Glow",
+## "Light").
+func _make_last_card(col: Color) -> Node3D:
 	var root := Node3D.new()
 	root.name = "LastLight"
-	for part in [[0.06, 0.4], [0.022, 1.5]]:
-		var mi := MeshInstance3D.new()
-		var q := QuadMesh.new()
-		q.size = Vector2(float(part[0]), float(part[0]))
-		mi.mesh = q
-		var m := StandardMaterial3D.new()
-		m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-		m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-		m.albedo_texture = ShardSet.soft_tex()
-		m.albedo_color = Color(col.r * float(part[1]), col.g * float(part[1]), col.b * float(part[1]), 1.0)
-		m.cull_mode = BaseMaterial3D.CULL_DISABLED
-		mi.material_override = m
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		root.add_child(mi)
+	# (its look is the game's white card's own, on a card's shape: that one
+	# is a plain box, and this close a card's rounded corners are what make
+	# a white oblong a card)
+	var white := InnRooms.blank_card(null)
+	var card := MeshInstance3D.new()
+	card.name = "Card"
+	card.mesh = _card_shape_mesh()
+	card.material_override = white.material_override
+	card.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	card.scale = Vector3.ONE * LAST_CARD
+	white.free()
+	root.add_child(card)
+	var glow := MeshInstance3D.new()
+	glow.name = "Glow"
+	var q := QuadMesh.new()
+	q.size = Vector2(0.36, 0.36)
+	glow.mesh = q
+	var m := StandardMaterial3D.new()
+	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.albedo_texture = ShardSet.soft_tex()
+	m.albedo_color = Color(col.r * LAST_CARD_GLOW, col.g * LAST_CARD_GLOW, col.b * LAST_CARD_GLOW, 1.0)
+	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glow.material_override = m
+	glow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	root.add_child(glow)
 	var l := OmniLight3D.new()
 	l.name = "Light"
 	l.light_color = col
-	l.light_energy = 0.55
+	# (soft: at half a unit, a hand's width from it, the small hand was a
+	# white blur with no fingers to it)
+	l.light_energy = LAST_CARD_LIGHT
 	l.omni_range = 0.9
 	l.shadow_enabled = false
+	# (over the card's top and a little to the camera's side of it: at its
+	# middle it stood a finger's length from the fingers closed on it, and
+	# shone through them till they were one bright blur)
+	l.position = Vector3(0.0, 0.09, -0.04)
 	root.add_child(l)
 	return root
 

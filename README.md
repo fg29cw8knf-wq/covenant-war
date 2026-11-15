@@ -2329,41 +2329,113 @@ Gary: "7 yes I mean" (what his "2 yes" had meant: suggestion 7 of the
 morning's list, "Where 'Sprout' begins: 'Come on then, Sprout.' as he walks
 out").
 
-- **The line** (`WhiteSky.COME_ON`, Bram's). On the walk out, as the white
-  lifts and the picture clears (`OUT_LINE_AT`, 1.7 s: his words are white, and
-  before that so is the picture): he says it to the child in his coat, his
-  head tipped down and a little to the arm it lies in for two seconds
-  (`OUT_LINE_LOOK`, `OUT_LINE_ASIDE`: looking at the child itself his head
-  came so far round that his cheek showed from behind, and his face is never
-  seen). It's the first time the name is heard; twenty years on the hero's
-  first thought in the attic is "Bram still calls me Sprout."
+- **The line** (`WhiteSky.COME_ON`, Bram's): to the child on the walk out.
+  It's the first time the name is heard; twenty years on the hero's first
+  thought in the attic is "Bram still calls me Sprout." (First built at the
+  walk's very start, as the white lifted; moved the same afternoon to after
+  the small hand: the next section.)
 - **It holds nothing** (`WhiteSky._say_passing`, `CineOverlay.say_over`,
   new). Every other line waits for a tap, or with a recording for its length,
   and a tap puts it out; a press on the screen is also how the walk is
   walked, so this one neither waits for a tap nor takes one: it's up for its
   recording's length, or with none its reading time (2.7 s), and goes by
-  itself. He can be walked off before it, under it, or stood there through
-  it. "How to walk" isn't shown until it has gone (the two lie in the same
-  place). A Skip takes it down, and its voice (`CineOverlay.end_over`).
+  itself. He can be walked on under it, or stood there through it. "How to
+  walk" isn't shown while it's up (the two lie in the same place). A Skip
+  takes it down, and its voice (`CineOverlay.end_over`).
 - **His voice.** No recording yet: it shows as words only. Its file is
   `assets/audio/vo/ashford/bram/f11e5498.ogg` (line 0005 of
   `docs/script/vo_lines.md`, written again by `tools/vo_sheet.py`, which
-  also has the Weft Serpent's line now, 0009, `40c7b305`; every number after
-  0004 has moved up, the ids haven't).
+  also has the Weft Serpent's line now, 0009, `40c7b305`).
 
-**Checked:** `white_sky_test` whole, `duel`, and skipped 1, 2.5 and 3.9 s
-into the walk out (before the line, and twice under it): PASS; it checks the
-line is said, is up for its reading time through a press on the screen put
-in under it, never waits for a tap or takes one, and isn't left up over a
-skip ("said true, up for 3.0 s (its reading time 2.7); a press under it
-true; it waited for or took a tap false"). The walk out drawn at a Mac's
-full settings (`white_sky_look -- <dir> out`, two new stills: him standing
-through the line, and setting off under it), all seventeen stills looked
-at. `voice_lines_test`, `mark_wake_test`, `first_launch_test`,
-`haptics_test`, `summon_video_test`, `best_picture_test`,
-`story_film_test`, `white_sky_world ... play`: ok. **Not checked:** on a
-real Mac or iPhone; moving (his head going down and coming up is judged from
-two stills); with a recording (there isn't one).
+### The white card in the small hand, "Sprout" after it, and three lines in the duel (15 November, afternoon)
+
+Gary, to the suggestions after the last build: "1 no 13 no 16 yes 17 yes
+18 yes 19 no 20 no player will have his own call for summons 21 in game
+created is fine 22 - yes but we want to clearly see the hand take the card -
+23 we can see the side of the face it will be clear who he is anyway"; and,
+shown the hand with one of the night's Sigils in it: "card in hand should be
+the white card".
+
+- **The small hand takes the white card** (`WhiteSky._small_hand`,
+  `_tiny_step`, `_make_last_card`). What comes down to them on the walk out
+  is the white card now: the blank card that comes down to the hero at
+  midnight twenty years on (`InnRooms.blank_card`'s own look, on a card's
+  shape with rounded corners; `LAST_CARD_SHINE` brighter than the game's
+  0.6, which in this dawn was the grey of the snow behind it). It flutters
+  down turning over, beyond the open hand, whose back is to the camera, and
+  settles upright against its palm, so the hand is seen against the white of
+  it; the fingers come together onto the card's near face (`"shut"` 0.4:
+  their ends rest on it) and the thumb goes forward under its lower edge and
+  round behind it. It stands up over the hand, a little brighter as it's
+  taken (`_mote_heat`), is held there 2.8 s (`HAND_HOLD`), then taken down
+  into his coat. The card's own light stands over its top, not at its middle
+  (there it shone through the fingers till they were one bright blur).
+  **Nothing of the hand goes into the card** (Gary, of the first picture of
+  it: the "child's fingers are going through white card". It was held the
+  other way round then, palm to the camera with the fingers curled over the
+  card's edge: the fingers are single joints, so they went in at its face).
+- **"Come on then, Sprout." after it** (22). 1.1 s after the take
+  (`HAND_LINE_AFTER`), the card still held up in the fist. Bram's head comes
+  round to it (`_hand_look`, `eyes_on(_hand_point())`).
+- **The side of his face is seen there** (23). Until now nothing showed his
+  face; his answer to the edge of his cheek showing in the walk out's last
+  picture was that the side of his face may be seen. So his head turns to
+  the child's hand the natural way, and from behind his left shoulder that's
+  his profile. His face from the front still isn't shown anywhere (the
+  duel's `_face_seen` check is as it was).
+- **Three lines of his in the duel** (16, 17, 18; `WhiteSky.BEAT_LINES`).
+  "Not yet. Not yet." as the first of his Totems breaks
+  (`_bram_loses_one`); "I've got you. I've got you." down on his knee, bent
+  over the child (`_to_knee`); "You'll not have him." coming up off it, to
+  the hunter, before the Last Page is called. The first two are said over
+  the film as it runs (`_beat_line`, `_say_passing` brisk: they hold nothing
+  and take no tap), and the next move's hand of cards doesn't come up till
+  they're said (`_ask_move`: it lies where the words are). The third is the
+  first of two at the Last Page (`_move_line`): he's up off his knee first
+  with his word for the hunter, and `RISE_WORD` (1.4 s) later his arm goes
+  up with the card and the page is called, with "Write it in my name, then."
+  over the calling (`_before_summon_clip`, `_rise_to_play(card_after)`; the
+  calling's places are still taken from his head on his knee, as they were
+  when it was looked at). With the three moves' lines the duel has six of
+  his, in this order: Not yet. / One more hour. / Get back from him. / I've
+  got you. / You'll not have him. / Write it in my name, then.
+- **Not built, by his answer:** 1 (the price shown), 13 (a short Summon
+  video in the memory), 19 (Morrowen's "He had one page left."). 20: the
+  opening's calling and arrival stay the opening's alone ("player will have
+  his own call for summons": the hero's own way of calling a Summon is still
+  to be designed). 21: no films of the Weft Serpent's moves are wanted from
+  him ("in game created is fine": the game's own filming is what's seen).
+- **Recordings his opening wants now** (Bram, in
+  `assets/audio/vo/ashford/bram/`): `c9b22f07` "Not yet. Not yet.",
+  `fe9d582d` "One more hour. That's all I need.", `40c7b305` "Hold them off.
+  Just a little longer.", `e12f55e3` "Get back from him.", `81601230` "I've
+  got you. I've got you.", `a625aa10` "You'll not have him.", `e021abca`
+  "Write it in my name, then.", `f11e5498` "Come on then, Sprout."
+
+**Checked:** `white_sky_test` whole, `duel` and `duel serpent`: PASS
+("his lines at the duel's beats: said ["first_loss", "knee", "rise"]; seen:
+first_loss at 4.8 s, knee at 22.0 s, rise at 27.9 s; a prompt up under one
+false"; "Come on then, Sprout." said once the hand has its card, up 3.0 s
+through a press on the screen, no tap waited for or taken); `body`, `page
+novideo`: PASS; skipped under each of the three new lines and under "Write
+it in my name, then." (`duel skip_at=` 5.5, 22.8, 28.5, 30.5) and on the
+walk out with the hand up and with the line up (`duel skip_out=` 8, 10):
+PASS. The duel drawn to the Last Page's white at a Mac's full settings
+(`page`): each new line's still looked at (none lies over a prompt; "You'll
+not have him." is over his shoulder at the hunter with its cards raised; the
+calling's four stills are as they were). The walk out drawn the same way
+(`white_sky_look -- <dir> out`, eighteen stills, and `hand`, new: as far as
+the hand going down): the card coming down, the open hand, the take, the
+line and the going down looked at close to, and the rest as before.
+`voice_lines_test`, `mark_wake_test`, `first_launch_test`, `haptics_test`,
+`summon_video_test`, `best_picture_test`, `story_film_test`,
+`white_sky_play_probe` (both cards), `white_sky_world ... play`,
+`duel_sim -- 100`, `duel_monkey`: ok. **Not checked:** on a real Mac or
+iPhone; anything moving (the card's flutter, the fingers closing, his head
+coming round, his rise before the page are judged from stills, and the
+thumb's way round the card's corner as it closes isn't seen in any); any of
+the eight lines with a recording (there are none); the cuts into and out of
+his Summon video.
 
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 

@@ -134,6 +134,8 @@ Sigil light. Nothing is on the screen but the duel: no Life, no names, no number
 
 _(The hunter strikes first. The Warg's charge breaks the Scrivener.)_
 
+**[BRAM] (new, 15 November; Gary: "16 yes"; as it breaks):** "Not yet. Not yet."
+
 [GAME] The player is Bram. His hand comes up along the bottom of the picture as
 paintings alone. **(changed, 15 November; Gary: "14 yes", "one real choice in
 Bram's duel: two glowing cards, and either works")** Both of his cards are lifted
@@ -161,16 +163,30 @@ Serpent closing its coils, and the hound bursts into smoke. The pack answers: th
 Veilfox's mirage, then the Warg's charge, and the Loomwarden comes down. Bram
 staggers, his arm going round the child, and goes down on one knee.)_
 
-[GAME] His hand again; the card he has just drawn is glowing.
+**[BRAM] (new, 15 November; Gary: "17 yes"; on his knee, bent over the child in
+his coat):** "I've got you. I've got you."
+
+_(The night goes still.)_
+
+[GAME] His hand again, once he has said it; the card he has just drawn is glowing.
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
 E: the Last Page.)** / **(Press A to play the Last Page.)**
 
-**[BRAM] (new, 12 November):** "Write it in my name, then."
+_(He comes up off his knee, the hunter across the Circle with its cards raised.)_
+
+**[BRAM] (new, 15 November; Gary: "18 yes"; to the hunter):** "You'll not have
+him."
+
+**[BRAM] (new, 12 November; as the page is called):** "Write it in my name, then."
+
+_(The duel has six lines of his now, none of which holds it up: Not yet. / One
+more hour. / Get back from him. / I've got you. / You'll not have him. / Write it
+in my name, then.)_
 
 _(changed, 15 November; Gary: "can we make the whole summon process look more
 magical and better".)_
 
-_(The calling. He comes up off his knee as he plays it. The card leaves his hand
+_(The calling. He's up, and his arm goes up with the card. It leaves his hand
 as a page of light and climbs over his head, turning. A ring of runes writes
 itself in the snow round his feet; pages of light turn up round him in a rising
 spiral. The page takes fire, a thread of light goes up from it into the tear in
@@ -211,21 +227,29 @@ has closed, the stars are going, a low warm light lies along the horizon. Bram
 stands in the bottom of the crater with the child in his coat, his back to the
 rim the hunter stood on. Behind him, on that rim, the hunter stands watching.)_
 
-**[BRAM] (new, 15 November; Gary: "7 yes"; to the child, his head down to it):**
-"Come on then, Sprout."
-
-_(The first time the name is heard: twenty years on the hero says "Bram still
-calls me Sprout." It's said over the walk and waits for nothing: the player can
-set off before it, under it, or stand through it.)_
-
 [GAME] The player is Bram again. He walks only while it's held, a little slower
 than he came: up out of the crater towards the light, his prints the one line in
 the new snow. He can't walk up to the hunter.
 
-_(Over the lip, one of the last of the night's lights comes drifting down to
-them. A small hand comes up out of his coat by his shoulder, open, and closes on
-it. The child's tune. The light shows between its fingers; the hand goes back
-down into his coat with it.)_
+_(changed, 15 November; Gary: "22 yes but we want to clearly see the hand take
+the card", "card in hand should be the white card", and, of the first picture of
+it, the "child's fingers are going through white card".)_
+
+_(Over the lip, a last light comes drifting down to them, turning over as it
+comes: the white card, blank, glowing. A small hand comes up out of his coat by
+his shoulder like a shoot, open, its back to us. The card comes down beyond it
+and settles against its palm, the hand seen against the white of it; the
+fingers close together onto the card and the thumb goes round behind it. It
+stands up over the small hand, brighter for a moment as it's taken. The child's
+tune. Bram's head comes round to it; the side of his face is seen.)_
+
+**[BRAM] (new, 15 November; Gary: "7 yes"; to the child, the card still held
+up in its fist):** "Come on then, Sprout."
+
+_(The first time the name is heard: twenty years on the hero says "Bram still
+calls me Sprout." It's said over the walk and waits for nothing. Then the hand
+takes the white card down into his coat. It's the card that comes down to the
+hero again at midnight, twenty years later.)_
 
 _(Past the crater the walk is over. From behind the hunter on its rim: Bram small
 beyond the far lip, walking on into the light, his line of prints up out of the

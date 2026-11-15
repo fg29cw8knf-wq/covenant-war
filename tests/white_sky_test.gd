@@ -220,6 +220,8 @@ func _run() -> void:
 				ok = false
 	if _skip:
 		ok = _third_pass(true) and ok
+		if not _duel_only:
+			print("white_sky_test: (skipped) the duel built at %.1f s and warmed by %.1f s; the walk began at %.1f s" % [_built_t, _warm_t, _roam_t])
 	if not _duel_only and not _skip:
 		print("white_sky_test: the duel built at %.1f s and warmed by %.1f s; the walk began at %.1f s, the pick-up prompt at %.1f s, the child in his arms by %.1f s (%s)" % [
 			_built_t, _warm_t, _roam_t, _prompt_t, _stood_t, "built at the prompt, the before" if _late else "built under the opening's black"])
@@ -378,6 +380,12 @@ var _sprout_to := -1.0
 var _sprout_caught := false
 var _sprout_pressed := false
 var _sprout_stuck := false
+var _sprout_after_hand := false   # (it came once the small hand had taken its card)
+## (15 November, later still) Bram's lines at the duel's beats (BEAT_LINES):
+## when each was seen on the screen, and whether a move's prompt was ever up
+## under one
+var _beat_seen := {}
+var _beat_under_prompt := false
 
 func _watch_third_pass() -> void:
 	_fan_most = maxi(_fan_most, m._bram_fan.size())
@@ -396,6 +404,7 @@ func _watch_third_pass() -> void:
 				_sprout_stuck = true
 			if _sprout_from < 0.0:
 				_sprout_from = _t
+				_sprout_after_hand = m.hand_caught
 				_still_later("out_line", 0.6)
 			_sprout_to = _t
 			if ov._waiting or ov._catch.mouse_filter != Control.MOUSE_FILTER_IGNORE:
@@ -423,6 +432,16 @@ func _watch_third_pass() -> void:
 		if m.hunter_gone:
 			_once("out_hunter_gone", 1.5)
 			_once("out_mark_light", WhiteSky.OUT_GONE + WhiteSky.MARK_PUSH - 0.4)
+	# (his lines at the duel's beats)
+	var lov: CineOverlay = m._ov
+	if lov != null and lov._line.modulate.a > 0.5:
+		for key: String in WhiteSky.BEAT_LINES:
+			if lov._line.text.contains(String(WhiteSky.BEAT_LINES[key].say)):
+				if not _beat_seen.has(key):
+					_beat_seen[key] = _t
+					_still_later("line_" + key, 0.5)
+				if key != "rise" and m._hint != null and m._hint.modulate.a > 0.5:
+					_beat_under_prompt = true
 	# (the Last Page: the calling, the arrival, the blow)
 	if m.page_called:
 		for pair in [["page_call_a", 0.5], ["page_call_b", 1.4], ["page_call_c", 2.2], ["page_call_d", 3.2]]:
@@ -483,6 +502,18 @@ func _third_pass(skipped: bool) -> bool:
 			fails.append("\"%s\" was up for %.1f s of its %.1f (pressed under it: %s)" % [String(WhiteSky.COME_ON.say), _sprout_to - _sprout_from, read, str(_sprout_pressed)])
 		if _sprout_caught:
 			fails.append("\"%s\" waited for a tap, or took one from the walk" % String(WhiteSky.COME_ON.say))
+		if _sprout_from >= 0.0 and not _sprout_after_hand:
+			fails.append("\"%s\" came before the small hand had taken its card" % String(WhiteSky.COME_ON.say))
+		# (his three lines at the duel's beats: each said, in its order, each
+		# seen, and never with a move's prompt up under it)
+		var seen: Array = []
+		for key: String in WhiteSky.BEAT_LINES:
+			seen.append("%s %s" % [key, ("at %.1f s" % float(_beat_seen[key])) if _beat_seen.has(key) else "never"])
+		print("white_sky_test: his lines at the duel's beats: said %s; seen: %s; a prompt up under one %s" % [str(m.beat_lines_said), ", ".join(seen), str(_beat_under_prompt)])
+		if m.beat_lines_said != WhiteSky.BEAT_LINES.keys() or _beat_seen.size() != WhiteSky.BEAT_LINES.size():
+			fails.append("his lines at the duel's beats: said %s, seen %s" % [str(m.beat_lines_said), str(_beat_seen.keys())])
+		if _beat_under_prompt:
+			fails.append("a move was asked for while one of his lines at a beat was still up")
 		if _hunter_near < WhiteSky.HUNTER_KEEP - 0.3:
 			fails.append("he came within %.1f m of the hunter on the walk out" % _hunter_near)
 		if not m.hand_caught:
