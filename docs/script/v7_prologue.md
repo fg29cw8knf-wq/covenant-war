@@ -1529,6 +1529,8 @@ While building v7 the game needed a few short lines the script doesn't have. The
   after each move once made; his whole film plays on the Thornwood road, after
   Bram's lesson.
 - **Skipping:** the snow can be skipped once it has been seen. (16 November: no
-  longer. It can't be skipped at all.)
+  longer. It can't be skipped at all, and nor can any of the Prologue's films,
+  midnight to the ridge, seen or not. Only the opening movie before the title
+  screen can be.)
 - **The mirror, Q2:** the answer no longer tells the crater again; it says what
   the player was told, and what Bram won't say.

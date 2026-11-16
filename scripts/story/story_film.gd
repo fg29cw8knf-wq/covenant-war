@@ -333,11 +333,22 @@ var _skip_btn: Button = null
 var _hs: HoldSkip = null
 
 
-## Gary's own shots of Bram's three moves, played inside the Night of the
-## White Sky (WhiteSky._move_film): never skipped, as the memory round them
-## isn't (16 November, Gary: "Remove the able to skip the prologue").
+## The Prologue's films: never skipped, the first time or after, as the
+## memory before them isn't. Gary's own shots of Bram's three moves inside
+## the Night of the White Sky (WhiteSky._move_film), and every film from
+## midnight to the ridge over the Thornwood (16 November, Gary: "Remove the
+## able to skip the prologue", then yes to the films too; from 12 November
+## to then each could be held to skip once it had been seen). A film of a
+## later chapter, added to FILMS, can be skipped once seen unless it's put
+## here. (`allow_skip`: the tests', to try the Skip itself on one of these.)
+const PROLOGUE := ["midnight", "white_light", "herald", "reckoning", "tams_hand", "no_roof",
+	"white_sky_duel", "white_sky_move_1", "white_sky_move_2", "white_sky_move_3", "ridge"]
+static var allow_skip := false
+
 static func never_skipped(p_film: String) -> bool:
-	return p_film.begins_with("white_sky_move")
+	if allow_skip:
+		return false
+	return PROLOGUE.has(p_film) or p_film.begins_with("white_sky_move")
 
 
 static func seen(p_film: String) -> bool:

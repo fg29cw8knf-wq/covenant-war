@@ -1644,7 +1644,8 @@ The suggestions after the eight, all six said yes to:
    and "CRITICAL" under it (`hit_tag`: with "WEAK! ×1.5" when it's both); a
    critical on Life the same.
 5. **Hold to skip everywhere** (`scripts/ui/hold_skip.gd`, `HoldSkip.attach`):
-   the story films get a "Hold to skip" button once they've been seen
+   (16 November: not the Prologue's films any more, which is all of them so
+   far; below) the story films get a "Hold to skip" button once they've been seen
    (`StoryFilm.seen`, `Game.settings.seen_films`; the first time through,
    none, as the Night of the White Sky), on a layer over the subtitles, and
    the device's player's own label when it covers the view. Skipped, the
@@ -2669,6 +2670,25 @@ glowed white: its wool was the blanket's colour at full brightness, lit from
 behind, and the skin's light from behind was twice what reads as skin.
 **The fingers lay flat on the card**: 1.9 cm from the palm, the fingers only
 tipped forward to reach it.
+
+**Later on 16 November, Gary's yes to two of the suggestions** ("1 yes 2 yes
+3 no 4 no"):
+
+- **None of the Prologue's films can be skipped** either, seen or not
+  (`StoryFilm.PROLOGUE`, `never_skipped`): midnight, the white light, the
+  Herald, the Reckoning, Tam's hand, no roof, the White Sky duel, Bram's
+  moves and the ridge, which is every film there is. Hold to skip stays for
+  any film of a later chapter (`story_film_test` tries it on midnight with
+  `StoryFilm.allow_skip`, and checks every one of the Prologue's has none).
+  The opening movie before the title screen can still be skipped.
+- **The small hand's fingers open and close as it reaches** (`_pose_tiny`'s
+  grasping, `TINY_GRASP*`, `grasping`): closing on the air and opening again,
+  each finger a little behind the one before, the thumb with the first,
+  until the card's nearly there. To give it the time, the hand starts up
+  sooner (`HAND_UP_AT` 0.6 s, was 1.2) and the card takes longer to come
+  down (`HAND_CARD_FALL` 3.8 s, was 2.5): about 1.8 s of grasping, two
+  closings. `held_child_probe ... hand` checks it and that no finger touches
+  the card while it does; stills of it looked at.
 
 **Checked:** `load_all`: 0 failed. `held_child_probe` (new) `carry`,
 `knee`, `hand`: PASS, drawn (Forward+ through lavapipe) and headless, every

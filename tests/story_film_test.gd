@@ -234,8 +234,29 @@ func _choice() -> void:
 ## Skip; once seen there is; a tap on it does nothing, a second's hold skips
 ## the rest of the film, but its choice is still asked (and kept), Bram's
 ## answer isn't played, and it ends on black, the player taken down.
+## (16 November: none of the Prologue's films can be skipped, seen or not,
+## and every film there is is the Prologue's: checked first, then the Skip
+## itself tried on midnight with StoryFilm.allow_skip, for later chapters.)
 func _skip() -> void:
 	_check(StoryFilm.seen("white_light") and StoryFilm.seen("midnight"), "skip: a film played through is marked seen (%s)" % [Game.settings.get("seen_films", [])])
+	for k in StoryFilm.FILMS.keys():
+		_check(StoryFilm.never_skipped(String(k)), "skip: the Prologue's film %s can't be skipped" % k)
+	_fresh()
+	var probe_p := [false]
+	var watch_p := func() -> void:
+		await frames(20)
+		var sf: Array = world.find_children("*", "StoryFilm", false, false)
+		probe_p[0] = not sf.is_empty() and (sf[0] as StoryFilm)._skip_btn == null
+		var ov0 := Cine.overlay(world)
+		while not ov0._choices.visible:
+			await get_tree().process_frame
+		ov0._chosen.emit(0)
+	watch_p.call()
+	var rp := await StoryFilm.play(world, "midnight")
+	_check(bool(probe_p[0]), "skip: midnight seen before, still no Skip (the Prologue's)")
+	await StoryFilm.let_go(rp, 0.0)
+	Music.stop(0.0)
+	StoryFilm.allow_skip = true
 	Game.settings["seen_films"] = ["white_light"]   # (midnight not seen)
 	_fresh()
 	var probe := [false]
@@ -293,6 +314,7 @@ func _skip() -> void:
 	print("  skipped at %.1f s of part 1 (34.1 s long); the whole took %.1f s" % [float(seen.get("at", 0.0)), (Time.get_ticks_msec() - t0) / 1000.0])
 	await StoryFilm.let_go(r, 0.0)
 	Music.stop(0.0)
+	StoryFilm.allow_skip = false
 
 
 func _wont_open() -> void:

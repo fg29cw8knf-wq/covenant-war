@@ -11,9 +11,10 @@ extends Node
 ##   knee   down on his knee with it, as at "I've got you. I've got you." in
 ##          the duel (_carry_child, his kneel), from the shot of the two of
 ##          them (TO_CHILD_CAM)
-##   hand   the walk out, the small hand coming up, taking its card and going
-##          down: every few frames, the hand's skin against Bram and against
-##          the card
+##   hand   the walk out, the small hand coming up, its fingers opening and
+##          closing as it reaches (Gary's yes, 16 November), taking its card
+##          and going down: every few frames (every frame while it grasps),
+##          the hand's skin against Bram and against the card
 ##
 ## A point counts as inside when four of six rays from it leave through the
 ## inside of a face (tests/body_check.gd's way). Prints, for each moment,
@@ -488,6 +489,10 @@ var _hand_worst_at := ""
 var _card_worst := 0.0
 var _card_worst_at := ""
 var _hand_checks := 0
+var _grasp_most := 0.0
+var _grasp_frames := 0
+var _grasp_from := -1.0
+var _grasp_to := -1.0
 var _hand_pts := 0
 var _card_near := INF
 
@@ -509,8 +514,17 @@ func _hand_run() -> void:
 		k += 1
 		if k % 50 == 0:
 			print("held_child_probe: (%.0f s into the walk out: %.1f m from the crater, the hand %s rise %.2f)" % [tt, m._crater_dist(), str(m._hand_on), m._tiny_rise])
-		if m._hand_on and m._tiny != null and m._tiny.visible and m._tiny_rise > 0.05 and k % 3 == 0:
-			await _measure_hand("rise %.2f curl %.2f" % [m._tiny_rise, m._tiny_curl])
+		if m._hand_on and m._tiny != null and m._tiny.visible and m._tiny_rise > 0.05 and (k % 3 == 0 or m.grasping > 0.05):
+			await _measure_hand("rise %.2f curl %.2f grasping %.2f" % [m._tiny_rise, m._tiny_curl, m.grasping])
+		# (16 November, Gary's yes) the fingers opening and closing as it reaches
+		_grasp_most = maxf(_grasp_most, m.grasping)
+		if m.grasping > 0.8:
+			_grasp_frames += 1
+			if _grasp_from < 0.0:
+				_grasp_from = m._t
+			_grasp_to = m._t
+			if _grasp_frames == 1 or _grasp_frames == 5:
+				await _shot("hand_0_grasping_%d" % _grasp_frames)
 		for st in [["hand_1_open", m._tiny_rise > 0.97 and m._tiny_curl < 0.05], ["hand_2_taken", m._tiny_curl > 0.97],
 				["hand_3_white", m.card_whitened], ["hand_4_going_down", m.hand_caught and m._tiny_rise < 0.6 and m._tiny_curl > 0.9]]:
 			if st[1] and not got.has(st[0]):
@@ -523,6 +537,10 @@ func _hand_run() -> void:
 	Input.action_release("move_up")
 	print("held_child_probe: the small hand: %d checks of %d points, deepest in him %.1f cm (%s), deepest in its card %.1f mm (%s); nearest its card's face when taken %.1f mm; the grip %s %s" % [
 		_hand_checks, _hand_pts, _hand_worst * 100.0, _hand_worst_at, _card_worst * 1000.0, _card_worst_at, _card_near * 1000.0, str(m.tiny_grip_ok), str(m._tiny_shut)])
+	var gs := maxf(0.0, _grasp_to - _grasp_from)
+	print("held_child_probe: its fingers grasping as it reached: at most %.2f, %.1f s of it" % [_grasp_most, gs])
+	if _grasp_most < 0.8 or gs < 0.9:
+		fails.append("the small hand's fingers didn't open and close as it reached")
 	if _hand_checks == 0:
 		fails.append("the small hand never came up")
 	if _hand_worst > HAND_TOL:

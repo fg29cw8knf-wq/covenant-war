@@ -4797,6 +4797,23 @@ const LAST_CARD_HELD := Vector3(0.0, 0.093, 0.029)
 ## long after the take he speaks.
 const HAND_HOLD := 3.9
 const HAND_LINE_AFTER := 1.9
+## (16 November, Gary's yes to "the fingers open and close a little as it
+## reaches, the way babies' do, before the card lands") how long the card
+## takes to come down to the hand (s; it was 2.5) and when the hand starts
+## up for it (s from the card's start; it was 1.2): up sooner, and the card
+## slower, so it's reaching for it a while. TINY_GRASP: how far the fingers
+## close and open as it reaches (rad at the knuckle; the other joints by
+## TINY_BEND), how fast (closings a second), each finger a little behind the
+## one before (rad); stopped before the card is in reach (_mote_k
+## TINY_GRASP_UNTIL) and while the hand's coming up (_tiny_rise
+## TINY_GRASP_FROM).
+const HAND_CARD_FALL := 3.8
+const HAND_UP_AT := 0.6
+const TINY_GRASP := 0.55
+const TINY_GRASP_HZ := 1.3
+const TINY_GRASP_LAG := 0.45
+const TINY_GRASP_FROM := Vector2(0.3, 0.75)
+const TINY_GRASP_UNTIL := Vector2(0.88, 0.97)
 ## (15 November, evening) its turning white: how long after the take it
 ## begins, how long the white takes to climb it, how long it takes to go out
 ## of it as the hand goes down; and that it did (the tests read it).
@@ -4838,11 +4855,12 @@ func _small_hand() -> void:
 	_mote_white = 0.0
 	_tiny_step()
 	create_tween().tween_property(self, "_hand_k", 1.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	create_tween().tween_property(self, "_mote_k", 1.0, 2.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	await _wait(1.2)
-	# the hand comes up for it, open
+	create_tween().tween_property(self, "_mote_k", 1.0, HAND_CARD_FALL).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	await _wait(HAND_UP_AT)
+	# the hand comes up for it, open, its fingers opening and closing on the
+	# air as it waits for it (_pose_tiny's grasping: 16 November, Gary's yes)
 	create_tween().tween_property(self, "_tiny_rise", 1.0, 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	await _wait(1.35)
+	await _wait(HAND_CARD_FALL - HAND_UP_AT - 0.1)
 	# and takes it: the fingers close over the card's lower edge, and it flares
 	create_tween().tween_property(self, "_tiny_curl", 1.0, 0.34).set_trans(Tween.TRANS_SINE)
 	var ht := create_tween()
@@ -5040,19 +5058,35 @@ var _tiny_shut := {}
 var tiny_grip_ok := false
 
 
-## Each digit's bones posed for a curl of `k` (0 open, 1 shut on the card).
+## Each digit's bones posed for a curl of `k` (0 open, 1 shut on the card);
+## and, open and reaching, the fingers closing and opening on the air in
+## turn, a baby's grasping, until the card's nearly there (`grasping`, the
+## tests' to see).
+var grasping := 0.0
+
 func _pose_tiny(sk: Skeleton3D, k: float) -> void:
 	var e := smoothstep(0.0, 1.0, k)
-	for d in TINY_FINGERS + ["Thumb"]:
+	grasping = smoothstep(TINY_GRASP_FROM.x, TINY_GRASP_FROM.y, _tiny_rise) \
+		* (1.0 - smoothstep(TINY_GRASP_UNTIL.x, TINY_GRASP_UNTIL.y, _mote_k)) * (1.0 - e)
+	var order := TINY_FINGERS + ["Thumb"]
+	for di in order.size():
+		var d: String = order[di]
 		var open: Array = TINY_OPEN[d]
 		var shut: float = float(_tiny_shut.get(d, 0.6))
 		var ratio: Array = TINY_THUMB_BEND if d == "Thumb" else TINY_BEND
 		var spread := lerpf(float(open[1]), float(TINY_SHUT_SPREAD[d]), e)
+		# (closing on the air: 0 open, 1 closed, each finger behind the last;
+		# the thumb less, with the first)
+		var g := 0.0
+		if grasping > 0.0:
+			var ph := TAU * TINY_GRASP_HZ * _t - (TINY_GRASP_LAG * di if d != "Thumb" else 0.0)
+			g = grasping * (0.5 - 0.5 * cos(ph)) * (0.45 if d == "Thumb" else 1.0)
+			spread = lerpf(spread, float(TINY_SHUT_SPREAD[d]), g)
 		for j in 3:
 			var b := sk.find_bone("%s%d" % [d, j + 1])
 			if b < 0:
 				continue
-			var bend := lerpf(float((open[0] as Array)[j]), shut * float(ratio[j]), e)
+			var bend := lerpf(float((open[0] as Array)[j]), shut * float(ratio[j]), e) + g * TINY_GRASP * float(ratio[j])
 			var q := Quaternion(Vector3.RIGHT, bend)
 			if j == 0:
 				q = Quaternion(Vector3.BACK, spread) * q
