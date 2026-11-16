@@ -4814,6 +4814,79 @@ const TINY_GRASP_HZ := 1.3
 const TINY_GRASP_LAG := 0.45
 const TINY_GRASP_FROM := Vector2(0.3, 0.75)
 const TINY_GRASP_UNTIL := Vector2(0.88, 0.97)
+## (16 November, Gary's yes) the grasping slows as the card comes close, as if
+## the child is watching it come: down to TINY_GRASP_SLOW of its speed between
+## these points of the card's coming (_mote_k).
+const TINY_GRASP_SLOW := 0.4
+const TINY_GRASP_SLOWING := Vector2(0.5, 0.9)
+## (16 November, Gary's yes) the child's coo as its fingers first close on the
+## air (s after the hand starts up; how loud, dB).
+const HAND_COO_AT := 0.5
+const HAND_COO_DB := -6.0
+var coo_played := 0
+var _grasp_ph := 0.0
+var _grasp_t := -1.0
+
+## (16 November, Gary's yes: "As the hand goes back down into the blanket with
+## the card, Bram's thumb pulls the blanket's edge up over it") his right
+## hand comes over to the top of the bundle where the small hand went in
+## (TUCK_OVER_AT: in his own frame from the bundle's middle), palm down,
+## and draws the blanket over it towards his left (TUCK_OVER_DRAW, m),
+## TUCK_OVER_AFTER seconds after the hand starts down; then goes back to
+## his side. `tucking`: the tests'.
+const TUCK_OVER_AT := Vector3(0.07, 0.15, 0.03)
+const TUCK_OVER_DRAW := Vector3(0.06, 0.0, 0.02)
+const TUCK_OVER_ELBOW := Vector3(-0.5, 1.3, 0.05)
+const TUCK_OVER_WIDE := Vector3(-0.38, 0.06, -0.06)
+const TUCK_OVER_AFTER := 0.35
+const TUCK_OVER_IN := 0.55
+const TUCK_OVER_HOLD := 0.75
+const TUCK_OVER_BACK := 0.6
+var tucking := false
+var _tuck_look := 0.0
+
+func _tuck_over() -> void:
+	if not (_bram is Figure3D) or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
+		return
+	var fig := _bram as Figure3D
+	await _wait(TUCK_OVER_AFTER)
+	if _skipping or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
+		return
+	var own := func(v: Vector3) -> Vector3:
+		return fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw) * v
+	var t := Node3D.new()
+	_baby.add_child(t)
+	var inv := _baby.basis.orthonormalized().inverse()
+	# (in from up and out to his right, past the bundle's end, then down onto
+	# it, and back out the same way: straight from his side, whatever his
+	# arm's swing, it went through the bundle's end)
+	t.position = inv * (TUCK_OVER_AT + TUCK_OVER_WIDE)
+	tucking = true
+	# (its elbow up and out to his right, so the forearm comes down over the
+	# bundle onto it, not across through the top of it)
+	fig.elbow("right", TUCK_OVER_ELBOW * fig.stature(), TUCK_OVER_IN)
+	fig.reach(_tuck_hand, t, TUCK_OVER_IN * 0.55)
+	fig.palm("right", (own.call(Vector3(0.0, -1.0, 0.1)) as Vector3).normalized(), TUCK_OVER_IN, 0.3, false, (own.call(Vector3(0.75, -0.1, 0.65)) as Vector3).normalized())
+	await _wait(TUCK_OVER_IN * 0.5)
+	create_tween().tween_property(t, "position", inv * TUCK_OVER_AT, TUCK_OVER_IN * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TUCK_OVER_IN * 0.5)
+	# (drawing it over)
+	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_DRAW), TUCK_OVER_HOLD).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TUCK_OVER_HOLD)
+	# (up off it and out past its end again)
+	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_WIDE), TUCK_OVER_BACK * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TUCK_OVER_BACK * 0.5)
+	if is_instance_valid(_tuck_hand):
+		fig.reach(_tuck_hand, null, TUCK_OVER_BACK)
+	fig.palm("right", Vector3.ZERO, TUCK_OVER_BACK)
+	fig.elbow("right", Vector3.INF, TUCK_OVER_BACK)
+	await _wait(TUCK_OVER_BACK * 0.5)
+	_hand_look = false
+	fig.eyes_on(null)
+	await _wait(TUCK_OVER_BACK * 0.5)
+	tucking = false
+	if is_instance_valid(t):
+		t.queue_free()
 ## (15 November, evening) its turning white: how long after the take it
 ## begins, how long the white takes to climb it, how long it takes to go out
 ## of it as the hand goes down; and that it did (the tests read it).
@@ -4847,6 +4920,9 @@ func _small_hand() -> void:
 		_set.add_child(_tiny)
 	_tiny_rise = 0.0
 	_tiny_curl = 0.0
+	_grasp_ph = 0.0   # (open as it starts: its first closing a moment after it's up)
+	_tuck_look = 0.0
+	_grasp_t = -1.0
 	_tiny.visible = true
 	_mote = _make_held_card()
 	_set.add_child(_mote)
@@ -4860,6 +4936,12 @@ func _small_hand() -> void:
 	# the hand comes up for it, open, its fingers opening and closing on the
 	# air as it waits for it (_pose_tiny's grasping: 16 November, Gary's yes)
 	create_tween().tween_property(self, "_tiny_rise", 1.0, 1.1).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# (16 November, Gary's yes) and a soft coo from the child as its fingers
+	# first close on the air (Sfx baby_coo: silent until Gary's is saved)
+	get_tree().create_timer(HAND_COO_AT, false).timeout.connect(func() -> void:
+		if not _skipping and _hand_on:
+			_snd("baby_coo", randf_range(0.97, 1.04), HAND_COO_DB)
+			coo_played += 1)
 	await _wait(HAND_CARD_FALL - HAND_UP_AT - 0.1)
 	# and takes it: the fingers close over the card's lower edge, and it flares
 	create_tween().tween_property(self, "_tiny_curl", 1.0, 0.34).set_trans(Tween.TRANS_SINE)
@@ -4893,16 +4975,26 @@ func _small_hand() -> void:
 	# an ordinary card again (the white was a moment's)
 	create_tween().tween_property(self, "_mote_white", 0.0, HAND_WHITE_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	create_tween().tween_property(self, "_tiny_rise", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# (16 November, Gary's yes) and Bram's right hand comes over and draws the
+	# blanket up over the place it went in, the camera looking down to it and
+	# staying over his shoulder till it's done
+	_tuck_over()
+	create_tween().tween_property(self, "_tuck_look", 1.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var hk := create_tween()
+	hk.tween_interval(TUCK_OVER_AFTER + TUCK_OVER_IN + TUCK_OVER_HOLD * 0.7)
+	hk.tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _wait(1.05)
 	if is_instance_valid(_mote):
 		_mote.queue_free()
 	_mote = null
 	if is_instance_valid(_tiny):
 		_tiny.visible = false
-	_hand_look = false
-	if _bram is Figure3D:
-		(_bram as Figure3D).eyes_on(null)
+	# (his eyes stay on the blanket while he draws it over: _tuck_over lets
+	# them go)
+	if not tucking:
+		_hand_look = false
+		if _bram is Figure3D:
+			(_bram as Figure3D).eyes_on(null)
 	await _wait(0.5)
 	_hand_k = 0.0 if _skipping else _hand_k
 	_hand_on = false
@@ -4911,7 +5003,13 @@ func _small_hand() -> void:
 ## Where the small hand is now (between its palm and the middle of the card it takes).
 func _hand_point() -> Vector3:
 	if _bram is Figure3D:
-		return _tiny_xf(1.0) * Vector3(0.0, 0.06, 0.012)
+		var p := _tiny_xf(1.0) * Vector3(0.0, 0.06, 0.012)
+		if _tuck_look > 0.0 and is_instance_valid(_baby):
+			# (down to the blanket where it went in, as he draws it over it)
+			var fig := _bram as Figure3D
+			var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
+			p = p.lerp(_baby.global_position + own * TUCK_OVER_AT, smoothstep(0.0, 1.0, _tuck_look))
+		return p
 	return _bram.position + Vector3(0, 1.7, 0)
 
 
@@ -5068,6 +5166,11 @@ func _pose_tiny(sk: Skeleton3D, k: float) -> void:
 	var e := smoothstep(0.0, 1.0, k)
 	grasping = smoothstep(TINY_GRASP_FROM.x, TINY_GRASP_FROM.y, _tiny_rise) \
 		* (1.0 - smoothstep(TINY_GRASP_UNTIL.x, TINY_GRASP_UNTIL.y, _mote_k)) * (1.0 - e)
+	# (its own clock, slowing as the card comes close)
+	if _grasp_t >= 0.0 and _tiny_rise > TINY_GRASP_FROM.x:
+		var hz := TINY_GRASP_HZ * lerpf(1.0, TINY_GRASP_SLOW, smoothstep(TINY_GRASP_SLOWING.x, TINY_GRASP_SLOWING.y, _mote_k))
+		_grasp_ph += TAU * hz * maxf(0.0, _t - _grasp_t)
+	_grasp_t = _t
 	var order := TINY_FINGERS + ["Thumb"]
 	for di in order.size():
 		var d: String = order[di]
@@ -5079,7 +5182,7 @@ func _pose_tiny(sk: Skeleton3D, k: float) -> void:
 		# the thumb less, with the first)
 		var g := 0.0
 		if grasping > 0.0:
-			var ph := TAU * TINY_GRASP_HZ * _t - (TINY_GRASP_LAG * di if d != "Thumb" else 0.0)
+			var ph := _grasp_ph - (TINY_GRASP_LAG * di if d != "Thumb" else 0.0)
 			g = grasping * (0.5 - 0.5 * cos(ph)) * (0.45 if d == "Thumb" else 1.0)
 			spread = lerpf(spread, float(TINY_SHUT_SPREAD[d]), g)
 		for j in 3:

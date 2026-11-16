@@ -2690,6 +2690,31 @@ tipped forward to reach it.
   closings. `held_child_probe ... hand` checks it and that no finger touches
   the card while it does; stills of it looked at.
 
+**And three more yeses** ("123 yrs"), the same evening:
+
+- **A soft coo from the child** as its fingers first close on the air
+  (Sfx `baby_coo`, `HAND_COO_AT`, `HAND_COO_DB`, `coo_played`): silent until
+  Gary's own is saved as `assets/sfx/baby_coo.ogg` (or .wav/.mp3; `_2`,
+  `_3` takes are picked at random). Not a stand-in beep: there it would be
+  wrong.
+- **The grasping slows as the card comes close**, as if the child is
+  watching it come (`TINY_GRASP_SLOW`, `TINY_GRASP_SLOWING`; the fingers on
+  a clock of their own, `_grasp_ph`, so slowing doesn't jump them): from
+  1.3 closings a second to about half that.
+- **Bram draws the blanket over** the place the small hand went in, as it
+  goes down with the card (`_tuck_over`, `TUCK_OVER_*`, `tucking`,
+  `_tuck_look`): his right hand comes over to the top of the bundle, palm
+  down, elbow up and out to his right (so the forearm comes down onto the
+  bundle, not across through the top of it), in from up and out past the
+  bundle's end and back out the same way (`TUCK_OVER_WIDE`: straight from
+  his side, at some points of his walk's arm swing, his hand went through
+  the bundle's end, 6 cm; the probe caught it one run in four), draws it 6
+  cm towards his left and goes back; his sleeve rests on the blanket's top
+  (2 cm into the wool); his eyes stay on it, and the camera looks down to it and
+  stays over his shoulder till it's done (the hand's camera used to go back
+  behind him as the hand went down). `held_child_probe ... hand` measures
+  the bundle against his hand every frame of it.
+
 **Checked:** `load_all`: 0 failed. `held_child_probe` (new) `carry`,
 `knee`, `hand`: PASS, drawn (Forward+ through lavapipe) and headless, every
 still looked at (the pick-up's hold from over his shoulder, from his side

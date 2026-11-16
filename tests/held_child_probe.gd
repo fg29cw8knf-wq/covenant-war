@@ -204,7 +204,7 @@ func _bake_bram() -> void:
 		if done[0]:
 			return
 		done[0] = true
-		for bn in ["LeftArm", "LeftForeArm", "LeftHand", "LeftHandMiddle1", "LeftHandMiddle2", "RightArm", "RightHand", "RightHandMiddle1", "Spine2", "Head"]:
+		for bn in ["LeftArm", "LeftForeArm", "LeftHand", "LeftHandMiddle1", "LeftHandMiddle2", "RightArm", "RightForeArm", "RightHand", "RightHandMiddle1", "Spine", "Spine1", "Spine2", "Hips", "Head"]:
 			var bi := sk.find_bone(bn)
 			if bi >= 0:
 				_drawn_bones[bn] = (sk.global_transform * sk.get_bone_global_pose(bi)).origin
@@ -449,6 +449,28 @@ static func _seg(p: Vector3, a: Vector3, b: Vector3) -> float:
 	return p.distance_to(a + ab * t)
 
 
+## How far his right hand (as drawn, its forearm's line 7.5 cm past the
+## wrist: Figure3D._reach) is from where it's reaching for, over the blanket.
+func _right_gap() -> float:
+	var fig := m._bram as Figure3D
+	var sk := fig._skel
+	var got := [INF]
+	var tgt: Node3D = null
+	for c in m._baby.get_children():
+		if c is Node3D and c != m._tuck_hand and not (c is MeshInstance3D) and not (c is Light3D) and c.get_child_count() == 0:
+			tgt = c
+	if tgt == null:
+		return INF
+	var cb := func() -> void:
+		var w := (sk.global_transform * sk.get_bone_global_pose(sk.find_bone("RightHand"))).origin
+		var e := (sk.global_transform * sk.get_bone_global_pose(sk.find_bone("RightForeArm"))).origin
+		got[0] = (w + (w - e).normalized() * 0.075).distance_to(tgt.global_position)
+	sk.skeleton_updated.connect(cb, CONNECT_ONE_SHOT)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	return float(got[0])
+
+
 ## How far his left hand (as drawn) is from where it's reaching for.
 func _hand_gap(fig: Figure3D) -> float:
 	var sk := fig._skel
@@ -492,6 +514,9 @@ var _hand_checks := 0
 var _grasp_most := 0.0
 var _grasp_frames := 0
 var _grasp_from := -1.0
+var _tuck_seen := false
+var _tuck_worst := 0.0
+var _tuck_gap := INF
 var _grasp_to := -1.0
 var _hand_pts := 0
 var _card_near := INF
@@ -532,11 +557,60 @@ func _hand_run() -> void:
 				await _shot(st[0])
 				if st[0] == "hand_1_open" or st[0] == "hand_2_taken":
 					await _hand_side(st[0])
-		if m.hand_caught and not m._hand_on:
+		# (16 November, Gary's yes) Bram's right hand drawing the blanket over
+		# where the small hand went in: the bundle against his hand, and how
+		# near his hand gets to its place
+		if m.tucking:
+			_tuck_seen = true
+
+			if true:
+				await _bake_bram()
+				var bp := points_of(m._baby)
+				var r := _split(bp)
+				if float(r[1]) > _tuck_worst + 0.005:
+					# (where: the deepest point, in his frame, and the nearest of his bones)
+					var bf := m._bram as Figure3D
+					var dp := Vector3.ZERO
+					var dd := 0.0
+					for p in bp:
+						var d := _inside(p)
+						if d > dd:
+							dd = d
+							dp = p
+					var nb := ""
+					var nd := INF
+					for bn in _drawn_bones:
+						var q: Vector3 = _drawn_bones[bn]
+						if q.distance_to(dp) < nd:
+							nd = q.distance_to(dp)
+							nb = bn
+					print("held_child_probe:   (the tuck: %.1f cm in at %s in his frame, nearest %s %.0f cm; his right elbow %s, wrist %s; his hand %.1f cm off its place)" % [
+						dd * 100.0, str(bf.to_own(dp).snappedf(0.005)), nb, nd * 100.0,
+						str(bf.to_own(_drawn_bones.get("RightForeArm", Vector3.ZERO)).snappedf(0.01)), str(bf.to_own(_drawn_bones.get("RightHand", Vector3.ZERO)).snappedf(0.01)),
+						(await _right_gap()) * 100.0])
+				_tuck_worst = maxf(_tuck_worst, float(r[1]))
+				_tuck_gap = minf(_tuck_gap, await _right_gap())
+			if not got.has("hand_5_tucking") and m._tuck_hand != null:
+				var rh := _drawn_bones.get("RightHand", Vector3.INF) as Vector3
+				if rh != Vector3.INF and _tuck_gap < 0.03:
+					got["hand_5_tucking"] = true
+					await _shot("hand_5_tucking")
+					await _hand_side("hand_5_tucking")
+		if m.hand_caught and not m._hand_on and not m.tucking:
 			break
 	Input.action_release("move_up")
 	print("held_child_probe: the small hand: %d checks of %d points, deepest in him %.1f cm (%s), deepest in its card %.1f mm (%s); nearest its card's face when taken %.1f mm; the grip %s %s" % [
 		_hand_checks, _hand_pts, _hand_worst * 100.0, _hand_worst_at, _card_worst * 1000.0, _card_worst_at, _card_near * 1000.0, str(m.tiny_grip_ok), str(m._tiny_shut)])
+	print("held_child_probe: Bram's hand over the blanket: %s, the bundle at most %.1f cm into him (his hand), his hand %.1f cm at nearest from its place; the coo asked for %d" % [
+		str(_tuck_seen), _tuck_worst * 100.0, _tuck_gap * 100.0, m.coo_played])
+	if not _tuck_seen:
+		fails.append("Bram's hand didn't come over the blanket")
+	elif _tuck_worst > TOL:
+		fails.append("Bram's hand into the bundle")
+	elif _tuck_gap > 0.09:
+		fails.append("Bram's hand didn't get to the blanket")
+	if m.coo_played != 1:
+		fails.append("the coo asked for %d times" % m.coo_played)
 	var gs := maxf(0.0, _grasp_to - _grasp_from)
 	print("held_child_probe: its fingers grasping as it reached: at most %.2f, %.1f s of it" % [_grasp_most, gs])
 	if _grasp_most < 0.8 or gs < 0.9:
@@ -550,7 +624,7 @@ func _hand_run() -> void:
 
 
 func _hand_side(nm: String) -> void:
-	if not _drawn:
+	if not _drawn or OS.get_cmdline_user_args().has("gameonly"):
 		return
 	var fig := m._bram as Figure3D
 	var hp := m._hand_point()

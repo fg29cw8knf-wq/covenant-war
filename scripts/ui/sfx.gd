@@ -30,6 +30,10 @@ const FALLBACK := {
 	"miss": "", "status_burn": "select", "status_poison": "select", "status_stun": "select",
 	"status_sleep": "select", "dice_roll": "", "dice_land": "coin", "dice_crit": "gift", "dice_fumble": "lose",
 	"summon_boom": "", "gift": "gift", "heal": "heal", "ko": "ko",
+	# (16 November) the small hand's coo as it reaches, the Night of the White
+	# Sky: silent until Gary's own is saved as assets/sfx/baby_coo.ogg (a beep
+	# would be wrong there)
+	"baby_coo": "",
 }
 
 const RATE := 22050
