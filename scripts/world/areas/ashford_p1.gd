@@ -1826,7 +1826,11 @@ const NECK_HAND_HOLD := 1.2
 const NECK_HAND_DOWN := 0.6
 const NECK_HAND_OUT := 0.035
 const NECK_HAND_ELBOW := Vector2(0.24, 0.1)
+## How much higher than the mark the hand rests (m, straight up).
+const NECK_HAND_UP_BY := 0.04
 static var hand_to_neck := 0
+## (false: the blanket left lying as it was, as before 16 November; the tests' before)
+static var lift_blanket := true
 
 static func _hand_to_neck(w: World, fig: Figure3D) -> void:
 	var mi := SealMark.on_hero(w)
@@ -1839,7 +1843,15 @@ static func _hand_to_neck(w: World, fig: Figure3D) -> void:
 	var t := Node3D.new()
 	t.name = "NeckHand"
 	w.add_child(t)
-	t.global_position = mi.global_position + n * NECK_HAND_OUT
+	# (16 November, Gary: "When player puts hand to neck in bed his hand goes
+	# through the bed": its palm was on the side of his neck at the mark, its
+	# fingers down the side of it into the pillow under his head. The hand
+	# rests NECK_HAND_UP_BY higher on his neck now, towards his throat, the
+	# palm over the place the mark was and the fingertips clear of the pillow;
+	# up along the skin, as much as the mark faces sideways (Player D's, at
+	# the front of his throat, faces up: his hand isn't lifted off it)
+	var up_skin := Vector3.UP - n * Vector3.UP.dot(n)
+	t.global_position = mi.global_position + n * NECK_HAND_OUT + up_skin * NECK_HAND_UP_BY
 	# (the elbow low on his chest, towards his feet: off his left shoulder,
 	# down his body and a little up off it, the way his chest faces)
 	var chest_up := fig.bone_pos("Spine2") - fig.bone_pos("Hips")
@@ -1852,6 +1864,13 @@ static func _hand_to_neck(w: World, fig: Figure3D) -> void:
 		var cam_at: Vector3 = whole_shot[0]
 		var mid: Vector3 = whole_shot[1]
 		Cine.move(w, cam_at.lerp(head, 0.22), mid.lerp(head, 0.35), secs + 0.3, float(whole_shot[2]) - 4.0)
+	# (and the blanket lifted over his arm wherever it's under it, so the
+	# hand slides up under it and out over its hem, never through it:
+	# BlanketTent, until the blanket's thrown back as he gets up,
+	# throw_blanket)
+	var bl = InnRooms.attic(village(w)).get("blanket", null)
+	if lift_blanket and bl is MeshInstance3D and (bl as MeshInstance3D).has_meta("rows") and BlanketTent.on(bl) == null:
+		BlanketTent.start(bl, fig, "left")
 	fig.reach(t, null, NECK_HAND_UP)
 	await Cine.wait(w, NECK_HAND_UP + NECK_HAND_HOLD)
 	fig.reach(null, null, NECK_HAND_DOWN)

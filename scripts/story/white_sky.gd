@@ -56,11 +56,11 @@ extends CanvasLayer
 ## walk and the camera behind him are eased (_roam_step, _process); and the
 ## duel has its own drama at the film's beats (the note over _dress_duel).
 ##
-## The first time, none of it can be skipped (8 November, Gary: "Make it so
-## you can't skip Bram's bit at the beginning"). Once it has been seen
-## (Game.settings seen_white_sky) a Skip button skips the lot (12 November:
-## "Remove: the never-skip rule after the first play-through"). Taps move the
-## lines on as everywhere else. The gate
+## None of it can be skipped, the first time or any time after (8 November,
+## Gary: "Make it so you can't skip Bram's bit at the beginning"; 16
+## November: "Remove the able to skip the prologue". From 12 November to
+## then a Skip button came up once it had been seen). Taps move the lines on
+## as everywhere else; skip() is the tests' alone. The gate
 ## at dawn and the clerk counting the crowns are kept back for the Reckoning
 ## (the reckoning film's shot rk_02b), so the opening doesn't say where Bram's
 ## gold came from.
@@ -234,7 +234,6 @@ var _held := false            # a finger or the mouse held down
 var _tapped := false
 var _last_input := ""
 var _skipping := false
-var _skip_btn: Button
 var _done := false
 var _tap_at := Vector2.INF       # where the last tap or click was (Vector2.INF: a key or a button)
 var _falling: Array = []      # [node, velocity, spin, colour]
@@ -315,23 +314,8 @@ func _ready() -> void:
 	_compass.label = COMPASS_LABEL
 	_root.add_child(_compass)
 	SafeArea.fit(_compass)
-	# Skip, once the memory has been seen (12 November; play() shows it)
-	_skip_btn = UITheme.button(HoldSkip.TEXT, false, 260)
-	_skip_btn.anchor_left = 1.0
-	_skip_btn.anchor_right = 1.0
-	# (clear of a phone's Dynamic Island, as the opening movie's is)
-	SafeArea.watch(_skip_btn, func() -> void:
-		var mg := SafeArea.insets()
-		_skip_btn.offset_left = -310 - mg.z
-		_skip_btn.offset_right = -40 - mg.z
-		_skip_btn.offset_top = 36 + mg.y
-		_skip_btn.offset_bottom = 132 + mg.y)
-	_skip_btn.visible = false
-	_skip_btn.focus_mode = Control.FOCUS_NONE
-	# (12 November, Gary's yes: held a second to skip, as the opening and the
-	# story films; not E or A, which make the moves and pick up the child)
-	HoldSkip.attach(_skip_btn, false).done.connect(skip)
-	_root.add_child(_skip_btn)
+	# (no Skip button: 16 November, Gary, "Remove the able to skip the
+	# prologue". It came up once the memory had been seen, 12 November.)
 	_wind = _sound("storm_wind", WIND_DB, true)
 	_cry = _sound("baby_cry", -6.0, true)
 
@@ -391,7 +375,6 @@ func play() -> void:
 	Music.play(["white_sky", "sigilfall"], 2.0)
 	if _wind != null:
 		_wind.play()
-	_skip_btn.visible = seen()
 	await _open()
 	if not _skipping:
 		await _sigilfall()
@@ -418,12 +401,11 @@ func _own_overlay() -> CineOverlay:
 	return ov
 
 
-## Skips the rest: the white, then the last line and the attic (the Skip
-## button, there once the memory has been seen; and the tests).
+## Skips the rest: the white, then the last line and the attic. The tests'
+## alone (the play-throughs hurry past the memory with it): a player can't
+## skip it (16 November).
 func skip() -> void:
 	_skipping = true
-	if _skip_btn != null:
-		_skip_btn.visible = false
 	if _ov != null and _ov._waiting:
 		_ov._next.emit()
 	if _ov != null and _ov.passing:
@@ -2107,6 +2089,7 @@ func _to_knee() -> void:
 	if not c.is_empty():
 		_take(c, 0.0, KNEE_HOLD)
 	fig.kneel(KNEE_DOWN, KNEE_LEAN, false, true)
+	_knee_hand(true, KNEE_DOWN)
 	if is_instance_valid(_hunter):
 		_hunter_at += Vector3(0, 0, HUNTER_STEP)
 		_hunter.walk_to(_hunter_at, 1.5)
@@ -2136,12 +2119,14 @@ func _to_knee() -> void:
 ## mark answers with a soft light in its hood. Then the hush before the Last
 ## Page (_ask_move), the hunter a pace nearer. TO_CHILD_CAM: where the camera
 ## stands from his head (m: out to his left, up, back), and how far from his
-## head down to the child it looks.
+## head down to the child it looks (16 November: further down, 0.62 to 0.74,
+## now the child is held out in front of his coat and not half inside it:
+## it sat behind his words at the foot of the picture).
 const TO_CHILD_AFTER := 0.55
 const TO_CHILD_LENS := 34.0
 const TO_CHILD_HUSH := 0.6
 const TO_CHILD_CAM := Vector3(-1.6, 0.0, 0.03)
-const TO_CHILD_LOOK := 0.62
+const TO_CHILD_LOOK := 0.74
 const TO_CHILD_GLOW := 0.38
 ## What the tests read: the shot of him and the child was taken for the line.
 var to_child_shot := false
@@ -2236,6 +2221,7 @@ func _rise_to_play(card_after := 0.0) -> void:
 	rose = true
 	if _bram is Figure3D:
 		(_bram as Figure3D).rise(KNEE_UP)
+	_knee_hand(false, KNEE_UP)
 	if card_after > KNEE_UP:
 		await _wait(KNEE_UP)
 		_kneeling = false
@@ -4736,8 +4722,10 @@ func _track_step() -> void:
 ## own camera, drawn in; the walk stays his under it); a small hand in a
 ## sleeve of the blanket's wool comes up by his shoulder, open, and takes it;
 ## the child's tune is heard (Sfx "child_tune": Gary's, or the stand-in); and
-## it goes back down into his coat with it. Made here (a wrist, a palm, four
-## fingers and a thumb that close), carried over his left shoulder joint.
+## it goes back down into the blanket with it. (16 November: a model of its
+## own now, _make_tiny_hand, up out of the bundle in front of his left
+## shoulder, _tiny_xf; it was round shapes, carried over his shoulder joint,
+## and its sleeve went down through him.)
 ##
 ## 15 November, later (Gary, to "the line after the small hand instead: the
 ## hand comes up out of his coat like a shoot, catches its light, and then
@@ -4759,8 +4747,10 @@ func _track_step() -> void:
 ## the thumb goes round under its lower edge behind it: it's held between
 ## them, standing up over the hand, flaring as it's taken. (Held the other
 ## way round first, palm to the camera and the fingers curled over the
-## card's edge: single joints, they went through it, and Gary saw it.) It's
-## held there HAND_HOLD seconds. Bram's
+## card's edge: single joints, they went through it, and Gary saw it. Since
+## 16 November the fingers bend at all three joints, and how far each closes
+## is worked out from where the card is: _tiny_grip.) It's held there
+## HAND_HOLD seconds. Bram's
 ## head comes round and down to it (the side of his face is seen: Gary, the
 ## same day, "we can see the side of the face it will be clear who he is
 ## anyway"), and HAND_LINE_AFTER the take he says it: "Come on then,
@@ -4768,14 +4758,26 @@ func _track_step() -> void:
 ## it), the card white in the small fist. Then the hand takes the card down
 ## into his coat, the white going out of it.
 const HAND_AT := 7.9
-const HAND_LENS := 25.0
+const HAND_LENS := 30.0
 ## The camera for it, from where he stands: to his left, up, behind (m).
-const HAND_CAM := Vector3(0.27, 1.72, 1.1)
+## (16 November: closer in and higher over his left shoulder, looking down
+## past it at the hand up out of the blanket in front of him; it was set
+## for the hand up by his shoulder, 1.1 m back.)
+const HAND_CAM := Vector3(0.42, 1.80, 0.50)
 ## Where the hand's wrist is when it's up, off his left shoulder joint in
-## his own frame (x to his left, z ahead), and how far down in his coat it
-## starts.
-const TINY_AT := Vector3(0.02, 0.15, 0.05)
-const TINY_DOWN := 0.3
+## his own frame (x to his left, z ahead); how it's turned (its fingers up and
+## a little out and forward, its palm ahead, the back of it to the camera
+## behind him: radians about x, y, z of his frame); and how far back down
+## its own forearm it starts, in the blanket in his arm.
+## (16 November, Gary: "hand goes through bram". It was 5 cm ahead of his
+## shoulder joint and leaning in over it, so its sleeve, running down from
+## the wrist, went down through his shoulder and his collar. Now it's out
+## in front of his shoulder, clear of his coat, where the child in his left
+## arm can reach up to, its forearm coming up out of the bundle:
+## tests/held_child_probe.gd "hand" measures how much of it is inside him.)
+const TINY_AT := Vector3(0.0, 0.08, 0.32)
+const TINY_TURN := Vector3(-0.15, 0.0, -0.10)
+const TINY_DOWN := 0.22
 ## The card in the small hand: its size (of a falling Sigil's, CARD_SIZE:
 ## 8.2 by 11.5 cm, a little bigger than the game's 6.3 by 8.8, to be seen in
 ## so small a hand), the colour of its light once it's turned white (the
@@ -4790,7 +4792,7 @@ const LAST_CARD_COL := Color(0.85, 0.9, 1.0)
 const LAST_CARD_SHINE := 1.1
 const LAST_CARD_GLOW := 0.22
 const LAST_CARD_LIGHT := 0.14
-const LAST_CARD_HELD := Vector3(0.0, 0.093, 0.0195)
+const LAST_CARD_HELD := Vector3(0.0, 0.093, 0.029)
 ## How long the card is held up in the fist before it's taken down, and how
 ## long after the take he speaks.
 const HAND_HOLD := 3.9
@@ -4891,14 +4893,13 @@ func _small_hand() -> void:
 ## Where the small hand is now (between its palm and the middle of the card it takes).
 func _hand_point() -> Vector3:
 	if _bram is Figure3D:
-		var fig := _bram as Figure3D
-		var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
-		return fig.bone_pos("LeftArm") + own * (TINY_AT + Vector3(0.03, 0.085, 0.0))
+		return _tiny_xf(1.0) * Vector3(0.0, 0.06, 0.012)
 	return _bram.position + Vector3(0, 1.7, 0)
 
 
-## The small hand and its card, a frame of them: the hand carried over his
-## left shoulder joint, its back to the camera behind him, up by _tiny_rise
+## The small hand and its card, a frame of them: the hand up out of the
+## child's blanket in front of his left shoulder (TINY_AT, TINY_TURN), its
+## back to the camera behind him, risen by _tiny_rise along its own forearm
 ## and closed by _tiny_curl; the night's card fluttering down beyond it to
 ## its palm (_mote_k), turning over as it comes, then held upright against
 ## it, and turning white in it for a moment (_mote_white).
@@ -4906,25 +4907,22 @@ func _tiny_step() -> void:
 	if _tiny == null or not is_instance_valid(_tiny) or not _tiny.visible or not (_bram is Figure3D):
 		return
 	var fig := _bram as Figure3D
-	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
-	var sh := fig.bone_pos("LeftArm")
-	var k := _tiny_rise
-	# (unsteady, as a baby's reach is)
-	var wob := Vector3(sin(_t * 5.3) * 0.007, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.007) * k
-	var at := sh + own * (TINY_AT + Vector3(0.0, -TINY_DOWN * (1.0 - k), 0.0) + wob)
-	# (reaching up and a little out from him, not straight up like a post;
-	# the back of the hand to the camera behind him, its palm ahead)
-	_tiny.global_transform = Transform3D(own * Basis.from_euler(Vector3(0.15, 0.0, -0.42)), at)
-	for i in _tiny.get_meta("fingers", []).size():
-		var pv: Node3D = _tiny.get_meta("fingers")[i]
-		var open: Vector3 = pv.get_meta("open")
-		var shut: Vector3 = pv.get_meta("shut")
-		pv.rotation = open.lerp(shut, smoothstep(0.0, 1.0, _tiny_curl))
+	_tiny.global_transform = _tiny_xf(_tiny_rise)
+	var sk := _tiny.get_meta("skel", null) as Skeleton3D
+	if sk != null and is_instance_valid(sk):
+		_pose_tiny(sk, _tiny_curl)
+	else:
+		for i in _tiny.get_meta("fingers", []).size():
+			var pv: Node3D = _tiny.get_meta("fingers")[i]
+			var open: Vector3 = pv.get_meta("open")
+			var shut: Vector3 = pv.get_meta("shut")
+			pv.rotation = open.lerp(shut, smoothstep(0.0, 1.0, _tiny_curl))
 	if _hand_look:
 		fig.eyes_on(_hand_point())
 	if _mote != null and is_instance_valid(_mote):
 		# (held: upright against the palm)
 		var held := _tiny.global_transform * Transform3D(Basis.IDENTITY, LAST_CARD_HELD)
+		var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
 		var mk := _mote_k
 		# (from above and ahead of his shoulder: it comes down into the
 		# picture from its top, and slides down beyond the open hand)
@@ -4954,12 +4952,211 @@ func _tiny_step() -> void:
 			ml.light_energy = LAST_CARD_LIGHT * _mote_heat * (1.0 + 0.5 * wk)
 
 
-## The small hand: a soft sleeve of the blanket's wool, a wrist, a palm,
-## four fingers and a thumb, each finger on its own knuckle (its open and
-## shut turns kept on it). Its wrist at its own origin, the fingers up +y,
-## the palm facing +z. A third bigger than a baby's hand is: at the size it's
-## seen, a true one was a pale dot on a grey post.
+## Where the small hand is (its wrist, its frame: fingers +y, palm +z) risen
+## `k` of the way: off his left shoulder joint in his own frame (TINY_AT),
+## turned TINY_TURN, and TINY_DOWN back down its own forearm's line before
+## it's risen (so it comes up out of the blanket, not up through him), a
+## baby's unsteadiness on it.
+func _tiny_xf(k: float) -> Transform3D:
+	var fig := _bram as Figure3D
+	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
+	var b := own * Basis.from_euler(TINY_TURN)
+	var wob := Vector3(sin(_t * 5.3) * 0.006, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.006) * k
+	var at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob) - b.y * TINY_DOWN * (1.0 - k)
+	return Transform3D(b, at)
+
+
+## The small hand (16 November, Gary: "When baby hand reaches for card hand
+## doesn't look very real"): one smooth skin over its own skeleton
+## (assets/models/whitesky/small_hand.glb, made by tools/make_small_hand.py):
+## a plump palm with a baby's pads, the fat crease round the wrist, dimples
+## for knuckles, short soft fingers that bend at all three joints and a thumb
+## at its three, little nails, the creases pinker and darker, coming out of a
+## sleeve of the blanket's cream wool with a rolled, ribbed cuff. Skin that
+## the light wraps round and comes through (TINY_SKIN: lit from behind by
+## the card), the wool knitted (TINY_WOOL). Its wrist at its
+## own origin, the fingers up +y, the palm facing +z. A third bigger than a
+## baby's hand is: at the size it's seen, a true one was a pale dot on a grey
+## post. Until 16 November it was made here of round shapes, a ball for a
+## palm and a stiff capsule for each finger (_make_drawn_hand, kept for when
+## the model isn't there).
+const SMALL_HAND := "res://assets/models/whitesky/small_hand.glb"
+
 func _make_tiny_hand() -> Node3D:
+	if not ResourceLoader.exists(SMALL_HAND):
+		return _make_drawn_hand()
+	var root := Node3D.new()
+	root.name = "SmallHand"
+	var m := (load(SMALL_HAND) as PackedScene).instantiate() as Node3D
+	root.add_child(m)
+	var sk: Skeleton3D = null
+	for n in m.find_children("*", "Skeleton3D", true, false):
+		sk = n as Skeleton3D
+	var skin := ShaderMaterial.new()
+	skin.shader = _tiny_shader("skin")
+	var wool := ShaderMaterial.new()
+	wool.shader = _tiny_shader("wool")
+	for n in m.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		mi.layers |= FILL_LAYER   # (the soft light on him, on it too)
+		for si in mi.mesh.get_surface_count():
+			var nm := String(mi.mesh.surface_get_material(si).resource_name) if mi.mesh.surface_get_material(si) != null else ""
+			mi.set_surface_override_material(si, wool if nm == "wool" or si == 1 else skin)
+	if sk != null:
+		root.set_meta("skel", sk)
+		_tiny_grip(sk)
+	return root
+
+
+## The small hand's digits (the model's bones, Index1 to Little3, Thumb1 to
+## Thumb3), each bending at its three joints in these shares of its first
+## (a finger curls more at its middle joint than at its knuckle, least at
+## its end; a thumb least at its root), and the radii of each at its root
+## and its tip with its last joint's length (the model's own:
+## tools/make_small_hand.py prints them).
+const TINY_FINGERS := ["Index", "Middle", "Ring", "Little"]
+const TINY_BEND := [1.0, 1.3, 0.8]
+const TINY_THUMB_BEND := [0.5, 1.0, 0.8]
+const TINY_R := {"Index": [0.0060, 0.0049, 0.0088], "Middle": [0.0062, 0.0050, 0.0092], "Ring": [0.0059, 0.0048, 0.0088],
+	"Little": [0.0052, 0.0042, 0.0075], "Thumb": [0.0076, 0.0049, 0.0104]}
+## Open, reaching for it: each digit's three joints (rad; less than nothing
+## is bent back) and its spread about the palm's normal (rad, towards the
+## thumb): the fingers apart and a little back, as a baby's spread when it
+## reaches; the thumb out and back, clear of the card coming down.
+const TINY_OPEN := {
+	"Index": [[-0.10, 0.12, 0.06], 0.07], "Middle": [[-0.12, 0.12, 0.06], 0.0],
+	"Ring": [[-0.10, 0.12, 0.06], -0.05], "Little": [[-0.06, 0.14, 0.08], -0.12],
+	"Thumb": [[-0.45, -0.15, 0.0], 0.0],
+}
+## Shut on the card, the fingers a little closer together than their rest.
+const TINY_SHUT_SPREAD := {"Index": -0.03, "Middle": 0.0, "Ring": 0.02, "Little": 0.06, "Thumb": 0.0}
+## How far off the card the closed fingers' pads and the thumb stop (m),
+## and the most a finger curls (rad at its knuckle).
+const TINY_GAP := 0.0004
+const TINY_CURL_MOST := 0.95
+## The shut bend worked out for each digit (_tiny_grip), and whether the
+## thumb found its way round behind the card (the tests read it).
+var _tiny_shut := {}
+var tiny_grip_ok := false
+
+
+## Each digit's bones posed for a curl of `k` (0 open, 1 shut on the card).
+func _pose_tiny(sk: Skeleton3D, k: float) -> void:
+	var e := smoothstep(0.0, 1.0, k)
+	for d in TINY_FINGERS + ["Thumb"]:
+		var open: Array = TINY_OPEN[d]
+		var shut: float = float(_tiny_shut.get(d, 0.6))
+		var ratio: Array = TINY_THUMB_BEND if d == "Thumb" else TINY_BEND
+		var spread := lerpf(float(open[1]), float(TINY_SHUT_SPREAD[d]), e)
+		for j in 3:
+			var b := sk.find_bone("%s%d" % [d, j + 1])
+			if b < 0:
+				continue
+			var bend := lerpf(float((open[0] as Array)[j]), shut * float(ratio[j]), e)
+			var q := Quaternion(Vector3.RIGHT, bend)
+			if j == 0:
+				q = Quaternion(Vector3.BACK, spread) * q
+			sk.set_bone_pose_rotation(b, sk.get_bone_rest(b).basis.get_rotation_quaternion() * q)
+
+
+## Points down a digit's middle with their radii ([point, radius] in the
+## hand's frame), bent `bend` at its first joint (its shares at the others)
+## and spread `spread`, from the skeleton's rest.
+func _digit_line(sk: Skeleton3D, d: String, bend: float, spread: float) -> Array:
+	var r: Array = TINY_R[d]
+	var ratio: Array = TINY_THUMB_BEND if d == "Thumb" else TINY_BEND
+	var b0 := sk.find_bone(d + "1")
+	if b0 < 0:
+		return []
+	var xf := sk.get_bone_global_rest(sk.get_bone_parent(b0))
+	var lens: Array = []
+	for j in 3:
+		lens.append(sk.get_bone_rest(sk.find_bone("%s%d" % [d, j + 2])).origin.length() if j < 2 else float(r[2]) - 0.55 * float(r[1]))
+	var total: float = float(lens[0]) + float(lens[1]) + float(lens[2])
+	var run := 0.0
+	var out: Array = []
+	for j in 3:
+		var b := sk.find_bone("%s%d" % [d, j + 1])
+		var rest := sk.get_bone_rest(b)
+		var q := Quaternion(Vector3.RIGHT, bend * float(ratio[j]))
+		if j == 0:
+			q = Quaternion(Vector3.BACK, spread) * q
+		xf = xf * Transform3D(Basis(rest.basis.get_rotation_quaternion() * q), rest.origin)
+		for s in 6:
+			var t := float(s) / 5.0
+			var along: float = float(lens[j]) * t
+			out.append([xf * Vector3(0.0, along, 0.0), lerpf(float(r[0]), float(r[1]), (run + along) / total)])
+		run += float(lens[j])
+	return out
+
+
+## Works out how far each digit closes to take the card where it's held
+## (LAST_CARD_HELD, upright, its face to the palm): each finger until the
+## pad of it rests on the card's near face (TINY_GAP off it), nothing of it
+## through it; the thumb until all of it that's higher than the card's lower
+## edge is behind the card's far face, so it has gone under the edge and
+## round (from the camera behind him it's hidden by the card).
+func _tiny_grip(sk: Skeleton3D) -> void:
+	var half_th := 0.003 * LAST_CARD
+	var near := LAST_CARD_HELD.z - half_th - TINY_GAP
+	var far := LAST_CARD_HELD.z + half_th + TINY_GAP
+	var low := LAST_CARD_HELD.y - CARD_SIZE.y * LAST_CARD * 0.5
+	var half_w := CARD_SIZE.x * LAST_CARD * 0.5
+	for d in TINY_FINGERS:
+		var sp := float(TINY_SHUT_SPREAD[d])
+		var reach := func(a: float) -> float:
+			var most := -INF
+			for pr in _digit_line(sk, d, a, sp):
+				most = maxf(most, (pr[0] as Vector3).z + float(pr[1]))
+			return most
+		# (a finger too short to reach the card, the little one, curls in on
+		# itself only so far: TINY_CURL_MOST)
+		var lo := 0.0
+		var hi := TINY_CURL_MOST
+		if float(reach.call(lo)) >= near:
+			_tiny_shut[d] = 0.0
+			continue
+		for it in 24:
+			var mid := (lo + hi) * 0.5
+			if float(reach.call(mid)) < near:
+				lo = mid
+			else:
+				hi = mid
+		_tiny_shut[d] = lo
+	# the thumb: the least bend that has all of it clear of the card
+	var sp_t := float(TINY_SHUT_SPREAD["Thumb"])
+	var worst := func(a: float) -> float:
+		var w := INF
+		for pr in _digit_line(sk, "Thumb", a, sp_t):
+			var p: Vector3 = pr[0]
+			var r := float(pr[1])
+			if p.y + r < low or absf(p.x) - r > half_w:
+				continue   # (under its edge, or off its side)
+			w = minf(w, (p.z - r) - far)   # (how far behind it)
+		return w
+	tiny_grip_ok = false
+	var best := 0.0
+	var best_w := -INF
+	for i in 81:
+		var a := i * 0.02
+		var w := float(worst.call(a))
+		if w >= 0.0:
+			best = a
+			tiny_grip_ok = true
+			break
+		if w > best_w:
+			best_w = w
+			best = a
+	_tiny_shut["Thumb"] = best
+	if not tiny_grip_ok:
+		push_warning("WhiteSky: the small hand's thumb can't get behind its card (%.1f mm short)" % (-best_w * 1000.0))
+
+
+## The small hand as it was made here until 16 November, for when the model
+## isn't there: a soft sleeve of the blanket's wool, a wrist, a palm, four
+## fingers and a thumb, each finger on its own knuckle (its open and shut
+## turns kept on it).
+func _make_drawn_hand() -> Node3D:
 	var root := Node3D.new()
 	root.name = "SmallHand"
 	var wool := StandardMaterial3D.new()
@@ -5250,8 +5447,6 @@ func _close() -> void:
 	_asking = ""
 	_drop_hand(0.0)
 	_drop_ring()
-	if _skip_btn != null:
-		_skip_btn.visible = false
 	if _compass != null:
 		_compass.show_compass(false, 0.3)
 	_out = false
@@ -6206,6 +6401,78 @@ void fragment() {
 """
 
 
+## The small hand's skin (_make_tiny_hand): a baby's, its vertex colour
+## the model's (tools/make_small_hand.py): r how pink (the tips, the knuckles,
+## the palm), g the nails, b the creases. The light wraps softly round it
+## (diffuse_lambert_wrap) and comes through it from behind (the card's
+## light behind the fingers glows red in them, as light does through a
+## hand). (Not the engine's subsurface scattering: written in a shader of
+## our own, SSS_STRENGTH stopped the picture dead on the test machine's
+## Vulkan, the first frame the hand was drawn.)
+const TINY_SKIN := """
+shader_type spatial;
+render_mode diffuse_lambert_wrap;
+uniform vec3 skin : source_color = vec3(0.96, 0.78, 0.70);
+uniform vec3 pink : source_color = vec3(0.95, 0.58, 0.55);
+uniform vec3 nail : source_color = vec3(0.98, 0.88, 0.85);
+void fragment() {
+	vec3 c = mix(skin, pink, clamp(COLOR.r, 0.0, 1.0) * 0.6);
+	c = mix(c, nail, clamp(COLOR.g, 0.0, 1.0) * 0.8);
+	c *= 1.0 - 0.32 * clamp(COLOR.b, 0.0, 1.0);
+	ALBEDO = c;
+	ROUGHNESS = mix(0.52, 0.28, clamp(COLOR.g, 0.0, 1.0));
+	SPECULAR = 0.35;
+	BACKLIGHT = vec3(0.9, 0.38, 0.26) * 0.3;
+	RIM = 0.15;
+	RIM_TINT = 0.6;
+}
+"""
+## The sleeve's wool: knitted in rows of V stitches round it (UV: u round the
+## sleeve, v down it in 5 cm), its cuff ribbed (v under 0.5), soft at its
+## edges; the blanket's cream.
+const TINY_WOOL := """
+shader_type spatial;
+render_mode cull_disabled;
+uniform vec3 wool : source_color = vec3(0.72, 0.65, 0.56);
+float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float n2(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(h2(i), h2(i + vec2(1, 0)), f.x), mix(h2(i + vec2(0, 1)), h2(i + vec2(1, 1)), f.x), f.y);
+}
+float knit(vec2 uv) {
+	float cuff = step(uv.y, 0.5);
+	vec2 k = vec2(uv.x * 60.0, uv.y * 24.0);
+	float fu = fract(k.x);
+	float fv = fract(k.y - abs(fu - 0.5) * 1.1);
+	float v_st = sin(fu * 3.14159) * smoothstep(0.0, 0.3, fv) * smoothstep(1.0, 0.6, fv);
+	float rib = 0.5 + 0.5 * cos(uv.x * 6.28318 * 18.0);
+	return mix(v_st, rib * 0.8 + v_st * 0.2, cuff);
+}
+void fragment() {
+	float h = knit(UV);
+	float e = 0.004;
+	float hx = knit(UV + vec2(e * 0.25, 0.0)) - h;
+	float hy = knit(UV + vec2(0.0, e)) - h;
+	NORMAL_MAP = normalize(vec3(-hx * 2.5, -hy * 0.6, 1.0)) * 0.5 + 0.5;
+	NORMAL_MAP_DEPTH = 0.8;
+	float n = n2(UV * vec2(80.0, 40.0)) * 0.5 + n2(UV * vec2(9.0, 4.0)) * 0.5;
+	ALBEDO = wool * (0.74 + 0.26 * h) * (0.9 + 0.2 * n);
+	ROUGHNESS = 1.0;
+	SPECULAR = 0.15;
+	RIM = 0.2;
+	RIM_TINT = 0.8;
+}
+"""
+static var _tiny_shaders := {}
+
+static func _tiny_shader(which: String) -> Shader:
+	if not _tiny_shaders.has(which):
+		var sh := Shader.new()
+		sh.code = TINY_SKIN if which == "skin" else TINY_WOOL
+		_tiny_shaders[which] = sh
+	return _tiny_shaders[which]
+
+
 ## He kneels to the child, his hands go under it where it lies, and he
 ## picks it up the way anyone picks up a baby (4 November, Gary: "he doesn't
 ## pick up the baby, it's just in his hands"; 5 November: "Bram picks up the
@@ -6246,9 +6513,11 @@ const REVEAL_RISE := 1.5
 const DOWN_SECS := 4.0
 const PROMPT_BEAT := 0.3
 ## Where it's held against the chest once gathered: in his own frame, off
-## the chest bone (a little below and ahead of it, to his left side, where
-## the left arm will cradle it).
-const CRADLE := Vector3(0.07, -0.16, 0.2)
+## the chest bone (level with it and ahead of it, out in front of his coat,
+## where the left arm will cradle it: the place it's tucked, TUCK_AT, stood
+## up. 16 November: it was 16 cm lower and 6 nearer, a third of it inside
+## him as he said "Hush, now. I've got you.").
+const CRADLE := Vector3(0.022, 0.0, 0.265)
 ## Hands this near their marks (m, the hand bone to the mark: the palm is a
 ## few centimetres on) are on it.
 const HANDS_ON := 0.13
@@ -6276,6 +6545,10 @@ const LIFT_FLAT := 0.2
 ## down, out along the bundle), where the forearm's line ends once the palm
 ## is on it.
 const PALM_AT := Vector3(0.0, -0.07, 0.15)
+## Held up at his chest (16 November): the left palm up and in under its end,
+## the fingers level and in towards its middle (the right's the mirror).
+const HOLD_PALM := Vector3(-0.35, 0.94, 0.0)
+const HOLD_FINGERS := Vector3(-0.9, 0.0, 0.42)
 const MARK_OFF := Vector3(0.04, -0.03, 0.03)
 ## (false leaves the wrists and elbows to the reach alone, and the marks
 ## where they were, 2 cm under the axis at the ends: the peek's before)
@@ -6416,9 +6689,21 @@ func _lift_child() -> void:
 		if sk != null and sk.skeleton_updated.is_connected(watch):
 			sk.skeleton_updated.disconnect(watch)
 		return
-	# and up off his knee with it held there
+	# and up off his knee with it held there, his fingers coming level under
+	# its ends (16 November: they stayed turned down as they'd gone under it
+	# on the snow, and held up at his chest the bundle sat over his hands
+	# like something they didn't hold)
 	gather[0] = 1.0
 	fig.rise(RISE_SECS)
+	if turn_wrists:
+		var own0 := func(v: Vector3) -> Vector3:
+			return (fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw) * v).normalized()
+		create_tween().tween_method(func(u: float) -> void:
+			if not is_instance_valid(fig):
+				return
+			fig.palm_to("left", own0.call(LIFT_PALM.lerp(HOLD_PALM, u)), own0.call(LIFT_FINGERS.lerp(HOLD_FINGERS, u)))
+			fig.palm_to("right", own0.call((LIFT_PALM.lerp(HOLD_PALM, u)) * mirror), own0.call((LIFT_FINGERS.lerp(HOLD_FINGERS, u)) * mirror)),
+			0.0, 1.0, RISE_SECS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	el = 0.0
 	while el < RISE_SECS + 0.2 and not _skipping:
 		await get_tree().process_frame
@@ -6634,27 +6919,90 @@ var lift_gap := INF
 var lift_gaps := [INF, INF]
 
 
-## Into his coat, against his chest, held in his left arm alone (his right
-## is for the cards).
+## Against his chest, held in his left arm alone (his right is for the
+## cards), from "Hush, now. I've got you." to the end of the memory.
+## (16 November, Gary: "When Bram says I got you to the baby the baby is
+## halfway through his coat". It was held 10 cm ahead of the middle of
+## him, where his coat's front is 13: the back half of the bundle, 24 cm
+## through, was inside him, and on his knee in the duel, bent over it, more
+## than a third of it. Now it's out in front of his coat, pressed to it,
+## TUCK_AT in his own frame, and his hand is under it, TUCK_HAND in its own:
+## tests/held_child_probe.gd measures how much of it is inside him.)
+const TUCK_AT := Vector3(0.03, 1.33, 0.26)
+## His left hand's mark under it, in his own frame from its middle (the
+## forearm's line ends here: Figure3D._reach; the wrist is a little short of
+## it, at its underside), its palm and fingers (his own frame), and where its
+## elbow bends towards (out at his side and a little forward, low).
+const TUCK_HAND := Vector3(0.06, -0.14, 0.0)
+const TUCK_PALM := Vector3(0.0, 1.0, -0.12)
+const TUCK_FINGERS := Vector3(-0.92, -0.06, 0.38)
+const TUCK_ELBOW := Vector3(0.45, 0.1, 0.05)
+var _tuck_palm := Vector3.ZERO
+var _tuck_fingers := Vector3.ZERO
+
+
+## His left palm under the bundle, turned as the bundle is turned (each frame
+## once it's tucked: _process).
+func _hold_palm() -> void:
+	if _tuck_palm == Vector3.ZERO or not (_bram is Figure3D) or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
+		return
+	var b := _baby.global_basis.orthonormalized()
+	(_bram as Figure3D).palm_to("left", b * _tuck_palm, b * _tuck_fingers)
+var _tuck_hand: Node3D
+
 func _tuck() -> void:
 	if _bram is Figure3D:
 		var fig := _bram as Figure3D
 		var tw := create_tween()
-		tw.tween_property(_baby, "position", fig.hold_point(0.2, 0.42) + Vector3(0.03, 0, 0), 0.9).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(_baby, "position", _tuck_point(fig), 0.9).set_trans(Tween.TRANS_SINE)
 		await tw.finished
-		var l := Node3D.new()
-		_baby.add_child(l)
-		l.position = Vector3(0.0, -0.08, 0.05)
-		fig.reach(l, null, 0.4)
-		# the wrists and the elbows' hints back to the clip's (the lift's turn
-		# of them, LIFT_PALM, LIFT_ELBOW, ends here)
-		fig.palm("left", Vector3.ZERO, 0.4)
-		fig.palm("right", Vector3.ZERO, 0.4)
-		fig.elbow("left", Vector3.INF, 0.4)
-		fig.elbow("right", Vector3.INF, 0.4)
+		hold_tucked(fig, 0.4)
 	var glow := _baby.get_node_or_null("MarkGlow") as OmniLight3D
 	if glow != null:
 		create_tween().tween_property(glow, "light_energy", 0.15, 1.5)
+
+
+## His left arm under the child where it's tucked (TUCK_HAND), its palm up
+## under it (TUCK_PALM, TUCK_FINGERS, kept in the bundle's frame from here:
+## _hold_palm), over `secs`; the right hand and the elbows' hints back to
+## the clip's. (Also how the tests put it in his arms for the duel alone.)
+func hold_tucked(fig: Figure3D, secs := 0.4) -> void:
+	var l := Node3D.new()
+	_baby.add_child(l)
+	# (its place under the bundle, given in his own frame: the bundle lies
+	# across him either way round)
+	var inv := _baby.basis.orthonormalized().inverse()
+	l.position = inv * TUCK_HAND
+	_tuck_hand = l
+	fig.reach(l, null, secs)
+	# his left palm up under it, its fingers forward and in under the
+	# middle of it (16 November: given back to the clip, it hung under the
+	# bundle with its fingers down); the right hand and the elbows' hints
+	# back to the clip's (the lift's turn of them, LIFT_ELBOW, ends here)
+	fig.palm("left", TUCK_PALM, secs, 0.15, true, TUCK_FINGERS)
+	fig.palm("right", Vector3.ZERO, secs)
+	fig.elbow("left", TUCK_ELBOW * fig.stature(), secs)
+	fig.elbow("right", Vector3.INF, secs)
+	_tuck_palm = inv * TUCK_PALM.normalized()
+	_tuck_fingers = inv * TUCK_FINGERS.normalized()
+
+
+## Down on his knee and bent over it, his left hand a little lower under the
+## child (KNEE_HAND_DROP), and back as he rises (16 November: bent over it,
+## his forearm came up into the blanket under it, 5 cm).
+const KNEE_HAND_DROP := 0.05
+
+func _knee_hand(down: bool, secs: float) -> void:
+	if _tuck_hand == null or not is_instance_valid(_tuck_hand) or not is_instance_valid(_baby):
+		return
+	var at := _baby.basis.orthonormalized().inverse() * (TUCK_HAND - Vector3(0.0, KNEE_HAND_DROP if down else 0.0, 0.0))
+	create_tween().tween_property(_tuck_hand, "position", at, secs).set_trans(Tween.TRANS_SINE)
+
+
+## Where the child is held against his chest (his own frame: Bram's, as
+## measured on him).
+func _tuck_point(_fig: Figure3D) -> Vector3:
+	return TUCK_AT
 
 
 # ================================================================ effects ===
@@ -7188,6 +7536,7 @@ func _process(delta: float) -> void:
 		_auto_step(delta)
 	if _out:
 		_track_step()
+	_hold_palm()
 	_tiny_step()
 	_weather_step(delta)
 	if _cam_mode == "roam":

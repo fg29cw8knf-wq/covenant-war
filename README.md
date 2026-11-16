@@ -2572,6 +2572,121 @@ mark is); headless as all four looks: PASS. (Its bones are read before the
 arm's reach is put on them, so where the hand got to is judged from the
 stills, not measured.)
 
+### The child out of Bram's coat, no Skip, the small hand made real, his hand off the pillow (16 November)
+
+Gary (16 November), four notes: "When Bram says I got you to the baby the
+baby is halfway through his coat"; "Remove the able to skip the prologue";
+"When baby hand reaches for card hand doesn't look very real also hand goes
+through bram"; "When player puts hand to neck in bed his hand goes through
+the bed".
+
+- **The child in his arms, not in his coat** (`WhiteSky.TUCK_AT`,
+  `TUCK_HAND`, `TUCK_PALM`, `TUCK_FINGERS`, `TUCK_ELBOW`, `hold_tucked`,
+  `_hold_palm`, `_knee_hand`, `CRADLE`, `HOLD_PALM`, `HOLD_FINGERS`). It was
+  held 10 cm ahead of the middle of him, where the front of his coat is 13
+  cm ahead: the bundle is 24 cm through, so half of it was inside him.
+  Measured (`tests/held_child_probe.gd`, new: Bram skinned as drawn, every
+  reach in it, and the child's points tested against him): at "Hush, now.
+  I've got you." a quarter of the bundle was inside him, 8 cm deep; tucked,
+  a third, 16 cm; on his knee in the duel at "I've got you. I've got you.",
+  37%, 16 cm. Now it's held out in front of his coat at chest height (his
+  frame: 26 cm ahead, 1.33 m up; the place found by a scan of where it's
+  clear of him and his hand still under it: his arms reach 50 cm from
+  shoulders 11 cm behind his middle, so there's no further out for it to
+  go), pressed to the coat: 0.7, 0.5 and 1.9 cm (wool against wool). His
+  hands hold it: rising from the pick-up his fingers come level under its
+  ends (they stayed turned down as they'd gone under it on the snow, and
+  at his chest the bundle sat over them); tucked, his left palm is up under
+  it, its fingers along it, and kept so in the bundle's own frame
+  (`_hold_palm`) so it stays under it when he bends over it on his knee,
+  where it drops 5 cm (`KNEE_HAND_DROP`: bent over it, his forearm came up
+  into the blanket 5 cm). His arm is in the wool 2 to 3 cm at most. The
+  duel's shot of him and the child looks further down (`TO_CHILD_LOOK`
+  0.62 to 0.74): held out in front of him the child sat behind his words.
+  `white_sky_test`'s duel-alone `_carry` uses the game's own hold.
+- **No Skip in the prologue** (`WhiteSky`: the button is gone; `skip()`
+  is the tests' alone). Since 12 November a Skip came up once the memory
+  had been seen. Gary's own shots of Bram's three moves, when he makes
+  them, are never skipped either (`StoryFilm.never_skipped`:
+  `white_sky_move_*`). The opening movie before the title screen, and the
+  Prologue's other films once seen, still can be. The script says so
+  (`docs/script/v7_prologue.md`).
+- **The small hand made real** (`assets/models/whitesky/small_hand.glb`,
+  made by `tools/make_small_hand.py`, new; `WhiteSky._make_tiny_hand`,
+  `TINY_SKIN`, `TINY_WOOL`, `_pose_tiny`, `_digit_line`, `_tiny_grip`,
+  `TINY_*`). It was round shapes put together in the game: a ball for a
+  palm and one stiff capsule for each finger. Now it's one smooth skin over a
+  skeleton of its own: a plump palm with a baby's pads, the fat crease
+  round the wrist, dimples for knuckles, short soft fingers that bend at all
+  three joints and a thumb at its three, little nails, pinker tips and
+  knuckles and darker creases (in its vertex colour), coming out of a
+  sleeve of the blanket's cream wool with a rolled cuff, knitted and ribbed
+  by its shader. About 37,000 triangles; seen for a few seconds, close.
+  Open, reaching, the fingers spread a little and bent back; shut on the
+  card, how far each finger curls is worked out from where the card is held
+  (`_tiny_grip`: each finger's pad comes to rest on the card's near face,
+  the little finger, too short to reach it, curls in; the thumb goes under
+  its lower edge and round behind it). The card is held 1 cm further from
+  the palm (`LAST_CARD_HELD`) so the fingers visibly curl round onto it.
+  The skin's light wraps round it and comes through it from behind
+  (`diffuse_lambert_wrap`, `BACKLIGHT`), not the engine's subsurface
+  scattering: written in a shader of ours, `SSS_STRENGTH` stopped the
+  picture dead on the test machine's Vulkan the first frame the hand was
+  drawn (the engine's own material with it didn't, which is why it wasn't
+  seen before).
+- **And it doesn't go through Bram** (`TINY_AT`, `TINY_TURN`, `TINY_DOWN`,
+  `_tiny_xf`, `HAND_CAM`, `HAND_LENS`). It was 5 cm ahead of his shoulder
+  joint, leaning in over it, and its sleeve ran down through his shoulder
+  and his collar. Now it comes up out of the blanket in his arm, out in
+  front of his left shoulder, rising along its own forearm (so it comes up
+  out of the bundle, not up through him), and the camera for it is closer
+  and higher over his shoulder, looking down past it (it was set for the
+  hand by his shoulder, 1.1 m back, and saw this one small and half behind
+  his head). Measured through the whole of it, open, taking the card,
+  white, going down: none of it inside him, none of it inside the card,
+  the fingers' pads half a millimetre off its face.
+- **His hand off the pillow** (`AshfordP1._hand_to_neck`,
+  `NECK_HAND_UP_BY`). Its palm went to the side of his neck at the mark,
+  its fingers hanging down the side of it into the pillow and the mattress
+  under his head. It rests 4 cm higher up the side of his neck now
+  (along the skin, as much as the mark faces sideways: Player D's, at the
+  front of his throat, isn't lifted), the fingertips on the side of his
+  head, clear of the pillow; seen as all four looks. (Turning the hand
+  to lie up along his neck instead twisted his wrist round; the gesture
+  as it was looks natural.) And the blanket is lifted over his arm
+  wherever it's under it (`BlanketTent`, new; `BlanketThrow.start` takes
+  the cloth from where it lies, `reset` puts it away), so the forearm
+  slides out under its hem rather than lying through it, until the blanket
+  is thrown back as he gets up. Measured: the arm's bones were never above
+  the blanket where it covers him (the forearm 5 to 6 cm under it); the
+  cloth comes up at most 5 cm.
+
+Found by looking, not by the tests. **The hand stopped the picture**: the
+first drawn run of the walk out stood still, every thread waiting; drawn
+alone, the hand did the same, and the shader's `SSS_STRENGTH` was it. **The
+hand was small and behind his head** in the game's own view, and the sleeve
+glowed white: its wool was the blanket's colour at full brightness, lit from
+behind, and the skin's light from behind was twice what reads as skin.
+**The fingers lay flat on the card**: 1.9 cm from the palm, the fingers only
+tipped forward to reach it.
+
+**Checked:** `load_all`: 0 failed. `held_child_probe` (new) `carry`,
+`knee`, `hand`: PASS, drawn (Forward+ through lavapipe) and headless, every
+still looked at (the pick-up's hold from over his shoulder, from his side
+and from in front; tucked; on his knee; the hand open, taking the card, the
+card white, going down, from the game's camera and from his side and in
+front). `white_sky_test` whole, `duel` and `body`: PASS (headless);
+`white_sky_test ... page keys knee_only` drawn: his word to the child, the
+child in front of him in his arms, his words under it. `mark_wake_test`
+(new: `arm` dumps where his arm is against the mattress and the blanket,
+`views` close stills of his neck, `notent` the blanket as it was; it checks
+the blanket was lifted) drawn as looks a, c and d and headless as a and b:
+PASS. `first_launch_test` (and `again`), `story_film_test`,
+`white_sky_play_probe`: ok. **Not checked:** a real Mac or iPhone; anything
+moving (the hand's rise, its fingers closing, the blanket lifting are judged
+from stills); the hand's skin on a phone's picture (compatibility drew it in
+the stills of the hand alone only).
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the

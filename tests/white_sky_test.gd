@@ -360,11 +360,9 @@ func _carry(ws: WhiteSky) -> void:
 	var fig := ws._bram as Figure3D
 	ws._baby.reparent(fig._pivot, false)
 	ws._baby.basis = Basis(Vector3.UP, -PI * 0.5)
-	ws._baby.position = fig.hold_point(0.2, 0.42) + Vector3(0.03, 0, 0)
-	var l := Node3D.new()
-	ws._baby.add_child(l)
-	l.position = Vector3(0.0, -0.08, 0.05)
-	fig.reach(l, null, 0.01)
+	# (where the pick-up leaves it, and his arm under it: 16 November)
+	ws._baby.position = ws._tuck_point(fig)
+	ws.hold_tucked(fig, 0.01)
 	var glow := ws._baby.get_node_or_null("MarkGlow") as OmniLight3D
 	if glow != null:
 		glow.light_energy = 0.15

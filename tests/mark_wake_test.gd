@@ -50,6 +50,8 @@ func _ready() -> void:
 	Game.settings["first_steps"] = 0
 	Game.settings["seen_white_sky"] = true   # (so it can be skipped)
 	# ("look=<b|c|d>": as another of the four looks, Gary's standing rule)
+	if args.has("notent"):
+		AshfordP1.lift_blanket = false
 	for a in args:
 		if String(a).begins_with("look="):
 			DollArt.test_look = String(a).substr(5)
@@ -67,6 +69,32 @@ func _still(nm: String) -> void:
 	_n += 1
 	get_viewport().get_texture().get_image().save_png(out.path_join("%02d_%s.png" % [_n, nm]))
 	print("mark_wake_test: still ", nm)
+	# ("views": the hand at his neck seen from over the bed and from the
+	# wall's side too, where the arm comes up out of the blanket)
+	if OS.get_cmdline_user_args().has("views") and (nm == "7c_hand_on_his_neck" or nm == "7b2_hand_nearly_there"):
+		var pf = world.player_doll
+		if pf is Figure3D:
+			var fig := pf as Figure3D
+			var chest: Vector3 = fig.bone_pos("Spine2")
+			var to_head := (fig.bone_pos("Head") - fig.bone_pos("Hips")).normalized()
+			var left := to_head.cross(Vector3.UP).normalized()
+			var c := Camera3D.new()
+			world.add_child(c)
+			c.fov = 45.0
+			var k := _n
+			# (close on his neck: from his right, the room's side, and from
+			# over his chest)
+			var neck: Vector3 = fig.bone_pos("Neck")
+			for v in [[-left * 0.42 + Vector3.UP * 0.12 - to_head * 0.08, "close_right"], [-to_head * 0.45 + Vector3.UP * 0.32 - left * 0.12, "close_chest"]]:
+				c.global_position = neck + (v[0] as Vector3)
+				c.look_at(neck - to_head * 0.03, Vector3.UP)
+				c.make_current()
+				await RenderingServer.frame_post_draw
+				await RenderingServer.frame_post_draw
+				get_viewport().get_texture().get_image().save_png(out.path_join("%02d_%s_%s.png" % [k, nm, v[1]]))
+			c.queue_free()
+			if world.cam != null:
+				world.cam.make_current()
 
 
 func _process(delta: float) -> void:
@@ -133,21 +161,74 @@ func _process(delta: float) -> void:
 		var hand_at := whole_at + AshfordP1.MARK_WAKE_WHOLE_HOLD
 		var round_at := hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD + AshfordP1.NECK_HAND_DOWN
 		for pair in [["4_attic_coming_up", 0.5], ["5_his_own_mark", 1.7], ["6_drawing_back", AshfordP1.MARK_WAKE_HOLD + AshfordP1.MARK_WAKE_BACK * 0.5],
-				["7_the_whole_of_him", whole_at + 0.4], ["7b_hand_going_up", hand_at + AshfordP1.NECK_HAND_UP * 0.5],
+				["7_the_whole_of_him", whole_at + 0.4], ["7a_hand_starting", hand_at + AshfordP1.NECK_HAND_UP * 0.25],
+				["7b_hand_going_up", hand_at + AshfordP1.NECK_HAND_UP * 0.5], ["7b2_hand_nearly_there", hand_at + AshfordP1.NECK_HAND_UP * 0.8],
 				["7c_hand_on_his_neck", hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD * 0.5],
+				["7d_hand_going_down", hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD + AshfordP1.NECK_HAND_DOWN * 0.5],
+				["7e_hand_down", hand_at + AshfordP1.NECK_HAND_UP + AshfordP1.NECK_HAND_HOLD + AshfordP1.NECK_HAND_DOWN + 0.3],
 				["8_round_to_the_bed", round_at + 1.2], ["9_waking", round_at + 4.5]]:
 			if since > float(pair[1]):
 				_still(String(pair[0]))
 		if since > whole_at + 0.3 and _whole_in < 0.0:
 			_whole_in = _in_picture()
+		# ("arm": where his left arm is, as drawn, against the mattress and
+		# the blanket, through his hand to his neck)
+		if OS.get_cmdline_user_args().has("arm") and since > hand_at - 0.3 and since < round_at + 0.5:
+			_arm_dump(since - hand_at)
+		# (16 November) the blanket lifted over his arm as it goes up under it
+		var bl = InnRooms.attic(AshfordP1.village(world)).get("blanket", null)
+		var tent := BlanketTent.on(bl) if bl is Node else null
+		if tent != null:
+			_tent_seen = true
+			_tent_most = maxf(_tent_most, tent.lifted)
 
 		if _lesson or since > 40.0:
 			_finish()
 
 
+var _arm_last := -9.0
+
+func _arm_dump(t: float) -> void:
+	if t - _arm_last < 0.15:
+		return
+	_arm_last = t
+	var pf = world.player_doll
+	if not (pf is Figure3D):
+		return
+	var fig := pf as Figure3D
+	var sk := fig._skel
+	var a := InnRooms.attic(AshfordP1.village(world))
+	var top: float = (a.lie_at as Vector3).y + float(a.bed_top)
+	var bl := a.get("blanket", null) as MeshInstance3D
+	var cb := func() -> void:
+		var line := "mark_wake_test: arm at %+.2f s:" % t
+		for bn in ["LeftArm", "LeftForeArm", "LeftHand", "LeftHandIndex3", "LeftHandMiddle3"]:
+			var i := sk.find_bone(bn)
+			if i < 0:
+				continue
+			var p := sk.global_transform * sk.get_bone_global_pose(i).origin
+			var over := "-"
+			if bl != null:
+				# the blanket's height over that point (its mesh as it is now)
+				var lp := bl.to_local(p)
+				var best := INF
+				var hy := 0.0
+				for v in bl.mesh.get_faces():
+					var d := Vector2(v.x - lp.x, v.z - lp.z).length()
+					if d < best:
+						best = d
+						hy = v.y
+				over = ("%+.0f" % ((lp.y - hy) * 100.0)) if best < 0.06 else "off"
+			line += "  %s %+.0f cm over the mattress, %s cm over the blanket;" % [bn.replace("Left", ""), (p.y - top) * 100.0, over]
+		print(line)
+	sk.skeleton_updated.connect(cb, CONNECT_ONE_SHOT)
+
+
 ## How much of him is in the picture now, head to foot: his head, hips, both
 ## hands and both feet each inside the screen (with a margin), as a share.
 var _whole_in := -1.0
+var _tent_seen := false
+var _tent_most := 0.0
 var _whole_misses: Array = []
 
 func _in_picture() -> float:
@@ -179,6 +260,11 @@ func _finish() -> void:
 	print("mark_wake_test: his hand to his neck where the mark was: %d time(s)" % AshfordP1.hand_to_neck)
 	if AshfordP1.hand_to_neck != AshfordP1.mark_wakes:
 		fails.append("his hand didn't go to his neck as he woke on the mark")
+	# (16 November, Gary: "When player puts hand to neck in bed his hand goes
+	# through the bed") the blanket lifted over his arm while it's under it
+	print("mark_wake_test: the blanket lifted over his arm %s, at most %.1f cm" % [str(_tent_seen), _tent_most * 100.0])
+	if not _tent_seen and AshfordP1.lift_blanket:
+		fails.append("the blanket wasn't lifted over his arm as his hand went to his neck")
 	if _whole_in < 0.99:
 		fails.append("the camera didn't draw back to all of him (%.2f in the picture; out: %s)" % [_whole_in, str(_whole_misses)])
 	if not _held_seen:

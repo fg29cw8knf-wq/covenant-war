@@ -333,6 +333,13 @@ var _skip_btn: Button = null
 var _hs: HoldSkip = null
 
 
+## Gary's own shots of Bram's three moves, played inside the Night of the
+## White Sky (WhiteSky._move_film): never skipped, as the memory round them
+## isn't (16 November, Gary: "Remove the able to skip the prologue").
+static func never_skipped(p_film: String) -> bool:
+	return p_film.begins_with("white_sky_move")
+
+
 static func seen(p_film: String) -> bool:
 	return (Game.settings.get("seen_films", []) as Array).has(p_film)
 
@@ -614,7 +621,7 @@ func _ready() -> void:
 	_voice = AudioStreamPlayer.new()
 	add_child(_voice)
 	Cine.call_by(_w, "herald", "The Pale Herald")   # (the subtitles' name for it)
-	if seen(film):
+	if seen(film) and not never_skipped(film):
 		_make_skip()
 	_run.call_deferred()
 

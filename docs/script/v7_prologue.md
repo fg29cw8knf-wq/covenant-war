@@ -44,8 +44,8 @@ where the connection allows). Nothing of the game's plays over it.
 
 _(A memory, twenty years before the attic, in place of the five seconds of stars
 that were the dream. About two and a half minutes; the first card is played about
-two minutes in. The first time, none of it can be skipped; once it has been seen
-a Skip button skips all of it (changed, 12 November).)_
+two minutes in. None of it can be skipped, the first time or after (16 November;
+from 12 November a Skip button skipped all of it once it had been seen).)_
 
 _(Black.)_ **[CAPTION]** The Shardlands / Twenty years ago.
 
@@ -1528,6 +1528,7 @@ While building v7 the game needed a few short lines the script doesn't have. The
   lost. The watched duel is gone from the opening. Gary's shots are the payoff
   after each move once made; his whole film plays on the Thornwood road, after
   Bram's lesson.
-- **Skipping:** the snow can be skipped once it has been seen.
+- **Skipping:** the snow can be skipped once it has been seen. (16 November: no
+  longer. It can't be skipped at all.)
 - **The mirror, Q2:** the answer no longer tells the crater again; it says what
   the player was told, and what Bram won't say.

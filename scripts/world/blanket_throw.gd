@@ -43,6 +43,11 @@ static func start(blanket: MeshInstance3D, off: Transform3D, hand: Node3D, secs 
 	var bt := BlanketThrow.new()
 	bt.mi = blanket
 	bt.rows = blanket.get_meta("rows")
+	# (16 November) lifted over an arm (BlanketTent): thrown from where it lies
+	var tent := BlanketTent.on(blanket)
+	if tent != null:
+		bt.rows = tent.points()
+		tent.stop(true)
 	bt.heap = blanket.transform.affine_inverse() * off
 	bt.hand = hand
 	bt.secs = secs
@@ -62,6 +67,8 @@ static func reset(blanket: MeshInstance3D) -> void:
 	for c in blanket.get_children():
 		if c is BlanketThrow:
 			c.queue_free()
+		elif c is BlanketTent:
+			(c as BlanketTent).stop()
 	if blanket.has_meta("mesh_on"):
 		blanket.mesh = blanket.get_meta("mesh_on")
 
