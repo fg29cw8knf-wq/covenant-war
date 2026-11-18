@@ -279,7 +279,7 @@ unbaked). The Compatibility renderer gets none.
 | --- | --- | --- | --- |
 | The attic (`InnRooms.attic`) | `attic/morning`, `attic/awakening` | `InnRooms.attic_awakening` | Little: its dark wood gives back so little light that even with the window's and candle's bounce lifted four and three times (`bake_rooms.gd`: `ATTIC_LIFT`) it stood in for under half of the room's two stand-in lights (`bounce=0` drew it half as bright), so they're kept (`InnRooms.baked_fill`, `baked_bounce` at 1) and the bake shapes the light on top |
 | The taproom on the festival evening (`InnRooms.eve`) | `eve/evening` | | The hearth's and the lamps' warmth on the walls and beams (8× the attic's bounce) |
-| The Shardlands, the Night of the White Sky's walk (`WhiteSky`) | baked, **not shipped** (`WhiteSky.BAKED_LIGHT` false) | would swap to the torn sky's under the white as it tears, off at first light | Set beside the set without it (`tests/white_sky_look`, `flat`): the snow hardly changed (the sky's own light already does that job) and the ice spires went pale and milky, the deep blue you see into lost, even with the bake kept off the ice (its light probes still reach it). The night walk's bake also came out with black and red blots (the tear's light at nothing left in the bake, the likely cause: `bake_shards.gd` now leaves such a light out, not yet baked again) |
+| The Shardlands, the Night of the White Sky's walk (`WhiteSky`) | baked, **not shipped** (`WhiteSky.BAKED_LIGHT` false) | would swap to the torn sky's under the white as it tears, off at first light | Set beside the set without it (`tests/white_sky_look`, `flat`), close to: the snow and the ice hardly changed (the sky's own light already does that job). A first side-by-side seemed to show the ice paler: it was the blown mist, which drifts differently from run to run, so compare stills close to, not whole. The night walk's bake also came out with black and red blots (the tear's light at nothing left in the bake, the likely cause: `bake_shards.gd` now leaves such a light out, not yet baked again). Live bounce does the job instead (below) |
 
 The baked things are found by name: the Shardlands' `Ground`, `Spire<i>`
 (and `Spire<i>_<k>`, the small shards at a spire's foot) and
@@ -306,6 +306,19 @@ bake leaves it out anyway). Stills before and after: `tests/room_bake_shot`
 attic's stand-ins; the taproom needs `--resolution 640x360` here, or the
 software renderer runs out of memory) and `tests/white_sky_look`
 (`BakedLight.enabled` off with `flat`).
+
+**The Shardlands' light, live** (18 November, the evening; Gary's "1 yes 2
+yes" to live bounced light there and the soft shade at the spires' feet on
+the iPhone's Smooth): `ShardSet.night` (the walk's and the snow duel's
+light) gives the full level SSIL, the snow's light thrown up onto what
+stands near it, following the moon, the torn sky and dawn as they change
+(`SNOW_BOUNCE_RADIUS` 4 m, `SNOW_BOUNCE` 1.6; the frame guard drops it first
+when the frame rate falls), and SSAO from Smooth up, as the duel's arena has
+it (`SNOW_AO_*`: 1.1 m, 2.4, power 1.6, and 0.3 of the moon's own light, or
+it barely shows on moonlit snow). Close to (`tests/white_sky_look`, cropped):
+the spires, the shards and Bram's boots sit in the snow where they stood on
+it, the crater's lip has depth, Bram's coat is a touch lifted; the ice is
+unchanged.
 
 Not baked: Ashford (its light changes as it's played, above: Gary's "leave
 as is"); each duel arena is baked once its 3D ring of pieces is built

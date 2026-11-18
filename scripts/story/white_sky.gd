@@ -6272,11 +6272,13 @@ func _build_set() -> void:
 ## (tools/bake/bake_shards.gd: the moon's and the crater's light off the snow
 ## and the ice as he walks, the torn sky's, swapped under the white as it
 ## opens, none at first light, at the full level only: Smooth stands fewer
-## spires) and set beside the set without it: the snow hardly changed (the
-## sky's own light over it already does that job) and the ice spires went
-## pale and milky, losing the deep blue you see into (Gary's, 6 November),
-## even with the bake kept off the ice (the bake's light probes still reach
-## it). So not shipped (16 MB). True and `bake_rooms.sh shards` to have it.
+## spires) and set beside the set without it: close to, the snow and the
+## ice hardly changed (the sky's own light over the snow already does that
+## job; a first side-by-side seemed to show the ice paler, but that was the
+## blown mist, which drifts differently from run to run), and the night's
+## bake came out with black and red blots. Not worth 16 MB, so not shipped;
+## the live bounce (ShardSet.night: SSIL) does the job instead. True and
+## `bake_rooms.sh shards` to have it.
 const BAKED_LIGHT := false
 
 

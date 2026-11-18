@@ -381,6 +381,19 @@ static func vignette(strength: float) -> ColorRect:
 	return r
 
 
+## How far the snow's light is thrown up onto what stands near it (m), and
+## how strongly (night: SSIL at the full level).
+const SNOW_BOUNCE_RADIUS := 4.0
+const SNOW_BOUNCE := 1.6
+## The soft shade where things meet the snow (night: SSAO), as the duel's
+## arena has it (DuelField3D.AO_*): how far it reaches (m), how dark, and how
+## much of the moon's own light it takes (by default it shades only the
+## sky's light, little on moonlit snow).
+const SNOW_AO_RADIUS := 1.1
+const SNOW_AO := 2.4
+const SNOW_AO_POWER := 1.6
+const SNOW_AO_DIRECT := 0.3
+
 ## The night's light and air on `env` (the walk's and the duel's): a dark
 ## clear sky over a low haze (the fog no longer lights the sky), little light
 ## but what the moon, the tear and the Sigils give.
@@ -407,7 +420,24 @@ static func night(env: Environment, quality: int) -> void:
 		env.volumetric_fog_anisotropy = 0.35     # (the haze glows towards a light seen through it)
 		env.volumetric_fog_ambient_inject = 0.0   # (lit by the lights alone: no flat grey veil)
 		env.volumetric_fog_sky_affect = 0.0       # (the sky stays the sky)
+		# (18 November, Gary's yes to "live bounced light in the Shardlands":
+		# the snow's light thrown up onto what stands near it, the spires'
+		# feet, Bram's coat, the crater's walls, and following the moon, the
+		# torn sky and dawn as they change, where a bake froze it and paled
+		# the ice. Screen-space, a few metres: the frame guard drops it first
+		# if the frame rate falls)
+		env.ssil_enabled = true
+		env.ssil_radius = SNOW_BOUNCE_RADIUS
+		env.ssil_intensity = SNOW_BOUNCE
+	if quality >= 1:
+		# the soft shade where a spire, a shard or a boot meets the snow (18
+		# November, Gary's yes: on the iPhone's Smooth too, as the duel's
+		# arena has it)
 		env.ssao_enabled = true
+		env.ssao_radius = SNOW_AO_RADIUS
+		env.ssao_intensity = SNOW_AO
+		env.ssao_power = SNOW_AO_POWER
+		env.ssao_light_affect = SNOW_AO_DIRECT
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.13
 	env.adjustment_saturation = 0.94
