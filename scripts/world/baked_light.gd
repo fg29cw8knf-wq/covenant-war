@@ -69,20 +69,42 @@ static func prepare(root: Node3D, room: String, state := "") -> void:
 	if not (shapes is Dictionary):
 		return
 	var cache := {}
+	var swaps: Array = []
 	for path in shapes:
 		var mi := root.get_node_or_null(NodePath(String(path))) as MeshInstance3D
-		if mi == null:
-			push_warning("BakedLight: %s has no %s (the room changed since it was baked)" % [room, path])
-			continue
 		var file := DIR + room + "/" + String(shapes[path])
 		if not cache.has(file):
 			cache[file] = load(file)
-		mi.mesh = cache[file]
-		mi.gi_mode = GeometryInstance3D.GI_MODE_STATIC
+		var baked: Mesh = cache[file]
+		# (the room changed since it was baked: a thing added or taken away
+		# before this one moves every unnamed thing's name along, and a baked
+		# shape would go on the wrong thing. Then none of it, till it's baked
+		# again: tools/bake/bake_rooms.sh)
+		if mi == null or mi.mesh == null or baked == null or not _same(mi.mesh, baked):
+			push_warning("BakedLight: %s's %s isn't what was baked (the room changed since): no baked light there till it's baked again" % [room, path])
+			return
+		swaps.append([mi, baked])
+	for sw in swaps:
+		(sw[0] as MeshInstance3D).mesh = sw[1]
+		(sw[0] as MeshInstance3D).gi_mode = GeometryInstance3D.GI_MODE_STATIC
 	var lm := LightmapGI.new()
 	lm.name = "BakedLight"
 	root.add_child(lm)
 	use(root, room, state if state != "" else String(STATES.get(room, [""])[0]))
+
+
+## The same shape, near enough: its parts, and its box within a centimetre
+## or 5% (a sphere's box is its size; the same sphere baked, its corners
+## cut by its facets, a hair smaller).
+static func _same(a: Mesh, b: Mesh) -> bool:
+	if a.get_surface_count() != b.get_surface_count():
+		return false
+	var x := a.get_aabb()
+	var y := b.get_aabb()
+	var tol := Vector3.ONE * 0.01 + x.size.abs() * 0.05
+	var dp := (x.position - y.position).abs()
+	var ds := (x.size - y.size).abs()
+	return dp.x <= tol.x and dp.y <= tol.y and dp.z <= tol.z and ds.x <= tol.x and ds.y <= tol.y and ds.z <= tol.z
 
 
 ## The room's baked light for `state` (nothing if that state wasn't baked).

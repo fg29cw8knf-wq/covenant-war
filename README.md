@@ -281,6 +281,13 @@ unbaked). The Compatibility renderer gets none.
 | The taproom on the festival evening (`InnRooms.eve`) | `eve/evening` | | The hearth's and the lamps' warmth on the walls and beams (8× the attic's bounce) |
 | The Shardlands, the Night of the White Sky's walk (`WhiteSky`) | baked, **not shipped** (`WhiteSky.BAKED_LIGHT` false) | would swap to the torn sky's under the white as it tears, off at first light | Set beside the set without it (`tests/white_sky_look`, `flat`), close to: the snow and the ice hardly changed (the sky's own light already does that job). A first side-by-side seemed to show the ice paler: it was the blown mist, which drifts differently from run to run, so compare stills close to, not whole. The night walk's bake also came out with black and red blots (the tear's light at nothing left in the bake, the likely cause: `bake_shards.gd` now leaves such a light out, not yet baked again). Live bounce does the job instead (below) |
 
+If a room changes after it's baked (a thing added before another moves
+every unnamed thing's name along), `prepare` finds a baked shape that isn't
+the thing it would go on (`_same`: its parts, and its box within a
+centimetre or 5%) and leaves the whole room without baked light, with a
+warning, till it's baked again, rather than put a shape on the wrong thing
+(checked after the evening's blanket change: both rooms still match).
+
 The baked things are found by name: the Shardlands' `Ground`, `Spire<i>`
 (and `Spire<i>_<k>`, the small shards at a spire's foot) and
 `CraterShard<i>` are named in `WhiteSky` by their place in its seeded
