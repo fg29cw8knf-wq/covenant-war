@@ -3211,6 +3211,38 @@ nothing of a model in either of the first two pictures within 1.6 m, the
 bank's foot nowhere over the grass, every bush on the ground, the walk kept
 out of all seven).
 
+### His five yeses, and the tunnel dug into the hill (18 November, evening)
+
+Gary, to the suggestions after his files went in: "1 yes 2 yes 3 yes 4 yes
+5 yes"; then, seeing the hillside: "that tunnel needs to blend into the
+scenery, it looks wrong just being a random tunnel sitting with nothing
+around it".
+
+1. **`light_wave` heard on a phone.** His boom is nearly all under 100 Hz.
+   `tools/sfx_lift.py` (new) keeps it and adds its own overtones (the low
+   end through a soft saturator, kept from 150 Hz up) and a rush of air that
+   rises and falls with it, left to right; above 200 Hz it went from -26 dB
+   of the whole to -11. `cast_wind` no longer plays over it.
+2. **The tunnel dark inside** (`AshfordNight._dress_hillside`, `DOOR_MID`,
+   `DOOR_SIZE`) and **a cold mist breathing out of it at night**
+   (`MOUTH_MIST`, `mouth_mist.gdshader`, softened against the ground).
+3. **The bushes and the bank's ferns move in the wind** (`sway.gdshader`;
+   `tools/add_sway.py` paints how far each part moves into UV2: the bush from
+   a still trunk to its outer twigs, the bank's ferns and bracken only, not
+   its earth, roots or timbers).
+4. **A moonlit edge** on the bank and bushes at night (`RIM_NIGHT`,
+   `hill_light(hill, day)`).
+5. **The grey coats** stop at each end, stand (`PACE_STAND`) and turn over
+   most of a second (`_turn_to`, `PACE_TURN`).
+
+**The tunnel dug into the hill** (`_dig_in`, `mound`, `hill_ground`). The
+ground out there is in 2.5 m squares, too coarse to shape, so a finer skin
+(0.2 m, the terrain's own material) is laid over it: a rise round the bank's
+back and sides (`MOUND_H` 1.15 m, nothing before its face), grass over it as
+on the rest of the hill, stones at the bank's foot and in the rise, and the
+bank's moss toned to the hill's green (`BANK_TINT`, `BANK_DESAT`). The
+bushes and the look back's walk stand on it. `hillside_shot` measures it.
+
 ### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
 
 Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -

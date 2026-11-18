@@ -2477,13 +2477,13 @@ func _finale(f: DuelField3D) -> void:
 	f.floor_wave(at, PAGE_PAPER, 18.0, 18.0 / FIN_WAVE_SPEED * 1.15)
 	f.flash_light(at + Vector3(0, 2.0, 0), PAGE_PAPER, 10.0, 1.4, 22.0)
 	_wash(PAGE_PAPER, 0.4, 1.1)
-	# (18 November: Gary's light_wave is the boom, nearly all of it under
-	# 100 Hz, which a phone's speaker hardly gives: the rush stays over it)
+	# (18 November: Gary's light_wave, his boom with its overtones and a
+	# rush of air added so a phone's speaker gives it too: tools/sfx_lift.py)
 	if Sfx.has_file("light_wave"):
 		_snd("light_wave", 1.0, LIGHT_WAVE_DB)
 	else:
 		_snd("summon_boom", 0.7, -2.0)
-	_snd("cast_wind", 0.6, -1.0)
+		_snd("cast_wind", 0.6, -1.0)
 	Haptics.kind(Haptics.HEAVY)
 	_wipe_pack(f, at)
 	_put_out_eyes(at)

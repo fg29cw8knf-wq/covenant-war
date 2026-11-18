@@ -7,7 +7,7 @@ extends Node
 ## back up the hill at the mouth, as Corin's talk is filmed) and by day from
 ## close by, in front, from each side and from above.
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --rendering-method gl_compatibility \
-##       --resolution 960x540 --fixed-fps 30 res://tests/hillside_shot.tscn -- <out_dir> [nostills]
+##       --resolution 960x540 --fixed-fps 30 res://tests/hillside_shot.tscn -- <out_dir> [nostills] [mouth]
 ## (Forward+: --rendering-driver vulkan --rendering-method forward_plus, with
 ## VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json where there's no graphics card.)
 ## And it measures: nothing of either model within LENS_CLEAR of the first
@@ -28,6 +28,7 @@ func _ready() -> void:
 	if args.size() > 0:
 		out = args[0]
 	var stills := not ("nostills" in args)
+	var mouth_only := "mouth" in args   # just the mouth close at night
 	DirAccess.make_dir_recursive_absolute(out)
 	Game.new_game("Sprout", "emberstorm")
 	Game.set_flag("arrived_ashford")
@@ -102,6 +103,16 @@ func _ready() -> void:
 			problems.append("shot %s: a model %.2f m from the lens" % [s[0], nearest])
 		if ahead < INF:
 			problems.append("shot %s: a model %.2f m in front of the lens, in the picture" % [s[0], ahead])
+	# (18 November, later) the bank dug into a rise of the hill: the ground
+	# behind it and at its sides lifted, the ground before its face not
+	if bank_n != null and hill.has_meta("rise"):
+		var back := hill.to_global(Vector3(0.0, 0.0, -2.4))
+		var face := hill.to_global(Vector3(0.0, 0.0, 0.6))
+		var lift_back := AshfordNight.hill_ground(v, hill, back) - v.ground_y(back.x, back.z)
+		var lift_face := AshfordNight.hill_ground(v, hill, face) - v.ground_y(face.x, face.z)
+		print("HILLSIDE: the rise lifts the ground %.2f m behind the bank and %.2f m before its face" % [lift_back, lift_face])
+		if lift_back < 0.7 or lift_face > 0.02:
+			problems.append("the rise: %.2f m behind, %.2f m before the face" % [lift_back, lift_face])
 	# each bush on the ground where it stands
 	var n_bush := 0
 	for h in hill.get_children():
@@ -111,7 +122,7 @@ func _ready() -> void:
 			continue
 		n_bush += 1
 		var gp := (h as Node3D).global_position
-		var off := gp.y - v.height(gp.x, gp.z)
+		var off := gp.y - AshfordNight.hill_ground(v, hill, gp)
 		if off > 0.02 or off < -0.25:
 			problems.append("a bush at %s stands %.2f m off the ground" % [(h as Node3D).position, off])
 	if models and n_bush != AshfordNight.THORNS.size():
@@ -150,17 +161,31 @@ func _ready() -> void:
 			bm.albedo_color = who[1]
 			body.material_override = bm
 			add_child(body)
+			body.add_to_group("stand_in")
 			body.global_position = (who[0] as Vector3) + Vector3(0, float(who[2]) * 0.5, 0)
 		v.set_daylight(0.0)
 		await _frames(6)
-		for s in shots:
+		for s in ([] if mouth_only else shots):
 			cam.fov = float(s[3])
 			cam.global_position = s[1]
 			cam.look_at(s[2])
 			await _frames(6)
 			await RenderingServer.frame_post_draw
 			get_viewport().get_texture().get_image().save_png(out.path_join("night_%s.png" % s[0]))
+		# (and the mouth close at night: its dark and its mist; the two out of the way)
+		for n in get_tree().get_nodes_in_group("stand_in"):
+			(n as Node3D).visible = false
+		cam.fov = 40.0
+		cam.global_position = mouth + to_v * 2.6 + Vector3(0, 0.9, 0)
+		cam.look_at(mouth - to_v * 0.6 + Vector3(0, 0.5, 0))
+		await _frames(30)
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out.path_join("night_4_mouth.png"))
+		if mouth_only:
+			get_tree().quit()
+			return
 		v.set_daylight(1.0)
+		AshfordNight.hill_light(hill, 1.0)
 		await _frames(6)
 		var mid := mouth - to_v * 1.0 + Vector3(0, 0.9, 0)
 		var days := [

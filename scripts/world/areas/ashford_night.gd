@@ -1943,7 +1943,7 @@ static func look_back(w: World) -> void:
 	var crying := _nell_crying(w)
 	await Cine.wait(w, 4.0)
 	# his own: nothing says what to do
-	var ground := func(p: Vector3) -> float: return v.height(p.x, p.z)
+	var ground := func(p: Vector3) -> float: return hill_ground(v, hill, p)
 	var hill_room := {"root": hill, "floor_y": start.y, "ground": ground,
 		"walk": Rect2(-3.0, -2.0, 6.0, 12.0), "blocks": hill.get_meta("solid", [])}
 	AshfordP1.controls_on(w)
@@ -2155,6 +2155,7 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 	else:
 		bank.name = "Bank"
 		_seat_bank(v, hill, bank)
+		hill.set_meta("dug", true)   # (the bushes stand on the rise: _dig_in)
 		solid.append([Vector2(0.0, -1.0), MOUTH_SIZE.x * 0.5 + 0.25])
 	if ResourceLoader.exists(THORN_MODEL):
 		for t in THORNS:
@@ -2163,7 +2164,7 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 			# each on the hillside's own ground where it stands, its foot a
 			# little in (the hillside is laid out level; the ground isn't)
 			var gp := b.global_position
-			b.global_position = Vector3(gp.x, v.height(gp.x, gp.z) - 0.06, gp.z)
+			b.global_position = Vector3(gp.x, hill_ground(v, hill, gp) - 0.06, gp.z)
 			solid.append([Vector2(at.x, at.z), float(t[2]) * 0.4])
 	else:
 		var thorn := StandardMaterial3D.new()
@@ -2182,7 +2183,277 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 			bush.position = at + Vector3(0, 0.6, 0)
 			hill.add_child(bush)
 	hill.set_meta("solid", solid)
+	if bank != null:
+		_dig_in(v, hill)
+	_dress_hillside(v, hill)
 	return hill
+
+
+# --- the bank dug into the hill (18 November) --------------------------------
+## Gary (18 November, seeing his tunnel mouth on the hill): "that tunnel needs
+## to blend into the scenery, it looks wrong just being a random tunnel
+## sitting with nothing around it". The hillside's ground is the village's
+## terrain, whose squares are two and a half metres across out here, too
+## coarse to shape round a bank two and a half metres wide. So a skin of
+## finer ground is laid over it here (_dig_in, the terrain's own material, so
+## it can't be told from it): a rise round the bank's back and sides, as if
+## the tunnel were dug into the hill, the bank's dome running into it and
+## only its face and doorway standing clear; grass over it as on the rest of
+## the hill, and stones turned up at its foot and in the rise.
+## The rise in the hillside's own x/z (z down the hill to the village, the
+## bank's middle at 0, -1): its height (m) and how it falls away.
+const MOUND_H := 1.15
+const MOUND_BACK := -2.6      # where it's highest (z)
+const MOUND_FRONT := -0.15    # nothing from here down the hill (z): the face stands clear
+const MOUND_SIDE := [2.6, 1.7]  # how wide it spreads to the left and the right (the wall's side)
+const MOUND_GRID := 0.2       # its skin's squares (m)
+
+
+## How much the rise lifts the ground at (lx, lz), the hillside's own x/z.
+static func mound(lx: float, lz: float) -> float:
+	var front := smoothstep(MOUND_FRONT, MOUND_FRONT - 1.6, lz)
+	var behind := 1.0 if lz > MOUND_BACK else exp(-pow((lz - MOUND_BACK) / 2.4, 2.0))
+	var sx: float = MOUND_SIDE[0] if lx < 0.0 else MOUND_SIDE[1]
+	var across := exp(-pow(lx / sx, 2.0))
+	return MOUND_H * front * behind * across
+
+
+## The ground at a place on the hillside, with the rise (the world's own
+## height where there's none).
+static func hill_ground(v: AshfordVillage, hill: Node3D, p: Vector3) -> float:
+	if hill == null or not hill.has_meta("dug"):
+		return v.height(p.x, p.z)
+	return v.ground_y(p.x, p.z) + mound_at(hill, p)
+
+
+static func _dig_in(v: AshfordVillage, hill: Node3D) -> void:
+	hill.set_meta("dug", true)
+	# the skin of ground: a fine grid over the rise, its foot a hair over the
+	# terrain where the rise runs out (only the squares the rise lifts)
+	var lo := Vector2(-MOUND_SIDE[0] * 2.0, MOUND_BACK - 3.4)
+	var hi := Vector2(MOUND_SIDE[1] * 2.0, MOUND_FRONT + 0.1)
+	var nx := int(ceil((hi.x - lo.x) / MOUND_GRID))
+	var nz := int(ceil((hi.y - lo.y) / MOUND_GRID))
+	var verts := PackedVector3Array()
+	var norms := PackedVector3Array()
+	var lift := PackedFloat32Array()
+	var xf := hill.global_transform
+	for j in nz + 1:
+		for i in nx + 1:
+			var lx := lo.x + i * MOUND_GRID
+			var lz := lo.y + j * MOUND_GRID
+			var m := mound(lx, lz)
+			var wp := xf * Vector3(lx, 0.0, lz)
+			var y := v.ground_y(wp.x, wp.z) + m + 0.025 * smoothstep(0.0, 0.06, m)
+			verts.append(Vector3(wp.x, y, wp.z))
+			lift.append(m)
+			var e := 0.15
+			var hx := (v.ground_y(wp.x + e, wp.z) + mound_at(hill, wp + Vector3(e, 0, 0))) - (v.ground_y(wp.x - e, wp.z) + mound_at(hill, wp - Vector3(e, 0, 0)))
+			var hz := (v.ground_y(wp.x, wp.z + e) + mound_at(hill, wp + Vector3(0, 0, e))) - (v.ground_y(wp.x, wp.z - e) + mound_at(hill, wp - Vector3(0, 0, e)))
+			norms.append(Vector3(-hx, 2.0 * e, -hz).normalized())
+	var idx := PackedInt32Array()
+	for j in nz:
+		for i in nx:
+			var a := j * (nx + 1) + i
+			var b := a + 1
+			var c := a + nx + 1
+			var d := c + 1
+			if maxf(maxf(lift[a], lift[b]), maxf(lift[c], lift[d])) < 0.012:
+				continue
+			# (wound to face up whichever way the hillside's frame turns)
+			var up := (verts[b] - verts[a]).cross(verts[c] - verts[a]).y > 0.0
+			if up:
+				idx.append_array([a, b, c, b, d, c])
+			else:
+				idx.append_array([a, c, b, b, c, d])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var skin := MeshInstance3D.new()
+	skin.name = "HillRise"
+	skin.mesh = mesh
+	skin.material_override = _terrain_mat(v)
+	skin.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	v.add_child(skin)
+	hill.set_meta("rise", skin)
+	# grass over the rise and round the bank's foot, as on the rest of the hill
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1811
+	var xfs: Array = []
+	var cols: Array = []
+	for k in 650:
+		var lx := rng.randf_range(lo.x, hi.x)
+		var lz := rng.randf_range(lo.y, hi.y + 0.6)
+		var m := mound(lx, lz)
+		# thick on the rise, thinning out onto the plain hill; none on the
+		# bank's own face and doorway, or the path at its foot
+		var near_face := absf(lx) < 1.3 and lz > -1.6 and lz < 0.9
+		if near_face or (m < 0.05 and rng.randf() > 0.35):
+			continue
+		var wp := xf * Vector3(lx, 0.0, lz)
+		# (the hill's own grass is knee-high at most: as tall as the village's)
+		var sc := rng.randf_range(0.6, 1.05)
+		xfs.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc * rng.randf_range(0.8, 1.15), sc)),
+			Vector3(wp.x, hill_ground(v, hill, wp) - 0.02, wp.z)))
+		var c := rng.randf_range(0.75, 1.1)
+		cols.append(Color(c * rng.randf_range(0.9, 1.1), c, c * rng.randf_range(0.8, 1.0)))
+	var gm := v.shader_mat("grass")
+	var grass := v.multimesh(v, v.blade_clump(), gm, xfs, cols, false)
+	grass.name = "HillRiseGrass"
+	# stones turned up: a few at the bank's foot either side of its door, a
+	# few half sunk in the rise
+	var stones := [[-1.5, -0.2, 0.32], [1.35, -0.35, 0.26], [-1.9, -1.1, 0.22], [-0.9, 0.15, 0.16],
+		[-2.6, -2.2, 0.38], [0.9, -2.9, 0.3], [-1.2, -3.4, 0.24], [1.6, -1.6, 0.2], [-3.2, -0.9, 0.28]]
+	for st in stones:
+		var wp := xf * Vector3(float(st[0]), 0.0, float(st[1]))
+		var r := MeshInstance3D.new()
+		r.mesh = v.rock_mesh(int(absf(float(st[0]) * 100.0 + float(st[1]) * 7.0)))
+		r.material_override = v.mats.rock
+		var sc := float(st[2])
+		r.scale = Vector3(sc, sc, sc) * rng.randf_range(0.9, 1.2)
+		r.rotation.y = rng.randf() * TAU
+		v.add_child(r)
+		r.global_position = Vector3(wp.x, hill_ground(v, hill, wp) + sc * 0.08, wp.z)
+		r.name = "HillStone"
+
+
+## The rise alone at a place in the world (0 off the hillside).
+static func mound_at(hill: Node3D, p: Vector3) -> float:
+	var l := hill.global_transform.affine_inverse() * Vector3(p.x, hill.global_position.y, p.z)
+	return mound(l.x, l.z)
+
+
+## The village's own ground material (so the rise is the same ground).
+static func _terrain_mat(v: AshfordVillage) -> Material:
+	for c in v.get_children():
+		if c is MeshInstance3D and (c as MeshInstance3D).material_override is ShaderMaterial:
+			var sm := (c as MeshInstance3D).material_override as ShaderMaterial
+			if sm.shader != null and sm.shader.resource_path.ends_with("terrain.gdshader"):
+				return sm
+	var m := StandardMaterial3D.new()
+	m.albedo_color = Color(0.13, 0.18, 0.07)
+	return m
+
+
+## Gary's bank and bushes made part of the night (18 November, his yeses to
+## three suggestions after they went in):
+##   - they move in the wind: each wears assets/shaders/village/sway.gdshader,
+##     its own maps with how far each part moves painted in by
+##     tools/add_sway.py (the bushes' outer twigs and leaves; the bank's ferns,
+##     bracken and grass, not its earth, roots or timbers);
+##   - they catch the moon at their edges (the shader's rim, hill_light), so
+##     the mouth stands out from the dark slope behind Corin;
+##   - the tunnel is dark inside (a black wall a hand inside the doorway: by
+##     day the slope's grass showed through the hole), and a faint cold mist
+##     breathes out of it at night (MOUTH_MIST, mouth_mist.gdshader).
+## The hillside's things lit for the time of day (0 night .. 1 day): the
+## moon's edge and the mist are night's alone.
+const RIM_NIGHT := 0.9
+const MOUTH_MIST := 3
+## The bank's paint toned to the hillside (a colour it's multiplied by, and
+## how much of its colour is taken out first).
+const BANK_TINT := Color(0.78, 0.8, 0.64)
+const BANK_DESAT := 0.3
+const MIST_STRENGTH := 0.34
+## The doorway in the bank model's own frame (as Gary's file is: measured
+## from it, the hole's middle, width, height and how deep its back is).
+const DOOR_MID := Vector3(-0.003, 0.17, 0.0)
+const DOOR_SIZE := Vector2(0.15, 0.31)
+static var _sway_sh: Shader
+static var _mist_sh: Shader
+
+
+static func _dress_hillside(v: AshfordVillage, hill: Node3D) -> void:
+	if _sway_sh == null:
+		_sway_sh = load("res://assets/shaders/village/sway.gdshader")
+		_mist_sh = load("res://assets/shaders/village/mouth_mist.gdshader")
+	# (the snow's wind, the one wind in the game: from the west)
+	var wind := Vector3(ShardSet.WIND.x, 0.0, ShardSet.WIND.z)
+	for holder in hill.get_children():
+		if not (holder is Node3D) or holder.get_child_count() == 0 or holder is MeshInstance3D:
+			continue
+		var is_bank := String(holder.name) == "Bank"
+		for mi: MeshInstance3D in (holder as Node3D).find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh == null or mi.mesh is PrimitiveMesh:
+				continue
+			for si in mi.mesh.get_surface_count():
+				var std := mi.get_active_material(si) as StandardMaterial3D
+				if std == null or std.albedo_texture == null:
+					continue
+				var sm := ShaderMaterial.new()
+				sm.shader = _sway_sh
+				sm.set_shader_parameter("albedo_tex", std.albedo_texture)
+				sm.set_shader_parameter("mr_tex", std.roughness_texture if std.roughness_texture != null else std.metallic_texture)
+				sm.set_shader_parameter("normal_tex", std.normal_texture)
+				sm.set_shader_parameter("normal_on", 1.0 if std.normal_enabled and std.normal_texture != null else 0.0)
+				sm.set_shader_parameter("metallic_k", std.metallic)
+				sm.set_shader_parameter("roughness_k", std.roughness)
+				sm.set_shader_parameter("wind_dir", wind.normalized())
+				# (a fern moves less than a bush's outer twigs)
+				sm.set_shader_parameter("sway", 0.025 if is_bank else 0.07)
+				sm.set_shader_parameter("flutter", 0.006 if is_bank else 0.014)
+				sm.set_shader_parameter("rim_k", RIM_NIGHT)
+				# the bank's moss brought to the hill's own green (Tripo3D painted
+				# it a bright yellow-green that stood out against the grass round it)
+				if is_bank:
+					sm.set_shader_parameter("tint", BANK_TINT)
+					sm.set_shader_parameter("desat", BANK_DESAT)
+				mi.set_surface_override_material(si, sm)
+				mi.add_to_group("hill_sway")
+		if is_bank:
+			var m := (holder as Node3D).get_child(0) as Node3D
+			# the dark inside the doorway
+			var back := MeshInstance3D.new()
+			back.name = "TunnelDark"
+			var q := QuadMesh.new()
+			q.size = DOOR_SIZE
+			back.mesh = q
+			var dm := StandardMaterial3D.new()
+			dm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+			dm.albedo_color = Color(0.008, 0.01, 0.014)
+			back.material_override = dm
+			back.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+			m.add_child(back)
+			back.position = DOOR_MID
+			# the mist breathing out of it, in the bank's own frame (unscaled)
+			var foot := m.transform * Vector3(DOOR_MID.x, 0.04, 0.12)
+			for i in MOUTH_MIST:
+				var puff := MeshInstance3D.new()
+				puff.name = "MouthMist%d" % i
+				var pq := QuadMesh.new()
+				pq.size = Vector2(0.6, 0.42)
+				puff.mesh = pq
+				var pm := ShaderMaterial.new()
+				pm.shader = _mist_sh
+				pm.set_shader_parameter("phase", float(i) / MOUTH_MIST + 0.13 * i)
+				pm.set_shader_parameter("period", 6.5 + 1.3 * i)
+				pm.set_shader_parameter("strength", MIST_STRENGTH)
+				puff.material_override = pm
+				puff.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+				puff.extra_cull_margin = 2.0
+				puff.add_to_group("hill_mist")
+				holder.add_child(puff)
+				puff.position = foot + Vector3((i - 1) * 0.08, 0.22, 0.0)
+	hill_light(hill, v.daylight)
+
+
+## The moon's edge and the mouth's mist for the time of day (0 night .. 1 day).
+static func hill_light(hill: Node3D, day: float) -> void:
+	var night := 1.0 - smoothstep(0.0, 0.35, day)
+	for n in hill.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.is_in_group("hill_mist"):
+			mi.visible = night > 0.05
+			(mi.material_override as ShaderMaterial).set_shader_parameter("strength", MIST_STRENGTH * night)
+		elif mi.is_in_group("hill_sway"):
+			for si in mi.mesh.get_surface_count():
+				var sm := mi.get_surface_override_material(si) as ShaderMaterial
+				if sm != null:
+					sm.set_shader_parameter("rim_k", RIM_NIGHT * night)
 
 
 ## Gary's bank seated in the hillside (18 November). The hill falls about a
@@ -2307,14 +2578,51 @@ static func _release_village(w: World) -> void:
 		w.remove_meta("search_light")
 
 
-## Two greys walking a beat back and forth, together.
+## Two greys walking a beat back and forth, together. At each end they stop,
+## stand a moment and turn round over most of a second before walking back
+## (18 November, Gary's yes: they swung about in one frame at each end).
+const PACE_STAND := 0.6
+const PACE_TURN := 0.9
+
 static func _pace(w: World, id: String, a: Vector3, b: Vector3) -> void:
 	w.remove_meta("greys_stop")
+	var to := b
 	while is_instance_valid(w) and Cine.body(w, id) != null and not w.has_meta("greys_stop"):
-		await Cine.path(w, id, [b], 1.1)
+		await _turn_to(w, id, to, PACE_TURN)
 		if Cine.body(w, id) == null or w.has_meta("greys_stop"):
 			return
-		await Cine.path(w, id, [a], 1.1)
+		await Cine.path(w, id, [to], 1.1)
+		if Cine.body(w, id) == null or w.has_meta("greys_stop"):
+			return
+		var f = Cine.fig(w, id)
+		if f != null:
+			f.walking = false
+		await Cine.wait(w, PACE_STAND)
+		to = a if to == b else b
+
+
+## Turns someone standing to face `at`, a little at a time over `secs`.
+static func _turn_to(w: World, id: String, at: Vector3, secs: float) -> void:
+	var f = Cine.fig(w, id)
+	var bd := Cine.body(w, id)
+	if f == null or bd == null or not (f is Figure3D):
+		return
+	var fig := f as Figure3D
+	var want := at - bd.global_position
+	want.y = 0.0
+	if want.length() < 0.05:
+		return
+	var y0 := atan2(fig.facing().x, fig.facing().z)
+	var turn := wrapf(atan2(want.x, want.z) - y0, -PI, PI)
+	if absf(turn) < 0.3:
+		return
+	var steps := maxi(4, int(secs * 15.0))
+	for i in steps:
+		var y := y0 + turn * smoothstep(0.0, 1.0, float(i + 1) / steps)
+		fig.face(Vector3(sin(y), 0.0, cos(y)), w.cam)
+		await Cine.wait(w, secs / steps)
+		if not is_instance_valid(bd) or w.has_meta("greys_stop"):
+			return
 
 
 ## The chapel bell, slow and far off: someone below ringing it for the dead.
