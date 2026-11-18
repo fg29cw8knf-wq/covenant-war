@@ -174,7 +174,7 @@ func _board(mine: Array, theirs: Array) -> void:
 	g._changed()
 	ds._refresh()
 	ds.field.cam_home(0.1)
-	await _wait(1.5)   # (the models load and settle)
+	await _wait(3.5)   # (the models load and settle, and a bond's or a family's message has gone: it sat over the close-ups)
 
 
 func _wait(s: float) -> void:

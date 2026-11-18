@@ -247,16 +247,19 @@ average, where all three were 0.9). The other seven's files weren't there
 (on Still to Make). A person made in Tripo3D: `rig_character.py
 --normal-map` keeps the maker's (check the face with `cast_skin_shot`).
 
-**Baked light (`LightmapGI`) can't be made from here.** Godot bakes it only
-in its editor, at a person's press of Bake (`LightmapGI.bake()` isn't open
-to scripts, editor or not), and only with a graphics card; this workspace
-has neither, and the village is put together by code as it loads, so there's
-no saved scene to bake. The Mac already has live bounced light in Ashford
-(SDFGI at the full level); the iPhone on Smooth has none. What could be done
-from here instead (offered to Gary, not built): VoxelGI, which works its
-light out as the place loads and runs on Forward+ (the Mac and the iPhone),
-for the inside rooms (the taproom, the attic), where bounced light shows most
-and the room is small enough for it.
+**Baked light (`LightmapGI`) can be made here after all** (18 November,
+later the same morning): `LightmapGI.bake()` isn't open to scripts and needs
+a graphics card, but the editor runs here under xvfb on software Vulkan, and
+`tools/bake/autobake` is an editor plugin that presses its Bake button
+(`tools/bake/README.md`: a practice room baked right in 42 s). **Ashford isn't
+baked**: its light changes as it's played (the sun sets live through the
+festival day, then Lantern Night, the fires, the Sigilfall, dawn), baked
+light is frozen at one moment, and the village is built by code as it loads.
+It would take six or more bakes, with the sunset jumping between them. Put
+to Gary as a choice: the inn's rooms, whose light holds while they're seen,
+or the duel arenas once their 3D rings are built, suit it. The Mac has live
+bounced light in Ashford (SDFGI at the full level); the iPhone on Smooth
+has none.
 
 Left for later in the look pass: baked lighting (above); the 2K people's
 normal maps (above); a reflection probe on Solhaven's gold
