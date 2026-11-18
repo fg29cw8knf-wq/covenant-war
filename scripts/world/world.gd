@@ -248,6 +248,7 @@ func _build(spread: bool) -> void:
 		return
 	hud = WorldHUD.new()
 	add_child(hud)
+	hud.dialogue.spoken.connect(_on_spoken)
 	hud.tapped.connect(_on_tap)
 	hud.zoom_by.connect(zoom_by)
 	hud.talk_pressed.connect(func() -> void:
@@ -1039,6 +1040,30 @@ func _figure_of(who: String):
 		return player_doll
 	var n = _npc_by_id(who)
 	return n.doll if n != null else null
+
+
+## (18 November, Gary's yes: "Mouths: moving when anyone talks".) A line in
+## the dialogue box has begun, or ended (`secs` 0): whoever's name is on it,
+## if they're stood in this place, moves their mouth for as long as its
+## words take to come up (Figure3D.talk_mouth), and shuts it. The name is
+## the box's own ("Corin", "Corin (shouting)", the player's).
+func _on_spoken(speaker: String, secs: float) -> void:
+	var nm := speaker.get_slice(" (", 0).strip_edges()
+	var f = null
+	if nm == Game.player_name:
+		f = player_doll
+	else:
+		for n in npcs:
+			if String(n.def.get("name", "")) == nm:
+				f = n.doll
+				break
+	if f is Figure3D and is_instance_valid(f):
+		(f as Figure3D).talk_mouth(secs > 0.0, secs)
+		spoke_last = nm
+
+
+## Whose mouth was last told to move (the tests read it).
+var spoke_last := ""
 
 
 func _speaker(who: String) -> String:

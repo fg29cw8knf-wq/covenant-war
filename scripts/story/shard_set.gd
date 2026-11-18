@@ -441,7 +441,8 @@ static func night(env: Environment, quality: int) -> void:
 ## the tops of his arms and boots), patchy, with a dusting driven onto the
 ## side the wind comes from ("snow_k", 0 none .. 1 white-shouldered).
 ## Returns the material (null if the model isn't one it can dress: no skin,
-## more than one surface, no colour texture).
+## more than one surface, no colour texture). A model's own normal map is
+## kept under it (18 November: Bram's coat has one now).
 const WEATHER := """
 shader_type spatial;
 render_mode specular_schlick_ggx;
@@ -449,9 +450,15 @@ uniform sampler2D albedo_tex : source_color, filter_linear_mipmap_anisotropic, r
 uniform sampler2D mr_tex : hint_default_white, filter_linear_mipmap, repeat_enable;
 uniform float metallic_k = 1.0;
 uniform float roughness_k = 1.0;
+// (18 November: a model with a normal map of its own keeps it under the wind
+// and the snow, laid on as the people's shader lays it: character_nm)
+uniform sampler2D normal_tex : hint_normal, filter_linear_mipmap_anisotropic, repeat_enable;
+uniform float normal_k = 0.0;
 uniform vec3 wind_dir = vec3(-1.0, 0.0, 0.0);
 uniform float wind_k = 0.4;
 uniform float snow_k = 0.0;
+uniform float reach_k = 1.0;
+uniform float billow_k = 0.0;
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -471,7 +478,9 @@ void vertex() {
 		float side = mix(0.1, 1.0, smoothstep(-0.35, 0.75, lee));
 		float ph = COLOR.b * 6.2832;
 		float flap = sin(TIME * 5.3 + ph * 2.0 + VERTEX.y * 7.0) * 0.6 + sin(TIME * 8.9 - ph * 3.0 + VERTEX.y * 13.0) * 0.4;
-		float push = skirt * (0.02 + 0.062 * wind_k) * side * (1.0 + 0.55 * flap);
+		// (a cloak: a slow heave of the whole length of it under the flapping)
+		float heave = billow_k * sin(TIME * 1.9 + ph + VERTEX.y * 1.5);
+		float push = skirt * (0.02 + 0.062 * wind_k) * side * (1.0 + 0.55 * flap + 0.6 * heave) * reach_k;
 		VERTEX.xz += flat_w * size * push;
 		VERTEX.y += size * skirt * side * wind_k * (0.012 + 0.012 * flap);
 		float stir = sin(TIME * 9.0 + VERTEX.y * 40.0) * 0.6 + sin(TIME * 14.0 + VERTEX.x * 55.0) * 0.4;
@@ -500,6 +509,25 @@ void fragment() {
 	ALBEDO = mix(a.rgb, vec3(0.82, 0.87, 0.96), snow);
 	METALLIC = mr.b * metallic_k * (1.0 - snow);
 	ROUGHNESS = mix(mr.g * roughness_k, 0.88, snow);
+	if (normal_k > 0.001) {
+		highp vec3 n = normalize(NORMAL);
+		highp vec3 dp1 = dFdx(VERTEX);
+		highp vec3 dp2 = dFdy(VERTEX);
+		highp vec2 duv1 = dFdx(UV);
+		highp vec2 duv2 = dFdy(UV);
+		highp float det = duv1.x * duv2.y - duv2.x * duv1.y;
+		highp vec3 t = (dp1 * duv2.y - dp2 * duv1.y) * sign(det);
+		highp vec3 b = (dp2 * duv1.x - dp1 * duv2.x) * sign(det);
+		t -= n * dot(n, t);
+		b -= n * dot(n, b);
+		if (det != 0.0 && dot(t, t) > 1e-24 && dot(b, b) > 1e-24) {
+			vec3 nm = vec3(texture(normal_tex, UV).rg * 2.0 - 1.0, 0.0);
+			nm.z = sqrt(max(0.0, 1.0 - dot(nm.xy, nm.xy)));
+			// (the snow lies over the cloth's weave: smooth where it's white)
+			nm.xy *= normal_k * (1.0 - snow);
+			NORMAL = normalize(normalize(t) * nm.x - normalize(b) * nm.y + n * nm.z);
+		}
+	}
 }
 """
 
@@ -507,7 +535,12 @@ static var _weather_meshes := {}
 static var _weather_sh: Shader
 
 
-static func weather(model: Node3D) -> ShaderMaterial:
+## `cloak` (18 November, Gary's yes: the hooded figure's "cloak moving in
+## the wind on the rim"): a figure in a robe to the ground, not a coat to the
+## knee. All of it under the shoulders that stands clear of the legs and the
+## body takes the wind, more the lower it hangs, and it streams further
+## ("reach_k"): a long cloak in a storm, seen from the bowl's floor.
+static func weather(model: Node3D, cloak := false) -> ShaderMaterial:
 	if model == null:
 		return null
 	var sk := model.find_child("Skeleton3D", true, false) as Skeleton3D
@@ -517,12 +550,40 @@ static func weather(model: Node3D) -> ShaderMaterial:
 	var mi := found[0] as MeshInstance3D
 	if mi.mesh == null or mi.skin == null or mi.mesh.get_surface_count() != 1:
 		return null
-	var src := mi.get_active_material(0) as StandardMaterial3D
-	if src == null or src.albedo_texture == null:
+	# (18 November: what it's painted with, from the model's own material or
+	# from the people's shader it's been dressed in since it got a normal map)
+	var worn := mi.get_active_material(0)
+	var alb: Texture2D = null
+	var mr: Texture2D = null
+	var nrm: Texture2D = null
+	var metal := 1.0
+	var rough := 1.0
+	var nrm_k := 0.0
+	if worn is StandardMaterial3D:
+		var src := worn as StandardMaterial3D
+		alb = src.albedo_texture
+		mr = src.roughness_texture if src.roughness_texture != null else src.metallic_texture
+		metal = src.metallic
+		rough = src.roughness
+		if src.normal_enabled and src.normal_texture != null:
+			nrm = src.normal_texture
+			nrm_k = src.normal_scale
+	elif worn is ShaderMaterial and (worn as ShaderMaterial).get_shader_parameter("albedo_tex") is Texture2D:
+		var sm := worn as ShaderMaterial
+		alb = sm.get_shader_parameter("albedo_tex")
+		mr = sm.get_shader_parameter("mr_tex") as Texture2D
+		nrm = sm.get_shader_parameter("normal_tex") as Texture2D
+		var v: Variant = sm.get_shader_parameter("metallic_k")
+		metal = float(v) if v != null else 1.0
+		v = sm.get_shader_parameter("roughness_k")
+		rough = float(v) if v != null else 1.0
+		v = sm.get_shader_parameter("normal_strength")
+		nrm_k = (float(v) if v != null else 1.0) if nrm != null else 0.0
+	if alb == null:
 		return null
-	var key := mi.mesh.resource_path if mi.mesh.resource_path != "" else str(mi.mesh.get_instance_id())
+	var key := (mi.mesh.resource_path if mi.mesh.resource_path != "" else str(mi.mesh.get_instance_id())) + (":cloak" if cloak else "")
 	if not _weather_meshes.has(key):
-		_weather_meshes[key] = _weather_mesh(mi, sk)
+		_weather_meshes[key] = _weather_mesh(mi, sk, cloak)
 	var mesh := _weather_meshes[key] as ArrayMesh
 	if mesh == null:
 		return null
@@ -531,11 +592,17 @@ static func weather(model: Node3D) -> ShaderMaterial:
 		_weather_sh.code = WEATHER
 	var m := ShaderMaterial.new()
 	m.shader = _weather_sh
-	m.set_shader_parameter("albedo_tex", src.albedo_texture)
-	m.set_shader_parameter("mr_tex", src.roughness_texture if src.roughness_texture != null else src.metallic_texture)
-	m.set_shader_parameter("metallic_k", src.metallic)
-	m.set_shader_parameter("roughness_k", src.roughness)
+	m.set_shader_parameter("albedo_tex", alb)
+	m.set_shader_parameter("mr_tex", mr)
+	m.set_shader_parameter("metallic_k", metal)
+	m.set_shader_parameter("roughness_k", rough)
+	if nrm != null:
+		m.set_shader_parameter("normal_tex", nrm)
+		m.set_shader_parameter("normal_k", nrm_k)
 	m.set_shader_parameter("wind_dir", Vector3(WIND.x, 0.0, WIND.z).normalized())
+	if cloak:
+		m.set_shader_parameter("reach_k", CLOAK_REACH)
+		m.set_shader_parameter("billow_k", 1.0)
 	mi.mesh = mesh
 	mi.set_surface_override_material(0, m)
 	return m
@@ -544,7 +611,10 @@ static func weather(model: Node3D) -> ShaderMaterial:
 ## The model's mesh again, with where the wind takes hold painted into its
 ## vertex colours (weather(), above). Everything is measured on the model at
 ## rest, in the mesh's own frame, from where its skin says the bones are.
-static func _weather_mesh(mi: MeshInstance3D, sk: Skeleton3D) -> ArrayMesh:
+## How much further a cloak streams than a coat's skirt (WEATHER's reach_k).
+const CLOAK_REACH := 3.4
+
+static func _weather_mesh(mi: MeshInstance3D, sk: Skeleton3D, cloak := false) -> ArrayMesh:
 	var src := mi.mesh as ArrayMesh
 	if src == null:
 		return null
@@ -604,7 +674,20 @@ static func _weather_mesh(mi: MeshInstance3D, sk: Skeleton3D) -> ArrayMesh:
 		var skirt := 0.0
 		var hair := 0.0
 		if top >= 0 and top < arm.size():
-			if p.y >= hem_y and p.y < belt_y and arm[top] == 0 and absf(p.x) < 0.36:
+			if cloak:
+				# a robe: under the shoulders, not an arm's or the head's, and
+				# clear of the legs (below the belt) or of the body's middle
+				# (above it); more the lower it hangs
+				if arm[top] == 0 and of_head[top] == 0 and p.y < yoke_y - 0.05:
+					var d := INF
+					for sg in legs:
+						var a: Vector3 = sg[0]
+						var ab: Vector3 = (sg[1] as Vector3) - a
+						var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 1e-9), 0.0, 1.0)
+						d = minf(d, p.distance_to(a + ab * t))
+					var clear := smoothstep(0.1, 0.2, d) if p.y < belt_y else smoothstep(0.17, 0.3, Vector2(p.x, p.z).length())
+					skirt = pow(clampf((yoke_y - 0.05 - p.y) / maxf(0.1, yoke_y - 0.05), 0.0, 1.0), 1.4) * clear
+			elif p.y >= hem_y and p.y < belt_y and arm[top] == 0 and absf(p.x) < 0.36:
 				var d := INF
 				for sg in legs:
 					var a: Vector3 = sg[0]

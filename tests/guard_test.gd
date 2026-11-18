@@ -72,20 +72,35 @@ func _ready() -> void:
 	if G.step == 0:
 		G.step = clampi(int(Game.settings.get(G.STEP_KEY, 0)), 0, last) if G.on() else 0
 	_expect(G.step == 3, "a new session didn't start from the kept step")
-	# 5. Best picture
+	# 5. Best picture (18 November: the guard works under it, and leaves
+	# the light be; before, it stood down and the Mac drew at 17)
 	Game.settings["best_picture"] = true
-	_expect(not G.on(), "the guard's on under Best picture")
+	_expect(G.on(), "the guard stands down under Best picture")
+	G.step = 0
+	G.lean = false
+	for k in 40:
+		g.judge(17.0)
+	_expect(G.step == last, "Best picture at 17 fps wasn't brought down to the smallest size (step %d)" % G.step)
+	_expect(not G.lean, "the bounce light was taken away under Best picture")
+	_expect(not G.told_best, "something was said with the guard doing its work")
+	Game.settings["best_picture"] = false
+	# 6. the guard switched off: every pixel held, and said so once
+	Game.settings["smooth_auto"] = false
+	_expect(not G.on(), "the guard's on with its switch off")
 	G.step = 0
 	for k in 8:
 		g.judge(17.0)
-	_expect(G.step == 0, "Best picture was stepped down")
-	_expect(G.told_best and Gfx.Told.last.contains("Best picture"), "nothing was said about Best picture at 17 fps")
-	print("guard_test: under Best picture: \"%s\"" % Gfx.Told.last)
-	Game.settings["best_picture"] = false
+	_expect(G.step == 0, "switched off, it still stepped down")
+	_expect(G.told_best and Gfx.Told.last.contains("Keep the frame rate smooth"), "nothing was said about the full picture at 17 fps")
+	print("guard_test: switched off: \"%s\"" % Gfx.Told.last)
+	Game.settings["smooth_auto"] = true
 	Game.settings.erase(G.STEP_KEY)
 	G.step = 0
 	G.lean = false
 	G.told_best = false
+	# (the guard keeps its step with the Options as it goes: what this test
+	# put there is taken out again, so the next test starts from none of it)
+	Game.save_settings()
 	print("GUARD: ok" if problems.is_empty() else "GUARD: %d problems\n  %s" % [problems.size(), "\n  ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)
 

@@ -21,11 +21,20 @@ extends Node
 ## "inside n/N, deepest d cm"; FAIL when any of the child is more than
 ## TOL inside him (or the hand more than TOL inside its card).
 ##
-##   godot --headless --fixed-fps 10 --path . res://tests/held_child_probe.tscn -- [<dir>] [carry] [knee] [hand]
+##   arms   (18 November, the body sweep: "his right hand is 10.0 cm inside
+##          ... baby_bundle", "his left forearm is 7.8 cm inside") the other
+##          way about: how far the lines of his forearms and hands (elbow to
+##          wrist, wrist to knuckle) are inside the child's bundle, its mesh
+##          as a solid: held in his hands, tucked, turned away from the
+##          hunter with his right arm across it, on his knee, and (with
+##          "hand") every few frames of the walk out. A forearm under a
+##          bundle isn't in it: FAIL at more than ARM_IN.
+##
+##   godot --headless --fixed-fps 10 --path . res://tests/held_child_probe.tscn -- [<dir>] [carry] [knee] [hand] [arms]
 ##   (stills: under xvfb, drawn, as white_sky_look)
 
 const DrawHold = preload("res://tests/draw_hold.gd")
-const MODES := ["carry", "knee", "hand", "front", "scan"]
+const MODES := ["carry", "knee", "hand", "front", "scan", "arms"]
 ## How deep any of the child may be inside his body before it counts (m):
 ## the wool pressed to his coat (bent over it on his knee, 2 cm).
 const TOL := 0.025
@@ -33,6 +42,11 @@ const HAND_TOL := 0.004
 ## (his arm under it and round it: sunk into the wool a little more)
 const ARM_TOL := 0.03
 const RAY := 3.0
+## How far the line of a forearm or hand may be inside the bundle (m): the
+## wool gives a little under an arm.
+const ARM_IN := 0.01
+## (the knuckles under it, taking its weight: a little more)
+const HAND_IN := 0.025
 const DIRS := [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]
 
 var out := ""
@@ -134,6 +148,11 @@ func _run() -> void:
 	await m._lift_child()
 	# "Hush, now. I've got you.": the shot of it is the high one over his
 	# shoulder (_held_shot)
+	_arms = names.has("arms")
+	_arms_dbg = OS.get_cmdline_user_args().has("armsdbg")
+	if _arms:
+		await _wait(0.3)
+		await _measure_arms("in his hands at \"Hush, now\"")
 	if names.has("carry"):
 		await _wait(0.3)
 		await _measure_child("hush (in his hands)")
@@ -150,12 +169,34 @@ func _run() -> void:
 	if names.has("carry"):
 		await _measure_child("tucked, stood")
 		await _side_shots("carry_2_tucked")
+	if _arms:
+		await _measure_arms("tucked, stood")
+		# turned away from the hunter, his right arm across it (_the_demand)
+		fig.face(kd.rotated(Vector3.UP, deg_to_rad(WhiteSky.SHIELD_TURN)), m._cam)
+		if m._lean == null:
+			m._lean = m._bend(fig, "Lean", WhiteSky.GUST_LEAN)
+		if m._lean != null:
+			create_tween().tween_property(m._lean, "amount", 0.85, WhiteSky.DEMAND_TURN)
+		m._shield_arm(fig, WhiteSky.DEMAND_TURN * 0.8)
+		await _wait(WhiteSky.DEMAND_TURN + 0.6)
+		await _measure_arms("turned away, his right arm across it")
+		await _side_shots("arms_1_shield")
+		# (and his right hand his own again, as it is by the duel: _stage_duellists)
+		fig._reach("right", null, 0.2)
+		fig.palm("right", Vector3.ZERO, 0.2)
+		fig.elbow("right", Vector3.INF, 0.2)
+		if m._lean != null:
+			m._lean.amount = 0.0
+		fig.snap_face(kd)
+		await _wait(0.5)
 	if names.has("knee"):
 		m._carry_child(fig)
 		fig.kneel(WhiteSky.KNEE_DOWN, WhiteSky.KNEE_LEAN, false, true)
 		m._knee_hand(true, WhiteSky.KNEE_DOWN)
 		await _wait(1.4)
 		await _measure_child("on his knee")
+		if _arms:
+			await _measure_arms("on his knee")
 		var head := fig.bone_pos("Head")
 		var child := m._baby.global_position
 		var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
@@ -172,6 +213,11 @@ func _run() -> void:
 		m._carry_on = false
 	if names.has("hand"):
 		await _hand_run()
+	if _arms:
+		for part: String in _arms_worst:
+			print("held_child_probe: his %s in the bundle: at most %.1f cm (%s)" % [part, float(_arms_worst[part][0]) * 100.0, _arms_worst[part][1]])
+		if _arms_worst.is_empty():
+			print("held_child_probe: his arms in the bundle: never")
 	m._cam_mode = "roam"
 	print("held_child_probe: %s" % ("PASS" if fails.is_empty() else "FAIL " + ", ".join(fails)))
 	get_tree().quit(0 if fails.is_empty() else 1)
@@ -269,7 +315,12 @@ func _solid(faces: PackedVector3Array) -> void:
 
 ## How deep `p` is inside him (m), or -1.
 func _inside(p: Vector3) -> float:
-	var ss := PhysicsServer3D.space_get_direct_state(_space)
+	return _inside_of(_space, _faces, p)
+
+
+func _inside_of(space: RID, faces: PackedVector3Array, p: Vector3) -> float:
+	var _faces := faces
+	var ss := PhysicsServer3D.space_get_direct_state(space)
 	if ss == null:
 		return -1.0
 	var votes := 0
@@ -291,6 +342,119 @@ func _inside(p: Vector3) -> float:
 			votes += 1
 			near = minf(near, p.distance_to(hit.position))
 	return near if votes >= 4 else -1.0
+
+
+# ------------------------------------------------- his arms in the bundle ---
+
+var _space2 := RID()
+var _body2 := RID()
+var _shape2: ConcavePolygonShape3D
+var _arms := false
+var _arms_dbg := false
+var _arms_worst := {}     # part -> [m, when]
+
+## The lines of his forearms and hands against the bundle's own mesh, both
+## read in the same pass of his bones (after the child's been put where his
+## chest is: this is connected last).
+func _measure_arms(what: String, say := true) -> void:
+	var fig := m._bram as Figure3D
+	var sk: Skeleton3D = fig._skel
+	var done := [false]
+	var parts := {}
+	var faces := PackedVector3Array()
+	var xfs := [Transform3D.IDENTITY, Transform3D.IDENTITY]
+	var cb := func() -> void:
+		if done[0]:
+			return
+		done[0] = true
+		var pos := func(bn: String) -> Vector3:
+			return (sk.global_transform * sk.get_bone_global_pose(sk.find_bone(bn))).origin
+		for sd in ["Left", "Right"]:
+			var e: Vector3 = pos.call(sd + "ForeArm")
+			var w: Vector3 = pos.call(sd + "Hand")
+			var k: Vector3 = pos.call(sd + "HandMiddle1")
+			var fa := PackedVector3Array()
+			for i in 9:
+				fa.append(e.lerp(w, 0.12 + 0.88 * i / 8.0))
+			parts[sd.to_lower() + " forearm"] = fa
+			var hd := PackedVector3Array()
+			for i in 4:
+				hd.append(w.lerp(k, i / 3.0))
+			parts[sd.to_lower() + " hand"] = hd
+		xfs[0] = m._baby.global_transform
+		xfs[1] = fig.global_transform * Transform3D(Basis(Vector3.UP, fig._yaw), Vector3.ZERO)
+		for n in m._baby.find_children("*", "MeshInstance3D", true, false):
+			var mi := n as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree() or mi.skin != null or not String(m._baby.get_path_to(mi)).contains("baby_bundle"):
+				continue
+			var fs := mi.mesh.get_faces()
+			var xf := mi.global_transform
+			for i in fs.size():
+				fs[i] = xf * fs[i]
+			faces.append_array(fs)
+	sk.skeleton_updated.connect(cb, CONNECT_ONE_SHOT)
+	var waited := 0
+	while not done[0] and waited < 20:
+		await get_tree().process_frame
+		waited += 1
+	if faces.is_empty():
+		return
+	if _body2.is_valid():
+		PhysicsServer3D.free_rid(_body2)
+	if not _space2.is_valid():
+		_space2 = PhysicsServer3D.space_create()
+		PhysicsServer3D.space_set_active(_space2, true)
+	_shape2 = ConcavePolygonShape3D.new()
+	_shape2.backface_collision = true
+	_shape2.set_faces(faces)
+	_body2 = PhysicsServer3D.body_create()
+	PhysicsServer3D.body_set_mode(_body2, PhysicsServer3D.BODY_MODE_STATIC)
+	PhysicsServer3D.body_add_shape(_body2, _shape2.get_rid())
+	PhysicsServer3D.body_set_collision_layer(_body2, 1)
+	PhysicsServer3D.body_set_collision_mask(_body2, 0)
+	PhysicsServer3D.body_set_space(_body2, _space2)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	var line := ""
+	var detail := say
+	for part: String in parts:
+		var deep := 0.0
+		var at := -1
+		var k := 0
+		for p: Vector3 in parts[part]:
+			var d := _inside_of(_space2, faces, p)
+			if d > deep:
+				deep = d
+				at = k
+			k += 1
+		line += "  %s %s" % [part, ("%.1f cm (point %d of %d)" % [deep * 100.0, at + 1, (parts[part] as PackedVector3Array).size()]) if deep > 0.0 else "out"]
+		if deep > float((_arms_worst.get(part, [0.0, ""]) as Array)[0]):
+			_arms_worst[part] = [deep, what]
+			if _arms_dbg and deep > ARM_IN:
+				detail = true
+		if deep > (HAND_IN if part.ends_with("hand") else ARM_IN) and not fails.has("his %s in the bundle" % part):
+			fails.append("his %s in the bundle" % part)
+	if say:
+		print("held_child_probe: his arms in the bundle, %s:%s" % [what, line])
+	if _arms_dbg and detail:
+		# (where: each elbow and wrist in the bundle's own frame, and in his,
+		# as they all were in that pass)
+		var inv: Transform3D = (xfs[0] as Transform3D).affine_inverse()
+		var lo := Vector3.INF
+		var hi := -Vector3.INF
+		for f: Vector3 in faces:
+			var q := inv * f
+			lo = lo.min(q)
+			hi = hi.max(q)
+		var his: Transform3D = (xfs[1] as Transform3D).affine_inverse()
+		var own := func(p: Vector3) -> Vector3:
+			return (his * p).snappedf(0.005)
+		var bx: Transform3D = xfs[0]
+		print("held_child_probe:   the bundle's box in its own frame %s to %s; its middle in his frame %s, its axes in his frame x %s y %s z %s" % [str(lo.snappedf(0.005)), str(hi.snappedf(0.005)),
+			str(own.call(bx.origin)), str((his.basis * bx.basis.x).snappedf(0.01)), str((his.basis * bx.basis.y).snappedf(0.01)), str((his.basis * bx.basis.z).snappedf(0.01))])
+		for part: String in parts:
+			var a: PackedVector3Array = parts[part]
+			print("held_child_probe:   %s from %s to %s in the bundle's frame; %s to %s in his" % [part, str((inv * a[0]).snappedf(0.005)), str((inv * a[a.size() - 1]).snappedf(0.005)), str(own.call(a[0])), str(own.call(a[a.size() - 1]))])
 
 
 ## A skinned mesh as drawn now, in the world: its triangles (three points
@@ -553,6 +717,8 @@ func _hand_run() -> void:
 		await get_tree().process_frame
 		tt += 0.1
 		k += 1
+		if _arms and k % 4 == 0:
+			await _measure_arms("%.1f s into the walk out" % tt, _arms_dbg)
 		if k % 50 == 0:
 			print("held_child_probe: (%.0f s into the walk out: %.1f m from the crater, the hand %s rise %.2f)" % [tt, m._crater_dist(), str(m._hand_on), m._tiny_rise])
 		if m._hand_on and m._tiny != null and m._tiny.visible and m._tiny_rise > 0.05 and (k % 3 == 0 or m.grasping > 0.05):

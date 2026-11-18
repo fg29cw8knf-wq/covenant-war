@@ -1191,6 +1191,19 @@ const BUTTON_POCKET := 0.45
 ## Sat side by side, how high over his hip joint his palm is held out (m, on
 ## a grown man; his thigh's top is about 0.08 over the joint).
 const BUTTON_OVER_LAP := 0.19
+## His hand closed over theirs: how far over their hand's mark his comes
+## first (m), how far he presses it down, and
+## how long he holds it there (s). And that he did (the tests read it).
+const BUTTON_CLASP := 0.05
+## (how far apart the two palms' skins are when his is on theirs, the button
+## between; and how long his hand takes to settle there)
+const BUTTON_CLASP_GAP := 0.014
+const BUTTON_CLASP_SETTLE := 0.4
+const BUTTON_PRESS := 0.008
+const BUTTON_CLASP_HOLD := 0.7
+static var button_clasped := false
+## (which of his hands and which of theirs: for the test's measuring)
+static var button_hands: Array = []
 
 
 static func corin_button(w: World) -> void:
@@ -1295,6 +1308,53 @@ static func corin_button(w: World) -> void:
 				b.global_transform = Transform3D(basis0.slerp(Basis.IDENTITY, k).orthonormalized(), at), 0.0, 1.0, 0.28)
 		await slide.finished
 		me.attach(b, "palm", my_side, 0.008)
+		# (18 November, Gary's yes: "Button: Corin closes your fingers over
+		# it".) His hand comes over theirs, palm down, onto the button in
+		# their palm, presses it there and is held a breath: his hand shut on
+		# theirs, the button between. (The hero's own fingers can't be bent:
+		# his hands' skin doesn't follow their bones, Figure3D.FROZEN; so it's
+		# Corin's hand that does the closing.)
+		corin.palm(his_side, Vector3.DOWN, 0.3, 0.15, false, to_p)
+		var over := take_at + Vector3(0, BUTTON_CLASP, 0)
+		var clasp := w.create_tween()
+		clasp.tween_property(give, "global_position", over, 0.3).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await clasp.finished
+		# (onto it by what's seen of the two hands: a hand's mark is on the
+		# line of its forearm, and a palm turned down at the wrist lies off
+		# that line, 4 cm along and across here; so his mark is moved until
+		# his palm is over the middle of theirs, BUTTON_CLASP_GAP off it. Each
+		# palm is read as drawn, in its own bones' pass.)
+		var palms := [null, null]
+		var read_his := func() -> void:
+			palms[0] = corin.palm_frame(his_side)
+		var read_theirs := func() -> void:
+			palms[1] = me.palm_frame(my_side)
+		corin._skel.skeleton_updated.connect(read_his)
+		me._skel.skeleton_updated.connect(read_theirs)
+		var settle := 0.0
+		while settle < BUTTON_CLASP_SETTLE and is_instance_valid(w) and w.is_inside_tree():
+			await w.get_tree().process_frame
+			var dt := w.get_process_delta_time()
+			settle += dt
+			if palms[0] != null and palms[1] != null:
+				var theirs: Transform3D = palms[1]
+				var want := theirs.origin + theirs.basis.y.normalized() * BUTTON_CLASP_GAP
+				give.global_position += (want - (palms[0] as Transform3D).origin) * (1.0 - exp(-10.0 * dt))
+		if corin._skel.skeleton_updated.is_connected(read_his):
+			corin._skel.skeleton_updated.disconnect(read_his)
+		if me._skel.skeleton_updated.is_connected(read_theirs):
+			me._skel.skeleton_updated.disconnect(read_theirs)
+		button_clasped = true
+		button_hands = [his_side, my_side]
+		over = give.global_position
+		var press := w.create_tween().set_parallel(true)
+		press.tween_property(give, "global_position", over + Vector3(0, -BUTTON_PRESS, 0), 0.16).set_trans(Tween.TRANS_SINE)
+		press.tween_property(take, "global_position", take_at + Vector3(0, -BUTTON_PRESS, 0), 0.16).set_trans(Tween.TRANS_SINE)
+		await Cine.wait(w, BUTTON_CLASP_HOLD)
+		var free_it := w.create_tween().set_parallel(true)
+		free_it.tween_property(give, "global_position", over + Vector3(0, 0.03, 0) - to_p * 0.04, 0.3).set_trans(Tween.TRANS_SINE)
+		free_it.tween_property(take, "global_position", take_at, 0.3).set_trans(Tween.TRANS_SINE)
+		await Cine.wait(w, 0.2)
 		# his hand back to where it rests (on the wall), or down
 		corin.palm(his_side, Vector3.ZERO, 0.35)
 		if _corin_on_wall(w):
@@ -1364,6 +1424,11 @@ const MOTH_REACH := 0.45
 const MOTH_TOUCH_HOLD := 0.2
 ## How far they bend forward over their knee to it (Figure3D.kneel's lean).
 const MOTH_LEAN := 0.5
+
+## How wide her mouth opens at it (Figure3D.jaw), and whether she did (the
+## tests read it).
+const TILLY_GASP := 0.8
+static var tilly_gasped := false
 
 static func moth_for_tilly(w: World) -> void:
 	var v := village(w)
@@ -1440,6 +1505,20 @@ static func moth_for_tilly(w: World) -> void:
 	moth.scale = Vector3.ONE * 0.05
 	var grow := w.create_tween()
 	grow.tween_property(moth, "scale", Vector3.ONE * 1.8, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# (18 November, Gary's yes: "Tilly: she gasps and smiles when the moth
+	# appears".) Her mouth open as it comes up out of her card, held a
+	# breath, and shut again into a smile that stays while it's round her
+	# head; her eyes on it all the way (the flight, below).
+	var tf = Cine.fig(w, "tilly")
+	var tfig: Figure3D = tf as Figure3D if tf is Figure3D and (tf as Figure3D).has_mouth() else null
+	if tfig != null:
+		tilly_gasped = true
+		var face := w.create_tween()
+		face.tween_interval(0.12)
+		face.tween_method(tfig.jaw, 0.0, TILLY_GASP, 0.16)
+		face.tween_interval(0.6)
+		face.tween_method(tfig.jaw, TILLY_GASP, 0.0, 0.35)
+		face.parallel().tween_method(tfig.smile, 0.0, 1.0, 0.5)
 	if pf is Figure3D:
 		# (the hand stays on it a moment as the moth comes up out of it)
 		await Cine.wait(w, 0.35)
@@ -1467,9 +1546,15 @@ static func moth_for_tilly(w: World) -> void:
 			var k3 := (u - 0.85) / 0.15
 			pos = ring.lerp(card.global_position + Vector3(0, 0.05, 0), k3 * k3 * (3.0 - 2.0 * k3))
 		if is_instance_valid(moth):
-			moth.fly_to(pos), 0.0, 1.0, 6.0)
+			moth.fly_to(pos)
+			if tfig != null and is_instance_valid(tfig):
+				tfig.eyes_on(pos), 0.0, 1.0, 6.0)
 	Cine.look(w, "tilly", head + Vector3(0, 0.4, 0))
 	await flight.finished
+	if tfig != null and is_instance_valid(tfig):
+		# (her eyes her own again; the smile goes more slowly)
+		tfig.eyes_on(null)
+		w.create_tween().tween_method(tfig.smile, 1.0, 0.0, 2.2).set_delay(1.2)
 	# back into her card, and its light goes down again
 	var back := w.create_tween()
 	back.tween_property(moth, "scale", Vector3.ONE * 0.05, 0.4).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)

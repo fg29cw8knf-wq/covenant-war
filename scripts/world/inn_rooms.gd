@@ -942,11 +942,14 @@ const BED_MODELS := ["res://assets/models/ashford/bed.glb", "res://assets/models
 static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	var ticking := v.shader_mat("cloth", {"col_a": Color(0.8, 0.76, 0.66), "col_b": Color(0.42, 0.46, 0.56), "stripes": 44.0})
 	var linen := v.shader_mat("cloth", {"col_a": Color(0.8, 0.77, 0.68), "col_b": Color(0.76, 0.73, 0.64), "stripes": 30.0})
-	var wool := v.shader_mat("cloth", {"col_a": Color(0.3, 0.1, 0.07), "col_b": Color(0.16, 0.15, 0.11), "stripes": 3.0})
-	var oak: Material = v.mats.wood_h
-	var post: Material = v.mats.beam_v
+	# (18 November: the blanket's own wool, its nap and small creases in its
+	# surface, its stripes woven, its hollows darker: blanket.gdshader)
 	var L := 2.05 + BED_FOOT
 	var W := 1.0
+	var wool := v.shader_mat("blanket", {"col_a": Color(0.3, 0.1, 0.07), "col_b": Color(0.16, 0.15, 0.11), "stripes": 3.0,
+		"size": Vector2(BLANKET_L, W - 0.04)})
+	var oak: Material = v.mats.wood_h
+	var post: Material = v.mats.beam_v
 	var rail_y := 0.3      # the side rails' middle
 	var model_path := ""
 	for p in BED_MODELS:
@@ -1013,6 +1016,10 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	# back over the sleeper)
 	blanket.set_meta("rows", rows)
 	blanket.set_meta("mesh_on", blanket.mesh)
+	# (18 November, Gary's yes to "a soft blanket that folds over him": laid
+	# here by rule, as it was, until someone lies under it; then over him as
+	# he is, BlanketDrape.lay, which needs its width)
+	blanket.set_meta("width", W - 0.04)
 	# thrown back against the wall, in a heap, when they get up
 	var off := Transform3D(Basis.from_euler(Vector3(0.0, 0.0, 0.0)) * Basis.from_scale(Vector3(0.85, 1.3, 0.42)), at + Vector3(0.4, BED_TOP, -0.27))
 	return {"blanket": blanket, "blanket_off": off}
@@ -1139,9 +1146,7 @@ const BLANKET_BELLY := 0.05
 ## body's width and falling to the mattress either side of it (into the
 ## mattress's dip where the body lies), rumpled in loose folds, its hem
 ## turned back in a roll over the chest.
-static func _blanket_points(L: float, W: float) -> Array:
-	var nx := 26
-	var nz := 16
+static func _blanket_points(L: float, W: float, nx := 26, nz := 16) -> Array:
 	var pts: Array = []
 	for i in nx + 1:
 		var u := float(i) / nx
@@ -1172,26 +1177,11 @@ static func _blanket_points(L: float, W: float) -> Array:
 
 
 ## The blanket's mesh from its grid of points (as laid, or wherever
-## BlanketThrow has them this frame).
-static func _blanket_mesh_of(pts: Array) -> ArrayMesh:
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var nx := pts.size() - 1
-	var nz := (pts[0] as Array).size() - 1
-	for i in nx:
-		for j in nz:
-			var a: Vector3 = pts[i][j]
-			var b: Vector3 = pts[i + 1][j]
-			var c: Vector3 = pts[i + 1][j + 1]
-			var d: Vector3 = pts[i][j + 1]
-			var ua := Vector2(float(i) / nx, float(j) / nz)
-			var uc := Vector2(float(i + 1) / nx, float(j + 1) / nz)
-			for tri in [[a, ua, c, uc, b, Vector2(uc.x, ua.y)], [a, ua, d, Vector2(ua.x, uc.y), c, uc]]:
-				st.set_uv(tri[1]); st.add_vertex(tri[0])
-				st.set_uv(tri[3]); st.add_vertex(tri[2])
-				st.set_uv(tri[5]); st.add_vertex(tri[4])
-	st.generate_normals()
-	return st.commit()
+## BlanketThrow has them this frame). (18 November: one soft surface, its
+## triangles made once: BlanketDrape.mesh_of. `shade`: how deep in a fold
+## each point lies, if that's known.)
+static func _blanket_mesh_of(pts: Array, shade := PackedFloat32Array()) -> ArrayMesh:
+	return BlanketDrape.mesh_of(BlanketDrape.flat(pts), pts.size(), (pts[0] as Array).size(), shade)
 
 
 ## The taproom on the evening of the festival (P1), not the film's shuttered

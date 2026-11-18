@@ -24,6 +24,12 @@ extends RefCounted
 ## counts what a Mac holds and draws on a machine with no graphics card).
 static var force_level := -1
 
+## Whether the bounce light (SDFGI) is worked out at half the picture's size
+## and spread. Off, as the engine has it: the speed test times both
+## (SpeedTest, "Bounce light worked out at half size"), and it's to be turned
+## on only with a number from a real Mac and a look at the two pictures.
+static var gi_half := false
+
 ## How big the 3D is drawn on a phone in Smooth, before upscaling.
 const PHONE_SCALE := 0.67
 const PHONE_FPS := 60
@@ -104,8 +110,9 @@ static func setup(tree: SceneTree) -> void:
 ## nothing in the game noticing. The guard watches the frame rate (a
 ## second and a half at a time, loading catches left out) and, when it has
 ## been under LOW for a few seconds, draws the 3D one step smaller and lets
-## the Mac's own upscaler (MetalFX; FSR elsewhere) sharpen it back up to the
-## full screen: the words, cards and buttons are never touched, only the 3D.
+## the Mac's own upscaler (MetalFX; FSR elsewhere) bring it back up to the
+## full screen (rebuilt from the frames before it, since 18 November:
+## `_size`): the words, cards and buttons are never touched, only the 3D.
 ## When it has run at the screen's own rate for a while it tries a step back
 ## up, and waits longer each time a step up doesn't hold, so it doesn't
 ## swing. If the smallest step still isn't enough it turns the bounce light
@@ -113,7 +120,8 @@ static func setup(tree: SceneTree) -> void:
 ## showing, as the phone plays without them; that stays for the session.
 ## A Mac that keeps up never sees any of it: the picture stays at full size.
 ## Options: "Keep the frame rate smooth" (Game.settings.smooth_auto, on by
-## default); off holds the full picture whatever the frame rate.
+## default); off holds the full picture whatever the frame rate. It works
+## under "Best picture" as well (Best, below), where it leaves the light be.
 class Guard extends Node:
 	## The 3D's size at each step (1 is the screen's own).
 	const STEPS := [1.0, 0.87, 0.77, 0.67, 0.58, 0.5]
@@ -137,10 +145,10 @@ class Guard extends Node:
 	const FAR_LOW := 26.0
 	const FAR_AFTER := 2
 	const STEP_KEY := "gfx_step"
-	## "Best picture" holds the full picture whatever the frame rate, and
-	## says nothing about it: under BEST_LOW for BEST_AFTER windows running
-	## with it on, a line says so once a session (Told), with where to turn
-	## it off.
+	## With the guard switched off the full picture is held whatever the
+	## frame rate, and nothing says so: under BEST_LOW for BEST_AFTER windows
+	## running, a line says it once a session (Told), with where to turn the
+	## guard back on.
 	const BEST_LOW := 24.0
 	const BEST_AFTER := 4
 
@@ -156,6 +164,10 @@ class Guard extends Node:
 	var _best_low := 0
 	var _high := 0
 	static var told_best := false
+	## The last window's frame rate (the speed test reads it: the game as it
+	## was being played, before the test stopped it).
+	static var last_fps := 0.0
+	static var play_fps := 0.0   # (the last one with the game not paused)
 	var _retry := 15.0     # how long a step up must wait after one that didn't hold
 	var _wait := 0.0
 	var _stepped_up := INF # seconds since the last step up (INF: none to judge)
@@ -183,10 +195,16 @@ class Guard extends Node:
 			step = clampi(int(Game.settings.get(STEP_KEY, 0)), 0, STEPS.size() - 1)
 			_apply_all()
 
-	## (Not while "Best picture" is on: that asks for the full picture
-	## whatever it costs, and a smaller one sharpened back up would undo it.)
+	## (18 November, Gary, asked for a "Smooth" picture that left things out:
+	## "no i want it to run smoothly while looking the best". Until then
+	## "Best picture" stood the guard down, so an M1 drew every pixel of a
+	## Retina screen with the finest shadows at 15 to 19 frames a second.
+	## The two are separate now: "Best picture" is how fine the light, the
+	## shadows and the edges are, and the guard keeps the frame rate under
+	## either, by drawing fewer pixels and rebuilding the rest (`_size`).
+	## Off holds every pixel whatever the frame rate, as before.)
 	static func on() -> bool:
-		return bool(Game.settings.get("smooth_auto", true)) and not Best.on()
+		return bool(Game.settings.get("smooth_auto", true))
 
 	## Puts a viewport that draws 3D on the list, at the size the guard is at.
 	static func watch(vp: Viewport) -> void:
@@ -206,15 +224,37 @@ class Guard extends Node:
 			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 			vp.scaling_3d_scale = 1.0
 			return
-		# the Mac's own sharpening upscaler; FSR 1 on a PC (and on the
-		# Compatibility renderer plain filtering, which is all it has)
+		# On a Mac the picture is rebuilt at the screen's size from the
+		# frames before it (MetalFX Temporal, as the iPhone's has been since
+		# October), not just sharpened (MetalFX Spatial, until 18 November):
+		# a rebuilt picture keeps the fine detail a sharpened one has lost,
+		# and smooths the edges itself, so the engine leaves multisampling
+		# out under it. Where the Mac can't (an Intel one, an old macOS) the
+		# engine falls back to sharpening by itself; a size under what the
+		# rebuilder takes (`rebuild_least`) is sharpened too. FSR 1 on a PC,
+		# and on the Compatibility renderer plain filtering, which is all it
+		# has.
 		if RenderingServer.get_current_rendering_method() == "gl_compatibility":
 			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
-		elif OS.has_feature("macos"):
-			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_METALFX_SPATIAL
+		elif OS.has_feature("macos") or force_rebuild:
+			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_METALFX_TEMPORAL if k >= rebuild_least() - 0.001 else Viewport.SCALING_3D_MODE_METALFX_SPATIAL
 		else:
 			vp.scaling_3d_mode = Viewport.SCALING_3D_MODE_FSR
 		vp.scaling_3d_scale = k
+
+	## A test can ask for the Mac's way of bringing a smaller picture back up
+	## on a machine that isn't one (the engine then uses FSR 2 for MetalFX).
+	static var force_rebuild := false
+
+	## The smallest size the Mac's rebuilder takes (it says: half, on the
+	## Macs there are now), 0 where there isn't one.
+	static func rebuild_least() -> float:
+		var rd := RenderingServer.get_rendering_device()
+		# (asked only where there is one: any other driver answers the
+		# question with a number that means nothing, 1,073 on Vulkan)
+		if rd == null or not rd.has_feature(RenderingDevice.SUPPORTS_METALFX_TEMPORAL):
+			return 0.0
+		return clampf(float(rd.limit_get(RenderingDevice.LIMIT_METALFX_TEMPORAL_SCALER_MIN_SCALE)) / 1000000.0, 0.0, 1.0)
 
 	static func _apply_all() -> void:
 		var live: Array = []
@@ -242,7 +282,13 @@ class Guard extends Node:
 		var now := Time.get_ticks_usec()
 		var real := (now - _last_usec) / 1000000.0 if _last_usec > 0 else 0.0
 		_last_usec = now
-		if real <= 0.0 or (not Guard.on() and not Best.on()):
+		if real <= 0.0:
+			return
+		if SpeedTest.running:
+			# (the speed test is timing the picture with things changed: not
+			# the guard's to judge, or to change under it)
+			_t = 0.0
+			_frames = 0
 			return
 		# (not while the window's in the background, where macOS slows it
 		# on purpose, nor through a load's long frame)
@@ -259,21 +305,24 @@ class Guard extends Node:
 
 	## One window's frame rate judged (the tests call it with made-up ones).
 	func judge(fps: float) -> void:
+		Guard.last_fps = fps
+		if is_inside_tree() and not get_tree().paused:
+			Guard.play_fps = fps
 		if not Guard.on():
-			# ("Best picture": held at the full picture, and said so once if
-			# the Mac can't draw it at a rate worth playing at)
-			if Best.on() and fps < BEST_LOW:
+			# (the guard switched off: every pixel held, and said so once if
+			# the computer can't draw them at a rate worth playing at)
+			if fps < BEST_LOW:
 				_best_low += 1
 				if _best_low >= BEST_AFTER and not Guard.told_best:
 					Guard.told_best = true
-					Told.say(get_tree(), "(Best picture is on, and this computer is drawing it at %d frames a second. For a smoother game: Options, Best picture off.)" % roundi(fps))
+					Told.say(get_tree(), "(This computer is drawing the full picture at %d frames a second. For a smoother game: Options, Keep the frame rate smooth.)" % roundi(fps))
 			else:
 				_best_low = 0
 			return
 		_wait = maxf(0.0, _wait - WINDOW)
 		if _stepped_up < INF:
 			_stepped_up += WINDOW
-		if Guard.lean:
+		if Guard.lean and not Best.on():
 			_lean_now()
 		if fps < LOW:
 			_high = 0
@@ -292,7 +341,8 @@ class Guard extends Node:
 					Guard.step = mini(Guard.step + (2 if far else 1), STEPS.size() - 1)
 					Guard._apply_all()
 					Guard._keep()
-				elif fps < LEAN_UNDER and not Guard.lean:
+				elif fps < LEAN_UNDER and not Guard.lean and not Best.on():
+					# (never under "Best picture": that's a promise of all the light)
 					Guard.lean = true
 					_lean_now()
 			return
@@ -354,10 +404,12 @@ class Guard extends Node:
 ##   - skies and haze shade without bands (debanding).
 ## It costs frame rate, most of it the edges and the shadow maps, and it
 ## can't be measured here (no graphics card), so it's a switch and it's off
-## until asked for. While it's on the frame-rate guard stands down
-## (Guard.on): the picture is held at the screen's own size whatever the
-## frame rate. Off puts every view back exactly as it was made (each one's
-## own settings are kept on it: "gfx_was").
+## until asked for. Until 18 November the frame-rate guard stood down while
+## it was on; now the guard keeps the frame rate under it too (Guard.on),
+## by drawing fewer pixels and rebuilding the picture from them, and never
+## takes the bounce light or the haze away while it's on (Guard.judge).
+## Off puts every view back exactly as it was made (each one's own settings
+## are kept on it: "gfx_was").
 ## A phone has its own two settings (Smooth and Full, above) and none of
 ## this.
 class Best:
@@ -493,12 +545,12 @@ class FpsMeter extends CanvasLayer:
 		if _t >= 0.5:
 			_label.text = "%d fps  (slowest frame %d ms)" % [roundi(_frames / _t), roundi(_worst * 1000.0)]
 			# (on a computer: the size the frame-rate guard has the 3D at)
-			if not Gfx.is_phone() and (Guard.step > 0 or Guard.lean):
+			if not Gfx.is_phone() and Guard.on() and (Guard.step > 0 or Guard.lean):
 				_label.text += "  ·  3D at %d%%%s" % [roundi(Guard.scale_now() * 100.0), ", no bounce light" if Guard.lean else ""]
 			# (and what it's being asked to draw, so a number sent in says which)
 			if Best.on():
 				_label.text += "  ·  Best picture on"
-			elif not Gfx.is_phone() and not Guard.on():
+			if not Gfx.is_phone() and not Guard.on():
 				_label.text += "  ·  smoothing off"
 			_t = 0.0
 			_frames = 0

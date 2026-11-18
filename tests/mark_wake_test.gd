@@ -127,6 +127,10 @@ func _process(delta: float) -> void:
 		_title = true
 		_title_t += delta
 		# (18 November: the title takes WhiteSky.TITLE_IN to come in, a part at a time)
+		# (and, later that day, the mark's light falling to draw its rule)
+		for st: Array in [[0.6, "2a_light_leaving"], [0.9, "2b_light_falling"], [1.15, "2c_landed"], [1.6, "2d_rule_drawn_out"], [2.5, "2e_name_coming"]]:
+			if _title_t > float(st[0]) and _title_t < float(st[0]) + 0.25:
+				_still(String(st[1]))
 		if _title_t > WhiteSky.TITLE_IN + 0.9:
 			_still("2_the_title")
 		if _title_t > WhiteSky.TITLE_IN + 1.5:

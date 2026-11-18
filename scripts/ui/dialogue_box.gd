@@ -4,6 +4,11 @@ extends Control
 ## Usage:  await box.say("Bram", portrait, "Hello")   ·   var i = await box.choose(["Yes", "No"])
 
 signal _advance
+## (18 November, Gary's yes: mouths moving when anyone talks.) Someone's
+## line has started (`secs`: how long its words take to come up) or its
+## words are all up, or it's been moved on (`secs` 0): whoever shows the box
+## moves that person's mouth (World._on_spoken).
+signal spoken(speaker: String, secs: float)
 signal _chosen(index: int)
 
 const CHARS_PER_SEC := 55.0
@@ -164,9 +169,15 @@ func say(speaker: String, portrait: Texture2D, text: String, hold := -1.0) -> vo
 	tw.finished.connect(func() -> void:
 		_typing = false
 		_hint.visible = true)
+	# (a word in brackets isn't said: "(He gives you a knowing smile.)")
+	var said := speaker != "" and not text.strip_edges().begins_with("(")
+	if said:
+		spoken.emit(speaker, maxf(dur, 0.6))
 	await _advance
 	tw.kill()
 	_waiting = false
+	if said:
+		spoken.emit(speaker, 0.0)
 
 
 var _bark_n := 0

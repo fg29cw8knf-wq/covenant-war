@@ -663,6 +663,9 @@ func _pond() -> void:
 		problems.append("Corin's hands went %.1f cm into the wall in %d frames" % [_hand_deep * 100.0, _hand_hits])
 	if _palm_hits > 0:
 		problems.append("the two hands went %.1f cm into each other at the button in %d frames" % [_palm_deep * 100.0, _palm_hits])
+	print("notes_1106_shot: Corin's hand closed over theirs: the palms %.1f cm apart at nearest (his from theirs %s cm: across, out of the palm, along the fingers), %.0f degrees off facing each other" % [_clasp_near * 100.0, str((_clasp_off * 100.0).snappedf(0.1)), _clasp_facing])
+	if not AshfordDay.button_clasped or _clasp_near > 0.03:
+		problems.append("Corin's hand never closed over theirs (the palms %.1f cm apart at nearest)" % (_clasp_near * 100.0))
 
 
 ## `wall`: the same, quickly: the two of them sat on the wall as the film
@@ -748,6 +751,9 @@ func _wall_quick() -> void:
 		problems.append("Corin's hands went %.1f cm into the wall in %d frames" % [_hand_deep * 100.0, _hand_hits])
 	if _palm_hits > 0:
 		problems.append("the two hands went %.1f cm into each other at the button in %d frames" % [_palm_deep * 100.0, _palm_hits])
+	print("notes_1106_shot: Corin's hand closed over theirs: the palms %.1f cm apart at nearest (his from theirs %s cm: across, out of the palm, along the fingers), %.0f degrees off facing each other" % [_clasp_near * 100.0, str((_clasp_off * 100.0).snappedf(0.1)), _clasp_facing])
+	if not AshfordDay.button_clasped or _clasp_near > 0.03:
+		problems.append("Corin's hand never closed over theirs (the palms %.1f cm apart at nearest)" % (_clasp_near * 100.0))
 
 
 const LEG_R := 0.05     # a shin's or thigh's flesh round its bone (m)
@@ -818,6 +824,10 @@ func _in_wall(p: Vector3, r: float) -> float:
 
 ## While the button changes hands: the two hands' bones, each kept a skin's
 ## width (HAND_R) off the other's palm plane, close up stills.
+var _clasp_near := INF
+var _clasp_facing := 0.0
+var _clasp_off := Vector3.ZERO
+
 func _watch_button() -> void:
 	var pf := world.player_doll as Figure3D
 	var cf := Cine.fig(world, "corin") as Figure3D
@@ -853,6 +863,24 @@ func _watch_button() -> void:
 	world.get_tree().process_frame.connect(func() -> void:
 		if world.get_node_or_null("Button") != null:
 			check.call())
+	# (18 November: Corin's hand closed over theirs. Each palm as it's drawn,
+	# read in its own bones' pass (the reach isn't in them outside it): how
+	# near the two come once he's over it, and how squarely they face)
+	var seen := [null, null]
+	var note := func(k: int, fig: Figure3D) -> void:
+		if not AshfordDay.button_clasped or AshfordDay.button_hands.size() < 2 or world.get_node_or_null("Button") == null:
+			return
+		seen[k] = fig.palm_frame(String(AshfordDay.button_hands[k]))
+		if seen[0] != null and seen[1] != null:
+			var d: float = (seen[0] as Transform3D).origin.distance_to((seen[1] as Transform3D).origin)
+			if d < _clasp_near:
+				_clasp_near = d
+				_clasp_facing = rad_to_deg((seen[0] as Transform3D).basis.y.angle_to(-(seen[1] as Transform3D).basis.y))
+				# (his palm from theirs, in their palm's own frame: x across
+				# it, y out of it, z along the fingers)
+				_clasp_off = (seen[1] as Transform3D).basis.inverse() * ((seen[0] as Transform3D).origin - (seen[1] as Transform3D).origin)
+	cf._skel.skeleton_updated.connect(note.bind(0, cf))
+	pf._skel.skeleton_updated.connect(note.bind(1, pf))
 
 
 func _aim_corin(i: int) -> void:

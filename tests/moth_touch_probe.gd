@@ -116,11 +116,26 @@ func _ready() -> void:
 					d * 100.0, _flat(world.player.global_position, card.global_position), _flat(start, world.player.global_position)])
 				await _still("2_the_hand_on_it")
 				await _still_close("2_the_hand_on_it_close", card)
+		# (18 November: her gasp, and her smile as it goes round her head)
+		var tf = Cine.fig(world, "tilly")
+		if tf is Figure3D:
+			_gasp = maxf(_gasp, (tf as Figure3D).jaw_now())
+			_smile = maxf(_smile, (tf as Figure3D).smile_now())
+			if (tf as Figure3D).jaw_now() > AshfordDay.TILLY_GASP * 0.9 and not stilled.has("gasp"):
+				stilled["gasp"] = true
+				await _still_face("3a_her_gasp", tf as Figure3D)
+			if (tf as Figure3D).smile_now() > 0.98 and (tf as Figure3D).jaw_now() < 0.02 and not stilled.has("smile"):
+				stilled["smile"] = true
+				await _frames(10)
+				await _still_face("3b_her_smile", tf as Figure3D)
 		if _woke and not stilled.has("moth") and t > 0.0 and cg != null and cg.scale.x > _glow0.x * 2.2:
 			stilled["moth"] = true
 			await _frames(14)
 			await _still("3_the_moth_up")
 	print("moth_touch_probe: the nearest the palm came to the card %.1f cm; when it woke %.1f cm" % [_near * 100.0, _at_wake * 100.0])
+	print("moth_touch_probe: Tilly's mouth opened to %.2f and her smile came to %.2f" % [_gasp, _smile])
+	if not AshfordDay.tilly_gasped or _gasp < AshfordDay.TILLY_GASP * 0.9 or _smile < 0.98:
+		problems.append("Tilly didn't gasp and smile (her mouth %.2f, her smile %.2f)" % [_gasp, _smile])
 	if not _woke:
 		problems.append("the card never woke")
 	elif _at_wake > TOUCH:
@@ -166,6 +181,34 @@ func _still(nm: String) -> void:
 	_n += 1
 	get_viewport().get_texture().get_image().save_png(out.path_join("%02d_%s.png" % [_n, nm]))
 	print("moth_touch_probe: still ", nm)
+
+
+var _gasp := 0.0
+var _smile := 0.0
+
+## Her face, close, from a little to one side of the player.
+func _still_face(nm: String, tf: Figure3D) -> void:
+	if not _drawn or world.cam == null:
+		return
+	var was := world.cam.global_transform
+	var fov := world.cam.fov
+	var head := tf.bone_pos("Head") + Vector3(0, 0.06, 0)
+	var to_p := world.player.global_position - tf.global_position
+	to_p.y = 0.0
+	to_p = to_p.normalized()
+	# (square on to her face as her head is turned now, the player out of the way)
+	var sk := tf._skel
+	var hx := sk.global_transform * sk.get_bone_global_pose(sk.find_bone("Head"))
+	var out_of := hx.basis.z.normalized()
+	world.cam.global_position = head + out_of * 0.7 + hx.basis.x.normalized() * 0.18
+	world.cam.look_at(head + out_of * 0.05, Vector3.UP)
+	world.cam.fov = 30.0
+	var pd := world.player_doll as Node3D
+	pd.visible = false
+	await _still(nm)
+	pd.visible = true
+	world.cam.global_transform = was
+	world.cam.fov = fov
 
 
 ## From beside the two of them, close on the card.

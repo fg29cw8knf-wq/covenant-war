@@ -22,6 +22,10 @@ var m: WhiteSky
 var _ice := {}        # Vector2i -> true: ice at a man's height in this cell
 var _old := false
 var _spires_n := 40
+var _puffs := 0
+var _puffs_off := 0
+var _puffs_far := 0
+var _free_steps := 0
 
 
 func _ready() -> void:
@@ -72,7 +76,16 @@ func _ready() -> void:
 		"as it was (a ring round each spire's middle)" if _old else "as it is", _crystals, _ice.size(), m._ice.size(), walks, steps, bad, bad * STEP])
 	for w in worst.slice(0, 6):
 		print("ice_walk_probe:   %d steps in ice at %s" % [int(w[0]), String(w[1])])
-	print("ICE WALK: ok" if bad == 0 else "ICE WALK: %d steps through ice" % bad)
+	if not _old:
+		print("ice_walk_probe: frost: %d steps turned by the ice shook some off it, %d of them (%.1f%%) put more than 16 cm from any ice (the farthest %s); %d steps in the open shook none" % [
+			_puffs, _puffs_off, 100.0 * _puffs_off / maxf(1.0, _puffs), ("%d cm" % (_puffs_far * 8)) if _puffs_far < 9 else "over 64 cm", _free_steps])
+		# (a low shard's point is thinner than the plan's squares: a few in a
+		# thousand, and never far)
+		if _puffs == 0 or _puffs_off > _puffs / 200 or _puffs_far > 4:
+			bad += maxi(1, _puffs_off)
+	for f in m._set.find_children("Frost", "GPUParticles3D", true, false):
+		f.queue_free()
+	print("ICE WALK: ok" if bad == 0 else "ICE WALK: %d problems" % bad)
 	get_tree().quit(0 if bad == 0 or _old else 1)
 
 
@@ -136,6 +149,31 @@ func _walk(from: Vector3, dir: Vector3, far: float) -> Array:
 		at = _off_old(to) if _old else m._off_ice(at, to)
 		gone += STEP
 		n += 1
+		# (18 November, the frost off a crystal he brushes: one whenever a step
+		# is turned by the ice, here with no wait between; where it's put has
+		# to be on ice, or within a hand of it)
+		if not _old:
+			var before := m.frost_puffs
+			m._frost_wait = 0.0
+			m._brush_ice(to, at, 0.0)
+			if m.frost_puffs > before:
+				_puffs += 1
+				var on_ice := false
+				for dx in range(-2, 3):
+					for dz in range(-2, 3):
+						if _ice.has(Vector2i(floori(m.frost_at.x / CELL) + dx, floori(m.frost_at.z / CELL) + dz)):
+							on_ice = true
+				if not on_ice:
+					_puffs_off += 1
+					# (how far off, to 64 cm)
+					var nearest := 9
+					for dx in range(-8, 9):
+						for dz in range(-8, 9):
+							if _ice.has(Vector2i(floori(m.frost_at.x / CELL) + dx, floori(m.frost_at.z / CELL) + dz)):
+								nearest = mini(nearest, maxi(absi(dx), absi(dz)))
+					_puffs_far = maxi(_puffs_far, nearest)
+			elif to.distance_to(at) < 0.001:
+				_free_steps += 1
 		# (a step that took him somewhere, and that somewhere is ice)
 		if at.distance_to(was) > 0.001 and _in_ice(at):
 			bad += 1

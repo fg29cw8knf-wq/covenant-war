@@ -18,6 +18,18 @@ var mi: MeshInstance3D
 var fig: Figure3D
 var side := "left"
 var rows: Array = []      # the points as laid (the blanket's own frame)
+## (18 November: laid over him as he lies, BlanketDrape, the cloth has his
+## arm's shape in it where the arm lay. These are its points as it would lie
+## without that arm under it: what the cloth is lifted from, wherever the arm
+## is now, so no empty ridge stays behind as the hand goes to his neck. The
+## same as `rows` on a blanket laid by rule.)
+var free: Array = []
+var _npx := 0
+var _npz := 0
+var _laid := PackedVector3Array()
+var _free := PackedVector3Array()
+var _shade := PackedFloat32Array()
+var _segs_was: Array = []
 var _segs: Array = []     # [from, to, radius] in the blanket's frame, as drawn
 var lifted := 0.0         # how far the cloth is lifted at most, this frame (m; the tests read it)
 var k := 0.0              # how much of the lift there is (eased in as it starts)
@@ -52,6 +64,14 @@ static func start(blanket: MeshInstance3D, p_fig: Figure3D, p_side := "left") ->
 	t.fig = p_fig
 	t.side = p_side
 	t.rows = blanket.get_meta("rows")
+	t.free = blanket.get_meta("rows_free", t.rows) if p_side == "left" else t.rows
+	if t.free.size() != t.rows.size():
+		t.free = t.rows
+	t._npx = t.rows.size()
+	t._npz = (t.rows[0] as Array).size()
+	t._laid = BlanketDrape.flat(t.rows)
+	t._free = BlanketDrape.flat(t.free)
+	t._shade = BlanketDrape.shade_of(blanket, t._laid.size())
 	t.radii = radii_of(p_fig, p_side)
 	blanket.add_child(t)
 	if p_fig._skel != null:
@@ -205,33 +225,62 @@ func _on_skel() -> void:
 	_drape()
 
 
+## How far round the arm the cloth is looked at (m): beyond that it lies as
+## it lay.
+const ROUND := 0.3
+
 func _drape() -> void:
+	# (nothing's moved since it was last draped: it lies as it lies)
+	if k >= 1.0 and _segs_was.size() == _segs.size() and not _last.is_empty():
+		var same := true
+		for i in _segs.size():
+			if ((_segs[i] as Array)[0] as Vector3).distance_to((_segs_was[i] as Array)[0]) > 0.001 \
+					or ((_segs[i] as Array)[1] as Vector3).distance_to((_segs_was[i] as Array)[1]) > 0.001:
+				same = false
+				break
+		if same:
+			return
+	_segs_was = _segs.duplicate(true)
 	lifted = 0.0
+	# the part of the cloth the arm can reach, across and along it
+	var lo := Vector2(INF, INF)
+	var hi := Vector2(-INF, -INF)
+	for sg in _segs:
+		for e in 2:
+			var p: Vector3 = sg[e]
+			lo = Vector2(minf(lo.x, p.x - ROUND), minf(lo.y, p.z - ROUND))
+			hi = Vector2(maxf(hi.x, p.x + ROUND), maxf(hi.y, p.z + ROUND))
+	var flat := PackedVector3Array()
+	flat.resize(_laid.size())
 	var pts: Array = []
-	for row in rows:
+	for i in _npx:
 		var out: Array = []
-		for p in row:
-			var q: Vector3 = p
-			var need := -INF
-			for sg in _segs:
-				var a: Vector3 = sg[0]
-				var b: Vector3 = sg[1]
-				var r: float = sg[2]
-				var ab := Vector2(b.x - a.x, b.z - a.z)
-				var t := 0.0
-				if ab.length_squared() > 1e-8:
-					t = clampf(Vector2(q.x - a.x, q.z - a.z).dot(ab) / ab.length_squared(), 0.0, 1.0)
-				var c := a.lerp(b, t)
-				var dh := Vector2(q.x - c.x, q.z - c.z).length()
-				need = maxf(need, c.y + r + CLEAR - DRAPE * maxf(0.0, dh - r * 0.5))
-			if need > q.y - SOFT:
-				# (a soft maximum of the two: the cloth eases up onto the arm)
-				var hk := clampf(0.5 + 0.5 * (need - q.y) / SOFT, 0.0, 1.0)
-				var y := lerpf(q.y, need, hk) + SOFT * hk * (1.0 - hk)
-				y = lerpf(q.y, y, k)
-				lifted = maxf(lifted, y - q.y)
-				q.y = y
+		for j in _npz:
+			var n := i * _npz + j
+			var was: Vector3 = _laid[n]
+			var q: Vector3 = _free[n]
+			if q.x > lo.x and q.x < hi.x and q.z > lo.y and q.z < hi.y:
+				var need := -INF
+				for sg in _segs:
+					var a: Vector3 = sg[0]
+					var b: Vector3 = sg[1]
+					var r: float = sg[2]
+					var ab := Vector2(b.x - a.x, b.z - a.z)
+					var t := 0.0
+					if ab.length_squared() > 1e-8:
+						t = clampf(Vector2(q.x - a.x, q.z - a.z).dot(ab) / ab.length_squared(), 0.0, 1.0)
+					var c := a.lerp(b, t)
+					var dh := Vector2(q.x - c.x, q.z - c.z).length()
+					need = maxf(need, c.y + r + CLEAR - DRAPE * maxf(0.0, dh - r * 0.5))
+				if need > q.y - SOFT:
+					# (a soft maximum of the two: the cloth eases up onto the arm)
+					var hk := clampf(0.5 + 0.5 * (need - q.y) / SOFT, 0.0, 1.0)
+					q.y = lerpf(q.y, need, hk) + SOFT * hk * (1.0 - hk)
+			# (eased in from how it was laid)
+			q.y = lerpf(was.y, q.y, k)
+			lifted = maxf(lifted, q.y - was.y)
+			flat[n] = q
 			out.append(q)
 		pts.append(out)
 	_last = pts
-	mi.mesh = InnRooms._blanket_mesh_of(pts)
+	mi.mesh = BlanketDrape.mesh_of(flat, _npx, _npz, _shade)

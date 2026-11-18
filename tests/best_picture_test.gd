@@ -68,7 +68,7 @@ func _ready() -> void:
 	_is("on, the window's filtering", root.anisotropic_filtering_level, Viewport.ANISOTROPY_16X)
 	_is("on, a view made with no multisampling", plain.msaa_3d, Viewport.MSAA_DISABLED)
 	_is("on, that view's lamps' shadow map (never over the most)", plain.positional_shadow_atlas_size, Gfx.Best.LAMP_MAP_MOST)
-	_is("on, the guard stands down", Gfx.Guard.on(), false)
+	_is("on, the guard still on (18 November)", Gfx.Guard.on(), true)
 	# a view made while it's on (as a duel's field is: its own settings, then Gfx.apply)
 	var b := _view(Viewport.MSAA_2X, 2048)
 	Gfx.apply(b)

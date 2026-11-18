@@ -2417,6 +2417,10 @@ static func asleep(w: World) -> void:
 		bl.transform = bl.get_meta("on")
 	if bl is MeshInstance3D and bl.has_meta("rows"):
 		BlanketThrow.reset(bl)
+		# (18 November, Gary's yes to "a soft blanket that folds over him":
+		# laid over him as he lies, once he's lying still)
+		if pf is Figure3D:
+			BlanketDrape.lay(bl, pf as Figure3D)
 
 
 ## P1 · the taproom (Master Script v7): morning; Bram behind the counter
@@ -2464,6 +2468,7 @@ static func _taproom(w: World) -> void:
 		oats.albedo_color = Color(0.86, 0.8, 0.66)
 		oats.roughness = 0.9
 		v.cyl(bowl, 0.08, 0.08, 0.005, Vector3(0, 0.058, 0), oats, 14).name = "Oats"
+		bowl.add_child(porridge_steam())
 		var sp := v.box(bowl, Vector3(0.015, 0.008, SPOON_LEN), Vector3(0.05, 0.065, 0.02), v.mats.wood, Vector3(0, 0.4, 0.15))
 		sp.name = "Spoon"
 		# its bowl: a flat oval at the +z end, the end that goes to the mouth
@@ -2560,7 +2565,7 @@ static func _taproom(w: World) -> void:
 	if is_instance_valid(bowl_glow):
 		bowl_glow.queue_free()
 	await use(w, cr, "take_crate", 0.0, Vector3.INF, 0.55)
-	await _take_crate(w, cr)
+	await _take_crate(w, cr, e)
 	# to the door with it
 	controls_on(w)
 	w.hud._menu_btn.visible = false
@@ -2887,6 +2892,10 @@ static func _eat(w: World, e: Dictionary) -> void:
 		var oats: Node3D = bowl.get_node_or_null("Oats")
 		if oats != null:
 			oats.visible = false
+		# (and nothing left to steam)
+		var steam := bowl.get_node_or_null("Steam") as GPUParticles3D
+		if steam != null:
+			steam.emitting = false
 		if spoon != null:
 			spoon.position = Vector3(0.05, 0.065, 0.02)
 			spoon.rotation = Vector3(0, 0.4, 0.15)
@@ -3254,7 +3263,17 @@ static func _crate_stand(v: AshfordVillage, root: Node3D, at: Vector3, yaw: floa
 ## knees bent, hands to its sides, and up with it as they straighten, the
 ## crate coming in to their middle. (It went up on its own while they
 ## stayed bent, then they stood under it, arms out straight.)
-static func _take_crate(w: World, cr: Node3D) -> void:
+## (18 November, the body sweep: "player's left hand is 6.5 cm inside
+## Crate/crate/Wooden_Crate". The hands' marks are in the middle of the
+## crate's two ends (L and R). He stepped up to it along the line he'd come
+## by, so coming at one of its ends the marks were its near end and its far
+## one: one hand went to the end in front of him and the other reached over
+## the lanterns for the far one, 46 cm short, and when the crate turned to
+## face him as it came up it turned through that hand. Now he steps to one
+## of its long sides, the one he's nearer, or the other if that one's spot
+## is off the room's free floor (`room`: it stands in a corner): its ends
+## are then at his left and right hands whichever way he came.)
+static func _take_crate(w: World, cr: Node3D, room: Dictionary = {}) -> void:
 	w.busy = true
 	w.cine = true
 	var pf = w.player_doll
@@ -3267,7 +3286,17 @@ static func _take_crate(w: World, cr: Node3D) -> void:
 		var from := w.player.global_position
 		var dir := Vector3(from.x - c.x, 0.0, from.z - c.z)
 		dir = dir.normalized() if dir.length() > 0.01 else Vector3.BACK
-		var spot := Vector3(c.x, from.y, c.z) + dir * 0.5
+		var long := cr.global_basis.z
+		long.y = 0.0
+		if long.length() > 0.5:
+			long = long.normalized()
+			var pick := long if dir.dot(long) >= 0.0 else -long
+			var here := Vector3(c.x, from.y, c.z)
+			if not _on_free_floor(room, here + pick * CRATE_STAND_OFF) and _on_free_floor(room, here - pick * CRATE_STAND_OFF):
+				pick = -pick
+			took_crate_from = rad_to_deg(dir.angle_to(pick))
+			dir = pick
+		var spot := Vector3(c.x, from.y, c.z) + dir * CRATE_STAND_OFF
 		if from.distance_to(spot) > 0.06:
 			await Cine.path(w, "player", [spot], 1.0)
 		Cine.look(w, "player", c)
@@ -3277,7 +3306,9 @@ static func _take_crate(w: World, cr: Node3D) -> void:
 		var on_l := left_dir.dot(cr.global_basis.x) >= 0.0
 		var lh: Node3D = cr.get_node("L" if on_l else "R")
 		var rh: Node3D = cr.get_node("R" if on_l else "L")
-		me.pose("lift", 0.42, 0.45)
+		me.pose("lift", CRATE_BEND, 0.45)
+		# (bent over it from the hips, so his hands get to its ends: Figure3D.bend_over)
+		me.bend_over(CRATE_OVER, 0.45)
 		me.reach(lh, rh, 0.45)
 		await Cine.wait(w, 0.6)
 		# a little up off the stand first, as the weight is taken
@@ -3287,6 +3318,7 @@ static func _take_crate(w: World, cr: Node3D) -> void:
 		await take.finished
 		# then up and in, as they straighten
 		me.release(0.6)
+		me.bend_over(0.0, 0.6)
 		var held_at := me.to_world(CRATE_HOLD)
 		var lift := w.create_tween().set_parallel(true)
 		lift.tween_property(cr, "global_position", held_at, 0.6).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -3302,6 +3334,84 @@ static func _take_crate(w: World, cr: Node3D) -> void:
 	cr.set_meta("p1_prop", true)
 	w.set_meta("p1_crate", cr)
 	await Cine.wait(w, 0.3)
+
+
+## (18 November, Gary's yes: "steam on the porridge".) A few thin wisps off
+## the oats while there's any left: rising a hand's height, drifting and
+## spreading as they go, and gone; faint, so it reads as warmth, not smoke.
+static func porridge_steam() -> GPUParticles3D:
+	var sp := GPUParticles3D.new()
+	sp.name = "Steam"
+	sp.amount = 9
+	sp.lifetime = 2.6
+	sp.preprocess = 2.6
+	sp.randomness = 0.6
+	sp.position = Vector3(0, 0.07, 0)
+	sp.visibility_aabb = AABB(Vector3(-0.3, -0.1, -0.3), Vector3(0.6, 0.7, 0.6))
+	var pm := ParticleProcessMaterial.new()
+	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+	pm.emission_sphere_radius = 0.045
+	pm.direction = Vector3.UP
+	pm.spread = 14.0
+	pm.initial_velocity_min = 0.07
+	pm.initial_velocity_max = 0.12
+	pm.gravity = Vector3(0.012, 0.0, 0.006)
+	pm.damping_min = 0.02
+	pm.damping_max = 0.04
+	pm.scale_min = 0.5
+	pm.scale_max = 1.0
+	var grow := Curve.new()
+	grow.add_point(Vector2(0.0, 0.35))
+	grow.add_point(Vector2(1.0, 1.0))
+	var gt := CurveTexture.new()
+	gt.curve = grow
+	pm.scale_curve = gt
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1, 1, 1, 0.0))
+	fade.set_color(1, Color(1, 1, 1, 0.0))
+	fade.add_point(0.25, Color(1, 1, 1, STEAM_THICK))
+	fade.add_point(0.6, Color(1, 1, 1, STEAM_THICK * 0.6))
+	var ramp := GradientTexture1D.new()
+	ramp.gradient = fade
+	pm.color_ramp = ramp
+	sp.process_material = pm
+	var q := QuadMesh.new()
+	q.size = Vector2(0.11, 0.16)
+	var qm := StandardMaterial3D.new()
+	qm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	qm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	qm.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	qm.albedo_texture = SealMark._soft()
+	qm.albedo_color = Color(0.97, 0.96, 0.93)
+	qm.vertex_color_use_as_albedo = true
+	qm.disable_receive_shadows = true
+	q.material = qm
+	sp.draw_pass_1 = q
+	sp.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return sp
+
+## How thick a wisp is at its thickest (its alpha).
+const STEAM_THICK := 0.2
+
+
+## How far round the crate he stepped to get to its long side (degrees; the
+## tests read it).
+static var took_crate_from := 0.0
+## How far into the "lift" clip he bends to it (a test tries others).
+static var CRATE_BEND := 0.42
+## How far he bends his back over it (of Figure3D.BEND's 40 degrees).
+static var CRATE_OVER := 0.8
+## How far from its middle he stands to take it (m; 0.5 until 18 November:
+## its near side is 0.26 out, the stand's edge 0.3).
+static var CRATE_STAND_OFF := 0.44
+
+## Is a spot on a room's free floor (its "walk" rectangle, in its root's own
+## x and z)? True where there's no room to ask.
+static func _on_free_floor(room: Dictionary, p: Vector3) -> bool:
+	if not room.has("walk") or not room.has("root") or not is_instance_valid(room.root):
+		return true
+	var l: Vector3 = (room.root as Node3D).to_local(p)
+	return (room.walk as Rect2).has_point(Vector2(l.x, l.z))
 
 
 ## Bram packing the last lanterns from the pile into the crate, one at a

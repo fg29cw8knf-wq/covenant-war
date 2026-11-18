@@ -3081,6 +3081,121 @@ wrote it, what was measured before and after, and what's his to change.
   picture's cost (bounce light, SSIL, SSAO, fog, 2x MSAA, 41 lights on the
   evening green), not the game's scripts.
 
+### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
+
+Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -
+1 yes 2 yes 3 no 4 yes 5 yes 6 yes 7 yes 8 yes 9 no i want it to run smoothly
+while looking the best 10 yes". `docs/handover/2026-11-18-evening.md` has what
+was measured and what wasn't. (3, a close-up of the card being taken, and 9,
+a "Smooth" picture setting, are his noes.)
+
+- **The frame rate, without a lesser picture** (`Gfx.Guard.on`, `_size`,
+  `rebuild_least`, `Guard.last_fps`, `play_fps`; `Gfx.Best`). He was on his
+  Mac (an M1) at 15 to 19. Under "Best picture" the guard stood down and the
+  Mac drew every pixel of a Retina screen with all the light on. Now the
+  guard works under "Best picture" too, and what it does is what the iPhone
+  build has always done: fewer of the 3D's pixels are drawn and the rest are
+  rebuilt (MetalFX Temporal, Apple's own, from the size it allows upwards;
+  MetalFX Spatial below that). Nothing of the light is taken away under
+  "Best picture" (the bounce light, the haze and the small shadows stay
+  whatever the rate). With the guard off and the rate under 24, a line says
+  where to turn it on.
+- **"Test this computer's speed"** (Options; `SpeedTest`,
+  `scripts/game/speed_test.gd`; the result is also in `user://speed_test.txt`).
+  Nothing here has a graphics card, so the frame rate can't be measured
+  here. The test stops the game where he is, times the picture as it is and
+  then with one thing off at a time (half size, no MSAA, no bounce light, no
+  SSAO, no haze, no glow, no shadows, no lamps, no grass, no people, no
+  particles, all of them, and each way of rebuilding), puts each back, and
+  shows the list with a Copy button. About a minute. His to run where it's
+  slow and send back: that says what the Mac is slow at.
+- **1. Frost off the ice** (`WhiteSky._brush_ice`, `_frost_puff`,
+  `FROST_EVERY`, `FROST_TOUCH`, `FROST_GLINT`, `frost_puffs`): walking along
+  a crystal, a few flecks of frost come off it where his coat brushes it,
+  out and down, catching the light; warm by the crater's sigils. From the
+  crystal's own side as it tapers. (And 25 crystals buried in the snow were
+  solid since the morning: `ICE_SHOWS`, a crystal that doesn't show above
+  the snow isn't in the way.)
+- **2. The hooded figure's cloak in the wind** (`ShardSet.weather(model,
+  cloak)`, `CLOAK_REACH`, `reach_k`, `billow_k`; `Hunter.wind`,
+  `HUNTER_WIND`): its robe takes the wind as Bram's coat does, all of it
+  under the shoulders that hangs clear of the body, more the lower it
+  hangs, with a slow heave under the flapping; the wind from in front of
+  it, so its tatters stream behind. It wears the normal map made for it
+  this afternoon under that, as Bram's coat does (`weather()` keeps a
+  model's own normal map now; before, a coat with one lost its wind and
+  its snow).
+- **4. The title: the mark draws the line** (`TitleCard.DROP`, `RULE`,
+  `NAME`, `SWEEP`, `SUB`, `mark_at`, `mark_size`, `TITLE_IN`): a light
+  leaves the held mark, falls to where the gold rule begins, lands, and the
+  rule is drawn out both ways from it with a bright head on each end; then
+  the name.
+- **5. A soft blanket that folds over him** (`BlanketDrape`,
+  `scripts/world/blanket_drape.gd`; `assets/shaders/village/blanket.gdshader`;
+  `AshfordP1.asleep` lays it). The attic blanket was a sheet laid by rule:
+  flat across a body's width, high over a chest, whoever lay there. Now,
+  once he's lying still, it's laid over him as he is: his shape is read off
+  his own skin, the cloth lies 2 cm clear of him and hangs between whatever
+  holds it up (little between his legs, tauter down the bed, off his sides
+  to the mattress in a curve that eases out onto it), with long folds and
+  small rumples where it lies loose, its hem turned back a little askew on
+  his chest and its sides hung over the mattress's edge. Twice the squares
+  each way (52 by 32). Its wool has a nap and small creases in its surface,
+  woven stripes, and darker hollows. About 60 ms to lay, once for a way of
+  lying, under the black. `BlanketTent` lifts it from where it would lie
+  without his left arm (`rows_free`), only near the arm, and not at all
+  while the arm is still; `BlanketThrow` works each point's fixed parts out
+  once, and the heap by the wall is the blanket as it was (laid over him it
+  would have his legs in it). `tests/blanket_look.tscn` (new).
+- **6. Mouths, and steam on the porridge** (`Figure3D.MOUTHS`, `jaw`,
+  `smile`, `talk_mouth`, `_mouth_step`, `TALK_OPEN`, `_own_skin`,
+  `plain_skin`; `DialogueBox.spoken`; `World._on_spoken`; `Cine.say`;
+  `character_nm.gdshader`'s `smile`, `mouth_half`, `mouth_size`;
+  `AshfordP1.porridge_steam`, `STEAM_THICK`). Whoever's name is on a line
+  moves their mouth while it's shown: open and shut at the pace of speech,
+  for as long as the line takes to read, shut when it's tapped on. Twenty-two
+  models have their lips measured (where between the lips, how wide, how
+  big a face). The models have no jaw, no face shapes and nothing inside
+  the mouth, so it's the lower lip and chin moving on the painted face: it
+  reads as talking at the game's distances, not in a close-up. A figure
+  wears the people's shader the first time its mouth moves (it draws the
+  same as its own material: measured, a pixel's 1/255th apart). Steam
+  rises off the bowl until it's eaten.
+- **7. Tilly gasps and smiles** (`AshfordDay.TILLY_GASP`, `tilly_gasped`):
+  as the moth comes off her card her mouth opens, her eyes follow it, and
+  she smiles as it flies; the smile goes as it's gone.
+- **8. Corin closes your hand on the button** (`BUTTON_CLASP`,
+  `BUTTON_CLASP_GAP`, `BUTTON_CLASP_SETTLE`, `BUTTON_PRESS`,
+  `BUTTON_CLASP_HOLD`, `button_clasped`, `button_hands`): the button in
+  your palm, his other hand comes over it, down onto it, presses, holds,
+  lets go. The hero's fingers can't bend (`Figure3D.FROZEN`: his skin
+  doesn't follow those bones), so it's Corin's hand that closes over his.
+  His hand is brought onto the palm by what's seen of the two hands as
+  they're drawn: a hand's mark is on the line of its forearm, and a palm
+  turned down lies 4 cm off it.
+- **10. Three older glitches.** *The crate* (`AshfordP1._take_crate`,
+  `_on_free_floor`, `CRATE_BEND`, `CRATE_OVER`, `CRATE_STAND_OFF`;
+  `Figure3D.bend_over`, `Bend`): he steps to the crate's long side, bends
+  over it, and takes it by its two ends; from its end one hand was 46 cm
+  from its place and went through the wood. *Corin's arm after his duel*
+  (`Figure3D._keep_targets`, `reach_ghosts`): a hand reaching for a thing
+  that's taken away mid-reach now reaches on for where it was while the
+  arm comes down (`tests/reach_gone_test.tscn`: the hand jumped 44 cm in
+  a frame, 16 now).
+  *The child in Bram's arms* (`WhiteSky.Carry`, `_tuck_hand_at`,
+  `_shield_arm`, `SHIELD_*`, `PALM_AT`): his left hand held the child from
+  inside the bundle all the way out of the crater (its place was worked
+  out again each frame from the bundle's tilt); the child is put in his
+  arms in his bones' own pass, not a frame behind them; and his shielding
+  hand lies over the top of the bundle, not into its middle.
+- **The body check read carried things a frame late** (`tests/body_check.gd`
+  `_move_solids(moving, by)`): it put its copies of the set's things in
+  place at the start of a frame and read the bones later in it, so a thing
+  carried at a walk stood a step behind the arms holding it, and the arms
+  read as inside it ("7.4 cm inside the bundle", "fingers 1.7 cm inside the
+  crate"). Each figure's check now first puts what's moving, or near it,
+  where it is.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the
@@ -5542,6 +5657,13 @@ godot --headless --path . res://tests/ice_walk_probe.tscn [-- old]
 godot --headless --fixed-fps 20 --path . res://tests/moth_touch_probe.tscn -- [<dir>] [from=1.6] [old]   # (stills under xvfb)
 godot --headless --path . res://tests/guard_test.tscn
 godot --headless --fixed-fps 60 --path . res://tests/frame_cost_probe.tscn -- [morning|afternoon|evening|snow]
+# 18 November, evening: the speed test's own check; mouths at a line; a reach whose target is taken away; the
+# crate taken up; the attic blanket laid over him (stills under xvfb: -- <dir> [look] [plain]):
+godot --headless --path . res://tests/speed_test_test.tscn
+godot --headless --fixed-fps 30 --path . res://tests/talk_mouth_test.tscn
+godot --headless --fixed-fps 12 --path . res://tests/reach_gone_test.tscn
+godot --headless --fixed-fps 30 --path . res://tests/crate_take_probe.tscn -- body_every=1
+godot --headless --path . res://tests/blanket_look.tscn
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]

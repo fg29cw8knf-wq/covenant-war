@@ -315,6 +315,7 @@ func _check_fig(f: Figure3D, d: Dictionary) -> void:
 	var g := {}   # bone -> global pose (the skeleton's frame), as drawn
 	for b in d.bones_needed:
 		g[b] = sk.get_bone_global_pose(b)
+	_move_solids(true, f.global_position + Vector3(0, 1.0, 0))
 	var t0 := Time.get_ticks_usec()
 	_check_joints(f, d, who, g)
 	var t1 := Time.get_ticks_usec()
@@ -760,10 +761,25 @@ func _make_solid(mi: GeometryInstance3D, inst := Transform3D(), key = null) -> v
 	_solids[key if key != null else mi.get_instance_id()] = {"mi": mi, "body": body, "shape": shape, "scale": sc, "xf": Transform3D(), "owner": fig_id, "faces": faces}
 
 
-func _move_solids() -> void:
+## `moving` (18 November): only the solids that have moved lately, put
+## where they are now. _tick moves them all at the start of a frame, which is
+## where they were drawn LAST frame; a figure's bones are read later in the
+## frame, in its skeleton's own pass, after it has walked on and after what
+## it carries has been put in its arms (WhiteSky.Carry, attach()). So a thing
+## carried at a walk stood a step behind the arms that held it, and the arms
+## read as inside it: "bram_coat's left wrist is 7.4 cm inside
+## Child/baby_bundle" for as long as he walked, and nothing of the sort in
+## the game (tests/held_child_probe "arms" reads both in one pass: 0.2 cm).
+## Now each figure's check first puts whatever's been moving where it is.
+func _move_solids(moving := false, by := Vector3.INF) -> void:
 	for id in _solids.keys():
 		var s: Dictionary = _solids[id]
 		var mi = s.mi
+		# (only what's moved lately, or is by the figure being checked: the
+		# first frame a carried thing moves, it hasn't "moved lately" yet)
+		if moving and frame - int(s.get("moved", -1000)) > MOVING_FOR \
+				and (not is_instance_valid(mi) or (s.xf as Transform3D).origin.distance_to(by) > NEAR_BY):
+			continue
 		if not is_instance_valid(mi) or not (mi as Node3D).is_inside_tree():
 			PhysicsServer3D.free_rid(s.body)
 			_solids.erase(id)
@@ -773,7 +789,13 @@ func _move_solids() -> void:
 		var t := Transform3D(xf.basis.orthonormalized(), xf.origin) if on else Transform3D(Basis(), Vector3(0, -9999, 0))
 		if t != s.xf:
 			s.xf = t
+			s.moved = frame
 			PhysicsServer3D.body_set_state(s.body, PhysicsServer3D.BODY_STATE_TRANSFORM, t)
+
+## How many frames a solid is taken to be still moving for, after it last moved.
+const MOVING_FOR := 40
+## And how near a figure a solid is looked at again whether it's moved or not (m).
+const NEAR_BY := 2.5
 
 
 const DIRS := [Vector3(1, 0, 0), Vector3(-1, 0, 0), Vector3(0, 1, 0), Vector3(0, -1, 0), Vector3(0, 0, 1), Vector3(0, 0, -1)]

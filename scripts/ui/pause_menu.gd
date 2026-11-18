@@ -1042,11 +1042,11 @@ func _options() -> Control:
 			toast("Fully applies the next time a place loads")))
 	else:
 		# (11 November) the frame-rate guard on a Mac or PC (Gfx.Guard)
-		v.add_child(_check("Keep the frame rate smooth (draws the 3D a little smaller only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
+		v.add_child(_check("Keep the frame rate smooth (draws fewer of the 3D's pixels and rebuilds the rest, only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
 			Game.settings["smooth_auto"] = on
 			Gfx.setup(get_tree())))
 		# (14 November) the sharpest picture a Mac or PC can be asked for (Gfx.Best)
-		v.add_child(_check("Best picture (sharper edges and finer shadows; can run slower, and holds the picture at full size whatever the frame rate)", Gfx.Best.on(), func(on: bool) -> void:
+		v.add_child(_check("Best picture (sharper edges and finer shadows; all the light is kept whatever the frame rate)", Gfx.Best.on(), func(on: bool) -> void:
 			Game.settings["best_picture"] = on
 			Gfx.setup(get_tree())
 			toast("Best picture on" if on else "Best picture off")))
@@ -1060,6 +1060,14 @@ func _options() -> Control:
 	v.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
 		Game.settings["show_fps"] = on
 		Gfx.FpsMeter.show_on(get_tree(), on)))
+	if not OS.has_feature("web"):
+		# (18 November) what the picture costs this computer, timed where the
+		# player stands (SpeedTest): the menu steps aside while it runs
+		var st := UITheme.button("Test this computer's speed (about a minute)", false, 640)
+		st.pressed.connect(func() -> void:
+			if not SpeedTest.running:
+				SpeedTest.run(get_tree(), self, _area_name()))
+		v.add_child(st)
 	v.add_child(_check("Show advert placeholders (this early build only)", bool(Game.settings.get("ad_previews", true)), func(on: bool) -> void:
 		Game.settings["ad_previews"] = on))
 	var row := HBoxContainer.new()

@@ -32,8 +32,10 @@ extends Node
 ## beside the same still with it.
 ##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
-## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
-## the phone link's.
+## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `-- --rebuild` a
+## Mac's picture at two-thirds size, rebuilt (Gfx.Guard, 18 November);
+## `--rendering-driver opengl3 --rendering-method gl_compatibility` the phone
+## link's.
 
 var out := "/tmp/ws_look"
 var m: WhiteSky
@@ -62,6 +64,13 @@ func _ready() -> void:
 	Gfx.setup(get_tree())
 	# (`flat`: no baked light on the set, the before beside BakedLight's after)
 	BakedLight.enabled = not ("flat" in OS.get_cmdline_user_args())
+	# (`-- --rebuild`: the 3D at two-thirds size and rebuilt, as a Mac's
+	# frame-rate guard brings a smaller picture back up since 18 November;
+	# here the engine uses FSR 2 where a Mac uses MetalFX)
+	if "--rebuild" in OS.get_cmdline_user_args():
+		Gfx.Guard.force_rebuild = true
+		Gfx.Guard.step = 3
+		Gfx.Guard._apply_all()
 	m = WhiteSky.new()
 	m.prep_early = false
 	add_child(m)
@@ -128,6 +137,57 @@ func _run() -> void:
 	if names.has("night"):
 		_stand(0.0, -2.0)
 		await _shot("night", 30)
+	if OS.get_cmdline_user_args().has("cloak"):
+		# (18 November, Gary's yes: the hooded figure's cloak in the wind.)
+		# Stood in the open by the walk's start, seen from beside it and
+		# from in front: hanging still, in the rim's wind, in a gust, two
+		# moments of each.
+		var hp := Vector3(1.5, WhiteSky.height(1.5, -6.0), -6.0)
+		_stand(0.0, 6.0)
+		var was_weather := m._weather
+		m._weather = null   # (so the walk doesn't set its wind over the still's)
+		m._hunter.position = hp
+		m._hunter.visible = true
+		m._hunter._set_fade(1.0)
+		var sc := m._hunter.scale.y
+		for view in [["side", hp + Vector3(5.2, 1.5 * sc, 0.6), 30.0], ["front", hp + Vector3(0.8, 1.3 * sc, 5.6), 30.0]]:
+			_at(view[1], hp + Vector3(0, 1.15 * sc, 0), view[2])
+			for wk in [[0.0, "still"], [WhiteSky.HUNTER_WIND, "rim"], [1.25, "gust"]]:
+				m._hunter.wind(float(wk[0]))
+				await _shot("cloak_%s_%s_a" % [view[0], wk[1]], 6)
+				if float(wk[0]) > 0.0:
+					await _shot("cloak_%s_%s_b" % [view[0], wk[1]], 3)
+		m._hunter.visible = false
+		m._weather = was_weather
+	if OS.get_cmdline_user_args().has("frost"):
+		# (18 November, Gary's yes: a puff of frost off a crystal he brushes.)
+		# Stood against the tall crystal nearest the walk's start, pushed at
+		# it (WhiteSky._brush_ice), and three stills as the puff goes.
+		var best: Array = []
+		var bd := INF
+		for ic: Array in m._ice:
+			var a3: Vector3 = ic[8]
+			var b3: Vector3 = ic[9]
+			var d := Vector2(float(ic[5]), float(ic[6]) + 2.0).length()
+			if b3.y - a3.y > 1.9 and float(ic[10]) > 0.25 and d < bd and d > 4.0:
+				bd = d
+				best = ic
+		if not best.is_empty():
+			var mid := Vector3(float(best[5]), 0.0, float(best[6]))
+			var side := Vector3(-mid.x, 0.0, -2.0 - mid.z).normalized()
+			var stood := mid + side * (float(best[4]) + 0.004)
+			_stand(stood.x, stood.z)
+			var bp := m._bram.position
+			WhiteSky._face(m._bram, side.cross(Vector3.UP))
+			if m._bram is Figure3D:
+				(m._bram as Figure3D).snap_face(side.cross(Vector3.UP))
+			_at(bp + side * 2.3 + side.cross(Vector3.UP) * 1.5 + Vector3(0, 1.35, 0), bp - side * 0.2 + Vector3(0, 1.05, 0), 42.0)
+			await _shot("frost_0_before", 12)
+			for k in 3:
+				m._frost_wait = 0.0
+				m._brush_ice(Vector3(stood.x, 0, stood.z) - side * 0.05, Vector3(stood.x, 0, stood.z), 0.0)
+				await _shot("frost_%d" % (k + 1), 2 + k)
+			print("white_sky_look: frost puffs ", m.frost_puffs, " at ", m.frost_at.snappedf(0.01), " him ", bp.snappedf(0.01))
 	if names.has("open"):
 		# the opening's wide shot (WhiteSky._open_k: 1, on its way, nearly home)
 		_stand(0.0, -2.0)

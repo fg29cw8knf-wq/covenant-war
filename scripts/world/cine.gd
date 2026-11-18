@@ -69,6 +69,9 @@ static func say(w: World, who: String, text: String, hold := -1.0, timed := fals
 	var f = fig(w, who) if who != "" else null
 	if f is Figure3D:
 		(f as Figure3D).talking = true
+		# (their mouth too, for about as long as the words take to say)
+		if not text.strip_edges().begins_with("("):
+			(f as Figure3D).talk_mouth(true, clampf(text.length() / 15.0, 0.7, 6.0))
 	var nm := ""
 	if who != "":
 		nm = String(w.get_meta("extra_names", {}).get(who, "")) if w.has_meta("extra_names") else ""
@@ -86,6 +89,7 @@ static func say(w: World, who: String, text: String, hold := -1.0, timed := fals
 		VoiceLines.stop(w)
 	if f is Figure3D:
 		(f as Figure3D).talking = false
+		(f as Figure3D).talk_mouth(false)
 
 
 static func choose(w: World, options: Array) -> int:

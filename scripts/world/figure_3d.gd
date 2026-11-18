@@ -748,6 +748,64 @@ func _add_posture() -> void:
 	_skel.move_child(pm, 0)
 
 
+## The back tipped forward from the hips by `amount` of BEND (Bend, below):
+## laid over whatever clip is playing, after their posture and before their
+## arms reach, so hands reaching for something low and in front get to it.
+class Bend:
+	extends SkeletonModifier3D
+	var turns: Array = []   # [bone index, Quaternion at full]
+	var amount := 0.0
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		var sk := get_skeleton()
+		if sk == null or amount <= 0.001:
+			return
+		for t in turns:
+			var b: int = t[0]
+			sk.set_bone_pose_rotation(b, Quaternion.IDENTITY.slerp(t[1] as Quaternion, amount) * sk.get_bone_pose_rotation(b))
+
+
+## How a back bends over at full (degrees about each bone's own x, forward):
+## 40 in all, most of it low, the head let back up a little to look ahead.
+const BEND := {"Spine": Vector3(20, 0, 0), "Spine1": Vector3(12, 0, 0), "Spine2": Vector3(8, 0, 0), "Neck": Vector3(-6, 0, 0)}
+
+## Bends them forward from the hips, `amount` of BEND (0: stood straight
+## again), over `secs`. (18 November: the player taking the lantern crate
+## off its stand. The "lift" clip crouches a little and keeps the back
+## upright, so the shoulders stayed over the feet and the crate's ends were
+## 10 cm beyond his hands as it left the stand; it rose with his hands
+## beside it and they met it half way up.)
+func bend_over(amount: float, secs := 0.4) -> void:
+	if _skel == null:
+		return
+	var bm := _skel.get_node_or_null("Bend") as Bend
+	if bm == null:
+		if amount <= 0.0:
+			return
+		bm = Bend.new()
+		bm.name = "Bend"
+		for bone: String in BEND:
+			var i := _skel.find_bone(bone)
+			if i >= 0:
+				var e: Vector3 = BEND[bone]
+				bm.turns.append([i, Quaternion.from_euler(Vector3(deg_to_rad(e.x), deg_to_rad(e.y), deg_to_rad(e.z)))])
+		_skel.add_child(bm)
+		var at := bm.get_index()
+		for c in _skel.get_children():
+			if c is TwoBoneIK3D or c.name == "HandTurn" or c.name == "HandsOff" or c.name == "Carry" or c.name == "KeepTargets":
+				at = mini(at, c.get_index())
+		_skel.move_child(bm, at)
+		if _skel.has_node("Posture"):
+			_skel.move_child(_skel.get_node("Posture"), 0)
+	if bm.has_meta("tween"):
+		var old = bm.get_meta("tween")
+		if old is Tween and (old as Tween).is_valid():
+			(old as Tween).kill()
+	var tw := create_tween()
+	tw.tween_property(bm, "amount", clampf(amount, 0.0, 1.0), maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+	bm.set_meta("tween", tw)
+
+
 ## Beaten: the head drops, the back rounds and the shoulders fall forward,
 ## eased into over `blend` seconds and held (over their idle, so they still
 ## breathe) until release(). `amount` 1 is a hard loss. For Corin after the
@@ -1410,35 +1468,145 @@ func mouth() -> Array:
 ## move when they are eating the porridge"): `open` 0 (shut, the face as
 ## modelled) to 1. The models have no jaw bone and no face shapes, so the
 ## skin itself is moved, in the game's own character shader
-## (assets/shaders/character_nm.gdshader: jaw_open and the rest): only a
-## model that wears it has a jaw to move (dress_normal_map: the hero, Player
-## A), and on any other nothing happens. `lips`: where the lips meet, in the
-## Head bone's own frame (m; AshfordP1.MOUTH), told once. The shader is told
-## where the mouth is every frame it's open, as the head is drawn (after its
-## own turn and dip: _set_jaw, in the skeleton's pass).
+## (assets/shaders/character_nm.gdshader: jaw_open and the rest). `lips`:
+## where the lips meet, in the Head bone's own frame (m), told once; left
+## out, the model's own (MOUTHS). The shader is told where the mouth is
+## every frame it's open, as the head is drawn (after its own turn and dip:
+## _set_jaw, in the skeleton's pass).
+##
+## (18 November, later; Gary's yes to "Mouths: moving when anyone talks".)
+## That morning only a model with a normal map wore the shader (the hero
+## and Tobin), so only they had a mouth to move. Every character model's
+## material is the same plain one (its colour, its metal-roughness picture,
+## nothing else: tests/face_sheet.gd lists them), which the shader lights
+## the same, so the first time a figure's mouth is to move its skin is
+## given the shader (_own_skin), in a material of its own: two farmers from
+## one model don't share a mouth. A model whose lips aren't in MOUTHS has no
+## mouth to move, and nothing changes on it.
 var _jaw := 0.0
 var _jaw_lips := Vector3(0.0, 0.045, 0.17)
 var _jaw_mats: Array = []   # [MeshInstance3D, ShaderMaterial] each
 var _jaw_looked := false
+var _smile := 0.0
+
+## Where each model's lips meet, from the Head bone in the bone's own frame
+## (m: x across the face, y up it, z out of it), and how far a corner of the
+## mouth is from its middle. Read off each face square on and from the side,
+## ruled in centimetres from the bone (tests/face_sheet.gd,
+## tools/face_grid.py), and checked on a still of the mouth opened.
+## And how big the face is against the hero's (a child's is four fifths of
+## his): the shader's distances are his.
+const MOUTHS := {
+	"player_a": [Vector3(0.0, 0.045, 0.17), 0.024, 1.0],
+	"bram": [Vector3(0.0, 0.052, 0.202), 0.025, 1.0],
+	"corin": [Vector3(0.0, 0.027, 0.154), 0.03, 0.95],
+	"tilly": [Vector3(0.0, -0.003, 0.13), 0.019, 0.8],
+	"nell": [Vector3(0.0, -0.02, 0.157), 0.024, 0.95],
+	"tam": [Vector3(0.0, 0.064, 0.171), 0.024, 1.0],
+	"ned": [Vector3(0.0, 0.066, 0.193), 0.028, 1.0],
+	"hob": [Vector3(0.0, 0.035, 0.17), 0.026, 1.0],
+	"corin_mam": [Vector3(0.0, 0.024, 0.156), 0.023, 0.95],
+	"merchant": [Vector3(0.0, 0.035, 0.185), 0.024, 1.0],
+	"trader": [Vector3(0.0, 0.034, 0.17), 0.024, 1.0],
+	"farmer": [Vector3(0.0, 0.046, 0.156), 0.024, 1.0],
+	"elder": [Vector3(0.0, 0.028, 0.152), 0.023, 0.95],
+	"child_b": [Vector3(0.0, 0.039, 0.149), 0.02, 0.85],
+	"child_c": [Vector3(0.0, -0.008, 0.13), 0.019, 0.8],
+	"tobin": [Vector3(0.0, 0.031, 0.127), 0.017, 0.8],
+	"hale": [Vector3(0.0, -0.028, 0.139), 0.024, 1.0],
+	"ysa": [Vector3(0.0, 0.021, 0.129), 0.022, 0.95],
+	"krell": [Vector3(0.0, 0.025, 0.138), 0.023, 0.95],
+	"enforcer": [Vector3(0.0, 0.0, 0.139), 0.023, 0.95],
+	"sun_guard": [Vector3(0.0, 0.052, 0.173), 0.024, 1.0],
+	"refugee": [Vector3(0.0, 0.004, 0.16), 0.023, 0.95],
+}
+
+
+## Has this model a mouth that can be moved?
+func has_mouth() -> bool:
+	return MOUTHS.has(_model_name)
+
 
 func jaw(open: float, lips := Vector3.INF) -> void:
 	if lips != Vector3.INF:
 		_jaw_lips = lips
-	if not _jaw_looked and model != null:
-		_jaw_looked = true
-		for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
-			if mi.mesh == null:
-				continue
-			for si in mi.mesh.get_surface_count():
-				var m := mi.get_active_material(si)
-				if m is ShaderMaterial and (m as ShaderMaterial).shader != null and (m as ShaderMaterial).shader.resource_path.ends_with("character_nm.gdshader"):
-					_jaw_mats.append([mi, m])
-		if not _jaw_mats.is_empty() and _skel != null and not _skel.skeleton_updated.is_connected(_set_jaw):
-			_skel.skeleton_updated.connect(_set_jaw)
+	elif not _jaw_looked and MOUTHS.has(_model_name):
+		_jaw_lips = (MOUTHS[_model_name] as Array)[0]
+	_own_skin()
 	_jaw = clampf(open, 0.0, 1.0)
 	if _jaw <= 0.0:
 		for pair: Array in _jaw_mats:
 			(pair[1] as ShaderMaterial).set_shader_parameter("jaw_open", 0.0)
+
+
+## A smile, 0 (the face as modelled) to 1: the corners of the mouth up and
+## out, the cheeks lifted (the shader's `smile`).
+func smile(k: float) -> void:
+	if not has_mouth():
+		return
+	if not _jaw_looked:
+		_jaw_lips = (MOUTHS[_model_name] as Array)[0]
+	_own_skin()
+	_smile = clampf(k, 0.0, 1.0)
+	if _smile <= 0.0:
+		for pair: Array in _jaw_mats:
+			(pair[1] as ShaderMaterial).set_shader_parameter("smile", 0.0)
+
+
+func smile_now() -> float:
+	return _smile if not _jaw_mats.is_empty() else 0.0
+
+
+## The character shader on this figure's skin, in materials of its own
+## (once: the first time its mouth is to move).
+func _own_skin() -> void:
+	if _jaw_looked or model == null:
+		return
+	_jaw_looked = true
+	var sh: Shader = load("res://assets/shaders/character_nm.gdshader")
+	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		if mi.mesh == null or mi.skin == null:
+			continue
+		for si in mi.mesh.get_surface_count():
+			var m := mi.get_active_material(si)
+			var own: ShaderMaterial = null
+			if m is ShaderMaterial and (m as ShaderMaterial).shader == sh:
+				own = (m as ShaderMaterial).duplicate() as ShaderMaterial
+			elif m is StandardMaterial3D and has_mouth() and plain_skin(m as StandardMaterial3D):
+				var std := m as StandardMaterial3D
+				own = ShaderMaterial.new()
+				own.shader = sh
+				own.set_shader_parameter("albedo_tex", std.albedo_texture)
+				own.set_shader_parameter("mr_tex", std.roughness_texture if std.roughness_texture != null else std.metallic_texture)
+				if std.normal_enabled and std.normal_texture != null:
+					own.set_shader_parameter("normal_tex", std.normal_texture)
+					own.set_shader_parameter("normal_strength", std.normal_scale)
+				own.set_shader_parameter("metallic_k", std.metallic)
+				own.set_shader_parameter("roughness_k", std.roughness)
+			if own != null:
+				if MOUTHS.has(_model_name):
+					own.set_shader_parameter("mouth_half", float((MOUTHS[_model_name] as Array)[1]) / _mouth_size())
+				own.set_shader_parameter("mouth_size", _mouth_size())
+				mi.set_surface_override_material(si, own)
+				_jaw_mats.append([mi, own])
+	if not _jaw_mats.is_empty() and _skel != null and not _skel.skeleton_updated.is_connected(_set_jaw):
+		_skel.skeleton_updated.connect(_set_jaw)
+
+
+## Is a model's material one the character shader draws the same? (Its
+## colour picture and its metal-roughness one, solid, nothing lit of its
+## own, its back faces not drawn.)
+static func plain_skin(std: StandardMaterial3D) -> bool:
+	return std.albedo_texture != null and std.transparency == BaseMaterial3D.TRANSPARENCY_DISABLED and not std.emission_enabled \
+		and std.cull_mode == BaseMaterial3D.CULL_BACK and not std.ao_enabled and std.albedo_color.is_equal_approx(Color.WHITE) \
+		and not std.rim_enabled and not std.clearcoat_enabled and not std.backlight_enabled and not std.subsurf_scatter_enabled
+
+
+## How big their face is against the hero's (MOUTHS).
+func _mouth_size() -> float:
+	if MOUTHS.has(_model_name) and (MOUTHS[_model_name] as Array).size() > 2:
+		return clampf(float((MOUTHS[_model_name] as Array)[2]), 0.6, 1.4)
+	return 1.0
 
 
 ## How far open it is, 0..1 (0 on a model with no jaw to move).
@@ -1447,7 +1615,7 @@ func jaw_now() -> float:
 
 
 func _set_jaw() -> void:
-	if _jaw <= 0.0 or _skel == null:
+	if (_jaw <= 0.0 and _smile <= 0.0) or _skel == null:
 		return
 	var hb := _skel.find_bone("Head")
 	if hb < 0:
@@ -1458,14 +1626,59 @@ func _set_jaw() -> void:
 	var at := Transform3D(head.basis.orthonormalized(), head * _jaw_lips)
 	# (down the face and a little back, as a jaw swings about its hinge)
 	var way := at.basis * Vector3(0.0, -1.0, -0.25).normalized()
+	# (a smaller face brought up to the hero's size, whose distances the
+	# shader's are)
+	var grow := Transform3D(Basis().scaled(Vector3.ONE / _mouth_size()), Vector3.ZERO)
 	for pair: Array in _jaw_mats:
 		var mi := pair[0] as MeshInstance3D
 		if not is_instance_valid(mi):
 			continue
 		var m := pair[1] as ShaderMaterial
-		m.set_shader_parameter("jaw_frame", at.affine_inverse() * mi.global_transform)
+		m.set_shader_parameter("jaw_frame", grow * at.affine_inverse() * mi.global_transform)
 		m.set_shader_parameter("jaw_way", mi.global_transform.basis.inverse() * way)
 		m.set_shader_parameter("jaw_open", _jaw)
+		m.set_shader_parameter("smile", _smile)
+
+
+## Their mouth moving as they talk (Gary's yes, 18 November): opening and
+## closing in the run of speech, a syllable five times a second or so, some
+## wider than others and a short stop now and then, while `on`; shut again
+## when it's told off or after `secs` (a line's length), whichever is first.
+## Nothing on a model with no mouth to move, or while it's being opened by
+## hand (eating: jaw()).
+var _talk_on := false
+var _talk_t := 0.0
+var _talk_left := 0.0
+var _talk_k := 0.0
+var _talk_phase := 0.0
+const TALK_OPEN := 0.65
+
+func talk_mouth(on: bool, secs := 6.0) -> void:
+	if on and not has_mouth():
+		return
+	_talk_on = on
+	_talk_left = secs if on else 0.0
+	if on:
+		_talk_phase = randf() * TAU
+
+
+func _mouth_step(delta: float) -> void:
+	if not _talk_on and _talk_k <= 0.0:
+		return
+	if _talk_on:
+		_talk_left -= delta
+		if _talk_left <= 0.0:
+			_talk_on = false
+	var want := 0.0
+	if _talk_on:
+		_talk_t += delta
+		# syllables, uneven: two beats that drift against each other, and a
+		# slower one that shuts the mouth for a moment between words
+		var syl := maxf(0.0, sin(_talk_t * 30.0 + _talk_phase)) * (0.62 + 0.38 * sin(_talk_t * 11.3 + _talk_phase * 2.0))
+		var word := smoothstep(-0.55, -0.15, sin(_talk_t * 3.7 + _talk_phase * 0.7))
+		want = (0.14 + 0.86 * syl) * word * TALK_OPEN
+	_talk_k = move_toward(_talk_k, want, delta * 9.0)
+	jaw(_talk_k)
 
 
 func bone_pos(bone: String) -> Vector3:
@@ -1480,6 +1693,7 @@ func bone_pos(bone: String) -> Vector3:
 
 func _process(delta: float) -> void:
 	_t += delta
+	_mouth_step(delta)
 	# turn towards where we're facing (easing in, but never faster than a
 	# person turns: a half turn takes a third of a second, not a frame or two)
 	var d := wrapf(_want_yaw - _yaw, -PI, PI)
@@ -2224,16 +2438,40 @@ func _move_wrist(pre: String, by: Vector3) -> void:
 	_skel.set_bone_pose_rotation(h, (bf.inverse() * gh.basis.orthonormalized()).orthonormalized().get_rotation_quaternion())
 
 
+## How many times a hand was left reaching for something that had gone
+## (the tests read it).
+static var reach_ghosts := 0
+## (false: as it was before 18 November, for the test's comparison)
+static var keep_gone := true
+
 func _keep_targets() -> void:
 	for side in _ik:
 		var ik = _ik[side]
 		if ik == null or not is_instance_valid(ik) or not (ik as TwoBoneIK3D).active or not ik.has_meta("target"):
 			continue
 		var t = ik.get_meta("target")
-		if is_instance_valid(t) and t is Node3D and (t as Node3D).is_inside_tree():
+		if is_instance_valid(t) and t is Node3D and (t as Node3D).is_inside_tree() and not (t as Node).is_queued_for_deletion():
 			var p: NodePath = (ik as TwoBoneIK3D).get_path_to(t)
 			if p != (ik as TwoBoneIK3D).get_target_node(0):
 				(ik as TwoBoneIK3D).set_target_node(0, p)
+			ik.set_meta("last", _pivot.global_transform.affine_inverse() * (t as Node3D).global_transform)
+		elif keep_gone and ik.has_meta("last") and is_instance_valid(_pivot):
+			# (18 November, the body sweep: "corin's left shoulder twisted 165
+			# deg" for a frame after his shout. What the hand was on has gone
+			# while the arm was still coming off it: a mark freed in the same
+			# breath as let_go(), whose 0.3 s hadn't run. With nothing to reach
+			# for the arm was solved towards nowhere. The hand stays where it
+			# was against their body until the arm has come away.)
+			var ghost := Node3D.new()
+			ghost.name = "ReachGhost"
+			_pivot.add_child(ghost)
+			ghost.transform = ik.get_meta("last")
+			(ik as TwoBoneIK3D).set_target_node(0, (ik as TwoBoneIK3D).get_path_to(ghost))
+			ik.set_meta("target", ghost)
+			reach_ghosts += 1
+			get_tree().create_timer(2.0, false).timeout.connect(func() -> void:
+				if is_instance_valid(ghost):
+					ghost.queue_free())
 
 
 func _gait_pace(clip: String) -> float:
