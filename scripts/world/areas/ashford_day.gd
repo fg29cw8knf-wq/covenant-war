@@ -146,9 +146,9 @@ static func stage(w: World, place := true) -> void:
 		festival_loaf(w)
 	lane_sign(w)
 	if ph == "afternoon":
-		_set_objective(w, SUN_GOING if jobs_done() else (FESTIVAL_TAM if lane_wanted() else FESTIVAL))
+		_set_objective(w, SUN_GOING if jobs_done() else (FESTIVAL_TAM if lane_pointed() else FESTIVAL))
 	elif ph == "evening":
-		_set_objective(w, EVENING_CORIN if lane_wanted() else EVENING)
+		_set_objective(w, EVENING_CORIN if lane_pointed() else EVENING)
 	show_way(w)
 
 
@@ -166,8 +166,9 @@ static func show_way(w: World) -> void:
 	if at_mill(p):
 		w.hud.set_way(null, null)
 		return
-	if not lane_wanted():
-		# the afternoon's jobs done, or the evening with nobody down the lane:
+	if not lane_pointed():
+		# the afternoon's jobs done, or the evening with nobody down the lane
+		# (or nobody Bram has spoken of yet):
 		# the arrow is on Bram, on his stool by the Great Lantern
 		var bb := Cine.body(w, "bram")
 		var to_bram := (phase() == "afternoon" and jobs_done()) or phase() == "evening"
@@ -207,6 +208,21 @@ static func _to_spot(w: World, id: String) -> void:
 ## in the evening, until he has).
 static func lane_wanted() -> bool:
 	return (phase() == "afternoon" and not Game.flag("ash_tam")) or (phase() == "evening" and not Game.flag("corin_pond"))
+
+
+## Is the way to the mill pointed out: the Objective's words, the arrow, the
+## light at the gate? (18 November, Gary: "Says about Corin at the mill before
+## anyone has even mentioned anything shouldn't come up till Bram tells you".
+## The evening's words, its arrow ("Corin, at the mill race") and the light
+## over the lane were all up from the moment the sun went down, with nobody
+## having said where he'd gone.) In the evening, only once Bram has said it
+## ("bram_sent_corin": Ashford._bram_evening); until then the words and the
+## arrow are Bram's, by the Great Lantern. The lane itself is open either
+## way: someone who wanders down it finds Corin on the wall (lane_wanted).
+static func lane_pointed() -> bool:
+	if phase() == "evening" and not Game.flag("bram_sent_corin"):
+		return false
+	return lane_wanted()
 
 
 ## Back at the gate with nobody new to see: down to the mill again, or not.
@@ -264,7 +280,7 @@ static func lane_sign(w: World) -> void:
 		sign.add_child(label)
 		v.set_meta("lane_sign", sign)
 		lane_gate(v)
-	var want := lane_wanted()
+	var want := lane_pointed()
 	var glow: Node3D = AshfordP1.meta(v, "lane_glow")
 	if want and glow == null:
 		var mark := Node3D.new()
@@ -408,6 +424,9 @@ static func _watching(w: World) -> void:
 		var ph := phase()
 		if ph != "morning":
 			show_way(w)
+			# (and the light at the lane's gate, once Bram has said where Corin is)
+			if (AshfordP1.meta(village(w), "lane_glow") != null) != lane_pointed():
+				lane_sign(w)
 		if ph == "morning":
 			if not Game.flag("corin_met") and w._npc_by_id("corin") != null:
 				w._talk(w._npc_by_id("corin"))
@@ -558,7 +577,7 @@ static func afternoon(w: World) -> void:
 		to.y = v.height(to.x, to.z)
 		Cine.path(w, "tilly", AshfordP1.round_lantern(w, tb.global_position, to), 1.1)
 	lane_sign(w)
-	_set_objective(w, FESTIVAL_TAM if lane_wanted() else FESTIVAL)
+	_set_objective(w, FESTIVAL_TAM if lane_pointed() else FESTIVAL)
 	show_way(w)
 	await AshfordP1.home(w, 0.9)
 	AshfordP1.controls_on(w)
@@ -1005,9 +1024,9 @@ static func sunset(w: World) -> void:
 	lane_sign(w)
 	AshfordP1.put(w, "player", Vector3(1.2, 0, 6.2), Vector3.ZERO)
 	w.cam.fov = World.CAM_FOV
-	# (Corin first: he's down at the mill race, and the evening's words say so
-	# from the start, not only after a reload as stage() had them)
-	_set_objective(w, EVENING_CORIN if lane_wanted() else EVENING)
+	# (Bram first: his words are what send them to Corin at the mill race,
+	# lane_pointed; until 18 November the evening's words said so from the start)
+	_set_objective(w, EVENING_CORIN if lane_pointed() else EVENING)
 	await Cine.overlay(w).bars(false)
 	w.end_cine()
 	w._focus = w._cam_focus_target()
@@ -1169,6 +1188,9 @@ const BUTTON_ACROSS := 0.1
 const BUTTON_UNDER := 0.045
 ## How long their hand takes from the look at it to the pocket at their hip (s).
 const BUTTON_POCKET := 0.45
+## Sat side by side, how high over his hip joint his palm is held out (m, on
+## a grown man; his thigh's top is about 0.08 over the joint).
+const BUTTON_OVER_LAP := 0.19
 
 
 static func corin_button(w: World) -> void:
@@ -1215,6 +1237,15 @@ static func corin_button(w: World) -> void:
 	var seated := corin.seat >= 0.0
 	var h := (corin.hold_point(0.0, 0.0).y - corin.arm_reach() * 0.55) if not seated else 0.95 * corin.stature()
 	give.global_position = cb.global_position + to_p * 0.32 + corin.facing() * 0.3 + Vector3(0, h, 0)
+	if seated:
+		# (18 November, Gary: "When Corin gives the button both characters have
+		# their hands way to high it doesn't look normal". Sat on the wall, his
+		# hand was held out 0.95 of his height above where he sits: level with
+		# his chest, and the player's came up to it there. Now it's held out
+		# low, just over their laps (BUTTON_OVER_LAP above his hip joint, as
+		# he sits), the way something small is passed between two people sat
+		# side by side.)
+		give.global_position.y = corin.bone_pos("Hips").y + BUTTON_OVER_LAP * corin.stature()
 	# close on the hands, from in front of them and a little above (the
 	# lines after it go back to the faces: _pond_shot)
 	if seated:
@@ -1322,6 +1353,18 @@ static func corin_button(w: World) -> void:
 ## the grey crystal surface flares with warm amber light. A spectral Lantern
 ## Moth flutters up from the card, circling Tilly's head." Then it sinks back
 ## into her card (it goes grey again by evening).
+## How far from the card they kneel to touch it (m, on the ground: within a
+## kneeling arm's reach of it), how long the going down takes before the hand
+## goes out, the hand's way to it, and how long it's on the card before the
+## card wakes (s).
+const MOTH_TOUCH_FROM := 0.35
+const MOTH_ASIDE := 0.15
+const MOTH_KNEEL := 0.6
+const MOTH_REACH := 0.45
+const MOTH_TOUCH_HOLD := 0.2
+## How far they bend forward over their knee to it (Figure3D.kneel's lean).
+const MOTH_LEAN := 0.5
+
 static func moth_for_tilly(w: World) -> void:
 	var v := village(w)
 	var card: Node3D = AshfordP1.meta(w, "tilly_card_node")
@@ -1337,20 +1380,53 @@ static func moth_for_tilly(w: World) -> void:
 	var to_t := tb.global_position - p
 	to_t.y = 0.0
 	to_t = to_t.normalized()
+	# (18 November, Gary: "When player touches Tilly card he actually has to
+	# reach over and touch it". They went down on one knee where they stood,
+	# as much as a metre and a half from her, and put a hand out at the card
+	# from there: it stopped in the air well short of it, and the card lit
+	# all the same.) They step up to her first, until the card is within
+	# their arm's reach kneeling (MOTH_TOUCH_FROM of it, on the ground), and
+	# face it; then down on one knee, the hand out to the card's near edge,
+	# and the card wakes as the fingers get there, not before.
+	var card_flat := card.global_position - p
+	card_flat.y = 0.0
+	if card_flat.length() > 0.05:
+		to_t = card_flat.normalized()
+	# (a little to their own left of straight in front of her: the foot they
+	# plant as they kneel goes down beside her, not on her toes, and the card
+	# is in front of the shoulder of the hand that reaches for it)
+	var stand := card.global_position - to_t * MOTH_TOUCH_FROM + Vector3.UP.cross(to_t) * MOTH_ASIDE
+	stand.y = p.y
+	if Vector2(stand.x - p.x, stand.z - p.z).length() > 0.06:
+		await Cine.path(w, "player", [stand], 1.0)
+		if not is_instance_valid(w) or not w.is_inside_tree():
+			return
+		p = w.player.global_position
+	Cine.look(w, "player", p + to_t * 3.0)
 	var perp := to_t.cross(Vector3.UP).normalized()
-	# down on one knee, a hand to the card's edge
-	if pf is Figure3D:
-		(pf as Figure3D).pose("lift", 0.42, 0.4)
-		var touch := Node3D.new()
-		w.add_child(touch)
-		touch.global_position = card.global_position - to_t * 0.04
-		(pf as Figure3D).reach(null, touch, 0.4)
-		touch.set_meta("free_later", true)
-		w.set_meta("moth_touch", touch)
 	var look := tb.global_position + Vector3(0, 1.1, 0)
 	Cine.move(w, AshfordP1.clear_cam(w, [p + to_t * 0.6 + perp * 3.6 + Vector3(0, 1.5, 0), p + to_t * 0.6 - perp * 3.6 + Vector3(0, 1.5, 0),
 		p + to_t * 0.6 + perp * 3.0 + Vector3(0, 2.4, 0)], look, ["player", "tilly"]), look, 0.8, 38.0)
-	await Cine.wait(w, 0.5)
+	# down on one knee, a hand to the card's edge
+	# (a real kneel, Figure3D.kneel: the "lift" clip held part-way, which this
+	# was until 18 November, is a stoop with the shoulders still 1.3 m up, and
+	# a card held at a seven-year-old's waist was 75 cm from them: out of
+	# reach from anywhere)
+	if pf is Figure3D:
+		(pf as Figure3D).kneel(MOTH_KNEEL, MOTH_LEAN, false, true)
+		await Cine.wait(w, MOTH_KNEEL)
+		var touch := Node3D.new()
+		w.add_child(touch)
+		touch.global_position = card.global_position - to_t * 0.03
+		# (the fingers to it, the palm down over its edge)
+		(pf as Figure3D).palm("right", Vector3.DOWN, MOTH_REACH, 0.5)
+		(pf as Figure3D).reach(null, touch, MOTH_REACH)
+		(pf as Figure3D).eyes_on(card.global_position)
+		touch.set_meta("free_later", true)
+		w.set_meta("moth_touch", touch)
+		await Cine.wait(w, MOTH_REACH + MOTH_TOUCH_HOLD)
+	else:
+		await Cine.wait(w, 0.5)
 	# the grey card flares amber
 	var cg := card.get_node_or_null("CardGlow") as Node3D
 	if cg != null:
@@ -1365,8 +1441,13 @@ static func moth_for_tilly(w: World) -> void:
 	var grow := w.create_tween()
 	grow.tween_property(moth, "scale", Vector3.ONE * 1.8, 0.6).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	if pf is Figure3D:
+		# (the hand stays on it a moment as the moth comes up out of it)
+		await Cine.wait(w, 0.35)
 		(pf as Figure3D).let_go(0.4)
-		(pf as Figure3D).release(0.5)
+		(pf as Figure3D).palm("right", Vector3.ZERO, 0.4)
+		(pf as Figure3D).eyes_on(null)
+		# (up off their knee as the moth goes up round her head)
+		(pf as Figure3D).rise(0.7)
 	# twice round Tilly's head
 	var head := Cine.head(w, "tilly") + Vector3(0, 0.12, 0)
 	var r := 0.55

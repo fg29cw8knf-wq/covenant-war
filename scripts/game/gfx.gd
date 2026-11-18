@@ -125,6 +125,24 @@ class Guard extends Node:
 	const HITCH := 0.2         # a frame longer than this is a load, not a slow picture: left out
 	const LEAN_UNDER := 31.0   # at the smallest step and still under this: the bounce light goes
 	const RETRY_MOST := 300.0  # the longest it waits before trying a step up again (s)
+	## (18 November, Gary: "Game not running smoothly frame rate is between
+	## 15-19fps". The guard came down one step every four and a half seconds,
+	## so a Mac that needed the smallest size spent the first half minute of
+	## every session at the frame rate it started with, and began again from
+	## the full size the next time the game was opened.)
+	## Well under (FAR_LOW) for FAR_AFTER windows running: two steps at once,
+	## without waiting for DOWN_AFTER. And the step it has come to is kept
+	## with the Options (Game.settings.gfx_step), so the next session starts
+	## from it and tries a step up from there, as it does anyway.
+	const FAR_LOW := 26.0
+	const FAR_AFTER := 2
+	const STEP_KEY := "gfx_step"
+	## "Best picture" holds the full picture whatever the frame rate, and
+	## says nothing about it: under BEST_LOW for BEST_AFTER windows running
+	## with it on, a line says so once a session (Told), with where to turn
+	## it off.
+	const BEST_LOW := 24.0
+	const BEST_AFTER := 4
 
 	static var _me: Guard = null
 	static var _views: Array = []     # WeakRefs of the viewports it sizes
@@ -134,7 +152,10 @@ class Guard extends Node:
 	var _t := 0.0
 	var _frames := 0
 	var _low := 0
+	var _far := 0
+	var _best_low := 0
 	var _high := 0
+	static var told_best := false
 	var _retry := 15.0     # how long a step up must wait after one that didn't hold
 	var _wait := 0.0
 	var _stepped_up := INF # seconds since the last step up (INF: none to judge)
@@ -156,6 +177,10 @@ class Guard extends Node:
 			watch(tree.root)
 		if not on():
 			step = 0
+			_apply_all()
+		elif step == 0 and int(Game.settings.get(STEP_KEY, 0)) > 0:
+			# (where the last session came to: tried up from there, not found again)
+			step = clampi(int(Game.settings.get(STEP_KEY, 0)), 0, STEPS.size() - 1)
 			_apply_all()
 
 	## (Not while "Best picture" is on: that asks for the full picture
@@ -217,7 +242,7 @@ class Guard extends Node:
 		var now := Time.get_ticks_usec()
 		var real := (now - _last_usec) / 1000000.0 if _last_usec > 0 else 0.0
 		_last_usec = now
-		if not Guard.on() or real <= 0.0:
+		if real <= 0.0 or (not Guard.on() and not Best.on()):
 			return
 		# (not while the window's in the background, where macOS slows it
 		# on purpose, nor through a load's long frame)
@@ -230,6 +255,21 @@ class Guard extends Node:
 		var fps := _frames / _t
 		_t = 0.0
 		_frames = 0
+		judge(fps)
+
+	## One window's frame rate judged (the tests call it with made-up ones).
+	func judge(fps: float) -> void:
+		if not Guard.on():
+			# ("Best picture": held at the full picture, and said so once if
+			# the Mac can't draw it at a rate worth playing at)
+			if Best.on() and fps < BEST_LOW:
+				_best_low += 1
+				if _best_low >= BEST_AFTER and not Guard.told_best:
+					Guard.told_best = true
+					Told.say(get_tree(), "(Best picture is on, and this computer is drawing it at %d frames a second. For a smoother game: Options, Best picture off.)" % roundi(fps))
+			else:
+				_best_low = 0
+			return
 		_wait = maxf(0.0, _wait - WINDOW)
 		if _stepped_up < INF:
 			_stepped_up += WINDOW
@@ -238,21 +278,26 @@ class Guard extends Node:
 		if fps < LOW:
 			_high = 0
 			_low += 1
-			if _low >= DOWN_AFTER:
+			_far = _far + 1 if fps < FAR_LOW else 0
+			var far := _far >= FAR_AFTER
+			if _low >= DOWN_AFTER or far:
 				_low = 0
+				_far = 0
 				if Guard.step < STEPS.size() - 1:
 					if _stepped_up < 20.0:
 						# the step up didn't hold: longer before the next try
 						_retry = minf(RETRY_MOST, _retry * 2.0)
 					_stepped_up = INF
 					_wait = _retry
-					Guard.step += 1
+					Guard.step = mini(Guard.step + (2 if far else 1), STEPS.size() - 1)
 					Guard._apply_all()
+					Guard._keep()
 				elif fps < LEAN_UNDER and not Guard.lean:
 					Guard.lean = true
 					_lean_now()
 			return
 		_low = 0
+		_far = 0
 		if fps >= _target() * UP_SHARE and Guard.step > 0 and not Guard.lean:
 			_high += 1
 			if _high >= UP_AFTER and _wait <= 0.0:
@@ -260,8 +305,15 @@ class Guard extends Node:
 				_stepped_up = 0.0
 				Guard.step -= 1
 				Guard._apply_all()
+				Guard._keep()
 		else:
 			_high = 0
+
+	## The step it's at kept with the Options, for the next session.
+	static func _keep() -> void:
+		if int(Game.settings.get(STEP_KEY, 0)) != step:
+			Game.settings[STEP_KEY] = step
+			Game.save_settings()
 
 	## The bounce light and its partner off, in whatever place is showing
 	## (looked for each window: a place built later has them on again), and
@@ -368,6 +420,43 @@ class Best:
 				dress(vp as Viewport)
 
 
+## A line said once at the top of the screen and gone (the guard's, about
+## "Best picture"): in brackets, as every word to the player that isn't a
+## character's is.
+class Told extends CanvasLayer:
+	const SECS := 9.0
+	static var last := ""   # (the tests read it)
+
+	static func say(tree: SceneTree, text: String) -> void:
+		last = text
+		if tree == null or DisplayServer.get_name() == "headless":
+			return
+		var t := Told.new()
+		t.layer = 127
+		t.process_mode = Node.PROCESS_MODE_ALWAYS
+		var l := Label.new()
+		l.text = text
+		l.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+		l.offset_top = 64.0
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		l.add_theme_font_size_override("font_size", 26)
+		l.add_theme_color_override("font_color", Color(1, 1, 1, 0.95))
+		l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.85))
+		l.add_theme_constant_override("outline_size", 8)
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		l.modulate.a = 0.0
+		t.add_child(l)
+		tree.root.add_child.call_deferred(t)
+		var come := func() -> void:
+			var tw := t.create_tween()
+			tw.tween_property(l, "modulate:a", 1.0, 0.5)
+			tw.tween_interval(SECS)
+			tw.tween_property(l, "modulate:a", 0.0, 0.8)
+			tw.tween_callback(t.queue_free)
+		t.ready.connect(come, CONNECT_ONE_SHOT)
+
+
 ## A small frame-rate readout in the top corner (Options > Show frame rate),
 ## so a slow patch can be described with a number.
 class FpsMeter extends CanvasLayer:
@@ -406,6 +495,11 @@ class FpsMeter extends CanvasLayer:
 			# (on a computer: the size the frame-rate guard has the 3D at)
 			if not Gfx.is_phone() and (Guard.step > 0 or Guard.lean):
 				_label.text += "  ·  3D at %d%%%s" % [roundi(Guard.scale_now() * 100.0), ", no bounce light" if Guard.lean else ""]
+			# (and what it's being asked to draw, so a number sent in says which)
+			if Best.on():
+				_label.text += "  ·  Best picture on"
+			elif not Gfx.is_phone() and not Guard.on():
+				_label.text += "  ·  smoothing off"
 			_t = 0.0
 			_frames = 0
 			_worst = 0.0

@@ -1077,21 +1077,18 @@ func _the_hunter() -> void:
 	await _rim_flash(form)
 	if _skipping:
 		return
-	# the snow lifts off the lip, and the shape of it stands in the gust,
-	# a little back from the edge
+	# the snow lifts off the lip round it where it stands, a little back
+	# from the edge: it's been there since the lightning showed it (18
+	# November; until then it went with the flash and formed again here, out
+	# of nothing, half there and then whole)
 	_gust(form)
 	_hunter.position = form
 	_hunter.look_at_dir(_bram.position - _hunter.position)
 	_hunter.visible = true
-	_hunter.fade_to(0.4, RIM_FORM_HALF)
-	# a cold light finds it as it forms (dark on the dark sky, it was all
-	# but lost at that distance)
-	_hunter_light = OmniLight3D.new()
-	_hunter_light.light_color = Color(0.72, 0.8, 1.0)
-	_hunter_light.light_energy = 0.0
-	_hunter_light.omni_range = 4.5
-	_hunter_light.position = Vector3(0.0, 2.0, 1.6)
-	_hunter.add_child(_hunter_light)
+	_hunter._set_fade(1.0)
+	# the cold light on it comes up (dark on the dark sky, it was all but
+	# lost at that distance)
+	_hunter_cold_light()
 	create_tween().tween_property(_hunter_light, "light_energy", RIM_LIGHT, RIM_FORM_HALF + RIM_FORM)
 	# low behind his right shoulder, up at the rim on a long lens (he's a
 	# shoulder in the corner of it)
@@ -1103,7 +1100,9 @@ func _the_hunter() -> void:
 	await _wait(RIM_FORM_HALF)
 	if _skipping:
 		return
-	await _hunter.fade_to(1.0, RIM_FORM)
+	await _wait(RIM_FORM)
+	if _skipping:
+		return
 	# it walks to the edge, slowly, and stops, looking down at him
 	rim.y = height(rim.x, rim.z)
 	_hunter.walk_to(rim, RIM_STEP)
@@ -1142,8 +1141,10 @@ func _the_hunter() -> void:
 ## lightning flickers), the haze behind the rim glows with it and the light
 ## from ahead flares (every shard's shadow thrown down the bowl at him); and
 ## for that moment the hunter is stood on the rim, whole and unlit, a black
-## shape against it; the ice cracks, thunder follows. Then the dark again (RIM_FLASH_DARK) and the rim is empty: the
-## gust and the forming come after, as before.
+## shape against it; the ice cracks, thunder follows. Then the dark again
+## (RIM_FLASH_DARK), and it's still there (18 November: it used to go with
+## the light and form again in the gust), a cold light just finding it; the
+## gust and the close shot come after.
 ##
 ## _rim_pack: after "Not this one.", wide again from behind him with the
 ## whole far rim in the picture: RIM_EYES pairs of eyes to either side of
@@ -1167,6 +1168,22 @@ var rim_eyes := 0
 var rim_flashed := false
 
 
+## How much of the cold light on the hunter (RIM_LIGHT) is left on it in the
+## dark after the lightning, before the gust: enough to see it's still there.
+const RIM_STAYS := 0.45
+
+## The cold light that finds the hunter on its rim (made once).
+func _hunter_cold_light() -> void:
+	if _hunter_light != null and is_instance_valid(_hunter_light):
+		return
+	_hunter_light = OmniLight3D.new()
+	_hunter_light.light_color = Color(0.72, 0.8, 1.0)
+	_hunter_light.light_energy = 0.0
+	_hunter_light.omni_range = 4.5
+	_hunter_light.position = Vector3(0.0, 2.0, 1.6)
+	_hunter.add_child(_hunter_light)
+
+
 func _rim_flash(form: Vector3) -> void:
 	_rim_flash_on(form)
 	# struck, all but gone, struck again and held a moment (long enough for
@@ -1183,13 +1200,19 @@ func _rim_flash(form: Vector3) -> void:
 		if not _skipping and not _done:
 			_snd("thunder_far", _rng.randf_range(0.9, 1.05), -2.0))
 	await _wait(RIM_FLASH_SECS)
-	# gone with the light
-	if is_instance_valid(_hunter):
-		_hunter._set_fade(0.0)
-		_hunter.visible = false
+	# (18 November, Gary: "the hooded figure appears then disappears then
+	# reappears again". It went with the light here, the rim stood empty
+	# RIM_FLASH_DARK, and then it formed again in the gust: there, gone,
+	# there. Now what the lightning showed stays where it stands: as the
+	# flash dies a cold light finds it, faintly (RIM_STAYS of RIM_LIGHT), so
+	# it's still a shape up on the rim in the dark, and the gust and the
+	# close shot that follow are of the thing already seen.)
 	_rim_light(0.0)
 	if is_instance_valid(_rim_sheet):
 		_rim_sheet.queue_free()
+	if is_instance_valid(_hunter):
+		_hunter_cold_light()
+		create_tween().tween_property(_hunter_light, "light_energy", RIM_LIGHT * RIM_STAYS, 0.5).set_trans(Tween.TRANS_SINE)
 	await _wait(RIM_FLASH_DARK)
 
 
@@ -4267,7 +4290,10 @@ func _stage_duellists(f: DuelField3D) -> void:
 ## His face is never seen: every shot is from behind him.
 const OUT_AT := 13.0
 const OUT_PACE := 0.84
-const OUT_WHITE := 2.4
+## (18 November: the white clears in 1.9 s; it took 2.4, after half a second
+## held: with whatever the device spent making the walk out's things, that
+## was the "while to load" before the walk could be seen.)
+const OUT_WHITE := 1.9
 const OUT_HINT_AFTER := 2.6
 const OUT_WATCH := 3.0
 const OUT_GONE := 1.9
@@ -4303,8 +4329,67 @@ var _track_pts := PackedVector3Array()
 var _seal: SealMark.Held
 
 
+## What the walk out shows for the first time, made and drawn once under
+## the white and put away (18 November, Gary: "When you walk out of the
+## crater ... takes a while to load"). The small hand was made the moment it
+## was first wanted, a few steps over the crater's lip: its model read off
+## the disk there, its skin's and its sleeve's shaders compiled there, its
+## card's light with them, and the title's painting read as the title came
+## up: each a stop in the walk or a wait on black. Now, while the white
+## still covers everything (WARM_OUT_FRAMES frames of it, before it starts
+## to clear), the hand and a card of its kind stand small in front of the
+## walk's camera, the card once as one of the night's and once turning
+## white, with the light the mark gives; and the title's painting is asked
+## for in the background. `warm_out` false leaves it out (the hitch test's
+## before); `warmed_out`: that it was done (the tests').
+var warm_out := true
+var warmed_out := false
+const WARM_OUT_FRAMES := 5
+
+func _warm_out() -> void:
+	if not warm_out or not is_inside_tree() or _set == null or not is_instance_valid(_bram):
+		return
+	var f := _heading()
+	var pit := Node3D.new()
+	pit.name = "WarmOut"
+	# (ahead of him, where the walk's camera looks from behind him)
+	pit.position = _bram.position + f * 1.8 + Vector3(0, 1.2, 0)
+	pit.scale = Vector3.ONE * 0.05
+	_set.add_child(pit)
+	if _tiny == null and _bram is Figure3D:
+		_tiny = _make_tiny_hand()
+		_set.add_child(_tiny)
+	if _tiny != null and is_instance_valid(_tiny):
+		_tiny.visible = true
+		_tiny.global_transform = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * 0.2), pit.position + Vector3(0.0, 0.05, 0.0))
+	var card := _make_held_card()
+	pit.add_child(card)
+	var face := card.get_node_or_null("Card") as MeshInstance3D
+	var halo := _mark_halo(pit.position)
+	halo.scale = Vector3.ONE * 0.02
+	((halo.mesh as QuadMesh).material as StandardMaterial3D).albedo_color = Color(0.2, 0.22, 0.3)
+	for art: String in [TitleScreen.KEY_ART, TitleScreen.CLOUDS]:
+		var path := TitleScreen.art_path(art)
+		if path != "" and not ResourceLoader.has_cached(path):
+			ResourceLoader.load_threaded_request(path)
+	for k in WARM_OUT_FRAMES:
+		if face != null:
+			face.set_instance_shader_parameter("white_k", float(k) / float(WARM_OUT_FRAMES - 1))
+			face.set_instance_shader_parameter("heat", 1.0 + 0.1 * k)
+		await get_tree().process_frame
+		if not is_inside_tree():
+			return
+	if _tiny != null and is_instance_valid(_tiny):
+		_tiny.visible = false
+	if is_instance_valid(halo):
+		halo.queue_free()
+	if is_instance_valid(pit):
+		pit.queue_free()
+	warmed_out = true
+
+
 func _walk_out() -> void:
-	await _wait(0.5)   # (the white, held)
+	await _wait(0.3)   # (the white, held)
 	if _skipping:
 		return
 	# under the white: the duel's screen away, he and the hunter back in the
@@ -4375,6 +4460,11 @@ func _walk_out() -> void:
 	_wind_to(-27.0, 1.5)
 	if _wind != null and not _wind.playing:
 		_wind.play()
+	# (what the walk out shows for the first time, made now under the white)
+	await _warm_out()
+	if _skipping:
+		_out = false
+		return
 	var wt := create_tween()
 	wt.tween_property(_white, "modulate:a", 0.0, OUT_WHITE).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# the walk, his
@@ -4652,7 +4742,9 @@ func _auto_step(delta: float) -> void:
 	_vel = _vel.move_toward(_auto * WALK_SPEED * OUT_PACE, WALK_ACCEL * delta)
 	var speed := _vel.length()
 	if speed > 0.02:
-		_flat += Vector3(_vel.x, 0.0, _vel.z) * delta
+		# (round the ice, walking on by himself too)
+		var nf := _off_ice(_flat, _flat + Vector3(_vel.x, 0.0, _vel.z) * delta)
+		_flat = Vector3(nf.x, 0.0, nf.z)
 		_bram.position = Vector3(_flat.x, height(_flat.x, _flat.z), _flat.z)
 		if _bram is PaperDoll and speed > 0.05:
 			(_bram as PaperDoll).face(_vel.normalized(), _cam)
@@ -4845,48 +4937,10 @@ const TUCK_OVER_BACK := 0.6
 var tucking := false
 var _tuck_look := 0.0
 
-func _tuck_over() -> void:
-	if not (_bram is Figure3D) or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
-		return
-	var fig := _bram as Figure3D
-	await _wait(TUCK_OVER_AFTER)
-	if _skipping or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
-		return
-	var own := func(v: Vector3) -> Vector3:
-		return fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw) * v
-	var t := Node3D.new()
-	_baby.add_child(t)
-	var inv := _baby.basis.orthonormalized().inverse()
-	# (in from up and out to his right, past the bundle's end, then down onto
-	# it, and back out the same way: straight from his side, whatever his
-	# arm's swing, it went through the bundle's end)
-	t.position = inv * (TUCK_OVER_AT + TUCK_OVER_WIDE)
-	tucking = true
-	# (its elbow up and out to his right, so the forearm comes down over the
-	# bundle onto it, not across through the top of it)
-	fig.elbow("right", TUCK_OVER_ELBOW * fig.stature(), TUCK_OVER_IN)
-	fig.reach(_tuck_hand, t, TUCK_OVER_IN * 0.55)
-	fig.palm("right", (own.call(Vector3(0.0, -1.0, 0.1)) as Vector3).normalized(), TUCK_OVER_IN, 0.3, false, (own.call(Vector3(0.75, -0.1, 0.65)) as Vector3).normalized())
-	await _wait(TUCK_OVER_IN * 0.5)
-	create_tween().tween_property(t, "position", inv * TUCK_OVER_AT, TUCK_OVER_IN * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await _wait(TUCK_OVER_IN * 0.5)
-	# (drawing it over)
-	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_DRAW), TUCK_OVER_HOLD).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await _wait(TUCK_OVER_HOLD)
-	# (up off it and out past its end again)
-	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_WIDE), TUCK_OVER_BACK * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await _wait(TUCK_OVER_BACK * 0.5)
-	if is_instance_valid(_tuck_hand):
-		fig.reach(_tuck_hand, null, TUCK_OVER_BACK)
-	fig.palm("right", Vector3.ZERO, TUCK_OVER_BACK)
-	fig.elbow("right", Vector3.INF, TUCK_OVER_BACK)
-	await _wait(TUCK_OVER_BACK * 0.5)
-	_hand_look = false
-	fig.eyes_on(null)
-	await _wait(TUCK_OVER_BACK * 0.5)
-	tucking = false
-	if is_instance_valid(t):
-		t.queue_free()
+## (18 November: his hand now takes the card from the small fist first and
+## brings it down to this place with it, _take_card; drawing the blanket
+## over is the end of that, in the same places and times as these.)
+
 ## (15 November, evening) its turning white: how long after the take it
 ## begins, how long the white takes to climb it, how long it takes to go out
 ## of it as the hand goes down; and that it did (the tests read it).
@@ -4920,6 +4974,11 @@ func _small_hand() -> void:
 		_set.add_child(_tiny)
 	_tiny_rise = 0.0
 	_tiny_curl = 0.0
+	card_taken = false
+	card_tucked = false
+	_take_k = -1.0
+	_take_in = 0.0
+	_tiny_give = 0.0
 	_grasp_ph = 0.0   # (open as it starts: its first closing a moment after it's up)
 	_tuck_look = 0.0
 	_grasp_t = -1.0
@@ -4971,33 +5030,235 @@ func _small_hand() -> void:
 		out_line_said = true
 		_say_passing(COME_ON)
 	await _wait(HAND_HOLD - HAND_LINE_AFTER)
-	# back down into his coat with it, the white going out of it as it goes:
-	# an ordinary card again (the white was a moment's)
-	create_tween().tween_property(self, "_mote_white", 0.0, HAND_WHITE_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	create_tween().tween_property(self, "_tiny_rise", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	# (16 November, Gary's yes) and Bram's right hand comes over and draws the
-	# blanket up over the place it went in, the camera looking down to it and
-	# staying over his shoulder till it's done
-	_tuck_over()
-	create_tween().tween_property(self, "_tuck_look", 1.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	var hk := create_tween()
-	hk.tween_interval(TUCK_OVER_AFTER + TUCK_OVER_IN + TUCK_OVER_HOLD * 0.7)
-	hk.tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	await _wait(1.05)
-	if is_instance_valid(_mote):
-		_mote.queue_free()
-	_mote = null
-	if is_instance_valid(_tiny):
-		_tiny.visible = false
-	# (his eyes stay on the blanket while he draws it over: _tuck_over lets
-	# them go)
-	if not tucking:
+	# (18 November, Gary: "Once baby takes card and Bram goes to take it it
+	# just dissapears rather then Bram taking it". The small hand used to take
+	# the card back down into the blanket while his right hand came over to
+	# draw the blanket up: his hand was seen going for the card, and the card
+	# was simply gone from under it.) Now he takes it: _take_card.
+	if _bram is Figure3D and is_instance_valid(_baby) and is_instance_valid(_tuck_hand) and is_instance_valid(_mote):
+		await _take_card()
+	else:
+		# (no arm to take it with, the tests' drawn stand-in: the small hand
+		# takes it back down, as before)
+		create_tween().tween_property(self, "_mote_white", 0.0, HAND_WHITE_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		create_tween().tween_property(self, "_tiny_rise", 0.0, 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		await _wait(1.05)
+		if is_instance_valid(_mote):
+			_mote.queue_free()
+		_mote = null
+		if is_instance_valid(_tiny):
+			_tiny.visible = false
 		_hand_look = false
 		if _bram is Figure3D:
 			(_bram as Figure3D).eyes_on(null)
 	await _wait(0.5)
 	_hand_k = 0.0 if _skipping else _hand_k
 	_hand_on = false
+
+
+## Bram takes the card (18 November, Gary: "it just dissapears rather then
+## Bram taking it"). The small hand brings the card in and down a little
+## towards him as his hand comes (TINY_GIVE: held up by his left shoulder it
+## was at the height of his mouth, and his arm crossed his face to get to
+## it). His right hand comes across his chest to it and takes it by its near
+## edge, the one towards his right: his fingers pointing across past it on
+## its far face, his palm to himself, his thumb on its near face (TAKE_UP
+## seconds; TAKE_AT: where the middle of his palm comes, from the card's
+## middle in his own frame). It rests on it a moment (TAKE_ON), the white
+## going out of the card; then the small fingers open and it's his
+## (`card_taken`): from here the card goes where his hand goes, held as he
+## took it (_take_rel, read as his hand is drawn: _on_take).
+## The small hand goes back down into the blanket. He brings the card down
+## onto the top of the bundle, where the small hand went in, turning it flat
+## under his palm as it comes (TAKE_DOWN), slides it in under the blanket's
+## edge (it goes into the wool under his hand, TAKE_IN) and draws the
+## blanket over it and the small hand both (TUCK_OVER_DRAW, as before); then
+## his hand goes back to his side. The camera stays over his shoulder and
+## looks down with it (_tuck_look), and his eyes are on it till it's done.
+const TAKE_UP := 0.85
+## (how much of TAKE_UP is the first part of its way: out past the bundle's
+## end and up, TUCK_OVER_WIDE, before it comes across to the card; straight
+## up from his side his hand went through the end of the bundle in his arm)
+const TAKE_ROUND := 0.42
+const TAKE_ON := 0.3
+const TAKE_DOWN := 0.85
+const TAKE_IN := 0.5
+## Where the middle of his palm comes to take it, from the card's middle
+## (his own frame: x his left, y up, z ahead: to his right of it, his fingers
+## reaching on across its far face), which way his palm faces and his fingers
+## point as he does, and his elbow's hint.
+const TAKE_AT := Vector3(-0.08, 0.045, 0.023)
+const TAKE_PALM := Vector3(0.0, -0.12, -1.0)
+const TAKE_FINGERS := Vector3(1.0, -0.04, 0.16)
+const TAKE_ELBOW := Vector3(-0.44, 1.18, 0.2)
+## How far the small hand brings the card in towards him and down as his
+## hand comes for it (his own frame, m).
+const TINY_GIVE := Vector3(-0.07, -0.105, 0.03)
+var _tiny_give := 0.0
+## The card under his palm on the bundle (the palm's own frame: its y the way
+## the palm faces, its z the way the fingers point): flat against it.
+const TAKE_FLAT := Vector3(0.0, 0.012, 0.01)
+var card_taken := false
+var card_tucked := false
+var _take_grab := false
+var _take_k := -1.0          # under 0: the small hand's; 0..1: his, turned flat under his palm
+var _take_in := 0.0          # 0..1: slid in under the blanket
+var _take_rel := Transform3D.IDENTITY
+var _take_mark: Node3D
+var _take_follow := false
+var _take_u := 0.0           # 0: his hand's mark out past the bundle's end; 1: by the card
+## Where the middle of his palm was from the card's as he took it, and which
+## way his palm faced and his fingers pointed (his own frame: the tests').
+var take_palm_at := Vector3.INF
+var take_palm_way := Vector3.ZERO
+var take_palm_fingers := Vector3.ZERO
+
+func _take_card() -> void:
+	var fig := _bram as Figure3D
+	var own := func(v: Vector3) -> Vector3:
+		return fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw) * v
+	var t := Node3D.new()
+	t.name = "TakeCard"
+	_baby.add_child(t)
+	_take_mark = t
+	_take_follow = true
+	_take_k = -1.0
+	_take_in = 0.0
+	_take_grab = false
+	_take_u = 0.0
+	tucking = true
+	_take_step()
+	if fig._skel != null and not fig._skel.skeleton_updated.is_connected(_on_take):
+		fig._skel.skeleton_updated.connect(_on_take)
+	# (the small hand brings it in towards him as his comes)
+	create_tween().tween_property(self, "_tiny_give", 1.0, TAKE_UP * 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# up to it: out past the bundle's end and up first, then across to the card
+	fig.elbow("right", TAKE_ELBOW * fig.stature(), TAKE_UP)
+	fig.reach(_tuck_hand, t, TAKE_UP * TAKE_ROUND)
+	fig.palm("right", (own.call(TAKE_PALM) as Vector3).normalized(), TAKE_UP, 0.3, false, (own.call(TAKE_FINGERS) as Vector3).normalized())
+	await _wait(TAKE_UP * TAKE_ROUND * 0.8)
+	create_tween().tween_property(self, "_take_u", 1.0, TAKE_UP * (1.0 - TAKE_ROUND * 0.8)).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TAKE_UP * (1.0 - TAKE_ROUND * 0.8))
+	# on it: the white goes out of it under his fingers
+	create_tween().tween_property(self, "_mote_white", 0.0, HAND_WHITE_OUT).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TAKE_ON)
+	if _skipping or not is_instance_valid(_baby) or not is_instance_valid(t):
+		_take_done(fig, t)
+		return
+	# and it's his: the small fingers open, and the small hand goes back down
+	_take_grab = true
+	card_taken = true
+	create_tween().tween_property(self, "_tiny_curl", 0.0, 0.3).set_trans(Tween.TRANS_SINE)
+	create_tween().tween_property(self, "_mote_heat", 0.7, 0.6).set_trans(Tween.TRANS_SINE)
+	await _wait(0.2)
+	_take_follow = false
+	create_tween().tween_property(self, "_tiny_rise", 0.0, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# down onto the top of the bundle with it, turning it flat under his palm
+	var inv := _baby.basis.orthonormalized().inverse()
+	var up_at := t.position
+	# (a little over its place on the bundle as it comes down with the card:
+	# his forearm lies along the top of the wool here, and pressed 2.6 cm in)
+	var on_at := inv * (TUCK_OVER_AT + Vector3(0.0, 0.015, 0.0))
+	create_tween().tween_property(self, "_tuck_look", 1.0, TAKE_DOWN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	create_tween().tween_property(self, "_take_k", 1.0, TAKE_DOWN).from(0.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	var dn := create_tween()
+	dn.tween_method(func(u: float) -> void:
+		if is_instance_valid(t):
+			# (out towards him a little on the way, not straight through the small hand)
+			t.position = up_at.lerp(on_at, u) + inv * Vector3(-0.03, 0.035, 0.0) * sin(u * PI), 0.0, 1.0, TAKE_DOWN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	fig.palm("right", (own.call(Vector3(0.0, -1.0, 0.1)) as Vector3).normalized(), TAKE_DOWN, 0.3, false, (own.call(Vector3(0.75, -0.1, 0.65)) as Vector3).normalized())
+	fig.elbow("right", TUCK_OVER_ELBOW * fig.stature(), TAKE_DOWN)
+	await _wait(TAKE_DOWN)
+	if is_instance_valid(_tiny):
+		_tiny.visible = false
+	# in under the blanket's edge with it, and the blanket drawn over
+	create_tween().tween_property(self, "_take_in", 1.0, TAKE_IN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_DRAW), TUCK_OVER_HOLD).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TAKE_IN)
+	card_tucked = true
+	if is_instance_valid(_mote):
+		_mote.queue_free()
+	_mote = null
+	await _wait(maxf(0.0, TUCK_OVER_HOLD - TAKE_IN))
+	# the picture back to the walk as his hand comes away
+	create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	# (up off it and out past the bundle's end, as it comes in to draw the
+	# blanket: straight back to his side it went through the bundle's end)
+	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_WIDE), TUCK_OVER_BACK * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _wait(TUCK_OVER_BACK * 0.5)
+	_take_done(fig, t)
+	await _wait(TUCK_OVER_BACK)
+
+
+## His hand given back to his side, the card gone into the blanket (or put
+## away, if the memory's skipped out from under it).
+func _take_done(fig: Figure3D, t: Node3D) -> void:
+	if is_instance_valid(fig):
+		if fig._skel != null and fig._skel.skeleton_updated.is_connected(_on_take):
+			fig._skel.skeleton_updated.disconnect(_on_take)
+		if is_instance_valid(_tuck_hand):
+			fig.reach(_tuck_hand, null, TUCK_OVER_BACK)
+		fig.palm("right", Vector3.ZERO, TUCK_OVER_BACK)
+		fig.elbow("right", Vector3.INF, TUCK_OVER_BACK)
+		fig.eyes_on(null)
+	_hand_look = false
+	_take_follow = false
+	_take_k = -1.0
+	_take_grab = false
+	tucking = false
+	if is_instance_valid(_mote):
+		_mote.queue_free()
+	_mote = null
+	if is_instance_valid(_tiny):
+		_tiny.visible = false
+	if is_instance_valid(t):
+		t.queue_free()
+	_take_mark = null
+
+
+## His hand's mark kept by the card while it's the small hand's (it rocks a
+## little, and he may be walking): TAKE_AT from its middle, in his own frame.
+func _take_step() -> void:
+	if not _take_follow or _take_mark == null or not is_instance_valid(_take_mark) or not is_instance_valid(_mote) or not (_bram is Figure3D):
+		return
+	var fig := _bram as Figure3D
+	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
+	var by_card := _mote.global_position + own * TAKE_AT
+	var wide := (_baby.global_position + own * (TUCK_OVER_AT + TUCK_OVER_WIDE)) if is_instance_valid(_baby) else by_card
+	_take_mark.global_position = wide.lerp(by_card, _take_u)
+
+
+## The card in his hand, as his hand is drawn this frame (inside the
+## skeleton's own pass, after his reach and his hand's turn): where it was
+## when he took it (_take_rel), turned flat under his palm as he brings it
+## down (_take_k), and slid on under the blanket's edge, down into the wool
+## and along the way he draws it (_take_in).
+func _on_take() -> void:
+	if not (_bram is Figure3D) or _mote == null or not is_instance_valid(_mote):
+		return
+	var palm := (_bram as Figure3D).palm_frame("right")
+	if _take_grab:
+		_take_grab = false
+		_take_rel = palm.affine_inverse() * _mote.global_transform
+		_take_k = 0.0
+		var fig := _bram as Figure3D
+		var own := (fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)).inverse()
+		take_palm_at = own * (palm.origin - _mote.global_position)
+		take_palm_way = own * palm.basis.y
+		take_palm_fingers = own * palm.basis.z
+	if _take_k < 0.0:
+		return
+	var k := smoothstep(0.0, 1.0, _take_k)
+	# (flat under the palm: its face the palm's, its length along the fingers)
+	var flat := Transform3D(Basis(Vector3.RIGHT, Vector3.BACK, Vector3.DOWN), TAKE_FLAT)
+	var rel := Transform3D(Basis(_take_rel.basis.orthonormalized().get_rotation_quaternion().slerp(flat.basis.get_rotation_quaternion(), k)), _take_rel.origin.lerp(flat.origin, k))
+	var xf := palm * rel
+	if _take_in > 0.0:
+		var ik := smoothstep(0.0, 1.0, _take_in)
+		xf.origin += palm.basis.y * 0.045 * ik + palm.basis.z * 0.03 * ik
+		xf.basis = xf.basis.scaled(Vector3.ONE * lerpf(1.0, 0.82, ik))
+	_mote.global_transform = xf
 
 
 ## Where the small hand is now (between its palm and the middle of the card it takes).
@@ -5020,52 +5281,66 @@ func _hand_point() -> Vector3:
 ## its palm (_mote_k), turning over as it comes, then held upright against
 ## it, and turning white in it for a moment (_mote_white).
 func _tiny_step() -> void:
-	if _tiny == null or not is_instance_valid(_tiny) or not _tiny.visible or not (_bram is Figure3D):
+	if not (_bram is Figure3D):
 		return
 	var fig := _bram as Figure3D
-	_tiny.global_transform = _tiny_xf(_tiny_rise)
-	var sk := _tiny.get_meta("skel", null) as Skeleton3D
-	if sk != null and is_instance_valid(sk):
-		_pose_tiny(sk, _tiny_curl)
-	else:
-		for i in _tiny.get_meta("fingers", []).size():
-			var pv: Node3D = _tiny.get_meta("fingers")[i]
-			var open: Vector3 = pv.get_meta("open")
-			var shut: Vector3 = pv.get_meta("shut")
-			pv.rotation = open.lerp(shut, smoothstep(0.0, 1.0, _tiny_curl))
+	if _tiny != null and is_instance_valid(_tiny) and _tiny.visible:
+		_tiny.global_transform = _tiny_xf(_tiny_rise)
+		var sk := _tiny.get_meta("skel", null) as Skeleton3D
+		if sk != null and is_instance_valid(sk):
+			_pose_tiny(sk, _tiny_curl)
+		else:
+			for i in _tiny.get_meta("fingers", []).size():
+				var pv: Node3D = _tiny.get_meta("fingers")[i]
+				var open: Vector3 = pv.get_meta("open")
+				var shut: Vector3 = pv.get_meta("shut")
+				pv.rotation = open.lerp(shut, smoothstep(0.0, 1.0, _tiny_curl))
+		if _mote != null and is_instance_valid(_mote) and _take_k < 0.0 and not card_taken:
+			_card_in_small_hand(fig)
 	if _hand_look:
 		fig.eyes_on(_hand_point())
 	if _mote != null and is_instance_valid(_mote):
-		# (held: upright against the palm)
-		var held := _tiny.global_transform * Transform3D(Basis.IDENTITY, LAST_CARD_HELD)
-		var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
-		var mk := _mote_k
-		# (from above and ahead of his shoulder: it comes down into the
-		# picture from its top, and slides down beyond the open hand)
-		var start := held.origin + Vector3(0.0, 0.8, 0.0) + own * Vector3(0.22, 0.0, 0.25)
-		var sway := Vector3(sin(_t * 1.9) * 0.06, 0.0, cos(_t * 1.3) * 0.05) * (1.0 - mk)
-		# (turning over and rocking like a leaf, less and less as it settles)
-		var loose := 1.0 - smoothstep(0.0, 1.0, mk)
-		var turn := Basis(Vector3.UP, loose * TAU * 1.5) * Basis.from_euler(Vector3(sin(_t * 2.3) * 0.5, 0.0, cos(_t * 1.7) * 0.4) * loose)
-		_mote.global_transform = Transform3D(held.basis.orthonormalized() * turn, start.lerp(held.origin, mk) + sway)
-		# (its own light, the glow about it and the light it gives: up as
-		# it's taken, _mote_heat)
-		# (a Sigil of the night's, turning white for a moment in the hand:
-		# _mote_white)
-		var wk := smoothstep(0.0, 1.0, _mote_white)
-		var col: Color = (_mote.get_meta("col", LAST_CARD_COL) as Color).lerp(LAST_CARD_COL, wk)
-		var card := _mote.get_node_or_null("Card") as MeshInstance3D
-		if card != null:
-			card.set_instance_shader_parameter("heat", _mote_heat)
-			card.set_instance_shader_parameter("white_k", _mote_white)
-		var gl := _mote.get_node_or_null("Glow") as MeshInstance3D
-		if gl != null and gl.material_override is StandardMaterial3D:
-			var gk := LAST_CARD_GLOW * _mote_heat * (1.0 + 0.4 * wk)
-			(gl.material_override as StandardMaterial3D).albedo_color = Color(col.r * gk, col.g * gk, col.b * gk, 1.0)
-		var ml := _mote.get_node_or_null("Light") as OmniLight3D
-		if ml != null:
-			ml.light_color = col
-			ml.light_energy = LAST_CARD_LIGHT * _mote_heat * (1.0 + 0.5 * wk)
+		# (his hand's mark kept on it, and its light, whoever has it)
+		_take_step()
+		_card_light()
+
+
+## The card as the small hand has it: fluttering down beyond the open hand
+## to its palm (_mote_k), turning over as it comes, then held upright
+## against it.
+func _card_in_small_hand(fig: Figure3D) -> void:
+	# (held: upright against the palm)
+	var held := _tiny.global_transform * Transform3D(Basis.IDENTITY, LAST_CARD_HELD)
+	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
+	var mk := _mote_k
+	# (from above and ahead of his shoulder: it comes down into the
+	# picture from its top, and slides down beyond the open hand)
+	var start := held.origin + Vector3(0.0, 0.8, 0.0) + own * Vector3(0.22, 0.0, 0.25)
+	var sway := Vector3(sin(_t * 1.9) * 0.06, 0.0, cos(_t * 1.3) * 0.05) * (1.0 - mk)
+	# (turning over and rocking like a leaf, less and less as it settles)
+	var loose := 1.0 - smoothstep(0.0, 1.0, mk)
+	var turn := Basis(Vector3.UP, loose * TAU * 1.5) * Basis.from_euler(Vector3(sin(_t * 2.3) * 0.5, 0.0, cos(_t * 1.7) * 0.4) * loose)
+	_mote.global_transform = Transform3D(held.basis.orthonormalized() * turn, start.lerp(held.origin, mk) + sway)
+
+
+## The card's light, wherever it is: its own, the glow about it and the
+## light it gives (up as it's taken, _mote_heat), and its white (a Sigil of
+## the night's, turning white for a moment in the hand: _mote_white).
+func _card_light() -> void:
+	var wk := smoothstep(0.0, 1.0, _mote_white)
+	var col: Color = (_mote.get_meta("col", LAST_CARD_COL) as Color).lerp(LAST_CARD_COL, wk)
+	var card := _mote.get_node_or_null("Card") as MeshInstance3D
+	if card != null:
+		card.set_instance_shader_parameter("heat", _mote_heat)
+		card.set_instance_shader_parameter("white_k", _mote_white)
+	var gl := _mote.get_node_or_null("Glow") as MeshInstance3D
+	if gl != null and gl.material_override is StandardMaterial3D:
+		var gk := LAST_CARD_GLOW * _mote_heat * (1.0 + 0.4 * wk)
+		(gl.material_override as StandardMaterial3D).albedo_color = Color(col.r * gk, col.g * gk, col.b * gk, 1.0)
+	var ml := _mote.get_node_or_null("Light") as OmniLight3D
+	if ml != null:
+		ml.light_color = col
+		ml.light_energy = LAST_CARD_LIGHT * _mote_heat * (1.0 + 0.5 * wk)
 
 
 ## Where the small hand is (its wrist, its frame: fingers +y, palm +z) risen
@@ -5078,7 +5353,7 @@ func _tiny_xf(k: float) -> Transform3D:
 	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
 	var b := own * Basis.from_euler(TINY_TURN)
 	var wob := Vector3(sin(_t * 5.3) * 0.006, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.006) * k
-	var at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob) - b.y * TINY_DOWN * (1.0 - k)
+	var at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob + TINY_GIVE * _tiny_give) - b.y * TINY_DOWN * (1.0 - k)
 	return Transform3D(b, at)
 
 
@@ -5453,9 +5728,19 @@ func _make_held_card() -> Node3D:
 ## debt came due.", the game's name comes up on the black under the mark, with
 ## his main theme (the title screen's, "menu_theme"); then the attic. Held
 ## TITLE_HOLD (a tap moves it on, once it's been up a moment).
-const TITLE_IN := 1.4
-const TITLE_HOLD := 4.4
-const TITLE_OUT := 1.1
+## (18 November, Gary: the start of the game, "Covenant War", "can we make
+## that look better". It was the whole card faded up at once in a second and
+## a half: flat gold letters and a line. Now it comes in a part at a time
+## (TitleCard): the painting up out of the black, a rule of gold drawn out
+## from the middle, the name coming together out of wide-set letters over a
+## soft light, lit gold along its tops and deeper at its feet, one sweep of
+## bright gold across it, then "Throne of Ages" under the rule. TITLE_IN is
+## how long all that takes; it was 1.4.)
+const TITLE_IN := 3.3
+const TITLE_HOLD := 3.9
+const TITLE_OUT := 1.3
+## How long the painting takes to come up behind it.
+const TITLE_PAINT := 1.8
 var title_shown := false
 
 
@@ -5491,8 +5776,8 @@ func _title_card() -> void:
 	Music.play(["menu_theme"], 1.0)
 	title_shown = true
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(card_root, "modulate:a", 1.0, TITLE_IN).set_trans(Tween.TRANS_SINE)
-	tw.tween_method(card.set_sweep, -0.6, 1.8, TITLE_IN + 1.8)
+	# (the painting first; the card brings its own parts in after it: TitleCard)
+	tw.tween_property(card_root, "modulate:a", 1.0, TITLE_PAINT).set_trans(Tween.TRANS_SINE)
 	if back != null:
 		# (a slow drift in towards the Throne while it's up)
 		tw.tween_property(back, "push", TITLE_PUSH, TITLE_IN + TITLE_HOLD + TITLE_OUT).set_trans(Tween.TRANS_SINE)
@@ -5529,47 +5814,138 @@ void fragment() {
 
 
 ## The game's name, in the middle of the screen under the held mark: the
-## title screen's own lettering and gold (TitleScreen.Logo), set centred.
+## title screen's own lettering (TitleScreen.Logo), set centred, and brought
+## in a part at a time (18 November; `t` is its own clock, from when it's
+## put up):
+##   RULE   a rule of gold drawn out from the middle to both sides, a small
+##          diamond at its heart, its ends fading;
+##   NAME   "THE" and "COVENANT WAR" over a soft warm light: the letters set
+##          wide and coming together (NAME_WIDE to NAME_SET between them, of
+##          the letters' height), rising a little as they come; lit gold
+##          along their tops and deeper at their feet (the name's own
+##          shader), and one sweep of bright gold across them (SWEEP);
+##   SUB    "THRONE OF AGES" under the rule, the same way, smaller.
+## Each: [when it starts, how long it takes] (s).
 class TitleCard:
 	extends Control
+	const RULE := [0.6, 1.1]
+	const NAME := [1.0, 1.7]
+	const SWEEP := [1.9, 2.2]
+	const SUB := [2.3, 1.0]
+	const NAME_WIDE := 0.34
+	const NAME_SET := 0.07
+	var t := 0.0
+	var _name: Control
 	var _mat: ShaderMaterial
+	var _wide: FontVariation
+	var _wide_small: FontVariation
 
 	func _init() -> void:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		# (the one sweep of bright gold across it as it comes in, as the title screen's)
+		# (fonts whose letters can be set apart)
+		_wide = FontVariation.new()
+		_wide.base_font = CardFace.font("display_bold")
+		_wide_small = FontVariation.new()
+		_wide_small.base_font = CardFace.font("display")
+		# the name's own gold: lighter along the letters' tops, deeper at their
+		# feet, and the one sweep of bright gold across it as it comes in
 		var sh := Shader.new()
 		sh.code = """shader_type canvas_item;
 uniform float sweep = -5.0;
+uniform vec2 band = vec2(0.5, 0.62);
 void fragment() {
+	float g = clamp((SCREEN_UV.y - band.x) / max(band.y - band.x, 0.001), 0.0, 1.0);
+	COLOR.rgb *= mix(vec3(1.1, 1.08, 1.0), vec3(0.74, 0.56, 0.36), smoothstep(0.15, 1.0, g));
 	float d = (SCREEN_UV.x * 1.4 + SCREEN_UV.y * 0.4) - sweep;
-	float g = smoothstep(0.18, 0.0, abs(d));
-	COLOR.rgb += COLOR.a * g * vec3(0.9, 0.75, 0.4);
+	float s = smoothstep(0.18, 0.0, abs(d));
+	COLOR.rgb += COLOR.a * s * vec3(0.9, 0.75, 0.4);
 }"""
 		_mat = ShaderMaterial.new()
 		_mat.shader = sh
-		material = _mat
+		_name = Control.new()
+		_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_name.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_name.material = _mat
+		_name.draw.connect(_draw_name)
+		add_child(_name)
 
+	## (kept for whoever sets the sweep by hand: the tests' stills)
 	func set_sweep(k: float) -> void:
 		_mat.set_shader_parameter("sweep", k)
+
+	func _process(delta: float) -> void:
+		t += delta
+		_mat.set_shader_parameter("sweep", lerpf(-0.6, 1.8, clampf((t - float(SWEEP[0])) / float(SWEEP[1]), 0.0, 1.0)))
+		queue_redraw()
+		_name.queue_redraw()
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
 			queue_redraw()
 
+	## How far in a part is, 0..1, eased.
+	func _in(part: Array) -> float:
+		return smoothstep(0.0, 1.0, clampf((t - float(part[0])) / float(part[1]), 0.0, 1.0))
+
+	## (sized by the screen's height, and narrowed to fit a tall phone held upright)
+	func _k() -> float:
+		return minf(size.y / 1080.0, size.x / 1500.0)
+
 	func _draw() -> void:
 		var gold := UITheme.GOLD
 		var wd := size.x
-		var ht := size.y
-		# (sized by the screen's height, and narrowed to fit a tall phone held upright)
-		var k := minf(ht / 1080.0, wd / 1500.0)
-		var big := CardFace.font("display_bold")
-		var small := CardFace.font("display")
-		var y := ht * 0.6
-		CardFace.text(self, small, Vector2(0, y - 92.0 * k), "THE", int(40 * k), Color(gold, 0.9), HORIZONTAL_ALIGNMENT_CENTER, wd, int(8 * k))
-		CardFace.text(self, big, Vector2(0, y + 14.0 * k), "COVENANT  WAR", int(112 * k), gold, HORIZONTAL_ALIGNMENT_CENTER, wd, int(14 * k), Color(0.05, 0.03, 0.01, 0.9))
+		var k := _k()
+		var y := size.y * 0.6
+		var nk := _in(NAME)
+		# the soft light the name stands in
+		if nk > 0.0:
+			var glow := Vector2(1500.0, 430.0) * k
+			draw_texture_rect(SealMark._soft(), Rect2(Vector2(wd * 0.5, y - 24.0 * k) - glow * 0.5, glow), false, Color(1.0, 0.72, 0.34, 0.2 * nk))
+			var core := Vector2(900.0, 210.0) * k
+			draw_texture_rect(SealMark._soft(), Rect2(Vector2(wd * 0.5, y - 24.0 * k) - core * 0.5, core), false, Color(1.0, 0.85, 0.55, 0.12 * nk))
+		# the rule, drawn out from the middle, its ends fading
+		var rk := _in(RULE)
 		var ly := y + 52.0 * k
-		draw_line(Vector2(wd * 0.5 - 300.0 * k, ly), Vector2(wd * 0.5 + 300.0 * k, ly), Color(gold, 0.6), maxf(1.0, 2.0 * k))
-		CardFace.text(self, small, Vector2(0, ly + 62.0 * k), "THRONE  OF  AGES", int(44 * k), UITheme.TEXT, HORIZONTAL_ALIGNMENT_CENTER, wd, int(8 * k))
+		if rk > 0.0:
+			var half := 330.0 * k * rk
+			var mid := Vector2(wd * 0.5, ly)
+			var wdt := maxf(1.0, 2.0 * k)
+			for sgn: float in [-1.0, 1.0]:
+				draw_polyline_colors(PackedVector2Array([mid + Vector2(sgn * 14.0 * k, 0), mid + Vector2(sgn * half * 0.6, 0), mid + Vector2(sgn * half, 0)]),
+					PackedColorArray([Color(gold, 0.75 * rk), Color(gold, 0.6 * rk), Color(gold, 0.0)]), wdt, true)
+			var dm := 7.0 * k
+			draw_colored_polygon(PackedVector2Array([mid + Vector2(0, -dm), mid + Vector2(dm, 0), mid + Vector2(0, dm), mid + Vector2(-dm, 0)]), Color(gold, 0.9 * rk))
+		# "THE", over the name
+		if nk > 0.0:
+			var sz := int(40 * k)
+			var sp := int(lerpf(NAME_WIDE, NAME_SET, nk) * 2.4 * sz)
+			_wide_small.spacing_glyph = sp
+			CardFace.text(self, _wide_small, Vector2(sp * 0.5, y - 92.0 * k + (1.0 - nk) * 10.0 * k), "THE", sz, Color(gold, 0.9 * nk), HORIZONTAL_ALIGNMENT_CENTER, wd, int(8 * k), Color(0, 0, 0, 0.85 * nk))
+		# "THRONE OF AGES", under the rule
+		var sk := _in(SUB)
+		if sk > 0.0:
+			var sz2 := int(44 * k)
+			var sp2 := int(lerpf(0.3, 0.1, sk) * sz2)
+			_wide_small.spacing_glyph = sp2
+			CardFace.text(self, _wide_small, Vector2(sp2 * 0.5, ly + 62.0 * k), "THRONE  OF  AGES", sz2, Color(UITheme.TEXT, sk), HORIZONTAL_ALIGNMENT_CENTER, wd, int(8 * k), Color(0, 0, 0, 0.85 * sk))
+
+	func _draw_name() -> void:
+		var nk := _in(NAME)
+		if nk <= 0.0:
+			return
+		var k := _k()
+		var wd := size.x
+		var y := size.y * 0.6
+		var sz := int(112 * k)
+		var sp := int(lerpf(NAME_WIDE, NAME_SET, nk) * sz)
+		_wide.spacing_glyph = sp
+		var base := y + 14.0 * k + (1.0 - nk) * 16.0 * k
+		# (where the letters' tops and feet are down the screen, for their gold)
+		var vh := maxf(1.0, get_viewport_rect().size.y)
+		var top := (global_position.y + base - _wide.get_ascent(sz) * 0.8) / vh
+		_mat.set_shader_parameter("band", Vector2(top, (global_position.y + base) / vh))
+		# (set between every letter, the last one's is taken off the left so the name stays in the middle)
+		CardFace.text(_name, _wide, Vector2(sp * 0.5, base), "COVENANT  WAR", sz, Color(UITheme.GOLD, nk), HORIZONTAL_ALIGNMENT_CENTER, wd, int(14 * k), Color(0.05, 0.03, 0.01, 0.9 * nk))
 
 
 # --- 6. the end ---------------------------------------------------------------------
@@ -5949,7 +6325,8 @@ func _build_spires() -> void:
 		var hgt := r.randf_range(9.0, 22.0) if big else r.randf_range(1.4, 6.0)
 		var rad := hgt * r.randf_range(0.07, 0.11)
 		var mi := MeshInstance3D.new()
-		mi.mesh = _crystal_mesh(r, hgt, rad, r.randi_range(2, 4) if big else r.randi_range(1, 3))
+		var parts: Array = []
+		mi.mesh = _crystal_mesh(r, hgt, rad, r.randi_range(2, 4) if big else r.randi_range(1, 3), parts)
 		mi.material_override = ice
 		mi.set_instance_shader_parameter("seed", r.randf() * 10.0)
 		mi.set_instance_shader_parameter("glow", r.randf_range(0.7, 1.15))
@@ -5960,13 +6337,15 @@ func _build_spires() -> void:
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 		_set.add_child(mi)
 		_spires.append([p.x, p.z, rad * 1.5 + 0.45])
+		_ice_solid(mi.transform, parts)
 		# a few small shards about its foot
 		if not big and r.randf() < 0.5:
 			for k in 3:
 				var sp := p + Vector3(r.randf_range(-1.6, 1.6), 0, r.randf_range(-1.6, 1.6))
 				var sh2 := r.randf_range(0.3, 0.95)
 				var si := MeshInstance3D.new()
-				si.mesh = _crystal_mesh(r, sh2, sh2 * 0.13, r.randi_range(0, 1))
+				var bits: Array = []
+				si.mesh = _crystal_mesh(r, sh2, sh2 * 0.13, r.randi_range(0, 1), bits)
 				si.material_override = ice
 				si.set_instance_shader_parameter("seed", r.randf() * 10.0)
 				si.set_instance_shader_parameter("glow", 0.9)
@@ -5974,6 +6353,7 @@ func _build_spires() -> void:
 				si.position = sp + Vector3(0, _low_ground(sp, sh2 * 0.4) - 0.03, 0)
 				si.rotation = Vector3(r.randf_range(-0.5, 0.5), r.randf() * TAU, r.randf_range(-0.5, 0.5))
 				_set.add_child(si)
+				_ice_solid(si.transform, bits)
 
 
 ## The lowest the snow lies within `r` of `p` (a crystal's foot is set to
@@ -6028,10 +6408,15 @@ static func ice_sky(k: float) -> void:
 ## at its foot, 1 at the point); UV2.y how wide the face is there (1 on the
 ## prism, narrowing to 0 at the point: the shader's distance to a facet's
 ## edge), UV2.x the crystal's own random.
-static func _crystal_mesh(r: RandomNumberGenerator, hgt: float, rad: float, extra: int) -> ArrayMesh:
+## `parts` (an Array, if given) is told each crystal of it: [where it stands
+## in the cluster's own frame, how tall, how thick], for what can't be walked
+## through (_ice_solid).
+static func _crystal_mesh(r: RandomNumberGenerator, hgt: float, rad: float, extra: int, parts = null) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_crystal(st, r, Transform3D.IDENTITY, hgt, rad)
+	if parts != null:
+		(parts as Array).append([Transform3D.IDENTITY, hgt, rad])
 	for k in extra:
 		var a := r.randf() * TAU
 		var d := Vector3(cos(a), 0.0, sin(a))
@@ -6039,8 +6424,122 @@ static func _crystal_mesh(r: RandomNumberGenerator, hgt: float, rad: float, extr
 		var b := Basis(Vector3.UP.cross(d).normalized(), lean)
 		var h2 := hgt * r.randf_range(0.28, 0.6)
 		var o := d * rad * r.randf_range(0.5, 0.95) - Vector3(0, h2 * 0.15, 0)
-		_crystal(st, r, Transform3D(b, o), h2, rad * r.randf_range(0.4, 0.7))
+		var rad2 := rad * r.randf_range(0.4, 0.7)
+		_crystal(st, r, Transform3D(b, o), h2, rad2)
+		if parts != null:
+			(parts as Array).append([Transform3D(b, o), h2, rad2])
 	return st.commit()
+
+
+## The ice he can't walk through (18 November, Gary: "You can walk through the
+## icicles at the beginning with Bram"). Until then only the middle crystal
+## of each spire stopped him, as a ring round its foot (_spires): the smaller
+## crystals leaning out of a spire's foot (as far as three metres out from a
+## tall one), the knee-high shards about it and the crater's own had nothing
+## to them, and he walked through them. Now every crystal of every cluster
+## is solid where it stands, as it leans: on the plan, the line of it from
+## its foot up to as high as he is (ICE_HEAD: higher than that he walks
+## under it), as thick as it is and half his own width (ICE_BODY).
+## Each: [ax, az, bx, bz, radius, middle x, middle z, reach].
+const ICE_BODY := 0.3
+const ICE_HEAD := 1.95
+var _ice: Array = []
+
+
+## A cluster's crystals (`parts`, _crystal_mesh's) made solid, where the
+## cluster stands (`xf`): each one's own line, from under the snow to as high
+## as he is, laid on the plan. A leaning one's foot is longer along its lean
+## than across it (a round bar cut level is an oval): the line is run on that
+## much at both ends. As thick as its widest corner (1.15 of its radius:
+## _crystal) and half his width.
+func _ice_solid(xf: Transform3D, parts: Array) -> void:
+	for part: Array in parts:
+		var t: Transform3D = xf * (part[0] as Transform3D)
+		var h: float = part[1]
+		var rad: float = part[2]
+		var p0 := t * Vector3(0.0, -0.3 * h, 0.0)
+		var p1 := t * Vector3(0.0, 0.88 * h, 0.0)
+		if p1.y < p0.y:
+			var sw := p0
+			p0 = p1
+			p1 = sw
+		var g := height(t.origin.x, t.origin.z)
+		var lo := g - 0.15
+		var hi := g + ICE_HEAD
+		if p1.y < lo or p0.y > hi:
+			continue
+		var rise := p1.y - p0.y
+		var a3 := p0 if rise < 0.0001 else p0.lerp(p1, clampf((lo - p0.y) / rise, 0.0, 1.0))
+		var b3 := p1 if rise < 0.0001 else p0.lerp(p1, clampf((hi - p0.y) / rise, 0.0, 1.0))
+		var a := Vector2(a3.x, a3.z)
+		var b := Vector2(b3.x, b3.z)
+		var up := absf((p1 - p0).normalized().y)
+		var along := b - a
+		if along.length() > 0.001 and up > 0.2:
+			var more := along.normalized() * rad * (1.0 / up - 1.0)
+			a -= more
+			b += more
+		var rr := rad * 1.15 + ICE_BODY
+		_ice.append([a.x, a.y, b.x, b.y, rr, (a.x + b.x) * 0.5, (a.y + b.y) * 0.5, a.distance_to(b) * 0.5 + rr])
+
+
+## A step from `from` to `to` (on the plan), kept out of the ice: stopped at
+## a crystal's side, and so sliding round it. Stood inside one already (a
+## scene put him there: the bowl's own shards lie where he kneels), he's
+## never thrown out of it, only kept from going further in. Where two
+## crystals stand together, being put out of one can put him into the other:
+## it's done twice over, and if he'd still end further into any of them than
+## he was, the step isn't taken (he stops, as at a wall; he was squeezed on
+## through the corners between them a little a frame).
+func _off_ice(from: Vector3, to: Vector3) -> Vector3:
+	var p := _ice_pass(from, _ice_pass(from, to))
+	for c: Array in _ice:
+		var reach: float = c[7]
+		if absf(p.x - float(c[5])) > reach or absf(p.z - float(c[6])) > reach:
+			continue
+		var d := _ice_off(c, p)
+		if d < float(c[4]) - 0.002 and d < _ice_off(c, from) - 0.002:
+			return from
+	return p
+
+
+## How far a place is from a crystal's line on the plan.
+func _ice_off(c: Array, at: Vector3) -> float:
+	var a := Vector2(c[0], c[1])
+	var ab := Vector2(c[2], c[3]) - a
+	var q := Vector2(at.x, at.z)
+	return q.distance_to(a + ab * clampf((q - a).dot(ab) / maxf(ab.length_squared(), 0.000001), 0.0, 1.0))
+
+
+## `to` put out of each crystal in turn (no further out of one than `from` was).
+func _ice_pass(from: Vector3, to: Vector3) -> Vector3:
+	for c: Array in _ice:
+		var reach: float = c[7]
+		if absf(to.x - float(c[5])) > reach or absf(to.z - float(c[6])) > reach:
+			continue
+		var a := Vector2(c[0], c[1])
+		var ab := Vector2(c[2], c[3]) - a
+		var l2 := maxf(ab.length_squared(), 0.000001)
+		var q := Vector2(to.x, to.z)
+		var near := a + ab * clampf((q - a).dot(ab) / l2, 0.0, 1.0)
+		var d := q - near
+		var keep: float = c[4]
+		if d.length() >= keep:
+			continue
+		var f := Vector2(from.x, from.z)
+		var was := f.distance_to(a + ab * clampf((f - a).dot(ab) / l2, 0.0, 1.0))
+		if was < keep:
+			keep = was
+			if d.length() >= keep:
+				continue
+		if d.length() < 0.001:
+			d = f - near
+		if d.length() < 0.001:
+			continue
+		var out := near + d.normalized() * keep
+		to.x = out.x
+		to.z = out.y
+	return to
 
 
 static func _crystal(st: SurfaceTool, r: RandomNumberGenerator, xf: Transform3D, hgt: float, rad: float) -> void:
@@ -6209,7 +6708,8 @@ func _build_crater_shards() -> void:
 		var p := CRATER + Vector3(cos(ang), 0, sin(ang)) * d
 		var hgt := r.randf_range(0.25, 0.8) if d < CRATER_R - 1.0 else r.randf_range(0.5, 1.5)
 		var mi := MeshInstance3D.new()
-		mi.mesh = _crystal_mesh(r, hgt, hgt * r.randf_range(0.1, 0.15), r.randi_range(0, 2))
+		var parts: Array = []
+		mi.mesh = _crystal_mesh(r, hgt, hgt * r.randf_range(0.1, 0.15), r.randi_range(0, 2), parts)
 		mi.material_override = m
 		mi.set_instance_shader_parameter("seed", r.randf() * 10.0)
 		mi.set_instance_shader_parameter("glow", lerpf(1.6, 0.8, d / (CRATER_R + 1.4)))
@@ -6221,6 +6721,7 @@ func _build_crater_shards() -> void:
 		var side := out.cross(Vector3.UP).normalized()
 		mi.basis = Basis(side, up, side.cross(up)) * Basis(Vector3.UP, r.randf() * TAU)
 		_set.add_child(mi)
+		_ice_solid(mi.transform, parts)
 
 
 ## The child: a bundle of grey wool, a small face, and over the heart the
@@ -7820,14 +8321,9 @@ func _roam_step(delta: float) -> void:
 	if speed > 0.05:
 		_hide_hint()
 		var nf := _flat + _vel * delta
-		# round the glass
-		for sp in _spires:
-			var d := Vector2(nf.x - float(sp[0]), nf.z - float(sp[1]))
-			var rr := float(sp[2])
-			if d.length() < rr and d.length() > 0.001:
-				var out := d.normalized() * rr
-				nf.x = float(sp[0]) + out.x
-				nf.z = float(sp[1]) + out.y
+		# round the ice: every crystal of it (_off_ice; until 18 November only
+		# a ring round each spire's middle one, _spires)
+		nf = _off_ice(_flat, nf)
 		# nor up to the hunter, on the walk out
 		if _out and is_instance_valid(_hunter) and _hunter.visible:
 			var dh := Vector2(nf.x - _hunter.position.x, nf.z - _hunter.position.z)

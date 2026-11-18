@@ -2726,6 +2726,16 @@ static func _eat(w: World, e: Dictionary) -> void:
 		var corr := [Vector3.ZERO]
 		var asked := [Vector3.INF]
 		var feeding := [true]
+		# (18 November, Gary: "Can we make the players mouth move when they are
+		# eating the porridge". His mouth opens for the spoon as it comes up
+		# (from JAW_OPEN_FROM of the way), closes on it at the lips
+		# (JAW_ON_SPOON), and chews, shut and a little open and shut
+		# (JAW_CHEW, JAW_CHEW_HZ a second), while the spoon goes down for the
+		# next; after the last, a few more and a swallow. Figure3D.jaw: the
+		# hero's own skin has a jaw to move; `mouthfuls` and `jaw_most` are
+		# the tests'.)
+		var mouth := {"mode": "shut", "t": 0.0}
+		me.jaw(0.0, MOUTH.get(me._model_name, MOUTH_DEFAULT))
 		var apply := func() -> void:
 			var dir: Vector3 = (st.dir as Vector3).normalized()
 			var end: Vector3 = st.end
@@ -2781,6 +2791,14 @@ static func _eat(w: World, e: Dictionary) -> void:
 					var err: Vector3 = (asked[0] as Vector3) - me.to_own(hold.grip)
 					corr[0] = ((corr[0] as Vector3) + err * SPOON_FEEDBACK).limit_length(SPOON_CORR_MOST)
 				apply.call()
+		# (the chewing: its own, so it goes on after the spoon's put down)
+		var chew := func() -> void:
+			while is_instance_valid(me) and is_instance_valid(w) and String(mouth.mode) != "done":
+				await w.get_tree().process_frame
+				if String(mouth.mode) == "chew" and is_instance_valid(me):
+					mouth.t = float(mouth.t) + w.get_process_delta_time()
+					me.jaw(JAW_CHEW * (0.5 - 0.5 * cos(float(mouth.t) * TAU * JAW_CHEW_HZ)))
+		chew.call()
 		apply.call()
 		drive.call()
 		await Cine.wait(w, 0.8)
@@ -2816,7 +2834,12 @@ static func _eat(w: World, e: Dictionary) -> void:
 				var m: Vector3 = mouth_end(me, hold)
 				st.end = _bezier(clear, clear + Vector3(0, SPOON_ARC_UP, 0), m + SPOON_ARC_IN, m, ez)
 				st.dir = dir_bowl.slerp(dir_mouth, smoothstep(0.0, 0.7, u))
-				st.k = ez, 0.0, 1.0, SPOON_SECS[1])
+				st.k = ez
+				# (his mouth opens for it as it comes)
+				if u >= JAW_OPEN_FROM:
+					mouth.mode = "open"
+					me.jaw(smoothstep(JAW_OPEN_FROM, 0.95, u))
+					jaw_most = maxf(jaw_most, me.jaw_now()), 0.0, 1.0, SPOON_SECS[1])
 			await up.finished
 			# the lips take it: in a little, the bowl end tipping up, and out
 			var take := w.create_tween()
@@ -2825,8 +2848,17 @@ static func _eat(w: World, e: Dictionary) -> void:
 				var a := sin(u * PI)
 				st.end = m + dir_mouth * SPOON_TAKE.x * a - dir_mouth * SPOON_TAKE.y * smoothstep(0.55, 1.0, u)
 				st.dir = dir_mouth.rotated(dir_mouth.cross(Vector3.UP).normalized(), deg_to_rad(SPOON_TAKE.z) * smoothstep(0.2, 0.7, u))
-				st.k = 1.0, 0.0, 1.0, SPOON_SECS[2])
+				st.k = 1.0
+				# (and closes on the spoon)
+				me.jaw(lerpf(1.0, JAW_ON_SPOON, smoothstep(0.1, 0.5, u))), 0.0, 1.0, SPOON_SECS[2])
 			await take.finished
+			# (chewing, from shut, while the spoon goes down for the next)
+			mouthfuls += 1
+			var shut := w.create_tween()
+			shut.tween_method(func(v: float) -> void: me.jaw(v), JAW_ON_SPOON, 0.0, 0.12)
+			shut.tween_callback(func() -> void:
+				mouth.t = 0.0
+				mouth.mode = "chew")
 			# and back down the way it came, to over the bowl
 			var from_end: Vector3 = st.end
 			var from_dir: Vector3 = st.dir
@@ -2864,6 +2896,15 @@ static func _eat(w: World, e: Dictionary) -> void:
 		me.elbow("right", Vector3.INF, 0.4)
 		await Cine.wait(w, 0.4)
 		hand.queue_free()
+		# (the last of it chewed as his hand comes away, and swallowed)
+		if me.jaw_now() > 0.0 or String(mouth.mode) == "chew":
+			await Cine.wait(w, maxf(0.0, JAW_LAST_CHEWS - 0.4))
+			mouth.mode = "shut"
+			var swallow := w.create_tween()
+			swallow.tween_method(func(v: float) -> void: me.jaw(v), me.jaw_now(), 0.0, 0.15)
+			await swallow.finished
+		mouth.mode = "done"
+		me.jaw(0.0)
 	else:
 		await Cine.wait(w, 1.5)
 	Game.set_flag("p1_ate")
@@ -2917,6 +2958,19 @@ const SPOON_TAKE := Vector3(0.012, 0.03, 16.0)
 ## A mouthful's parts (s): the scoop, the way up, at the lips, the way down,
 ## the pause over the bowl.
 const SPOON_SECS := [0.5, 0.8, 0.55, 0.65, 0.18]
+## His mouth through a mouthful (18 November; Figure3D.jaw, 0 shut to 1 open):
+## it opens from this share of the spoon's way up, is this far open closed on
+## the spoon, chews this far open this many times a second, and for this
+## long after the spoon's back on the bowl's rim (s).
+const JAW_OPEN_FROM := 0.5
+const JAW_ON_SPOON := 0.22
+const JAW_CHEW := 0.5
+const JAW_CHEW_HZ := 2.3
+const JAW_LAST_CHEWS := 0.85
+## What the tests read: how many mouthfuls his lips closed on, and the
+## widest his mouth opened (0..1).
+static var mouthfuls := 0
+static var jaw_most := 0.0
 ## Where the right elbow bends towards (his own frame, from the shoulders'
 ## height): down at his side over the bowl, lifting out as the spoon comes up.
 const SPOON_ELBOW_BOWL := Vector3(-0.32, -0.42, 0.02)

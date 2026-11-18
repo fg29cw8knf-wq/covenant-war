@@ -126,9 +126,10 @@ func _process(delta: float) -> void:
 	if _m != null and is_instance_valid(_m) and _m.title_shown:
 		_title = true
 		_title_t += delta
-		if _title_t > 2.6:
+		# (18 November: the title takes WhiteSky.TITLE_IN to come in, a part at a time)
+		if _title_t > WhiteSky.TITLE_IN + 0.9:
 			_still("2_the_title")
-		if _title_t > 3.4:
+		if _title_t > WhiteSky.TITLE_IN + 1.5:
 			_m._tapped = true
 	var held := SealMark.held(get_tree())
 	if held != null:
@@ -263,6 +264,10 @@ func _finish() -> void:
 	# (16 November, Gary: "When player puts hand to neck in bed his hand goes
 	# through the bed") the blanket lifted over his arm while it's under it
 	print("mark_wake_test: the blanket lifted over his arm %s, at most %.1f cm" % [str(_tent_seen), _tent_most * 100.0])
+	if world.player_doll is Figure3D:
+		# (18 November: his arm's thickness, sleeve and all, off his own model)
+		var rr: Array = BlanketTent.radii_of(world.player_doll as Figure3D, "left")
+		print("mark_wake_test: his arm as the blanket takes it: upper arm %.1f cm, forearm %.1f cm, hand %.1f cm from the bone (it was 5.0, 4.2, 3.6)" % [float(rr[0]) * 100.0, float(rr[1]) * 100.0, float(rr[2]) * 100.0])
 	if not _tent_seen and AshfordP1.lift_blanket:
 		fails.append("the blanket wasn't lifted over his arm as his hand went to his neck")
 	if _whole_in < 0.99:

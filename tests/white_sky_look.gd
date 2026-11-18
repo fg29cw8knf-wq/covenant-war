@@ -219,6 +219,22 @@ func _run() -> void:
 			m._rim_light(0.0)
 			m._rim_bolt.queue_free()
 			m._rim_sheet.queue_free()
+			# (18 November, Gary: "the hooded figure appears then disappears
+			# then reappears again": it stays where the lightning showed it.
+			# The same wide shot once the flash has died, the cold light just
+			# finding it; then the close shot, the light up on it. "gone" hides
+			# it after the flash, as it was, for the before.)
+			if "gone" in OS.get_cmdline_user_args():
+				m._hunter.visible = false
+			else:
+				m._hunter_cold_light()
+				m._hunter_light.light_energy = WhiteSky.RIM_LIGHT * WhiteSky.RIM_STAYS
+			await _shot("flash_after_in_the_dark", 6)
+			if not ("gone" in OS.get_cmdline_user_args()):
+				m._hunter_light.light_energy = WhiteSky.RIM_LIGHT
+				_at(bottom3 - kd3 * 2.6 + rt3 * 0.6 + Vector3(0, 1.0, 0), form + Vector3(0, 1.8, 0), WhiteSky.RIM_LENS)
+				await _shot("flash_then_close", 6)
+				m._hunter_light.light_energy = 0.0
 			m._hunter.visible = false
 		if names.has("eyes"):
 			# the pack's eyes along the rim (the memory's own camera for it)
@@ -446,8 +462,18 @@ func _out_view(c: Vector3, hand_only := false) -> void:
 			await _key("hand_3c_white")
 		if want.call("hand_4_come_on_then", m.out_line_said and m._ov.passing, 0.9):
 			await _key("hand_4_come_on_then")
-		if want.call("hand_5_going_down", m.hand_caught and m._tiny_curl > 0.97 and m._tiny_rise < 0.62 and m._mote_white < 0.6):
-			await _key("hand_5_going_down")
+		# (18 November: Bram takes it from the small fist, brings it down onto
+		# the bundle and in under the blanket)
+		if want.call("hand_5_his_hand_on_it", m.tucking and not m.card_taken, WhiteSky.TAKE_UP + 0.1):
+			await _key("hand_5_his_hand_on_it")
+		if want.call("hand_6_his", m.card_taken and m._take_k > 0.15):
+			await _key("hand_6_his")
+		if want.call("hand_7_coming_down", m._take_k > 0.6):
+			await _key("hand_7_coming_down")
+		if want.call("hand_8_on_the_blanket", m._take_k > 0.99):
+			await _key("hand_8_on_the_blanket")
+		if want.call("hand_9_tucked", m.card_tucked, 0.2):
+			await _key("hand_9_tucked")
 			if hand_only:
 				break
 		if want.call("out_3_over_the_lip", m.hand_caught and m._hand_k < 0.02 and m._crater_dist() > 8.6):
@@ -491,6 +517,13 @@ func _out_view(c: Vector3, hand_only := false) -> void:
 				m._ov._next.emit()
 		if m.title_shown:
 			title_t += 0.1
-			if want.call("end_2_title", title_t > 2.8):
+			# (18 November: it comes in a part at a time, TitleCard)
+			if want.call("end_2a_title_rule", title_t > 1.2):
+				await _key("end_2a_title_rule")
+			if want.call("end_2b_title_coming", title_t > 1.9):
+				await _key("end_2b_title_coming")
+			if want.call("end_2c_title_sweep", title_t > 2.9):
+				await _key("end_2c_title_sweep")
+			if want.call("end_2_title", title_t > 4.6):
 				await _key("end_2_title")
 	print("white_sky_look: the title shown %s, closed %s" % [str(m.title_shown), str(closed[0])])

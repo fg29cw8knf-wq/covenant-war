@@ -83,6 +83,15 @@ func _process(_d: float) -> void:
 func _shot(nm: String) -> void:
 	if not _drawn:
 		return
+	# (the game all but stopped while a still is drawn: a still takes three
+	# frames, and at ten frames a second what it was of had gone by)
+	var ts := Engine.time_scale
+	Engine.time_scale = 0.001
+	await _shot_now(nm)
+	Engine.time_scale = ts
+
+
+func _shot_now(nm: String) -> void:
 	DrawHold.hold()
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -520,6 +529,13 @@ var _tuck_gap := INF
 var _grasp_to := -1.0
 var _hand_pts := 0
 var _card_near := INF
+var _take_gap := INF
+var _take_at := Vector3.INF
+var _take_palm := INF
+var _take_palm_far := 0.0
+var _take_palm_at := Vector3.ZERO
+var _take_palm_n := Vector3.ZERO
+var _take_palm_f := Vector3.ZERO
 
 func _hand_run() -> void:
 	var fig := m._bram as Figure3D
@@ -550,12 +566,33 @@ func _hand_run() -> void:
 			_grasp_to = m._t
 			if _grasp_frames == 1 or _grasp_frames == 5:
 				await _shot("hand_0_grasping_%d" % _grasp_frames)
+		# (18 November, Gary: the card "just dissapears rather then Bram taking
+		# it": his hand to the card in the small fist, the card his, brought
+		# down flat under his palm onto the bundle, and in under the blanket)
+		if m.tucking and not m.card_taken and m._take_follow:
+			_take_gap = await _right_gap()
+		if m.card_taken and _take_at == Vector3.INF and is_instance_valid(m._mote):
+			_take_at = m._mote.global_position
+			_take_palm = INF
+		if m.card_taken and is_instance_valid(m._mote):
+			# (the card against his palm as he carries it, as drawn)
+			# (both read in the same frame's pass, after the card's been put in
+			# his hand: he's walking, a tenth of a metre a frame)
+			var cbk := func() -> void:
+				if is_instance_valid(m._mote):
+					_take_palm_far = maxf(_take_palm_far, fig.palm_frame("right").origin.distance_to(m._mote.global_position))
+			fig._skel.skeleton_updated.connect(cbk, CONNECT_ONE_SHOT)
+			await get_tree().process_frame
+			await get_tree().process_frame
 		for st in [["hand_1_open", m._tiny_rise > 0.97 and m._tiny_curl < 0.05], ["hand_2_taken", m._tiny_curl > 0.97],
-				["hand_3_white", m.card_whitened], ["hand_4_going_down", m.hand_caught and m._tiny_rise < 0.6 and m._tiny_curl > 0.9]]:
+				["hand_3_white", m.card_whitened],
+				["hand_4_his_hand_on_it", m.tucking and not m.card_taken and _take_gap < 0.03 and m._mote_white < 0.9],
+				["hand_5_his", m.card_taken and m._take_k > 0.12], ["hand_6_coming_down", m._take_k > 0.55],
+				["hand_7_on_the_blanket", m._take_k > 0.99], ["hand_8_tucked", m.card_tucked]]:
 			if st[1] and not got.has(st[0]):
 				got[st[0]] = true
 				await _shot(st[0])
-				if st[0] == "hand_1_open" or st[0] == "hand_2_taken":
+				if st[0] in ["hand_1_open", "hand_2_taken", "hand_4_his_hand_on_it", "hand_5_his", "hand_6_coming_down", "hand_7_on_the_blanket"]:
 					await _hand_side(st[0])
 		# (16 November, Gary's yes) Bram's right hand drawing the blanket over
 		# where the small hand went in: the bundle against his hand, and how
@@ -603,6 +640,21 @@ func _hand_run() -> void:
 		_hand_checks, _hand_pts, _hand_worst * 100.0, _hand_worst_at, _card_worst * 1000.0, _card_worst_at, _card_near * 1000.0, str(m.tiny_grip_ok), str(m._tiny_shut)])
 	print("held_child_probe: Bram's hand over the blanket: %s, the bundle at most %.1f cm into him (his hand), his hand %.1f cm at nearest from its place; the coo asked for %d" % [
 		str(_tuck_seen), _tuck_worst * 100.0, _tuck_gap * 100.0, m.coo_played])
+	print("held_child_probe: as he took it the middle of his palm was %s from the card's middle (his own frame; its mark %s), his palm facing %s, his fingers pointing %s" % [
+		str(m.take_palm_at.snappedf(0.005)), str(WhiteSky.TAKE_AT), str(m.take_palm_way.snappedf(0.05)), str(m.take_palm_fingers.snappedf(0.05))])
+	print("held_child_probe: Bram takes the card: his hand %.1f cm from its place on the card as he took it, the card taken %s, at most %.1f cm from his palm as he carried it, in under the blanket %s" % [
+		_take_gap * 100.0, str(m.card_taken), _take_palm_far * 100.0, str(m.card_tucked)])
+	if not m.card_taken:
+		fails.append("Bram didn't take the card")
+	elif _take_gap > 0.04:
+		fails.append("Bram's hand wasn't on the card when he took it (%.1f cm off)" % (_take_gap * 100.0))
+	elif m.take_palm_at == Vector3.INF or absf(m.take_palm_at.y) > 0.03 or absf(m.take_palm_at.z) > 0.04 or m.take_palm_at.x > -0.06 or m.take_palm_at.x < -0.13:
+		# (his palm's middle beside the card's near edge, level with its middle, at its face: his fingers on it)
+		fails.append("Bram's fingers weren't on the card's edge when he took it (his palm %s from its middle)" % str(m.take_palm_at.snappedf(0.005)))
+	elif _take_palm_far > 0.16:
+		fails.append("the card left his hand as he carried it (%.1f cm)" % (_take_palm_far * 100.0))
+	if not m.card_tucked:
+		fails.append("the card didn't go in under the blanket")
 	if not _tuck_seen:
 		fails.append("Bram's hand didn't come over the blanket")
 	elif _tuck_worst > TOL:

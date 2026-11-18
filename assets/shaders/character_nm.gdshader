@@ -23,6 +23,34 @@ uniform float normal_strength = 1.0;
 uniform float sign_t = 1.0;
 uniform float sign_b = -1.0;
 
+// The jaw (18 November, Gary: "Can we make the players mouth move when they
+// are eating the porridge"). The models have no jaw bone and no face shapes:
+// one skin, a painted mouth. So the mouth is opened here: the skin below the
+// line of the lips, on the front of the face and no wider than the jaw, is
+// moved down the face and a little back (as a jaw swings on its hinge), most
+// at the lower lip and the chin, fading out back along the jaw, out at the
+// cheeks and down under the chin, so the neck and the collar stay still. The
+// upper lip doesn't move, so the lips part. jaw_open 0 (the default) is the
+// face as modelled, and costs nothing. jaw_frame takes a point of the mesh's
+// own space (as skinned) to the mouth's: its origin between the lips, x
+// across the face, y up it, z out of it (Figure3D.jaw sets them, a frame at
+// a time, from the Head bone as it's drawn).
+uniform float jaw_open = 0.0;
+uniform float jaw_drop = 0.015;
+uniform mat4 jaw_frame = mat4(1.0);
+uniform vec3 jaw_way = vec3(0.0, -1.0, 0.0);
+
+void vertex() {
+	if (jaw_open > 0.001) {
+		vec3 h = (jaw_frame * vec4(VERTEX, 1.0)).xyz;
+		float below = smoothstep(0.003, -0.009, h.y);
+		float chin = smoothstep(-0.09, -0.05, h.y);
+		float front = smoothstep(-0.08, -0.02, h.z);
+		float side = 1.0 - smoothstep(0.03, 0.06, abs(h.x));
+		VERTEX += jaw_way * (jaw_drop * jaw_open * below * chin * front * side);
+	}
+}
+
 void fragment() {
 	vec4 a = texture(albedo_tex, UV);
 	ALBEDO = a.rgb;

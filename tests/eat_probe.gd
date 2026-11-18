@@ -197,6 +197,10 @@ func _run() -> void:
 	me._skel.add_child(rec)
 	await _secs(0.5)
 	# a tap on the bowl (within reach from where they stand)
+	# (headless the game's half second goes by in milliseconds, and a tap in
+	# the first 300 ms by the clock after the bowl's offered isn't taken)
+	if DisplayServer.get_name() == "headless":
+		OS.delay_msec(350)
 	hud.tapped.emit(world.cam.unproject_position(bowl.global_position))
 	await _until(func() -> bool: return world.busy and String(Game.flag("objective_key", "")) == "", 10.0, "the eating to start")
 	if not problems.is_empty():
@@ -213,6 +217,10 @@ func _run() -> void:
 	var mouthful_t := -1.0   # (the lips' in and out at one mouthful is one)
 	var last_d := INF
 	var shot_due := 0
+	var jaw_log: Array = []
+	var jaw_shots := {}
+	AshfordP1.mouthfuls = 0
+	AshfordP1.jaw_most = 0.0
 	var hand: Node3D = null
 	var head_pitch_seen := 0.0
 	# the arm (9 November): the wrist's bend and the elbow's, and how the hand
@@ -296,6 +304,19 @@ func _run() -> void:
 		if d < best:
 			best = d
 			best_t = t
+		# (18 November) his mouth: how far open, and a still when it's widest
+		# and at the height of a chew
+		var jw := me.jaw_now()
+		jaw_log.append(jw)
+		if jw > 0.93 and not jaw_shots.has("open_%d" % mouthfuls.size()):
+			jaw_shots["open_%d" % mouthfuls.size()] = true
+			await _shot("jaw_open_%d" % mouthfuls.size(), rec.mouth, rec.tip)
+		elif AshfordP1.mouthfuls > 0 and jw > AshfordP1.JAW_CHEW * 0.9 and jw < 0.6 and not jaw_shots.has("chew_%d" % AshfordP1.mouthfuls):
+			jaw_shots["chew_%d" % AshfordP1.mouthfuls] = true
+			await _shot("jaw_chew_%d" % AshfordP1.mouthfuls, rec.mouth, rec.tip)
+		elif AshfordP1.mouthfuls > 0 and jw < 0.03 and not jaw_shots.has("shut_%d" % AshfordP1.mouthfuls):
+			jaw_shots["shut_%d" % AshfordP1.mouthfuls] = true
+			await _shot("jaw_shut_%d" % AshfordP1.mouthfuls, rec.mouth, rec.tip)
 		if shot_due <= 0:
 			await _shot("f%04d" % f, rec.mouth, rec.tip)
 			shot_due = 4
@@ -311,6 +332,24 @@ func _run() -> void:
 		problems.append("the palm was turned out past what a forearm does (%.0f to %.0f degrees)" % [roll_lo, roll_hi])
 	if not jump_at.is_empty():
 		print("  the jerks (when, the change of speed in m/s): ", ", ".join(jump_at))
+	# (18 November, Gary: "Can we make the players mouth move when they are
+	# eating the porridge") his mouth opened for each spoonful, closed on it,
+	# and chewed between
+	var chews := 0
+	var up := false
+	for v: float in jaw_log:
+		if not up and v > AshfordP1.JAW_CHEW * 0.7 and v < 0.6:
+			up = true
+		elif up and v < AshfordP1.JAW_CHEW * 0.3:
+			up = false
+			chews += 1
+	print("  his mouth: opened for %d mouthfuls (widest %.2f), about %d chews seen in %d frames%s" % [
+		AshfordP1.mouthfuls, AshfordP1.jaw_most, chews, jaw_log.size(), "" if me._jaw_mats.size() > 0 else "  (this model's skin has no jaw to move: nothing shows)"])
+	if me._jaw_mats.size() > 0:
+		if AshfordP1.mouthfuls < 3 or AshfordP1.jaw_most < 0.9:
+			problems.append("his mouth didn't open for every spoonful (%d, widest %.2f)" % [AshfordP1.mouthfuls, AshfordP1.jaw_most])
+		if chews < 3:
+			problems.append("he didn't chew (%d chews seen)" % chews)
 	if mouthfuls.is_empty():
 		problems.append("no mouthful seen (the spoon never came up and went down)")
 	if wrist_most > WRIST_MOST:
@@ -339,6 +378,12 @@ func _shot(label: String, mouth: Vector3, tip: Vector3) -> void:
 	var at := (mouth + tip) * 0.5
 	close_cam.global_position = at + right * 0.75 + ahead * 0.45 + Vector3(0, 0.12, 0)
 	close_cam.look_at(at, Vector3.UP)
+	# ("face", 18 November: close on his mouth from in front and a little to
+	# his right, to see it open, close and chew)
+	if "face" in OS.get_cmdline_user_args():
+		close_cam.global_position = mouth + ahead * 0.34 + right * 0.16 + Vector3(0, 0.02, 0)
+		close_cam.look_at(mouth + Vector3(0, -0.005, 0), Vector3.UP)
+		close_cam.fov = 26.0
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	if img != null:

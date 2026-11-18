@@ -41,7 +41,18 @@ fix something or add something in the game do a check on each thing to work
 out could it look, feel and play better or is there anything we should
 add/change to make the overall game and story better then give me those
 ideas as suggestions after each build"): suggestions, built only once he
-says yes. (2 November, Gary: "don't worry about doing the phone link, just the
+says yes. **Updated 18 November** (Gary: "i want you to update the rule
+after everytime you add or improve something in the game i want it to be
+checked for any errors/glitches models not working correctly or going
+throuh other objects - i want you to assess how could we make this look
+visually better and more real - and give suggesions how we can improve that
+part of the game"). So, after every thing added or improved: (1) check it
+for errors and glitches, the models working as they should and nothing
+passing through anything else (the play-through's stills, the body sweep,
+and a probe of its own where it has one: `held_child_probe`,
+`moth_touch_probe`, `eat_probe`, `notes_1106_shot`); (2) judge how it could
+look better and more real; (3) give him suggestions for that part of the
+game, numbered, built only once he says yes. (2 November, Gary: "don't worry about doing the phone link, just the
 Mac version and the one for the phone through Xcode". The web build isn't
 built or published any more; the Mac app and the iPhone app's Xcode project
 rebuild themselves on every push to `main`, from the `mac` and `iphone`
@@ -2825,6 +2836,132 @@ moving (the hand's rise, its fingers closing, the blanket lifting are judged
 from stills); the hand's skin on a phone's picture (compatibility drew it in
 the stills of the hand alone only).
 
+### Gary's 18 November play-through notes (the snow, the title, the attic, the inn, the green, the evening, the frame rate)
+
+Thirteen notes from playing; `docs/handover/2026-11-18-notes.md` has each as he
+wrote it, what was measured before and after, and what's his to change.
+
+- **The ice is solid** (`WhiteSky._ice`, `_ice_solid`, `_off_ice`,
+  `_ice_pass`, `ICE_BODY`, `ICE_HEAD`; `_crystal_mesh` tells its parts).
+  Only the middle crystal of each spire stopped him, as a ring round its
+  foot: the crystals leaning out of a spire's foot (up to three metres out
+  from a tall one), the knee-high shards about it and the crater's own had
+  nothing to them. Now every crystal of every cluster is solid where it
+  stands, as it leans: its own line on the plan from under the snow to as
+  high as he is (higher, he walks under it), as thick as it is plus half
+  his width. Where two stand together he's stopped, as at a wall (put out
+  of one into the other, he was squeezed on through a little a frame).
+  `tests/ice_walk_probe.tscn` (new) walks him at it, 416 walks: 279 m of
+  5.4 km were through ice as it was (`-- old`), none now. He walks on by
+  himself round it too (`_auto_step`).
+- **The hooded figure stays** (`_rim_flash`, `_hunter_cold_light`,
+  `RIM_STAYS`, `_the_hunter`). The lightning showed it on the rim, it went
+  with the flash, the rim stood empty 0.9 s, and it formed again in a gust:
+  there, gone, there. Now what the lightning showed is still stood there
+  when the flash dies, a cold light just finding it; the gust and the close
+  shot are of the thing already seen. (The glimpse of it off to the side on
+  the walk in, his own ask of 8 November, is as it was.)
+- **Bram takes the card** (`_take_card`, `_take_step`, `_on_take`,
+  `_take_done`, `TAKE_*`, `TINY_GIVE`; `_tiny_step` split into
+  `_card_in_small_hand` and `_card_light`). The small hand took the card
+  back down into the blanket while his right hand came over to draw the
+  blanket up: his hand was seen going for the card, and the card was gone
+  from under it. Now the small hand brings it in towards him, his right
+  hand comes round the bundle's end and across to it, takes it by its near
+  edge (his palm's middle 9.5 cm from the card's, level with it, at its
+  face: `take_palm_at`), the small fingers open, and the card goes where
+  his hand goes (read as his hand is drawn, in the skeleton's pass), turned
+  flat under his palm as he brings it down onto the bundle, slid in under
+  the blanket's edge and the blanket drawn over. `held_child_probe ... hand`
+  checks all of it (the card never more than 9.7 cm from his palm; the
+  bundle at most 0.9 cm into his arm).
+- **The walk out's first things are made under the white** (`_warm_out`,
+  `warm_out`, `warmed_out`, `WARM_OUT_FRAMES`), and the white clears sooner
+  (`OUT_WHITE` 1.9 s for 2.4, held 0.3 s for 0.5). The small hand's model,
+  its two shaders, its card's light and the mark's halo were made the
+  moment they were first shown, a few steps over the lip; the title's
+  painting was read as the title came up (asked for in the background
+  now). Not reproduced here: headless, no frame of the walk out takes over
+  20 ms either way (`white_sky_test` prints them; `nowarmout` for the
+  before), and what a Mac spends compiling shaders can't be seen without
+  one.
+- **The title comes in a part at a time** (`WhiteSky.TitleCard`, `TITLE_IN`
+  3.3 s for 1.4, `TITLE_PAINT`): the painting up out of the black, a rule
+  of gold drawn out from the middle with a diamond at its heart, "THE
+  COVENANT WAR" coming together out of wide-set letters over a soft warm
+  light, lit gold along the letters' tops and deeper at their feet (its own
+  shader), one sweep of bright gold across it, then "THRONE OF AGES" under
+  the rule. (Read from his note, "Switch the start of game covenant war can
+  we make that look better", as the title that comes up after the memory:
+  it stands in his list between the walk out and the attic.)
+- **The blanket takes his arm at its real thickness** (`BlanketTent.radii_of`,
+  `RADII_MOST`, `RADII_SHARE`). The cloth was lifted over a bare arm's
+  guessed thickness (5, 4.2, 3.6 cm from the bone); Player A's arm is in a
+  loose shirt rolled above the elbow: 9.0, 7.5 and 8.5 cm, measured off his
+  own skin (each point a part's bone moves most, from that bone's line; the
+  thickness that takes in 95% of them). So his sleeve and his fingers came
+  up through the cloth all the way to the hem. Measured once a model.
+- **The mark is out when it's out, and lies on his skin** (`SealMark`:
+  `emission_operator`, `_lay_on_skin`, `SKIN_ASH`, `on_skin`). Two things in
+  the mirror. Its material's own light was its colour *added* to its
+  picture's, and its picture is white: with its light set to black it still
+  shone white, always. Multiplied now: black is out. And it was a flat disc
+  carried on the Neck bone: on Player A the back half stood up to a
+  centimetre off his neck and the front half was 2 to 6 mm inside it. Now
+  it's 32 triangles of his own skin under the disc, copied with the bones
+  that move them, the mark laid on them as it falls from in front: it lies
+  on him, bends with him and is lit as he is, an old ash-grey mark in the
+  skin until it wakes. The disc is kept as where the mark is (the cameras,
+  his hand), not drawn. `mark_neck_look` (`flat` for the before),
+  `mirror_shot` (now shows the mark).
+- **His mouth moves as he eats** (`Figure3D.jaw`, `jaw_now`, `_set_jaw`;
+  `assets/shaders/character_nm.gdshader`: `jaw_open`, `jaw_frame`,
+  `jaw_way`, `jaw_drop`; `AshfordP1._eat`, `JAW_*`, `mouthfuls`,
+  `jaw_most`). The models have no jaw bone and no face shapes, so the skin
+  below the lips' line is moved in the hero's own shader: down the face
+  and a little back, fading out along the jaw, at the cheeks and under the
+  chin. It opens for each spoonful, closes on the spoon, and chews while
+  the spoon goes down for the next (about 2.3 times a second), a few more
+  after the last and a swallow. Only a model wearing that shader has a jaw
+  (Player A, who is the hero in every scene; the others' arms still eat,
+  mouths shut). `eat_probe ... face` for stills of it.
+- **They kneel to Tilly's card and touch it** (`AshfordDay.moth_for_tilly`,
+  `MOTH_*`). They went down where they stood, up to 1.5 m from her, in the
+  "lift" clip held part-way (a stoop, the shoulders still 1.3 m up) and put
+  a hand out: the palm stopped 82 cm from the card, and the card lit all
+  the same. Now they step up to it (35 cm from it, a little to their own
+  left so the planted foot goes down beside her), go down on one knee
+  (`Figure3D.kneel`), put the hand out to its near edge and the card wakes
+  as the fingers get there: 5.3 cm from the card's middle, on its edge.
+  `tests/moth_touch_probe.tscn` (new; `old` for the before).
+- **The button's passed over their laps** (`AshfordDay.corin_button`,
+  `BUTTON_OVER_LAP`): sat on the wall his hand was held out 0.95 of his
+  height above where he sits, at his chest; now 19 cm over his hip joint.
+- **No voices on the festival night** (`tools/make_ambience.py`
+  `bed_festival`, `assets/sfx/amb_festival.ogg` made again): crickets, the
+  leaves, a breeze. It was sixteen made-up voices and mugs.
+- **Corin isn't spoken of until Bram speaks of him** (`AshfordDay.lane_pointed`):
+  the evening's Objective, its arrow and the light at the lane's gate were
+  all Corin's from the moment the sun went down. Until Bram's said it
+  (`bram_sent_corin`) they're Bram's, by the Great Lantern. The lane's open
+  either way (`lane_wanted`).
+- **The frame rate** (`Gfx.Guard.judge`, `FAR_LOW`, `FAR_AFTER`, `STEP_KEY`,
+  `_keep`, `BEST_LOW`, `Gfx.Told`; the meter says "Best picture on" or
+  "smoothing off"). Not found, and can't be here (no graphics card): what
+  was done is to the guard. It came down one step every 4.5 s and began
+  from the full size every time the game was opened, so a Mac that needs
+  the smallest size spent the first half minute of every session at the
+  rate it started with: well under (26) for two windows running it now
+  comes down two steps at once (17 fps is at the smallest size in 9 s, not
+  22), and the step it came to is kept with the Options for next time.
+  Under "Best picture" the guard stands down by design: under 24 for six
+  seconds a line now says so, once, with where to turn it off.
+  `tests/guard_test.tscn` (new) plays the judging; `tests/frame_cost_probe.tscn`
+  (new) times what a frame costs the processor with nothing drawn: 1.0 ms
+  on the evening green, 0.2 ms in the snow. So the frame rate is the
+  picture's cost (bounce light, SSIL, SSAO, fog, 2x MSAA, 41 lights on the
+  evening green), not the game's scripts.
+
 ### Gary's 11 November play-through notes, and the opening rebuilt (12 November)
 
 Gary's thirteen notes from playing the Mac build on 11 November, and the
@@ -5280,6 +5417,12 @@ godot --headless --fixed-fps 30 res://tests/story_film_test.tscn  # the story fi
 # ... res://tests/stretch_probe.tscn -- <dir> [model] [shapes=a,b]   (under xvfb) waking stretches tried, measured, photographed
 # stills (under xvfb, as the others): ... res://tests/rain_shot.tscn -- <dir> [phone]   the green dry and in a shower
 #                                     ... res://tests/options_shot.tscn -- <dir>         the Options page
+# 18 November: Bram walked at the Shardlands' ice (`old`: as it was); the hand to Tilly's card (`old`); the
+# frame-rate guard's judging; what a frame costs the processor with nothing drawn:
+godot --headless --path . res://tests/ice_walk_probe.tscn [-- old]
+godot --headless --fixed-fps 20 --path . res://tests/moth_touch_probe.tscn -- [<dir>] [from=1.6] [old]   # (stills under xvfb)
+godot --headless --path . res://tests/guard_test.tscn
+godot --headless --fixed-fps 60 --path . res://tests/frame_cost_probe.tscn -- [morning|afternoon|evening|snow]
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]

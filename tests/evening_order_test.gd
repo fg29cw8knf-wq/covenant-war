@@ -3,11 +3,14 @@ extends Node
 ## Corin by talking to Bram first in the evening. I don't want that to be
 ## possible: if you talk to Bram first have him say Corin was looking for you
 ## over by the mill"). Headless, on the green after the sunset:
-##   1. the evening's words put Corin first and the arrow points down the
-##      lane to him;
+##   1. (18 November, Gary: "Says about Corin at the mill before anyone has
+##      even mentioned anything shouldn't come up till Bram tells you") the
+##      evening's words and its arrow are Bram's, and say nothing of Corin
+##      or the mill, until Bram has spoken;
 ##   2. Bram talked to before Corin: his lines send the player to the mill,
-##      "It's nearly midnight." isn't offered and midnight doesn't start;
-##      talked to again, the short reminder, and still no midnight;
+##      and now the words put Corin first and the arrow points down the lane
+##      to him; "It's nearly midnight." isn't offered and midnight doesn't
+##      start; talked to again, the short reminder, and still no midnight;
 ##   3. once Corin's been seen (corin_pond), Bram's hub offers "It's nearly
 ##      midnight." and it starts midnight.
 ## Every line said is printed.
@@ -38,13 +41,15 @@ func _ready() -> void:
 	await _frames(5)
 	# 1. the words and the arrow
 	var obj := String(Game.flag("objective", ""))
-	_expect(obj == AshfordDay.EVENING_CORIN, "the evening's objective isn't Corin first: %s" % obj)
-	_expect(obj.begins_with("Enjoy the festival. Corin's gone off"), "the objective doesn't open with Corin")
+	_expect(obj == AshfordDay.EVENING, "the evening's objective isn't Bram's before he's spoken: %s" % obj)
+	_expect(not obj.contains("Corin") and not obj.contains("mill"), "the objective speaks of Corin or the mill before anyone has")
 	AshfordDay.show_way(world)
 	var way_label := _way_label()
 	print("  objective: ", obj.replace("\n", " / "))
 	print("  arrow: ", way_label)
-	_expect(way_label.contains("Corin"), "the arrow doesn't point to Corin (%s)" % way_label)
+	_expect(not way_label.contains("Corin") and not way_label.contains("mill"), "the arrow points to Corin before anyone has spoken of him (%s)" % way_label)
+	_expect(AshfordP1.meta(AshfordDay.village(world), "lane_glow") == null, "the light's at the lane's gate before Bram has spoken")
+	_expect(AshfordDay.lane_wanted(), "the lane isn't open to someone who wanders down it")
 	# 2. Bram first
 	var bram = world._npc_by_id("bram")
 	world.busy = false
@@ -55,6 +60,11 @@ func _ready() -> void:
 	_expect(said.any(func(s: String) -> bool: return s.contains("Corin came looking for you")), "Bram didn't say Corin was looking for them")
 	_expect(said.any(func(s: String) -> bool: return s.contains("by the mill")), "Bram didn't say where Corin is")
 	_expect(String(Game.flag("objective", "")) == AshfordDay.EVENING_CORIN, "the objective after Bram isn't Corin first")
+	AshfordDay.show_way(world)
+	AshfordDay.lane_sign(world)
+	print("  after Bram, arrow: ", _way_label())
+	_expect(_way_label().contains("Corin"), "the arrow doesn't point to Corin after Bram's words (%s)" % _way_label())
+	_expect(AshfordP1.meta(AshfordDay.village(world), "lane_glow") != null, "no light at the lane's gate after Bram's words")
 	said.clear()
 	offered.clear()
 	await _talk(bram)

@@ -300,8 +300,12 @@ def bed_night(r):
 
 
 def bed_festival(r):
-    """The festival night on the green: the whole village talking."""
-    return murmur(r, 16) * 0.6 + crickets(r, 3) * 0.2 + breeze(r) * 0.15 + knocks(r, 4) * 0.1
+    """The festival night on the green: the night itself, under the fiddle.
+    (18 November, Gary: "The people chatting in the background in the evening
+    sounds weird and out of place remove it". It was the whole village
+    talking, sixteen made-up voices and mugs set down. No voices now, and no
+    mugs without them: crickets, the leaves, a breeze.)"""
+    return crickets(r, 4) * 0.42 + leaves(r) * 0.22 + breeze(r) * 0.24
 
 
 def bed_burning(r):

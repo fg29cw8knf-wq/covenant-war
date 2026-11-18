@@ -36,6 +36,12 @@ const AT_BY := {
 const SIZE := 0.042
 const ASH := Color(0.42, 0.41, 0.4)
 const WHITE := Color(1.0, 0.98, 0.92)
+## The mark as it is when nothing wakes it, on his skin (the mirror): an old
+## ash-grey mark in the skin, a little of the skin showing through it, darker
+## than ASH, which is its colour as a light. (18 November, Gary, of the
+## mirror: "you can still see the mark glowing on the neck": it was ASH, a
+## pale grey disc that caught the light like a coin.)
+const SKIN_ASH := Color(0.27, 0.255, 0.25, 0.9)
 
 static var _tex: Texture2D
 
@@ -70,13 +76,19 @@ static func mark_on(fig: Figure3D) -> MeshInstance3D:
 	mi.mesh = q
 	var m := StandardMaterial3D.new()
 	m.albedo_texture = texture()
-	m.albedo_color = ASH
+	m.albedo_color = SKIN_ASH
 	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	m.emission_enabled = true
 	m.emission = Color.BLACK
 	m.emission_texture = texture()
+	# (18 November, Gary, of the mirror: "you can still see the mark glowing".
+	# A material's own light is its colour ADDED to its picture's unless told
+	# otherwise, and the mark's picture is white: so with its light set to
+	# black, "out", it still shone white, always. Multiplied, black is out.)
+	m.emission_operator = BaseMaterial3D.EMISSION_OP_MULTIPLY
 	m.roughness = 0.8
 	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	m.texture_repeat = false
 	mi.material_override = m
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ba.add_child(mi)
@@ -84,7 +96,166 @@ static func mark_on(fig: Figure3D) -> MeshInstance3D:
 	mi.position = own[0]
 	mi.rotation = own[1]
 	mi.visible = false
+	# laid on the skin itself where it can be (_lay_on_skin); the flat disc
+	# is then only where the mark is, for the cameras and his hand, and
+	# isn't drawn
+	if on_skin:
+		var skin := _lay_on_skin(fig, sk, own[0], own[1], m)
+		if skin != null:
+			mi.mesh = null
+			mi.set_meta("skin", skin)
+			mi.visibility_changed.connect(func() -> void:
+				if is_instance_valid(skin):
+					skin.visible = mi.visible)
 	return mi
+
+
+## (false: the flat disc, as it was until 18 November; the tests' before)
+static var on_skin := true
+## How far each way from the mark's own plane the skin it's laid on may be
+## (m): the neck's curve, and Player A's sits a centimetre off the disc.
+const SKIN_DEEP := 0.022
+## How far off the skin it's drawn (m), so the two aren't fought over.
+const SKIN_OFF := 0.0005
+
+## The mark laid on the skin (18 November, Gary, of the mirror: "it's only
+## half sitting on the body"). It was a flat disc 4 cm across, carried on the
+## Neck bone at a place found by eye; a neck is round, and on Player A the
+## disc's back half was up to a centimetre off his neck, in the air, and its
+## front half 2 to 6 mm inside it: half a mark, standing off him. Now it's a
+## piece of his own skin: the triangles of his body's mesh that lie under the
+## disc (looked at along the disc's own facing, within SKIN_DEEP of it,
+## facing out, and joined to the ones at its middle: not the jaw over it or
+## the collar under it), copied with the bones that move them, drawn SKIN_OFF
+## off the skin with the mark painted on them as it would fall from straight
+## in front of the disc. So it lies on him whatever the neck's shape, bends
+## with it as the skin does, and is lit as the skin is. Null if the model has
+## no skin there to lay it on (the flat disc is kept).
+static func _lay_on_skin(fig: Figure3D, sk: Skeleton3D, at: Vector3, rot: Vector3, m: Material) -> MeshInstance3D:
+	var src: MeshInstance3D = null
+	for n in fig.model.find_children("*", "MeshInstance3D", true, false):
+		var c := n as MeshInstance3D
+		if c.skin != null and c.mesh != null and c.mesh.get_surface_count() > 0:
+			src = c
+			break
+	var neck := sk.find_bone("Neck")
+	if src == null or neck < 0:
+		return null
+	var bind := -1
+	for i in src.skin.get_bind_count():
+		var nm := String(src.skin.get_bind_name(i))
+		if nm == "Neck" or (nm == "" and src.skin.get_bind_bone(i) == neck):
+			bind = i
+	if bind < 0:
+		return null
+	# the disc in the mesh's own space, as the mesh was bound: the Neck bone's
+	# bind takes a point of the mesh to the bone's own frame
+	var mark := src.skin.get_bind_pose(bind).affine_inverse() * Transform3D(Basis.from_euler(rot), at)
+	var unit := mark.basis.x.length()   # (the mesh's units to a metre)
+	if unit < 0.000001:
+		return null
+	var ux := mark.basis.x / unit
+	var uy := mark.basis.y / unit
+	var uz := mark.basis.z / unit
+	var half := SIZE * 0.5 * unit
+	var deep := SKIN_DEEP * unit
+	var arr := src.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var norms: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+	var bones = arr[Mesh.ARRAY_BONES]
+	var weights = arr[Mesh.ARRAY_WEIGHTS]
+	var idx: PackedInt32Array = arr[Mesh.ARRAY_INDEX] if arr[Mesh.ARRAY_INDEX] != null else PackedInt32Array()
+	if verts.is_empty() or idx.is_empty() or bones == null or weights == null or norms.size() != verts.size():
+		return null
+	var per := int(bones.size() / verts.size())
+	# the triangles under the disc, facing out of it
+	var cand: Array = []      # [i0, i1, i2]
+	var by_point := {}        # a corner's place (to a tenth of a millimetre) -> the triangles there
+	var mid := -1
+	var mid_d := INF
+	for t in range(0, idx.size() - 2, 3):
+		var p0 := verts[idx[t]] - mark.origin
+		var p1 := verts[idx[t + 1]] - mark.origin
+		var p2 := verts[idx[t + 2]] - mark.origin
+		var c := (p0 + p1 + p2) / 3.0
+		if absf(c.dot(uz)) > deep or absf(c.dot(ux)) > half * 2.2 or absf(c.dot(uy)) > half * 2.2:
+			continue
+		var lo := Vector2(minf(p0.dot(ux), minf(p1.dot(ux), p2.dot(ux))), minf(p0.dot(uy), minf(p1.dot(uy), p2.dot(uy))))
+		var hi := Vector2(maxf(p0.dot(ux), maxf(p1.dot(ux), p2.dot(ux))), maxf(p0.dot(uy), maxf(p1.dot(uy), p2.dot(uy))))
+		if lo.x > half or hi.x < -half or lo.y > half or hi.y < -half:
+			continue
+		var fn := (norms[idx[t]] + norms[idx[t + 1]] + norms[idx[t + 2]]).normalized()
+		if fn.dot(uz) < 0.2:
+			continue
+		var k := cand.size()
+		cand.append([idx[t], idx[t + 1], idx[t + 2]])
+		for q: Vector3 in [verts[idx[t]], verts[idx[t + 1]], verts[idx[t + 2]]]:
+			var key := Vector3i((q * (10000.0 / unit)).round())
+			if not by_point.has(key):
+				by_point[key] = []
+			(by_point[key] as Array).append(k)
+		# (the one nearest the disc's middle, looked at from in front)
+		var off := Vector2(c.dot(ux), c.dot(uy)).length() + absf(c.dot(uz)) * 0.5
+		if off < mid_d:
+			mid_d = off
+			mid = k
+	if mid < 0:
+		return null
+	# joined to the middle one: one sheet of skin
+	var taken := {mid: true}
+	var todo := [mid]
+	while not todo.is_empty():
+		var k: int = todo.pop_back()
+		for vi: int in cand[k]:
+			for o: int in by_point[Vector3i((verts[vi] * (10000.0 / unit)).round())]:
+				if not taken.has(o):
+					taken[o] = true
+					todo.append(o)
+	if taken.size() < 2:
+		return null
+	var nv := PackedVector3Array()
+	var nn := PackedVector3Array()
+	var nuv := PackedVector2Array()
+	var nb := PackedInt32Array()
+	var nw := PackedFloat32Array()
+	var ni := PackedInt32Array()
+	var seen := {}
+	for k: int in taken:
+		for vi: int in cand[k]:
+			if not seen.has(vi):
+				seen[vi] = nv.size()
+				var p := verts[vi]
+				var d := p - mark.origin
+				nv.append(p + norms[vi].normalized() * SKIN_OFF * unit)
+				nn.append(norms[vi])
+				nuv.append(Vector2(0.5 + d.dot(ux) / (SIZE * unit), 0.5 - d.dot(uy) / (SIZE * unit)))
+				for j in per:
+					nb.append(bones[vi * per + j])
+					nw.append(weights[vi * per + j])
+			ni.append(seen[vi])
+	var out := []
+	out.resize(Mesh.ARRAY_MAX)
+	out[Mesh.ARRAY_VERTEX] = nv
+	out[Mesh.ARRAY_NORMAL] = nn
+	out[Mesh.ARRAY_TEX_UV] = nuv
+	out[Mesh.ARRAY_BONES] = nb
+	out[Mesh.ARRAY_WEIGHTS] = nw
+	out[Mesh.ARRAY_INDEX] = ni
+	var am := ArrayMesh.new()
+	am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, out, [], {}, Mesh.ARRAY_FLAG_USE_8_BONE_WEIGHTS if per == 8 else 0)
+	var piece := MeshInstance3D.new()
+	piece.name = "SealMarkSkin"
+	piece.mesh = am
+	piece.material_override = m
+	piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	piece.layers = src.layers
+	piece.visible = false
+	src.get_parent().add_child(piece)
+	piece.transform = src.transform
+	piece.skin = src.skin
+	piece.skeleton = src.skeleton
+	piece.set_meta("triangles", taken.size())
+	return piece
 
 
 static func show_on(w: World, on: bool) -> void:
@@ -103,7 +274,8 @@ static func blaze(w: World, amount: float, secs := 0.3) -> void:
 	var from := m.emission.r / 6.0 if m.emission.r > 0.0 else 0.0
 	var tw := w.create_tween()
 	tw.tween_method(func(k: float) -> void:
-		m.albedo_color = ASH.lerp(WHITE, k)
+		# (at rest it's the old mark in his skin, SKIN_ASH; lit, ASH to white)
+		m.albedo_color = SKIN_ASH.lerp(ASH.lerp(WHITE, k), clampf(k * 8.0, 0.0, 1.0))
 		m.emission = WHITE * (k * 6.0), from, clampf(amount, 0.0, 1.0), maxf(secs, 0.01))
 
 
@@ -297,7 +469,7 @@ static func go_out(w: World, secs: float) -> void:
 		if not is_instance_valid(mi):
 			return
 		mi.visible = false
-		m.albedo_color = ASH
+		m.albedo_color = SKIN_ASH
 		m.emission = Color.BLACK
 		m.no_depth_test = false
 		m.render_priority = 0)

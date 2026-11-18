@@ -84,6 +84,16 @@ func _ready() -> void:
 	var face := Cine.head(world, "player") - Vector3(0, 0.08, 0)
 	AshfordP1.mirror_mask(world, true)
 	AshfordP1._glass_shot(world, glass_at, face)
+	# (18 November: the mark on his neck, as the game shows it in the glass;
+	# "flat" as the flat disc it was, shining, for the before)
+	if "flat" in OS.get_cmdline_user_args():
+		SealMark.on_skin = false
+	SealMark.show_on(world, true)
+	if "flat" in OS.get_cmdline_user_args():
+		var fm := SealMark.on_hero(world)
+		if fm != null:
+			(fm.material_override as StandardMaterial3D).albedo_color = SealMark.ASH
+			(fm.material_override as StandardMaterial3D).emission_operator = BaseMaterial3D.EMISSION_OP_ADD
 	await get_tree().create_timer(0.6).timeout
 	for i in 3:
 		await RenderingServer.frame_post_draw

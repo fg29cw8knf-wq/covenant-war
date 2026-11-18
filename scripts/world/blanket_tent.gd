@@ -24,9 +24,24 @@ var k := 0.0              # how much of the lift there is (eased in as it starts
 var _last: Array = []     # the points as last draped
 ## How thick each part of the arm is (m, its radius) and how far clear of it
 ## the cloth lies; how steeply the cloth falls away beside it (m down per m out).
+## (18 November, Gary: "Still looks weird when player puts his hand to neck
+## and back and his arm goes through the blanket". These three were a bare
+## arm's, guessed: 5, 4.2 and 3.6 cm. Player A's arm is in a loose shirt, its
+## sleeve rolled above the elbow: measured off his model, the upper arm with
+## its sleeve is 7 to 9 cm from its bone, the forearm 5.5 to 8, the hand 5 to
+## 7 across the palm and thumb. So the cloth was lifted to two-thirds of the
+## arm's real height and the sleeve came up through it all the way along.
+## Now each part's thickness is measured off the figure's own model
+## (radii_of: once a model), and these are only the least they can be.)
 const RADII := [0.05, 0.042, 0.036]
+const RADII_MOST := [0.12, 0.1, 0.085]
 const CLEAR := 0.012
 const DRAPE := 0.85
+## How much of a part's skin lies within the thickness taken for it (the
+## rest: a cuff's edge, a thumb held out, a stray fold).
+const RADII_SHARE := 0.95
+var radii: Array = RADII
+static var _radii_by := {}
 ## How softly the lifted cloth meets the cloth as it lay (m).
 const SOFT := 0.02
 
@@ -37,6 +52,7 @@ static func start(blanket: MeshInstance3D, p_fig: Figure3D, p_side := "left") ->
 	t.fig = p_fig
 	t.side = p_side
 	t.rows = blanket.get_meta("rows")
+	t.radii = radii_of(p_fig, p_side)
 	blanket.add_child(t)
 	if p_fig._skel != null:
 		p_fig._skel.skeleton_updated.connect(t._on_skel)
@@ -44,6 +60,92 @@ static func start(blanket: MeshInstance3D, p_fig: Figure3D, p_side := "left") ->
 	# little, and the cloth shouldn't jump onto it)
 	t.create_tween().tween_property(t, "k", 1.0, 0.3).set_trans(Tween.TRANS_SINE)
 	return t
+
+
+## How thick the three parts of a figure's arm are (m: the upper arm, the
+## forearm, the hand), sleeve and all: off the model's own skin as it was
+## bound, each point that a part's bone moves most measured from that bone's
+## line, the thickness that takes in RADII_SHARE of them (never under RADII,
+## nor over RADII_MOST). Kept for each model and side.
+static func radii_of(fig: Figure3D, side: String) -> Array:
+	var key := "%s:%s" % [fig._model_name, side]
+	if _radii_by.has(key):
+		return _radii_by[key]
+	var out: Array = RADII.duplicate()
+	_radii_by[key] = out
+	var sk := fig._skel
+	if sk == null or fig.model == null:
+		return out
+	var src: MeshInstance3D = null
+	for n in fig.model.find_children("*", "MeshInstance3D", true, false):
+		var c := n as MeshInstance3D
+		if c.skin != null and c.mesh != null and c.mesh.get_surface_count() > 0 and c.name != "SealMarkSkin":
+			src = c
+			break
+	if src == null:
+		return out
+	var pre := "Left" if side == "left" else "Right"
+	var tip := sk.find_bone(pre + "HandMiddle2")
+	if tip < 0:
+		tip = sk.find_bone(pre + "HandIndex1")
+	var ends := [[sk.find_bone(pre + "Arm"), sk.find_bone(pre + "ForeArm")], [sk.find_bone(pre + "ForeArm"), sk.find_bone(pre + "Hand")], [sk.find_bone(pre + "Hand"), tip]]
+	for e: Array in ends:
+		if int(e[0]) < 0 or int(e[1]) < 0:
+			return out
+	# each bind of the skin: which part it moves (-1: none), and what takes a
+	# point of the mesh to the skeleton's own space as it rests
+	var part_of: Array = []
+	var to_rest: Array = []
+	for i in src.skin.get_bind_count():
+		var nm := String(src.skin.get_bind_name(i))
+		var bone := sk.find_bone(nm) if nm != "" else src.skin.get_bind_bone(i)
+		var part := -1
+		if bone >= 0:
+			var bn := sk.get_bone_name(bone)
+			if bn == pre + "Arm":
+				part = 0
+			elif bn == pre + "ForeArm":
+				part = 1
+			elif bn.begins_with(pre + "Hand"):
+				part = 2
+		part_of.append(part)
+		to_rest.append(sk.get_bone_global_rest(bone) * src.skin.get_bind_pose(i) if bone >= 0 else Transform3D.IDENTITY)
+	var arr := src.mesh.surface_get_arrays(0)
+	var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+	var bones = arr[Mesh.ARRAY_BONES]
+	var weights = arr[Mesh.ARRAY_WEIGHTS]
+	if verts.is_empty() or bones == null or weights == null:
+		return out
+	var per := int(bones.size() / verts.size())
+	var far: Array = [[], [], []]
+	for vi in verts.size():
+		# the bind that moves it most
+		var best := 0
+		for j in range(1, per):
+			if weights[vi * per + j] > weights[vi * per + best]:
+				best = j
+		var bi: int = bones[vi * per + best]
+		if bi < 0 or bi >= part_of.size() or int(part_of[bi]) < 0:
+			continue
+		var part: int = part_of[bi]
+		var p: Vector3 = (to_rest[bi] as Transform3D) * verts[vi]
+		var a := sk.get_bone_global_rest(int(ends[part][0])).origin
+		var b := sk.get_bone_global_rest(int(ends[part][1])).origin
+		var ab := b - a
+		var u := (p - a).dot(ab) / maxf(ab.length_squared(), 0.000001)
+		# (a hand's fingers and thumb run on past its line's end: along the line, not from its end)
+		if u < -0.1 or (u > 1.1 and part < 2):
+			continue
+		(far[part] as Array).append((p - (a + ab * u)).length())
+	var scale := sk.global_transform.basis.get_scale().x
+	for part in 3:
+		var d: Array = far[part]
+		if d.size() < 20:
+			continue
+		d.sort()
+		out[part] = clampf(d[int((d.size() - 1) * RADII_SHARE)] * scale, float(RADII[part]), float(RADII_MOST[part]))
+	_radii_by[key] = out
+	return out
 
 
 ## The blanket's tent over the arm, if there is one.
@@ -99,7 +201,7 @@ func _on_skel() -> void:
 		tip = wr + (wr - el).normalized() * 0.06
 	else:
 		tip = wr + (tip - wr) * 1.5   # (on past the knuckles to the fingers' ends)
-	_segs = [[sh, el, RADII[0]], [el, wr, RADII[1]], [wr, tip, RADII[2]]]
+	_segs = [[sh, el, radii[0]], [el, wr, radii[1]], [wr, tip, radii[2]]]
 	_drape()
 
 

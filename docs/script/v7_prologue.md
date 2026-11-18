@@ -94,7 +94,10 @@ otherwise whole thing doesn't make much sense and maybe something that leads int
 the battle".)_
 
 _(Lightning out beyond the rim: for the length of the flash it stands up there,
-black against it. Then the gust, and it forms and comes to the edge. It puts out a
+black against it. The flash dies and it's still there, a shape in the dark with a
+cold light just finding it (changed 18 November, Gary: "the hooded figure appears
+then disappears then reappears again": it used to go with the flash and form
+again). Then the gust round it, and it comes to the edge. It puts out a
 long arm, the hand open, at the child in his coat. The mark over the child's heart
 answers: its light spills out round Bram through his coat, motes of it lifting
 off towards the open hand, and the child cries out. Bram turns the child away
@@ -282,10 +285,15 @@ Bram's head comes round to it; the side of his face is seen.)_
 up in its fist):** "Come on then, Sprout."
 
 _(The first time the name is heard: twenty years on the hero says "Bram still
-calls me Sprout." It's said over the walk and waits for nothing. Then the hand
-takes the card down into his coat, and the white goes out of it as it goes: an
-ordinary card again. The white card itself comes down to the hero at midnight,
-twenty years later.)_
+calls me Sprout." It's said over the walk and waits for nothing. Then Bram
+takes the card (changed 18 November, Gary: "it just dissapears rather then Bram
+taking it"): the small hand brings it in towards him, his right hand comes
+across and takes it by its edge, and the white goes out of it under his
+fingers: an ordinary card again. The small fingers let go and the small hand
+goes back down into the blanket. He lays the card on the bundle, slips it in
+under the blanket's edge and draws the blanket over it: it stays with the
+child. The white card itself comes down to the hero at midnight, twenty years
+later.)_
 
 _(Past the crater the walk is over. From the rim where the hunter stood: Bram small
 beyond the far lip, walking on into the light, his line of prints up out of the

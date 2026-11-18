@@ -8,7 +8,14 @@ extends Node
 ##
 ##   VK_ICD_FILENAMES=/opt/lavapipe/lvp_icd.json xvfb-run -a -s "-screen 0 1280x720x24" godot \
 ##       --rendering-driver vulkan --rendering-method forward_plus --resolution 960x540 \
-##       --path . res://tests/mark_neck_look.tscn -- <dir> [a b c d]
+##       --path . res://tests/mark_neck_look.tscn -- <dir> [a b c d] [flat] [xray]
+##
+## (18 November, Gary, of the mirror: "you can still see the mark glowing on
+## the neck and it's only half sitting on the body". The mark is laid on the
+## skin itself now, SealMark._lay_on_skin, in the colour of an old mark
+## where it isn't lit; "flat" draws the flat disc as it was, for the before.
+## "front" is as the mirror sees him; "head_turned" with his head turned and
+## tipped, to see it stays on him.)
 
 var out := "/tmp/mark_neck"
 var cam: Camera3D
@@ -51,6 +58,7 @@ func _ready() -> void:
 
 
 func _look(look: String) -> void:
+	SealMark.on_skin = not ("flat" in OS.get_cmdline_user_args())
 	var f := Figure3D.new().setup("player_" + look) as Figure3D
 	add_child(f)
 	f.position = Vector3.ZERO
@@ -73,12 +81,14 @@ func _look(look: String) -> void:
 	var head := f.bone_pos("Head")
 	print("mark_neck_look: %s the mark at %s, %.3f m out from the Neck bone, %.3f m up it, its face %s" % [
 		look, str(at), Vector2(at.x - neck.x, at.z - neck.z).length(), at.y - neck.y, str(n)])
+	var skin = mi.get_meta("skin", null)
+	print("mark_neck_look: %s the mark is %s" % [look, ("laid on his skin, %d triangles of it" % int((skin as Node).get_meta("triangles", 0))) if skin != null else "the flat disc"])
 	for state in ["ash", "blaze"]:
 		if state == "blaze":
 			m.albedo_color = SealMark.WHITE
 			m.emission = SealMark.WHITE * 6.0
 		else:
-			m.albedo_color = SealMark.ASH
+			m.albedo_color = SealMark.SKIN_ASH if SealMark.on_skin else SealMark.ASH
 			m.emission = Color.BLACK
 		# close in, square on to it; from in front; half the body
 		_shot(at + n * 0.42 + Vector3(0, 0.02, 0), at, 30.0)
@@ -88,6 +98,16 @@ func _look(look: String) -> void:
 			await _still("%s_%s_front" % [look, state])
 			_shot(at + Vector3(n.x, 0.0, n.z).normalized() * 1.0 + Vector3(0, 0.05, 0), at + Vector3(0, -0.05, 0), 30.0)
 			await _still("%s_%s_side" % [look, state])
+			# as the mirror has him: from in front of his face, close
+			_shot(head + Vector3(-0.06, 0.0, 0.5), (neck + head) * 0.5 + Vector3(-0.03, 0.02, 0), 30.0)
+			await _still("%s_%s_mirror" % [look, state])
+			# his head turned away and tipped: it stays on his neck
+			f.eyes_on(head + Vector3(1.2, 0.5, 0.6))
+			await _frames(40)
+			_shot(head + Vector3(-0.3, 0.0, 0.42), (neck + head) * 0.5 + Vector3(-0.03, 0.02, 0), 30.0)
+			await _still("%s_%s_head_turned" % [look, state])
+			f.eyes_on(null)
+			await _frames(30)
 		_shot(neck + Vector3(0.9, -0.1, 1.9), neck + Vector3(0, -0.35, 0), 34.0)
 		await _still("%s_%s_mid" % [look, state])
 	f.queue_free()

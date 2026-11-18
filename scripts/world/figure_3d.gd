@@ -1399,6 +1399,68 @@ func mouth() -> Array:
 	return [xf.origin + out * MOUTH_OUT * size + xf.basis.y.normalized() * MOUTH_UP * size, out]
 
 
+## Their mouth, opened (18 November, Gary: "Can we make the players mouth
+## move when they are eating the porridge"): `open` 0 (shut, the face as
+## modelled) to 1. The models have no jaw bone and no face shapes, so the
+## skin itself is moved, in the game's own character shader
+## (assets/shaders/character_nm.gdshader: jaw_open and the rest): only a
+## model that wears it has a jaw to move (dress_normal_map: the hero, Player
+## A), and on any other nothing happens. `lips`: where the lips meet, in the
+## Head bone's own frame (m; AshfordP1.MOUTH), told once. The shader is told
+## where the mouth is every frame it's open, as the head is drawn (after its
+## own turn and dip: _set_jaw, in the skeleton's pass).
+var _jaw := 0.0
+var _jaw_lips := Vector3(0.0, 0.045, 0.17)
+var _jaw_mats: Array = []   # [MeshInstance3D, ShaderMaterial] each
+var _jaw_looked := false
+
+func jaw(open: float, lips := Vector3.INF) -> void:
+	if lips != Vector3.INF:
+		_jaw_lips = lips
+	if not _jaw_looked and model != null:
+		_jaw_looked = true
+		for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+			if mi.mesh == null:
+				continue
+			for si in mi.mesh.get_surface_count():
+				var m := mi.get_active_material(si)
+				if m is ShaderMaterial and (m as ShaderMaterial).shader != null and (m as ShaderMaterial).shader.resource_path.ends_with("character_nm.gdshader"):
+					_jaw_mats.append([mi, m])
+		if not _jaw_mats.is_empty() and _skel != null and not _skel.skeleton_updated.is_connected(_set_jaw):
+			_skel.skeleton_updated.connect(_set_jaw)
+	_jaw = clampf(open, 0.0, 1.0)
+	if _jaw <= 0.0:
+		for pair: Array in _jaw_mats:
+			(pair[1] as ShaderMaterial).set_shader_parameter("jaw_open", 0.0)
+
+
+## How far open it is, 0..1 (0 on a model with no jaw to move).
+func jaw_now() -> float:
+	return _jaw if not _jaw_mats.is_empty() else 0.0
+
+
+func _set_jaw() -> void:
+	if _jaw <= 0.0 or _skel == null:
+		return
+	var hb := _skel.find_bone("Head")
+	if hb < 0:
+		return
+	# the mouth's own frame, in the world (m): between the lips, x across
+	# the face, y up it, z out of it
+	var head := _skel.global_transform * _skel.get_bone_global_pose(hb)
+	var at := Transform3D(head.basis.orthonormalized(), head * _jaw_lips)
+	# (down the face and a little back, as a jaw swings about its hinge)
+	var way := at.basis * Vector3(0.0, -1.0, -0.25).normalized()
+	for pair: Array in _jaw_mats:
+		var mi := pair[0] as MeshInstance3D
+		if not is_instance_valid(mi):
+			continue
+		var m := pair[1] as ShaderMaterial
+		m.set_shader_parameter("jaw_frame", at.affine_inverse() * mi.global_transform)
+		m.set_shader_parameter("jaw_way", mi.global_transform.basis.inverse() * way)
+		m.set_shader_parameter("jaw_open", _jaw)
+
+
 func bone_pos(bone: String) -> Vector3:
 	var sk := model.find_child("Skeleton3D", true, false) as Skeleton3D
 	if sk == null:

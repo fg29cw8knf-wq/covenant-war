@@ -145,6 +145,9 @@ func _ready() -> void:
 	m = WhiteSky.new()
 	_late = args.has("late")
 	m.prep_early = not _late
+	# ("nowarmout": the walk out's first things made as they're first wanted,
+	# as until 18 November, for the before)
+	m.warm_out = not args.has("nowarmout")
 	add_child(m)
 	m.finished.connect(func() -> void: _phase = "done")
 	# keys: draw only the stills' frames (much faster); body: the body check
@@ -245,8 +248,35 @@ func _run() -> void:
 	get_tree().quit(0 if ok else 1)
 
 
+## (18 November, Gary: "When you walk out of the crater ... takes a while to
+## load") how long each frame of the walk out really took (ms by the clock,
+## whatever --fixed-fps says), by where in it: under the white as it begins,
+## the walk, and the small hand's moment.
+var _last_us := 0
+var _real := {}   # where -> [frames, the longest ms, its game time, the ms in all]
+
+func _clock() -> void:
+	var now := Time.get_ticks_usec()
+	if _last_us > 0 and m != null and is_instance_valid(m) and m._out:
+		var ms := (now - _last_us) / 1000.0
+		var where := "the walk"
+		if m._white.modulate.a > 0.98:
+			where = "under the white"
+		elif m._hand_on:
+			where = "the small hand"
+		var r: Array = _real.get(where, [0, 0.0, 0.0, 0.0])
+		r[0] = int(r[0]) + 1
+		r[3] = float(r[3]) + ms
+		if ms > float(r[1]):
+			r[1] = ms
+			r[2] = _t
+		_real[where] = r
+	_last_us = now
+
+
 func _process(delta: float) -> void:
 	_t += delta
+	_clock()
 	if m == null or m._done:
 		return
 	if _max > 0.0 and _t > _max:
@@ -529,6 +559,10 @@ func _watch_third_pass() -> void:
 func _third_pass(skipped: bool) -> bool:
 	var fails: Array = []
 	var held := SealMark.held(get_tree())
+	for where: String in _real:
+		var r: Array = _real[where]
+		print("white_sky_test: the walk out, %s: %d frames, %.0f ms in all, the longest %.0f ms (at %.1f s)" % [where, int(r[0]), float(r[3]), float(r[1]), float(r[2])])
+	print("white_sky_test: the walk out's first things made under the white: %s" % str(m.warmed_out))
 	print("white_sky_test: the end: the mark held on black %s (at %.2f, %.2f), the title shown %s" % [str(held != null), _seal_at.x, _seal_at.y, str(m.title_shown)])
 	if not m.mark_held or held == null or held.k < 0.9:
 		fails.append("the mark wasn't left up on the black")
