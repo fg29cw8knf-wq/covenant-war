@@ -8,7 +8,9 @@ extends Node
 ##   only=a,b       just those parts on (ao bounce haze floor skin lit probe grade)
 ##   phone          as an iPhone on Smooth builds it (level 1: no bounce, no haze)
 ##   arenas=a,b     just those arenas (default all six)
-##   views=a,b      just those views (home brass fur gold)
+##   views=a,b      just those views (home brass fur gold third)
+##   mine=a,b,c     other Totems on your side (18 November: the Tripo three
+##                  with their maker's maps back); `third` is close on your third
 ## Forward+ through software Vulkan (lavapipe), which the look is for:
 ##   VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run -a -s "-screen 0 1280x720x24" \
 ##       godot --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
@@ -17,7 +19,7 @@ extends Node
 ## haze and the bounced light (worked out over frames) have settled.
 
 const ARENAS := ["emberforge", "tidegrove", "veilwild", "ironstone", "solhaven", "ashford"]
-const MINE := ["ironhide", "blazehound", "quarry_golem"]
+var MINE := ["ironhide", "blazehound", "quarry_golem"]
 const THEIRS := ["elderbark", "gilded_sentinel", "pebblit"]
 
 var out := "user://"
@@ -43,6 +45,8 @@ func _ready() -> void:
 			arenas = Array(a.substr(7).split(","))
 		elif a.begins_with("views="):
 			views = Array(a.substr(6).split(","))
+		elif a.begins_with("mine="):
+			MINE = Array(a.substr(5).split(","))
 	print("LOOK SHOT: level %d, look %s" % [DuelField3D.look_level(), DuelField3D.LOOK])
 	get_tree().root.theme = UITheme.make()
 	Game.new_game("Sprout", "tidegrove")
@@ -73,7 +77,7 @@ func _ready() -> void:
 			f.cam_home(0.01)
 			await _shot("%s_home" % arena)
 		# close on one Totem, from in front of it (the hero shot's place)
-		for v in [["brass", 0, 0], ["fur", 0, 1], ["gold", 1, 1]]:
+		for v in [["brass", 0, 0], ["fur", 0, 1], ["third", 0, 2], ["gold", 1, 1]]:
 			if String(v[0]) in views:
 				var sh: Array = f.shot_hero(int(v[1]), int(v[2]), 0.75)
 				f.cam_shot(sh[0], sh[1], 0.01, DuelField3D.SHOT_FOV_HERO, true)
@@ -127,7 +131,7 @@ func _check() -> void:
 			if any:
 				skinned += 1
 	var want_lit: bool = DuelField3D.LOOK.lit and lvl >= 1
-	for mi in f.slots[0][0].model.find_children("*", "MeshInstance3D", true, false):
+	for mi in (f.slots[0][0].model.find_children("*", "MeshInstance3D", true, false) if MINE[0] == "ironhide" else []):
 		var mesh := mi as MeshInstance3D
 		for k in mesh.mesh.get_surface_count():
 			var m := mesh.get_active_material(k) as BaseMaterial3D

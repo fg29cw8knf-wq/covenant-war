@@ -235,8 +235,16 @@ maker's map alone, and `derive_creature_maps.py` never writes over one. The
 ten made in Tripo3D already in the game (Cinderpup, Brookfin, the River
 Hound, the Shellguard, the Scrivener, the Loomwarden, the Unspent Hour, the
 Weft Serpent, the Glyph Warden, Orlanthe) lost theirs to the old way and
-wear derived ones; Gary's originals would put the true ones back (on Still
-to Make, 18 November). A person made in Tripo3D: `rig_character.py
+wear derived ones. Gary's Downloads (connected 18 November) held three of
+the originals: `Brookfin.glb`, `Riverhound_Master_11_Animations (1).glb` and
+`Cinderpup new model.glb`, the same meshes as the game's (vertex for vertex,
+the UVs identical), so `tools/add_maker_maps.py <original> <game model>`
+put their maps back (`<id>_normal.png` 2048 over the derived one, `<id>_mr.png`
+1024, both on the material; it changes nothing if the UVs differ): sharper
+scales on Brookfin, fur and ember cracks on the Cinderpup, and both catch
+highlights (Tripo's roughness: Brookfin 0.47 and the River Hound 0.52 on
+average, where all three were 0.9). The other seven's files weren't there
+(on Still to Make). A person made in Tripo3D: `rig_character.py
 --normal-map` keeps the maker's (check the face with `cast_skin_shot`).
 
 **Baked light (`LightmapGI`) can't be made from here.** Godot bakes it only
