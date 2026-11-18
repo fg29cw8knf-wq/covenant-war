@@ -259,6 +259,13 @@ static func dress_normal_map(m: Node3D, model_name: String) -> void:
 			var src := mi.get_active_material(si)
 			if not (src is StandardMaterial3D):
 				continue
+			# (18 November: only what's painted from the model's own atlas, as
+			# its normal map is laid out; Corin's mended patch has a picture
+			# of its own)
+			var alb := (src as StandardMaterial3D).albedo_texture
+			if alb != null and alb.resource_path.get_file().begins_with(model_name + "_") \
+					and not alb.resource_path.get_file().begins_with(model_name + "_atlas"):
+				continue
 			var key := "%s:%d" % [model_name, src.get_instance_id()]
 			if not _nm_mats.has(key):
 				var std := src as StandardMaterial3D

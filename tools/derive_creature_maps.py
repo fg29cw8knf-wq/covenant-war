@@ -20,18 +20,49 @@ DuelField3D._dress_model() puts it on the model's materials as it loads
 (not on its eyes, mouths or tongues, nor on fire or mist), at
 DuelField3D.SKIN_NORMAL.
 
-    python3 tools/derive_creature_maps.py assets/models/creatures/<id>.glb [--size 1024] [--strength 1.0]
+People too (18 November, the second of Gary's yeses that morning: "surface
+detail to Bram and the other characters"): --people makes one for every
+character made in Tripo3D (PEOPLE_MIN_ATLAS) in assets/models/characters/
+that hasn't one, beside the model,
+where Figure3D.dress_normal_map() looks (`<model>_normal.png`). A face can't
+take the paint's detail as shape (a painted eyebrow or lip would stand up as
+a ridge), so whatever the rig's Head, Neck and Hand bones move (the face,
+the hair, the hands) gets only SKIN_K (a tenth) of it; the clothes, leather, belts and
+boots get it all, at PEOPLE_STRENGTH.
+
+A map this tool made says so inside it (a PNG text field), and --force only
+ever remakes one of those: a maker's own (Player A's, Tobin's, a Tripo
+model's kept by split_creature.py) is never written over.
+
+    python3 tools/derive_creature_maps.py assets/models/creatures/<id>.glb [--size 1024] [--strength 1.0] [--person]
     python3 tools/derive_creature_maps.py --all            # every creature and Summon that hasn't one
-    python3 tools/derive_creature_maps.py --all --force    # ...and the ones that have
+    python3 tools/derive_creature_maps.py --all --force    # ...and the ones this tool made
+    python3 tools/derive_creature_maps.py --people [--force]  # every character
 """
 import argparse, glob, io, json, os, struct, sys
 
 import numpy as np
 from PIL import Image, ImageDraw
+from PIL.PngImagePlugin import PngInfo
 from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from derive_maps import SPREAD_FLOOR, write_import  # noqa: E402
+
+MARK = "derive_creature_maps"   # (the PNG text field that says this tool made a map)
+PEOPLE_STRENGTH = 1.6           # a person's clothes (0.8 barely showed on a painted 4K atlas: Bram's apron, Hale's belt)
+SKIN_K = 0.1                    # ...and the face, hair and hands a tenth of that (at a quarter the patchy 2K faces, Corin's mam's and the elder's, showed their patches more)
+SKIN_BONES = ("Head", "Neck", "Hand")
+# Only a person made in Tripo3D (a 4096 atlas: Bram, Hale, Kaethis, Ysa, the
+# enforcer, the shard hunter) gets one with --people. The 2K AssetFurnace
+# people (Corin, Tam, Tilly, Nell, the crowd...) have atlases cut into many
+# small pieces with patchy paint, and a map read from that paint tilted each
+# piece as a whole: their faces, bare arms and bodices came out faceted, and
+# taking only the finest detail instead made Bram's apron lumpy (18 November,
+# tests/cast_skin_shot). They're on Gary's list to be remade in Tripo3D at
+# 4K, and get a map then (their maker's, rig_character.py --normal-map, or
+# this one). Name one to make it anyway.
+PEOPLE_MIN_ATLAS = 4096   # (Mixamo's names, as every character's rig has: LeftHandIndex1 too)
 
 COMP = {5120: np.int8, 5121: np.uint8, 5122: np.int16, 5123: np.uint16, 5125: np.uint32, 5126: np.float32}
 NCOMP = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4}
@@ -79,11 +110,28 @@ def colour_image(path, j, b, tex):
     return Image.open(io.BytesIO(b[o:o + v["byteLength"]]))
 
 
-def island_mask(j, b, tex, size):
+def made_here(path):
+    """True when the map at `path` was made by this tool (not a maker's)."""
+    try:
+        return Image.open(path).text.get("Software", "") == MARK
+    except Exception:
+        return False
+
+
+def island_mask(j, b, tex, size, skin=False):
     """Where the model's triangles lie in its atlas (those that use the
-    colour atlas), at `size`, as a bool picture."""
+    colour atlas), at `size`, as a bool picture; with `skin`, also how much
+    of each triangle the rig's head, neck and hands move (0 to 1, a float
+    picture), for a person's face, hair and hands."""
     mask = Image.new("L", (size, size), 0)
     draw = ImageDraw.Draw(mask)
+    share_img = Image.new("L", (size, size), 0) if skin else None
+    sdraw = ImageDraw.Draw(share_img) if skin else None
+    skin_joints = set()
+    if skin and j.get("skins"):
+        for k, ni in enumerate(j["skins"][0]["joints"]):
+            if any(n in j["nodes"][ni].get("name", "") for n in SKIN_BONES):
+                skin_joints.add(k)
     users = set()
     for mi, m in enumerate(j.get("materials", [])):
         t = m.get("pbrMetallicRoughness", {}).get("baseColorTexture")
@@ -102,9 +150,20 @@ def island_mask(j, b, tex, size):
             idx = idx[: len(idx) // 3 * 3].reshape(-1, 3)
             # (wrapped into the atlas: a UV past 1 is the same spot repeated)
             px = (uv - np.floor(uv)) * size
+            share = None
+            if skin and skin_joints and "JOINTS_0" in p["attributes"] and "WEIGHTS_0" in p["attributes"]:
+                jn = accessor(j, b, p["attributes"]["JOINTS_0"]).astype(np.int64)
+                wt = accessor(j, b, p["attributes"]["WEIGHTS_0"]).astype(np.float64)
+                on = np.isin(jn, list(skin_joints))
+                share = np.clip((wt * on).sum(axis=1) / np.maximum(wt.sum(axis=1), 1e-6), 0, 1)
             for a, c, e in idx:
-                draw.polygon([tuple(px[a]), tuple(px[c]), tuple(px[e])], fill=255)
+                poly = [tuple(px[a]), tuple(px[c]), tuple(px[e])]
+                draw.polygon(poly, fill=255)
+                if share is not None:
+                    sdraw.polygon(poly, fill=int(round((share[a] + share[c] + share[e]) / 3.0 * 255)))
             tris += len(idx)
+    if skin:
+        return np.asarray(mask) > 0, tris, np.asarray(share_img).astype(np.float32) / 255.0
     return np.asarray(mask) > 0, tris
 
 
@@ -127,7 +186,7 @@ def masked_blur(a, inside, sigma):
     return np.where(den > 1e-3, out, a)
 
 
-def derive(path, size=0, strength=1.0):
+def derive(path, size=0, strength=1.0, person=False):
     j, b = read_glb(path)
     tex, uvset = colour_texture(j)
     if tex is None:
@@ -135,7 +194,11 @@ def derive(path, size=0, strength=1.0):
         return False
     src = colour_image(path, j, b, tex)
     size = size or max(1024, min(2048, src.width // 2))
-    mask, tris = island_mask(j, b, tex, size)
+    skin = None
+    if person:
+        mask, tris, skin = island_mask(j, b, tex, size, skin=True)
+    else:
+        mask, tris = island_mask(j, b, tex, size)
     # one pixel's grace round each island (the edge of a triangle drawn a
     # hair short)
     mask = ndimage.binary_dilation(mask, iterations=1)
@@ -152,6 +215,11 @@ def derive(path, size=0, strength=1.0):
     spread = np.sqrt(masked_blur(detail * detail, mask, 21.3 * k)) + SPREAD_FLOOR
     h = np.tanh(detail / (spread * 2.5))
     h = masked_blur(h, mask, 0.7 * k)
+    if skin is not None:
+        # a person's face, hair and hands gently (the share eased over a few
+        # pixels, so no step where the neck meets the collar)
+        sk = masked_blur(skin, mask, 2.0 * k)
+        h = h * (1.0 - (1.0 - SKIN_K) * sk)
     h = carry_out(h, mask)   # (so a slope at an island's edge sees only its own paint)
 
     gx = ndimage.sobel(h, axis=1, mode="wrap") / 8.0 * k
@@ -168,32 +236,66 @@ def derive(path, size=0, strength=1.0):
     n = np.stack([carry_out(n[..., c], mask) for c in range(3)], axis=-1)
     out = path[:-4] + "_normal.png"
     nimg = ((n * 0.5 + 0.5) * 255.0 + 0.5).clip(0, 255).astype(np.uint8)
-    Image.fromarray(nimg, "RGB").save(out, optimize=True)
+    info = PngInfo()
+    info.add_text("Software", MARK)
+    Image.fromarray(nimg, "RGB").save(out, optimize=True, pnginfo=info)
     write_import(out, True)
-    print("%s: normal %d from %dx%d, %d triangles, islands cover %.0f%%%s" % (os.path.basename(path)[:-4], size,
-        src.width, src.height, tris, mask.mean() * 100.0, "" if uvset == 0 else " (colour on UV set %d: drawn from set 0)" % uvset))
+    print("%s: normal %d from %dx%d, %d triangles, islands cover %.0f%%%s%s" % (os.path.basename(path)[:-4], size,
+        src.width, src.height, tris, mask.mean() * 100.0,
+        "" if skin is None else ", face/hair/hands %.0f%% of it" % (100.0 * float((skin * mask).sum()) / max(1.0, float(mask.sum()))),
+        "" if uvset == 0 else " (colour on UV set %d: drawn from set 0)" % uvset))
     return True
+
+
+def wanted(p, force):
+    """Whether `p`'s normal map should be made: it has none, or (with
+    --force) the one it has is this tool's, never a maker's. A model whose
+    file holds its maker's normal map (kept by split_creature.py) has one.
+    (The creatures' and Summons' maps of the morning of 18 November came
+    before the mark: a creature's map with no maker's map in its model is
+    this tool's. A person's maker's map can sit beside the model with
+    nothing in it, Player A's, so a person's goes by the mark alone.)"""
+    n = p[:-4] + "_normal.png"
+    j, _ = read_glb(p)
+    makers = any("normalTexture" in m for m in j.get("materials", []))
+    if os.path.exists(n):
+        person = os.path.basename(os.path.dirname(p)) == "characters"
+        return force and not makers and (made_here(n) or not person)
+    return not makers
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("models", nargs="*")
     ap.add_argument("--all", action="store_true", help="every creature and Summon model")
-    ap.add_argument("--force", action="store_true", help="with --all: remake the ones that have one")
-    ap.add_argument("--size", type=int, default=1024)
-    ap.add_argument("--strength", type=float, default=1.0)
+    ap.add_argument("--people", action="store_true", help="every character (assets/models/characters)")
+    ap.add_argument("--person", action="store_true", help="the models named are people (face, hair and hands gentle)")
+    ap.add_argument("--force", action="store_true", help="with --all/--people: remake the ones this tool made")
+    ap.add_argument("--size", type=int, default=0, help="(default: a creature 1024; a person 1024, or 2048 from a 4K atlas)")
+    ap.add_argument("--strength", type=float, default=0.0, help="(default 1, a person %.1f)" % PEOPLE_STRENGTH)
     a = ap.parse_args()
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    models = list(a.models)
+    models = [(p, a.person) for p in a.models]
     if a.all:
         for sub in ("creatures", "summons"):
             for p in sorted(glob.glob(os.path.join(root, "assets/models", sub, "*.glb"))):
-                if a.force or not os.path.exists(p[:-4] + "_normal.png"):
-                    models.append(p)
+                if wanted(p, a.force):
+                    models.append((p, False))
+    if a.people:
+        for p in sorted(glob.glob(os.path.join(root, "assets/models/characters/*.glb"))):
+            if not wanted(p, a.force):
+                continue
+            j, b = read_glb(p)
+            tex, _ = colour_texture(j)
+            w = colour_image(p, j, b, tex).width if tex is not None else 0
+            if w < PEOPLE_MIN_ATLAS:
+                print("%s: skipped (a %d atlas: see PEOPLE_MIN_ATLAS)" % (os.path.basename(p)[:-4], w))
+                continue
+            models.append((p, True))
     if not models:
-        ap.error("name a model, or --all")
-    for p in models:
-        derive(p, a.size, a.strength)
+        ap.error("name a model, or --all / --people (or every one already has its map)")
+    for p, person in models:
+        derive(p, a.size or (0 if person else 1024), a.strength or (PEOPLE_STRENGTH if person else 1.0), person)
 
 
 if __name__ == "__main__":

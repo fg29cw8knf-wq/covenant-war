@@ -1,13 +1,21 @@
 """Readies a Tripo3D creature (one material, a 4K base colour with a roughness-
 metal map and a normal map embedded) for assets/models/creatures/: the base
 colour goes out beside it as <id>_atlas.png (2048, imported once with our
-settings like the other creatures'), the roughness-metal and normal maps are
-dropped (a phone doesn't need them), and with --glow the fire-coloured parts
+settings like the other creatures'), its maker's normal map as <id>_normal.png
+(2048) and roughness-metal map as <id>_mr.png (1024), and with --glow the fire-coloured parts
 of the atlas (bright orange, red and yellow: a Cinderpup's flames) become an
 emission map, <id>_glow.png, so they shine through the duel's bloom the way
 the first creature packs' flame surfaces do.
 
-  python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb [--glow]
+  python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb [--glow] [--flat]
+
+Until 18 November the normal and roughness-metal maps were dropped ("a phone
+doesn't need them": the phone link drew Compatibility, where a rigged
+model's normal map went wrong). The game draws Forward+ on the Mac and the
+iPhone now, and Gary's rule (18 November) is that nothing is flat to the
+light, so they're kept: the duel lights a Totem with its maker's own shape
+(DuelField3D._skin leaves a model that has one alone, and
+derive_creature_maps.py never writes over it). --flat drops them as before.
 
 --glow=rune (12 November, the Glyph Warden: Gary wanted its purple and gold
 markings to glow) takes the saturated violet inlays and the gold trim instead
@@ -18,9 +26,13 @@ import io, json, os, struct, sys
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from derive_maps import write_import  # noqa: E402
+
 src, dst = sys.argv[1], sys.argv[2]
 glow_mode = next((a.split("=", 1)[1] if "=" in a else "fire" for a in sys.argv if a.startswith("--glow")), "")
 glow = glow_mode != ""
+flat = "--flat" in sys.argv
 size = 4096   # (2 November: Tripo's full size, VRAM-compressed at import: tools/atlas_4k.py)
 stem = os.path.basename(dst)[:-4]
 out_dir = os.path.dirname(dst)
@@ -65,11 +77,42 @@ for i, a in enumerate(sys.argv):
         tone = float(sys.argv[i + 1])
 if tone != 1.0:
     pbr["baseColorFactor"] = [tone, tone, tone, 1.0]
+
+
+
+def keep_map(info, suffix, lim, normal):
+    """The maker's map named by `info` written beside the model as
+    <id>_<suffix>.png (at most `lim`), its import settings with it, and a
+    reference to it for the material; None if there isn't one."""
+    if info is None:
+        return None
+    src_im = j["images"][j["textures"][info["index"]]["source"]]
+    pic = Image.open(io.BytesIO(datas[src_im["bufferView"]])).convert("RGB")
+    if pic.width > lim:
+        pic = pic.resize((lim, lim), Image.LANCZOS)
+    name = "%s_%s.png" % (stem, suffix)
+    pic.save(os.path.join(out_dir, name), "PNG", optimize=True)
+    write_import(os.path.join(out_dir, name), normal)
+    images.append({"name": suffix, "uri": name})
+    textures.append({"sampler": 0, "source": len(images) - 1})
+    print("kept the maker's %s map: %s (%d)" % (suffix, name, pic.width))
+    return {"index": len(textures) - 1}
+
+
+mr_ref = None if flat else keep_map(pbr.get("metallicRoughnessTexture"), "mr", 1024, False)
+nrm_ref = None if flat else keep_map(mat.get("normalTexture"), "normal", 2048, True)
 pbr.pop("metallicRoughnessTexture", None)
-pbr["metallicFactor"] = 0.0
-pbr["roughnessFactor"] = 0.9
 mat.pop("normalTexture", None)
 mat.pop("occlusionTexture", None)
+if mr_ref is not None:
+    pbr["metallicRoughnessTexture"] = mr_ref
+    pbr["metallicFactor"] = 1.0
+    pbr["roughnessFactor"] = 1.0
+else:
+    pbr["metallicFactor"] = 0.0
+    pbr["roughnessFactor"] = 0.9
+if nrm_ref is not None:
+    mat["normalTexture"] = nrm_ref
 if glow:
     a = np.asarray(img.resize((1024, 1024), Image.LANCZOS)).astype(np.float32) / 255.0
     r, g, bl = a[..., 0], a[..., 1], a[..., 2]
@@ -97,8 +140,8 @@ if glow:
     glow_name = "%s_glow.png" % stem
     Image.fromarray(em, "RGB").save(os.path.join(out_dir, glow_name), "PNG", optimize=True)
     images.append({"name": "glow", "uri": glow_name})
-    textures.append({"sampler": 0, "source": 1})
-    mat["emissiveTexture"] = {"index": 1}
+    textures.append({"sampler": 0, "source": len(images) - 1})
+    mat["emissiveTexture"] = {"index": len(textures) - 1}
     mat["emissiveFactor"] = [1.0, 1.0, 1.0]
     print("glow: %.1f%% of the atlas shines" % (100.0 * float((k > 0.2).mean())))
 mat["name"] = stem

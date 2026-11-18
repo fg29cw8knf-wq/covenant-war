@@ -187,19 +187,72 @@ through software Vulkan (Ashford by day and at dusk, the taproom with and
 without its probe). On Forward+ the maps show most (the plank and barrel
 grain, the inn's whitewashed stone); the probe's change is small.
 
-Still to do in the look pass: baked light (`LightmapGI`) for Ashford; the
-characters' normal maps (Bram's and the rest, from Gary's original Tripo3D
-files, as Player A's: their game atlases can't give one); a reflection probe
+Still to do in the look pass: baked light (`LightmapGI`) for Ashford (it
+can't be baked from here: "People's surface detail", below); the 2K
+characters' normal maps (Corin, Tam, Tilly and the rest AssetFurnace made:
+when they're remade in Tripo3D at 4K, on Gary's list; the seven Tripo3D
+people have theirs since 18 November, below); a reflection probe
 on Solhaven's gold (its set is built in `solhaven_set.gd`); SSAO and
 SDFGI on the Mac judged on the Mac itself (left as they were: SSAO 1.8 and
 SDFGI on at the full level; worth trying SSAO about 1.0 and SDFGI off for
 the frame rate if the Mac struggles). The 3D duel field: done 18 November
 (its light, materials and grade: "The arena's look", in the Duel Lab).
 
-Left for later in the look pass: baked lighting (`LightmapGI`) for the villages;
-normal maps for the people (Bram's atlas is thousands of small islands, so it
-needs the maker's own normal map, as Player A's had); a reflection probe on
-Solhaven's gold (`solhaven_set.gd`); SSAO (1.8 now) and SDFGI judged on the Mac.
+### People's surface detail (18 November)
+
+Gary's yes to "add surface detail to Bram and the other characters, then
+baked lighting for Ashford". Bram's atlas is thousands of small islands,
+which is why the people waited for their makers' maps; `tools/derive_creature_maps.py`
+(made that morning for the duel's Totems) works island by island, and
+`--people` now makes a person's (`assets/models/characters/<id>_normal.png`,
+which `Figure3D.dress_normal_map` already wears through `character_nm.gdshader`):
+the clothes, leather, belts and boots at `PEOPLE_STRENGTH` 1.6 (0.8 barely
+showed on a painted 4K atlas), and whatever the rig's Head, Neck and Hand
+bones move (face, hair, hands) at a tenth of it (`SKIN_K`), so a painted
+eyebrow or lip never stands up as a ridge. Made for the seven made in
+Tripo3D (a 4096 atlas, `PEOPLE_MIN_ATLAS`): Bram, Bram in his coat, Warden
+Hale, Kaethis, Ysa, the enforcer and the shard hunter, at 2048. Not for the
+2K AssetFurnace people (Corin, Tam, Tilly, Nell, Hob, Ned, Krell, looks B to
+D, the crowd, the Sun Guard, the children): their atlases are cut into many
+small pieces with patchy paint, and a map read from it tilted each piece as
+a whole, so faces, bare arms and bodices came out faceted (the elder's cheek,
+Corin's arm); taking only the finest detail instead made Bram's apron lumpy.
+They get theirs when they're remade at 4K (Still to Make, "Making it all
+4K"). Player A's and Tobin's are their makers' and are never written over
+(a map this tool made says so in a PNG text field; `--force` only remakes
+those). `dress_normal_map` now wears a model's map only on surfaces painted
+from its own atlas (Corin's mended patch has a picture of its own).
+`tests/cast_skin_shot.gd -- <dir> <ids> [flat]` takes each person whole,
+close on the chest and belt, and close on the face, under a low side light,
+and checks the map is worn where it should be.
+
+**Tripo3D's own maps are kept now**: `tools/split_creature.py` writes a
+creature's maker's normal map (`<id>_normal.png`, 2048) and roughness-metal
+map (`<id>_mr.png`, 1024) beside it and puts them on its material
+(`--flat` drops them, as it always did before: "a phone doesn't need
+them" was the phone link's Compatibility). The duel leaves a model with its
+maker's map alone, and `derive_creature_maps.py` never writes over one. The
+ten made in Tripo3D already in the game (Cinderpup, Brookfin, the River
+Hound, the Shellguard, the Scrivener, the Loomwarden, the Unspent Hour, the
+Weft Serpent, the Glyph Warden, Orlanthe) lost theirs to the old way and
+wear derived ones; Gary's originals would put the true ones back (on Still
+to Make, 18 November). A person made in Tripo3D: `rig_character.py
+--normal-map` keeps the maker's (check the face with `cast_skin_shot`).
+
+**Baked light (`LightmapGI`) can't be made from here.** Godot bakes it only
+in its editor, at a person's press of Bake (`LightmapGI.bake()` isn't open
+to scripts, editor or not), and only with a graphics card; this workspace
+has neither, and the village is put together by code as it loads, so there's
+no saved scene to bake. The Mac already has live bounced light in Ashford
+(SDFGI at the full level); the iPhone on Smooth has none. What could be done
+from here instead (offered to Gary, not built): VoxelGI, which works its
+light out as the place loads and runs on Forward+ (the Mac and the iPhone),
+for the inside rooms (the taproom, the attic), where bounced light shows most
+and the room is small enough for it.
+
+Left for later in the look pass: baked lighting (above); the 2K people's
+normal maps (above); a reflection probe on Solhaven's gold
+(`solhaven_set.gd`); SSAO (1.8 now) and SDFGI judged on the Mac.
 
 ## The Duel Lab (duel rules v2)
 
@@ -215,7 +268,7 @@ godot -- --lab
 | --- | --- |
 | `scripts/duel/` | The rules engine: every tunable number (`duel_rules.gd`), the cards and starter decks (`duel_cards.gd`), the duel itself (`duel_game.gd`), the computer duellist (`duel_ai.gd`), the 24 conditions and 6 boons (`duel_conditions.gd`), the Kingdom Laws and Blessings (`duel_laws.gd`), and Resonance, Rank and Attunement (`duel_rewards.gd`). No graphics code. |
 | `scripts/duel_ui/` | The Duel Lab set-up screen, the duel screen, card faces and the pieces they're built from. |
-| `assets/models/creatures/` | The Totems' 3D models, `<card id>.glb` with `<card id>_atlas.png` beside it (`assets/models/PUT_MODELS_HERE.txt`). A Tripo3D creature (one material, 4K base colour, roughness-metal and normal maps embedded) is readied with `python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb --glow` (since 8 November after `tools/glb_bake_turn.py` and `tools/glb_flatten_rig.py`, see Kaethis below): the atlas out at 2048 (4096 since 2 November), the other maps dropped, and with `--glow` the fire-coloured parts of the atlas as an emission map (`<id>_glow.png`), so a Cinderpup's flames shine through the bloom. Cinderpup is Gary's 26 October Tripo3D model, with its seven clips (idle, spawn, attack, hit, defeat, victory, run); under the duel's warm lights its orange coat reads red. Brookfin is his 27 October one (the blue fish-dragon with the pale belly and fins, an 89-joint rig with eleven clips: idle, walk, run, swim, attack, hit_react, defeat, victory, spawn, tail_swish, rest; `hit_react` is read as its hit, `DuelField3D.CLIP_ALIASES`); `tests/totem_peek.tscn -- <dir> <yours> <theirs>` stands chosen Totems on the field for a look. River Hound is Gary's 28 October model (the lean water hound with the white foam ruff, the same eleven clips as Brookfin), in Tam's friendly game, his Reckoning duel and any deck that has her; until then she was a Shieldhound washed blue. |
+| `assets/models/creatures/` | The Totems' 3D models, `<card id>.glb` with `<card id>_atlas.png` beside it (`assets/models/PUT_MODELS_HERE.txt`). A Tripo3D creature (one material, 4K base colour, roughness-metal and normal maps embedded) is readied with `python3 tools/split_creature.py <in.glb> assets/models/creatures/<id>.glb --glow` (since 8 November after `tools/glb_bake_turn.py` and `tools/glb_flatten_rig.py`, see Kaethis below): the atlas out at 2048 (4096 since 2 November), the maker's normal and roughness-metal maps beside it since 18 November (dropped before; `--flat` still drops them), and with `--glow` the fire-coloured parts of the atlas as an emission map (`<id>_glow.png`), so a Cinderpup's flames shine through the bloom. Cinderpup is Gary's 26 October Tripo3D model, with its seven clips (idle, spawn, attack, hit, defeat, victory, run); under the duel's warm lights its orange coat reads red. Brookfin is his 27 October one (the blue fish-dragon with the pale belly and fins, an 89-joint rig with eleven clips: idle, walk, run, swim, attack, hit_react, defeat, victory, spawn, tail_swish, rest; `hit_react` is read as its hit, `DuelField3D.CLIP_ALIASES`); `tests/totem_peek.tscn -- <dir> <yours> <theirs>` stands chosen Totems on the field for a look. River Hound is Gary's 28 October model (the lean water hound with the white foam ruff, the same eleven clips as Brookfin), in Tam's friendly game, his Reckoning duel and any deck that has her; until then she was a Shieldhound washed blue. |
 
 ```sh
 godot --headless --script res://tests/duel_sim.gd -- 2000            # balance: every deck vs every deck
@@ -783,10 +836,15 @@ python3 tools/derive_maps.py assets/art/mats/mat_<arena>.jpg --size 1536
 ```
 
 A new Totem or Summon model needs its normal map made (`--all` makes every
-one missing) and `godot --headless --import`. Gary's own Tripo3D models
+one missing, but never over a maker's) and `godot --headless --import`.
+
+Gary (18 November): **no** to making the flash smaller as a blow lands (on
+the Mac it hides the Totem being hit for a moment). It stays as it is; don't
+offer it again. Gary's own Tripo3D models
 came with their maker's normal and roughness maps, which
-`tools/split_creature.py` drops: his originals, if he has them, would give
-the Tripo Totems truer ones than these (a suggestion to him, 18 November).
+`tools/split_creature.py` dropped until 18 November (it keeps them now:
+"People's surface detail", in the look pass); his originals of the ten in
+the game would give them truer ones than these (on Still to Make).
 
 ### Kaethis, the Hand Before: Bram's god and its cards (5 November)
 
