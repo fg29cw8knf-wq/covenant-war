@@ -588,6 +588,23 @@ func _third_pass(skipped: bool) -> bool:
 				m.pack_wiped, str(m.cards_burned), str(m.hunter_burned), str(m.page_departed), str(m.finale_done)])
 		for id in _pack_left:
 			fails.append("one of the pack (%s) still stood as Orlanthe went back up" % id)
+		# (18 November) Gary's own sounds for it, where he has made them: his
+		# light_wave as the light rolls out, his hunter_burn as the hunter
+		# goes, and his end music from the blow
+		var end_heard: Array = Sfx.heard.map(func(h): return String(h[1]))
+		print("white_sky_test: Gary's sounds for the end: light_wave %s, hunter_burn %s, the end music (white_sky_end) begun at the blow %s" % [
+			("heard" if "light_wave" in end_heard else "not heard") if Sfx.has_file("light_wave") else "no file",
+			("heard" if "hunter_burn" in end_heard else "not heard") if Sfx.has_file("hunter_burn") else "no file",
+			str(m.end_music) if Music.has("white_sky_end") else "no file"])
+		if Sfx.has_file("light_wave") and not ("light_wave" in end_heard):
+			fails.append("Gary's light_wave wasn't played as the light rolled out")
+		var wave_at: Array = Sfx.heard.filter(func(h): return String(h[1]) == "light_wave").map(func(h): return int(h[0]))
+		if Sfx.heard.any(func(h): return String(h[1]) == "summon_boom" and int(h[0]) in wave_at):
+			fails.append("the stand-in boom played with Gary's light_wave")
+		if Sfx.has_file("hunter_burn") and not ("hunter_burn" in end_heard):
+			fails.append("Gary's hunter_burn wasn't played as the hunter burned")
+		if Music.has("white_sky_end") != m.end_music:
+			fails.append("the end music: there %s, begun %s" % [str(Music.has("white_sky_end")), str(m.end_music)])
 		var want_id := String(WhiteSkyDuel.PLAY_CHOICE[1 if _serpent else 0])
 		var want_name := String(DuelCards.CARDS[want_id].name)
 		print("white_sky_test: the first move: %d cards offered, '%s' picked; the duel: \"%s\", the hound broken %s" % [m.call_offered, m.call_picked, _first_call, str(_hound_broke)])

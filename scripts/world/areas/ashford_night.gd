@@ -1930,7 +1930,8 @@ static func look_back(w: World) -> void:
 	if cb != null:
 		Cine.fig(w, "corin").visible = false
 	# out of the dark, and he turns
-	Cine.shot(w, start - to_v * 2.6 + Vector3(0, 1.8, 0) + to_v.cross(Vector3.UP) * 1.0, start + Vector3(0, 1.3, 0), 44.0)
+	var first := first_shot(hill, start, to_v)
+	Cine.shot(w, first[0], first[1], float(first[2]))
 	await Cine.fade(w, 0.0, 1.4)
 	await Cine.wait(w, 0.8)
 	Cine.look(w, "player", VILLAGE_LOOK)
@@ -1944,7 +1945,7 @@ static func look_back(w: World) -> void:
 	# his own: nothing says what to do
 	var ground := func(p: Vector3) -> float: return v.height(p.x, p.z)
 	var hill_room := {"root": hill, "floor_y": start.y, "ground": ground,
-		"walk": Rect2(-3.0, -2.0, 6.0, 12.0), "blocks": []}
+		"walk": Rect2(-3.0, -2.0, 6.0, 12.0), "blocks": hill.get_meta("solid", [])}
 	AshfordP1.controls_on(w)
 	w.hud._menu_btn.visible = true
 	var t0 := [0.0]
@@ -2114,6 +2115,25 @@ const TUNNEL_MODEL := "res://assets/models/ashford/tunnel_mouth.glb"
 const THORN_MODEL := "res://assets/models/ashford/thorn_bush.glb"
 ## The drawn bank's size (m: across, high, deep), which the model is fitted to.
 const MOUTH_SIZE := Vector3(2.4, 1.6, 1.4)
+## Where Gary's thorn bushes stand round his tunnel mouth (18 November, the
+## day both models came), in the hillside's own x/z (z runs down the hill;
+## the bank's middle is at 0, -1): [x, z, how wide (m), turned (radians)].
+## Behind the bank and to its sides, one leaning over its back and a small
+## one against its side; none in the dry-stone wall that runs down the hill
+## three metres to the bank's right (the drawn bushes' places put three of
+## them through it), none near a camera, none where the player can walk.
+const THORNS := [
+	[0.3, -2.7, 2.4, 0.4], [-2.8, -2.4, 2.2, 2.1], [-3.5, -0.7, 1.8, 4.0],
+	[-0.9, -4.2, 2.4, 5.2], [-4.6, -2.8, 2.0, 1.3], [1.55, -0.7, 1.4, 3.1],
+]
+## How far the bank may be turned from facing the village to face down the
+## fall of the ground (radians), and how its first shot is taken once it's
+## there (first_shot): how far behind the mouth and to Bram's side the
+## camera is (m), and how high over the ground he stands on.
+const BANK_TURN := 0.45
+const FIRST_BACK := 0.15
+const FIRST_SIDE := 0.3
+const FIRST_UP := 1.9
 
 static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3D:
 	var hill := Node3D.new()
@@ -2122,29 +2142,91 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 	hill.global_position = mouth
 	hill.global_basis = Basis.looking_at(-to_v, Vector3.UP)
 	# (+z runs down the hill towards the village: the mouth is behind him)
-	if _fitted(hill, TUNNEL_MODEL, Vector3(0, -0.05, -1.0), MOUTH_SIZE.x, 0.0) == null:
+	# what can't be walked through, for the look back's own walk (round
+	# things, in the hillside's x/z): the models only. The drawn bank and
+	# bushes were never solid, and stay as they were.
+	var solid: Array = []
+	var bank := _fitted(hill, TUNNEL_MODEL, Vector3(0, -0.05, -1.0), MOUTH_SIZE.x, 0.0)
+	if bank == null:
 		var earth := StandardMaterial3D.new()
 		earth.albedo_color = Color(0.16, 0.12, 0.08)
 		v.box(hill, MOUTH_SIZE, Vector3(0, 0.6, -1.0), earth)
 		v.box(hill, Vector3(1.0, 1.1, 0.1), Vector3(0, 0.55, -0.28), v.mats.dark)
-	var thorn := StandardMaterial3D.new()
-	thorn.albedo_color = Color(0.08, 0.1, 0.06)
-	thorn.roughness = 1.0
-	for i in 6:
-		var a := -1.2 + i * 0.5
-		var at := Vector3(sin(a) * 3.4, 0, -cos(a) * 1.6 - 0.6)
-		var r := 0.9 + 0.2 * (i % 3)
-		if _fitted(hill, THORN_MODEL, at + Vector3(0, -0.05, 0), r * 2.0, a * 2.3 + i) != null:
-			continue
-		var bush := MeshInstance3D.new()
-		var sm := SphereMesh.new()
-		sm.radius = r
-		sm.height = 1.4
-		bush.mesh = sm
-		bush.material_override = thorn
-		bush.position = at + Vector3(0, 0.6, 0)
-		hill.add_child(bush)
+	else:
+		bank.name = "Bank"
+		_seat_bank(v, hill, bank)
+		solid.append([Vector2(0.0, -1.0), MOUTH_SIZE.x * 0.5 + 0.25])
+	if ResourceLoader.exists(THORN_MODEL):
+		for t in THORNS:
+			var at := Vector3(float(t[0]), 0.0, float(t[1]))
+			var b := _fitted(hill, THORN_MODEL, at, float(t[2]), float(t[3]))
+			# each on the hillside's own ground where it stands, its foot a
+			# little in (the hillside is laid out level; the ground isn't)
+			var gp := b.global_position
+			b.global_position = Vector3(gp.x, v.height(gp.x, gp.z) - 0.06, gp.z)
+			solid.append([Vector2(at.x, at.z), float(t[2]) * 0.4])
+	else:
+		var thorn := StandardMaterial3D.new()
+		thorn.albedo_color = Color(0.08, 0.1, 0.06)
+		thorn.roughness = 1.0
+		for i in 6:
+			var a := -1.2 + i * 0.5
+			var at := Vector3(sin(a) * 3.4, 0, -cos(a) * 1.6 - 0.6)
+			var r := 0.9 + 0.2 * (i % 3)
+			var bush := MeshInstance3D.new()
+			var sm := SphereMesh.new()
+			sm.radius = r
+			sm.height = 1.4
+			bush.mesh = sm
+			bush.material_override = thorn
+			bush.position = at + Vector3(0, 0.6, 0)
+			hill.add_child(bush)
+	hill.set_meta("solid", solid)
 	return hill
+
+
+## Gary's bank seated in the hillside (18 November). The hill falls about a
+## metre in three here, and not straight towards the village. Laid level and
+## facing the village, as the drawn box was, the bank's downhill corner hung
+## a hand above the grass and the scrap of path at its foot lay in the air.
+## So its mouth is turned to face straight down the fall of the ground where
+## it stands (no more than BANK_TURN), and its foot is put on the grass under
+## the end of its path: the hill then rises round its sides and over its
+## back, as round a bank dug into it.
+static func _seat_bank(v: AshfordVillage, hill: Node3D, bank: Node3D) -> void:
+	var c := bank.global_position
+	var bx := hill.global_basis.x
+	var bz := hill.global_basis.z
+	var r := MOUTH_SIZE.x * 0.5
+	var gx := (v.height(c.x + bx.x * r, c.z + bx.z * r) - v.height(c.x - bx.x * r, c.z - bx.z * r)) / (2.0 * r)
+	var gz := (v.height(c.x + bz.x * r, c.z + bz.z * r) - v.height(c.x - bz.x * r, c.z - bz.z * r)) / (2.0 * r)
+	var turn := 0.0
+	if Vector2(gx, gz).length() > 0.02:
+		turn = clampf(atan2(-gx, -gz), -BANK_TURN, BANK_TURN)
+	bank.rotation.y = turn
+	var m := bank.get_child(0) as Node3D
+	var bb := DuelField3D._merged_aabb(m)
+	var front := c + (bz * cos(turn) + bx * sin(turn)) * (bb.size.z * m.scale.z * 0.5)
+	bank.global_position = Vector3(c.x, v.height(front.x, front.z) - 0.03, c.z)
+	hill.set_meta("bank_top", bank.global_position.y + bb.size.y * m.scale.y)
+
+
+## The look back's first shot, [from, at, lens]: him as he comes out and
+## turns. As first staged it looked down the hill at him from behind and
+## above the mouth, which put the camera inside the drawn box: where the
+## real bank's shoulder and ferns are (18 November: the bank a dark shape
+## over a third of the picture, and a bush round the lens). With Gary's
+## bank it's from over the mouth itself, above its lintel with the bank
+## behind the camera: him from the chest up, Ashford's lights beyond his
+## shoulder; Bram stands just out of it.
+static func first_shot(hill: Node3D, start: Vector3, to_v: Vector3) -> Array:
+	var side := to_v.cross(Vector3.UP)
+	var at := start + Vector3(0, 1.3, 0)
+	if hill.get_node_or_null("Bank") == null:
+		return [start - to_v * 2.6 + Vector3(0, 1.8, 0) + side * 1.0, at, 44.0]
+	var from := hill.global_position - to_v * FIRST_BACK + side * FIRST_SIDE
+	from.y = start.y + FIRST_UP
+	return [from, at, 44.0]
 
 
 ## One of Gary's models under `parent` at `at` (its foot there, its middle

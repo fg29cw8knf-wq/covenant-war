@@ -311,6 +311,14 @@ func stinger(track: String, duck: bool = true) -> bool:
 	return true
 
 
+## Ends a piece playing on its own (18 November: the Night of the White
+## Sky's end music, when a test skips past the memory under it).
+func end_stinger(fade: float = 0.3) -> void:
+	if _web != null:
+		return
+	_solo_out(fade)
+
+
 ## Dips the music for `secs` (a Summon's clip playing over it), then brings
 ## it back.
 func duck(secs: float, by := 14.0) -> void:

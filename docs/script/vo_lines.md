@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 568 lines, 18 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-15 (f3025a0); run it again after the words change.
+Every line the game speaks, in the order it's played: 568 lines, 26 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-18 (7243d64); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -15,14 +15,14 @@ Every line the game speaks, in the order it's played: 568 lines, 18 of them reco
 | 0002 | Bram | Hush, now. I've got you. *(recorded already)* | `b3db9878` |
 | 0003 | Bram | Not this one. *(recorded already)* | `cb5440f1` |
 | 0004 | Morrowen | Twenty years later, the debt came due. *(recorded already)* | `6ec01c26` |
-| 0005 | Bram | Come on then, Sprout. | `f11e5498` |
-| 0006 | Bram | One more hour. That's all I need. | `fe9d582d` |
-| 0007 | Bram | Get back from him. | `e12f55e3` |
-| 0008 | Bram | Write it in my name, then. | `e021abca` |
-| 0009 | Bram | Hold them off. Just a little longer. | `40c7b305` |
-| 0010 | Bram | Not yet. Not yet. | `c9b22f07` |
-| 0011 | Bram | I've got you. I've got you. | `81601230` |
-| 0012 | Bram | You'll not have him. | `a625aa10` |
+| 0005 | Bram | Come on then, Sprout. *(recorded already)* | `f11e5498` |
+| 0006 | Bram | One more hour. That's all I need. *(recorded already)* | `fe9d582d` |
+| 0007 | Bram | Get back from him. *(recorded already)* | `e12f55e3` |
+| 0008 | Bram | Write it in my name, then. *(recorded already)* | `e021abca` |
+| 0009 | Bram | Hold them off. Just a little longer. *(recorded already)* | `40c7b305` |
+| 0010 | Bram | Not yet. Not yet. *(recorded already)* | `c9b22f07` |
+| 0011 | Bram | I've got you. I've got you. *(recorded already)* | `81601230` |
+| 0012 | Bram | You'll not have him. *(recorded already)* | `a625aa10` |
 
 ## Ashford: the last morning (the opening)
 

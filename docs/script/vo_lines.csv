@@ -3,14 +3,14 @@ no,area,speaker,id,words,file,scene,note
 0002,ashford,bram,b3db9878,"Hush, now. I've got you.",assets/audio/vo/ashford/bram/b3db9878.ogg,,recorded already
 0003,ashford,bram,cb5440f1,Not this one.,assets/audio/vo/ashford/bram/cb5440f1.ogg,,recorded already
 0004,ashford,morrowen,6ec01c26,"Twenty years later, the debt came due.",assets/audio/vo/ashford/morrowen/6ec01c26.ogg,,recorded already
-0005,ashford,bram,f11e5498,"Come on then, Sprout.",assets/audio/vo/ashford/bram/f11e5498.ogg,,
-0006,ashford,bram,fe9d582d,One more hour. That's all I need.,assets/audio/vo/ashford/bram/fe9d582d.ogg,,
-0007,ashford,bram,e12f55e3,Get back from him.,assets/audio/vo/ashford/bram/e12f55e3.ogg,,
-0008,ashford,bram,e021abca,"Write it in my name, then.",assets/audio/vo/ashford/bram/e021abca.ogg,,
-0009,ashford,bram,40c7b305,Hold them off. Just a little longer.,assets/audio/vo/ashford/bram/40c7b305.ogg,,
-0010,ashford,bram,c9b22f07,Not yet. Not yet.,assets/audio/vo/ashford/bram/c9b22f07.ogg,,
-0011,ashford,bram,81601230,I've got you. I've got you.,assets/audio/vo/ashford/bram/81601230.ogg,,
-0012,ashford,bram,a625aa10,You'll not have him.,assets/audio/vo/ashford/bram/a625aa10.ogg,,
+0005,ashford,bram,f11e5498,"Come on then, Sprout.",assets/audio/vo/ashford/bram/f11e5498.ogg,,recorded already
+0006,ashford,bram,fe9d582d,One more hour. That's all I need.,assets/audio/vo/ashford/bram/fe9d582d.ogg,,recorded already
+0007,ashford,bram,e12f55e3,Get back from him.,assets/audio/vo/ashford/bram/e12f55e3.ogg,,recorded already
+0008,ashford,bram,e021abca,"Write it in my name, then.",assets/audio/vo/ashford/bram/e021abca.ogg,,recorded already
+0009,ashford,bram,40c7b305,Hold them off. Just a little longer.,assets/audio/vo/ashford/bram/40c7b305.ogg,,recorded already
+0010,ashford,bram,c9b22f07,Not yet. Not yet.,assets/audio/vo/ashford/bram/c9b22f07.ogg,,recorded already
+0011,ashford,bram,81601230,I've got you. I've got you.,assets/audio/vo/ashford/bram/81601230.ogg,,recorded already
+0012,ashford,bram,a625aa10,You'll not have him.,assets/audio/vo/ashford/bram/a625aa10.ogg,,recorded already
 0013,ashford,narrator,3ce37a3b,[i]{name}. Same as every winter. Bram still calls me Sprout.[/i],assets/audio/vo/ashford/narrator/3ce37a3b.ogg,"Bram and the player, walking",{name} is the player's name
 0014,ashford,narrator,6dbe7635,"[i]Because you are unbound. The gods hold no mortgage on your soul, and Ironvault has no receipt for your birth.[/i]",assets/audio/vo/ashford/narrator/6dbe7635.ogg,"Bram and the player, walking",
 0015,ashford,narrator,082baed5,"[i]In a world where every king and kingdom is pledged to a patron, a person who owes nothing is a rarity... and a threat to Aurex Morne's bank.[/i]",assets/audio/vo/ashford/narrator/082baed5.ogg,"Bram and the player, walking",

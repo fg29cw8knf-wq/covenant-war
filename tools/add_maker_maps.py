@@ -11,7 +11,15 @@ from the map, its factors 1). A normal map this repo's derive_creature_maps.py
 made for it (a stand-in) is replaced; the duel then leaves the model's own
 alone (DuelField3D._skin).
 
-    python3 tools/add_maker_maps.py <gary's original.glb> assets/models/creatures/<id>.glb
+    python3 tools/add_maker_maps.py <gary's original.glb> assets/models/creatures/<id>.glb [--metal 0.15]
+
+--metal: how much of the map's metal is kept (the material's metal factor;
+1 as Tripo3D made it). The Unspent Hour is the case (18 November): Tripo3D
+painted its pale glass as polished metal (0.86 metal, 0.14 rough on
+average), and metal has no colour of its own, only what it mirrors: under
+an arena's night sky it stood as black chrome, nothing like its painting.
+At 0.15 it is glass again: its own pale colour, its maker's fine shape and
+shine.
 """
 import io, json, os, struct, sys
 
@@ -39,7 +47,13 @@ def picture(j, b, info):
 
 
 def main():
-    src, dst = sys.argv[1], sys.argv[2]
+    args = sys.argv[1:]
+    metal = 1.0
+    if "--metal" in args:
+        i = args.index("--metal")
+        metal = float(args[i + 1])
+        del args[i:i + 2]
+    src, dst = args[0], args[1]
     js, bs = read_glb(src)
     jd, bd = read_glb(dst)
     us, ud = uvs(js, bs), uvs(jd, bd)
@@ -81,10 +95,11 @@ def main():
             mat["normalTexture"] = {"index": tex}
         else:
             pbr["metallicRoughnessTexture"] = {"index": tex}
-            pbr["metallicFactor"] = 1.0
+            pbr["metallicFactor"] = metal
             pbr["roughnessFactor"] = 1.0
             a = np.asarray(pic, dtype=np.float32) / 255.0
-            print("%s: roughness %.2f on average, metal %.2f" % (stem, a[..., 1].mean(), a[..., 2].mean()))
+            print("%s: roughness %.2f on average, metal %.2f%s" % (stem, a[..., 1].mean(), a[..., 2].mean(),
+                  "" if metal == 1.0 else " (kept at %.2f of it: %.2f)" % (metal, a[..., 2].mean() * metal)))
         print("%s: the maker's %s map put back (%s, %d)" % (stem, suffix, name, pic.width))
     js_out = json.dumps(j, separators=(",", ":")).encode()
     while len(js_out) % 4:

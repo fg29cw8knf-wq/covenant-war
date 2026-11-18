@@ -15,7 +15,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `scripts/ai/` | The computer opponent. |
 | `tests/` | Headless tests. `sim.gd` plays thousands of AI-vs-AI duels and checks the rules never break. |
 | `assets/art/` | The painted art, sized for the game: `cards/` (card paintings, 640 wide), `creatures/` (transparent battlefield cut-outs), `summons/` (Summon cut-outs and their sky scenes), `arenas/`, `gods/`, `card_back.jpg`, `icon.png`. Files are named by card id (see `scripts/duel_ui/duel_art.gd`); anything missing falls back to drawn placeholders. Prompts: `docs/card-prompts.md`. |
-| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`; `amb_<name>.ogg`: each place's bed of sound, `tools/make_ambience.py`). |
+| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`; `amb_<name>.ogg`: each place's bed of sound, `tools/make_ambience.py`; Gary's own recordings, levelled by `tools/sfx_master.py`). |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
 ## Gary's standing rule (22 October): every update is built to the best look and flow
@@ -3101,6 +3101,116 @@ wrote it, what was measured before and after, and what's his to change.
   picture's cost (bounce light, SSIL, SSAO, fog, 2x MSAA, 41 lights on the
   evening green), not the game's scripts.
 
+### Gary's files of 18 November: Bram's voice, the snow's sounds, the bank and the thorns, seven Tripo originals
+
+Gary (18 November, with three folders, six paintings and nine models):
+"here are some of the things you need also - 81601230 - says I got you 3
+times need to cut out the last one / a625aa10 - repeats twice remove the
+second one".
+
+- **Bram's eight lines** (`assets/audio/vo/ashford/bram/<id>.ogg`; his
+  recordings kept as they came in `assets/audio/source/vo/`): "Come on then,
+  Sprout." `f11e5498`, "One more hour. That's all I need." `fe9d582d`, "Hold
+  them off. Just a little longer." `40c7b305`, "Get back from him."
+  `e12f55e3`, "Not yet. Not yet." `c9b22f07`, "I've got you. I've got you."
+  `81601230`, "You'll not have him." `a625aa10`, "Write it in my name, then."
+  `e021abca`. His two cuts first: `81601230` said "I've got you" three times
+  (0.24 to 1.18 s, 1.90 to 2.70 s, 3.44 to 4.24 s) and is cut in the quiet at
+  3.10 s; `a625aa10` said its line twice (to 1.70 s, and from 2.34 s) and is
+  cut at 2.05 s. Then `tools/vo_master.py --lines` as ever. `tools/vo_sheet.py`
+  run again: 26 of the 568 lines recorded.
+- **His fifteen sounds**, readied by `tools/sfx_master.py` (new: the nothing
+  cut off each end, his stereo kept, each set as loud as the game's own
+  effects, its loudest fifth of a second at 0.16 and no peak over 0.7, the
+  way `tools/make_cries.py` judges a voice; his recordings ran from -6 LUFS
+  and clipping to -33) into `assets/sfx/<name>.ogg`, his own kept in
+  `assets/audio/source/sfx/`. The game was already asking for most by name
+  (`Sfx`: the made-up stand-ins step aside for a file):
+
+  | Sound | Where it's heard | Note |
+  | --- | --- | --- |
+  | `baby_coo`, `_2`, `_3` | the small hand reaching for its card | one of the three at random |
+  | `child_tune` | Bram picks the child up; the small hand closes on its card; the hero wakes | 6.7 s; the music dips under it for `TUNE_SECS` 6.6 |
+  | `mark_wake` | the mark answering the hunter's hand; the mark on the walk out | |
+  | `circle_draw` | the Circle drawing itself in the snow | |
+  | `ice_ring`, `_2`, `_3` | a shard singing in each gust and in the hush before the Last Page | very high (6 to 12 kHz): set a little under the rest (0.10); `_3` came 20 dB quieter than the others with its two sides against each other (a phone's one speaker would cancel it): its sides brought together |
+  | `ice_crack`, `_2` | each bolt of lightning | held to its peak |
+  | `ice_shatter` | a Totem breaking in the light; the hunter's hood | |
+  | `hunter_burn` | the hunter burning away (`WhiteSky._hunter_burns`) | new by name: for the stand-ins `cast_fire` and `storm_wind` (`HUNTER_BURN_DB`) |
+  | `light_wave` | Orlanthe's light rolling out (`WhiteSky._finale`) | new by name: for the stand-in boom, `summon_boom`; nearly all of it is under 100 Hz, which a phone's speaker hardly gives, so the rush (`cast_wind`) stays over it (`LIGHT_WAVE_DB`) |
+
+- **His end music**, `white_sky_end` (`assets/audio/music/`, 7.3 s, as loud
+  as he made it; `tools/sfx_master.py --music`). It starts at the Last Page's
+  blow (`WhiteSky._finale`: `Music.stinger("white_sky_end", false)`) and the
+  climax looping under the duel goes out under its first swell
+  (`END_MUSIC_IN` 0.6 s): it swells as the light takes the pack and the
+  hunter and has died away before the white (the end of the duel is 8.5 s).
+  Without the file the climax runs to the white and stops dead, as before.
+  `Music.end_stinger` (new) ends it when a test skips the memory.
+- **Six card paintings** at the size he painted them
+  (`assets/art/cards/`): Cut Thread, Hourglass With No Sand, Knotted Cord
+  (Kaethis's last three), Heart Lure, Dread Howl and the Infernal Warg. And
+  **the Warg's cut-out** (`assets/art/creatures/infernal_warg.webp`), cut
+  from the three-quarter view of his four (the other three are for making
+  its model: front, side and back). Its model isn't made yet: the bigger
+  Blazehound still stands in on the 3D field.
+- **The tunnel mouth and the thorn bush** (`assets/models/ashford/
+  tunnel_mouth.glb`, `thorn_bush.glb`: the look back's hooks of 12 November).
+  Each came as two million triangles with its paint in thousands of small
+  islands, so a decimation that keeps the paint's seams tore it open:
+  `tools/rebake_glb.py` (new) makes a low mesh by shape alone (60,000
+  triangles for the bank, 40,000 for the bush; low `--quality` and no
+  `--optimal`, or the ferns melt), unwraps it afresh, and bakes Tripo3D's
+  colour, roughness-metal and normal pictures across from the nearest point
+  of his own surface (the low mesh lit with the two million's shape; 4K
+  colour, 2K maps). The bush came with a second, small bush hanging in the
+  air beside it: dropped (`--keep-main`). `tests/prop_peek.tscn` (new)
+  photographs a prop from four sides, his file or the game's.
+  On the hill (`AshfordNight._hillside`):
+  - **The bank is seated in the slope** (`_seat_bank`). The hill falls a
+    metre in three there, and not straight at the village: level and facing
+    the village, as the drawn box was, its downhill corner hung a hand over
+    the grass and the scrap of path at its foot lay in the air. It's turned
+    to face down the fall of the ground (12 degrees) and its foot put on the
+    grass under the end of its path: the hill rises round its sides and
+    over its back.
+  - **Six bushes in places of their own** (`THORNS`): behind the bank and to
+    its left, one leaning over its back, a small one against its right side.
+    The drawn bushes' places put three through the dry-stone wall and the
+    biggest (two and a half metres high as a real bush) round the first
+    shot's lens. Each stands on the ground where it is.
+  - **The first shot restaged** (`first_shot`). As first staged it looked
+    down the hill from behind the mouth: inside the drawn box, as it turned
+    out, which is where the real bank's shoulder and ferns are (the bank a
+    dark shape over a third of the picture). Now from over the mouth itself,
+    the bank behind the camera: him from the thighs up as he comes out and
+    turns, Ashford's lights behind him; Bram just out of it.
+  - **Solid** to the look back's own walk (`hill` meta `solid`, the room's
+    `blocks`): the player can't walk into the bank or a bush.
+  With either model missing, the drawn one and the old shot, as before.
+- **The seven Tripo3D originals** (`tools/add_maker_maps.py`, as the
+  morning's three): the Scrivener, the Loomwarden, the Unspent Hour, the
+  Weft Serpent, the Glyph Warden, the Shellguard and Orlanthe have their
+  maker's normal and roughness-metal maps back (each checked to be the same
+  mesh as the game's). **The Unspent Hour keeps 15% of its metal**
+  (`--metal 0.15`, new): Tripo3D painted its pale glass as polished metal,
+  and under an arena's night sky it stood as black chrome, nothing like its
+  painting; at 0.15 it's glass, pale, with its maker's shine.
+- **Found on the way: Bram's coat and the snow.** The whole memory's test
+  failed ("no snow gathered on him"): since the morning's surface detail for
+  people, `ShardSet.weather` didn't know the people's shader and gave up.
+  The same evening's other build ("Gary's eight yeses", below) mended it
+  the same way; its version is the one kept.
+
+Tests: `tests/white_sky_sounds_test.tscn` (new: every line and sound found,
+loads, the right length; `list` prints each beside its stand-in's
+loudness); `white_sky_test` listens for his `light_wave` and `hunter_burn`
+and that the end music began; `tests/hillside_shot.tscn` (new: the hillside
+at night from the film's three cameras and by day from close, and measured:
+nothing of a model in either of the first two pictures within 1.6 m, the
+bank's foot nowhere over the grass, every bush on the ground, the walk kept
+out of all seven).
+
 ### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
 
 Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -
@@ -5663,6 +5773,9 @@ godot --headless --fixed-fps 10 res://tests/white_sky_test.tscn -- /tmp/ws 4    
 # ... res://tests/white_sky_look.tscn -- <dir> [night torn mid wide back rim bowl held] [--phone]   (under xvfb) the snow's set in stills, without playing it
 godot --headless --fixed-fps 10 res://tests/first_launch_test.tscn [-- again]     # notice, movie (first time only), title, New Game, the snow
 godot --headless res://tests/sfx_test.tscn [-- list]            # the creatures' voices, the button click, the Codex's sounds
+godot --headless res://tests/white_sky_sounds_test.tscn [-- list]   # Gary's lines, sounds and end music for the snow: found, loaded, the right length
+godot --headless res://tests/hillside_shot.tscn -- <dir> nostills   # the look back's bank and bushes, measured (under xvfb without nostills: its stills)
+# ... res://tests/prop_peek.tscn -- <out prefix> <model> [yaws] [pitch] [flat]   (under xvfb) a prop from four sides: Gary's file as it came, or the game's
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
 godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence, the weather
 godot --headless res://tests/summon_video_test.tscn             # which Summon clip plays under each choice

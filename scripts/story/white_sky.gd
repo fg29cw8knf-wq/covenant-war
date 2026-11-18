@@ -2412,6 +2412,9 @@ const FIN_PACK_SECS := 1.9
 const FIN_HUNTER_SECS := 3.1
 const FIN_BURN := 1.9
 const FIN_LAST := 1.25
+## Gary's two sounds for it (18 November), against the duel's other effects (dB).
+const LIGHT_WAVE_DB := 0.0
+const HUNTER_BURN_DB := -1.0
 ## The wide over the Circle from the pack's flank (Orlanthe on the left of
 ## the picture, the pack across the middle, the hunter beyond: from behind
 ## Bram, Orlanthe stood in front of the pack's middle), and the others tried
@@ -2436,12 +2439,24 @@ var hunter_burned := false
 var page_departed := false
 var finale_done := false
 var _finale_on := false
+## Gary's end music (white_sky_end) started at the blow (the tests read it),
+## and how quickly the duel's climax goes out under it (s).
+var end_music := false
+const END_MUSIC_IN := 0.6
 
 
 func _finale(f: DuelField3D) -> void:
 	if _finale_on or _skipping:
 		return
 	_finale_on = true
+	# (18 November) Gary's own end for the duel's music (white_sky_end, 7 s:
+	# it swells as the light takes the pack and the hunter and is gone before
+	# the white): it takes over from the climax looping under the duel, which
+	# goes out under its first swell. Without the file the climax runs on to
+	# the white and stops dead there, as before.
+	if Music.stinger("white_sky_end", false):
+		Music.stop(END_MUSIC_IN)
+		end_music = true
 	await _wait(FIN_HOLD)
 	if _skipping or f != _dir_f or not is_instance_valid(f):
 		finale_done = true
@@ -2462,7 +2477,12 @@ func _finale(f: DuelField3D) -> void:
 	f.floor_wave(at, PAGE_PAPER, 18.0, 18.0 / FIN_WAVE_SPEED * 1.15)
 	f.flash_light(at + Vector3(0, 2.0, 0), PAGE_PAPER, 10.0, 1.4, 22.0)
 	_wash(PAGE_PAPER, 0.4, 1.1)
-	_snd("summon_boom", 0.7, -2.0)
+	# (18 November: Gary's light_wave is the boom, nearly all of it under
+	# 100 Hz, which a phone's speaker hardly gives: the rush stays over it)
+	if Sfx.has_file("light_wave"):
+		_snd("light_wave", 1.0, LIGHT_WAVE_DB)
+	else:
+		_snd("summon_boom", 0.7, -2.0)
 	_snd("cast_wind", 0.6, -1.0)
 	Haptics.kind(Haptics.HEAVY)
 	_wipe_pack(f, at)
@@ -2589,8 +2609,13 @@ func _hunter_burns(f: DuelField3D) -> void:
 	await _wait(0.35)
 	if _skipping or not is_instance_valid(_hunter):
 		return
-	_snd("cast_fire", 0.6, -2.0)
-	_snd("storm_wind", 1.3, -6.0)
+	# (18 November: Gary's hunter_burn, a roar of fire and wind dying to
+	# embers over 2.7 s, for the stand-ins)
+	if Sfx.has_file("hunter_burn"):
+		_snd("hunter_burn", 1.0, HUNTER_BURN_DB)
+	else:
+		_snd("cast_fire", 0.6, -2.0)
+		_snd("storm_wind", 1.3, -6.0)
 	Haptics.kind(Haptics.LONG)
 	_hunter.burn_away(FIN_BURN, PAGE_PAPER)
 	await _wait(FIN_BURN * 0.92)
@@ -2923,12 +2948,16 @@ func _duel() -> void:
 	_hide_hint()
 	# the white: the book opening on the Last Page's blow; the music (Gary's
 	# white_sky_duel, its climax looping under the duel) stops dead with it
+	# (with his end music, white_sky_end, the climax went out at the blow and
+	# that piece has died away by now of itself: _finale)
 	var wt := create_tween()
 	wt.tween_property(_white, "modulate:a", 1.0, 1.5 if not _skipping else 0.4).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	await wt.finished
 	_dir_f = null
 	_film_bars(false, 0.0)
 	Music.stop(0.12)
+	if _skipping and end_music:
+		Music.end_stinger(0.2)
 
 
 # --- the player's three moves (12 November) -----------------------------------
