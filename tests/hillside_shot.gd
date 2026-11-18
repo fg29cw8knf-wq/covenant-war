@@ -70,6 +70,7 @@ func _ready() -> void:
 			problems.append("the bank's foot stands %.2f m over the grass at one side" % worst)
 	# the film's cameras (AshfordNight.look_back)
 	var first: Array = AshfordNight.first_shot(hill, start, to_v)
+	var glow_at := 2   # (the third shot is Corin's: the doorway's glow up for it)
 	var shots := [
 		["1_first", first[0], first[1], float(first[2])],
 		["2_over_shoulder", start - to_v * 1.4 + Vector3(0, 1.75, 0) + side * 0.45, AshfordNight.VILLAGE_LOOK, 38.0],
@@ -113,6 +114,28 @@ func _ready() -> void:
 		print("HILLSIDE: the rise lifts the ground %.2f m behind the bank and %.2f m before its face" % [lift_back, lift_face])
 		if lift_back < 0.7 or lift_face > 0.02:
 			problems.append("the rise: %.2f m behind, %.2f m before the face" % [lift_back, lift_face])
+	# (18 November, later) the path, the bracken, the doorway's glow, the wall's moss
+	if bank_n != null:
+		var path := v.get_node_or_null("WornPath") as MeshInstance3D
+		var bracken := get_tree().get_nodes_in_group("hill_bracken").size()
+		var moss := v.get_node_or_null("WallMoss") as MultiMeshInstance3D
+		var glow: Array = hill.get_meta("door_glow", [])
+		print("HILLSIDE: the worn path %s; %d clumps of bracken; moss on the wall %d; the doorway's glow %s, off to begin with %s" % [
+			"laid" if path != null else "missing", bracken, moss.multimesh.instance_count if moss != null else 0,
+			"there" if glow.size() == 2 else "missing", str(glow.size() == 2 and (glow[0] as OmniLight3D).light_energy == 0.0)])
+		if path == null or bracken < AshfordNight.BRACKEN.size() or moss == null or moss.multimesh.instance_count < 20 or glow.size() != 2:
+			problems.append("the path, bracken, moss or glow missing")
+		elif (glow[0] as OmniLight3D).light_energy != 0.0:
+			problems.append("the doorway glows before Corin comes")
+		if path != null:
+			# the path on the ground: every vertex within a few cm over it
+			var worst := 0.0
+			var vs: PackedVector3Array = path.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			for pv in vs:
+				worst = maxf(worst, pv.y - AshfordNight.hill_ground(v, hill, pv))
+			print("HILLSIDE: the path at most %.3f m over the ground" % worst)
+			if worst > 0.12:
+				problems.append("the path floats or sinks %.2f m" % worst)
 	# each bush on the ground where it stands
 	var n_bush := 0
 	for h in hill.get_children():
@@ -165,7 +188,11 @@ func _ready() -> void:
 			body.global_position = (who[0] as Vector3) + Vector3(0, float(who[2]) * 0.5, 0)
 		v.set_daylight(0.0)
 		await _frames(6)
-		for s in ([] if mouth_only else shots):
+		for si in (0 if mouth_only else shots.size()):
+			var s: Array = shots[si]
+			if si == glow_at:
+				AshfordNight.door_glow(self, hill, 0.05)
+				await _frames(6)
 			cam.fov = float(s[3])
 			cam.global_position = s[1]
 			cam.look_at(s[2])

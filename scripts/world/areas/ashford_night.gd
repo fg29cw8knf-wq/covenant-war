@@ -1983,6 +1983,9 @@ static func look_back(w: World) -> void:
 	if cb != null:
 		var cfig = Cine.fig(w, "corin")
 		cfig.visible = true
+		# (18 November) and a cold glow comes up in the tunnel's doorway behind
+		# them, the way out still open
+		door_glow(w, hill)
 		# (up the hill from the village, the way he'll go back down: until 12
 		# November he came from 3 m behind the mouth, and the body check found
 		# him walking through the bank, his knees 17 to 28 cm in it, and before
@@ -2185,7 +2188,11 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 	hill.set_meta("solid", solid)
 	if bank != null:
 		_dig_in(v, hill)
+		_path_and_bracken(v, hill)
+		_wall_moss(v, hill)
 	_dress_hillside(v, hill)
+	if bank != null:
+		_door_light(v, hill)   # (after the dark inside the doorway is made)
 	return hill
 
 
@@ -2260,8 +2267,9 @@ static func _dig_in(v: AshfordVillage, hill: Node3D) -> void:
 			var d := c + 1
 			if maxf(maxf(lift[a], lift[b]), maxf(lift[c], lift[d])) < 0.012:
 				continue
-			# (wound to face up whichever way the hillside's frame turns)
-			var up := (verts[b] - verts[a]).cross(verts[c] - verts[a]).y > 0.0
+			# (wound to face up whichever way the hillside's frame turns: Godot's
+			# front faces run clockwise seen from above, as build_terrain's do)
+			var up := (verts[b] - verts[a]).cross(verts[c] - verts[a]).y < 0.0
 			if up:
 				idx.append_array([a, b, c, b, d, c])
 			else:
@@ -2319,6 +2327,226 @@ static func _dig_in(v: AshfordVillage, hill: Node3D) -> void:
 		v.add_child(r)
 		r.global_position = Vector3(wp.x, hill_ground(v, hill, wp) + sc * 0.08, wp.z)
 		r.name = "HillStone"
+
+
+# --- the path, the bracken, the glow in the doorway, the wall's moss ----------
+## (18 November, later: Gary's yes to all four suggestions after the tunnel
+## was dug in.) A worn path from the tunnel's door down the slope, the way
+## Ashford's children came and went: in the hillside's own x/z, its middle
+## at each point [x, z] and how wide it is (m).
+const WORN_PATH := [[0.0, 0.35, 1.05], [0.15, 1.6, 0.95], [0.45, 3.0, 0.85], [0.3, 4.6, 0.78],
+	[-0.15, 6.2, 0.7], [-0.35, 7.8, 0.6]]
+## Dead bracken at the bank's foot: [x, z, how many fronds, how big].
+const BRACKEN := [[-1.35, 0.05, 7, 0.8], [1.3, -0.1, 6, 0.7], [-1.95, -0.9, 6, 0.85],
+	[1.75, -1.2, 5, 0.7], [-0.75, 0.45, 3, 0.5]]
+## The cold glow inside the doorway as Corin comes up the hill (door_glow).
+const DOOR_GLOW_COL := Color(0.62, 0.76, 1.0)
+const DOOR_GLOW_E := 0.9
+const DOOR_GLOW_SECS := 2.5
+## The far end of the tunnel as the glow comes up: a cold light deep in.
+const DOOR_DEEP := Color(0.1, 0.14, 0.24)
+## How far along the wall from the tunnel the moss and grass on its top go (m).
+const WALL_MOSS_REACH := 10.0
+## How far the path lies over the ground (m).
+const PATH_LIFT := 0.06
+
+
+static func _path_and_bracken(v: AshfordVillage, hill: Node3D) -> void:
+	var xf := hill.global_transform
+	# the path: a strip draped over the hill's ground, a hair over it
+	var pts: Array = []
+	for i in WORN_PATH.size() - 1:
+		var a: Array = WORN_PATH[i]
+		var b: Array = WORN_PATH[i + 1]
+		var steps := int(ceil(Vector2(float(b[0]) - float(a[0]), float(b[1]) - float(a[1])).length() / 0.2))
+		for k in steps:
+			var t := float(k) / steps
+			# (a smooth curve through the points: eased between each pair)
+			var e := t * t * (3.0 - 2.0 * t)
+			pts.append([lerpf(float(a[0]), float(b[0]), e), lerpf(float(a[1]), float(b[1]), t), lerpf(float(a[2]), float(b[2]), t)])
+	pts.append(WORN_PATH[-1])
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var across := 6
+	var total := 0.0
+	for i in pts.size():
+		var p: Array = pts[i]
+		var q: Array = pts[mini(i + 1, pts.size() - 1)]
+		var o: Array = pts[maxi(i - 1, 0)]
+		var dir := Vector2(float(q[0]) - float(o[0]), float(q[1]) - float(o[1])).normalized()
+		var side := Vector2(dir.y, -dir.x)
+		if i > 0:
+			total += Vector2(float(p[0]) - float(o[0]), float(p[1]) - float(o[1])).length() * (0.5 if i == pts.size() - 1 else 1.0)
+		for k in across + 1:
+			var u := float(k) / across
+			var l := Vector2(float(p[0]), float(p[1])) + side * (u - 0.5) * float(p[2])
+			var wp := xf * Vector3(l.x, 0.0, l.y)
+			# (over whichever is higher, the ground as drawn or as the land
+			# runs: on this slope they part by a few cm between the terrain's
+			# points, and the path's first metres went under)
+			var gy := maxf(hill_ground(v, hill, wp), v.height(wp.x, wp.z) + mound_at(hill, wp))
+			verts.append(Vector3(wp.x, gy + PATH_LIFT, wp.z))
+			uvs.append(Vector2(u, float(i) / (pts.size() - 1)))
+			norms.append(Vector3.UP)
+	for i in pts.size() - 1:
+		for k in across:
+			var a := i * (across + 1) + k
+			var b := a + 1
+			var c := a + across + 1
+			var d := c + 1
+			var up := (verts[b] - verts[a]).cross(verts[c] - verts[a]).y < 0.0
+			idx.append_array([a, b, c, b, d, c] if up else [a, c, b, b, c, d])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var path := MeshInstance3D.new()
+	path.name = "WornPath"
+	path.mesh = mesh
+	path.material_override = v.shader_mat("worn_path")
+	path.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	v.add_child(path)
+	# the bracken: a clump of curled dead fronds at each place
+	var fm := v.shader_mat("frond", {"wind_dir": Vector3(ShardSet.WIND.x, 0.0, ShardSet.WIND.z).normalized()})
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 4417
+	for c in BRACKEN:
+		var wp := xf * Vector3(float(c[0]), 0.0, float(c[1]))
+		var clump := MeshInstance3D.new()
+		clump.name = "Bracken"
+		clump.add_to_group("hill_bracken")
+		clump.mesh = _bracken_clump(int(c[2]), float(c[3]), rng)
+		clump.material_override = fm
+		v.add_child(clump)
+		clump.global_position = Vector3(wp.x, hill_ground(v, hill, wp) - 0.02, wp.z)
+		clump.rotation.y = rng.randf() * TAU
+
+
+## A clump of dead bracken: `n` fronds from one root, each a stalk that
+## rises, arches over and curls at its tip, with pairs of leaflets along it
+## hanging down, in rust and brown.
+static func _bracken_clump(n: int, size: float, rng: RandomNumberGenerator) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	for f in n:
+		var yaw := TAU * f / n + rng.randf_range(-0.4, 0.4)
+		var out := Vector3(sin(yaw), 0.0, cos(yaw))
+		var side := out.cross(Vector3.UP)
+		var L := size * rng.randf_range(0.35, 0.55)
+		var rise := rng.randf_range(0.5, 0.85)
+		var col := Color(0.27, 0.15, 0.07).lerp(Color(0.2, 0.14, 0.08), rng.randf()) * rng.randf_range(0.8, 1.05)
+		var segs := 9
+		for i in segs:
+			var t0 := float(i) / segs
+			var t1 := float(i + 1) / segs
+			var p0 := _frond_at(t0, L, rise, out)
+			var p1 := _frond_at(t1, L, rise, out)
+			# the stalk, a thin ribbon
+			var w := 0.006 * size
+			_tri(st, p0 - side * w, p0 + side * w, p1, col * 0.8, t0, t0, t1)
+			# a leaflet either side, hanging down and back, smaller to the tip
+			var leaf := L * 0.14 * (1.0 - t0 * 0.7)
+			for sgn in [-1.0, 1.0]:
+				var tip: Vector3 = p0 + side * float(sgn) * leaf + Vector3(0, -leaf * 0.5, 0) - out * leaf * 0.15
+				var c2 := col.lerp(Color(0.33, 0.19, 0.08), rng.randf() * 0.4)
+				_tri(st, p0, p1.lerp(p0, 0.3), tip, c2, t0, t1, t0 + 0.05)
+	st.generate_normals()
+	return st.commit()
+
+
+static func _frond_at(t: float, L: float, rise: float, out: Vector3) -> Vector3:
+	# up and out, arching over, the last third curling under
+	var a := t * PI * (0.9 + 0.5 * smoothstep(0.65, 1.0, t))
+	return out * (sin(a * 0.7) * L) + Vector3(0, (sin(a) * rise + (1.0 - cos(a)) * 0.15) * L, 0)
+
+
+static func _tri(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, col: Color, ua: float, ub: float, uc: float) -> void:
+	for pv in [[a, ua], [b, ub], [c, uc]]:
+		st.set_color(col)
+		st.set_uv(Vector2(0.0, float(pv[1])))
+		st.add_vertex(pv[0])
+
+
+## The doorway's cold glow: a light a hand inside it and a soft glow over the
+## dark, off until door_glow brings them up.
+static func _door_light(v: AshfordVillage, hill: Node3D) -> void:
+	var bank := hill.get_node_or_null("Bank") as Node3D
+	if bank == null:
+		return
+	var m := bank.get_child(0) as Node3D
+	var at := m.transform * (DOOR_MID + Vector3(0.0, -0.02, 0.06))
+	var l := OmniLight3D.new()
+	l.name = "DoorGlow"
+	l.light_color = DOOR_GLOW_COL
+	l.light_energy = 0.0
+	l.omni_range = 1.8
+	l.omni_attenuation = 1.6
+	l.shadow_enabled = false
+	bank.add_child(l)
+	l.position = at
+	var dark := (bank.get_child(0) as Node3D).get_node_or_null("TunnelDark") as MeshInstance3D
+	hill.set_meta("door_glow", [l, dark])
+
+
+## The glow comes up in the doorway over `secs` (Corin coming up the hill).
+static func door_glow(w: Node, hill: Node3D, secs := DOOR_GLOW_SECS) -> void:
+	if hill == null or not hill.has_meta("door_glow"):
+		return
+	var g: Array = hill.get_meta("door_glow")
+	var l := g[0] as OmniLight3D
+	var dark := g[1] as MeshInstance3D
+	var tw := w.create_tween().set_parallel(true)
+	tw.tween_property(l, "light_energy", DOOR_GLOW_E, secs).set_trans(Tween.TRANS_SINE)
+	# (the dark inside the doorway paling to a cold light, deep in)
+	if dark != null and dark.material_override is StandardMaterial3D:
+		tw.tween_property(dark.material_override, "albedo_color", DOOR_DEEP, secs).set_trans(Tween.TRANS_SINE)
+
+
+## Moss in cushions and grass along the top of the dry-stone wall beside the
+## tunnel, so it belongs to the same hill.
+static func _wall_moss(v: AshfordVillage, hill: Node3D) -> void:
+	var mouth := hill.global_position
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 2211
+	var moss_m := StandardMaterial3D.new()
+	moss_m.albedo_color = Color(0.11, 0.16, 0.06)
+	moss_m.roughness = 1.0
+	moss_m.vertex_color_use_as_albedo = true
+	var cushion := v.rock_mesh(77)
+	var mxf: Array = []
+	var mcol: Array = []
+	var gxf: Array = []
+	var gcol: Array = []
+	for sec in v.wall_sections():
+		var xf: Transform3D = sec[0]
+		if Vector2(xf.origin.x - mouth.x, xf.origin.z - mouth.z).length() > WALL_MOSS_REACH:
+			continue
+		var wl := AshfordVillage.WALL_LENGTH
+		var k := 0.0
+		while k < wl:
+			var at := xf * Vector3(k - wl * 0.5, 1.03, rng.randf_range(-0.12, 0.12))
+			var sx := rng.randf_range(0.12, 0.3)
+			var b := Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sx, rng.randf_range(0.04, 0.08), sx * rng.randf_range(0.6, 1.0)))
+			mxf.append(Transform3D(b, at + Vector3(0, -0.05, 0)))
+			var g := rng.randf_range(0.75, 1.15)
+			mcol.append(Color(g * rng.randf_range(0.9, 1.15), g, g * 0.8))
+			if rng.randf() < 0.55:
+				var sc := rng.randf_range(0.45, 0.8)
+				gxf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(sc, sc, sc)), at + Vector3(rng.randf_range(-0.1, 0.1), -0.01, rng.randf_range(-0.1, 0.1))))
+				gcol.append(Color(g, g, g * 0.85))
+			k += rng.randf_range(0.18, 0.4)
+	if mxf.is_empty():
+		return
+	var mm := v.multimesh(v, cushion, moss_m, mxf, mcol, false)
+	mm.name = "WallMoss"
+	var gm := v.multimesh(v, v.blade_clump(), v.shader_mat("grass"), gxf, gcol, false)
+	gm.name = "WallGrass"
 
 
 ## The rise alone at a place in the world (0 off the hillside).

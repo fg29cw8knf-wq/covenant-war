@@ -3243,6 +3243,40 @@ on the rest of the hill, stones at the bank's foot and in the rise, and the
 bank's moss toned to the hill's green (`BANK_TINT`, `BANK_DESAT`). The
 bushes and the look back's walk stand on it. `hillside_shot` measures it.
 
+### A path, bracken, a glow in the doorway, moss on the wall (18 November, night)
+
+Gary: "you have permission to push to github - 1 yes 2 yes 3 yes 4 yes", to
+the four suggestions after the tunnel was dug in (`AshfordNight`):
+
+1. **A worn path from the tunnel down the slope** (`WORN_PATH`,
+   `_path_and_bracken`, `assets/shaders/village/worn_path.gdshader`): a strip
+   draped over the hill, bare earth down its middle, its edges breaking into
+   the grass, tufts left in it, gone after eight metres. It lies `PATH_LIFT`
+   over the higher of the ground as drawn and as the land runs (they part
+   by a few cm between the terrain's 2.5 m points; at 3 cm its first metres
+   went under).
+2. **Dead bracken at the bank's foot** (`BRACKEN`, `_bracken_clump`,
+   `frond.gdshader`): five clumps of curled fronds, built here (a stalk that
+   rises, arches and curls under, leaflets hanging from it), in browns, each
+   stirring in the wind from its root.
+3. **A cold glow in the doorway as Corin comes up the hill** (`_door_light`,
+   `door_glow`, `DOOR_GLOW_*`, `DOOR_DEEP`): a light a hand inside it, off
+   until then, and the dark inside paling to a cold light deep in, over
+   2.5 s. (A glow sprite was tried first: it showed as a white panel inside
+   the doorway by day.)
+4. **Moss and grass along the top of the dry-stone wall** beside the tunnel
+   (`_wall_moss`, `WALL_MOSS_REACH` 10 m each way): dark moss cushions and
+   short grass along each length's top, from `AshfordVillage.wall_sections`.
+
+Found on the way: the rise's skin (`_dig_in`) and the path were wound the
+wrong way for Godot (its front faces run clockwise seen from above, as
+`build_terrain`'s do), so the rise was seen only through its grass and
+stones. Mended: it now shows as the hill rising behind the bank.
+
+`hillside_shot` checks the path's laid, at most 12 cm over the ground, the
+five clumps, the moss, and the glow off until it's brought up (its third
+still, Corin's shot, is taken with it up).
+
 ### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
 
 Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -
