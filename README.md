@@ -3243,6 +3243,35 @@ on the rest of the hill, stones at the bank's foot and in the rise, and the
 bank's moss toned to the hill's green (`BANK_TINT`, `BANK_DESAT`). The
 bushes and the look back's walk stand on it. `hillside_shot` measures it.
 
+### The children's things in the doorway, and boot prints (18 November, late)
+
+Gary: "1 yes 2 yes 3 no" (3, frost on the bracken and moss at night: not
+wanted, don't offer again).
+
+1. **Things the children left just inside the doorway** (`_left_behind`,
+   `TOY_AT`, `CANDLE_AT`): a little carved wooden horse with a faded red
+   saddle, the size of a hand, and a burnt-down candle stub with wax run
+   over its foot. Corin's "Found your rabbit-hole when we were ten" now has
+   something to point at. They're seen when the doorway's glow comes up.
+2. **Boot prints in the path's earth** leading out of the tunnel and down
+   the slope (`_footprints`, `PRINTS`, `PRINTS_LONG`,
+   `assets/shaders/village/footprint.gdshader`): two trails, the hero's and
+   Bram's (a larger print, a longer stride), left and right by turns,
+   fainter as they go.
+
+Found on the way, and mended: **the rise behind the bank ran into the
+tunnel** and filled its doorway (`mound`'s `DOOR_CUT` now keeps it out), and
+**the hill itself climbs through the back of the doorway** (a metre in three;
+the bank is seated by its front), so the doorway's floor seen from outside
+is the hill's ground: the toy and the candle stand on whichever is higher
+(`_on_floor`). Before that both were buried, and the glow lit nothing. The
+path was also darkened and fades in at the tunnel's foot rather than
+starting in a straight line.
+
+`hillside_shot` measures the doorway clear of the rise and counts the prints
+(and that they lie on the path); `daymouth` takes the doorway by day with
+and without the path, and close and low with the glow up.
+
 ### A path, bracken, a glow in the doorway, moss on the wall (18 November, night)
 
 Gary: "you have permission to push to github - 1 yes 2 yes 3 yes 4 yes", to

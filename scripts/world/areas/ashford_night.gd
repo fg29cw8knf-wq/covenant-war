@@ -2193,6 +2193,8 @@ static func _hillside(v: AshfordVillage, mouth: Vector3, to_v: Vector3) -> Node3
 	_dress_hillside(v, hill)
 	if bank != null:
 		_door_light(v, hill)   # (after the dark inside the doorway is made)
+		_left_behind(v, hill)
+		_footprints(v, hill)
 	return hill
 
 
@@ -2214,6 +2216,9 @@ const MOUND_BACK := -2.6      # where it's highest (z)
 const MOUND_FRONT := -0.15    # nothing from here down the hill (z): the face stands clear
 const MOUND_SIDE := [2.6, 1.7]  # how wide it spreads to the left and the right (the wall's side)
 const MOUND_GRID := 0.2       # its skin's squares (m)
+## The tunnel kept clear of the rise: how wide either side of its middle,
+## and how far back into the bank (the hillside's z).
+const DOOR_CUT := Vector2(0.4, -1.3)
 
 
 ## How much the rise lifts the ground at (lx, lz), the hillside's own x/z.
@@ -2222,7 +2227,11 @@ static func mound(lx: float, lz: float) -> float:
 	var behind := 1.0 if lz > MOUND_BACK else exp(-pow((lz - MOUND_BACK) / 2.4, 2.0))
 	var sx: float = MOUND_SIDE[0] if lx < 0.0 else MOUND_SIDE[1]
 	var across := exp(-pow(lx / sx, 2.0))
-	return MOUND_H * front * behind * across
+	# (none through the tunnel itself: the rise ran in at the doorway and
+	# filled it, the floor, the children's things and the glow buried; the
+	# bank's dome hides where it stops)
+	var corridor := smoothstep(DOOR_CUT.x, DOOR_CUT.x + 0.3, absf(lx)) if lz > DOOR_CUT.y else 1.0
+	return MOUND_H * front * behind * across * corridor
 
 
 ## The ground at a place on the hillside, with the rise (the world's own
@@ -2506,6 +2515,164 @@ static func door_glow(w: Node, hill: Node3D, secs := DOOR_GLOW_SECS) -> void:
 	# (the dark inside the doorway paling to a cold light, deep in)
 	if dark != null and dark.material_override is StandardMaterial3D:
 		tw.tween_property(dark.material_override, "albedo_color", DOOR_DEEP, secs).set_trans(Tween.TRANS_SINE)
+
+
+## (18 November, later still: Gary's yes to two more.) Just inside the
+## doorway, things the children left: a little carved wooden horse and a
+## candle stub, so it reads as the rabbit-hole Corin speaks of ("Found your
+## rabbit-hole when we were ten"). In the bank model's own frame (its floor
+## measured from his file: about 0.05 at z 0.08, 0.04 at 0.12).
+const TOY_AT := Vector3(-0.034, 0.05, 0.088)
+const CANDLE_AT := Vector3(0.03, 0.038, 0.122)
+## And boot prints in the path's earth, leading out of it: two trails (the
+## hero's and Bram's), [how far either side of the path's middle, the
+## length of a print (m), the stride (m), where along the path it starts
+## (m)], fainter as they go.
+const PRINTS := [[-0.13, 0.25, 0.66, 0.35], [0.16, 0.29, 0.74, 0.6]]
+const PRINTS_LONG := 4.6
+
+
+static func _left_behind(v: AshfordVillage, hill: Node3D) -> void:
+	var bank := hill.get_node_or_null("Bank") as Node3D
+	if bank == null:
+		return
+	var m := bank.get_child(0) as Node3D
+	var wood := StandardMaterial3D.new()
+	wood.albedo_color = Color(0.36, 0.24, 0.13)
+	wood.roughness = 0.75
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = Color(0.42, 0.1, 0.07)   # (the saddle, once red)
+	paint.roughness = 0.8
+	# the horse, the size of a hand, turned a little, as if put down in a hurry
+	var horse := Node3D.new()
+	horse.name = "ToyHorse"
+	bank.add_child(horse)
+	horse.position = m.transform * TOY_AT
+	horse.rotation.y = 0.6
+	_on_floor(v, hill, horse)
+	v.box(horse, Vector3(0.035, 0.03, 0.08), Vector3(0, 0.055, 0), wood)          # body
+	v.box(horse, Vector3(0.026, 0.045, 0.024), Vector3(0, 0.085, 0.036), wood)     # neck
+	v.box(horse, Vector3(0.024, 0.024, 0.042), Vector3(0, 0.104, 0.052), wood)     # head
+	v.box(horse, Vector3(0.038, 0.008, 0.03), Vector3(0, 0.072, -0.004), paint)    # saddle
+	for lx in [-0.012, 0.012]:
+		for lz in [-0.03, 0.03]:
+			v.box(horse, Vector3(0.008, 0.04, 0.008), Vector3(lx, 0.02, lz), wood)  # legs
+	v.box(horse, Vector3(0.006, 0.03, 0.006), Vector3(0, 0.055, -0.045), wood)     # tail
+	# the candle stub, burnt down, wax run over its foot
+	var wax := StandardMaterial3D.new()
+	wax.albedo_color = Color(0.8, 0.74, 0.58)
+	wax.roughness = 0.55
+	wax.subsurf_scatter_enabled = Gfx.level() == 2
+	wax.subsurf_scatter_strength = 0.4
+	var black := StandardMaterial3D.new()
+	black.albedo_color = Color(0.03, 0.03, 0.03)
+	var candle := Node3D.new()
+	candle.name = "CandleStub"
+	bank.add_child(candle)
+	candle.position = m.transform * CANDLE_AT
+	_on_floor(v, hill, candle)
+	v.cyl(candle, 0.019, 0.021, 0.045, Vector3(0, 0.0225, 0), wax, 12)
+	v.cyl(candle, 0.032, 0.034, 0.006, Vector3(0, 0.003, 0), wax, 12)   # the pool at its foot
+	v.cyl(candle, 0.0015, 0.0015, 0.012, Vector3(0, 0.051, 0), black, 5)  # the wick
+	for k in 3:
+		var a := k * 2.1 + 0.4
+		v.cyl(candle, 0.004, 0.006, 0.03, Vector3(cos(a) * 0.019, 0.025, sin(a) * 0.019), wax, 6)  # drips
+	for n in [horse, candle]:
+		for mi: MeshInstance3D in (n as Node3D).find_children("*", "MeshInstance3D", true, false):
+			mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+## Set down on whichever is higher at its place, the model's own floor or
+## the hill's ground (the hill climbs through the back of the doorway: the
+## slope is a metre in three, and the bank was seated by its front).
+static func _on_floor(v: AshfordVillage, hill: Node3D, n: Node3D) -> void:
+	var g := n.global_position
+	var gy := maxf(hill_ground(v, hill, g), v.height(g.x, g.z) + mound_at(hill, g))
+	if gy > g.y:
+		n.global_position = Vector3(g.x, gy, g.z)
+
+
+## The boot prints on the path (PRINTS): small quads laid a hair over the
+## path's own earth, along its line, left and right by turns.
+static func _footprints(v: AshfordVillage, hill: Node3D) -> void:
+	var xf := hill.global_transform
+	# the path's middle line in the hillside's x/z, measured along it
+	var line: Array = []
+	var along := 0.0
+	for i in WORN_PATH.size():
+		var p := Vector2(float(WORN_PATH[i][0]), float(WORN_PATH[i][1]))
+		if i > 0:
+			along += p.distance_to(Vector2(float(WORN_PATH[i - 1][0]), float(WORN_PATH[i - 1][1])))
+		line.append([along, p])
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var cols := PackedColorArray()
+	var norms := PackedVector3Array()
+	var idx := PackedInt32Array()
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 1201
+	var made := 0
+	for trail in PRINTS:
+		var off := float(trail[0])
+		var plen := float(trail[1])
+		var stride := float(trail[2])
+		var d := float(trail[3])
+		var left := true
+		while d < float(trail[3]) + PRINTS_LONG:
+			var at := _along_path(line, d)
+			var dir := _along_path(line, d + 0.05) - at
+			dir = dir.normalized()
+			var side := Vector2(dir.y, -dir.x)
+			var c := at + side * (off + (0.075 if left else -0.075) + rng.randf_range(-0.02, 0.02))
+			# (walking down the hill, away from the tunnel: toes down the slope)
+			var fwd := dir.rotated(rng.randf_range(-0.12, 0.12) + (0.08 if left else -0.08))
+			var rt := Vector2(fwd.y, -fwd.x)
+			var w := plen * 0.42
+			var clear := clampf(1.0 - (d - float(trail[3])) / PRINTS_LONG * 0.6, 0.0, 1.0) * rng.randf_range(0.75, 1.0)
+			var base := verts.size()
+			for corner in [[-1.0, -1.0], [1.0, -1.0], [-1.0, 1.0], [1.0, 1.0]]:
+				var l := c + rt * float(corner[0]) * w * 0.5 + fwd * float(corner[1]) * plen * 0.5
+				var wp := xf * Vector3(l.x, 0.0, l.y)
+				var gy := maxf(hill_ground(v, hill, wp), v.height(wp.x, wp.z) + mound_at(hill, wp))
+				verts.append(Vector3(wp.x, gy + PATH_LIFT + 0.008, wp.z))
+				uvs.append(Vector2((float(corner[0]) + 1.0) * 0.5, (float(corner[1]) + 1.0) * 0.5))
+				cols.append(Color(1, 1, 1, clear))
+				norms.append(Vector3.UP)
+			var up := (verts[base + 1] - verts[base]).cross(verts[base + 2] - verts[base]).y < 0.0
+			if up:
+				idx.append_array([base, base + 1, base + 2, base + 1, base + 3, base + 2])
+			else:
+				idx.append_array([base, base + 2, base + 1, base + 1, base + 2, base + 3])
+			made += 1
+			left = not left
+			d += stride * 0.5 * rng.randf_range(0.92, 1.08)
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_NORMAL] = norms
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_COLOR] = cols
+	arr[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var mi := MeshInstance3D.new()
+	mi.name = "Footprints"
+	mi.mesh = mesh
+	mi.material_override = v.shader_mat("footprint")
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mi.set_meta("prints", made)
+	v.add_child(mi)
+
+
+## A place on the path's middle line, `d` metres along it.
+static func _along_path(line: Array, d: float) -> Vector2:
+	for i in line.size() - 1:
+		var a: Array = line[i]
+		var b: Array = line[i + 1]
+		if d <= float(b[0]) or i == line.size() - 2:
+			var t := clampf((d - float(a[0])) / maxf(0.001, float(b[0]) - float(a[0])), 0.0, 1.0)
+			return (a[1] as Vector2).lerp(b[1], t)
+	return line[-1][1]
 
 
 ## Moss in cushions and grass along the top of the dry-stone wall beside the

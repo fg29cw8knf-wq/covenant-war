@@ -111,7 +111,11 @@ func _ready() -> void:
 		var face := hill.to_global(Vector3(0.0, 0.0, 0.6))
 		var lift_back := AshfordNight.hill_ground(v, hill, back) - v.ground_y(back.x, back.z)
 		var lift_face := AshfordNight.hill_ground(v, hill, face) - v.ground_y(face.x, face.z)
-		print("HILLSIDE: the rise lifts the ground %.2f m behind the bank and %.2f m before its face" % [lift_back, lift_face])
+		var door_in := hill.to_global(Vector3(0.0, 0.0, -0.8))
+		var lift_door := AshfordNight.hill_ground(v, hill, door_in) - v.ground_y(door_in.x, door_in.z)
+		print("HILLSIDE: the rise lifts the ground %.2f m behind the bank, %.2f m before its face, %.2f m inside its doorway" % [lift_back, lift_face, lift_door])
+		if lift_door > 0.02:
+			problems.append("the rise runs into the doorway (%.2f m)" % lift_door)
 		if lift_back < 0.7 or lift_face > 0.02:
 			problems.append("the rise: %.2f m behind, %.2f m before the face" % [lift_back, lift_face])
 	# (18 November, later) the path, the bracken, the doorway's glow, the wall's moss
@@ -127,6 +131,22 @@ func _ready() -> void:
 			problems.append("the path, bracken, moss or glow missing")
 		elif (glow[0] as OmniLight3D).light_energy != 0.0:
 			problems.append("the doorway glows before Corin comes")
+		var prints := v.get_node_or_null("Footprints") as MeshInstance3D
+		var toy := bank_n.get_node_or_null("ToyHorse") as Node3D
+		var candle := bank_n.get_node_or_null("CandleStub") as Node3D
+		print("HILLSIDE: %d boot prints on the path; the toy horse %s, the candle stub %s" % [
+			int(prints.get_meta("prints", 0)) if prints != null else 0, "there" if toy != null else "missing", "there" if candle != null else "missing"])
+		if prints == null or int(prints.get_meta("prints", 0)) < 10 or toy == null or candle == null:
+			problems.append("the prints, the horse or the candle missing")
+		elif path != null:
+			# every print over the path's earth, not under it
+			var pv: PackedVector3Array = prints.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+			var low := INF
+			for q in pv:
+				low = minf(low, q.y - AshfordNight.hill_ground(v, hill, q))
+			print("HILLSIDE: the prints at least %.3f m over the ground (the path %.2f)" % [low, AshfordNight.PATH_LIFT])
+			if low < AshfordNight.PATH_LIFT:
+				problems.append("a print under the path")
 		if path != null:
 			# the path on the ground: every vertex within a few cm over it
 			var worst := 0.0
@@ -171,6 +191,30 @@ func _ready() -> void:
 				problems.append("%s starts inside something solid (moved %.2f m by the walk's blocks)" % [who[0], moved])
 		print("HILLSIDE: %d bushes on the ground; %d things solid to the walk, none walked into; the two start clear of them" % [n_bush, solid.size()])
 	# --- photographed ---------------------------------------------------------
+	if "daymouth" in args:
+		# (a quick look: the mouth by day, with and without the path)
+		v.set_daylight(1.0)
+		AshfordNight.hill_light(hill, 1.0)
+		cam.fov = 40.0
+		cam.global_position = mouth + to_v * 2.6 + Vector3(0, 0.9, 0)
+		cam.look_at(mouth - to_v * 0.6 + Vector3(0, 0.5, 0))
+		for with_path in [true, false]:
+			var wp := v.get_node_or_null("WornPath") as Node3D
+			if wp != null:
+				wp.visible = with_path
+			await _frames(8)
+			await RenderingServer.frame_post_draw
+			get_viewport().get_texture().get_image().save_png(out.path_join("daymouth_%s.png" % ("path" if with_path else "nopath")))
+		# and low and close at the doorway's floor, the glow up
+		AshfordNight.door_glow(self, hill, 0.05)
+		cam.fov = 40.0
+		cam.global_position = mouth + to_v * 0.9 + Vector3(0, 0.45, 0)
+		cam.look_at(mouth - to_v * 0.85 + Vector3(0, 0.12, 0))
+		await _frames(8)
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out.path_join("daymouth_close.png"))
+		get_tree().quit()
+		return
 	if stills:
 		# the two who stand there, as plain shapes their size (the film's
 		# own people aren't built here)
@@ -208,6 +252,14 @@ func _ready() -> void:
 		await _frames(30)
 		await RenderingServer.frame_post_draw
 		get_viewport().get_texture().get_image().save_png(out.path_join("night_4_mouth.png"))
+		# and close on the doorway's floor with its glow up (the toy, the candle)
+		AshfordNight.door_glow(self, hill, 0.05)
+		cam.fov = 35.0
+		cam.global_position = mouth + to_v * 1.3 + Vector3(0, 0.55, 0)
+		cam.look_at(mouth - to_v * 0.7 + Vector3(0, 0.1, 0))
+		await _frames(8)
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png(out.path_join("night_5_doorway.png"))
 		if mouth_only:
 			get_tree().quit()
 			return
@@ -221,6 +273,8 @@ func _ready() -> void:
 			["right", mid + to_v * 3.0 - side * 6.0 + Vector3(0, 1.6, 0), mid, 40.0],
 			["above", mid + to_v * 3.5 + Vector3(0, 8.0, 0), mid, 44.0],
 			["mouth", mouth + to_v * 2.6 + Vector3(0, 0.9, 0), mouth - to_v * 0.6 + Vector3(0, 0.5, 0), 40.0],
+			["doorway", mouth + to_v * 1.3 + Vector3(0, 0.55, 0), mouth - to_v * 0.7 + Vector3(0, 0.1, 0), 35.0],
+			["prints", mouth + to_v * 5.5 + side * 1.2 + Vector3(0, 1.7, 0), mouth + to_v * 2.2, 45.0],
 		]
 		for s in days:
 			cam.fov = float(s[3])
