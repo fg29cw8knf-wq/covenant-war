@@ -116,14 +116,7 @@ static func awakening(w: World) -> void:
 	AshfordP1.undress(w)
 	AshfordP1.go_inside(v)
 	# before sunrise: the window grey-blue and low, the candle burning down
-	var L: Dictionary = a.get("lights", {})
-	if not L.is_empty():
-		(L.window as Light3D).light_color = Color(0.56, 0.62, 0.92)
-		(L.window as Light3D).light_energy = 1.1
-		(L.candle as Light3D).light_energy = 1.5
-		(L.fill as Light3D).light_energy = 0.6
-		if L.has("bounce"):
-			(L.bounce as Light3D).light_energy = 0.35
+	InnRooms.attic_awakening(a)   # (18 November: shared with the bake, its baked light with it)
 	if a.has("fog_mat"):
 		(a.fog_mat as StandardMaterial3D).albedo_color.a = 0.6
 	if a.has("writing"):

@@ -21,3 +21,5 @@ addons/native_video/src/godot-cpp/
 addons/native_video/src/.sconsign.dblite
 addons/native_video/src/*.o
 addons/native_video/src/*.os
+tools/bake/scenes/
+override.cfg

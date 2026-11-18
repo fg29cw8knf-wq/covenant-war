@@ -687,6 +687,8 @@ func _sigilfall() -> void:
 	var fl := create_tween()
 	fl.tween_interval(1.0)
 	fl.tween_property(_white, "modulate:a", 0.55, 0.35)
+	if BAKED_LIGHT:
+		fl.tween_callback(func() -> void: BakedLight.use(_set, "shards", "torn"))   # (the bounce of the torn sky's light, under the white)
 	fl.tween_property(_white, "modulate:a", 0.0, 1.6)
 	_strike_burst(6, 0.4)
 	if _bram is Figure3D and not (_bram as Figure3D).walking:
@@ -4729,6 +4731,10 @@ func _first_light(toward: Vector3) -> void:
 	ice_sky(0.22)
 	# the crater's light went with the child
 	_crater_k = 0.1
+	# (and the bounce baked for the night: dawn's comes from wherever he
+	# walks out, so it isn't baked)
+	if BAKED_LIGHT:
+		BakedLight.off(_set)
 	_shaft_k = 0.0
 	_child_beacon(false)
 	if is_instance_valid(_hunter_light):
@@ -6159,6 +6165,22 @@ func _build_set() -> void:
 	_hunter = Hunter.new()
 	_hunter.visible = false
 	_set.add_child(_hunter)
+	# the light's bounce off the snow, baked (BAKED_LIGHT: off)
+	if BAKED_LIGHT and quality >= 2:
+		BakedLight.prepare(_set, "shards")
+
+
+## The Shardlands' baked light (18 November, Gary: "also bake the
+## shardlands at the beginning of the game"), off. It was baked
+## (tools/bake/bake_shards.gd: the moon's and the crater's light off the snow
+## and the ice as he walks, the torn sky's, swapped under the white as it
+## opens, none at first light, at the full level only: Smooth stands fewer
+## spires) and set beside the set without it: the snow hardly changed (the
+## sky's own light over it already does that job) and the ice spires went
+## pale and milky, losing the deep blue you see into (Gary's, 6 November),
+## even with the bake kept off the ice (the bake's light probes still reach
+## it). So not shipped (16 MB). True and `bake_rooms.sh shards` to have it.
+const BAKED_LIGHT := false
 
 
 ## Where the moon's light comes from, and the tear's once the sky is open (a
@@ -6225,6 +6247,8 @@ func tear_now() -> void:
 	_tear_light.light_energy = TEAR_FILL
 	_env.ambient_light_energy = TEAR_AMBIENT
 	_set_sky_k(1.0)
+	if BAKED_LIGHT:
+		BakedLight.use(_set, "shards", "torn")
 
 
 ## Snow kicked up at his feet as he walks, blown off down the wind (on only
@@ -6287,6 +6311,7 @@ func _build_ground() -> void:
 	# under half a metre over the crater and the way to it, where they were a
 	# metre, and coarse out at the hills, in place of 150 m of even squares)
 	var mi := MeshInstance3D.new()
+	mi.name = "Ground"   # (BakedLight finds it by name)
 	mi.mesh = ShardSet.ground_mesh(CRATER, 190.0, 186 if quality >= 1 else 120, 0.45 if quality >= 1 else 0.7, height)
 	_ground_mat = ShardSet.ground_material(CRATER, CRATER_R)
 	mi.material_override = _ground_mat
@@ -6325,6 +6350,7 @@ func _build_spires() -> void:
 		var hgt := r.randf_range(9.0, 22.0) if big else r.randf_range(1.4, 6.0)
 		var rad := hgt * r.randf_range(0.07, 0.11)
 		var mi := MeshInstance3D.new()
+		mi.name = "Spire%d" % i   # (BakedLight finds it by name: the same spire at every level)
 		var parts: Array = []
 		mi.mesh = _crystal_mesh(r, hgt, rad, r.randi_range(2, 4) if big else r.randi_range(1, 3), parts)
 		mi.material_override = ice
@@ -6344,6 +6370,7 @@ func _build_spires() -> void:
 				var sp := p + Vector3(r.randf_range(-1.6, 1.6), 0, r.randf_range(-1.6, 1.6))
 				var sh2 := r.randf_range(0.3, 0.95)
 				var si := MeshInstance3D.new()
+				si.name = "Spire%d_%d" % [i, k]
 				var bits: Array = []
 				si.mesh = _crystal_mesh(r, sh2, sh2 * 0.13, r.randi_range(0, 1), bits)
 				si.material_override = ice
@@ -6708,6 +6735,7 @@ func _build_crater_shards() -> void:
 		var p := CRATER + Vector3(cos(ang), 0, sin(ang)) * d
 		var hgt := r.randf_range(0.25, 0.8) if d < CRATER_R - 1.0 else r.randf_range(0.5, 1.5)
 		var mi := MeshInstance3D.new()
+		mi.name = "CraterShard%d" % i
 		var parts: Array = []
 		mi.mesh = _crystal_mesh(r, hgt, hgt * r.randf_range(0.1, 0.15), r.randi_range(0, 2), parts)
 		mi.material_override = m

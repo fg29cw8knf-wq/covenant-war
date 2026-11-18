@@ -472,8 +472,47 @@ static func attic(v: AshfordVillage) -> Dictionary:
 	# the morning's light, the candle and the fill (the awakening, before
 	# sunrise, turns them down: AshfordWake)
 	out["lights"] = {"window": moon, "candle": cl, "fill": fill, "bounce": bounce}
+	BakedLight.prepare(root, "attic")   # (18 November: its baked bounced light, the frosty morning's)
+	attic_baked_fill(out)
 	v.set_meta("attic", out)
 	return out
+
+
+## The attic's grey light before sunrise (P3, the awakening: AshfordNight),
+## from its frosty morning's: the window grey-blue and low, the candle burned
+## down. Shared with the bake tool, so what's baked is what's seen.
+static func attic_awakening(a: Dictionary) -> void:
+	var L: Dictionary = a.get("lights", {})
+	if L.is_empty():
+		return
+	(L.window as Light3D).light_color = Color(0.56, 0.62, 0.92)
+	(L.window as Light3D).light_energy = 1.1
+	(L.candle as Light3D).light_energy = 1.5
+	(L.fill as Light3D).light_energy = 0.6
+	if L.has("bounce"):
+		(L.bounce as Light3D).light_energy = 0.35
+	if a.has("root"):
+		BakedLight.use(a.root, "attic", "awakening")
+	attic_baked_fill(a)
+
+
+## With its bounced light baked (BakedLight), the attic's stand-ins for it
+## (the "bounce" light off the floorboards and the room's fill, lifted on
+## 1 November because the attic read nearly black) are scaled by these. Both
+## kept (18 November): the attic's dark wood gives back so little that the
+## baked bounce, even lifted (bake_rooms.gd: ATTIC_LIFT), stood in for under
+## half of what they give (tests/room_bake_shot: bounce=0 drew the
+## room half as bright), so the bake is laid over them, shaping the light
+## (the window's cold light off the boards onto the bed and the beams).
+static var baked_fill := 1.0
+static var baked_bounce := 1.0
+static func attic_baked_fill(a: Dictionary) -> void:
+	var L: Dictionary = a.get("lights", {})
+	if L.is_empty() or not a.has("root") or not BakedLight.on(a.root):
+		return
+	(L.fill as Light3D).light_energy *= baked_fill
+	if L.has("bounce"):
+		(L.bounce as Light3D).light_energy *= baked_bounce
 
 
 ## The attic as a room someone has lived in for twenty years (1 November,
@@ -1315,6 +1354,7 @@ static func eve(v: AshfordVillage) -> Dictionary:
 	var front := inn_front(v)
 	var eye: Vector3 = front.door + front.out * 0.6 + Vector3(0, 1.6, 0)
 	view_of(v, root, eye, eye + front.out * 10.0 + Vector3(0, -0.4, 0), Transform3D(Basis(), Vector3(dx, 1.25, -D * 0.5 - 1.6)), Vector2(3.4, 2.6))
+	BakedLight.prepare(root, "eve")   # (18 November: its baked bounced light)
 	v.set_meta("eve", out)
 	return out
 

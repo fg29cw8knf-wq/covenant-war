@@ -28,6 +28,9 @@ extends Node
 ## the frames they keep; five to seven minutes each. "hand" (not one of
 ## "all"): "out" as far as the hand going back down with its card.
 ##
+## `flat` (18 November): without the set's baked light (BakedLight), to set
+## beside the same still with it.
+##
 ## With no names, all of them. `-- --phone` (Gfx) draws the phone's Smooth
 ## picture; `-- --best` a Mac's "Best picture" (Gfx.Best); `--rendering-driver opengl3 --rendering-method gl_compatibility`
 ## the phone link's.
@@ -57,6 +60,8 @@ func _ready() -> void:
 	# (`-- --best`: a Mac's "Best picture", Gfx.Best, to set beside the same still without)
 	Game.settings["best_picture"] = "--best" in OS.get_cmdline_user_args()
 	Gfx.setup(get_tree())
+	# (`flat`: no baked light on the set, the before beside BakedLight's after)
+	BakedLight.enabled = not ("flat" in OS.get_cmdline_user_args())
 	m = WhiteSky.new()
 	m.prep_early = false
 	add_child(m)

@@ -261,7 +261,57 @@ or the duel arenas once their 3D rings are built, suit it. The Mac has live
 bounced light in Ashford (SDFGI at the full level); the iPhone on Smooth
 has none.
 
-Left for later in the look pass: baked lighting (above); the 2K people's
+**The inn's rooms and the Shardlands are baked** (18 November, the
+afternoon; Gary: "1 yes 2 yes 3 yes" to the inn's rooms, each arena once its
+3D ring is built and Ashford left as it is, then "also bake the shardlands
+at the beginning of the game"). `BakedLight` (`scripts/world/baked_light.gd`)
+lays the baked bounce on a set the code builds: `names()` names the nodes
+the code left unnamed by their place, `prepare(root, room)` swaps each baked
+thing's shape for its copy with a second set of UVs
+(`assets/bake/<room>/s<k>.res`, `shapes.json`) and adds a `LightmapGI`,
+`use()` changes the light state, `off()` takes it away. The lights stay live
+(bake mode Dynamic: shadows move, candles flicker); only their bounce is
+baked, and the sky's or the room's ambient light still comes on top of it
+(measured: the baked attic with its old lights drew within 1% of the
+unbaked). The Compatibility renderer gets none.
+
+| Set | States (`assets/bake/`) | Swapped | What it adds |
+| --- | --- | --- | --- |
+| The attic (`InnRooms.attic`) | `attic/morning`, `attic/awakening` | `InnRooms.attic_awakening` | Little: its dark wood gives back so little light that even with the window's and candle's bounce lifted four and three times (`bake_rooms.gd`: `ATTIC_LIFT`) it stood in for under half of the room's two stand-in lights (`bounce=0` drew it half as bright), so they're kept (`InnRooms.baked_fill`, `baked_bounce` at 1) and the bake shapes the light on top |
+| The taproom on the festival evening (`InnRooms.eve`) | `eve/evening` | | The hearth's and the lamps' warmth on the walls and beams (8× the attic's bounce) |
+| The Shardlands, the Night of the White Sky's walk (`WhiteSky`) | baked, **not shipped** (`WhiteSky.BAKED_LIGHT` false) | would swap to the torn sky's under the white as it tears, off at first light | Set beside the set without it (`tests/white_sky_look`, `flat`): the snow hardly changed (the sky's own light already does that job) and the ice spires went pale and milky, the deep blue you see into lost, even with the bake kept off the ice (its light probes still reach it). The night walk's bake also came out with black and red blots (the tear's light at nothing left in the bake, the likely cause: `bake_shards.gd` now leaves such a light out, not yet baked again) |
+
+The baked things are found by name: the Shardlands' `Ground`, `Spire<i>`
+(and `Spire<i>_<k>`, the small shards at a spire's foot) and
+`CraterShard<i>` are named in `WhiteSky` by their place in its seeded
+build, and baked at the full level only (Smooth stands fewer). **Change a set and bake it again**: `tools/bake/bake_rooms.sh
+[attic] [eve] [shards]` (`FORCE=1` to redo a state already baked; about 2
+minutes a state for the attic, 4 for the taproom, half an hour for the
+Shardlands on this machine's software Vulkan: the editor draws the set at
+every step of the bake). It readies the sets
+(`tools/bake/bake_rooms.gd`, `bake_shards.gd`: the shapes, and a scene a
+state in `tools/bake/scenes/`, not shipped), then opens the editor on each
+and presses Bake (`tools/bake/autobake`). Learnt on the way: the editor
+ignores `override.cfg`, so the script switches the plugin on in
+`project.godot` for the run and puts the file back (an editor killed
+mid-run rewrites `project.godot` without the iOS and renderer settings:
+`git checkout project.godot` after); everything is imported before the
+editor opens, since an editor busy importing can't take the bake's light
+picture ("reimport_files() recursively"), and the plugin bakes again (three
+tries) when a texture first seen in 3D is re-imported mid-bake; the import
+settings the editor changes on the way (VRAM compression for textures it
+sees in 3D) are put back. Taking the sky out of a bake's scene is safe (the
+bake leaves it out anyway). Stills before and after: `tests/room_bake_shot`
+(`flat` the before, `phone` the iPhone's Smooth, `fill=`/`bounce=` the
+attic's stand-ins; the taproom needs `--resolution 640x360` here, or the
+software renderer runs out of memory) and `tests/white_sky_look`
+(`BakedLight.enabled` off with `flat`).
+
+Not baked: Ashford (its light changes as it's played, above: Gary's "leave
+as is"); each duel arena is baked once its 3D ring of pieces is built
+(Still to Make, "Arena pieces"), Bram's duel in the snow with them.
+
+Left for later in the look pass: the 2K people's
 normal maps (above); a reflection probe on Solhaven's gold
 (`solhaven_set.gd`); SSAO (1.8 now) and SDFGI judged on the Mac.
 
