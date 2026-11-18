@@ -19,6 +19,7 @@ extends Node
 ##            (DuelField3D.preview_level 2: the impact punch shader, which
 ##            software GL here, Compatibility, would otherwise skip)
 ##   plain    DuelRules.cinematic off: the field as it is without the touches
+##   nolook   (18 November) the arena's look off (DuelField3D.LOOK); nohaze just its haze
 ## Run all, or name the parts:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
 ##       res://tests/duel_cine_shot.tscn -- <out_dir> [attack] [ko] [call] [summon] [finish] [pace] [arena] [flat] [preview] [plain]
@@ -35,7 +36,7 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
 	parts = args.slice(1)
-	var flags := ["flat", "preview", "plain"]
+	var flags := ["flat", "preview", "plain", "nolook", "nohaze"]
 	var flat := "flat" in parts
 	if not flat and parts.filter(func(p): return not p in flags).is_empty():
 		parts += ["attack", "ko", "call", "summon", "finish", "pace", "arena"]   # (flat alone: just the flat field's own)
@@ -43,6 +44,10 @@ func _ready() -> void:
 		DuelField3D.preview_level = 2
 	if "plain" in parts:
 		DuelRules.set_value("cinematic", false)
+	# (18 November) the arena's look off (`nolook`), or just its haze (`nohaze`)
+	for k in DuelField3D.LOOK:
+		if "nolook" in parts or (k == "haze" and "nohaze" in parts):
+			DuelField3D.LOOK[k] = false
 	get_tree().root.theme = UITheme.make()
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["duel_3d"] = not flat

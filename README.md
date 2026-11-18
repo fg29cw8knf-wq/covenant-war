@@ -50,6 +50,37 @@ releases, and are what he plays. `tools/build_web.sh` and
 pass started on 5 November (Gary: "Make the game look visually as amazing
 as possible"), below; what's left of it is at its end.
 
+### And all seven, every update (18 November)
+
+Gary asked how to get the game looking like the newest Final Fantasy games,
+was given seven things that make the difference, and then: "add a rule to
+every game update to make all [of those] are done so that everything runs at
+the best possible look". So every update, for every part of the game it
+adds or touches, goes through all seven, and its handover says what was
+done for each (or why nothing was needed):
+
+1. **Lighting**: a deliberate key light, warm against cool, bounced light,
+   and haze or beams wherever there's air for them; small shadows where
+   things meet (SSAO).
+2. **Materials**: nothing flat to the light. Colour, normal and roughness
+   maps on every model and floor (`tools/derive_maps.py` for props and
+   paintings, `tools/derive_creature_maps.py` for creatures, the maker's own
+   for people), metal that is metal, and a reflection of the place for
+   anything that shines.
+3. **Animation**: no stiff, frozen or floating bodies; faces that act;
+   clips blended into one another; small idle motion.
+4. **Camera**: shot like a film. Chosen lenses, depth of field, deliberate
+   moves and cuts, nothing in the lens.
+5. **Effects**: light, particles and impact for whatever happens, the
+   Summons most of all.
+6. **Colour grade**: one for each place (and time of day), gentle.
+7. **Consistency**: every model, painting and effect looking like the same
+   game: the same light, the same kind of materials, the grade.
+
+The Mac at its fullest; the iPhone as close to it as its frame rate allows
+(`Gfx.level()`: what it can't have is said in the handover). The duel's
+arena was the first done under it (18 November, below in the Duel Lab).
+
 ### The look pass (5 November)
 
 Gary (5 November): "Make the game look visually as amazing as possible."
@@ -151,8 +182,8 @@ files, as Player A's: their game atlases can't give one); a reflection probe
 on Solhaven's gold (its set is built in `solhaven_set.gd`); SSAO and
 SDFGI on the Mac judged on the Mac itself (left as they were: SSAO 1.8 and
 SDFGI on at the full level; worth trying SSAO about 1.0 and SDFGI off for
-the frame rate if the Mac struggles); the 3D duel field (the 4 to 5 November
-drama is there; nothing cheap and clear found missing).
+the frame rate if the Mac struggles). The 3D duel field: done 18 November
+(its light, materials and grade: "The arena's look", in the Duel Lab).
 
 Left for later in the look pass: baked lighting (`LightmapGI`) for the villages;
 normal maps for the people (Bram's atlas is thousands of small islands, so it
@@ -683,6 +714,68 @@ xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolu
 ```
 `tests/duel_cine_shot` now sets the camera to locked, since its checks are
 the locked camera's.
+
+### The arena's look (18 November)
+
+Gary (18 November) asked how to make the game look like the newest Final
+Fantasy games, said yes to a look pass on the duel's arena first, and made
+the seven points a rule for every update (the standing rule, top). The
+arena had a flat fill light, a painted floor as smooth as glass to the
+light, Totems with their colour and nothing else, metal that reflected the
+black beyond the Circle and no grade but contrast; and fourteen Totems'
+bodies glowed with their own paint at 0.8 (their `coat_emission`,
+`cream_emission` and `gold_emission` materials: the glow map was the colour
+atlas), so no light, shadow or reflection could shape them and they read as
+painted toys. Each part is a switch in `DuelField3D.LOOK` (`ao bounce haze
+floor skin lit probe grade`); `look_on()` as the field is built,
+`_look_arena()` for each arena (and a Terrain Rite's new ground: the floor's
+maps fade in with it and the grade eases over), `look_off()` in a film.
+
+| Part | What it is | Mac (2) | iPhone Smooth (1) |
+| --- | --- | --- | --- |
+| `ao` | the small shadows where things meet (SSAO `AO_*`): feet on the stone, under a belly | yes | yes |
+| `bounce` | light bouncing off what it lands on (SSIL `BOUNCE_*`) | yes | no |
+| `haze` | a thin haze over the Circle lit only by the lamps in it (volumetric fog `HAZE_*`): each Totem's lamp (`HAZE_LAMP` 1.6) and the key light (`HAZE_HALL` 0.6) light the air, a blow's, flash's, missile's or Summon's light only a touch (`HAZE_FLASH` 0.12: at the full 1 a blow landing lit the haze into a white fog over the whole Circle and its target was lost in it); the sun and the rim light don't (a veil), and the black beyond the scenery takes it too (`sky_affect` 1: the painting's top edge was a hard line) | yes | no |
+| `floor` | the floor painting's normal and roughness maps (`tools/derive_maps.py`, which takes a painting now: `assets/art/mats/mat_<arena>_normal.png`, `_mr.png`, 1536), `FLOOR_NORMAL` 0.7 | yes | yes |
+| `skin` | each Totem's and Summon's normal map from its own atlas (`tools/derive_creature_maps.py`, new: the islands found from the model's UVs, each island's paint filtered on its own and carried past its edges, so no ridge round an island; `<id>_normal.png`, 1024, all 41 made), `SKIN_NORMAL` 0.55; not on eyes, mouths, tongues, glossy bits or anything see-through | yes | yes |
+| `lit` | the fourteen self-lit coats lit by the stage instead, keeping `LIT_GLOW` 0.22 of warmth (`LIT_NAMES`; a glow map of its own, eyes, fire, magma and the phoenix keep theirs); on the stage only, so a film's Totems are as they were | yes | yes |
+| `probe` | the arena reflected (`ArenaProbe`, drawn once for each arena, `PROBE_*`): brass, gold and steel shine with the floor's gold rings and the scenery | yes | yes |
+| `grade` | one colour grade for each arena (`ARENA_GRADES`, as `AshfordVillage.GRADES`): Emberforge ember gold, the Tidegrove teal shadows, the Veilwild violet, Ironstone warm stone and cool shade, Solhaven white gold, Ashford lantern-lit green | yes | yes |
+
+Also: the Mac's frame-rate guard, at its last step (`Gfx.Guard._lean_now`),
+drops the haze with the bounce light now (the village's too).
+
+What it costs: SSAO a pass at half size (the village already has it on
+both); SSIL and the haze on the Mac only; the normal maps one texture read
+on each Totem's and the floor's pixels (about 36 MB of new pictures on disk,
+1024 each, VRAM-compressed in the game; only the duel's six are loaded); the
+reflection six small pictures once an arena; the grade one lookup a pixel.
+
+Seen (Forward+ through lavapipe, `tests/duel_look_shot`): the biggest change
+is close in, on the Totems (the Gilded Sentinel and the Ironhide have form
+now: shaded sides, highlights and the floor's light in their metal, where
+they were flat glow); the haze holds each Totem's light in the air round it
+(the Blazehound's fire warms the air behind its head); from home, at the
+size of a phone, the change is gentle (deeper shade, a little atmosphere,
+each arena's grade). What wasn't seen: anything moving (the floor's maps
+show most as the lamps and flashes move over it), the real frame rate.
+
+```sh
+# each arena from home and close on the brass, the fur and the gold; `before` all of it off,
+# `only=a,b` just those parts, `phone` as an iPhone on Smooth (level 1):
+VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.json xvfb-run -a -s "-screen 0 1280x720x24" \
+    godot --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
+    res://tests/duel_look_shot.tscn -- <dir> [before] [only=...] [phone] [arenas=a,b] [views=home,brass,fur,gold]
+# a creature's normal map (or every one that hasn't one), and a floor's maps:
+python3 tools/derive_creature_maps.py assets/models/creatures/<id>.glb     # or --all [--force]
+python3 tools/derive_maps.py assets/art/mats/mat_<arena>.jpg --size 1536
+```
+
+A new Totem or Summon model needs its normal map made (`--all` makes every
+one missing) and `godot --headless --import`. Gary's own Tripo3D models
+came with their maker's normal and roughness maps, which
+`tools/split_creature.py` drops: his originals, if he has them, would give
+the Tripo Totems truer ones than these (a suggestion to him, 18 November).
 
 ### Kaethis, the Hand Before: Bram's god and its cards (5 November)
 

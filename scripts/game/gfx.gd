@@ -264,7 +264,8 @@ class Guard extends Node:
 			_high = 0
 
 	## The bounce light and its partner off, in whatever place is showing
-	## (looked for each window: a place built later has them on again).
+	## (looked for each window: a place built later has them on again), and
+	## the haze (18 November: the duel's arena has one now too).
 	func _lean_now() -> void:
 		for r in Guard._views:
 			var vp = (r as WeakRef).get_ref()
@@ -275,9 +276,10 @@ class Guard extends Node:
 			if env == null:
 				var cam := (vp as Viewport).get_camera_3d()
 				env = cam.environment if cam != null else null
-			if env != null and (env.sdfgi_enabled or env.ssil_enabled):
+			if env != null and (env.sdfgi_enabled or env.ssil_enabled or env.volumetric_fog_enabled):
 				env.sdfgi_enabled = false
 				env.ssil_enabled = false
+				env.volumetric_fog_enabled = false
 
 
 ## "Best picture", on a Mac or PC (14 November, Gary's yes to "a Best picture

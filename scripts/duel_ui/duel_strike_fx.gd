@@ -439,6 +439,7 @@ static func lamp(parent: Node3D, col: Color, energy: float = 2.5, range_m: float
 	l.light_energy = energy
 	l.omni_range = range_m
 	l.shadow_enabled = false
+	l.light_volumetric_fog_energy = DuelField3D.HAZE_FLASH   # (18 November: a blow only touches the haze)
 	parent.add_child(l)
 	return l
 

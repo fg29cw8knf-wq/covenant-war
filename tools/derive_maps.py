@@ -24,6 +24,11 @@ LevelKit.dress_models() puts them on the model's materials when it loads.
 
     python3 tools/derive_maps.py assets/models/ashford/<id>.glb [--metal] [--size 1024] [--strength 1.0]
 
+A painting works too (18 November: the duel's arena floors, the mats): its
+maps are written beside it, `<name>_normal.png` and `<name>_mr.png`.
+
+    python3 tools/derive_maps.py assets/art/mats/mat_<arena>.jpg [--size 1536]
+
 Only for swatch atlases: a character's atlas (thousands of small islands on
 black) would come out with a seam round every island; a character's normal
 map comes from the maker's own file (tools/add_normal_map.py).
@@ -125,7 +130,7 @@ def main():
     ap.add_argument("--metal", action="store_true", help="the dark grey swatches are iron")
     a = ap.parse_args()
 
-    src = base_colour(a.model)
+    src = base_colour(a.model) if a.model.lower().endswith(".glb") else Image.open(a.model)
     size = a.size or max(1024, min(2048, src.width // 2))
     rgba = np.asarray(src.convert("RGBA").resize((size, size), Image.LANCZOS), dtype=np.float32) / 255.0
     rgb = rgba[..., :3]
@@ -157,7 +162,7 @@ def main():
     # the slope down the rows (the picture's rows run down, its v up)
     n = np.stack([-gx, gy, np.ones_like(gx)], axis=-1)
     n /= np.linalg.norm(n, axis=-1, keepdims=True)
-    out = model_stem = a.model[:-4]
+    out = model_stem = os.path.splitext(a.model)[0]
     nimg = ((n * 0.5 + 0.5) * 255.0 + 0.5).clip(0, 255).astype(np.uint8)
     Image.fromarray(nimg, "RGB").save(out + "_normal.png", optimize=True)
     write_import(out + "_normal.png", True)

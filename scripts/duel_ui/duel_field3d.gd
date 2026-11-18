@@ -226,6 +226,7 @@ func _build() -> void:
 	cam.current = true
 	_dof_setup()
 	dress_stage()
+	look_on()   # (18 November: the look pass, below)
 	_place_camera()
 
 
@@ -258,6 +259,7 @@ func setup(p_arena: String) -> void:
 	var light_col: Color = {"emberforge": Color(1.0, 0.6, 0.3), "tidegrove": Color(0.6, 0.95, 0.9), "veilwild": Color(0.7, 0.55, 1.0),
 		"ironstone": Color(1.0, 0.8, 0.5)}.get(arena_name, Color(1.0, 0.9, 0.7))
 	_mote_col = light_col
+	_look_arena()   # (18 November: its floor's maps, its grade, its reflection)
 
 
 ## A Terrain Rite turns the ground (Phase D): the new arena's floor and the
@@ -283,6 +285,8 @@ func change_arena(p_arena: String, held: bool, dur: float = 1.3) -> void:
 			m2.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 			m2.albedo_texture = mt
 			m2.albedo_color = Color(1, 1, 1, 0)
+			if _look_on:
+				_floor_maps(m2, p_arena)   # (18 November)
 			top.material_override = m2
 			top.position.y = 0.006
 			world.add_child(top)
@@ -302,6 +306,8 @@ func change_arena(p_arena: String, held: bool, dur: float = 1.3) -> void:
 			world.add_child(front)
 			tw.tween_property(b2, "albedo_color:a", 1.0, dur)
 			temp.append(front)
+	if p_arena != arena_name and _look_on:
+		_blend_grade(p_arena, dur)   # (18 November: the new ground's grade, eased over)
 	var hall_to: Color = HALL_COL.lerp(col, 0.5) if held else HALL_COL
 	var fog_to: Color = FOG_COL.lerp(col * 0.35, 0.6) if held else FOG_COL
 	if _hall != null:
@@ -910,6 +916,7 @@ static func _dress_model(inst: Node3D) -> void:
 				_dress_material(m2)
 				mesh.mesh.surface_set_material(i, m2)   # becomes the model's own material
 				mesh.set_meta("_base_%d" % i, m2)
+	_skin(inst, inst.scene_file_path)   # (18 November: its normal map, on those materials)
 
 
 ## Loads assets/models/creatures/<id>.glb (or summons/) when it exists and
@@ -953,6 +960,8 @@ func _load_model(s: Slot, id: String) -> void:
 	else:
 		WingFlap.attach(inst)   # a model without clips still beats its wings (the Lantern Moth)
 	_dress_model(inst)
+	if _look_on:
+		_lit(inst)   # (18 November: on the stage, not in a film, which keeps its own light)
 	# a new Totem with no model of its own yet (Phase E) wears its stand-in's
 	# shape in its own colour, plain, so it reads as a placeholder
 	var d: Dictionary = DuelCards.CARDS.get(id, {})
@@ -1054,6 +1063,7 @@ func film_mode(quality := 2) -> void:
 	if world == null:
 		return
 	_undress()   # (5 November: the stage's rim light, shafts and embers are not the snowfield's)
+	look_off()   # (18 November: nor the arena's look; the Totems keep their skin)
 	_back.visible = false
 	var snow := StandardMaterial3D.new()
 	var nt := NoiseTexture2D.new()
@@ -1639,11 +1649,15 @@ func summon_descend(id: String, col: Color, speed: float = 1.0, on_land: Callabl
 				var m2: BaseMaterial3D = (mat as BaseMaterial3D).duplicate()
 				_dress_material(m2)
 				mesh.mesh.surface_set_material(i, m2)
+	_skin(god, "res://assets/models/summons/%s.glb" % id)   # (18 November: its normal map)
+	if _look_on:
+		_lit(god)
 	# a light of its element at its heart
 	var lamp := OmniLight3D.new()
 	lamp.light_color = col
 	lamp.light_energy = 0.0
 	lamp.omni_range = 11.0
+	lamp.light_volumetric_fog_energy = HAZE_FLASH
 	lamp.position = Vector3(0, want_h * 0.45, 0.5)
 	holder.add_child(lamp)
 	# down the beam
@@ -2596,6 +2610,300 @@ func _undress() -> void:
 	_punch_mat = null
 
 
+# ======================================================= the look (18 November) ===
+# Gary (18 November): "how could I get my game to look like the quality of
+# other games you see on Steam, like the most recent Final Fantasys", then
+# yes to a look pass on the duel's arena, and a standing rule that every
+# update does all of it: the lighting, the materials, the animation, the
+# camera, the effects, a grade for each place, and everything looking like
+# the same game (README). What the arena had: a flat fill light, a painted
+# floor as smooth as glass to the light, Totems with their colour and
+# nothing else, metal reflecting the black beyond the Circle, and no grade
+# but contrast and saturation (the village has had all of these since
+# 5 November). What it has now, each part on a switch in LOOK:
+#   ao      the small shadows where things meet (SSAO): a Totem's feet on
+#           the stone, under its belly, in the folds of a wing (level 1 up)
+#   bounce  light bouncing off what it lands on (SSIL): a fire Totem's glow
+#           warming the stone round it, the gold rings lighting a flank
+#           (level 2)
+#   haze    a haze in the air over the Circle lit only by the lamps in it
+#           (volumetric fog): each Totem's lamp, every flash and blow lights
+#           the air round it, the key light hangs over the middle; the sun
+#           and the rim light leave it alone, so it's never a grey veil
+#           (level 2)
+#   floor   the floor's own normal and roughness maps (tools/derive_maps.py
+#           on its painting): the cracks, the slabs and the inlaid gold
+#           catch the moving lights (level 1 up)
+#   skin    each Totem's and Summon's normal map from its own atlas
+#           (tools/derive_creature_maps.py): fur, scale, bark and plate
+#           catch the light (level 1 up; not eyes, mouths, fire or mist)
+#   lit     the bodies that glowed with their own colour lit by the stage
+#           instead: fourteen Totems' coats (coat_emission, cream_emission,
+#           gold_emission: the Ironhide, the Brassback, the Elderbark, the
+#           Gilded Sentinel...) shone their own paint back at 0.8, so no
+#           light, shadow, normal map or reflection could shape them and they
+#           read as painted toys; now a little inner warmth (LIT_GLOW) and
+#           the stage's light does the rest (level 1 up, on the stage only:
+#           a film keeps its own light; glow maps, eyes, fire, magma and the
+#           phoenix keep their glow)
+#   probe   the arena reflected (a ReflectionProbe drawn once for each
+#           arena): brass, gold and steel Totems shine with the floor's
+#           gold rings and the scenery, not black (level 1 up)
+#   grade   one colour grade for each arena, as Ashford has one for each
+#           place and time: Emberforge's ember gold, the Tidegrove's teal
+#           shadows, the Veilwild's violet, Ironstone's warm stone and cool
+#           shade, Solhaven's white gold, Ashford's lantern-lit green
+#           (every renderer: one lookup a pixel)
+# A film (film_mode: the Night of the White Sky) keeps its own light: all of
+# it but the skin comes off there.
+
+## The parts of the look (above), each true for on: a test turns them off
+## for a before and after (tests/duel_look_shot).
+static var LOOK := {"ao": true, "bounce": true, "haze": true, "floor": true, "skin": true, "lit": true, "probe": true, "grade": true}
+
+const AO_RADIUS := 1.1            # how far the small shadows reach (m)...
+const AO_INTENSITY := 2.4         # ...how dark they are...
+const AO_POWER := 1.6
+const AO_DIRECT := 0.3            # ...and how much they darken what the key light lights directly (0: only the fill)
+const BOUNCE_RADIUS := 3.0        # how far bounced light reaches (m)...
+const BOUNCE_INTENSITY := 1.2     # ...and how strong
+const HAZE_DENSITY := 0.012       # the haze: how thick (thin: it mustn't dim the Circle, only hold the light)...
+const HAZE_ALBEDO := Color(0.95, 0.9, 0.84)   # ...its colour as it's lit (a warm white: the lights tint it)...
+const HAZE_ANISOTROPY := 0.5      # ...how much brighter it is looking towards a light through it...
+const HAZE_LENGTH := 36.0         # ...and how far from the camera it's worked out (m)
+const HAZE_HALL := 0.6            # how much the key light over the Circle lights it...
+const HAZE_LAMP := 1.6            # ...and each Totem's own lamp...
+## ...and a blow's, a flash's, a missile's or a Summon's light, only a little:
+## they're bright and big (a flash 5 to 6 over 7 to 14 m), and at the full
+## 1 a blow landing lit the haze into a white fog over the whole Circle and
+## its target was lost in it (seen in duel_cine_shot through Forward+).
+## No effect without the haze.
+const HAZE_FLASH := 0.12
+const FLOOR_NORMAL := 0.7         # how strongly the floor's normal map shapes the light
+const SKIN_NORMAL := 0.55         # ...and a Totem's (the paint already holds the light and dark of it)
+const LIT_GLOW := 0.22            # the inner warmth a self-lit coat keeps (it shone at 0.8)
+const LIT_NAMES := ["coat_emission", "cream_emission", "gold_emission"]
+const PROBE_SIZE := Vector3(26.0, 14.0, 26.0)   # the box the arena's reflection serves (the Circle, the Totems, a Summon)
+const PROBE_AT := Vector3(0.0, 2.2, 0.6)        # where it's seen from
+## One grade for each arena: what a dark (0.08), the middle (0.45), a
+## highlight (0.9) and white come out as (AshfordVillage.GRADE_AT). Gentle:
+## a cinematographer's grade, never a tint over Gary's colours.
+const ARENA_GRADES := {
+	"emberforge": [Color(0.088, 0.074, 0.068), Color(0.472, 0.446, 0.418), Color(0.932, 0.886, 0.82), Color(1.0, 0.975, 0.92)],
+	"tidegrove": [Color(0.064, 0.082, 0.088), Color(0.438, 0.456, 0.454), Color(0.894, 0.916, 0.906), Color(0.985, 1.0, 0.995)],
+	"veilwild": [Color(0.078, 0.068, 0.102), Color(0.448, 0.438, 0.47), Color(0.902, 0.894, 0.93), Color(1.0, 0.99, 1.0)],
+	"ironstone": [Color(0.068, 0.076, 0.086), Color(0.456, 0.45, 0.438), Color(0.922, 0.9, 0.858), Color(1.0, 0.985, 0.95)],
+	"solhaven": [Color(0.08, 0.08, 0.08), Color(0.456, 0.45, 0.44), Color(0.925, 0.91, 0.866), Color(1.0, 0.99, 0.95)],
+	"ashford": [Color(0.072, 0.078, 0.092), Color(0.462, 0.454, 0.424), Color(0.926, 0.9, 0.842), Color(1.0, 0.98, 0.93)],
+}
+const NEUTRAL_GRADE := [Color(0.08, 0.08, 0.08), Color(0.45, 0.45, 0.45), Color(0.9, 0.9, 0.9), Color(1.0, 1.0, 1.0)]
+
+var _grade_tex: GradientTexture1D = null
+var _grade_now: Array = []
+var _grade_tw: Tween
+var _probe: ReflectionProbe = null
+var _look_on := false
+static var _skin_maps := {}       # model path -> its normal map (null: none), loaded once
+
+
+## The level the look is built for (as the stage's drama: the device's own,
+## or the one a test previews).
+static func look_level() -> int:
+	return drama_level()
+
+
+## The whole-picture parts of the look, on the field as it's built.
+func look_on() -> void:
+	if world == null or _env == null:
+		return
+	_look_on = true
+	var lvl := look_level()
+	if LOOK.ao and lvl >= 1:
+		_env.ssao_enabled = true
+		_env.ssao_radius = AO_RADIUS
+		_env.ssao_intensity = AO_INTENSITY
+		_env.ssao_power = AO_POWER
+		_env.ssao_light_affect = AO_DIRECT
+	if LOOK.bounce and lvl >= 2:
+		_env.ssil_enabled = true
+		_env.ssil_radius = BOUNCE_RADIUS
+		_env.ssil_intensity = BOUNCE_INTENSITY
+	if LOOK.haze and lvl >= 2:
+		_env.volumetric_fog_enabled = true
+		_env.volumetric_fog_density = HAZE_DENSITY
+		_env.volumetric_fog_albedo = HAZE_ALBEDO
+		_env.volumetric_fog_anisotropy = HAZE_ANISOTROPY
+		_env.volumetric_fog_length = HAZE_LENGTH
+		_env.volumetric_fog_ambient_inject = 0.0   # (lit by the lamps alone: no flat grey veil)
+		# (the black beyond the scenery painting takes the haze as the painting
+		# does: with none on it, the painting's top edge was a hard line)
+		_env.volumetric_fog_sky_affect = 1.0
+		_env.volumetric_fog_gi_inject = 0.0
+		_env.volumetric_fog_temporal_reprojection_enabled = true
+		# the sun and the rim light shine everywhere at once: in the haze
+		# they'd be a veil over the whole picture, so only the lamps light it
+		sun.light_volumetric_fog_energy = 0.0
+		if _rim != null:
+			_rim.light_volumetric_fog_energy = 0.0
+		if _hall != null:
+			_hall.light_volumetric_fog_energy = HAZE_HALL
+		for side in slots:
+			for i in slots[side]:
+				var sl: Slot = slots[side][i]
+				if sl.lamp != null:
+					sl.lamp.light_volumetric_fog_energy = HAZE_LAMP
+	if LOOK.grade:
+		_grade_tex = GradientTexture1D.new()
+		_grade_tex.width = 256
+		_grade_tex.gradient = Gradient.new()
+		_env.adjustment_enabled = true
+		_env.adjustment_color_correction = _grade_tex
+		_set_grade(ARENA_GRADES.get(arena_name, NEUTRAL_GRADE))
+
+
+## The look's parts that belong to the arena: its floor's maps, its grade
+## and its reflection (setup, and a Terrain Rite's new ground).
+func _look_arena() -> void:
+	if not _look_on:
+		return
+	_floor_maps(_mat_material, arena_name)
+	if _grade_tex != null:
+		_set_grade(ARENA_GRADES.get(arena_name, NEUTRAL_GRADE))
+	_make_probe()
+
+
+## An arena floor's normal and roughness maps on a floor material (`m`).
+static func _floor_maps(m: StandardMaterial3D, arena: String) -> void:
+	if m == null or not LOOK.floor or look_level() < 1:
+		return
+	var np := "res://assets/art/mats/mat_%s_normal.png" % arena
+	var mp := "res://assets/art/mats/mat_%s_mr.png" % arena
+	if not ResourceLoader.exists(np):
+		m.normal_enabled = false
+		m.roughness_texture = null
+		return
+	m.normal_enabled = true
+	m.normal_texture = load(np)
+	m.normal_scale = FLOOR_NORMAL
+	if ResourceLoader.exists(mp):
+		m.roughness_texture = load(mp)
+		m.roughness_texture_channel = BaseMaterial3D.TEXTURE_CHANNEL_GREEN
+
+
+## The arena's reflection, drawn once now (again for a Terrain Rite's new
+## ground): what the shiny Totems shine with.
+func _make_probe() -> void:
+	if _probe != null:
+		_probe.queue_free()
+		_probe = null
+	if not LOOK.probe or look_level() < 1 or world == null:
+		return
+	_probe = ReflectionProbe.new()
+	_probe.name = "ArenaProbe"
+	_probe.size = PROBE_SIZE
+	_probe.position = PROBE_AT
+	_probe.max_distance = 60.0     # (the scenery painting, 16 m off, is in it)
+	_probe.box_projection = false
+	_probe.interior = false
+	_probe.ambient_mode = ReflectionProbe.AMBIENT_DISABLED   # (the fill light stays the stage's)
+	_probe.update_mode = ReflectionProbe.UPDATE_ONCE
+	world.add_child(_probe)
+
+
+## The grade set to `cols` (four colours, as ARENA_GRADES').
+func _set_grade(cols: Array) -> void:
+	if _grade_tex == null or cols == _grade_now:
+		return
+	_grade_now = cols.duplicate()
+	var offs := PackedFloat32Array([0.0])
+	var c := PackedColorArray([Color.BLACK])
+	for i in AshfordVillage.GRADE_AT.size():
+		offs.append(AshfordVillage.GRADE_AT[i])
+		c.append(cols[i])
+	_grade_tex.gradient.offsets = offs
+	_grade_tex.gradient.colors = c
+
+
+## The grade eased from the one it's at to `to_arena`'s over `dur`.
+func _blend_grade(to_arena: String, dur: float) -> void:
+	if _grade_tex == null:
+		return
+	var a: Array = _grade_now.duplicate() if not _grade_now.is_empty() else NEUTRAL_GRADE
+	var b: Array = ARENA_GRADES.get(to_arena, NEUTRAL_GRADE)
+	if _grade_tw != null and _grade_tw.is_valid():
+		_grade_tw.kill()
+	_grade_tw = create_tween()
+	_grade_tw.tween_method(func(t: float) -> void:
+		var cols: Array = []
+		for i in a.size():
+			cols.append((a[i] as Color).lerp(b[i], t))
+		_set_grade(cols), 0.0, 1.0, dur)
+
+
+## The look taken off for a film (it keeps its own light): the Totems keep
+## their skin.
+func look_off() -> void:
+	_look_on = false
+	if _env != null:
+		_env.ssao_enabled = false
+		_env.ssil_enabled = false
+		_env.volumetric_fog_enabled = false
+		_env.adjustment_color_correction = null
+	_grade_tex = null
+	_grade_now = []
+	if _probe != null:
+		_probe.queue_free()
+		_probe = null
+
+
+## A Totem's or Summon's normal map, on the materials of its model `inst`
+## loaded from `path` (_dress_model): not on its eyes, mouth or tongue (the
+## glossy ones), nor on anything see-through (fire, mist, wings of light).
+static func _skin(inst: Node3D, path: String) -> void:
+	if not LOOK.skin or look_level() < 1 or path == "":
+		return
+	if not _skin_maps.has(path):
+		var np := path.get_basename() + "_normal.png"
+		_skin_maps[path] = load(np) if ResourceLoader.exists(np) else null
+	var nrm: Texture2D = _skin_maps[path]
+	if nrm == null:
+		return
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var m := mesh.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null or m.albedo_texture == null or m.normal_enabled:
+				continue
+			var nm := m.resource_name.to_lower()
+			if m.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED or m.blend_mode != BaseMaterial3D.BLEND_MODE_MIX \
+					or m.shading_mode == BaseMaterial3D.SHADING_MODE_UNSHADED or m.roughness < 0.3 \
+					or nm.contains("eye") or nm.contains("iris") or nm.contains("pupil") or nm.contains("mouth") or nm.contains("tongue"):
+				continue
+			m.normal_enabled = true
+			m.normal_texture = nrm
+			m.normal_scale = SKIN_NORMAL
+
+
+## A coat that glowed with its own paint lit by the stage instead (LIT_NAMES:
+## its glow map is its own colour), keeping a little warmth (LIT_GLOW).
+static func _lit(inst: Node3D) -> void:
+	if not LOOK.lit or look_level() < 1:
+		return
+	for mi in inst.find_children("*", "MeshInstance3D", true, false):
+		var mesh := mi as MeshInstance3D
+		if mesh.mesh == null:
+			continue
+		for i in mesh.mesh.get_surface_count():
+			var m := mesh.mesh.surface_get_material(i) as BaseMaterial3D
+			if m == null or not m.emission_enabled or not LIT_NAMES.has(m.resource_name.to_lower()):
+				continue
+			if m.emission_texture != null and m.emission_texture != m.albedo_texture:
+				continue   # (a glow map of its own: it glows where it was painted to)
+			m.emission_energy_multiplier = minf(m.emission_energy_multiplier, LIT_GLOW)
+
+
 ## The camera kicked back from a blow at `from`, by `amount` metres, and
 ## springing back.
 func cam_kick(from: Vector3, amount: float) -> void:
@@ -2726,6 +3034,7 @@ func flash_light(at: Vector3, col: Color, energy: float = 6.0, dur: float = 0.4,
 	l.light_energy = energy * flash_k
 	l.omni_range = range_m
 	l.shadow_enabled = false
+	l.light_volumetric_fog_energy = HAZE_FLASH
 	_fx_parent().add_child(l)
 	var tw := l.create_tween()
 	tw.tween_property(l, "light_energy", 0.0, dur).set_ease(Tween.EASE_OUT)
@@ -2883,6 +3192,7 @@ class Bolt3D:
 		lamp.light_color = col
 		lamp.light_energy = 3.0
 		lamp.omni_range = 4.0
+		lamp.light_volumetric_fog_energy = DuelField3D.HAZE_FLASH
 		add_child(lamp)
 		trail = CPUParticles3D.new()
 		trail.amount = 50

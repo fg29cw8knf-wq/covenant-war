@@ -5,8 +5,8 @@ extends Node
 ## to play itself for a few seconds, and checked for anything of the stage
 ## or the drama having crept in: no dressing (the rim light, the shafts, the
 ## embers, the punch shader as the field's material), never a charge on an
-## attacker, never a wash on the screen's edges, and the camera where the
-## film put it. Prints any problem; a still at the end. Run:
+## attacker, never a wash on the screen's edges, none of the arena's look
+## (18 November: DuelField3D.LOOK), and the camera where the film put it. Prints any problem; a still at the end. Run:
 ##   xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 960x540 --fixed-fps 30 \
 ##       res://tests/duel_film_check.tscn -- <out_dir> [seconds]
 
@@ -70,6 +70,10 @@ func _ready() -> void:
 		var f := ds.field
 		if f._dressed or f._rim != null or not f._shafts.is_empty() or f._embers != null or f.material != null or f._punch_mat != null:
 			problems.append("the film's field was dressed (dressed %s, rim %s, shafts %d, embers %s, material %s)" % [f._dressed, f._rim != null, f._shafts.size(), f._embers != null, f.material != null])
+		# (18 November) nor the arena's look: the film keeps its own light
+		if f._look_on or f._env.ssao_enabled or f._env.ssil_enabled or f._env.volumetric_fog_enabled or f._env.adjustment_color_correction != null or f._probe != null:
+			problems.append("the arena's look was on in a film (ssao %s, ssil %s, haze %s, grade %s, probe %s)" % [f._env.ssao_enabled, f._env.ssil_enabled,
+				f._env.volumetric_fog_enabled, f._env.adjustment_color_correction != null, f._probe != null])
 		if f._home_pos.distance_to(HOME) > 0.01:
 			problems.append("the film's camera home moved: %s" % f._home_pos)
 		if f._snow == null:
