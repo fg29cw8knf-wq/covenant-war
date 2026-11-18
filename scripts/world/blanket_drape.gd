@@ -668,8 +668,13 @@ static func mesh_of(pts: PackedVector3Array, npx: int, npz: int, shade := Packed
 	var jb: PackedInt32Array = g[5]
 	var nrm := PackedVector3Array()
 	nrm.resize(n)
+	# (pointing down, as SurfaceTool.generate_normals had them for these
+	# triangles: their front is the cloth's underside, and seen from above
+	# (cull_disabled) the engine turns the normal round. Pointing up, it was
+	# turned round to point down, and the cloth seen from above was lit as
+	# if from under it: near black in the attic, but for the candle's red.)
 	for k in n:
-		nrm[k] = (pts[jb[k]] - pts[ja[k]]).cross(pts[ib[k]] - pts[ia[k]]).normalized()
+		nrm[k] = (pts[ib[k]] - pts[ia[k]]).cross(pts[jb[k]] - pts[ja[k]]).normalized()
 	var cols: PackedColorArray = g[6]
 	if shade.size() == n:
 		cols = PackedColorArray()
