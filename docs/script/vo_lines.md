@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 570 lines, 23 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-19 (218ca8b); run it again after the words change.
+Every line the game speaks, in the order it's played: 570 lines, 22 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-19 (f47beb8); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -18,7 +18,7 @@ Every line the game speaks, in the order it's played: 570 lines, 23 of them reco
 | 0005 | Morrowen | Twenty years later, the Age came to its end... and every debt in my book came due. | `adcbfafe` |
 | 0006 | Morrowen | His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name. | `dfcedfec` |
 | 0007 | Bram | Come on then, Sprout. *(recorded already)* | `f11e5498` |
-| 0008 | Bram | One more hour. That's all I need. *(recorded already)* | `fe9d582d` |
+| 0008 | Bram | Buy me some time. That's all I need. | `63aa6e27` |
 | 0009 | Bram | Get back from him. *(recorded already)* | `e12f55e3` |
 | 0010 | Bram | Write it in my name, then. *(recorded already)* | `e021abca` |
 | 0011 | Bram | Hold them off. Just a little longer. *(recorded already)* | `40c7b305` |

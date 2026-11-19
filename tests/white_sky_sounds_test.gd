@@ -9,7 +9,7 @@ extends Node
 ## Ends "WHITE SKY SOUNDS: ok" or the problems.
 
 const LINES := [
-	"Come on then, Sprout.", "One more hour. That's all I need.", "Hold them off. Just a little longer.",
+	"Come on then, Sprout.", "Hold them off. Just a little longer.",
 	"Get back from him.", "Not yet. Not yet.", "You'll not have him.",
 	"Write it in my name, then.",
 ]
@@ -17,6 +17,7 @@ const LINES := [
 ## shown by "list", not counted as problems till they're made.
 const TO_RECORD := [
 	["bram", "Hush now, little one. I've got you."], ["bram", "Shh, little one. I've got you."],
+	["bram", "Buy me some time. That's all I need."],
 	["morrowen", "His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name."],
 	["morrowen", "He walked out of the Shardlands with the child in his coat, and a debt in his own name."],
 	["morrowen", "Twenty years later, the Age came to its end... and every debt in my book came due."],
@@ -76,7 +77,7 @@ func _ready() -> void:
 		if m.get_length() < 4.0 or m.get_length() > total + 1.0:
 			bad.append("the end music is %.1f s long; the end of the duel is %.1f s" % [m.get_length(), total])
 	if bad.is_empty():
-		print("WHITE SKY SOUNDS: ok (8 lines, %d sounds, the end music)" % SOUNDS.size())
+		print("WHITE SKY SOUNDS: ok (%d lines, %d sounds, the end music)" % [LINES.size(), SOUNDS.size()])
 	else:
 		for b in bad:
 			print("  problem: ", b)

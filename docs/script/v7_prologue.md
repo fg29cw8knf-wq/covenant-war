@@ -155,7 +155,7 @@ _(The Unspent Hour, a winged hourglass of glass and starlit sand, rises in the g
 where the Scrivener stood; or the Weft Serpent, a great serpent woven of grey and
 silver thread.)_
 
-**[BRAM] (as he calls it; new, 12 November):** "One more hour. That's all I need."
+**[BRAM] (as he calls it; new, 12 November; changed 19 November, Gary's "1 yes": it was "One more hour. That's all I need.", which only made sense knowing the card's name):** "Buy me some time. That's all I need."
 _(the Unspent Hour)_ / **(new, 15 November, Claude's):** "Hold them off. Just a
 little longer." _(the Weft Serpent)_
 
@@ -205,8 +205,8 @@ him."
 _(He takes the Last Page's price on himself: Morrowen has just said what it
 costs.)_
 
-_(The duel has six lines of his now, none of which holds it up: Not yet. / One
-more hour. / Get back from him. / Shh, little one. I've got you. / You'll not have
+_(The duel has six lines of his now, none of which holds it up: Not yet. / Buy
+me some time. / Get back from him. / Shh, little one. I've got you. / You'll not have
 him. / Write it in my name, then.)_
 
 _(changed, 15 November; Gary: "can we make the whole summon process look more

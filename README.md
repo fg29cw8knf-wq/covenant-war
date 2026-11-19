@@ -3377,6 +3377,30 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Three yeses on the White Sky and the bed (19 November, morning)
+
+Gary (19 November, 10:14), to the night's suggestions: "1 yes 2 add to the
+still to make list 3 yes if it looks better 4 yes 5 im still not getting what
+det exactly is he taking?"
+
+- **1. The Hour's line** (`WhiteSky.MOVE_LINES["call"]`): "Buy me some time.
+  That's all I need." for "One more hour. That's all I need.", which only made
+  sense knowing the card's name. To record (0008, `63aa6e27`).
+- **2.** On Still to Make ("3. The attic"): film himself getting out of a bed,
+  put it through Rokoko Vision, send the FBX for Player A. The three Bram
+  lines to record are on it too ("Before the attic").
+- **3. His arms as he stands** (`AshfordP1.RISE_ARMS_AT` 4.15, `RISE_ARMS_SECS`
+  0.75, `rise_arms_down`). The clip stood him with his arms held out from his
+  sides; the idle now takes him over as he straightens (at 4.15 s of the
+  clip, over 0.75 s), so they come down to hang as he comes up. The clip
+  takes 4.7 s now (5.4 without it). `mark_wake_test` takes `9f_coming_up` and
+  `9g_stood`; `oldrise` draws the clip to its end.
+- **4. Cold sparks** (`Hunter.burn_away`'s `cold`, `_cold_sparks`): as the
+  hooded figure comes apart in the gust on the walk out its sparks are
+  blue-white, not the fire's orange, so it isn't the duel's burn again.
+- **5.** Not built: what Bram's debt is was never said, and it's Gary's to
+  pick. Morrowen's three new lines (0004 to 0006) wait on it.
+
 ### Gary's notes on the Night of the White Sky, and getting out of bed (19 November)
 
 Gary (19 November), after playing it: "Some of Bram's dialogue at the

@@ -57,6 +57,8 @@ func _ready() -> void:
 			DollArt.test_look = String(a).substr(5)
 	AshfordP1.test_memory = true
 	AshfordP1.mark_wakes = 0
+	if OS.get_cmdline_user_args().has("oldrise"):
+		AshfordP1.rise_arms_down = false   # (19 November: the clip to its end, for the before)
 	world = World.new().setup("ashford", "green")
 	add_child(world)
 
@@ -183,9 +185,15 @@ func _process(delta: float) -> void:
 			if _rise_from < 0.0:
 				_rise_from = _t
 			_rise_to = _t
-			for pair in [["9a_sitting_up", 1.6], ["9b_legs_round", 2.4], ["9c_on_the_edge", 3.0], ["9d_rising", 3.7], ["9e_nearly_up", 4.2], ["9f_stood", 4.8]]:
+			for pair in [["9a_sitting_up", 1.6], ["9b_legs_round", 2.4], ["9c_on_the_edge", 3.0], ["9d_rising", 3.7], ["9e_nearly_up", 4.05]]:
 				if cp > float(pair[1]):
 					_still(String(pair[0]))
+		elif _rise_from >= 0.0:
+			# (the idle takes him over as he straightens: AshfordP1.RISE_ARMS_AT)
+			if _t - _rise_to > 0.35:
+				_still("9f_coming_up")
+			if _t - _rise_to > 1.0:
+				_still("9g_stood")
 		if since > whole_at + 0.3 and _whole_in < 0.0:
 			_whole_in = _in_picture()
 		# ("arm": where his left arm is, as drawn, against the mattress and

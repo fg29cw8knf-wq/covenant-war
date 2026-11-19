@@ -106,8 +106,10 @@ const COME_ON := {"who": "bram", "say": "Come on then, Sprout."}
 ## Unspent Hour called, an hour he hasn't got; the hound struck as it comes
 ## for the child; the Last Page, and what it costs him written down to him.
 ## Said over the move, gone by itself (_move_line), never waited on.
+## (19 November, Gary's "1 yes": "call" was "One more hour. That's all I
+## need.", which only made sense knowing the card's name.)
 const MOVE_LINES := {
-	"call": {"who": "bram", "say": "One more hour. That's all I need."},
+	"call": {"who": "bram", "say": "Buy me some time. That's all I need."},
 	"attack": {"who": "bram", "say": "Get back from him."},
 	"last_page": {"who": "bram", "say": "Write it in my name, then."},
 }
@@ -122,8 +124,8 @@ const CALL_LINES := {
 ## down on his knee, to the child in his coat; and coming up off it, to the
 ## hunter, before the Last Page is called ("Write it in my name, then."
 ## follows it). With the moves' lines the duel has six of his: Not yet. /
-## One more hour. / Get back from him. / I've got you. / You'll not have
-## him. / Write it in my name, then.
+## Buy me some time. / Get back from him. / Shh, little one. / You'll not
+## have him. / Write it in my name, then.
 ## (19 November: "knee" was "I've got you. I've got you.", which could have been
 ## to anyone; Gary, again, "when he talks to the baby it's not clear he's
 ## talking to the baby". Now it says who: and the child coos back,
@@ -4752,7 +4754,7 @@ func _walk_out() -> void:
 	if _hunter_watching and is_instance_valid(_hunter):
 		_hunter_watching = false
 		_hunter.hem_ash(false)
-		_hunter.burn_away(OUT_GONE * 0.85, Color(0.62, 0.68, 0.85))
+		_hunter.burn_away(OUT_GONE * 0.85, Color(0.62, 0.68, 0.85), true)
 		_snd("hunter_burn", 0.8, -9.0)
 	await _wait(0.9)
 	_wind_to(-27.0, 1.2)
@@ -10051,7 +10053,13 @@ class Hunter:
 	## so it can be whole again (unburn).
 	var _was_mats: Array = []
 
-	func burn_away(secs: float, col: Color) -> void:
+	## `cold`: its sparks blue-white, not the fire's (19 November, Gary's "4 yes":
+	## as it comes apart in the gust on the walk out, so it isn't the duel's
+	## burn again).
+	var _cold_sparks := false
+
+	func burn_away(secs: float, col: Color, cold := false) -> void:
+		_cold_sparks = cold
 		var y0 := global_position.y - 0.05
 		var y1 := global_position.y + (_card_top + 0.25) * global_transform.basis.get_scale().y
 		if _burn_mats.is_empty():
@@ -10191,7 +10199,10 @@ class Hunter:
 		ct.curve = cr
 		pm.alpha_curve = ct
 		var g := Gradient.new()
-		if hot:
+		if hot and _cold_sparks:
+			g.set_color(0, Color(0.92, 0.97, 1.0))
+			g.set_color(1, Color(0.42, 0.62, 1.0))
+		elif hot:
 			g.set_color(0, Color(1.0, 0.97, 0.88))
 			g.set_color(1, Color(1.0, 0.55, 0.2))
 		else:
@@ -10211,7 +10222,7 @@ class Hunter:
 			m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 		m.albedo_texture = DuelFX.dot_tex()
 		m.vertex_color_use_as_albedo = true
-		m.albedo_color = Color(2.2, 2.0, 1.7, 1.0) if hot else Color(1, 1, 1, 0.85)
+		m.albedo_color = (Color(1.7, 2.0, 2.4, 1.0) if _cold_sparks else Color(2.2, 2.0, 1.7, 1.0)) if hot else Color(1, 1, 1, 0.85)
 		q.material = m
 		p.draw_pass_1 = q
 		p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

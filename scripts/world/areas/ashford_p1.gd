@@ -2026,12 +2026,22 @@ static func _rise_from_bed(w: World, fig: Figure3D, a: Dictionary) -> void:
 			await w.get_tree().process_frame
 			if not is_instance_valid(fig) or fig.anim == null or fig.anim.current_animation != nm:
 				break
-			fig.anim.speed_scale = RISE_SPEED * rise_pace(fig.anim.current_animation_position)
+			var cp := fig.anim.current_animation_position
+			if rise_arms_down and cp >= RISE_ARMS_AT:
+				# (19 November, Gary's "3 yes if it looks better": the clip
+				# stands him with his arms held out from his sides; the idle
+				# takes him over as he straightens, so they come down to
+				# hang as he comes up)
+				fig.anim.speed_scale = 1.0
+				fig.release(RISE_ARMS_SECS)
+				break
+			fig.anim.speed_scale = RISE_SPEED * rise_pace(cp)
 	warp.call()
 	await fig.play_rooted("get_out_of_bed", true, RISE_SPEED * rise_pace(0.0), extra, blend)
 	if is_instance_valid(fig) and fig.anim != null:
 		fig.anim.speed_scale = 1.0
-	fig.release(RISE_LET_GO)
+	if fig._action != "":
+		fig.release(RISE_LET_GO)
 
 
 ## The get_out_of_bed clip's pace at `t` (its own seconds), as a share of its
@@ -2048,6 +2058,14 @@ const RISE_PACE_EASE := 0.18
 ## RISE_LET_GO)
 const RISE_PACES := [[0.0, 2.4], [1.0, 0.9], [2.8, RISE_EDGE_PACE], [3.2, 0.85], [4.4, 1.5]]
 const RISE_LET_GO := 0.5
+## (19 November, Gary's "3 yes if it looks better") Where in the clip the idle
+## takes him over as he straightens (its own seconds: his legs nearly
+## straight, his arms going out from his sides), and over how long then, so
+## the arms come down to hang as he comes up. `rise_arms_down` false: the
+## clip to its end, as it was (the tests' before).
+const RISE_ARMS_AT := 4.15
+const RISE_ARMS_SECS := 0.75
+static var rise_arms_down := true
 
 static func rise_pace(t: float) -> float:
 	var v: float = RISE_PACES[0][1]
