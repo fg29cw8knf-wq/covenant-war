@@ -174,6 +174,18 @@ func _process(delta: float) -> void:
 				["8_round_to_the_bed", round_at + 1.2], ["9_waking", round_at + 4.5]]:
 			if since > float(pair[1]):
 				_still(String(pair[0]))
+		# (19 November, Gary: getting out of bed "more natural": each part of
+		# it at its own pace, AshfordP1.rise_pace) the rise by the clip's own
+		# clock: sitting up, the legs round, on the edge, rising, stood
+		var rf = world.player_doll
+		if rf is Figure3D and (rf as Figure3D).anim != null and String((rf as Figure3D).anim.current_animation).begins_with("rooted_get_out_of_bed"):
+			var cp: float = (rf as Figure3D).anim.current_animation_position
+			if _rise_from < 0.0:
+				_rise_from = _t
+			_rise_to = _t
+			for pair in [["9a_sitting_up", 1.6], ["9b_legs_round", 2.4], ["9c_on_the_edge", 3.0], ["9d_rising", 3.7], ["9e_nearly_up", 4.2], ["9f_stood", 4.8]]:
+				if cp > float(pair[1]):
+					_still(String(pair[0]))
 		if since > whole_at + 0.3 and _whole_in < 0.0:
 			_whole_in = _in_picture()
 		# ("arm": where his left arm is, as drawn, against the mattress and
@@ -192,6 +204,8 @@ func _process(delta: float) -> void:
 
 
 var _arm_last := -9.0
+var _rise_from := -1.0
+var _rise_to := -1.0
 
 func _arm_dump(t: float) -> void:
 	if t - _arm_last < 0.15:
@@ -263,6 +277,9 @@ func _finish() -> void:
 	# (where the hand got to is seen in the stills, 7b and 7c: the bones read
 	# here are the clip's, before the arm's reach is put on them)
 	print("mark_wake_test: his hand to his neck where the mark was: %d time(s)" % AshfordP1.hand_to_neck)
+	# (19 November) how long the get-up clip took, its parts at their own pace
+	if _rise_from >= 0.0:
+		print("mark_wake_test: up out of bed (the clip) over %.1f s" % (_rise_to - _rise_from))
 	if AshfordP1.hand_to_neck != AshfordP1.mark_wakes:
 		fails.append("his hand didn't go to his neck as he woke on the mark")
 	# (16 November, Gary: "When player puts hand to neck in bed his hand goes

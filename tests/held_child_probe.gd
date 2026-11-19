@@ -132,6 +132,8 @@ func _run() -> void:
 	await get_tree().process_frame
 	m._ov = m._own_overlay()
 	m._black.modulate.a = 0.0
+	if OS.get_cmdline_user_args().has("oldarm"):
+		m.tiny_from_child = false   # (19 November: the small arm as it was, for the before)
 	var fig := m._bram as Figure3D
 	var kd := m._kneel_dir(Vector3.FORWARD)
 	var bottom := m._kneel_spot(kd)
@@ -703,6 +705,7 @@ var _take_palm_f := Vector3.ZERO
 
 func _hand_run() -> void:
 	var fig := m._bram as Figure3D
+	var coos_before := m.coo_played   # (19 November: the child coos at the pick-up too)
 	m._white.modulate.a = 1.0
 	var done := [false]
 	var run := func() -> void:
@@ -723,6 +726,15 @@ func _hand_run() -> void:
 			print("held_child_probe: (%.0f s into the walk out: %.1f m from the crater, the hand %s rise %.2f)" % [tt, m._crater_dist(), str(m._hand_on), m._tiny_rise])
 		if m._hand_on and m._tiny != null and m._tiny.visible and m._tiny_rise > 0.05 and (k % 3 == 0 or m.grasping > 0.05):
 			await _measure_hand("rise %.2f curl %.2f grasping %.2f" % [m._tiny_rise, m._tiny_curl, m.grasping])
+		if m._hand_on and m._tiny != null and m._tiny.visible and k % 10 == 0 and OS.get_cmdline_user_args().has("armdbg"):
+			var bx := m._baby.global_transform
+			var w0 := m._tiny_xf(1.0).origin
+			print("held_child_probe:   (arm: rise %.2f; the child's middle %s, its head way %s, its face way %s; the arm's base %s; the wrist up %s; the wrist now %s; his frame)" % [
+				m._tiny_rise, str(fig.to_own(bx.origin).snappedf(0.005)), str((fig.to_own(bx.origin + bx.basis.z.normalized() * -0.1) - fig.to_own(bx.origin)).snappedf(0.01)),
+				str((fig.to_own(bx.origin + bx.basis.y.normalized() * 0.1) - fig.to_own(bx.origin)).snappedf(0.01)),
+				str(fig.to_own(m._tiny_base(w0)).snappedf(0.005)), str(fig.to_own(w0).snappedf(0.005)), str(fig.to_own(m._tiny.global_position).snappedf(0.005))])
+		if m._hand_on and m._tiny != null and m._tiny.visible and k % 2 == 0:
+			_measure_small_arm("rise %.2f give %.2f taken %s" % [m._tiny_rise, m._tiny_give, str(m.card_taken)])
 		# (16 November, Gary's yes) the fingers opening and closing as it reaches
 		_grasp_most = maxf(_grasp_most, m.grasping)
 		if m.grasping > 0.8:
@@ -827,8 +839,16 @@ func _hand_run() -> void:
 		fails.append("Bram's hand into the bundle")
 	elif _tuck_gap > 0.09:
 		fails.append("Bram's hand didn't get to the blanket")
-	if m.coo_played != 1:
-		fails.append("the coo asked for %d times" % m.coo_played)
+	print("held_child_probe: the small arm and the child's own bundle: %d checks; its sleeve through the bundle and out again at most %.1f cm (%s); the hand under the wool when up at most %.1f cm (%s); where it comes out of the wool moved at most %.1f cm" % [
+		_sa_checks, _sa_through * 100.0, _sa_through_at, _sa_hand_in * 100.0, _sa_hand_in_at, _sa_slide * 100.0])
+	if _sa_through > 0.015:
+		fails.append("the small arm through the child's bundle (%.1f cm out the other side)" % (_sa_through * 100.0))
+	if _sa_hand_in > 0.02:
+		fails.append("the small hand under the blanket while it's up (%.1f cm)" % (_sa_hand_in * 100.0))
+	if _sa_slide > 0.04:
+		fails.append("the small arm slid through the blanket (%.1f cm)" % (_sa_slide * 100.0))
+	if m.coo_played - coos_before != 1:
+		fails.append("the coo asked for %d times on the walk out" % (m.coo_played - coos_before))
 	var gs := maxf(0.0, _grasp_to - _grasp_from)
 	print("held_child_probe: its fingers grasping as it reached: at most %.2f, %.1f s of it" % [_grasp_most, gs])
 	if _grasp_most < 0.8 or gs < 0.9:
@@ -839,6 +859,94 @@ func _hand_run() -> void:
 		fails.append("the small hand in Bram")
 	if _card_worst > 0.0015:
 		fails.append("the small hand through its card")
+
+
+## (19 November, Gary: "Baby's arm goes through its body when it takes card
+## and goes funny when Bram goes to take the card") The small arm against the
+## child's own bundle, its mesh as a solid: along the forearm's line from the
+## wrist down the sleeve (23 cm), once the line is in the wool it should stay
+## in (out again the other side is the arm through the child); the hand's own
+## middle shouldn't be in the wool while it's up; and where the line goes into
+## the wool shouldn't wander over the bundle (that's the sleeve sliding through
+## it). Read as the frame draws it.
+var _sa_checks := 0
+var _sa_through := 0.0
+var _sa_through_at := ""
+var _sa_hand_in := 0.0
+var _sa_hand_in_at := ""
+var _sa_slide := 0.0
+var _sa_entry0 := Vector3.INF
+var _sa_space := RID()
+var _sa_body := RID()
+var _sa_shape: ConcavePolygonShape3D
+var _sa_faces := PackedVector3Array()
+var _sa_bxf := Transform3D.IDENTITY
+
+func _measure_small_arm(what: String) -> void:
+	if not is_instance_valid(m._baby) or m._tiny == null or not is_instance_valid(m._tiny):
+		return
+	var bx := m._baby.global_transform
+	if _sa_faces.is_empty() or not _sa_bxf.is_equal_approx(bx):
+		var faces := PackedVector3Array()
+		for n in m._baby.find_children("*", "MeshInstance3D", true, false):
+			var mi := n as MeshInstance3D
+			if mi.mesh == null or not mi.is_visible_in_tree() or not String(m._baby.get_path_to(mi)).contains("baby_bundle"):
+				continue
+			var fs := mi.mesh.get_faces()
+			var xf := mi.global_transform
+			for i in fs.size():
+				fs[i] = xf * fs[i]
+			faces.append_array(fs)
+		if faces.is_empty():
+			return
+		if _sa_body.is_valid():
+			PhysicsServer3D.free_rid(_sa_body)
+		if not _sa_space.is_valid():
+			_sa_space = PhysicsServer3D.space_create()
+			PhysicsServer3D.space_set_active(_sa_space, true)
+		_sa_shape = ConcavePolygonShape3D.new()
+		_sa_shape.backface_collision = true
+		_sa_shape.set_faces(faces)
+		_sa_body = PhysicsServer3D.body_create()
+		PhysicsServer3D.body_set_mode(_sa_body, PhysicsServer3D.BODY_MODE_STATIC)
+		PhysicsServer3D.body_add_shape(_sa_body, _sa_shape.get_rid())
+		PhysicsServer3D.body_set_collision_layer(_sa_body, 1)
+		PhysicsServer3D.body_set_collision_mask(_sa_body, 0)
+		PhysicsServer3D.body_set_space(_sa_body, _sa_space)
+		_sa_faces = faces
+		_sa_bxf = bx
+	var xf := m._tiny.global_transform
+	var wrist := xf.origin
+	var down := -xf.basis.y.normalized()
+	_sa_checks += 1
+	var was_in := false
+	var entry := Vector3.INF
+	var out_again := 0.0
+	for i in 24:
+		var q := wrist + down * (0.01 * i)
+		var inside := _inside_of(_sa_space, _sa_faces, q) >= 0.0
+		if inside and not was_in and entry == Vector3.INF:
+			entry = q
+		if was_in and not inside:
+			out_again = 0.01   # (out of the wool again: from here on it counts)
+		elif out_again > 0.0 and not inside:
+			out_again += 0.01
+		was_in = was_in or inside
+	if out_again > _sa_through:
+		_sa_through = out_again
+		_sa_through_at = what
+	if m._tiny_rise > 0.9:
+		var mid := xf * Vector3(0.0, 0.035, 0.0)
+		var d := _inside_of(_sa_space, _sa_faces, mid)
+		if d > _sa_hand_in:
+			_sa_hand_in = d
+			_sa_hand_in_at = what
+		if entry != Vector3.INF:
+			var local := bx.affine_inverse() * entry
+			if _sa_entry0 == Vector3.INF:
+				_sa_entry0 = local
+			else:
+				_sa_slide = maxf(_sa_slide, local.distance_to(_sa_entry0))
 
 
 func _hand_side(nm: String) -> void:

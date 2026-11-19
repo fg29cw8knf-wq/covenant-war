@@ -3377,6 +3377,100 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Gary's notes on the Night of the White Sky, and getting out of bed (19 November)
+
+Gary (19 November), after playing it: "Some of Bram's dialogue at the
+beginning makes no sense like he says write it in my name then for no
+reason and when he talks to the baby it's not clear he's talking to the
+baby"; "Baby's arm goes through its body when it takes card and goes funny
+when Bram goes to take the card"; "I like to be able to see the hooded
+figure as Bram walks away it adds to the prologue"; "20 years later the debt
+came due doesn't really make sense or blend well with the title then coming
+up we need to make the whole thing more dramatic whereas the whole prologue
+feels rushed"; "With player getting out of bed can you find a video online
+you can model it on so it looks more natural". `docs/handover/2026-11-19.md`
+has what was measured.
+
+- **"Write it in my name, then." answers something now** (`WhiteSky.PAGE_PRICE`,
+  `PRICE_BEAT`, `price_said`; `_ask_move`'s last gate). In the hush before the
+  Last Page, Morrowen says what it costs: "His last card was the Last Page.
+  It would save the child... but its price is always written in my book,
+  under someone's name." Bram's line (his recording, unchanged) is then him
+  taking that price on himself. The film's clock stands while she speaks.
+- **His words to the baby say who they're to** (`WhiteSky.HUSH`,
+  `BEAT_LINES["knee"]`, `HUSH_BEFORE`, `HUSH_AFTER`): "Hush now, little one.
+  I've got you." in the crater (a breath on the child first), "Shh, little
+  one. I've got you." on his knee (the shot of the two of them held through
+  it, 4.6 s); the child coos back after each (`baby_coo`, Gary's three takes).
+  Both need recording again: the old words' recordings no longer match.
+- **The small arm comes out of the child, not through it** (`WhiteSky._tiny_xf`,
+  `_tiny_base`, `TINY_FROM`, `TINY_HIDE`, `TINY_MIN_UP`, `tiny_from_child`,
+  `_tiny_cut`; the wool shader's `cut_at`, `cut_dir`, `cut_on`). The hand was
+  set off Bram's shoulder and rose along a line of its own: its 23 cm sleeve
+  went straight down through the bundle by the child's head, and as it gave
+  the card towards him it slid 7 cm sideways and 10 down through the wool
+  (measured: where it went into the wool moved 8.2 cm). Now its forearm runs
+  from the child's outer shoulder (on the bundle, away from his coat: the
+  near one is in the crook of his arm) to the wrist, turns about there as
+  the hand moves, never lies flatter than `TINY_MIN_UP`, and the sleeve isn't
+  drawn past where it goes into the wool (a straight sleeve turned with the
+  arm stuck out of the bundle's far side). `held_child_probe ... hand` now
+  measures the arm against the child's own bundle (through it and out again,
+  the hand under the wool while it's up, and how far its way in moves:
+  2.9 cm, under the 4 cm allowed); `oldarm` draws the old way.
+- **The hooded figure watches him go** (`WhiteSky._hunter_watches`,
+  `watch_out`, `hunter_watched`, `_hunter_watching`; `Hunter.unburn`,
+  `hem_ash`, `_was_mats`; `OUT_WATCH` 4.6, `OUT_GONE` 2.4). From the evening
+  of 15 November it burned away at the end of the duel and the rim stayed
+  empty. Now, at the shot from behind the rim as he walks away, it's
+  standing there again on its own scorch, whole, ash coming off its hem on
+  the wind, its hood turned after him; then the gust, and it comes apart
+  into ash (its own burn, in a cold light). It isn't finished, which is what
+  the ending's line goes on from.
+- **The ending** (`WhiteSky.OUT_DEBT`, `DEBT_DUE`, `DUE_BEFORE`, `DUE_AFTER`;
+  `_walk_out`, `_close`). Morrowen over him stopped with the child as the
+  mark's light comes up: "He walked out of the Shardlands with the child in
+  his coat, and a debt in his own name." Then black, the mark alone a breath,
+  and her last line: "Twenty years later, the Age came to its end... and
+  every debt in my book came due." It ends on the Age ending, which the title
+  (Throne of Ages) and the attic's caption ("The last night of the Age.") go
+  on from. The mark beats once in the quiet after it, the main theme rises
+  out of that (`Music.play` over `DUE_AFTER` + 1.2 s) and the title comes up
+  on it rather than cutting in. Both lines are new to record.
+- **Less rushed** (19 November): the opening's caption held 3.4 s (2.6), the
+  black lifting over 2.2 s (1.4), the wide shot hanging 2.8 s and coming down
+  over 5.8 (1.9, 4.6; hurried by steering over 1.6, was 0.9); the look up at
+  the tear 1.4 s and held 2.7 (1.0, 1.9); the child seen from the rim 2.4 s
+  (1.5); the flash's dark on the rim 1.4 s (0.9); the hunter's reach for the
+  child 2.3 s and held 2.3 (1.8, 1.5); the Circle's lead-in held 2.2 s (1.5);
+  the three flashes of the fight in slow motion (`FLASH_SLOW` 0.55, with the
+  blows' own slow-motion grade) and 0.26 s between them (0.16); "Near dawn /
+  Bram is down to his last cards." for "The end of the duel" (it said the
+  fight was skipped), held 3.3 s; him on his knee 2.8 s (2.3); the black over
+  the mark 2.6 s (1.9); the title held 4.6 s (3.9). The duel's end isn't
+  slower: it's timed to Gary's end music.
+- **Getting out of bed at a person's pace** (`AshfordP1.rise_pace`,
+  `RISE_PACES`, `RISE_EDGE_PACE`, `RISE_PACE_EASE`; `RISE_SPEED` 1.0, was 1.6;
+  `RISE_STIR` 1.2, `BLANKET_SECS` 0.75, `STRETCH_SECS` 2.5). The clip (Hob's,
+  Tripo3D's library: lying to 1.0 s, sits up and swings the legs round to
+  2.8, on the edge to 3.2, stands to 4.5) was played whole at 1.6 times its
+  speed: sat up in 1.1 s, on the edge a quarter of a second, up off it in
+  0.8. Nothing could be watched from here, so it was set against how people
+  are measured getting up: from lying, onto an elbow, then a hand, then
+  sitting (a 2023 Scientific Reports study of twelve young adults,
+  s41598-023-38779-2); healthy young adults' whole sit to stand 3.3 s
+  (Abdolrahmani and Yonetsu, 2016, fifteen young adults on force plates).
+  The clip's own stand, 1.3 s, was kept near its own speed rather than
+  slowed to that. Now each part has its own pace,
+  eased between: the lying still hurried past (2.4x), the sit up and legs
+  round at the clip's own speed (0.9x, about 2 s), a real moment on the edge
+  (0.28x, about 1.4 s), the stand a touch slower than the clip (0.85x, about
+  1.5 s), the last half second (stood, his arms held out from his sides)
+  quicker (1.5x) with the idle taking over over 0.5 s (`RISE_LET_GO`). The
+  clip now takes 5.6 s from lying to stood (it was 3.1). `tests/bed_probe.gd`
+  times it; `tests/mark_wake_test.gd` now takes a still at each part
+  (`9a_sitting_up` to `9f_stood`) and prints the clip's time.
+
 ### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
 
 Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -

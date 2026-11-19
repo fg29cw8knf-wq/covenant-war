@@ -10,8 +10,16 @@ extends Node
 
 const LINES := [
 	"Come on then, Sprout.", "One more hour. That's all I need.", "Hold them off. Just a little longer.",
-	"Get back from him.", "Not yet. Not yet.", "I've got you. I've got you.", "You'll not have him.",
+	"Get back from him.", "Not yet. Not yet.", "You'll not have him.",
 	"Write it in my name, then.",
+]
+## (19 November) lines whose words changed, waiting for Gary's new recording:
+## shown by "list", not counted as problems till they're made.
+const TO_RECORD := [
+	["bram", "Hush now, little one. I've got you."], ["bram", "Shh, little one. I've got you."],
+	["morrowen", "His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name."],
+	["morrowen", "He walked out of the Shardlands with the child in his coat, and a debt in his own name."],
+	["morrowen", "Twenty years later, the Age came to its end... and every debt in my book came due."],
 ]
 ## Each sound: how many takes, and the shortest and longest it may be (s).
 const SOUNDS := {
@@ -36,6 +44,10 @@ func _ready() -> void:
 			bad.append("\"%s\" is %.1f s long" % [words, s.get_length()])
 		elif show:
 			print("  %-40s %s  %.2f s" % ["\"%s\"" % words, path.get_file(), s.get_length()])
+	for pair: Array in TO_RECORD:
+		var made := VoiceLines.file_for(String(pair[0]), String(pair[1])) != ""
+		if show:
+			print("  %-9s %s  %s" % [String(pair[0]), VoiceLines.line_id(String(pair[1])), "recorded" if made else "to record"])
 	for nm: String in SOUNDS:
 		var want: Array = SOUNDS[nm]
 		for i in int(want[0]):

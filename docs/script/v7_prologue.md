@@ -82,7 +82,9 @@ child's tune (new, 15 November; Gary: "6 yes"). It's heard three times: here,
 when the small hand closes on its light on the walk out, and when the hero wakes
 in the attic.)_
 
-**[BRAM] (new, very quietly):** "Hush, now. I've got you."
+**[BRAM] (new, very quietly; changed 19 November, Gary: "when he talks to the baby it's not clear he's talking to the baby"; it was "Hush, now. I've got you."):** "Hush now, little one. I've got you."
+
+_(The child answers him with a small coo.)_
 
 _(He opens his coat and tucks the child inside, against his chest, and holds it
 there with one arm. A gust of snow. When it clears, a figure stands on the
@@ -118,8 +120,10 @@ Totems, a Weft Serpent, struck by a bolt from the hunter's cards and breaking in
 light; a hound in the air at him and the blow landing at his feet, the child
 crying out.)_
 
-_(White; then black.)_ **[CAPTION]** The end of the duel / Bram is down to his
-last cards.
+_(White; then black.)_ **[CAPTION]** Near dawn / Bram is down to his last cards.
+**(changed 19 November: it was "The end of the duel", which said the fight was
+skipped; the flashes before it are in slow motion now. Gary: "the whole
+prologue feels rushed".)**
 
 ### Bram's duel (played; changed, 12 November)
 
@@ -175,10 +179,18 @@ at the child in his arm, his head bowed to it. The fight falls away round them:
 the wind drops, the snow all but hangs.)_
 
 **[BRAM] (new, 15 November; Gary: "17 yes"; on his knee, softly, to the child in
-his coat):** "I've got you. I've got you."
+his coat; changed 19 November, it was "I've got you. I've got you."):** "Shh,
+little one. I've got you."
 
-_(The crying quietens under his words. The child's mark answers with a soft
-light through his coat. The night stays still.)_
+_(The crying quietens under his words, and the child coos back. The child's mark
+answers with a soft light through his coat. The night stays still.)_
+
+_(The hush before the Last Page: the wind drops, the snow hangs, across the
+Circle the hunter raises its cards.)_
+
+**[NARRATOR – MORROWEN] (V.O., new 19 November; Gary: "he says write it in my name
+then for no reason"):** "His last card was the Last Page. It would save the
+child... but its price is always written in my book, under someone's name."
 
 [GAME] His hand again, once he has said it; the card he has just drawn is glowing.
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
@@ -190,10 +202,12 @@ _(He comes up off his knee, the hunter across the Circle with its cards raised.)
 him."
 
 **[BRAM] (new, 12 November; as the page is called):** "Write it in my name, then."
+_(He takes the Last Page's price on himself: Morrowen has just said what it
+costs.)_
 
 _(The duel has six lines of his now, none of which holds it up: Not yet. / One
-more hour. / Get back from him. / I've got you. / You'll not have him. / Write it
-in my name, then.)_
+more hour. / Get back from him. / Shh, little one. I've got you. / You'll not have
+him. / Write it in my name, then.)_
 
 _(changed, 15 November; Gary: "can we make the whole summon process look more
 magical and better".)_
@@ -295,15 +309,30 @@ under the blanket's edge and draws the blanket over it: it stays with the
 child. The white card itself comes down to the hero at midnight, twenty years
 later.)_
 
-_(Past the crater the walk is over. From the rim where the hunter stood: Bram small
-beyond the far lip, walking on into the light, his line of prints up out of the
-bowl. A gust takes the last of its ash off the rim.)_
+_(Past the crater the walk is over. From behind the rim where the hunter
+burned: it is standing there again, whole, on its own scorch, ash still
+streaming off its hem, its empty hood turned after him. Bram small beyond the
+far lip, walking on into the light, his line of prints up out of the bowl.
+It watches him go. Then a gust, and it comes apart into ash on the wind.)_
+**(changed 19 November, Gary: "I like to be able to see the hooded figure as
+Bram walks away it adds to the prologue". It stood there until the evening of 15
+November.)**
 
 _(Behind Bram, stopped, his head down to the child. The mark's light comes up
-round him. The picture closes to black about it, and the mark is all that's left,
-glowing: the last picture of the memory.)_
+round him.)_
 
-**[NARRATOR – MORROWEN] (V.O., new):** "Twenty years later, the debt came due."
+**[NARRATOR – MORROWEN] (V.O., new 19 November):** "He walked out of the
+Shardlands with the child in his coat, and a debt in his own name."
+
+_(The picture closes to black about him, and the mark is all that's left,
+glowing: the last picture of the memory. A breath of quiet.)_
+
+**[NARRATOR – MORROWEN] (V.O., changed 19 November; Gary: "20 years later the debt
+came due doesn't really make sense or blend well with the title then coming up";
+it was "Twenty years later, the debt came due."):** "Twenty years later, the Age
+came to its end... and every debt in my book came due."
+
+_(The mark beats once, brighter, in the quiet; the main theme rises out of it.)_
 
 _(Under the mark, the game's name comes up in gold with the main theme: THE
 COVENANT WAR / THRONE OF AGES (new, 15 November; Gary: "5 yes"), and behind it
@@ -1542,3 +1571,28 @@ While building v7 the game needed a few short lines the script doesn't have. The
   screen can be.)
 - **The mirror, Q2:** the answer no longer tells the crater again; it says what
   the player was told, and what Bram won't say.
+
+## Changes, 19 November 2026 (Gary's notes on the Night of the White Sky)
+
+- **"Write it in my name, then." now answers something:** in the hush before the
+  Last Page, Morrowen says what it costs ("His last card was the Last Page. It
+  would save the child... but its price is always written in my book, under
+  someone's name."), so Bram's line is him taking the price on himself.
+- **Bram's words to the baby say who they're to:** "Hush now, little one. I've
+  got you." in the crater, "Shh, little one. I've got you." on his knee; the
+  child coos back after each.
+- **The ending:** Morrowen over Bram stopped with the child, "He walked out of the
+  Shardlands with the child in his coat, and a debt in his own name."; then on
+  black under the mark, "Twenty years later, the Age came to its end... and
+  every debt in my book came due." (it was "Twenty years later, the debt came
+  due."). It ends on the Age ending, which the title (Throne of Ages) and the
+  attic's caption ("The last night of the Age.") go on from. A breath of quiet
+  either side of it, the mark beats once, and the theme rises into the title.
+- **The hooded figure watches Bram walk away** again, standing whole on its own
+  scorch after burning in the Last Page's light, and goes with a gust.
+- **Less rushed:** longer holds on the opening caption and wide shot, the sky
+  tearing, the child seen from the rim, the hunter's reach for the child, the
+  Circle forming, and him on his knee; the three flashes of the fight in slow
+  motion; the caption "Near dawn" in place of "The end of the duel".
+- **New recordings needed** (the old ones no longer match the words): Bram's two
+  lines to the baby, and Morrowen's three. `docs/script/vo_lines.md` has them.

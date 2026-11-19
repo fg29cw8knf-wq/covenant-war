@@ -2003,15 +2003,59 @@ static func _rise_from_bed(w: World, fig: Figure3D, a: Dictionary) -> void:
 	var extra := func(t: float) -> Vector3:
 		var slide := smoothstep(1.3, 2.5, t)
 		# (the lift over LIFT_IN seconds of the world's time: `t` is the
-		# clip's own seconds, so it's scaled to the clip's pace; a shade
+		# clip's own seconds, so it's scaled to the clip's pace there; a shade
 		# under the blend-in, so the hips never dip as the lying pose gives
 		# way to the clip's lower one)
-		var y := lerpf(lie_off * smoothstep(0.0, LIFT_IN * RISE_SPEED, t), edge_off, slide)
+		var y := lerpf(lie_off * smoothstep(0.0, LIFT_IN * RISE_SPEED * rise_pace(0.0), t), edge_off, slide)
 		y += SWING_LIFT * sin(PI * clampf((t - 1.45) / 1.05, 0.0, 1.0))
 		y = lerpf(y, 0.0, smoothstep(3.1, 4.0, t))
 		return to_edge * slide + Vector3(0, y, 0)
-	await fig.play_rooted("get_out_of_bed", true, RISE_SPEED, extra, blend)
-	fig.release(0.3)
+	# (19 November, Gary: "With player getting out of bed can you find a video
+	# online you can model it on so it looks more natural". One speed for the
+	# whole clip, 1.6 times its own, had him up off the edge of the bed in
+	# 0.8 s and sat on it for a quarter of a second: quicker than anyone gets
+	# up. Now each part goes at a person's own pace (rise_pace): the
+	# lying still before it hurried past, the sitting up and the legs coming
+	# round at the clip's own speed (about two seconds, as people take), a
+	# real pause on the edge (feet down, hands on the mattress, a breath:
+	# about a second and a half), and the stand a touch slower than the clip
+	# (about a second and a half, the young adults' natural sit to stand).)
+	var warp := func() -> void:
+		var nm := "rooted_get_out_of_bed_m"
+		while is_instance_valid(fig) and fig.anim != null:
+			await w.get_tree().process_frame
+			if not is_instance_valid(fig) or fig.anim == null or fig.anim.current_animation != nm:
+				break
+			fig.anim.speed_scale = RISE_SPEED * rise_pace(fig.anim.current_animation_position)
+	warp.call()
+	await fig.play_rooted("get_out_of_bed", true, RISE_SPEED * rise_pace(0.0), extra, blend)
+	if is_instance_valid(fig) and fig.anim != null:
+		fig.anim.speed_scale = 1.0
+	fig.release(RISE_LET_GO)
+
+
+## The get_out_of_bed clip's pace at `t` (its own seconds), as a share of its
+## own speed (19 November). The clip: lying still to 1.0 s; sits up, turns
+## and swings the legs over the side to 2.8 s; sits on the edge to 3.2 s;
+## stands to 4.5 s; settles to 5.0 s. Eased from one pace to the next over
+## RISE_PACE_EASE of the clip, so there's no jolt between them.
+## How slowly the clip's sitting on the edge goes (0.4 s of clip: seen for
+## about 1.4 s), and how much of the clip each change of pace is eased over.
+const RISE_EDGE_PACE := 0.28
+const RISE_PACE_EASE := 0.18
+## (the clip's last half second, him stood with his arms held out from his
+## sides, goes by a little quicker, and the idle takes him over more softly:
+## RISE_LET_GO)
+const RISE_PACES := [[0.0, 2.4], [1.0, 0.9], [2.8, RISE_EDGE_PACE], [3.2, 0.85], [4.4, 1.5]]
+const RISE_LET_GO := 0.5
+
+static func rise_pace(t: float) -> float:
+	var v: float = RISE_PACES[0][1]
+	for i in range(1, RISE_PACES.size()):
+		var at: float = RISE_PACES[i][0]
+		var k := smoothstep(at - RISE_PACE_EASE, at + RISE_PACE_EASE, t)
+		v = lerpf(v, float(RISE_PACES[i][1]), k)
+	return v
 
 
 ## How far the seat rises as the legs swing round over the bed's side (m):
@@ -2026,10 +2070,15 @@ const SWING_LIFT := 0.13
 ## 0.8: the midnight waking's is its own, AshfordNight.awakening); the
 ## get_out_of_bed clip's speed (was 1.15); the stretch on his feet (s; was
 ## 2.8).
-const RISE_STIR := 0.9
-const BLANKET_SECS := 0.6
-const RISE_SPEED := 1.6
-const STRETCH_SECS := 2.0
+## (19 November, Gary: getting out of bed should look more natural, from a
+## real person's: back towards a person's own pace. RISE_STIR 1.2 (was 0.9),
+## the blanket's throw 0.75 (was 0.6), the clip at its own speed with each
+## part at its own pace (RISE_SPEED 1.0, was 1.6: rise_pace), the stretch 2.5
+## (was 2.0). tests/bed_probe.gd times it.)
+const RISE_STIR := 1.2
+const BLANKET_SECS := 0.75
+const RISE_SPEED := 1.0
+const STRETCH_SECS := 2.5
 ## How long the lift onto the mattress takes as the clip comes in (s).
 const LIFT_IN := 0.28
 ## Master Script v7 (with Gary's 24 October change to Q0): at the washbasin

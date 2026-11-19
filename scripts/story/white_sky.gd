@@ -74,9 +74,27 @@ signal finished
 
 # ----------------------------------------------------------------- lines ---
 const OPEN := {"who": "morrowen", "say": "Every soul in my book starts with a debt. Most spend a lifetime paying interest on a life they never asked for, trying to balance an account that was written before they were born.", "vo": "morrowen_attic"}
-const HUSH := {"who": "bram", "say": "Hush, now. I've got you."}
+## (19 November, Gary: "when he talks to the baby it's not clear he's talking
+## to the baby". It was "Hush, now. I've got you.": "little one" says who it's
+## to before anything is seen; the child coos back once it's said, _crater.)
+const HUSH := {"who": "bram", "say": "Hush now, little one. I've got you."}
 const NOT_THIS := {"who": "bram", "say": "Not this one."}
-const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the debt came due."}
+## Morrowen's last two lines (19 November, Gary: "20 years later the debt came
+## due doesn't really make sense or blend well with the title then coming
+## up"). It was the one line, "Twenty years later, the debt came due.", and
+## nothing in the memory had said a debt was taken on. Now the Last Page's
+## price is said before it's played (PAGE_PRICE) and Bram takes it in his
+## name; OUT_DEBT is said over him standing with the child at the end of the
+## walk out, as the mark's light comes up; DEBT_DUE on the black under the
+## mark, and it ends on the Age ending, which is what the title (THE COVENANT
+## WAR / THRONE OF AGES) and the attic's caption ("The last night of the
+## Age.") go on from.
+const OUT_DEBT := {"who": "morrowen", "say": "He walked out of the Shardlands with the child in his coat, and a debt in his own name."}
+const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the Age came to its end... and every debt in my book came due."}
+## (19 November, Gary: "he says write it in my name then for no reason") What
+## the Last Page costs, said in the hush before it's played (_ask_move, the
+## last gate), so that "Write it in my name, then." answers it.
+const PAGE_PRICE := {"who": "morrowen", "say": "His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name."}
 ## (15 November, Gary's "7 yes": where "Sprout" begins) to the child on the
 ## walk out of the crater, when its small hand has come up out of his coat
 ## like a shoot and taken the white card (_small_hand): the first time the
@@ -106,9 +124,13 @@ const CALL_LINES := {
 ## follows it). With the moves' lines the duel has six of his: Not yet. /
 ## One more hour. / Get back from him. / I've got you. / You'll not have
 ## him. / Write it in my name, then.
+## (19 November: "knee" was "I've got you. I've got you.", which could have been
+## to anyone; Gary, again, "when he talks to the baby it's not clear he's
+## talking to the baby". Now it says who: and the child coos back,
+## _to_the_child.)
 const BEAT_LINES := {
 	"first_loss": {"who": "bram", "say": "Not yet. Not yet."},
-	"knee": {"who": "bram", "say": "I've got you. I've got you."},
+	"knee": {"who": "bram", "say": "Shh, little one. I've got you."},
 	"rise": {"who": "bram", "say": "You'll not have him."},
 }
 const CAPTION := ["The Shardlands", "Twenty years ago."]
@@ -436,7 +458,10 @@ func _open() -> void:
 	if early:
 		_prepare_duel()
 	_warm_ice_sounds()   # (under the caption's black too; not waited for)
-	await _ov.caption(CAPTION[0], CAPTION[1], 2.6)
+	# (19 November, Gary: "the whole prologue feels rushed": the opening's
+	# caption held 3.4 s, was 2.6; the black lifts over 2.2 s, was 1.4; the
+	# wide shot hangs and comes down slower, OPEN_*)
+	await _ov.caption(CAPTION[0], CAPTION[1], 3.4)
 	if _skipping:
 		return
 	var held := 0.0
@@ -452,7 +477,7 @@ func _open() -> void:
 	_open_t = 0.0
 	# (the black lifts quicker than it did, 1.4 s for 2.2: the wide shot is
 	# to be seen whole before it starts down)
-	_fade(_black, 0.0, 1.4)
+	_fade(_black, 0.0, 2.2)
 	_roam = true
 	await _wait(0.8)
 	while _open_k > OPEN_LINE_AT and not _skipping:
@@ -485,9 +510,10 @@ func _open() -> void:
 const OPEN_FROM := Vector3(-7.0, 10.0, 18.0)
 const OPEN_LOOK := Vector3(0.0, 1.0, -30.0)
 const OPEN_LENS := 44.0
-const OPEN_HANG := 1.9
-const OPEN_SECS := 4.6
-const OPEN_HURRY := 0.9
+## (19 November: 2.8, 5.8 and 1.6, were 1.9, 4.6 and 0.9)
+const OPEN_HANG := 2.8
+const OPEN_SECS := 5.8
+const OPEN_HURRY := 1.6
 const OPEN_LINE_AT := 0.5
 const OPEN_HINT_AT := 0.12
 var _open_k := 0.0
@@ -660,8 +686,9 @@ func _warm_sigils() -> void:
 ## SKY_LOOK_DOWN, the picture still following him), the Sigils begin to
 ## fall, and if he happens to be standing he looks up himself; then the arrow
 ## comes up in the corner pointing to the light.
-const SKY_LOOK_UP := 1.0
-const SKY_LOOK_HOLD := 1.9
+## (19 November: the look up at the tear 1.4 s and held 2.7, were 1.0 and 1.9)
+const SKY_LOOK_UP := 1.4
+const SKY_LOOK_HOLD := 2.7
 const SKY_LOOK_DOWN := 1.3
 ## How long after the tear begins the arrow comes up (s).
 const COMPASS_AT := 2.6
@@ -972,10 +999,25 @@ func _crater() -> void:
 	_snd("child_tune", 1.0, -2.0)
 	Music.duck(TUNE_SECS, 15.0)
 	tune_played += 1
+	# (19 November: a breath on the child in his arms before he speaks)
+	await _wait(HUSH_BEFORE)
 	await _say(HUSH)
+	# (19 November) and the child answers him: a small coo, so it's plain who
+	# he said it to
+	if not _skipping:
+		_snd("baby_coo", randf_range(0.97, 1.03), HAND_COO_DB)
+		coo_played += 1
+	await _wait(HUSH_AFTER)
 	# into his coat, held in his left arm from here on
 	_tuck()
-	await _wait(0.8)
+	await _wait(1.3)
+
+
+## (19 November, Gary: "the whole prologue feels rushed") the moment on the
+## child in his arms before "Hush now, little one" (s), and after it, the
+## child's coo heard, before it goes into his coat.
+const HUSH_BEFORE := 1.1
+const HUSH_AFTER := 0.9
 
 
 ## High over his left shoulder, steeply down at the child held in his left
@@ -1163,7 +1205,7 @@ const RIM_FLASH := 4.5
 const RIM_FLASH_LIGHT := 2.4
 const RIM_FLASH_SHEET := 1.05
 const RIM_FLASH_SECS := 0.8
-const RIM_FLASH_DARK := 0.9
+const RIM_FLASH_DARK := 1.4   # (19 November: was 0.9)
 const RIM_EYES := 4
 const RIM_EYES_EVERY := 0.3
 ## (Their glow's width, m: bigger than an eye, to be seen as eyes from the
@@ -1321,8 +1363,9 @@ func _rim_pack(rim: Vector3, b: Vector3, rt: Vector3) -> void:
 ## He isn't in the shot of its arm; every other is from behind his right
 ## shoulder and he turns to his left, away from the camera, so his face is
 ## never seen.
-const DEMAND_REACH := 1.8
-const DEMAND_HOLD := 1.5
+## (19 November: its reach for the child 2.3 s and held 2.3, were 1.8 and 1.5)
+const DEMAND_REACH := 2.3
+const DEMAND_HOLD := 2.3
 const DEMAND_TURN := 0.9
 const DEMAND_GLOW := 2.6
 ## How bright the mark's light stands round his outline, seen from behind
@@ -1555,7 +1598,7 @@ func _drawn_light(from: Vector3, to: Vector3) -> GPUParticles3D:
 const LEAD_CARDS := 4
 const LEAD_RING := 3.9         # the Circle's radius (m)
 const LEAD_RING_SECS := 1.5
-const LEAD_HOLD := 1.5
+const LEAD_HOLD := 2.2   # (19 November: was 1.5)
 ## The colour of Bram's cards' light (his Totems are of the stars).
 const BRAM_LIGHT := Color(1.0, 0.86, 0.55)
 ## His cards came up and the Circle was drawn (the tests read them).
@@ -1640,7 +1683,9 @@ func _raise_bram_cards(b: Vector3, rt: Vector3, fig: Figure3D) -> void:
 ## the duel's beginning. So the white of the cards goes to black, and a
 ## caption stands on it as the opening's does (LATER), before the black
 ## lifts on the Circle.
-const LATER := ["The end of the duel", "Bram is down to his last cards."]
+## (19 November: "The end of the duel" said the fight was skipped; "Near dawn"
+## says it went on all night, and the walk out is at first light)
+const LATER := ["Near dawn", "Bram is down to his last cards."]
 var later_shown := false
 
 
@@ -1652,7 +1697,7 @@ func _late_caption() -> void:
 	await wt.finished
 	if _skipping:
 		return
-	await _ov.caption(LATER[0], LATER[1], 2.8)
+	await _ov.caption(LATER[0], LATER[1], 3.3)
 
 
 ## A hound's whine far off in the dark: the hunter's pack, before anything
@@ -2156,7 +2201,7 @@ const KNEE_AFTER := 0.7
 const KNEE_DOWN := 0.55
 const KNEE_UP := 0.75
 const KNEE_LEAN := 0.45
-const KNEE_HOLD := 2.3
+const KNEE_HOLD := 2.8   # (19 November: was 2.3)
 ## His head from where he stands, standing and down on his knee (m).
 const HEAD_UP := Vector3(0.0, 1.68, 0.0)
 const HEAD_KNELT := Vector3(0.0, 1.1, -0.15)
@@ -2246,8 +2291,9 @@ func _to_the_child(f: DuelField3D) -> void:
 	var look := head.lerp(child, TO_CHILD_LOOK)
 	var cam := head + TO_CHILD_CAM
 	if with_him and not _in_the_way(cam):
-		_take([cam, look, TO_CHILD_LENS], 0.0, 3.0)
-		f.cam_shot(cam.lerp(look, 0.12), look, 3.2, TO_CHILD_LENS - 2.0)
+		# (19 November: held through his word and the child's coo after it)
+		_take([cam, look, TO_CHILD_LENS], 0.0, 4.6)
+		f.cam_shot(cam.lerp(look, 0.12), look, 4.8, TO_CHILD_LENS - 2.0)
 		to_child_shot = true
 	if _bram is Figure3D:
 		(_bram as Figure3D).eyes_on(child)
@@ -2256,12 +2302,12 @@ func _to_the_child(f: DuelField3D) -> void:
 	var storm_was := _storm_k
 	_wind_to(WIND_HUSH_DB, TO_CHILD_HUSH)
 	_duel_storm_to(0.25, TO_CHILD_HUSH)
-	Music.duck(3.4, 8.0)
+	Music.duck(4.8, 8.0)
 	var glow := _baby.get_node_or_null("MarkGlow") as OmniLight3D
 	if glow != null:
 		var gt := create_tween()
 		gt.tween_property(glow, "light_energy", TO_CHILD_GLOW, 0.8).set_trans(Tween.TRANS_SINE)
-		gt.tween_interval(1.6)
+		gt.tween_interval(2.6)
 		gt.tween_property(glow, "light_energy", 0.15, 1.2).set_trans(Tween.TRANS_SINE)
 	await _wait(0.2)
 	if _skipping or _climax or f != _dir_f:
@@ -2270,6 +2316,13 @@ func _to_the_child(f: DuelField3D) -> void:
 	# his word, to it; it quietens under it
 	_hush_child(1.8)
 	await _beat_line("knee")
+	if _skipping or f != _dir_f:
+		return
+	# (19 November) the crying gone, the child answers him with a small coo:
+	# it's the child he spoke to
+	_snd("baby_coo", randf_range(0.95, 1.0), HAND_COO_DB + 1.0)
+	coo_played += 1
+	await _wait(0.9)
 	if _skipping or f != _dir_f:
 		return
 	if _bram is Figure3D:
@@ -3260,6 +3313,11 @@ var _hand_lit: Array = []
 var _hand_sel := 0
 
 
+## Morrowen's PAGE_PRICE in the hush before the Last Page: the quiet before
+## and after it (s), and that it was said (the tests read it).
+const PRICE_BEAT := 0.9
+var price_said := false
+
 func _ask_move(gate: String, action: Dictionary, choices: Array = []) -> String:
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
 		return ""
@@ -3296,6 +3354,15 @@ func _ask_move(gate: String, action: Dictionary, choices: Array = []) -> String:
 	# comes up where its words are)
 	while _ov != null and _ov.passing and not _skipping:
 		await get_tree().process_frame
+	if gate == WhiteSkyDuel.PLAY_GATES[-1] and not price_said and not _skipping:
+		# (19 November) in the hush, Morrowen says what the Last Page costs,
+		# so his "Write it in my name, then." is the answer to it
+		price_said = true
+		var t0 := _t
+		await _wait(PRICE_BEAT)
+		await _say(PAGE_PRICE)
+		await _wait(PRICE_BEAT)
+		_asked_secs += _t - t0   # (the film's clock stands while she speaks)
 	if _skipping or _dir_f == null or not is_instance_valid(_dir_f) or not is_instance_valid(_screen):
 		_asking = ""
 		return ""
@@ -4119,13 +4186,33 @@ static func duel_spec() -> Dictionary:
 ## field for them (_stage_duellists), where _duel wants them. His face is
 ## never seen: every shot is from behind him or without him.
 const FLASH_SECS := 0.72
-const FLASH_GAP := 0.16
+const FLASH_GAP := 0.26   # (19 November: was 0.16)
+## (19 November, Gary: the prologue "feels rushed") the flashes are played in
+## slow motion at this pace (Engine.time_scale): each 0.72 s of them is seen
+## over 1.3 s, the blows heavier for it.
+const FLASH_SLOW := 0.55
 ## How many were shown (the tests read it).
 var flashes := 0
 var _flash_bits: Array = []
 
 
 func _flashes() -> void:
+	# (19 November) in slow motion (FLASH_SLOW), the clock's own pace again after
+	var was := Engine.time_scale
+	var f: DuelField3D = _prep.field if is_instance_valid(_prep) else null
+	var slowed := not _skipping and not _slowed
+	if slowed:
+		Engine.time_scale = FLASH_SLOW
+		if f != null and is_instance_valid(f):
+			f.slow_grade(true, 0.1)   # (the slow motion's own grade, as the blows have)
+	await _flashes_run()
+	if slowed:
+		Engine.time_scale = was if was > 0.0 else 1.0
+		if f != null and is_instance_valid(f):
+			f.slow_grade(false, 0.3)
+
+
+func _flashes_run() -> void:
 	var sc := _prep
 	if _skipping or not is_instance_valid(sc) or sc.field == null or sc.field.world == null:
 		return
@@ -4416,8 +4503,10 @@ const OUT_PACE := 0.84
 ## was the "while to load" before the walk could be seen.)
 const OUT_WHITE := 1.9
 const OUT_HINT_AFTER := 2.6
-const OUT_WATCH := 3.0
-const OUT_GONE := 1.9
+## (19 November: the hunter stands watching him go through it, OUT_WATCH, and
+## goes with the gust over OUT_GONE; they were 3.0 and 1.9 over an empty rim)
+const OUT_WATCH := 4.6
+const OUT_GONE := 2.4
 const HUNTER_KEEP := 4.5
 const OUT_LENS := 24.0
 ## Where the mark is held on the picture (its middle, as a share of the
@@ -4425,8 +4514,9 @@ const OUT_LENS := 24.0
 ## the title under it.
 const MARK_AT := Vector2(0.5, 0.33)
 const MARK_SIZE := 0.15
+## (19 November: MARK_DARK was 1.9; the black comes down slower about the mark)
 const MARK_PUSH := 3.4
-const MARK_DARK := 1.9
+const MARK_DARK := 2.6
 const MARK_LENS := 38.0
 ## The first light: how far the sky has turned to dawn, the haze's colour and
 ## the far shards', the light's own colour and strength.
@@ -4639,20 +4729,38 @@ func _walk_out() -> void:
 				best = [sgn, back]
 	var h0 := hp - on * float(best[1]) + side * 1.3 * float(best[0]) + Vector3(0, 2.6, 0)
 	var h1 := hp - on * (float(best[1]) - 0.4) + side * 1.2 * float(best[0]) + Vector3(0, 2.55, 0)
+	# (19 November, Gary: "I like to be able to see the hooded figure as Bram
+	# walks away, it adds to the prologue". It stood here watching him go
+	# until the evening of 15 November, when it was made to burn away at the
+	# end of the duel and the rim was left empty. Now it's back where it
+	# burned: whole, ash still coming off its hem, its hood turned after him
+	# as he goes. It isn't finished.)
+	if watch_out:
+		_hunter_watches(hp)
 	_shot(h0, far, OUT_LENS)
 	_drift(h0, h1, far, far + on * 2.0, OUT_WATCH + OUT_GONE + 0.5)
 	await _wait(OUT_WATCH)
 	if _skipping:
 		_out = false
 		_auto_on = false
+		_hunter_watching = false
 		return
-	# a gust takes the last of its ash off the rim
+	# a gust, and it goes with the last of its ash off the rim
 	_gust(hp)
 	_ash_off(hp)
 	_wind_to(-17.0, 0.5)
+	if _hunter_watching and is_instance_valid(_hunter):
+		_hunter_watching = false
+		_hunter.hem_ash(false)
+		_hunter.burn_away(OUT_GONE * 0.85, Color(0.62, 0.68, 0.85))
+		_snd("hunter_burn", 0.8, -9.0)
 	await _wait(0.9)
 	_wind_to(-27.0, 1.2)
 	await _wait(OUT_GONE - 0.9)
+	if is_instance_valid(_hunter):
+		_hunter.visible = false
+	_hunter_watching = false
+	hunter_gone = true
 	if _skipping:
 		_out = false
 		_auto_on = false
@@ -4686,7 +4794,14 @@ func _walk_out() -> void:
 	var hm := (halo.mesh as QuadMesh).material as StandardMaterial3D
 	create_tween().tween_property(hm, "albedo_color", Color(0.62 * MARK_HALO, 0.7 * MARK_HALO, 1.0 * MARK_HALO, 1.0), MARK_PUSH).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	_snd("mark_wake", 1.0, -8.0)
-	await _wait(MARK_PUSH)
+	# (19 November) Morrowen over him, the mark's light coming up: he walked out
+	# with the child and the debt in his own name (OUT_DEBT; it was all left to
+	# one line on the black, "Twenty years later, the debt came due.")
+	var t0 := _t
+	await _wait(1.0)
+	if not _skipping:
+		await _say(OUT_DEBT)
+	await _wait(maxf(0.3, MARK_PUSH - (_t - t0)))
 	if _skipping:
 		_out = false
 		return
@@ -4771,6 +4886,38 @@ func _ash_off(at: Vector3) -> void:
 		for c in _scorch_node.get_children():
 			if c is GPUParticles3D:
 				(c as GPUParticles3D).emitting = false
+
+
+## The hunter back on its rim, on the scorch where it burned, watching him
+## go (19 November): whole again, faint ash off its hem on the wind, its
+## cold light on it, turned after him every frame while it stands there
+## (_process: _hunter_watching). `watch_out` false leaves the rim empty (the
+## 15 November evening's way). `hunter_watched`: that it was seen (the tests').
+var watch_out := true
+var hunter_watched := false
+var _hunter_watching := false
+
+func _hunter_watches(at: Vector3) -> void:
+	if not is_instance_valid(_hunter):
+		return
+	_hunter.unburn()
+	_hunter.position = at
+	_hunter.scale = Vector3.ONE   # (as it stood on the rim before the duel)
+	_hunter.lower_cards()
+	_hunter.drop_arm(0.01)
+	_hunter.look_at_dir(_bram.position - at)
+	_hunter._set_fade(1.0)
+	_hunter.visible = true
+	_hunter.wind(0.7)
+	_hunter.hem_ash(true)
+	_hunter_cold_light()
+	if is_instance_valid(_hunter_light):
+		_hunter_light.light_energy = RIM_LIGHT * RIM_STAYS * 0.8
+	_hunter_watching = true
+	hunter_watched = true
+	hunter_gone = false
+	# (a low cold note under the wind as it's seen)
+	_snd("ice_ring", 0.62, -9.0)
 
 
 ## How clear of the glass the straight way from `a` to `b` is, on the plan
@@ -5101,6 +5248,7 @@ func _small_hand() -> void:
 	if _tiny == null:
 		_tiny = _make_tiny_hand()
 		_set.add_child(_tiny)
+	_tiny_side = 0.0   # (which of the child's shoulders it comes up from: chosen as it starts)
 	_tiny_rise = 0.0
 	_tiny_curl = 0.0
 	card_taken = false
@@ -5415,6 +5563,13 @@ func _tiny_step() -> void:
 	var fig := _bram as Figure3D
 	if _tiny != null and is_instance_valid(_tiny) and _tiny.visible:
 		_tiny.global_transform = _tiny_xf(_tiny_rise)
+		var wm := _tiny.get_meta("wool", null) as ShaderMaterial
+		if wm != null:
+			wm.set_shader_parameter("cut_on", 1.0 if _tiny_cut.size() == 2 else 0.0)
+			if _tiny_cut.size() == 2:
+				# (a centimetre under the wool, so the cuff doesn't end in the air at its edge)
+				wm.set_shader_parameter("cut_at", (_tiny_cut[0] as Vector3) - (_tiny_cut[1] as Vector3) * 0.01)
+				wm.set_shader_parameter("cut_dir", _tiny_cut[1])
 		var sk := _tiny.get_meta("skel", null) as Skeleton3D
 		if sk != null and is_instance_valid(sk):
 			_pose_tiny(sk, _tiny_curl)
@@ -5482,8 +5637,70 @@ func _tiny_xf(k: float) -> Transform3D:
 	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
 	var b := own * Basis.from_euler(TINY_TURN)
 	var wob := Vector3(sin(_t * 5.3) * 0.006, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.006) * k
-	var at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob + TINY_GIVE * _tiny_give) - b.y * TINY_DOWN * (1.0 - k)
+	var up_at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob + TINY_GIVE * _tiny_give)
+	if tiny_from_child and is_instance_valid(_baby):
+		# (19 November) its forearm from the child's own shoulder to the
+		# wrist: it comes up out of the blanket there, and as the hand moves
+		# (towards Bram as he takes the card) the arm turns about that place
+		# rather than sliding through the bundle
+		var base := _tiny_base(up_at)
+		var d := up_at - base
+		var reach := d.length()
+		if reach > 0.03:
+			var u := d / reach
+			# (never laid over flatter than TINY_MIN_UP: given towards him and
+			# down, it lay along the top of the bundle)
+			var bu := _baby.global_basis.orthonormalized().y
+			if u.dot(bu) < TINY_MIN_UP:
+				var flat := (u - bu * u.dot(bu)).normalized()
+				u = (flat * sqrt(1.0 - TINY_MIN_UP * TINY_MIN_UP) + bu * TINY_MIN_UP).normalized()
+			var palm := b.z - u * b.z.dot(u)
+			if palm.length() < 0.05:
+				palm = b.x.cross(u)
+			palm = palm.normalized()
+			var arm := Basis(u.cross(palm), u, palm)
+			_tiny_cut = [base, u]
+			return Transform3D(arm, base + u * lerpf(-TINY_HIDE, reach, k))
+	_tiny_cut = []
+	var at := up_at - b.y * TINY_DOWN * (1.0 - k)
 	return Transform3D(b, at)
+
+
+## Where the small arm comes out of the bundle (19 November, Gary: "Baby's
+## arm goes through its body when it takes card and goes funny when Bram goes
+## to take the card"). It was set off Bram's shoulder and rose and fell along
+## a line of its own, so its sleeve, 23 cm of it, went straight down through
+## the bundle wherever that line crossed it (by the child's head), and as the
+## hand gave the card towards him it slid 7 cm sideways and 10 down through the
+## wool. Now it comes out of the blanket at the child's shoulder (TINY_FROM:
+## in the bundle's own frame, head to -z and face up, on the side nearer the
+## hand, chosen once as the hand starts up), and the forearm runs from there to
+## the wrist: what's under the blanket stays under it. TINY_HIDE: how far
+## under the wool the wrist is before it rises (the fingertips just under it).
+## `tiny_from_child` false: the old way (the tests' before).
+const TINY_FROM := Vector3(0.06, 0.085, -0.04)
+const TINY_HIDE := 0.1
+## How upright the small forearm stays at least (the cosine of its angle off
+## the bundle's own up), and where the sleeve goes into the wool this frame
+## ([place, up the arm], for the wool's cut; empty: the old way).
+const TINY_MIN_UP := 0.55
+var tiny_from_child := true
+var _tiny_side := 0.0
+var _tiny_cut: Array = []
+
+func _tiny_base(_wrist: Vector3) -> Vector3:
+	var bx := _baby.global_transform
+	if _tiny_side == 0.0:
+		# (the child's outer shoulder, away from his chest: the near one is
+		# pressed to his coat in the crook of his arm, and a hand coming up
+		# there came up through his sleeve)
+		var a := bx * TINY_FROM
+		var c := bx * Vector3(-TINY_FROM.x, TINY_FROM.y, TINY_FROM.z)
+		var him := _bram.global_position
+		var da := Vector2(a.x - him.x, a.z - him.z).length()
+		var dc := Vector2(c.x - him.x, c.z - him.z).length()
+		_tiny_side = 1.0 if da >= dc else -1.0
+	return bx * Vector3(TINY_FROM.x * _tiny_side, TINY_FROM.y, TINY_FROM.z)
 
 
 ## The small hand (16 November, Gary: "When baby hand reaches for card hand
@@ -5516,6 +5733,7 @@ func _make_tiny_hand() -> Node3D:
 	skin.shader = _tiny_shader("skin")
 	var wool := ShaderMaterial.new()
 	wool.shader = _tiny_shader("wool")
+	root.set_meta("wool", wool)
 	for n in m.find_children("*", "MeshInstance3D", true, false):
 		var mi := n as MeshInstance3D
 		mi.layers |= FILL_LAYER   # (the soft light on him, on it too)
@@ -5866,7 +6084,7 @@ func _make_held_card() -> Node3D:
 ## bright gold across it, then "Throne of Ages" under the rule. TITLE_IN is
 ## how long all that takes; it was 1.4.)
 const TITLE_IN := 3.7
-const TITLE_HOLD := 3.9
+const TITLE_HOLD := 4.6   # (19 November: was 3.9)
 const TITLE_OUT := 1.3
 ## How long the painting takes to come up behind it.
 const TITLE_PAINT := 1.8
@@ -6125,6 +6343,11 @@ void fragment() {
 
 
 # --- 6. the end ---------------------------------------------------------------------
+## The quiet on the mark before Morrowen's last line, and after it before the
+## title (s; 19 November: there was none either side).
+const DUE_BEFORE := 1.2
+const DUE_AFTER := 1.4
+
 func _close() -> void:
 	_hide_hint()
 	_roam = false
@@ -6170,7 +6393,22 @@ func _close() -> void:
 		_seal = SealMark.hold(w if w != null else self, MARK_AT, MARK_SIZE)
 		_seal.glow_to(1.0, 1.2)
 		mark_held = true
+	# (19 November, Gary: the last line "doesn't really make sense or blend well
+	# with the title then coming up", and the whole of it "feels rushed".) A
+	# breath on the mark alone first; then her last line, ending on the Age's
+	# end; then the mark beats once, brighter, in the quiet, and the title
+	# comes up out of that with the theme (_title_card).
+	await _wait(DUE_BEFORE)
 	await _say(DEBT_DUE, true)
+	if _seal != null and is_instance_valid(_seal):
+		var beat := _seal.glow_to(1.35, 0.5)
+		beat.tween_property(_seal, "k", 1.0, 1.2).set_trans(Tween.TRANS_SINE)
+	_snd("mark_wake", 0.85, -10.0)
+	# (the theme rising out of the quiet, so the title comes up on it, not
+	# with it cut in)
+	if not _skipping:
+		Music.play(["menu_theme"], DUE_AFTER + 1.2)
+	await _wait(DUE_AFTER)
 	await _title_card()
 	# (whoever plays the memory lets the mark go: AshfordP1 as the hero wakes
 	# under it; left alone, it goes by itself)
@@ -7390,6 +7628,17 @@ const TINY_WOOL := """
 shader_type spatial;
 render_mode cull_disabled;
 uniform vec3 wool : source_color = vec3(0.72, 0.65, 0.56);
+// (19 November) the sleeve isn't drawn past where it goes into the child's
+// blanket (cut_at, a place on the arm's line; cut_dir, up the arm): what's
+// beyond is under the wool, and a straight sleeve turned with the arm stuck
+// out of the bundle's far side. cut_on 0: all of it.
+uniform vec3 cut_at = vec3(0.0);
+uniform vec3 cut_dir = vec3(0.0, 1.0, 0.0);
+uniform float cut_on = 0.0;
+varying vec3 wpos;
+void vertex() {
+	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+}
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -7405,6 +7654,7 @@ float knit(vec2 uv) {
 	return mix(v_st, rib * 0.8 + v_st * 0.2, cuff);
 }
 void fragment() {
+	if (cut_on > 0.5 && dot(wpos - cut_at, cut_dir) < 0.0) { discard; }
 	float h = knit(UV);
 	float e = 0.004;
 	float hx = knit(UV + vec2(e * 0.25, 0.0)) - h;
@@ -7463,7 +7713,7 @@ const RISE_SECS := 0.95
 ## The look down into the crater before he goes down (s; was 2.2), the walk
 ## down the slope (was 5.4: 8 m at a stroll; now he hurries to it) and the
 ## beat before the prompt (was 0.6).
-const REVEAL_SECS := 1.5
+const REVEAL_SECS := 2.4   # (19 November: the child seen from the rim longer; was 1.5)
 ## How long the walk's camera takes to rise to the rim's shot (s).
 const REVEAL_RISE := 1.5
 const DOWN_SECS := 4.0
@@ -8513,6 +8763,12 @@ func _process(delta: float) -> void:
 		_auto_step(delta)
 	if _out:
 		_track_step()
+	if _hunter_watching and is_instance_valid(_hunter) and is_instance_valid(_bram):
+		# (its hood after him as he goes, slowly)
+		var to := _bram.position - _hunter.position
+		if Vector2(to.x, to.z).length() > 0.1:
+			var want := atan2(to.x, to.z)
+			_hunter.rotation.y = lerp_angle(_hunter.rotation.y, want, minf(1.0, delta * 1.5))
 	_hold_palm()
 	_tiny_step()
 	_weather_step(delta)
@@ -9791,6 +10047,9 @@ class Hunter:
 	var _burn_mats: Array = []
 	var _ash: GPUParticles3D
 	var _ember_p: GPUParticles3D
+	## The materials the burn took the place of ([mesh, surface, material]),
+	## so it can be whole again (unburn).
+	var _was_mats: Array = []
 
 	func burn_away(secs: float, col: Color) -> void:
 		var y0 := global_position.y - 0.05
@@ -9820,6 +10079,7 @@ class Hunter:
 					if tex != null:
 						bm.set_shader_parameter("albedo_tex", tex)
 					bm.set_shader_parameter("tint", tint)
+					_was_mats.append([mi, si, mi.get_surface_override_material(si)])
 					mi.set_surface_override_material(si, bm)
 					_burn_mats.append(bm)
 		for m in _burn_mats:
@@ -9863,6 +10123,42 @@ class Hunter:
 		for g in _geometry:
 			if is_instance_valid(g):
 				(g as GeometryInstance3D).visible = false
+
+	## Whole again after burn_away (19 November: it's seen on the rim watching
+	## Bram walk away after it burned in the Last Page's light): its own
+	## materials back, nothing burned, seen, and the ash it burned with gone.
+	## burn_away can be done again after it.
+	func unburn() -> void:
+		burning = 0.0
+		for e in _was_mats:
+			var mi := e[0] as MeshInstance3D
+			if mi != null and is_instance_valid(mi):
+				mi.set_surface_override_material(int(e[1]), e[2] as Material)
+		_was_mats.clear()
+		_burn_mats.clear()
+		if _cloth != null:
+			_cloth.set_shader_parameter("burn", 0.0)
+		for p in [_ash, _ember_p]:
+			if p != null and is_instance_valid(p):
+				(p as Node).queue_free()
+		_ash = null
+		_ember_p = null
+		for g in _geometry:
+			if is_instance_valid(g):
+				(g as GeometryInstance3D).visible = true
+		_set_fade(_fade)
+
+	## A thin stream of ash off its hem on the wind (as it stands watching
+	## after it burned: `on` false stops it).
+	var _hem_ash: GPUParticles3D
+
+	func hem_ash(on: bool) -> void:
+		if on and (_hem_ash == null or not is_instance_valid(_hem_ash)):
+			_hem_ash = _embers(int(26 * DuelField3D.fx_scale()), 2.2, Vector3(0.45, 0.08, 0.35), Vector3(0.0, 0.45, -1.0), 0.5, 1.4, false)
+			_hem_ash.position = Vector3(0, 0.15, 0)
+			add_child(_hem_ash)
+		if _hem_ash != null and is_instance_valid(_hem_ash):
+			_hem_ash.emitting = on
 
 	## Ash (grey flakes) or embers (sparks, added as light), off a box
 	## `box` about it, going `dir` (its own frame) at `v0`..`v1` m/s.

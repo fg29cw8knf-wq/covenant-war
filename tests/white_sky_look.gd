@@ -502,6 +502,7 @@ func _out_view(c: Vector3, hand_only := false) -> void:
 			return false
 		got[nm] = true
 		return true
+	var out_line_t := 0.0
 	while not done[0] and _tt < 90.0:
 		await get_tree().process_frame
 		_tt += 0.1
@@ -545,6 +546,20 @@ func _out_view(c: Vector3, hand_only := false) -> void:
 			await _key("out_3_over_the_lip")
 		if want.call("far_1_watching", m.walked_out, 1.4):
 			await _key("far_1_watching")
+		# (19 November: the hooded figure on its rim again, watching him go,
+		# and going with the gust)
+		if want.call("far_1b_still_watching", m.walked_out and m.hunter_watched and not m.hunter_gone, 3.4):
+			await _key("far_1b_still_watching")
+		if want.call("far_1c_going", is_instance_valid(m._hunter) and m.hunter_watched and m._hunter.burning > 0.45 and not m.hunter_gone):
+			await _key("far_1c_going")
+		# (19 November: Morrowen's line over him with the child waits for a tap)
+		if m._ov != null and m._ov._waiting:
+			out_line_t += 0.1
+			if want.call("mark_1b_her_line", out_line_t > 0.8):
+				await _key("mark_1b_her_line")
+			if out_line_t > 1.6:
+				out_line_t = 0.0
+				m._ov._next.emit()
 		if want.call("far_2_going", m.hunter_gone, 0.5):
 			await _key("far_2_going")
 		if want.call("far_3_gone", m.hunter_gone, 1.6):
