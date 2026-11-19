@@ -472,6 +472,7 @@ static func _tam_evening() -> Array:
 				{"who": "tam", "say": "Here. First loaf off the stone. Don't tell Maudie, she thinks it's hers."},
 				{"who": "tam", "say": "I used to carry you round this green on my shoulders, festival nights. You'd pull my ears to steer. Left for the cider, right for the cakes."},
 				{"who": "tam", "say": "Bram never let me take you near the fiddler. Said you'd get ideas."},
+				{"scene": "tam_bread_away"},
 			]},
 			{"if": "nell_waiting", "then": [
 				{"ask": ["About the letter, Tam...", "Nell says she's waiting, and she's no intention of waiting long."], "ends": [1],
@@ -3106,6 +3107,8 @@ const CART_PIN := 2.15
 ## apart along it. (At z -1.33 they had been a hand's breadth off the
 ## wood, in the air behind it.)
 const HEAVE_GRIPS := [Vector3(-0.72, 1.3, -1.22), Vector3(-0.72, 1.68, -1.22)]
+## How straight the fingers are on the board (Figure3D.palm's `flat`).
+const HEAVE_FLAT := 0.6
 ## How far behind the grips (along the cart) the player crouches.
 const HEAVE_STAND := 0.26
 ## The crouch and the stand, as moments of the sit clip (its first second
@@ -3318,6 +3321,12 @@ static func _the_heave(w: World) -> void:
 		var mf := me as Figure3D
 		mf.pose("sit", HEAVE_LOW, 0.5)
 		mf.reach(grips[_heave_left(mf, grips)], grips[1 - _heave_left(mf, grips)], 0.5)
+		# (18 November, Gary's yes to the small glitches: the palms flat on
+		# the tail board's face, fingers straighter: curled round a slat as
+		# the clip has them, they went 2.6 cm into it and their tips showed
+		# through between the slats inside the cart)
+		for sd in ["left", "right"]:
+			mf.palm(sd, al, 0.5, HEAVE_FLAT)
 	await Cine.say(w, "corin", "Sprout! My leg—it's caught on the axle! I can't shift it, it's crushing the bone!")
 	# the heave: mash to lift it, then pull him clear at the right moment;
 	# each heave a strain up out of the crouch, the cart coming up with the
@@ -3367,6 +3376,8 @@ static func _the_heave(w: World) -> void:
 	st["run"] = false
 	if me is Figure3D:
 		(me as Figure3D).let_go(0.15)
+		for sd in ["left", "right"]:
+			(me as Figure3D).palm(sd, Vector3.ZERO, 0.3)
 	await v.tip_cart(1.0, 0.22, Tween.TRANS_QUAD, Tween.EASE_IN)
 	for g in grips:
 		(g as Node).queue_free()

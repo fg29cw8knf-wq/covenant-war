@@ -96,6 +96,7 @@ var _to := PackedVector3Array()
 var _delay := PackedFloat32Array()
 var _feel := PackedFloat32Array()
 var _shade := PackedFloat32Array()
+var _breath := PackedFloat32Array()
 var _g := 0
 
 func _ready_points(blanket: MeshInstance3D) -> void:
@@ -119,6 +120,7 @@ func _ready_points(blanket: MeshInstance3D) -> void:
 			_delay[k] = _delay_of(i, j, _npx, _npz)
 			_feel[k] = smoothstep(REACH, 0.0, _on[k].distance_to(g_on))
 	_shade = BlanketDrape.shade_of(blanket, n)
+	_breath = BlanketDrape.breath_of(blanket, n)
 
 
 func let_go() -> void:
@@ -157,6 +159,10 @@ func _process(dt: float) -> void:
 	var shaded := _shade.size() == n
 	if shaded:
 		shade.resize(n)
+	var breath := PackedFloat32Array()
+	var breathing := _breath.size() == n
+	if breathing:
+		breath.resize(n)
 	for k in n:
 		var s := smoothstep(_delay[k], _delay[k] + 0.35, t)
 		# its own way from where it lay to the heap, and the hand's pull
@@ -165,7 +171,10 @@ func _process(dt: float) -> void:
 		if shaded:
 			# (the folds it lay in go out of it as it goes)
 			shade[k] = lerpf(_shade[k], 1.0, s)
-	mi.mesh = BlanketDrape.mesh_of(pts, _npx, _npz, shade)
+		if breathing:
+			# (and his breathing, off him)
+			breath[k] = _breath[k] * (1.0 - s) * _pull
+	mi.mesh = BlanketDrape.mesh_of(pts, _npx, _npz, shade, breath)
 	if t >= 1.0 and _pull <= 0.0:
 		_done = true
 		queue_free()

@@ -539,7 +539,9 @@ func _say_passing(line: Dictionary, brisk := false) -> void:
 	var read := (CineOverlay.READ_BASE + text.length() * CineOverlay.READ_PER_CHAR) / speed
 	if brisk:
 		read = (1.2 + text.length() * 0.045) / speed   # (a word in a fight: as the moves' lines, _move_line)
+	_mouth(who, secs, text)
 	await _ov.say_over(nm, text, secs if secs > 0.0 else read)
+	_mouth(who, 0.0, "")
 
 
 ## What the tear first brings, drawn once under the caption's black and
@@ -1411,6 +1413,39 @@ func _the_demand(rim: Vector3, b: Vector3, rt: Vector3) -> void:
 	await _wait(DEMAND_TURN + 0.5)
 
 
+## Struck in the duel with the child in his arms and his right hand free
+## (it hangs by his side through the duel): it comes over the child for the
+## flinch (_shield_arm, quickly) and goes back to the clip once it's past.
+## A hand already reaching for something (a card) is left to it.
+const FLINCH_COVER := 0.12
+const FLINCH_HOLD := 1.1
+var _flinch_n := 0
+
+func _shield_flinch() -> void:
+	if not (_bram is Figure3D) or not is_instance_valid(_baby):
+		return
+	var fig := _bram as Figure3D
+	if fig._reach_target("right") != null and fig._reach_target("right") != _shield_mark:
+		return
+	_flinch_n += 1
+	var n := _flinch_n
+	if is_instance_valid(_shield_mark):
+		_shield_mark.queue_free()
+	_shield_arm(fig, FLINCH_COVER)
+	await _wait(FLINCH_HOLD)
+	if n != _flinch_n or not is_instance_valid(fig) or _skipping:
+		return
+	if fig._reach_target("right") == _shield_mark:
+		fig._reach("right", null, 0.5)
+		fig.palm("right", Vector3.ZERO, 0.5)
+		fig.elbow("right", Vector3.INF, 0.5)
+	flinch_covers += 1
+
+
+## (for the tests: how many times his hand came over the child as he was hit)
+var flinch_covers := 0
+
+
 ## His free (right) arm across the child as he turns it away. Its mark was
 ## 2 cm off the bundle's middle, inside it (18 November, the body check: "his
 ## right hand is 10.0 cm inside ... baby_bundle"): the forearm ran into the
@@ -2073,6 +2108,11 @@ func _bram_loses_one() -> void:
 	if down:
 		_carry_child(_bram as Figure3D)
 	_act(_bram, "hit_react")
+	# (18 November, Gary's yes to the small glitches: struck, the hit clip
+	# swung his free right arm in through the child, 10 cm into the bundle.
+	# Now, as he's hit, that hand comes over the child and holds it to him
+	# through the flinch, and is let go after: _shield_flinch)
+	_shield_flinch()
 	if _cry != null:
 		_cry.volume_db = -11.0
 		_cry.pitch_scale = 1.0
@@ -3411,7 +3451,9 @@ func _move_line(gate: String) -> void:
 		var nm: String = w._speaker(who) if w != null else who.capitalize()
 		var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
 		var hold := secs if secs > 0.0 else 1.2 + text.length() * 0.045
+		_mouth(who, secs, text)
 		await _ov.say(nm, text, hold, true)
+		_mouth(who, 0.0, "")
 		if secs > 0.0:
 			VoiceLines.stop(host)
 	_move_line_on = false
@@ -3925,6 +3967,7 @@ func _beat_life(pi: int, amount: int) -> void:
 		var from := _body(_attacker) if _attacker != null and is_instance_valid(_attacker) else _hunter_at
 		c = _pick([_over_bram(from, 32.0, 1.7, 0.75, 0.4), SHOTS[3]])
 		_act(_bram, "hit_react")
+		_shield_flinch()
 	else:
 		c = _pick([_on_hunter(28.0, 0.6), _on_hunter(24.0)])
 	_take(c, 0.0, HIT_HOLD)
@@ -4187,6 +4230,7 @@ func _flashes() -> void:
 		f.cam_shake(13.0)
 		_wash(Color(0.85, 0.9, 1.0), 0.5, 0.35)
 		_act(_bram, "hit_react")
+		_shield_flinch()
 		_snd("life_hit", 0.8, 0.0)
 		_snd("thunder_far", 1.2, -4.0)
 		Haptics.kind(Haptics.HEAVY)
@@ -8871,9 +8915,28 @@ func _say(line: Dictionary, always := false) -> void:
 	var secs := VoiceLines.play(host, who, String(line.say), String(line.get("vo", "")))
 	var nm: String = w._speaker(who) if w != null else who.capitalize()
 	var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
+	_mouth(who, secs, text)
 	await _ov.say(nm, text, secs, secs > 0.0)
+	_mouth(who, 0.0, "")
 	if secs > 0.0:
 		VoiceLines.stop(host)
+
+
+## The speaker's mouth while their line is up (18 November, Gary's yes:
+## mouths in time with the voices): Bram's, the one person here with a face
+## to move (the hunter's is in its hood; Morrowen's is a voice). By the
+## recording when there is one (`secs` its length), or the made-up pace of
+## speech for the words' reading time; `secs` 0 and no text: shut.
+func _mouth(who: String, secs: float, text: String) -> void:
+	if who != "bram" or not (_bram is Figure3D) or not is_instance_valid(_bram):
+		return
+	var f := _bram as Figure3D
+	if secs <= 0.0 and text == "":
+		f.talk_mouth(false)
+	elif secs > 0.0 and not VoiceLines.now.is_empty():
+		f.talk_mouth(true, secs, VoiceLines.now)
+	elif not text.strip_edges().begins_with("("):
+		f.talk_mouth(true, clampf(text.length() / 15.0, 0.7, 6.0))
 
 
 func _wait(secs: float) -> void:

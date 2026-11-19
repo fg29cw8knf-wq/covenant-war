@@ -79,6 +79,11 @@ const BED_X := 0.285
 ## How deep a hollow has to be to be as dark as it gets (m), and how dark.
 const SHADE_DEEP := 0.04
 const SHADE_LEAST := 0.6
+## Where his breathing lifts the cloth (m: how far along it from his chest's
+## middle and his belly's, and across it from his middle).
+const BREATH_CHEST := 0.15
+const BREATH_BELLY := 0.13
+const BREATH_WIDE := 0.24
 ## How many times his bones are drawn before he's taken to be lying still.
 const SETTLE := 3
 ## How far a hand, a foot or his hips can be from where they were for it to
@@ -217,6 +222,7 @@ static func _put(bl: MeshInstance3D, got: Dictionary) -> void:
 	bl.set_meta("rows", got.rows)
 	bl.set_meta("rows_free", got.rows_free)
 	bl.set_meta("shade", got.shade)
+	bl.set_meta("breath", got.get("breath", PackedFloat32Array()))
 	bl.set_meta("mesh_on", got.mesh)
 	if as_laid:
 		bl.mesh = got.mesh
@@ -381,7 +387,26 @@ func _make() -> Dictionary:
 		shade[k] = clampf(1.0 - (1.0 - SHADE_LEAST) * (shade[k] - high[k]) / SHADE_DEEP, SHADE_LEAST, 1.0)
 	# (soft-edged: a shadow in a fold, not a stain on the wool)
 	shade = _blur(shade, npx, npz, 1)
-	var mesh := mesh_of(flat(rows), npx, npz, shade)
+	# how much his breathing lifts each point (blanket.gdshader): most over
+	# his chest, some over his middle, across his body's width, none where
+	# the cloth's on the mattress
+	var breath := PackedFloat32Array()
+	breath.resize(n)
+	var sk2 := fig._skel
+	var to_bl := blanket.global_transform.affine_inverse() * sk2.global_transform
+	var chest := to_bl * sk2.get_bone_global_pose(maxi(sk2.find_bone("Spine2"), 0)).origin
+	var hips := to_bl * sk2.get_bone_global_pose(maxi(sk2.find_bone("Hips"), 0)).origin
+	var belly := chest.lerp(hips, 0.55)
+	for i in npx:
+		var x := -L * 0.5 + i * hx
+		var along := maxf(exp(-pow((x - chest.x) / BREATH_CHEST, 2.0)), 0.6 * exp(-pow((x - belly.x) / BREATH_BELLY, 2.0)))
+		for j in npz:
+			var z := -W * 0.5 + j * hz
+			var k := i * npz + j
+			var across := smoothstep(BREATH_WIDE, BREATH_WIDE * 0.4, absf(z - chest.z))
+			var over := smoothstep(0.02, 0.07, high[k] - bed[k])
+			breath[k] = along * across * over
+	var mesh := mesh_of(flat(rows), npx, npz, shade, breath)
 	# (what the tests ask after: how near his skin the cloth comes)
 	var least := INF
 	var through := 0
@@ -405,7 +430,7 @@ func _make() -> Dictionary:
 	for k in n:
 		top = maxf(top, high[k])
 	last = {"skin": pts.size(), "under": under, "least": least, "through": through, "top": top, "ms": last_ms}
-	return {"rows": rows, "rows_free": rows_free, "shade": shade, "mesh": mesh}
+	return {"rows": rows, "rows_free": rows_free, "shade": shade, "breath": breath, "mesh": mesh}
 
 
 ## How high the cloth lies at each point of the grid, over `body` (the
@@ -626,9 +651,11 @@ static var _grids := {}
 ## BlanketTent have them this frame): `npx` rows of `npz`, row by row. Its
 ## triangles and its cloth's own coordinates are made once for a size of
 ## grid; each point's normal is from the points either side of it, so the
-## cloth is shaded as one soft surface. `shade` (a number a point, 1 in the
-## open .. SHADE_LEAST deep in a fold) goes in its colour.
-static func mesh_of(pts: PackedVector3Array, npx: int, npz: int, shade := PackedFloat32Array()) -> ArrayMesh:
+## cloth is shaded as one soft surface. In each point's colour: `shade` (r:
+## 1 in the open .. SHADE_LEAST deep in a fold) and `breath` (g: how much his
+## breathing lifts it, blanket.gdshader). With `fringe`, its two ends are
+## fringed (a second surface: _fringe).
+static func mesh_of(pts: PackedVector3Array, npx: int, npz: int, shade := PackedFloat32Array(), breath := PackedFloat32Array(), fringe := true) -> ArrayMesh:
 	var n := npx * npz
 	var key := Vector2i(npx, npz)
 	if not _grids.has(key):
@@ -657,31 +684,27 @@ static func mesh_of(pts: PackedVector3Array, npx: int, npz: int, shade := Packed
 					var c := k + npz + 1
 					var d := k + 1
 					idx.append_array(PackedInt32Array([a, c, b, a, d, c]))
-		var white := PackedColorArray()
-		white.resize(n)
-		white.fill(Color.WHITE)
-		_grids[key] = [uvs, idx, ia, ib, ja, jb, white]
+		_grids[key] = [uvs, idx, ia, ib, ja, jb]
 	var g: Array = _grids[key]
 	var ia: PackedInt32Array = g[2]
 	var ib: PackedInt32Array = g[3]
 	var ja: PackedInt32Array = g[4]
 	var jb: PackedInt32Array = g[5]
-	var nrm := PackedVector3Array()
-	nrm.resize(n)
 	# (pointing down, as SurfaceTool.generate_normals had them for these
 	# triangles: their front is the cloth's underside, and seen from above
 	# (cull_disabled) the engine turns the normal round. Pointing up, it was
 	# turned round to point down, and the cloth seen from above was lit as
 	# if from under it: near black in the attic, but for the candle's red.)
+	var nrm := PackedVector3Array()
+	nrm.resize(n)
 	for k in n:
 		nrm[k] = (pts[ib[k]] - pts[ia[k]]).cross(pts[jb[k]] - pts[ja[k]]).normalized()
-	var cols: PackedColorArray = g[6]
-	if shade.size() == n:
-		cols = PackedColorArray()
-		cols.resize(n)
-		for k in n:
-			var s := shade[k]
-			cols[k] = Color(s, s, s, 1.0)
+	var cols := PackedColorArray()
+	cols.resize(n)
+	var has_s := shade.size() == n
+	var has_b := breath.size() == n
+	for k in n:
+		cols[k] = Color(shade[k] if has_s else 1.0, breath[k] if has_b else 0.0, 0.0, 1.0)
 	var arr := []
 	arr.resize(Mesh.ARRAY_MAX)
 	arr[Mesh.ARRAY_VERTEX] = pts
@@ -691,7 +714,111 @@ static func mesh_of(pts: PackedVector3Array, npx: int, npz: int, shade := Packed
 	arr[Mesh.ARRAY_INDEX] = g[1]
 	var m := ArrayMesh.new()
 	m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	if fringe and npz > 2:
+		var fa := _fringe(pts, npx, npz)
+		if not fa.is_empty():
+			m.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, fa)
 	return m
+
+
+## The fringe at the blanket's two ends (18 November, Gary's yes: "a real
+## wool picture with fringed ends"): a tassel of yarn every half square
+## along each end, FRINGE_M long, FRINGE_W wide, going on the way the cloth
+## goes at its end and falling under its weight (the foot end's hangs over
+## the mattress's end; the hem's, turned back on his chest, lies along it,
+## stiffer and shorter), never into the mattress, nor past the footboard.
+const FRINGE_M := 0.05
+const FRINGE_HEM_M := 0.035
+const FRINGE_W := 0.0075
+const FRINGE_SEGS := 4
+const FRINGE_FALL := 0.8
+const FRINGE_HEM_FALL := 0.18
+## (the footboard's inner face, in the blanket's frame: InnRooms._bed)
+const FOOTBOARD_X := 0.735
+
+static func _fringe(pts: PackedVector3Array, npx: int, npz: int) -> Array:
+	var vs := PackedVector3Array()
+	var ns := PackedVector3Array()
+	var uv := PackedVector2Array()
+	var cs := PackedColorArray()
+	var idx := PackedInt32Array()
+	for end in 2:
+		var row := 0 if end == 0 else npx - 1
+		var inner := 1 if end == 0 else npx - 2
+		var length := FRINGE_HEM_M if end == 0 else FRINGE_M
+		var fall := FRINGE_HEM_FALL if end == 0 else FRINGE_FALL
+		var u := 0.0 if end == 0 else 1.0
+		for t in range((npz - 1) * 2 + 1):
+			var jf := t * 0.5
+			var j0 := int(floor(jf))
+			var j1 := mini(j0 + 1, npz - 1)
+			var w := jf - j0
+			var p: Vector3 = pts[row * npz + j0].lerp(pts[row * npz + j1], w)
+			var q: Vector3 = pts[inner * npz + j0].lerp(pts[inner * npz + j1], w)
+			var out := (p - q)
+			if out.length() < 1e-5:
+				continue
+			out = out.normalized()
+			var ja := maxi(j0 - 1, 0)
+			var jb := mini(j0 + 2, npz - 1)
+			var across: Vector3 = (pts[row * npz + jb] - pts[row * npz + ja]).normalized()
+			# (each its own: a little longer or shorter, a little aside)
+			var h := fposmod(sin(float(t) * 12.9898 + float(end) * 78.233) * 43758.5453, 1.0)
+			var len_k := 0.8 + 0.4 * h
+			var aside := across * (h - 0.5) * 0.12
+			var at := p
+			var prev := p
+			var base := vs.size()
+			for sgi in FRINGE_SEGS + 1:
+				var k := float(sgi) / FRINGE_SEGS
+				if sgi > 0:
+					var d := (out + aside).lerp(Vector3.DOWN, clampf(k * 1.4, 0.0, 1.0) * fall).normalized()
+					at += d * (length * len_k / FRINGE_SEGS)
+					# never into the mattress, nor past the footboard
+					var floor_y := mattress_y(at.x, at.z) + 0.002
+					var on_bed := absf(at.x + BED_X) < BED_HALF.x and absf(at.z) < BED_HALF.y
+					if on_bed and at.y < floor_y:
+						at.y = floor_y
+					at.x = minf(at.x, FOOTBOARD_X)
+				var dir := out
+				if sgi > 0 and at.distance_to(prev) > 1e-6:
+					dir = (at - prev).normalized()
+				prev = at
+				var half := across * FRINGE_W * 0.5 * (1.0 - 0.45 * k)
+				var nn := across.cross(dir).normalized()
+				if nn.y > 0.0:
+					nn = -nn   # (as the cloth's: the engine turns it round for the side that's seen)
+				vs.append(at - half)
+				vs.append(at + half)
+				ns.append(nn)
+				ns.append(nn)
+				uv.append(Vector2(u, clampf((jf - 0.2) / (npz - 1), 0.0, 1.0)))
+				uv.append(Vector2(u, clampf((jf + 0.2) / (npz - 1), 0.0, 1.0)))
+				var sh := 0.92 - 0.25 * k
+				cs.append(Color(sh, 0.0, 0.0, 1.0))
+				cs.append(Color(sh, 0.0, 0.0, 1.0))
+				if sgi > 0:
+					var a := base + (sgi - 1) * 2
+					idx.append_array(PackedInt32Array([a, a + 1, a + 3, a, a + 3, a + 2]))
+	if vs.is_empty():
+		return []
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = vs
+	arr[Mesh.ARRAY_NORMAL] = ns
+	arr[Mesh.ARRAY_TEX_UV] = uv
+	arr[Mesh.ARRAY_COLOR] = cs
+	arr[Mesh.ARRAY_INDEX] = idx
+	return arr
+
+
+## How much his breathing lifts each point of a grid this size (what was
+## laid), or none.
+static func breath_of(bl: MeshInstance3D, n: int) -> PackedFloat32Array:
+	var s = bl.get_meta("breath", null) if bl != null and is_instance_valid(bl) else null
+	if s is PackedFloat32Array and (s as PackedFloat32Array).size() == n:
+		return s
+	return PackedFloat32Array()
 
 
 ## The blanket's shade for a grid this size (what was laid), or none.

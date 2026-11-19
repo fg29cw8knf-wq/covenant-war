@@ -1106,6 +1106,17 @@ static func _bread_piece() -> Node3D:
 	return bread
 
 
+## The bread in a hand (18 November, Gary's yes: it "sits round your wrist
+## like a bracelet"): how far out of the palm its middle is (m: half its
+## thickness, so it rests on the skin) and how far on towards the fingers.
+## It lies on its side in the palm (it's made standing on its base, 14 by 12
+## by 8.5 cm: its 8.5 out of the palm, its height along the fingers), and
+## it's a piece a hand holds: BREAD_SIZE of the loaf's piece as made.
+const BREAD_LIFT := 0.025
+const BREAD_ALONG := 0.015
+const BREAD_SIZE := 0.72
+const BREAD_TURN := Basis(Vector3.RIGHT, -PI * 0.5)
+
 ## Tam breaks the first loaf off the stone and hands a piece over.
 static func tam_bread(w: World) -> void:
 	var tf = Cine.fig(w, "tam")
@@ -1129,7 +1140,8 @@ static func tam_bread(w: World) -> void:
 		(tf as Figure3D).let_go(0.3)
 		tear.queue_free()
 		Cine.look(w, "tam", Cine.body(w, "player").global_position)
-	(tf as Figure3D).hand_light(bread)
+	# (in his palm, held out: on the hand bone it sat round the wrist)
+	(tf as Figure3D).in_palm(bread, "right", BREAD_LIFT, BREAD_ALONG, BREAD_TURN.scaled(Vector3.ONE * BREAD_SIZE))
 	(tf as Figure3D).pose("play_card", 0.45, 0.35)
 	await Cine.wait(w, 0.8)
 	if pf is Figure3D:
@@ -1142,10 +1154,52 @@ static func tam_bread(w: World) -> void:
 		(tf as Figure3D).release(0.3)
 		if bread.get_parent() != null:
 			bread.get_parent().remove_child(bread)
-		(pf as Figure3D).hand_light(bread)
-		(pf as Figure3D).let_go(0.3)
+		(pf as Figure3D).in_palm(bread, "right", BREAD_LIFT, BREAD_ALONG, BREAD_TURN.scaled(Vector3.ONE * BREAD_SIZE))
 		to.queue_free()
+		# and held in front of him on his open hand while Tam talks: in a
+		# hand at his side, turned in to his leg, it went into the leg
+		var me := pf as Figure3D
+		var hold := Node3D.new()
+		hold.name = "BreadHold"
+		var hp := me.hold_point(BREAD_HOLD.z, BREAD_HOLD.y)
+		me.carry(hold, Vector3(-me.arm_reach() * BREAD_HOLD.x, hp.y, hp.z))
+		me.reach(null, hold, 0.45)
+		me.palm("right", Vector3.UP, 0.45)
+		# (his fingers cupped round it a little: Figure3D.close_hand)
+		me.close_hand("right", BREAD_CUP, 0.45)
 	await Cine.wait(w, 0.4)
+
+
+## Where the bread's held while Tam talks, as a share of the arm's length:
+## to his right of his middle, under the shoulder, ahead (hold_point's).
+const BREAD_HOLD := Vector3(0.22, 0.62, 0.42)
+const BREAD_CUP := 0.3
+
+
+## The bread put away when Tam's done talking (his hand to the pocket at his
+## right hip, the bread gone into it, the arm down).
+static func tam_bread_away(w: World) -> void:
+	var pf = w.player_doll
+	if not (pf is Figure3D):
+		return
+	var me := pf as Figure3D
+	var hold: Node3D = null
+	for c in me._pivot.get_children():
+		if c.name == "BreadHold":
+			hold = c
+	var pocket := Node3D.new()
+	pocket.name = "BreadPocket"
+	me.carry(pocket, Vector3(-me.arm_reach() * 0.27, me._hips * 1.03, me.arm_reach() * 0.06))
+	me.palm("right", Vector3.ZERO, 0.3)
+	me.reach(null, pocket, 0.45)
+	await Cine.wait(w, 0.45)
+	me.hand_light(null)
+	me.close_hand("right", 0.0, 0.3)
+	me.let_go(0.4)
+	await Cine.wait(w, 0.4)
+	for n in [hold, pocket]:
+		if n != null and is_instance_valid(n):
+			n.queue_free()
 
 
 ## "She said that?" He wipes his hands on his apron, twice, and goes to her:
@@ -1201,6 +1255,9 @@ const BUTTON_CLASP_GAP := 0.014
 const BUTTON_CLASP_SETTLE := 0.4
 const BUTTON_PRESS := 0.008
 const BUTTON_CLASP_HOLD := 0.7
+## How far the hero's own fingers close on it (Figure3D.close_hand: past
+## three quarters his fingertips fold into his palm's skin).
+const BUTTON_FIST := 0.7
 static var button_clasped := false
 ## (which of his hands and which of theirs: for the test's measuring)
 static var button_hands: Array = []
@@ -1350,6 +1407,9 @@ static func corin_button(w: World) -> void:
 		var press := w.create_tween().set_parallel(true)
 		press.tween_property(give, "global_position", over + Vector3(0, -BUTTON_PRESS, 0), 0.16).set_trans(Tween.TRANS_SINE)
 		press.tween_property(take, "global_position", take_at + Vector3(0, -BUTTON_PRESS, 0), 0.16).set_trans(Tween.TRANS_SINE)
+		# (18 November, Gary's yes: the hero's own fingers close on it under
+		# Corin's hand, and stay closed round it till it's in the pocket)
+		me.close_hand(my_side, BUTTON_FIST, 0.35)
 		await Cine.wait(w, BUTTON_CLASP_HOLD)
 		var free_it := w.create_tween().set_parallel(true)
 		free_it.tween_property(give, "global_position", over + Vector3(0, 0.03, 0) - to_p * 0.04, 0.3).set_trans(Tween.TRANS_SINE)
@@ -1384,6 +1444,7 @@ static func corin_button(w: World) -> void:
 		if is_instance_valid(b):
 			b.visible = false
 		me.detach(b)
+		me.close_hand(my_side, 0.0, 0.4)
 		if me.seat >= 0.0 and AshfordP1.lap_rest:
 			# back to rest on their thigh (sat on the wall: hanging, it went
 			# into the stone)
@@ -1429,6 +1490,61 @@ const MOTH_LEAN := 0.5
 ## tests read it).
 const TILLY_GASP := 0.8
 static var tilly_gasped := false
+
+## Tilly as the moth comes out of her card (18 November, Gary's yes: "her
+## whole body reacts"): up on her toes with the gasp and both hands to her
+## mouth (her fingers up, her palms to her face, either side of the middle
+## of her lips), held a breath; then down onto her heels a little and her
+## hands together under her chin, held there while she watches it go round
+## her head (moth_for_tilly lets them go). Each place is in her own frame,
+## from her mouth (Figure3D.MOUTHS: where her lips are), in a grown-up's
+## metres, made her size by her face's (MOUTHS' third).
+const TILLY_TOES := 1.0
+const TILLY_TOES_AFTER := 0.45
+const TILLY_HANDS_UP := 0.22
+const TILLY_HANDS_HELD := 0.7
+## the hands at her mouth: across from its middle, down, out in front
+const TILLY_AT_MOUTH := Vector3(0.028, -0.01, 0.075)
+## and together under her chin
+const TILLY_UNDER_CHIN := Vector3(0.012, -0.11, 0.13)
+## (for the tests: her hands went up to her mouth)
+static var tilly_hands_up := false
+
+static func _tilly_thrilled(w: World, tf: Figure3D) -> void:
+	var size := tf._mouth_size()
+	var hb := tf._skel.find_bone("Head")
+	if hb < 0:
+		return
+	# her mouth in her own frame (x to her left, y up, z ahead)
+	var e = Figure3D.MOUTHS.get(tf._model_name)
+	var lips: Vector3 = (e as Array)[0] if e != null else Vector3(0, 0.03, 0.15)
+	var m := tf.to_own(tf._skel.global_transform * tf._skel.get_bone_global_pose(hb) * lips)
+	var hands: Array = []
+	for i in 2:
+		var n := Node3D.new()
+		n.name = "TillyHand%d" % i
+		var sgn := 1.0 if i == 0 else -1.0
+		tf.carry(n, m + Vector3(TILLY_AT_MOUTH.x * sgn, TILLY_AT_MOUTH.y, TILLY_AT_MOUTH.z) * size)
+		hands.append(n)
+	tf.tiptoe(TILLY_TOES, 0.2)
+	tf.reach(hands[0], hands[1], TILLY_HANDS_UP)
+	# (palms to her face, fingers up)
+	tf.palm("left", Vector3(0, 0, -1), TILLY_HANDS_UP, 0.6, true, Vector3(0, 1, 0))
+	tf.palm("right", Vector3(0, 0, -1), TILLY_HANDS_UP, 0.6, true, Vector3(0, 1, 0))
+	tilly_hands_up = true
+	await Cine.wait(w, TILLY_HANDS_UP + TILLY_HANDS_HELD)
+	if not is_instance_valid(tf):
+		return
+	tf.tiptoe(TILLY_TOES_AFTER, 0.5)
+	for i in 2:
+		var sgn := 1.0 if i == 0 else -1.0
+		var to := m + Vector3(TILLY_UNDER_CHIN.x * sgn, TILLY_UNDER_CHIN.y, TILLY_UNDER_CHIN.z) * size
+		var n: Node3D = hands[i]
+		if is_instance_valid(n):
+			w.create_tween().tween_property(n, "position", to, 0.5).set_trans(Tween.TRANS_SINE)
+	# (palms together, fingers up and a little forward: hands clasped)
+	tf.palm("left", Vector3(-1, 0, 0), 0.5, 0.3, true, Vector3(0, 0.8, 0.6))
+	tf.palm("right", Vector3(1, 0, 0), 0.5, 0.3, true, Vector3(0, 0.8, 0.6))
 
 static func moth_for_tilly(w: World) -> void:
 	var v := village(w)
@@ -1519,6 +1635,10 @@ static func moth_for_tilly(w: World) -> void:
 		face.tween_interval(0.6)
 		face.tween_method(tfig.jaw, TILLY_GASP, 0.0, 0.35)
 		face.parallel().tween_method(tfig.smile, 0.0, 1.0, 0.5)
+		# (18 November, Gary's yes: "her whole body reacts".) Up on her toes
+		# with the gasp, both hands up to her mouth; then, smiling, her hands
+		# come down together under her chin as she watches it go round
+		_tilly_thrilled(w, tfig)
 	if pf is Figure3D:
 		# (the hand stays on it a moment as the moth comes up out of it)
 		await Cine.wait(w, 0.35)
@@ -1552,8 +1672,16 @@ static func moth_for_tilly(w: World) -> void:
 	Cine.look(w, "tilly", head + Vector3(0, 0.4, 0))
 	await flight.finished
 	if tfig != null and is_instance_valid(tfig):
-		# (her eyes her own again; the smile goes more slowly)
+		# (her eyes her own again; the smile goes more slowly; her hands down
+		# and her heels too)
 		tfig.eyes_on(null)
+		tfig.let_go(0.6)
+		tfig.palm("left", Vector3.ZERO, 0.6)
+		tfig.palm("right", Vector3.ZERO, 0.6)
+		tfig.tiptoe(0.0, 0.5)
+		for n in tfig._pivot.get_children():
+			if String(n.name).begins_with("TillyHand"):
+				n.queue_free()
 		w.create_tween().tween_method(tfig.smile, 1.0, 0.0, 2.2).set_delay(1.2)
 	# back into her card, and its light goes down again
 	var back := w.create_tween()
@@ -1596,6 +1724,8 @@ static func scene(name: String, w: World) -> bool:
 			await moth_for_tilly(w)
 		"tam_bread":
 			await tam_bread(w)
+		"tam_bread_away":
+			await tam_bread_away(w)
 		"tam_to_nell":
 			await tam_to_nell(w)
 		"corin_button":

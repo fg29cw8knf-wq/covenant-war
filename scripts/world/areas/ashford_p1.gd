@@ -34,6 +34,8 @@ const CRATE_CUT := 0.76            # the model's height (m, as made) above which
 ## Where the crate rides in the player's arms (their own frame), and where
 ## their hands go on it.
 const CRATE_HOLD := Vector3(0.0, 0.86, 0.34)
+## How far off the crate's sides the hands' marks are (m).
+const CRATE_HAND_OFF := 0.04
 
 ## The Great Lantern's hoist: the top hook at the east end of its crossbeam,
 ## a pulley there, and the line down to a hook at hand height (from the
@@ -154,10 +156,13 @@ static func crate(v: AshfordVillage) -> Node3D:
 		l.rotation = Vector3(v.rng.randf_range(-0.06, 0.06), v.rng.randf() * TAU, v.rng.randf_range(-0.06, 0.06))
 		l.name = "Packed"
 		n.add_child(l)
+	# (the hands' marks off its sides: CRATE_HAND_OFF. 18 November, Gary's
+	# yes to the small glitches: at 2 cm his fingers, curled as the clip has
+	# them, went 1.9 cm into the wood as he walked off with it)
 	for s in [["L", 1.0], ["R", -1.0]]:
 		var g := Node3D.new()
 		g.name = String(s[0])
-		g.position = Vector3(float(s[1]) * (w * 0.5 + 0.02), h * 0.55, 0.0)
+		g.position = Vector3(float(s[1]) * (w * 0.5 + CRATE_HAND_OFF), h * 0.55, 0.0)
 		n.add_child(g)
 	n.set_meta("size", Vector3(w, h, d))
 	return n

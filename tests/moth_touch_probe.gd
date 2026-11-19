@@ -69,6 +69,8 @@ func _ready() -> void:
 	Cine.look(world, "tilly", world.player.global_position)
 	await _frames(10)
 	world.busy = true
+	# (18 November: the body check on her as she reacts, her hands at her face)
+	_bc = load("res://tests/body_check.gd").watch(world, (args[0] + "/body") if args.size() > 0 and not String(args[0]).contains("=") else "")
 	await AshfordP1.tilly_up(world)
 	var card: Node3D = world.get_meta("tilly_card_node")
 	var pf = world.player_doll
@@ -120,20 +122,29 @@ func _ready() -> void:
 		var tf = Cine.fig(world, "tilly")
 		if tf is Figure3D:
 			_gasp = maxf(_gasp, (tf as Figure3D).jaw_now())
+			_toes = maxf(_toes, (tf as Figure3D).tiptoe_now())
 			_smile = maxf(_smile, (tf as Figure3D).smile_now())
 			if (tf as Figure3D).jaw_now() > AshfordDay.TILLY_GASP * 0.9 and not stilled.has("gasp"):
 				stilled["gasp"] = true
 				await _still_face("3a_her_gasp", tf as Figure3D)
+				await _frames(4)
+				await _still_body("3a_her_gasp_body", tf as Figure3D)
 			if (tf as Figure3D).smile_now() > 0.98 and (tf as Figure3D).jaw_now() < 0.02 and not stilled.has("smile"):
 				stilled["smile"] = true
 				await _frames(10)
 				await _still_face("3b_her_smile", tf as Figure3D)
+				await _still_body("3b_her_smile_body", tf as Figure3D)
 		if _woke and not stilled.has("moth") and t > 0.0 and cg != null and cg.scale.x > _glow0.x * 2.2:
 			stilled["moth"] = true
 			await _frames(14)
 			await _still("3_the_moth_up")
 	print("moth_touch_probe: the nearest the palm came to the card %.1f cm; when it woke %.1f cm" % [_near * 100.0, _at_wake * 100.0])
 	print("moth_touch_probe: Tilly's mouth opened to %.2f and her smile came to %.2f" % [_gasp, _smile])
+	print("moth_touch_probe: Tilly up on her toes %.2f, her hands to her mouth %s; the body check on her: %d findings" % [_toes, str(AshfordDay.tilly_hands_up), _tilly_finds()])
+	if _toes < 0.9 or not AshfordDay.tilly_hands_up:
+		problems.append("Tilly's body didn't react (her toes %.2f, her hands up %s)" % [_toes, str(AshfordDay.tilly_hands_up)])
+	if _tilly_finds() > 0:
+		problems.append("the body check found Tilly through something %d times" % _tilly_finds())
 	if not AshfordDay.tilly_gasped or _gasp < AshfordDay.TILLY_GASP * 0.9 or _smile < 0.98:
 		problems.append("Tilly didn't gasp and smile (her mouth %.2f, her smile %.2f)" % [_gasp, _smile])
 	if not _woke:
@@ -184,7 +195,28 @@ func _still(nm: String) -> void:
 
 
 var _gasp := 0.0
+var _toes := 0.0
+var _bc: Node = null
 var _smile := 0.0
+
+## All of her, from in front of her (18 November: her hands and her toes).
+func _still_body(nm: String, tf: Figure3D) -> void:
+	if not _drawn or world.cam == null:
+		return
+	var was := world.cam.global_transform
+	var fov := world.cam.fov
+	var f := tf.facing()
+	var mid := tf.global_position + Vector3(0, 0.62, 0)
+	world.cam.global_position = mid + Vector3.UP.cross(f) * 2.0 + f * 0.7 + Vector3(0, 0.1, 0)
+	world.cam.look_at(mid, Vector3.UP)
+	world.cam.fov = 36.0
+	await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	_n += 1
+	get_viewport().get_texture().get_image().save_png(out.path_join("%02d_%s.png" % [_n, nm]))
+	world.cam.global_transform = was
+	world.cam.fov = fov
+
 
 ## Her face, close, from a little to one side of the player.
 func _still_face(nm: String, tf: Figure3D) -> void:
@@ -232,3 +264,14 @@ func _still_close(nm: String, card: Node3D) -> void:
 func _end() -> void:
 	print("MOTH TOUCH: ok" if problems.is_empty() else "MOTH TOUCH: %d problems\n  %s" % [problems.size(), "\n  ".join(problems)])
 	get_tree().quit(0 if problems.is_empty() else 1)
+
+
+## What the body check found on Tilly.
+func _tilly_finds() -> int:
+	var n := 0
+	if _bc != null and is_instance_valid(_bc):
+		for r: Dictionary in _bc.reported:
+			if String(r.get("who", "")) == "tilly":
+				n += 1
+				print("moth_touch_probe: ", r.get("worst_text", r.get("text", "")))
+	return n

@@ -489,12 +489,17 @@ uniform float wind_k = 0.4;
 uniform float snow_k = 0.0;
 uniform float reach_k = 1.0;
 uniform float billow_k = 0.0;
+// (18 November: his mouth moves when he speaks, as everyone's does)
+#include "res://assets/shaders/jaw.gdshaderinc"
+
 float h2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float n2(vec2 p) {
 	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
 	return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y);
 }
 void vertex() {
+	mouth_h = jaw_h(VERTEX);
+	VERTEX = jaw_move(VERTEX);
 	float skirt = COLOR.r;
 	float hair = COLOR.g;
 	if (skirt + hair > 0.002) {
@@ -536,7 +541,7 @@ void fragment() {
 		// (thin at its edges: the cloth shows through it)
 		snow *= 0.82 + 0.18 * n2(UV * 1500.0);
 	}
-	ALBEDO = mix(a.rgb, vec3(0.82, 0.87, 0.96), snow);
+	ALBEDO = mix(mouth_shade(a.rgb, mouth_h), vec3(0.82, 0.87, 0.96), snow);
 	METALLIC = mr.b * metallic_k * (1.0 - snow);
 	ROUGHNESS = mix(mr.g * roughness_k, 0.88, snow);
 	if (normal_k > 0.001) {

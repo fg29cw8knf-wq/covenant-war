@@ -765,6 +765,82 @@ class Bend:
 			sk.set_bone_pose_rotation(b, Quaternion.IDENTITY.slerp(t[1] as Quaternion, amount) * sk.get_bone_pose_rotation(b))
 
 
+## Up on the toes (18 November, Gary's yes: Tilly "up on her toes" as the
+## moth comes out of her card): the hips lifted `lift` (m, in the
+## skeleton's own space) times `amount`, and each foot pitched down at the
+## ankle so its ball comes back down by as much (the heels up), the toes
+## flat on the ground again. After their posture, before their arms reach.
+class Tiptoe:
+	extends SkeletonModifier3D
+	var amount := 0.0
+	var lift := 0.045
+	var hips := -1
+	var feet: Array = []   # [foot bone, toe bone, length ankle to ball, the turn's sign]
+
+	func _process_modification_with_delta(_delta: float) -> void:
+		var sk := get_skeleton()
+		if sk == null or amount <= 0.001 or hips < 0:
+			return
+		var h := lift * amount
+		sk.set_bone_pose_position(hips, sk.get_bone_pose_position(hips) + Vector3(0, h, 0))
+		for f in feet:
+			var a := asin(clampf(h / float(f[2]), 0.0, 0.9)) * float(f[3])
+			sk.set_bone_pose_rotation(int(f[0]), Quaternion(Vector3.RIGHT, a) * sk.get_bone_pose_rotation(int(f[0])))
+			if int(f[1]) >= 0:
+				sk.set_bone_pose_rotation(int(f[1]), Quaternion(Vector3.RIGHT, -a) * sk.get_bone_pose_rotation(int(f[1])))
+
+
+## How far up on her toes a grown-up's height goes (m; a child's is less,
+## with her size).
+const TIPTOE := 0.045
+
+## Up onto their toes (`amount` 0..1 of TIPTOE) over `secs`; 0 puts the
+## heels down again.
+func tiptoe(amount: float, secs := 0.25) -> void:
+	if _skel == null:
+		return
+	var tm := _skel.get_node_or_null("Tiptoe") as Tiptoe
+	if tm == null:
+		if amount <= 0.0:
+			return
+		tm = Tiptoe.new()
+		tm.name = "Tiptoe"
+		tm.hips = _skel.find_bone("Hips")
+		# (in the skeleton's own units: its bones' rest lengths are its own)
+		var sc := _skel.global_transform.basis.get_scale().y
+		tm.lift = TIPTOE * stature() / maxf(sc, 0.0001)
+		for side in ["Left", "Right"]:
+			var fb := _skel.find_bone(side + "Foot")
+			var tb := _skel.find_bone(side + "ToeBase")
+			if fb < 0 or tb < 0:
+				continue
+			var r := _skel.get_bone_global_rest(tb).origin - _skel.get_bone_global_rest(fb).origin
+			# which way about x brings the ball of the foot down
+			var sgn := 1.0 if (Basis(Vector3.RIGHT, 0.2) * r).y < r.y else -1.0
+			tm.feet.append([fb, tb, maxf(r.length(), 0.01), sgn])
+		_skel.add_child(tm)
+		var at := tm.get_index()
+		for c in _skel.get_children():
+			if c is TwoBoneIK3D or c.name in ["HandTurn", "HandsOff", "Carry", "KeepTargets", "Bend"]:
+				at = mini(at, c.get_index())
+		_skel.move_child(tm, at)
+		if _skel.has_node("Posture"):
+			_skel.move_child(_skel.get_node("Posture"), 0)
+	if tm.has_meta("tween"):
+		var old = tm.get_meta("tween")
+		if old is Tween and (old as Tween).is_valid():
+			(old as Tween).kill()
+	var tw := create_tween()
+	tw.tween_property(tm, "amount", maxf(amount, 0.0), maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+	tm.set_meta("tween", tw)
+
+
+## How up on their toes they are now (0..1).
+func tiptoe_now() -> float:
+	var tm := _skel.get_node_or_null("Tiptoe") as Tiptoe if _skel != null else null
+	return tm.amount if tm != null else 0.0
+
+
 ## How a back bends over at full (degrees about each bone's own x, forward):
 ## 40 in all, most of it low, the head let back up a little to look ahead.
 const BEND := {"Spine": Vector3(20, 0, 0), "Spine1": Vector3(12, 0, 0), "Spine2": Vector3(8, 0, 0), "Neck": Vector3(-6, 0, 0)}
@@ -1441,6 +1517,33 @@ func hand_light(node: Node3D, right := true) -> Node3D:
 	return node
 
 
+## Something small put in a hand to stay there as it moves (hand_light), its
+## middle on the palm, not on the wrist's joint (18 November, Gary's yes:
+## Tam's bread "sits round your wrist like a bracelet": a hand bone's own
+## place is the wrist). `lift` m out of the palm (half its thickness, so it
+## rests on the skin), `along` m on towards the fingers from the palm's
+## middle; its up the way the palm faces, its front along the fingers.
+## `turn`: the thing's own turn on the palm (its up, as it's made, the way
+## the palm faces when IDENTITY).
+func in_palm(node: Node3D, side := "right", lift := 0.0, along := 0.0, turn := Basis.IDENTITY) -> Node3D:
+	hand_light(node, side == "right")
+	node.transform = palm_local(side) * Transform3D(turn, Vector3(0.0, lift, along))
+	return node
+
+
+## The palm's frame (palm_frame()) in its hand bone's own frame: where on
+## the hand bone the palm is, which stays the same however the hand moves.
+func palm_local(side: String) -> Transform3D:
+	if _skel == null:
+		return Transform3D.IDENTITY
+	var h := _skel.find_bone(("Left" if side == "left" else "Right") + "Hand")
+	if h < 0:
+		return Transform3D.IDENTITY
+	var bone := _skel.global_transform * _skel.get_bone_global_pose(h)
+	var t := bone.affine_inverse() * palm_frame(side)
+	return Transform3D(t.basis.orthonormalized(), t.origin)
+
+
 ## The world position of a bone (head, hands), for aiming cameras and lights.
 ## Where this figure's mouth is, and the way it faces: [point, direction],
 ## for breath that shows in the cold (Breath). The head's own way, so a
@@ -1497,8 +1600,14 @@ var _smile := 0.0
 ## And how big the face is against the hero's (a child's is four fifths of
 ## his): the shader's distances are his.
 const MOUTHS := {
-	"player_a": [Vector3(0.0, 0.045, 0.17), 0.024, 1.0],
+	"player_a": [Vector3(0.0, 0.037, 0.17), 0.024, 1.0],
 	"bram": [Vector3(0.0, 0.052, 0.202), 0.025, 1.0],
+	# (Bram in his coat, the snow: his own head on another rig. Off his skin
+	# as drawn (tests/mouth_profile: the nose's tip 13.9 cm ahead of the
+	# bone, his lips 3.5 cm under it and half a centimetre back, as Bram's
+	# are); face_sheet's ruled stills read 5 cm further out on this rig, and
+	# put there the jaw hardly moved: tried both, shut against open)
+	"bram_coat": [Vector3(0.0, 0.015, 0.134), 0.026, 1.0],
 	"corin": [Vector3(0.0, 0.027, 0.154), 0.03, 0.95],
 	"tilly": [Vector3(0.0, -0.003, 0.13), 0.019, 0.8],
 	"nell": [Vector3(0.0, -0.02, 0.157), 0.024, 0.95],
@@ -1510,8 +1619,8 @@ const MOUTHS := {
 	"trader": [Vector3(0.0, 0.034, 0.17), 0.024, 1.0],
 	"farmer": [Vector3(0.0, 0.046, 0.156), 0.024, 1.0],
 	"elder": [Vector3(0.0, 0.028, 0.152), 0.023, 0.95],
-	"child_b": [Vector3(0.0, 0.039, 0.149), 0.02, 0.85],
-	"child_c": [Vector3(0.0, -0.008, 0.13), 0.019, 0.8],
+	"child_b": [Vector3(0.0, 0.045, 0.149), 0.02, 0.85],
+	"child_c": [Vector3(0.0, -0.003, 0.13), 0.019, 0.8],
 	"tobin": [Vector3(0.0, 0.031, 0.127), 0.017, 0.8],
 	"hale": [Vector3(0.0, -0.028, 0.139), 0.024, 1.0],
 	"ysa": [Vector3(0.0, 0.021, 0.129), 0.022, 0.95],
@@ -1520,6 +1629,78 @@ const MOUTHS := {
 	"sun_guard": [Vector3(0.0, 0.052, 0.173), 0.024, 1.0],
 	"refugee": [Vector3(0.0, 0.004, 0.16), 0.023, 0.95],
 }
+
+
+## Each hand of a model whose fingers the shader can close (18 November,
+## Gary's yes: "let the hero's fingers bend"; jaw.gdshaderinc's hand_curl):
+## in its Hand bone's own frame, the middle of its knuckle line, the way the
+## fingers go, the way the palm faces, the fingers' length and the hand's
+## half width (m). Read off his skin (his finger bones are in a heap at the
+## knuckles: no use): the far end of the hand from the wrist, the knuckles
+## 53 hundredths of the way there, the fingers' spread across, the palm's
+## side as palm_frame() has it.
+const HANDS := {
+	"player_a": {
+		"left": [Vector3(-0.0191, -0.0918, 0.0457), Vector3(-0.249, -0.887, 0.389), Vector3(-0.951, 0.147, -0.272), 0.092, 0.057],
+		"right": [Vector3(0.0001, -0.1033, 0.0239), Vector3(0.147, -0.954, 0.262), Vector3(0.957, 0.07, -0.282), 0.093, 0.064],
+	},
+}
+var _hand_close := {"left": 0.0, "right": 0.0}
+## (closed further than this, his fingertips fold into his palm: the
+## fingers are bent as one, his model has no joints in them to bend at)
+const HAND_MOST := 0.8
+var _hands_were := false
+
+## Closes a hand (0 open, as modelled; 1 a fist) over `secs`: the fingers
+## curl round towards the palm (on what's in it). Nothing on a model whose
+## hands aren't in HANDS.
+func close_hand(side: String, amount: float, secs := 0.3) -> void:
+	if not HANDS.has(_model_name):
+		return
+	_own_skin()
+	var key := "hand_tween_" + side
+	if has_meta(key):
+		var old = get_meta(key)
+		if old is Tween and (old as Tween).is_valid():
+			(old as Tween).kill()
+	var tw := create_tween()
+	tw.tween_method(func(k: float) -> void: _hand_close[side] = k, float(_hand_close[side]), clampf(amount, 0.0, HAND_MOST), maxf(secs, 0.01)).set_trans(Tween.TRANS_SINE)
+	set_meta(key, tw)
+
+
+## How closed a hand is now (0..1).
+func hand_closed(side: String) -> float:
+	return float(_hand_close.get(side, 0.0))
+
+
+func _set_hands() -> void:
+	var any := float(_hand_close.left) > 0.0 or float(_hand_close.right) > 0.0
+	if not any and not _hands_were:
+		return
+	_hands_were = any
+	var spec: Dictionary = HANDS.get(_model_name, {})
+	for side in ["left", "right"]:
+		var g := float(_hand_close[side])
+		var suf := "_l" if side == "left" else "_r"
+		var e = spec.get(side)
+		var hb := _skel.find_bone(("Left" if side == "left" else "Right") + "Hand") if _skel != null else -1
+		if e == null or hb < 0:
+			continue
+		var bone := _skel.global_transform * _skel.get_bone_global_pose(hb)
+		var f: Vector3 = (bone.basis * (e[1] as Vector3)).normalized()
+		var n: Vector3 = (bone.basis * (e[2] as Vector3))
+		n = (n - f * n.dot(f)).normalized()
+		var at := Transform3D(Basis(f.cross(n), f, n), bone * (e[0] as Vector3))
+		for pair: Array in _jaw_mats:
+			var mi := pair[0] as MeshInstance3D
+			if not is_instance_valid(mi):
+				continue
+			var m := pair[1] as ShaderMaterial
+			var fr := at.affine_inverse() * mi.global_transform
+			m.set_shader_parameter("grip" + suf, g)
+			m.set_shader_parameter("hand_frame" + suf, fr)
+			m.set_shader_parameter("hand_back" + suf, fr.affine_inverse())
+			m.set_shader_parameter("hand_size" + suf, Vector2(float(e[3]), float(e[4])))
 
 
 ## Has this model a mouth that can be moved?
@@ -1572,6 +1753,10 @@ func _own_skin() -> void:
 			var own: ShaderMaterial = null
 			if m is ShaderMaterial and (m as ShaderMaterial).shader == sh:
 				own = (m as ShaderMaterial).duplicate() as ShaderMaterial
+			elif m is ShaderMaterial and _has_jaw((m as ShaderMaterial).shader):
+				# (a shader of its own that moves the jaw too: Bram's coat in
+				# the snow, ShardSet.weather, made for him alone; worn as it is)
+				own = m as ShaderMaterial
 			elif m is StandardMaterial3D and has_mouth() and plain_skin(m as StandardMaterial3D):
 				var std := m as StandardMaterial3D
 				own = ShaderMaterial.new()
@@ -1591,6 +1776,16 @@ func _own_skin() -> void:
 				_jaw_mats.append([mi, own])
 	if not _jaw_mats.is_empty() and _skel != null and not _skel.skeleton_updated.is_connected(_set_jaw):
 		_skel.skeleton_updated.connect(_set_jaw)
+
+
+## Does a shader move a jaw (it has jaw.gdshaderinc's uniforms)?
+static func _has_jaw(sh: Shader) -> bool:
+	if sh == null:
+		return false
+	for u: Dictionary in sh.get_shader_uniform_list():
+		if String(u.get("name", "")) == "jaw_open":
+			return true
+	return false
 
 
 ## Is a model's material one the character shader draws the same? (Its
@@ -1615,6 +1810,7 @@ func jaw_now() -> float:
 
 
 func _set_jaw() -> void:
+	_set_hands()
 	if (_jaw <= 0.0 and _smile <= 0.0) or _skel == null:
 		return
 	var hb := _skel.find_bone("Head")
@@ -1653,13 +1849,26 @@ var _talk_k := 0.0
 var _talk_phase := 0.0
 const TALK_OPEN := 0.65
 
-func talk_mouth(on: bool, secs := 6.0) -> void:
+## `voice` (18 November, Gary's yes: "mouths open in time with the actual
+## voice lines, wider on louder words"): the recording playing for the line
+## (VoiceLines.now); the jaw then follows how loud it is moment by moment,
+## shut between words, and shuts when it's over. Without one (a line with
+## no recording), the made-up pace of speech, for the line's reading time.
+func talk_mouth(on: bool, secs := 6.0, voice := {}) -> void:
 	if on and not has_mouth():
 		return
 	_talk_on = on
 	_talk_left = secs if on else 0.0
+	_voice = voice if on else {}
 	if on:
 		_talk_phase = randf() * TAU
+
+var _voice := {}
+## How wide the jaw opens on the loudest syllables of a recording.
+const TALK_OPEN_VOICE := 0.85
+## (for the tests: how much the jaw followed a voice, the last line)
+var voiced_open := 0.0
+var voiced_shut := 0
 
 
 func _mouth_step(delta: float) -> void:
@@ -1670,14 +1879,26 @@ func _mouth_step(delta: float) -> void:
 		if _talk_left <= 0.0:
 			_talk_on = false
 	var want := 0.0
-	if _talk_on:
+	var rate := 9.0
+	if _talk_on and not _voice.is_empty():
+		var lv := VoiceLines.level_of(_voice)
+		if lv < 0.0:
+			_voice = {}
+			_talk_on = false
+		else:
+			want = TALK_OPEN_VOICE * lv
+			rate = 16.0
+			voiced_open = maxf(voiced_open, want)
+			if lv < 0.05 and _talk_k > 0.2:
+				voiced_shut += 1
+	elif _talk_on:
 		_talk_t += delta
 		# syllables, uneven: two beats that drift against each other, and a
 		# slower one that shuts the mouth for a moment between words
 		var syl := maxf(0.0, sin(_talk_t * 30.0 + _talk_phase)) * (0.62 + 0.38 * sin(_talk_t * 11.3 + _talk_phase * 2.0))
 		var word := smoothstep(-0.55, -0.15, sin(_talk_t * 3.7 + _talk_phase * 0.7))
 		want = (0.14 + 0.86 * syl) * word * TALK_OPEN
-	_talk_k = move_toward(_talk_k, want, delta * 9.0)
+	_talk_k = move_toward(_talk_k, want, delta * rate)
 	jaw(_talk_k)
 
 
@@ -2729,6 +2950,15 @@ func _elbow_back(pre: String) -> Vector3:
 	if fwd.length() < 0.1:
 		fwd = Vector3(0, 0, 1)
 	return (rb.inverse() * -fwd.normalized()).normalized()
+
+
+## What a hand is reaching for now (null: nothing; the clip has it).
+func _reach_target(side: String) -> Node3D:
+	var ik: TwoBoneIK3D = _ik.get(side)
+	if ik == null or not is_instance_valid(ik) or not ik.active or ik.influence <= 0.001 or not ik.has_meta("target"):
+		return null
+	var t = ik.get_meta("target")
+	return t if t is Node3D and is_instance_valid(t) else null
 
 
 func _reach(side: String, target: Node3D, secs: float) -> void:

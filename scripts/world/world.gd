@@ -1058,7 +1058,11 @@ func _on_spoken(speaker: String, secs: float) -> void:
 				f = n.doll
 				break
 	if f is Figure3D and is_instance_valid(f):
-		(f as Figure3D).talk_mouth(secs > 0.0, secs)
+		# (a line with its recording playing: the mouth by the recording,
+		# VoiceLines.now; it began a moment ago, as the line came up)
+		var v := VoiceLines.now
+		var voiced := not v.is_empty() and Time.get_ticks_msec() - int(v.get("t0", 0)) < 1500
+		(f as Figure3D).talk_mouth(secs > 0.0, secs, v if voiced else {})
 		spoke_last = nm
 
 

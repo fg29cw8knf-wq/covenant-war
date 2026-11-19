@@ -269,6 +269,9 @@ func _stills(a: Dictionary, tag: String) -> void:
 	await _one(a, tag + "_3_foot", Vector3(2.3, 1.15, 0.25), Vector3(0.0, 0.1, 0.0), 40.0)
 	await _one(a, tag + "_4_above", Vector3(0.35, 1.25, 0.75), Vector3(0.35, 0.0, -0.05), 62.0)
 	await _one(a, tag + "_5_hem", Vector3(-0.1, 1.05, 1.0), Vector3(-0.35, 0.15, 0.0), 36.0)
+	# (18 November: the fringe at its foot, close; and the weave)
+	await _one(a, tag + "_6_fringe_foot", Vector3(1.45, 0.75, 0.75), Vector3(0.95, 0.0, 0.1), 30.0)
+	await _one(a, tag + "_7_weave_close", Vector3(0.3, 0.55, 0.55), Vector3(0.3, 0.12, 0.15), 22.0)
 
 
 ## A still from `at` looking at `to`, both from the bed's middle at the

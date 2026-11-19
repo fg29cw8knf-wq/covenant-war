@@ -947,7 +947,7 @@ static func _bed(v: AshfordVillage, root: Node3D, at: Vector3) -> Dictionary:
 	var L := 2.05 + BED_FOOT
 	var W := 1.0
 	var wool := v.shader_mat("blanket", {"col_a": Color(0.3, 0.1, 0.07), "col_b": Color(0.16, 0.15, 0.11), "stripes": 3.0,
-		"size": Vector2(BLANKET_L, W - 0.04)})
+		"size": Vector2(BLANKET_L, W - 0.04), "weave": load("res://assets/art/blanket/wool_weave.png")})
 	var oak: Material = v.mats.wood_h
 	var post: Material = v.mats.beam_v
 	var rail_y := 0.3      # the side rails' middle

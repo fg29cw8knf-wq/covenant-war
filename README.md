@@ -3306,6 +3306,77 @@ stones. Mended: it now shows as the hill rising behind the bank.
 five clumps, the moss, and the glow off until it's brought up (its third
 still, Corin's shot, is taken with it up).
 
+### Seven more yeses: the bread, the small glitches, voices, a jaw, his fingers, the blanket, Tilly (18 November, night)
+
+Gary's answer to the evening's eight suggestions: "1 yes 2 yes 3 yes 4 yes 5
+yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
+`docs/handover/2026-11-18-night.md` has what was measured.
+
+- **1. Tam's bread in the palm** (`Figure3D.in_palm`, `palm_local`;
+  `AshfordDay.tam_bread`, `tam_bread_away`, `BREAD_*`; the conversation's
+  `{"scene": "tam_bread_away"}`). It was put on the hand bone, whose place
+  is the wrist: round his wrist like a bracelet. Now it lies on his palm,
+  on its side, a hand-sized piece, and he holds it in front of him on his
+  open hand while Tam talks (in a hand hanging at his side, turned in to his
+  leg, it went into the leg), fingers cupped round it; when Tam's done it
+  goes into the pocket at his hip. Tam holds it on his palm too.
+  `tests/bread_probe.tscn` (new).
+- **2. The small glitches.** *The cart* (`Ashford.HEAVE_FLAT`): his palms
+  flat on the tail board's face as he heaves; curled round a slat, his
+  fingertips came through between the slats inside the cart. *The crate*
+  (`AshfordP1.CRATE_HAND_OFF`): the hands' marks 4 cm off its sides, not 2
+  (his fingers 1.9 cm into it as he walked). *Bram struck with the child*
+  (`WhiteSky._shield_flinch`, `FLINCH_*`; `Figure3D._reach_target`): the
+  hit clip swung his free arm through the bundle, 10 cm; now as he's hit
+  his free hand comes over the child and holds it to him through the
+  flinch. Not changed: his hands sink 3 cm into the soft bundle for under a
+  second as he lifts it off the snow (pushing them further under made the
+  pick-up worse: the test's pick-up failed). *The body check* now puts
+  what's near a figure where it is before reading that figure (a frame
+  late, a carried thing read as through the arms carrying it).
+- **3. Mouths with the voices** (`tools/vo_envelopes.py`, new;
+  `assets/audio/vo/envelopes.json`; `VoiceLines.now`, `envelope`,
+  `level_of`, `stub_env`; `Figure3D.talk_mouth(on, secs, voice)`,
+  `TALK_OPEN_VOICE`; `Cine.say`, `World._on_spoken`, `WhiteSky._mouth`).
+  How loud each recording is, sixty times a second, in the speech band,
+  each syllable stood out from the voice round it; while a recorded line
+  plays the speaker's jaw follows it (wider on the louder words, shut
+  between them, shut at its end). `tools/vo_master.py` writes it when it
+  puts recordings in place. Bram in the snow talks now too: his coat's
+  wind-and-snow shader moves his jaw (the jaw is shared:
+  `assets/shaders/jaw.gdshaderinc`), and his lips are measured on his coat
+  model (`MOUTHS["bram_coat"]`).
+- **4. A proper mouth** (`jaw.gdshaderinc`: `mouth_shade`, `mouth_h`,
+  `jaw_h`). The models have no inside to their mouths, so it's drawn: the
+  skin the jaw draws out between the lips goes to the dark of a mouth,
+  widest in the middle and shut at the corners, with the edge of the upper
+  teeth under the upper lip when it's wide. All twenty-two speaking faces,
+  not one model. The hero's lips were a centimetre too high and Tilly's
+  real model (`child_c`) too low; both moved, and `child_b`'s. A model
+  remade with a jaw and teeth is still the way to a real one.
+- **5. The hero's fingers** (`Figure3D.HANDS`, `close_hand`, `hand_closed`,
+  `HAND_MOST`, `_set_hands`; `jaw.gdshaderinc`'s `hand_curl`). His model's
+  finger bones are in a heap at his knuckles (the rig is wrong there), so
+  bending them can't work. Instead each hand's knuckle line was measured
+  off his skin and the shader curls everything beyond it towards the palm,
+  more the further out: his hand closes. On the button under Corin's hand
+  (`BUTTON_FIST`), cupped round the bread (`BREAD_CUP`). The fingers bend
+  as one (no joints of their own): past 0.8 their tips fold into the palm.
+  `tests/hand_close_shot.tscn` (new).
+- **6. The blanket's wool, fringe and breathing** (`tools/make_wool_texture.py`,
+  new: `assets/art/blanket/wool_weave.png`, a tile of 2/2 twill; 
+  `blanket.gdshader`'s `weave`, `breath_m`, `breath_secs`;
+  `BlanketDrape._fringe`, `FRINGE_*`, `BREATH_*`, `breath_of`). The wool is
+  woven (threads that catch the light, each a shade of its own); its two
+  ends are fringed (tassels that hang over the mattress's end at the foot
+  and lie on the turned-back hem); the cloth over his chest and middle
+  rises and falls with a sleeper's breathing. Kept through the arm's lift
+  and the throw.
+- **8. Tilly's whole body** (`Figure3D.Tiptoe`, `tiptoe`, `tiptoe_now`;
+  `AshfordDay._tilly_thrilled`, `TILLY_*`): up on her toes with the gasp
+  and both hands to her mouth; then down a little onto her heels with her
+  hands together under her chin while she watches it go round her head.
+
 ### Gary's eight yeses and the frame rate on his Mac (18 November, evening)
 
 Gary's answer to the morning's ten suggestions: "Frame rate: - was on mac -
@@ -5892,6 +5963,9 @@ godot --headless --fixed-fps 30 --path . res://tests/talk_mouth_test.tscn
 godot --headless --fixed-fps 12 --path . res://tests/reach_gone_test.tscn
 godot --headless --fixed-fps 30 --path . res://tests/crate_take_probe.tscn -- body_every=1
 godot --headless --path . res://tests/blanket_look.tscn
+# (night) the bread handed over and held; the hero's hands closing (stills under xvfb: -- <dir>):
+godot --headless --fixed-fps 30 --path . res://tests/bread_probe.tscn
+godot --headless --path . res://tests/hand_close_shot.tscn
 # what a place holds and draws, built as a Mac builds it (under xvfb, as the stills):
 #   ... res://tests/mem_probe.tscn -- full [duel] [list]         textures, meshes, triangles and draw calls
 #   ... res://tests/tri_probe.tscn -- [ashford green | thornwood river | solhaven gate] [cam=x,y,z,x,y,z] [shot=<file.png>]

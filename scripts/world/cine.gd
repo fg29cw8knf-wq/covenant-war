@@ -84,6 +84,9 @@ static func say(w: World, who: String, text: String, hold := -1.0, timed := fals
 			hold = secs
 			timed = true
 			voiced = true
+			# (the mouth by the recording itself: wider on the louder words)
+			if f is Figure3D and not VoiceLines.now.is_empty():
+				(f as Figure3D).talk_mouth(true, secs, VoiceLines.now)
 	await overlay(w).say(nm, w._fmt(text), hold, timed)
 	if voiced:
 		VoiceLines.stop(w)

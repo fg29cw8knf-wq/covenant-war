@@ -29,6 +29,7 @@ var _npz := 0
 var _laid := PackedVector3Array()
 var _free := PackedVector3Array()
 var _shade := PackedFloat32Array()
+var _breath := PackedFloat32Array()
 var _segs_was: Array = []
 var _segs: Array = []     # [from, to, radius] in the blanket's frame, as drawn
 var lifted := 0.0         # how far the cloth is lifted at most, this frame (m; the tests read it)
@@ -72,6 +73,7 @@ static func start(blanket: MeshInstance3D, p_fig: Figure3D, p_side := "left") ->
 	t._laid = BlanketDrape.flat(t.rows)
 	t._free = BlanketDrape.flat(t.free)
 	t._shade = BlanketDrape.shade_of(blanket, t._laid.size())
+	t._breath = BlanketDrape.breath_of(blanket, t._laid.size())
 	t.radii = radii_of(p_fig, p_side)
 	blanket.add_child(t)
 	if p_fig._skel != null:
@@ -283,4 +285,4 @@ func _drape() -> void:
 			out.append(q)
 		pts.append(out)
 	_last = pts
-	mi.mesh = BlanketDrape.mesh_of(flat, _npx, _npz, _shade)
+	mi.mesh = BlanketDrape.mesh_of(flat, _npx, _npz, _shade, _breath)

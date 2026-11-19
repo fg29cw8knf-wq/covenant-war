@@ -202,6 +202,9 @@ def main_lines(src, sheet):
         print("%-28s %-9s %-10s %s" % (f[:28], row["speaker"][:9], row["id"], report))
         done += 1
     print("%d line%s in place under assets/audio/vo/; run godot --headless --import so the game sees them" % (done, "" if done == 1 else "s"))
+    # (18 November: and how loud each is, for the mouths: tools/vo_envelopes.py)
+    if done:
+        subprocess.run([sys.executable, os.path.join(root, "tools", "vo_envelopes.py")], check=False)
 
 
 def main():
