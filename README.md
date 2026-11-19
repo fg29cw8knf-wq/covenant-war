@@ -3377,6 +3377,25 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### What Bram's debt is (19 November, afternoon)
+
+Gary asked "what debt exactly is he taking?", then, of seven ideas, chose
+"1,3 and 7": a life for a life, the debt that grows, and Bram's last duel.
+`docs/script/bram_debt.md` has the whole of it and where it goes next; only
+the Prologue's lines are in the game.
+
+- **Before the Last Page** (`WhiteSky.PAGE_PRICE`): Morrowen, "The child's death
+  was already written in my book. The Last Page could save him... but only by
+  writing another name in its place." "Write it in my name, then." answers it.
+- **Over him with the child** (`OUT_DEBT`): "He walked out of the Shardlands with
+  the child in his coat, and the child's death in his own name."
+- **On the black, before the last line** (`DEBT_INTEREST`, `INTEREST_BEAT`): "But
+  a death that is moved is never paid in full. It gathers interest." It answers
+  her opening line ("paying interest on a life they never asked for").
+- All four of Morrowen's are to record (0004 to 0007), and Bram's three (0002,
+  0009, 0014). Still for Gary: when Bram dies (Claude suggested the end of
+  Part 2).
+
 ### Three yeses on the White Sky and the bed (19 November, morning)
 
 Gary (19 November, 10:14), to the night's suggestions: "1 yes 2 add to the

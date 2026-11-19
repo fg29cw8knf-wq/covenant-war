@@ -189,8 +189,9 @@ _(The hush before the Last Page: the wind drops, the snow hangs, across the
 Circle the hunter raises its cards.)_
 
 **[NARRATOR – MORROWEN] (V.O., new 19 November; Gary: "he says write it in my name
-then for no reason"):** "His last card was the Last Page. It would save the
-child... but its price is always written in my book, under someone's name."
+then for no reason"; the words changed that afternoon when he chose what the
+debt is):** "The child's death was already written in my book. The Last Page
+could save him... but only by writing another name in its place."
 
 [GAME] His hand again, once he has said it; the card he has just drawn is glowing.
 **(Tap the glowing card: the Last Page.)** / **(Click the glowing card, or press
@@ -202,8 +203,8 @@ _(He comes up off his knee, the hunter across the Circle with its cards raised.)
 him."
 
 **[BRAM] (new, 12 November; as the page is called):** "Write it in my name, then."
-_(He takes the Last Page's price on himself: Morrowen has just said what it
-costs.)_
+_(He takes the child's death into his own name: Morrowen has just said what
+the Last Page costs.)_
 
 _(The duel has six lines of his now, none of which holds it up: Not yet. / Buy
 me some time. / Get back from him. / Shh, little one. I've got you. / You'll not have
@@ -322,10 +323,16 @@ _(Behind Bram, stopped, his head down to the child. The mark's light comes up
 round him.)_
 
 **[NARRATOR – MORROWEN] (V.O., new 19 November):** "He walked out of the
-Shardlands with the child in his coat, and a debt in his own name."
+Shardlands with the child in his coat, and the child's death in his own name."
 
 _(The picture closes to black about him, and the mark is all that's left,
 glowing: the last picture of the memory. A breath of quiet.)_
+
+**[NARRATOR – MORROWEN] (V.O., new 19 November, afternoon; it answers her
+opening, "paying interest on a life they never asked for"):** "But a death
+that is moved is never paid in full. It gathers interest."
+
+_(A breath.)_
 
 **[NARRATOR – MORROWEN] (V.O., changed 19 November; Gary: "20 years later the debt
 came due doesn't really make sense or blend well with the title then coming up";
@@ -1596,3 +1603,14 @@ While building v7 the game needed a few short lines the script doesn't have. The
   motion; the caption "Near dawn" in place of "The end of the duel".
 - **New recordings needed** (the old ones no longer match the words): Bram's two
   lines to the baby, and Morrowen's three. `docs/script/vo_lines.md` has them.
+
+## Changes, 19 November 2026, afternoon (what Bram's debt is)
+
+Gary asked "what debt exactly is he taking?" and chose 1, 3 and 7 of seven
+ideas (`docs/script/bram_debt.md` has the whole of it): the child was meant to
+die that night; the Last Page saves him only by writing another name in his
+place, and Bram writes his own, due when the Age ends; a moved death gathers
+interest; and when the hooded figure comes for him, the player plays Bram's
+last duel. Here: Morrowen's line before the Last Page, her line over him with
+the child, and a new line on the black ("But a death that is moved is never
+paid in full. It gathers interest.") before the last one.

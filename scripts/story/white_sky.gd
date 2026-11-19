@@ -89,12 +89,24 @@ const NOT_THIS := {"who": "bram", "say": "Not this one."}
 ## mark, and it ends on the Age ending, which is what the title (THE COVENANT
 ## WAR / THRONE OF AGES) and the attic's caption ("The last night of the
 ## Age.") go on from.
-const OUT_DEBT := {"who": "morrowen", "say": "He walked out of the Shardlands with the child in his coat, and a debt in his own name."}
+## (19 November, afternoon: Gary chose what the debt is, "1, 3 and 7" of
+## Claude's seven: a life for a life, the debt that grows, and Bram's last
+## duel. docs/script/bram_debt.md has the whole of it.) The child was meant to
+## die that night; the Last Page moved that death into Bram's name, due when
+## the Age ends; and a moved death gathers interest (DEBT_INTEREST, on the
+## black before DEBT_DUE: it answers her opening, "paying interest on a life
+## they never asked for").
+const OUT_DEBT := {"who": "morrowen", "say": "He walked out of the Shardlands with the child in his coat, and the child's death in his own name."}
+const DEBT_INTEREST := {"who": "morrowen", "say": "But a death that is moved is never paid in full. It gathers interest."}
 const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the Age came to its end... and every debt in my book came due."}
 ## (19 November, Gary: "he says write it in my name then for no reason") What
 ## the Last Page costs, said in the hush before it's played (_ask_move, the
 ## last gate), so that "Write it in my name, then." answers it.
-const PAGE_PRICE := {"who": "morrowen", "say": "His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name."}
+## (19 November, afternoon: what it costs, said plainly. It was "His last card
+## was the Last Page. It would save the child... but its price is always
+## written in my book, under someone's name.", and Gary: "what debt exactly is
+## he taking?")
+const PAGE_PRICE := {"who": "morrowen", "say": "The child's death was already written in my book. The Last Page could save him... but only by writing another name in its place."}
 ## (15 November, Gary's "7 yes": where "Sprout" begins) to the child on the
 ## walk out of the crater, when its small hand has come up out of his coat
 ## like a shoot and taken the white card (_small_hand): the first time the
@@ -6349,6 +6361,8 @@ void fragment() {
 ## title (s; 19 November: there was none either side).
 const DUE_BEFORE := 1.2
 const DUE_AFTER := 1.4
+## The quiet between Morrowen's interest line and her last (s).
+const INTEREST_BEAT := 1.0
 
 func _close() -> void:
 	_hide_hint()
@@ -6401,6 +6415,9 @@ func _close() -> void:
 	# end; then the mark beats once, brighter, in the quiet, and the title
 	# comes up out of that with the theme (_title_card).
 	await _wait(DUE_BEFORE)
+	# (19 November, afternoon) the interest first, a breath, then the Age's end
+	await _say(DEBT_INTEREST, true)
+	await _wait(INTEREST_BEAT)
 	await _say(DEBT_DUE, true)
 	if _seal != null and is_instance_valid(_seal):
 		var beat := _seal.glow_to(1.35, 0.5)

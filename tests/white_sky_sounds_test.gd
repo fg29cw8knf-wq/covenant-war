@@ -18,8 +18,9 @@ const LINES := [
 const TO_RECORD := [
 	["bram", "Hush now, little one. I've got you."], ["bram", "Shh, little one. I've got you."],
 	["bram", "Buy me some time. That's all I need."],
-	["morrowen", "His last card was the Last Page. It would save the child... but its price is always written in my book, under someone's name."],
-	["morrowen", "He walked out of the Shardlands with the child in his coat, and a debt in his own name."],
+	["morrowen", "The child's death was already written in my book. The Last Page could save him... but only by writing another name in its place."],
+	["morrowen", "He walked out of the Shardlands with the child in his coat, and the child's death in his own name."],
+	["morrowen", "But a death that is moved is never paid in full. It gathers interest."],
 	["morrowen", "Twenty years later, the Age came to its end... and every debt in my book came due."],
 ]
 ## Each sound: how many takes, and the shortest and longest it may be (s).
