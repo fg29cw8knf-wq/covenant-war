@@ -71,6 +71,7 @@ func _ready() -> void:
 		Gfx.Guard.force_rebuild = true
 		Gfx.Guard.step = 3
 		Gfx.Guard._apply_all()
+	WhiteSky.flat_mark = "flatmark" in OS.get_cmdline_user_args()
 	m = WhiteSky.new()
 	m.prep_early = false
 	add_child(m)
@@ -126,7 +127,7 @@ func _tear() -> void:
 
 
 func _run() -> void:
-	var names: Array = Array(OS.get_cmdline_user_args()).slice(1).filter(func(a): return ALL.has(String(a)) or String(a) == "hand")
+	var names: Array = Array(OS.get_cmdline_user_args()).slice(1).filter(func(a): return ALL.has(String(a)) or String(a) == "hand" or String(a) == "mark")
 	if names.is_empty():
 		names = ALL.duplicate()
 	await get_tree().process_frame
@@ -229,6 +230,34 @@ func _run() -> void:
 		m._shaft_k = 0.0
 		_at(m._bram.position - ad * 2.6 + rt * 1.3 + Vector3(0, 3.4, 0), m._baby.position + Vector3(0, 0.3, 0), 44.0)
 		await _shot("rim", 14)
+	if names.has("mark"):
+		# (24 November, Gary: "the baby's sigil is floating above him rather
+		# then on him") the child's mark close to, from low beside it and from
+		# over it; `flatmark` the square it was, for the before
+		m._bram.position = c + Vector3(6.0, 0.0, 6.0)
+		m._bram.position.y = WhiteSky.height(m._bram.position.x, m._bram.position.z)
+		m._child_beacon(false)
+		m._shaft_k = 0.0
+		var bp: Vector3 = m._baby.global_position
+		var bx: Vector3 = m._baby.global_basis.x.normalized()
+		var bz: Vector3 = m._baby.global_basis.z.normalized()
+		var mz: float = WhiteSky.MARK_Z if WhiteSky.flat_mark else WhiteSky.mark_at.y
+		var mx: float = 0.0 if WhiteSky.flat_mark else WhiteSky.mark_at.x
+		var on := bp + bz * mz + bx * mx + Vector3(0, 0.1, 0)
+		# (its light turned down for the stills: at its own strength the wool is burnt out white)
+		m._crater_light.light_energy = 0.5
+		var glow := m._baby.get_node_or_null("MarkGlow") as OmniLight3D
+		if glow != null:
+			glow.light_energy = 0.15
+		_at(on + bx * 0.42 + Vector3(0, 0.035, 0), on, 30.0)
+		await _shot("mark_side", 10)
+		_at(on - bz * 0.4 + Vector3(0, 0.06, 0), on, 30.0)
+		await _shot("mark_head_end", 10)
+		_at(on + bx * 0.22 - bz * 0.18 + Vector3(0, 0.34, 0), on, 30.0)
+		await _shot("mark_over", 10)
+		_at(on + Vector3(0, 0.5, 0.001), on, 30.0)
+		await _shot("mark_above", 10)
+		print("white_sky_look: the mark laid at (%.3f, %.3f) of the bundle, %.1f to %.1f mm over the wool" % [WhiteSky.mark_at.x, WhiteSky.mark_at.y, WhiteSky.mark_gap.x * 1000.0, WhiteSky.mark_gap.y * 1000.0])
 	if names.has("bowl"):
 		var kd := m._kneel_dir(Vector3.FORWARD)
 		var bottom := m._kneel_spot(kd)

@@ -92,6 +92,7 @@ func show_title() -> void:
 	_world = null
 	_starting = false
 	LaunchLog.mark("title")
+	PerfLog.at("title")
 	_prepare_new_game()
 
 
@@ -237,6 +238,7 @@ func go_world(area: String, spawn: String) -> void:
 	w.duel_handler = run_duel
 	w.exit_to_title.connect(show_title)
 	w.story_next.connect(_on_story_next)
+	PerfLog.at(area)   # (the speed log's; the Prologue names its own parts)
 	_swap(w)
 	Game.save_game()
 
@@ -270,6 +272,8 @@ func run_duel(spec: Dictionary) -> bool:
 	layer.layer = 20
 	add_child(layer)
 	var won := false
+	var was_at := PerfLog.place
+	PerfLog.at("duel: " + String(spec.get("name", spec.get("id", "a duel"))))
 	await Packs.need("duel")
 	if spec.has("decks"):
 		# a duel on the v1 rules; an advert may come first (Ads has the rules)
@@ -289,6 +293,7 @@ func run_duel(spec: Dictionary) -> bool:
 		layer.add_child(screen)
 		won = await screen.finished
 	layer.queue_free()
+	PerfLog.at(was_at)
 	if hidden_world != null and is_instance_valid(hidden_world):
 		hidden_world.process_mode = world_mode
 		hidden_world.visible = true

@@ -3377,6 +3377,212 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
+
+Gary (24 November, on his Mac): "Game taking a very long time to start /
+Game is running slow when morrowen is talking. Taking a while to respond to
+movement / Game is really glitchy through brams battle / In brams battle can
+we actually see the totems attacking better so it's clearer what is going on.
+Add dramatic cinematic to make it look really good battle / When bram takes
+card from baby his hand motion is still a little weird and the baby's sigil is
+floating above him rather then on him / Every debt in my book came due - is
+that possible? / Game even rubbish sluggish and slow to respond to movement
+after brams bit / When Bram isn't the bar there is a big glowing something in
+the top left that looks weird / Player arm goes through crate before he picks
+it up / When you step outside there is a shuffling sound which sounds out of
+place / Opening box bram give you players hand distorts in a weird way to open
+it / What can we do with the models so all moving actually looks real". Asked
+what the frame rate was and how much memory the Mac has: "game ran at 60-120
+fps throughout", "64 gb". So the Mac isn't short of anything, and none of the
+slowness is the picture's cost as such. `docs/handover/2026-11-24.md` has what
+was measured, what was only reasoned out, and what wasn't seen.
+
+- **The slow spells: the frame-rate guard, rebuilt** (`Gfx.Guard`: `place`,
+  `_key_of`, `PLACES_KEY`, `LIGHT`, `_fit`, `ceiling`, `_learn`,
+  `_smallest_kept`, `UNDO_WITHIN`; `UP_AFTER` 20, was 10). The guard had one
+  size for the whole game's 3D and found it by trying: fifteen seconds at the
+  screen's own rate, anywhere, and it drew the 3D a step bigger. A title
+  screen, a caption on black and a film all hold the screen's rate whatever
+  the size, so every light screen talked it back up towards the full
+  picture, and the heavy place after it (the snow as Morrowen speaks, the
+  duel, the attic after the title card) then ran at the full picture's rate,
+  15 to 19 on his Mac, for the nine or ten seconds it took to come down again
+  three windows a step; and every try up inside a heavy place that didn't
+  hold cost four and a half seconds under 41 before it was undone. Those are
+  his three "slow" notes, each straight after a light screen. Now:
+  - each place has its own size, kept with the Options (`gfx_places`: the
+    snow's walk one place, its duel another, every duel one, the attic, the
+    taproom, the street and the green each their own: `PerfLog.at` names
+    them) and taken up as the place begins, under its fade;
+  - a light place (the title, the start) is never judged, so it can't talk
+    the size up;
+  - a place far under comes down in one go to the size its frame rate says
+    it needs (`_fit`: to 47 frames a second if the cost is the pixels), not
+    two steps and wait again: 17 frames a second is at the right size in two
+    windows (3 s), where it took six (9 s);
+  - a place never seen begins at the smallest size any place has needed and
+    works up, rather than at whatever the last place left;
+  - a try up waits thirty seconds at the screen's rate (was fifteen), and
+    if the next windows are under 41 it's undone at once (1.5 s, was 4.5)
+    and not tried again in that place for three days (its ceiling).
+  The kept sizes are for the picture as it's being drawn: a window resized
+  a good deal, or "Best picture" switched, and they're found afresh.
+  `tests/guard_test.tscn` plays all of it with made-up frame rates
+  (cases 7 to 9 are new). **Not seen on a Mac**: nothing here has a graphics
+  card. `tools/guard_model.py` plays the old rules and the new over a made-up
+  ten minutes (title, snow, duel, title card, attic, taproom, street) on a
+  machine that draws the full picture at about 18: 25 s under 41 as it was
+  (7.5 of them in the snow's opening, 9 in the attic), 6 s in the first
+  session with the new rules while the attic is first found, none in the
+  session after.
+- **The speed log** (`PerfLog`, `scripts/game/perf_log.gd`, new; Options,
+  "Copy the speed log"). The frame rate on his Mac has never been seen from
+  here, and the one-minute speed test has to be gone and run. This needs
+  nothing run: every part of the game says where it is (`PerfLog.at`: each
+  part of the snow, the attic, the taproom, the street, the green, a duel,
+  each place), and for each the log keeps how long was spent there, the frame
+  rate over it and its slowest second, every catch (a frame over 120 ms) with
+  where and when, the size the guard had the 3D at, and how long the place
+  took to come up; with the machine (its chip, graphics, memory and how much
+  was free, the screen and window, what the picture's set to, how much
+  picture memory is held) and the launch's marks. Written to
+  `user://speed_log.txt` every fifteen seconds and on closing, the session
+  before kept as `speed_log_last.txt`. Pasted to a session it says which part
+  was slow, how slow, and on what.
+- **Morrowen's line no longer takes the walk's taps** (`CineOverlay.say`'s
+  `catch`, `waiting`, `line_rect`, `tap`; `WhiteSky._say`, `_tap_snow`). A
+  line takes every press on the screen while it's up, so a tap anywhere moves
+  it on. Morrowen's opening line is said over a walk that's the player's, and
+  isn't recorded yet, so it waits for a tap: until it was tapped away no tap
+  or drag reached the walk at all, and the first tap to walk was spent on the
+  line. Said while the walk is his, a line now leaves the screen to the walk:
+  a tap on the line itself (or E, Space, Enter, a pad's A) moves it on, a tap
+  or drag anywhere else walks. Keys always did walk under it. And steered
+  during the opening's wide shot, the camera comes down behind him in a
+  second (`OPEN_HURRY` 1.0, was 1.6: he was a speck under a camera still a
+  second and a half off, which read as the walk not answering); his pace is
+  reached in a fifth of a second (`WALK_ACCEL` 6.5, was 4.2, a third).
+- **Bram's duel: every blow staged to be seen**
+  (`DuelScreen._film_strikes`, `FILM_GATHER`, `FILM_LUNGE`, `FILM_LUNGE_BACK`,
+  `FILM_FLIGHT_K`, `strike_goes`, `strike_lands`, spec `film_strikes`;
+  `DuelField3D.lunge`, `Slot.lunge`, `lunge_pose`, `LUNGE_*`;
+  `WhiteSky.staged_strikes`, `_beat_attack`, `_two_shot`, `_crossing_shot`,
+  `_hidden`, `_on_strike_goes`, `_on_strike_lands`, `_slow_now`, `CROSS_*`).
+  A film ran every blow at the film's speed, 2.2 times, with a played duel's
+  touches off: nothing gathered, a melee blow was a nudge of the striker's
+  picture across the screen (from the film's low shot behind it, a jab of a
+  metre over in a twentieth of a second), a cast blow crossed the Circle in a
+  seventh of a second, an attack's own shot was dropped if the shot before it
+  was still being held, and the cut to what was struck came as the blow set
+  off, so nothing was ever seen to cross. Now each of the duel's four blows
+  is three shots, in the game's own seconds whatever the film's speed:
+  1. **it gathers**: close on the striker, low, from its front quarter (Bram's
+     own from its side), a slow push in, its power gathering for 0.85 s (the
+     charge's motes and glow and its sigil flaring under it, as a played duel
+     has);
+  2. **it crosses**: cut to the two of them in one picture, from beside
+     whichever stands on Bram's half looking into the hunter's (so his face is
+     behind the lens), the first place tried from which both are seen clear
+     of every other Totem (`_hidden`). A melee striker goes back on its
+     haunches, springs and crosses the Circle itself in the field's own space
+     (`lunge`: a low leap, squashed and stretched, stopping short of what it
+     strikes, and back afterwards); a cast blow leaves it as it leans in and
+     takes 1.9 times its usual flight. The camera goes in with the blow and
+     time is slowed for the crossing (0.42 for 0.4 s);
+  3. **it lands**: the cut to the blow, the freeze, the shake, as before, but
+     as it arrives.
+  A knockout's slow motion now takes over from the blow's freeze (it was
+  passed over while the freeze ran, and most broke at full speed), and once
+  the glass has fallen the picture goes wide (`_wide_after_ko`: it sat on the
+  empty snow until the next beat). About six seconds more duel in all.
+- **"Really glitchy through Bram's battle": cuts, not sweeps**
+  (`FILM_SWEEP` 0; `LIFE_CUT_AFTER`). Besides the guard's spells: a new shot
+  was flown to over a third of a second from wherever the last one stood,
+  across the Circle and through any Totem in the way (the stills caught the
+  camera inside the Loomwarden's frame), at every attack, Rite and Doom, and
+  a wide shot over 2.4 s. A change of shot is a cut now; only a move within
+  a shot glides. And what spills past a Totem onto Bram lands a fifth of a
+  second after the blow's own cut: no second cut then, the blow's shot is
+  kept and shaken.
+- **The child's mark lies on him** (`WhiteSky._mark_patch`, `MARK_ON`,
+  `MARK_Z`, `MARK_LIFT`, `MARK_SEEK`, `MARK_GRID`, `mark_at`, `mark_gap`;
+  `flat_mark` the before). It was a flat square set 4 mm over the bundle's
+  highest point, wherever that was: the bundle is highest over its legs, and
+  where the mark is, over the heart, the wool is 2.4 cm lower and falls away
+  to either side, so it hung in the air over him. Now it's a patch laid on
+  the wool itself, 2.2 mm over it, following its folds (a grid of twelve
+  squares a side, each corner on the model's own surface), at the flattest
+  place within 8 cm of the heart (the hood's edge crosses under the heart on
+  his bundle, a fold 1.5 cm deep, and a mark laid across that was bent in
+  two): it lies 2.2 to 4.5 mm over the wool. `white_sky_look ... mark` for
+  stills of it, `flatmark` the before.
+- **Bram takes the card lower, his palm to his chest** (`WhiteSky.old_take`
+  the before; `TINY_GIVE_NEW`, `TAKE_CARRY_PALM`, `TAKE_CARRY_FINGERS`,
+  `TAKE_CARRY_ELBOW`, `TAKE_FLAT_NEW`, `TUCK_OVER_WIDE_NEW`, `TAKE_CAM`,
+  `_take_cam`). Looked at still by still: the card
+  was taken at the height of his chin, so his hand came up in front of his
+  beard; he then turned his palm to the ground and carried the card down
+  under a flat hand held level in the air, the card out of sight beneath it;
+  and his hand left by way of a mark out at his side at chest height, his
+  forearm stuck out level. Now the small hand brings the card down to the top
+  of his chest (20 cm, was 10.5); his hand keeps its palm to his own chest all
+  the way down, its fingers sloping down across him, as a hand does putting
+  something inside a coat; the card rides out past his fingertips where it
+  can be seen; his hand leaves low, past the bundle's end; and the camera
+  rises over him while he takes it (`TAKE_CAM`), since the top of his chest
+  is behind his own shoulder from where it stood, which also leaves his
+  raised elbow out of the picture (brought down by his ribs,
+  `TAKE_CARRY_ELBOW`, his forearm lay 1.6 cm through the end of the bundle:
+  `held_child_probe` failed it, so it's kept up).
+- **His hands come up as he steps to the crate** (`AshfordP1._take_crate`,
+  `_crate_ready`, `_ready_hands_on_the_way`, `CRATE_READY_*`; `crate_ready`
+  false the before). He walked right up to it, his front a hand's width from
+  its side, his arms swinging as a walk's do: on the last step the hand
+  swinging forward went into the crate, and from his sides his hands then
+  went straight to its ends through its near corners. Now, over the last
+  quarter of a metre, his hands come up just clear of its two ends, so no
+  arm is swinging when he gets there, and they come in onto its ends from
+  outside. `crate_take_probe ... shot=<dir> view=front|top` photographs the
+  reach every third frame.
+- **The box's lid is lifted, not followed, and filmed from the box's side**
+  (`Ashford._first_deck`, `LID_TAKE_*`, `LID_CLEAR_*`, `_into_box_shot`;
+  `lid_follows` and `box_shot_side` the before). The close shot into the box
+  was from the player's left whichever hand the box sat on. Player A's sits
+  on his right (`BOX_FIT` `carry`) and his left lifts the lid: from his left
+  that forearm stood up across the whole picture, a hand's width from the
+  lens, its hand cocked over at a right angle, the box behind it. The shot's
+  from the box's own side now: the box in front, the hand coming over to it
+  from behind. And the hand lay on the
+  lid and went up with it the whole of its swing, turning to keep its palm to
+  the lid's face: a hundred and five degrees, about a wrist that bends sixty,
+  on a hand weighted partly to its forearm. However the elbow was placed, it
+  wrung. Now the fingertips take the lid's front edge up and back a hand's
+  breadth with the first of the swing, the palm and fingers as they came,
+  and the hand comes away above and to its own side as the lid goes on up by
+  itself. `tests/box_open_probe.tscn` (new) plays the scene and photographs
+  it every other frame from the game's own close shot (`oldlid`: the before).
+- **The shield over the bar no longer shines** (`InnRooms._eve_dressing`,
+  `bright_rim` the before). The "big glowing something in the top left" with
+  Bram away from the bar: his old round shield on the wall over the shelves.
+  Its rim was bright new copper, as smooth as the measures', on a wall
+  otherwise in shadow: as a Mac draws the room (Forward+, the room's
+  reflection probe) it mirrored the windows' daylight and stood out as a
+  ring of orange light with nothing round it to say what it was. It's dark
+  bronze now, and rough, so it takes the room's light as the leather beside
+  it does. Its material only: the room's baked light is matched to its
+  things one for one (`BakedLight`), so nothing was added or taken away, and
+  the bake stands. `room_bake_shot ... eve` (Forward+) is the still of it.
+- **A footfall on the grass, not a swish** (`tools/make_steps.py` `grass`,
+  `assets/sfx/step_grass*.wav` made again). The shuffle: the first steps out
+  of the inn's door are off its boards onto grass, and the grass's step was a
+  swish, 98% of it noise over 1.5 kHz with a sixth of a thump under it; a walk
+  across the green was a run of hisses. Now the weight landing and a soft low
+  body carry it (half of it under 700 Hz, a few per cent over 3 kHz) with a
+  short quiet brush of the blades after. `tests/street_sound_probe.tscn`
+  (new) lists everything heard in the first seconds outside and whose steps
+  they are: four on grass and five on dirt, the player's and Bram's, and the
+  day's bed. Stand-ins all the same: his own recordings would be better.
+
 ### What Bram's debt is (19 November, afternoon)
 
 Gary asked "what debt exactly is he taking?", then, of seven ideas, chose
@@ -6100,6 +6306,14 @@ godot --headless --fixed-fps 30 --path . res://tests/talk_mouth_test.tscn
 godot --headless --fixed-fps 12 --path . res://tests/reach_gone_test.tscn
 godot --headless --fixed-fps 30 --path . res://tests/crate_take_probe.tscn -- body_every=1
 godot --headless --path . res://tests/blanket_look.tscn
+# 24 November: what's heard stepping out of the inn; Bram's box taken and opened, still by still (under
+# xvfb, <dir> [every=2] [oldlid]); the frame-rate guard's old rules and new over a made-up session:
+godot --headless --fixed-fps 30 --path . res://tests/street_sound_probe.tscn [-- secs=10]
+#   ... res://tests/box_open_probe.tscn -- <dir> [every=2] [look=a|b|c|d] [oldlid]
+#   ... res://tests/white_sky_test.tscn -- <dir> 0.15 duel keys small strikes [oldstrikes]   the duel's blows, a still every 0.15 s of each
+#   ... res://tests/white_sky_look.tscn -- <dir> mark [flatmark]                             the child's mark close to
+#   ... res://tests/crate_take_probe.tscn -- shot=<dir> [view=front|top]                     the reach to the crate, every third frame
+python3 tools/guard_model.py
 # (night) the bread handed over and held; the hero's hands closing (stills under xvfb: -- <dir>):
 godot --headless --fixed-fps 30 --path . res://tests/bread_probe.tscn
 godot --headless --path . res://tests/hand_close_shot.tscn

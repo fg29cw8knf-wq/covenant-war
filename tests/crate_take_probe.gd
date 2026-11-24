@@ -84,6 +84,13 @@ func _ready() -> void:
 		var mid := at + Vector3(0, 1.0, 0) - way.normalized() * 0.25
 		var beside := way.normalized().cross(Vector3.UP)
 		cam.look_at_from_position(mid + beside * 2.6 + way.normalized() * 0.5 + Vector3(0, 0.25, 0), mid)
+		# (24 November, Gary: "Player arm goes through crate before he picks it
+		# up": view=front from past the crate looking back at him, view=top
+		# from over it; the reach is photographed every third frame, 0_reach_NN)
+		if OS.get_cmdline_user_args().has("view=front"):
+			cam.look_at_from_position(mid + way.normalized() * 2.4 + beside * 0.5 + Vector3(0, 0.45, 0), mid - Vector3(0, 0.1, 0))
+		elif OS.get_cmdline_user_args().has("view=top"):
+			cam.look_at_from_position(mid + Vector3(0, 2.3, 0) - way.normalized() * 0.5 + beside * 0.3, mid - Vector3(0, 0.2, 0))
 		cam.make_current()
 		for layer: CanvasLayer in get_tree().root.find_children("*", "CanvasLayer", true, false):
 			layer.visible = false
@@ -100,8 +107,12 @@ func _ready() -> void:
 	go.call()
 	# (from when it leaves its stand: the hands are on it by then)
 	var y0 := cr.global_position.y
+	var rk := 0
 	while not done[0] and cr.global_position.y < y0 + 0.002:
 		await get_tree().process_frame
+		rk += 1
+		if shots != "" and rk % 3 == 0 and rk < 120:
+			await snap.call("0_reach_%02d" % (rk / 3))
 	taken[0] = true
 	await snap.call("1_hands_on_it")
 	var half := false

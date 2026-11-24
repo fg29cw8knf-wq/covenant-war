@@ -1898,7 +1898,20 @@ static func _eve_dressing(v: AshfordVillage, root: Node3D, W: float, _D: float, 
 	v.box(root, Vector3(0.025, 0.05, 0.62), shield_at + Vector3(-0.02, 0.02, 0.0), v.mats.metal, Vector3(0.75, 0, 0))
 	v.box(root, Vector3(0.02, 0.09, 0.03), shield_at + Vector3(-0.02, -0.22, 0.22), v.mats.beam, Vector3(0.75, 0, 0))
 	v.cyl(root, 0.24, 0.24, 0.04, shield_at + Vector3(0.02, 0, 0), leather, 24, Vector3(0, 0, PI * 0.5))
-	v.cyl(root, 0.245, 0.245, 0.03, shield_at + Vector3(0.025, 0, 0), copper, 24, Vector3(0, 0, PI * 0.5))
+	# (24 November, Gary: "When Bram isn't the bar there is a big glowing
+	# something in the top left that looks weird". The shield's rim: bright
+	# new copper, as smooth as the measures', on a wall otherwise in shadow.
+	# As a Mac draws the room it mirrored the windows' daylight and stood out
+	# as a ring of orange light with nothing round it to say what it was;
+	# Bram, behind the bar, stands in front of it. An old shield's rim is
+	# dull: dark bronze now, rough, so it takes the room's light as the
+	# leather beside it does. Its material only: the room's baked light is
+	# matched to its things one for one, BakedLight, so nothing's added.)
+	var rim := StandardMaterial3D.new()
+	rim.albedo_color = Color(0.3, 0.2, 0.12)
+	rim.metallic = 0.45
+	rim.roughness = 0.68
+	v.cyl(root, 0.245, 0.245, 0.03, shield_at + Vector3(0.025, 0, 0), copper if bright_rim else rim, 24, Vector3(0, 0, PI * 0.5))
 	v.cyl(root, 0.22, 0.22, 0.045, shield_at + Vector3(0.026, 0, 0), leather, 24, Vector3(0, 0, PI * 0.5))
 	v.cyl(root, 0.06, 0.07, 0.05, shield_at + Vector3(0.06, 0, 0), pewter, 14, Vector3(0, 0, PI * 0.5))
 	# dried hops along the beam over it all, swagged between nails
@@ -1920,6 +1933,11 @@ static func _eve_dressing(v: AshfordVillage, root: Node3D, W: float, _D: float, 
 		v.cyl(root, sz * 0.4, sz, sz * 1.8, Vector3(wx + 0.09, py - 0.03, zz), hop, 7, Vector3(0.0, 0, PI))
 		if k % 2 == 0:
 			v.box(root, Vector3(0.012, 0.05, 0.07), Vector3(wx + 0.1, py + 0.01, zz + 0.03), leafm, Vector3(0.5, 0, 0.3))
+
+
+## The shield over the bar with its rim of bright copper, as it was (the
+## tests' before).
+static var bright_rim := false
 
 
 ## Lime plaster for the inside walls: warm off-white, faintly mottled.

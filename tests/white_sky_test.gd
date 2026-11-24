@@ -111,6 +111,7 @@ func _ready() -> void:
 	if args.size() > 1:
 		every = float(args[1])
 	_skip = args.has("skip")
+	_strikes_only = args.has("strikes")
 	_page_only = args.has("page")
 	_duel_only = args.has("duel") or _page_only
 	_serpent = args.has("serpent")
@@ -130,7 +131,8 @@ func _ready() -> void:
 			_skip_at = INF
 			_skip_out = float(String(a).substr(9))
 	DirAccess.make_dir_recursive_absolute(out_dir)
-	get_window().size = Vector2i(1280, 720)
+	# ("small": a quarter of the pixels, for a strip of stills to judge movement by)
+	get_window().size = Vector2i(640, 360) if args.has("small") else Vector2i(1280, 720)
 	get_tree().root.theme = UITheme.make()
 	Game.settings["seen_white_sky"] = false
 	# (the Summon's video as a new game has it: on, and not seen yet; this
@@ -142,6 +144,8 @@ func _ready() -> void:
 		Game.settings[SummonVideo.SETTING] = "off"
 	Game.v2.erase("summon_seen")
 	Sfx.listen = true
+	# ("oldstrikes": the duel's blows as they were until 24 November, for the before)
+	WhiteSky.staged_strikes = not args.has("oldstrikes")
 	m = WhiteSky.new()
 	_late = args.has("late")
 	m.prep_early = not _late
@@ -378,7 +382,11 @@ func _process(delta: float) -> void:
 		elif _t - _skip_out_from > _skip_out:
 			m.skip()
 	if _t >= _next_still:
-		_next_still = _t + every
+		# ("strikes": a still every `every` s only while a blow is being
+		# struck, from its gathering to a second and a half after it lands;
+		# one every 3 s otherwise, so the duel's blows can be looked at
+		# closely without drawing the whole of it)
+		_next_still = _t + (every if not _strikes_only or _strike_on() else 3.0)
 		_still("t%05.1f" % _t)
 
 
@@ -779,6 +787,15 @@ func _second_pass() -> bool:
 	print("white_sky_test: %d shards of ice burst; %d buzzes of the phone asked for (the last %s)" % [m.shattered, Haptics.count, str(Haptics.last)])
 	if m.shattered < 3:
 		fails.append("the ice didn't break on the Last Page (%d)" % m.shattered)
+	# (24 November) every blow of the duel staged to be seen: each attack on a
+	# Totem its own shot as it gathers and another for its crossing, cut to as
+	# it lands; and the clock never left slow
+	if WhiteSky.staged_strikes and not _skip and not _page_only:
+		print("white_sky_test: the duel's blows: %d gathered in their own shot, %d seen across the Circle" % [m.strike_shots, m.strikes_seen])
+		if m.strike_shots < 4 or m.strikes_seen < 4:
+			fails.append("the duel's four blows weren't all staged (%d shots, %d crossings)" % [m.strike_shots, m.strikes_seen])
+	if Engine.time_scale < 0.99:
+		fails.append("the game's clock was left slow (%.2f)" % Engine.time_scale)
 	# (15 November: the last is the small hand's tap on the walk out now; the
 	# Last Page's long one is watched for as it goes by)
 	if Haptics.count < 5 or not _long_buzz or int(Haptics.last[0]) != int(Haptics.TAP[0]):
@@ -787,6 +804,24 @@ func _second_pass() -> bool:
 		print("white_sky_test: FAIL: ", f)
 		ok = false
 	return ok
+
+
+var _strikes_only := false
+var _strike_until := -1.0
+var _strike_hooked := false
+
+## A blow is being struck now (its gathering, its crossing, and a moment after).
+func _strike_on() -> bool:
+	var sc: DuelScreen = m._screen if is_instance_valid(m) else null
+	if sc == null or not is_instance_valid(sc) or sc.game == null:
+		return false
+	if not _strike_hooked:
+		_strike_hooked = true
+		sc.game.beat.connect(func(method: String, _args: Array) -> void:
+			if method == "fx_attack":
+				_strike_until = _t + 4.5
+				_next_still = minf(_next_still, _t + 0.05))
+	return _t < _strike_until
 
 
 func _still_later(label: String, secs: float) -> void:

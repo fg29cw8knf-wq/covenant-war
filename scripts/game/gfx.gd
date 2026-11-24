@@ -100,6 +100,7 @@ static func setup(tree: SceneTree) -> void:
 		Guard.start(tree)
 		Best.apply_all(tree)
 	FpsMeter.show_on(tree, bool(Game.settings.get("show_fps", false)))
+	PerfLog.start(tree)   # (24 November: how fast each part of the game ran, kept as it's played)
 
 
 ## The frame-rate guard, on a Mac or PC (11 November, Gary: "Whole Game
@@ -128,7 +129,7 @@ class Guard extends Node:
 	const WINDOW := 1.5        # seconds measured at a time
 	const LOW := 41.0          # under this for DOWN_AFTER windows running: a step down
 	const DOWN_AFTER := 3
-	const UP_AFTER := 10       # at the screen's own rate for this many windows: try a step up
+	const UP_AFTER := 20       # at the screen's own rate for this many windows: try a step up (24 November: was 10)
 	const UP_SHARE := 0.93     # ...this share of the screen's rate (or of 60) counts as its own
 	const HITCH := 0.2         # a frame longer than this is a load, not a slow picture: left out
 	const LEAN_UNDER := 31.0   # at the smallest step and still under this: the bounce light goes
@@ -151,6 +152,40 @@ class Guard extends Node:
 	## guard back on.
 	const BEST_LOW := 24.0
 	const BEST_AFTER := 4
+	## (24 November, Gary, his Mac at 60 to 120 frames a second with the guard
+	## doing its work: "Game is running slow when Morrowen is talking. Taking a
+	## while to respond to movement", "really glitchy through Bram's battle",
+	## "sluggish and slow to respond to movement after Bram's bit". The guard
+	## had one step for the whole game and found it by trying: fifteen seconds
+	## at the screen's own rate and it drew the 3D a step bigger, anywhere. A
+	## title screen, a caption on black or a film holds the screen's rate
+	## whatever the size, so by the time the snow began it had climbed back to
+	## the full picture, and the snow then ran at the rate of the full picture
+	## for the nine or ten seconds it took to come down again, three windows a
+	## step: every heavy place after a light one began slow. And each try up in
+	## a heavy place that didn't hold cost another four and a half seconds
+	## under 41 before it came back down, five of them in a session's first
+	## eight minutes.)
+	## Now each place has its own step (PLACES_KEY, kept with the Options:
+	## PerfLog.at names the place, `place`), taken up as the place begins,
+	## under its fade; a light place (LIGHT) is never judged, so it can't talk
+	## the step up; a place far under comes down in one go to the size its
+	## frame rate says it needs (`_fit`), not a step at a time; a try up waits
+	## UP_AFTER windows at the screen's rate and, if the very next windows are
+	## under LOW, is undone at once and not tried again in that place
+	## (its ceiling, kept CEIL_DAYS days).
+	const PLACES_KEY := "gfx_places"
+	const LIGHT := ["title", "starting", ""]
+	const CEIL_DAYS := 3
+	const FIT_TO := 47.0       # the frame rate a jump down aims for (a little over LOW)
+	const UNDO_WITHIN := 2.6   # a step up found wanting within this many windows is undone at once
+
+	## The place being judged (a key: `_key_of`), and whether it has just changed.
+	static var place_key := ""
+	static var _changed := false
+	## True once the guard is really at work (start(); a test sets it): only
+	## then does a new place take up its kept step.
+	static var active := false
 
 	static var _me: Guard = null
 	static var _views: Array = []     # WeakRefs of the viewports it sizes
@@ -187,6 +222,7 @@ class Guard extends Node:
 			_me.process_mode = Node.PROCESS_MODE_ALWAYS
 			tree.root.add_child.call_deferred(_me)
 			watch(tree.root)
+			active = true
 		if not on():
 			step = 0
 			_apply_all()
@@ -265,6 +301,106 @@ class Guard extends Node:
 				_size(vp)
 		_views = live
 
+	## The key a place's step is kept under: the snow's walk is one place and
+	## its duel another (a different picture altogether), every duel one, and
+	## anything else its own.
+	static func _key_of(where: String) -> String:
+		if where.begins_with("snow:"):
+			return "snow duel" if where.contains("duel") else "snow"
+		if where.begins_with("duel:"):
+			return "duel"
+		return where
+
+	## What the picture is being drawn as (how many pixels, and how fine): a
+	## place's kept step is for this and nothing else (a bigger window, or
+	## "Best picture" switched, and it's found afresh).
+	static func _drawn_as() -> String:
+		var px := 0
+		if DisplayServer.get_name() != "headless":
+			var sz := DisplayServer.window_get_size()
+			px = roundi(sz.x * sz.y / 250000.0)
+		return "%d %s" % [px, "best" if Best.on() else "usual"]
+
+	static func _places() -> Dictionary:
+		var d = Game.settings.get(PLACES_KEY, {})
+		if not (d is Dictionary) or String((d as Dictionary).get("as", "")) != _drawn_as():
+			d = {"as": _drawn_as()}
+			Game.settings[PLACES_KEY] = d
+		return d
+
+	## A place's kept step (-1: none yet) and its ceiling (the smallest step
+	## number it may be tried at: 0, the full size, unless a try up from it
+	## failed in the last CEIL_DAYS days).
+	static func kept_step(key: String) -> int:
+		var row = _places().get(key)
+		return int(row[0]) if row is Array and (row as Array).size() > 0 else -1
+
+	## The smallest size (the biggest step) kept for any place: 0 if none is.
+	static func _smallest_kept() -> int:
+		var most := 0
+		var d := _places()
+		for key in d:
+			var row = d[key]
+			if row is Array and (row as Array).size() > 0:
+				most = maxi(most, int(row[0]))
+		return most
+
+	static func ceiling(key: String) -> int:
+		var row = _places().get(key)
+		if not (row is Array) or (row as Array).size() < 3:
+			return 0
+		if absi(_today() - int(row[2])) > CEIL_DAYS:
+			return 0
+		return clampi(int(row[1]), 0, STEPS.size() - 1)
+
+	static func _today() -> int:
+		return int(Time.get_unix_time_from_system() / 86400.0)
+
+	static func _learn(key: String, at_step: int, ceil := -1) -> void:
+		if key == "" or LIGHT.has(key):
+			return
+		var d := _places()
+		var row = d.get(key)
+		var c := int(row[1]) if row is Array and (row as Array).size() >= 3 and absi(_today() - int(row[2])) <= CEIL_DAYS else 0
+		var day := int(row[2]) if row is Array and (row as Array).size() >= 3 else 0
+		if ceil >= 0:
+			c = ceil
+			day = _today()
+		d[key] = [at_step, c, day]
+		Game.settings[PLACES_KEY] = d
+		Game.save_settings()
+
+	## The game has come to a new place (PerfLog.at): its own step taken up at
+	## once, under whatever fade brings it in, and the judging begun afresh.
+	static func place(where: String) -> void:
+		var key := _key_of(where)
+		if key == place_key:
+			return
+		place_key = key
+		_changed = true
+		if not active or not on() or LIGHT.has(key):
+			return
+		var k := kept_step(key)
+		if k < 0:
+			# (a place not seen before begins at the smallest size any place
+			# has needed, and works up from there: begun at whatever size the
+			# last place left, a heavier one ran slow while it was found out)
+			k = maxi(step, _smallest_kept())
+		if k != step:
+			step = clampi(k, 0, STEPS.size() - 1)
+			_apply_all()
+
+	## The step that should bring `fps` at the step it's at now up to FIT_TO, if
+	## what's slow is the number of pixels drawn (one step down at the least).
+	static func _fit(fps: float) -> int:
+		var need := clampf(fps / FIT_TO, 0.05, 1.0)   # the share of the pixels it can afford
+		var now := scale_now()
+		for i in range(step + 1, STEPS.size()):
+			var k := float(STEPS[i]) / now
+			if k * k <= need:
+				return i
+		return STEPS.size() - 1
+
 	## The screen's own rate, as far as it's known (60 when it isn't).
 	func _target() -> float:
 		var hz := DisplayServer.screen_get_refresh_rate()
@@ -319,6 +455,21 @@ class Guard extends Node:
 			else:
 				_best_low = 0
 			return
+		# (24 November) a new place: judged afresh, its first window left out
+		# (its fade, its loading, the step it has just been given); a light
+		# place (a title, a notice) isn't judged at all
+		if Guard._changed:
+			Guard._changed = false
+			_low = 0
+			_far = 0
+			_high = 0
+			_stepped_up = INF
+			return
+		if LIGHT.has(Guard.place_key) and Guard.place_key != "":
+			_low = 0
+			_far = 0
+			_high = 0
+			return
 		_wait = maxf(0.0, _wait - WINDOW)
 		if _stepped_up < INF:
 			_stepped_up += WINDOW
@@ -329,7 +480,10 @@ class Guard extends Node:
 			_low += 1
 			_far = _far + 1 if fps < FAR_LOW else 0
 			var far := _far >= FAR_AFTER
-			if _low >= DOWN_AFTER or far:
+			# (a step up that the very next windows show was too much: undone
+			# at once, and not tried again in this place)
+			var undo := _stepped_up <= WINDOW * UNDO_WITHIN and Guard.step < STEPS.size() - 1
+			if _low >= DOWN_AFTER or far or undo:
 				_low = 0
 				_far = 0
 				if Guard.step < STEPS.size() - 1:
@@ -338,9 +492,12 @@ class Guard extends Node:
 						_retry = minf(RETRY_MOST, _retry * 2.0)
 					_stepped_up = INF
 					_wait = _retry
-					Guard.step = mini(Guard.step + (2 if far else 1), STEPS.size() - 1)
+					# (far under: straight to the size the frame rate says it
+					# needs, not two steps and wait again)
+					Guard.step = Guard._fit(fps) if far and not undo else Guard.step + 1
 					Guard._apply_all()
 					Guard._keep()
+					Guard._learn(Guard.place_key, Guard.step, Guard.step if undo else -1)
 				elif fps < LEAN_UNDER and not Guard.lean and not Best.on():
 					# (never under "Best picture": that's a promise of all the light)
 					Guard.lean = true
@@ -348,7 +505,7 @@ class Guard extends Node:
 			return
 		_low = 0
 		_far = 0
-		if fps >= _target() * UP_SHARE and Guard.step > 0 and not Guard.lean:
+		if fps >= _target() * UP_SHARE and Guard.step > 0 and not Guard.lean and Guard.step > Guard.ceiling(Guard.place_key):
 			_high += 1
 			if _high >= UP_AFTER and _wait <= 0.0:
 				_high = 0
@@ -356,6 +513,7 @@ class Guard extends Node:
 				Guard.step -= 1
 				Guard._apply_all()
 				Guard._keep()
+				Guard._learn(Guard.place_key, Guard.step)
 		else:
 			_high = 0
 

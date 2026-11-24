@@ -98,6 +98,69 @@ func _ready() -> void:
 	G.step = 0
 	G.lean = false
 	G.told_best = false
+	# (24 November, Gary: "running slow when Morrowen is talking", "sluggish
+	# ... after Bram's bit", at 60 to 120 frames a second)
+	# 7. a light place (the title) can't talk the size up
+	Game.settings.erase(G.PLACES_KEY)
+	G.active = true
+	g.queue_free()
+	g = G.new()
+	add_child(g)
+	g.set_process(false)
+	G.place("")
+	G.step = 4
+	G.place("title")
+	for k in 200:
+		g.judge(120.0)
+	_expect(G.step == 4, "a title screen at 120 fps talked the 3D up from step 4 to step %d" % G.step)
+	# 8. each place keeps its own step, taken up as the place begins
+	G.step = 0
+	G.place("snow: the opening")
+	n = 0
+	g.judge(60.0)   # (its first window is left out)
+	while G.step == 0 and n < 20:
+		g.judge(17.0)
+		n += 1
+	var snow_step: int = G.step
+	print("guard_test: the snow at 17 fps: to step %d in %d windows (%.1f s)" % [snow_step, n, n * G.WINDOW])
+	_expect(snow_step >= 4 and n <= 2, "the snow at 17 fps: step %d after %d windows (wanted step 4 or 5 within 2)" % [snow_step, n])
+	_expect(G.kept_step("snow") == snow_step, "the snow's step wasn't kept (%d)" % G.kept_step("snow"))
+	G.place("snow: the walk")
+	_expect(G.step == snow_step, "the walk isn't the same place as the opening")
+	G.place("title")
+	G.step = 0   # (as if something had it at the full size again)
+	G.place("ashford morning: the attic")
+	_expect(G.step == snow_step, "a place never seen didn't begin at the smallest size any place has needed (step %d, wanted %d)" % [G.step, snow_step])
+	G.step = 0
+	G.place("snow: the opening")
+	_expect(G.step == snow_step, "back in the snow, its step wasn't taken up at once (step %d, wanted %d)" % [G.step, snow_step])
+	# 9. a step up that doesn't hold is undone in the next window, and not tried again there
+	G.place("ashford morning: the attic")
+	G.step = 3
+	g.judge(60.0)
+	n = 0
+	while G.step == 3 and n < 400:
+		g.judge(60.0)
+		n += 1
+	_expect(G.step == 2, "holding 60 in the attic never tried a step up")
+	print("guard_test: a step up tried after %d windows (%.0f s) at the screen's rate" % [n, n * G.WINDOW])
+	_expect(n >= G.UP_AFTER, "a step up was tried after only %d windows" % n)
+	g.judge(30.0)
+	_expect(G.step == 3, "a step up that fell to 30 fps wasn't undone in the next window (step %d)" % G.step)
+	_expect(G.ceiling("ashford morning: the attic") == 3, "the attic's ceiling wasn't kept (%d)" % G.ceiling("ashford morning: the attic"))
+	for k in 600:
+		g.judge(60.0)
+	_expect(G.step == 3, "the step up that failed was tried again in the same place (step %d)" % G.step)
+	G.place("thornwood")
+	for k in 300:
+		g.judge(60.0)
+	_expect(G.step < 3, "another place was held to the attic's ceiling (step %d)" % G.step)
+	G.place("")
+	G.active = false
+	Game.settings.erase(G.PLACES_KEY)
+	Game.settings.erase(G.STEP_KEY)
+	G.step = 0
+	G.lean = false
 	# (the guard keeps its step with the Options as it goes: what this test
 	# put there is taken out again, so the next test starts from none of it)
 	Game.save_settings()

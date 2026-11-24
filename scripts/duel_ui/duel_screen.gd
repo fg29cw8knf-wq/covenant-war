@@ -972,6 +972,36 @@ func _filmed() -> bool:
 	return bool(spec.get("film", false))
 
 
+## (24 November, Gary, of Bram's duel in the snow: "can we actually see the
+## totems attacking better so it's clearer what is going on. Add dramatic
+## cinematic to make it look really good battle") A film's blows staged to be
+## seen (spec.film_strikes; WhiteSky asks for it). A film ran every blow at
+## the film's speed (2.2 times) with the touches off: no gathering of power,
+## a melee blow a twentieth of a second's nudge of the striker's picture, a
+## cast blow across the Circle in a seventh of a second, and the film cut to
+## what was struck as the blow set off, so nothing was seen to cross.
+## With it on, whatever the film's speed (these are the game's own seconds):
+##   - the striker gathers its power for FILM_GATHER (the charge's motes and
+##     glow, its sigil flaring under it, as a played duel's has);
+##   - a melee blow is the striker itself crossing the Circle (DuelField3D.
+##     lunge: FILM_LUNGE out, FILM_LUNGE_BACK back), a cast blow leaves it as
+##     it leans in and takes FILM_FLIGHT_K times its usual flight;
+##   - `strike_lands` is sent as the blow arrives, so the film can hold its
+##     shot on the two of them until then and cut to the blow as it lands.
+const FILM_GATHER := 0.85
+const FILM_LUNGE := 0.7
+const FILM_LUNGE_BACK := 0.6
+const FILM_FLIGHT_K := 1.9
+## Sent as an attack's blow arrives on a Totem (after its flight or its
+## lunge, before its impact is drawn): the Totem struck, and by how much.
+signal strike_lands(t: DuelTotem, amount: int)
+## And as it sets off across the Circle (its gathering over): the striker.
+signal strike_goes(att: DuelTotem, to3: Vector3, melee: bool)
+
+func _film_strikes() -> bool:
+	return field != null and _filmed() and bool(spec.get("film_strikes", false))
+
+
 ## The phone shaking in the hand (Haptics; 14 November, Gary's yes to "the
 ## phone shake in every duel, not just the opening"): a big blow on a Totem
 ## (one that stops time: HIT_STOP_DAMAGE or more, a weakness struck, a
@@ -3782,18 +3812,22 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		else:
 			field.cam_focus((_body3(t) + aim) * 0.5, 0.3, 0.45 / speed)
 		field.flash_light(_body3(t), col, 4.0, 0.5 / speed, 5.0)
-		if _cine() and hostile:
+		# (24 November: in a film staged for it too, _film_strikes, over FILM_GATHER)
+		var film_blow := _film_strikes() and hostile
+		if (_cine() or film_blow) and hostile:
 			# (5 November) it gathers its power: motes drawn in, a glow swelling,
 			# its sigil flaring under it (the blow ends the charge, _deliver3)
+			var gather := FILM_GATHER if film_blow else CHARGE_SECS / speed
 			field.act_pulse(_foot3(t), col)
-			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), CHARGE_SECS / speed)
+			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), gather)
 			# (it swells as it gathers, held while the die rolls, and snaps back
 			# as the blow goes, _end_charge; by itself if the attack comes to nothing)
 			var sw := create_tween()
-			sw.tween_property(v, "pop", CHARGE_SWELL, CHARGE_SECS / speed).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
-			sw.tween_interval(maxf(0.0, DuelStrikeFX.CHARGE_MAX_SECS - CHARGE_SECS / speed))
+			sw.tween_property(v, "pop", CHARGE_SWELL, gather).set_ease(Tween.EASE_IN).set_trans(Tween.TRANS_QUAD)
+			sw.tween_interval(maxf(0.0, DuelStrikeFX.CHARGE_MAX_SECS - gather))
 			sw.tween_property(v, "pop", 1.0, 0.1 / speed)
 			_strike["swell"] = sw
+			_strike["film"] = film_blow
 	# the move's name over the rival's Totem; beside your own (29 October:
 	# above it, it sat in the blow's path across the Circle and hid it)
 	var label_off := Vector2(0, -150 * v.depth)
@@ -3810,10 +3844,16 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 	DuelFX.flash(fx_layer, src, col, 170.0 * v.depth, 0.45 / speed)
 	var back := -(dest - src).normalized() * 28.0
 	var tw := create_tween()
-	tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
-	if not _strike.melee:
-		tw.tween_property(v, "offset", Vector2.ZERO, 0.16 / speed).set_ease(Tween.EASE_IN_OUT)
-	await pause(WINDUP_PAUSE)
+	if bool(_strike.get("film", false)):
+		# (a film's staged blow: its step back and its spring are the lunge's
+		# own, in the field's space, and its gathering is held to be seen)
+		tw.tween_interval(0.01)
+		await pause(FILM_GATHER * speed)
+	else:
+		tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
+		if not _strike.melee:
+			tw.tween_property(v, "offset", Vector2.ZERO, 0.16 / speed).set_ease(Tween.EASE_IN_OUT)
+		await pause(WINDUP_PAUSE)
 	if bool(_strike.get("all", false)):
 		pass   # (a blow on every Totem across: it's delivered to each as it lands, fx_totem_hit)
 	elif (target is String and target == DuelGame.NONE) or (target is DuelTotem and target.owner == t.owner):
@@ -3906,6 +3946,28 @@ func _deliver3(att: DuelTotem, to: Vector2) -> void:
 	if st.is_empty():
 		st = DuelFXStyle.attack_style(att.id(), att.element(), {}, 0)
 	_end_charge()
+	if bool(_strike.get("film", false)):
+		# (24 November) a film's staged blow, in the game's own seconds
+		var melee: bool = _strike.get("melee", false)
+		strike_goes.emit(att, b3, melee)
+		if melee:
+			field.lunge_trail(att.owner, att.slot, st, FILM_LUNGE + 0.25)
+			# (the whoosh as it springs, not as it gathers)
+			get_tree().create_timer(FILM_LUNGE * (1.0 - DuelField3D.LUNGE_FLIGHT), false).timeout.connect(func() -> void: sfx.play("melee_whoosh"))
+			await field.lunge(att.owner, att.slot, b3, FILM_LUNGE, FILM_LUNGE_BACK)
+			sfx.play("slash")
+			var at2 := field.world_to_stage(b3)
+			var ang2 := randf_range(-0.9, -0.4)
+			DuelFX.slash(fx_layer, at2, col, 170.0, ang2, 0.3)
+			DuelFX.slash(fx_layer, at2 + Vector2(10, 14), (st.hot as Color).lerp(Color.WHITE, 0.5), 135.0, ang2 + 0.25, 0.26)
+			return
+		# a cast blow: it leans into it as the blow leaves, and the blow takes
+		# long enough across the Circle to be followed
+		field.lunge(att.owner, att.slot, b3, 0.34, 0.5, 0.14)
+		var el2 := att.element()
+		sfx.play("cast_mystic" if el2 == "spirit" or el2 == "mystic" else "cast_" + el2)
+		await field.strike_travel(st, a3, b3, 1.0 / FILM_FLIGHT_K, float(_strike.get("k", 1.0)))
+		return
 	if _strike.get("melee", false):
 		sfx.play("melee_whoosh")
 		field.lunge_trail(att.owner, att.slot, st, 0.3 / speed)
@@ -4090,6 +4152,7 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		_strike["to3"] = _impact3
 		(_strike["hit"] as Dictionary)[t] = true
 		await _deliver(att, c)
+		strike_lands.emit(t, amount)   # (24 November: a film cuts to the blow as it lands)
 		c = _center(v)   # (where it is now: the camera may have whipped to it)
 	elif src == "thorns" or src == "recoil":
 		DuelFX.burst(fx_layer, c, Color("9be15d") if src == "thorns" else Color(1, 0.6, 0.4), 14, 300.0, 10.0, 0.5, Vector2.ZERO, 180.0, Vector2.UP, speed)

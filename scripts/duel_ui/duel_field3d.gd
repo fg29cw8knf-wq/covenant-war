@@ -83,6 +83,12 @@ class Slot:
 	var crystal_tint := Color(0.8, 0.93, 1.0)
 	var crystal_mat: ShaderMaterial = null
 	var trail: CPUParticles3D = null   # its element trailing off it as it lunges
+	# (24 November) a blow struck in the field's own space (DuelField3D.lunge):
+	# how far it is from its place (m, the field's own x/y/z), its squash and
+	# stretch as it gathers and springs (width, height), and the tween moving it
+	var lunge := Vector3.ZERO
+	var lunge_pose := Vector2.ONE
+	var lunge_tw: Tween = null
 	var glow_boost := 0.0          # 0-1: its glow map turned up as it strikes (FLARE)
 	var rim_mat: ShaderMaterial    # its outline lit in its GLOW_TINT colour (made when first needed)
 	var glow_tw: Tween = null
@@ -705,12 +711,15 @@ func sync(v) -> void:
 	var pxu := px_per_unit(v.side, v.slot)
 	# (the 2D nudge, across and up the screen, as the camera sees the floor now)
 	var off: Vector3 = (_cam_right() * v.offset.x - _cam_forward() * v.offset.y) / pxu
+	# (24 November: and where its own lunge has it, in the field's space: lunge)
+	off += Vector3(s.lunge.x, 0.0, s.lunge.z)
 	if s.dying and s.crack > 0.0 and not s.shattered:
 		# (it shudders as it cracks)
 		off += Vector3(randf_range(-1, 1), 0, randf_range(-1, 1)) * 0.035 * s.crack
 	var hover := 0.0
 	if s.fly:
 		hover = 0.35 + (sin(_t * 1.8 + v.slot) * 0.08 if not s.dying else 0.0)
+	hover += s.lunge.y   # (its leap's height)
 	s.sprite.position = Vector3(off.x, 0.06 + hover, off.z)
 	s.shadow.position = Vector3(off.x, 0.06, off.z)
 	s.shadow.scale = Vector3(s.creature_h * 0.55, s.creature_h * 0.55, 1.0) * v.pop
@@ -747,7 +756,7 @@ func sync(v) -> void:
 			want = Vector3(want.x * 1.03, want.y * WOUNDED_SQUASH, want.z + WOUNDED_LEAN * (1.0 if s.index % 2 == 0 else -1.0))
 		s.pose = s.pose.lerp(want, clampf(get_process_delta_time() * (2.0 if hurt else 6.0), 0.0, 1.0))
 		_wounded_idle(s, hurt)
-		s.model.scale = Vector3(k * s.pose.x, k * s.pose.y, k * s.pose.x)
+		s.model.scale = Vector3(k * s.pose.x * s.lunge_pose.x, k * s.pose.y * s.lunge_pose.y, k * s.pose.x * s.lunge_pose.x)
 		s.model.rotation.z = s.pose.z
 		# models face +Z: at rest they stand three-quarters to the camera so their
 		# faces show; during a strike they turn to face their target (face_at)
@@ -3943,6 +3952,83 @@ func lunge_trail(side: int, slot: int, st: Dictionary, dur: float) -> void:
 	if s.trail != null and is_instance_valid(s.trail):
 		s.trail.queue_free()
 	s.trail = DuelStrikeFX.lunge_trail(self, st, s, Vector3(0, s.creature_h * 0.45, 0), dur)
+
+
+## (24 November, Gary: "can we actually see the totems attacking better so
+## it's clearer what is going on") A blow struck in the field's own space.
+## Until now a melee blow was a nudge of the striker's picture across the
+## screen (DuelScreen._deliver3: 0.12 s out, four fifths of the way to its
+## target as the screen showed it): from the wide home view that reads as a
+## dart across the Circle, but from a film's low shot behind the striker,
+## where its target is only a hand's width up the screen, it came to a jab of
+## a metre, over in a twentieth of a second at the film's speed, and nothing
+## was seen to cross the Circle at all.
+## Here the striker goes back on its haunches (LUNGE_PULL, squashed), springs
+## and crosses the Circle to what it's going for, stopping LUNGE_SHORT and its
+## own half-width from it, a low leap (LUNGE_HOP) stretched along its way, in
+## `out_secs` of the game's clock; then, once LUNGE_STAY has passed, back to
+## its place over `back_secs`. Returns as it arrives (the blow lands then);
+## the way back is its own. `reach` under 1 takes it only that share of the
+## way (a caster's lean into its blow). It's turned to its target throughout.
+const LUNGE_PULL := 0.5
+const LUNGE_SHORT := 0.9
+const LUNGE_HOP := 0.55
+const LUNGE_STAY := 0.16
+## How long it's in the air to the blow, of `out_secs` (the rest is the gather).
+const LUNGE_FLIGHT := 0.55
+## True while any Totem is away from its place on a lunge (the tests').
+var lunging := 0
+
+func lunge(side: int, slot: int, to: Vector3, out_secs: float, back_secs: float, reach := 1.0) -> void:
+	var s: Slot = slots[side][slot]
+	var from := s.global_position
+	var way := Vector3(to.x - from.x, 0.0, to.z - from.z)
+	var dist := way.length()
+	if dist < 0.6 or not is_inside_tree():
+		return
+	var dir := way / dist
+	var go := maxf(0.3, dist - LUNGE_SHORT - s.creature_h * 0.28) * clampf(reach, 0.05, 1.0)
+	var hop := LUNGE_HOP * clampf(go / 3.0, 0.25, 1.0) * (0.4 if s.fly else 1.0)
+	var pull := LUNGE_PULL * clampf(reach * 1.4, 0.4, 1.0)
+	if s.lunge_tw != null and s.lunge_tw.is_valid():
+		s.lunge_tw.kill()
+	else:
+		lunging += 1
+	# turned to it for the whole of it, and a moment after it's back
+	face_at(side, slot, to, out_secs + LUNGE_STAY + back_secs + 0.3)
+	var gather := out_secs * (1.0 - LUNGE_FLIGHT)
+	var flight := out_secs * LUNGE_FLIGHT
+	var tw := create_tween()
+	s.lunge_tw = tw
+	# back and down, gathering itself
+	tw.tween_method(func(k: float) -> void:
+		s.lunge = -dir * pull * k
+		s.lunge_pose = Vector2(1.0 + 0.1 * k, 1.0 - 0.16 * k), 0.0, 1.0, gather).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	# and across, quickening, stretched along its leap
+	tw.tween_method(func(k: float) -> void:
+		s.lunge = (-dir * pull).lerp(dir * go, k) + Vector3(0.0, sin(k * PI) * hop, 0.0)
+		var st := sin(k * PI)
+		s.lunge_pose = Vector2(1.0 + 0.1 * (1.0 - k) - 0.08 * st, 1.0 - 0.16 * (1.0 - k) + 0.12 * st), 0.0, 1.0, flight).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	await tw.finished
+	if not is_instance_valid(s):
+		return
+	s.lunge = dir * go
+	# it lands on the blow: squashed into it for a moment, then back
+	var back := create_tween()
+	s.lunge_tw = back
+	back.tween_method(func(k: float) -> void:
+		s.lunge_pose = Vector2(1.0 + 0.09 * sin(k * PI), 1.0 - 0.1 * sin(k * PI)), 0.0, 1.0, LUNGE_STAY)
+	back.tween_method(func(k: float) -> void:
+		s.lunge = (dir * go).lerp(Vector3.ZERO, k) + Vector3(0.0, sin(k * PI) * hop * 0.7, 0.0), 0.0, 1.0, back_secs).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	back.tween_callback(func() -> void:
+		s.lunge = Vector3.ZERO
+		s.lunge_pose = Vector2.ONE
+		lunging = maxi(0, lunging - 1))
+
+
+## Where a Totem is now on a lunge, from its place (m; zero at home).
+func lunge_of(side: int, slot: int) -> Vector3:
+	return (slots[side][slot] as Slot).lunge
 
 
 ## A condition or boon settling on a Totem (29 October: "buffs/debuffs: an

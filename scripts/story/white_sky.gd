@@ -411,23 +411,33 @@ func play() -> void:
 	Music.play(["white_sky", "sigilfall"], 2.0)
 	if _wind != null:
 		_wind.play()
+	# (24 November: each part named to the speed log, PerfLog)
+	PerfLog.at("snow: the opening")
 	await _open()
 	if not _skipping:
+		PerfLog.at("snow: the sky tears")
 		await _sigilfall()
 	if not _skipping:
+		PerfLog.at("snow: the walk")
 		await _walk()
 	if not _skipping:
+		PerfLog.at("snow: the crater")
 		await _crater()
 	if not _skipping:
+		PerfLog.at("snow: the hunter")
 		await _the_hunter()
 	if not _skipping:
+		PerfLog.at("snow: the flashes")
 		await _flashes()
 	if not _skipping:
 		await _late_caption()
 	if not _skipping:
+		PerfLog.at("snow: Bram's duel")
 		await _duel()
 	if not _skipping:
+		PerfLog.at("snow: the walk out")
 		await _walk_out()
+	PerfLog.at("snow: the end and the title")
 	await _close()
 
 
@@ -527,7 +537,10 @@ const OPEN_LENS := 44.0
 ## (19 November: 2.8, 5.8 and 1.6, were 1.9, 4.6 and 0.9)
 const OPEN_HANG := 2.8
 const OPEN_SECS := 5.8
-const OPEN_HURRY := 1.6
+## (24 November: OPEN_HURRY 1.0, was 1.6: steered, he was a speck under a
+## camera still a second and a half from him, which read as the walk not
+## answering)
+const OPEN_HURRY := 1.0
 const OPEN_LINE_AT := 0.5
 const OPEN_HINT_AT := 0.12
 var _open_k := 0.0
@@ -787,6 +800,11 @@ func _heading() -> Vector3:
 ## marched down onto the snow).
 func _tap_snow(pos: Vector2) -> void:
 	if not _roam or _cam == null:
+		return
+	# (24 November: a line said over the walk leaves the screen to the walk,
+	# _say; a tap on the line itself moves the line on)
+	if _ov != null and _ov.waiting() and _ov.line_rect().has_point(pos):
+		_ov.tap()
 		return
 	var vpp := Vector2(pos.x / maxf(1.0, _root.size.x) * float(_vp.size.x), pos.y / maxf(1.0, _root.size.y) * float(_vp.size.y))
 	var from := _cam.project_ray_origin(vpp)
@@ -2062,21 +2080,37 @@ func _eye_pair(parent: Node3D, p: Vector3, toward: Vector3, delay: float, size :
 func _slow(scale: float, hold: float, ramp: float) -> void:
 	if _slowed or _skipping or Engine.time_scale < 0.99 or not is_inside_tree():
 		return
+	await _slow_now(scale, hold, ramp)
+
+
+## The same, taking over from a slow motion already running (24 November: a
+## staged blow's crossing is slowed, _on_strike_goes, and the blow's own
+## freeze comes in the middle of its run back up; `_slow_id` says whose the
+## clock is, so the one taken over from leaves it alone).
+var _slow_id := 0
+
+func _slow_now(scale: float, hold: float, ramp: float) -> void:
+	if _skipping or not is_inside_tree():
+		return
+	_slow_id += 1
+	var mine := _slow_id
 	_slowed = true
 	var f := _dir_f
 	if f != null and is_instance_valid(f):
 		f.slow_grade(true, 0.1)
 	Engine.time_scale = scale
 	var el := 0.0
-	while el < hold and not _skipping and not _done:
+	while el < hold and not _skipping and not _done and _slow_id == mine:
 		await get_tree().process_frame
 		el += get_process_delta_time() / maxf(Engine.time_scale, 0.001)
 	el = 0.0
-	while el < ramp and not _skipping and not _done:
+	while el < ramp and not _skipping and not _done and _slow_id == mine:
 		await get_tree().process_frame
 		el += get_process_delta_time() / maxf(Engine.time_scale, 0.001)
 		var k := clampf(el / maxf(ramp, 0.01), 0.0, 1.0)
 		Engine.time_scale = lerpf(scale, 1.0, k * k)
+	if _slow_id != mine:
+		return   # (another has the clock now, and will put it back)
 	Engine.time_scale = 1.0
 	if f != null and is_instance_valid(f):
 		f.slow_grade(false, 0.3)
@@ -2984,6 +3018,9 @@ func _duel() -> void:
 	# (deferred: after the screen's own camera calls for the same beat, its
 	# home and its lean, so the film's shot is the one that stands)
 	_screen.game.beat.connect(_on_beat, CONNECT_DEFERRED)
+	# (24 November) a staged blow setting off across the Circle, and arriving
+	_screen.strike_goes.connect(_on_strike_goes)
+	_screen.strike_lands.connect(_on_strike_lands)
 	_screen.finished.connect(func(_r) -> void: st.over = true)
 	# Bram's side waits for the player at each of his three moves
 	if not _players.is_empty() and _players[0] != null and "ask" in _players[0]:
@@ -3732,6 +3769,9 @@ func _move_film(gate: String) -> void:
 ## blow lands (s of the memory's clock); a turn's opening and a Rite held
 ## this long; with nothing happening for IDLE_WIDE, a wide shot drifting.
 const MIN_HOLD := 1.3
+## How long a change of shot takes (s): 0, a cut (it was 0.25 to 0.35, and
+## 2.4 for a wide shot: a sweep across the Circle each time).
+const FILM_SWEEP := 0.0
 const TURN_HOLD := 1.8
 const CALL_HOLD := 2.2
 const HIT_HOLD := 1.1
@@ -3783,6 +3823,11 @@ func _on_beat(method: String, args: Array) -> void:
 				_beat_attack(args[0], args[2] if args.size() > 2 else null)
 		"fx_totem_hit":
 			if args[0] is DuelTotem:
+				# (24 November: an attack's own blow is cut to as it lands,
+				# _on_strike_lands; the beat comes as it sets off)
+				var info: Dictionary = args[2] if args.size() > 2 and args[2] is Dictionary else {}
+				if staged_strikes and info.get("attacker") != null and String(info.get("source", "")) == "":
+					return
 				_beat_hit(args[0], int(args[1]))
 		"fx_life_hit":
 			_beat_life(int(args[0]), int(args[1]))
@@ -3976,12 +4021,54 @@ func _beat_call(t: DuelTotem) -> void:
 ## An attack: from behind the attacker, across at what it's going for; the
 ## hunter's seen coming from behind what they're going for (from behind
 ## his hounds the picture would look back into Bram's face).
+## (24 November, Gary: "can we actually see the totems attacking better so
+## it's clearer what is going on. Add dramatic cinematic to make it look
+## really good battle". An attack's shot was dropped if the shot before it
+## was still being held, the camera then sat behind the striker with what it
+## was going for small beyond it, and the cut to the blow came as it set off,
+## so the blow itself was never in the picture. Now every attack has its own
+## shot, cut to at once: the two of them in one picture (_two_shot: the
+## striker big in the near side, low, what it's going for across the Circle
+## in the far side), held while it gathers its power (DuelScreen.FILM_GATHER);
+## as it springs the camera goes with it (_on_strike_goes), time slowed for
+## the crossing; and the cut to the blow comes as it lands (_on_strike_lands).
+## `staged_strikes` false: as it was (the tests' before).)
+static var staged_strikes := true
+## How many attacks had their own shots, and how many blows were seen to
+## cross the Circle (the tests read them).
+var strike_shots := 0
+var strikes_seen := 0
+## How slow the crossing is (Engine.time_scale), for how long (s by the
+## clock), and how long it takes to run back up.
+const CROSS_SLOW := 0.42
+const CROSS_HOLD := 0.4
+const CROSS_RAMP := 0.24
+
 func _beat_attack(t: DuelTotem, target) -> void:
 	_attacker = t
 	_struck = false
-	if _t < _free_at:
+	var staged := staged_strikes and target is DuelTotem and (target as DuelTotem).owner != t.owner
+	if _t < _free_at and not staged:
 		return   # (a flurry: seen in the shot already up)
 	var f := _dir_f
+	if staged:
+		# close on it as it gathers its power: from its front quarter, low,
+		# looking up at it (Bram's own from its side or from behind it: from
+		# in front the picture would look back into his face); cut to (eased
+		# to if the last cut was only just now) and held until it springs
+		var h: Array = f.shot_hero(t.owner, t.slot, 0.3, 0.85)
+		var c := _pick([[h[0], h[1], 36.0], _side_on(t, 0.45, 29.0), _behind_low(t, 0.55, 36.0)])
+		if not c.is_empty():
+			strike_shots += 1
+		# (always a cut: eased to from the shot before, the camera swept
+		# through whatever stood between the two, the loom's own frame once)
+		_take(c, 0.0, DuelScreen.FILM_GATHER)
+		if not c.is_empty():
+			# a slow push in on it while it gathers
+			var p: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, 0.16)
+			_home_on([p, c[1], float(c[2])])
+			f.cam_shot(p, c[1], DuelScreen.FILM_GATHER + 0.2, float(c[2]))
+		return
 	var aim: Vector3
 	if target is DuelTotem:
 		aim = _body(target)
@@ -4002,7 +4089,132 @@ func _beat_attack(t: DuelTotem, target) -> void:
 		# (his own, going across the Circle on a slant: over his shoulder,
 		# watching it go)
 		cands.append(_over_bram(aim, 38.0, 2.6, 1.0, 0.6))
-	_take(_pick(cands), 0.3, MIN_HOLD)
+	# (24 November, Gary: "Game is really glitchy through Bram's battle": a
+	# new shot was flown to over a third of a second from wherever the last
+	# one stood, across the Circle and through any Totem in the way, at every
+	# attack, Rite and Doom. A change of shot is a cut now, FILM_SWEEP 0; only
+	# a move within a shot glides: the rise up a Totem called, a creep in,
+	# the push in with a blow, the Last Page's.)
+	_take(_pick(cands), FILM_SWEEP, MIN_HOLD)
+
+
+## The two of them in one picture, for a blow's crossing: from beside and a
+## little behind `near` (`hand`: 1 its right, -1 its left, as it faces
+## `far`; `back` and `aside` m), low, looking across at `far`. `near` stands
+## in the near side of the picture and `far` across the Circle in the other,
+## so what crosses between them crosses the picture. `h`: how tall `near`
+## stands. [camera, looking at, lens]
+func _two_shot(near: Vector3, far: Vector3, hand: float, h: float, back := 1.0, aside := 3.6, lens := 44.0) -> Array:
+	var d := Vector3(far.x - near.x, 0.0, far.z - near.z)
+	if d.length() < 0.6:
+		return []
+	d = d.normalized()
+	var right := d.cross(Vector3.UP).normalized()
+	var pos := near - d * back + right * hand * aside
+	pos.y = clampf(h * 0.45, 0.8, 1.5)
+	var look := near.lerp(far, 0.44)
+	look.y = maxf(0.55, minf(near.y, far.y) * 0.9)
+	return [pos, look, lens]
+
+
+## Is another Totem standing between the camera at `pos` and `at`? (`but`:
+## the Totems' own places, left out.)
+func _hidden(pos: Vector3, at: Vector3, but: Array) -> bool:
+	var f := _dir_f
+	var seg := at - pos
+	var len2 := seg.length_squared()
+	if len2 < 0.01:
+		return false
+	for side in f.slots:
+		for i in f.slots[side]:
+			var sl = f.slots[side][i]
+			if sl == null or String(sl.card_id) == "" or but.has(sl):
+				continue
+			var c := f.body_world(int(side), int(i))
+			var k := clampf((c - pos).dot(seg) / len2, 0.0, 1.0)
+			if k > 0.97:
+				continue
+			if (pos + seg * k).distance_to(c) < float(sl.creature_h) * 0.4:
+				return true
+	return false
+
+
+## The crossing's shot for a blow from `me` to `aim` (the Totems `t` and
+## whatever stands at `aim`): the two of them (_two_shot) from Bram's half of
+## the Circle looking into the hunter's, so his face is behind the lens; the
+## first of the places tried from which both are seen clear of every other
+## Totem, the Circle's outer side before its inner.
+func _crossing_shot(t: DuelTotem, me: Vector3, aim: Vector3) -> Array:
+	var f := _dir_f
+	var near := me if t.owner == 0 else aim
+	var far := aim if t.owner == 0 else me
+	var near_slot = null
+	var far_slot = null
+	for side in f.slots:
+		for i in f.slots[side]:
+			var sl = f.slots[side][i]
+			if sl == null or String(sl.card_id) == "":
+				continue
+			var c := f.body_world(int(side), int(i))
+			if Vector2(c.x - near.x, c.z - near.z).length() < 0.9 and near_slot == null:
+				near_slot = sl
+			elif Vector2(c.x - far.x, c.z - far.z).length() < 0.9 and far_slot == null:
+				far_slot = sl
+	var h := float(near_slot.creature_h) if near_slot != null else 2.0
+	var d := Vector3(far.x - near.x, 0.0, far.z - near.z).normalized()
+	var outer := signf(near.x) if absf(near.x) > 0.5 else (signf(near.x - far.x) if absf(near.x - far.x) > 0.5 else 1.0)
+	var hand := 1.0 if d.cross(Vector3.UP).x * outer >= 0.0 else -1.0
+	var fallback: Array = []
+	for place in [[1.4, 4.2], [0.4, 4.6], [2.6, 3.4], [3.4, 2.4]]:
+		for hd in [hand, -hand]:
+			var c := _two_shot(near, far, hd, h, float(place[0]), float(place[1]))
+			if c.is_empty() or _face_seen(c[0], c[1], float(c[2])) or _in_the_way(c[0]):
+				continue
+			if fallback.is_empty():
+				fallback = c
+			if not _hidden(c[0], far, [near_slot, far_slot]) and not _hidden(c[0], near, [near_slot, far_slot]):
+				return c
+	return fallback
+
+
+## The blow sets off across the Circle (DuelScreen.strike_goes): cut to the
+## two of them (_crossing_shot), the camera going in with the blow, and time
+## slowed for the crossing so it's seen (a striker's own leap once it has
+## sprung; a cast blow from the moment it leaves).
+func _on_strike_goes(att: DuelTotem, to3: Vector3, melee: bool) -> void:
+	if not staged_strikes or _dir_f == null or not is_instance_valid(_dir_f) or _climax or _skipping:
+		return
+	var f := _dir_f
+	var c := _crossing_shot(att, _body(att), to3)
+	var secs := DuelScreen.FILM_LUNGE if melee else 0.32 * DuelScreen.FILM_FLIGHT_K
+	if not c.is_empty():
+		_take(c, 0.0, secs + 0.3)
+		# in with it: a quarter of the way to where it was looking, its eyes
+		# brought round towards where the blow will land
+		var far := to3 if att.owner == 0 else _body(att)
+		var p: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, 0.22)
+		var to_far := Vector3(far.x, (c[1] as Vector3).y, far.z)
+		var land := Vector3(to3.x, (c[1] as Vector3).y, to3.z)
+		var l: Vector3 = (c[1] as Vector3).lerp(land, 0.4) if att.owner == 0 else (c[1] as Vector3).lerp(to_far, 0.0).lerp(land, 0.45)
+		var lens := float(c[2]) - 3.0
+		if not _face_seen(p, l, lens) and not _in_the_way(p):
+			_home_on([p, l, lens])
+			f.cam_shot(p, l, secs / CROSS_SLOW * 0.6, lens)
+	strikes_seen += 1
+	if melee:
+		# (its gathering on its haunches at the clock's own pace; the leap slowed)
+		await get_tree().create_timer(DuelScreen.FILM_LUNGE * (1.0 - DuelField3D.LUNGE_FLIGHT) * 0.9, false).timeout
+		if _skipping or _dir_f != f:
+			return
+	_slow(CROSS_SLOW, CROSS_HOLD, CROSS_RAMP)
+
+
+## And lands (DuelScreen.strike_lands): the cut to the blow.
+func _on_strike_lands(t: DuelTotem, amount: int) -> void:
+	if not staged_strikes or _dir_f == null or not is_instance_valid(_dir_f) or _climax or _skipping:
+		return
+	_struck = false
+	_beat_hit(t, amount, true)
 
 
 ## A blow landing on a Totem: a big one cut to and the camera shaken by it;
@@ -4010,9 +4222,11 @@ func _beat_attack(t: DuelTotem, target) -> void:
 ## blow had the film cutting every second).
 var _struck := false
 
-func _beat_hit(t: DuelTotem, amount: int) -> void:
+func _beat_hit(t: DuelTotem, amount: int, landed := false) -> void:
 	var f := _dir_f
-	if amount < BIG_BLOW or _struck:
+	# (24 November: a staged blow that lands is cut to whatever its size,
+	# `landed`: its whole crossing has just been watched)
+	if (amount < BIG_BLOW and not (landed and amount > 0)) or _struck:
 		f.cam_shake(4.5)
 		return
 	_struck = true
@@ -4036,7 +4250,12 @@ func _beat_hit(t: DuelTotem, amount: int) -> void:
 	f.floor_wave(foot, Color(0.82, 0.88, 1.0), 4.2, 0.55)
 	f.burst(foot + Vector3(0, 0.15, 0), Color(0.88, 0.92, 1.0), int(34 * DuelField3D.fx_scale()), 6.5, 0.8, 0.11, 1.0)
 	Haptics.kind(Haptics.BLOW)
-	_slow(0.08, 0.09, 0.14)
+	if landed:
+		# (the crossing's slow motion may still be running: let go of it, so
+		# the blow's own freeze is taken)
+		_slow_now(0.08, 0.1, 0.16)
+	else:
+		_slow(0.08, 0.09, 0.14)
 
 
 ## A blow on a duellist: on Bram, over his shoulder as he takes it (he
@@ -4051,21 +4270,41 @@ func _beat_life(pi: int, amount: int) -> void:
 		_shield_flinch()
 	else:
 		c = _pick([_on_hunter(28.0, 0.6), _on_hunter(24.0)])
+	# (24 November: what spills past a Totem onto him lands a fifth of a second
+	# after the blow's own cut; a second cut then was a flicker. The blow's
+	# shot is kept, and shaken.)
+	if staged_strikes and _t - _cut_at < LIFE_CUT_AFTER:
+		f.cam_shake(10.0 if amount >= BIG_BLOW else 5.0)
+		Haptics.kind(Haptics.BLOW)
+		return
 	_take(c, 0.0, HIT_HOLD)
 	f.cam_shake(10.0 if amount >= BIG_BLOW else 5.0)
 	Haptics.kind(Haptics.BLOW)
 
+
+## No cut to a blow on a duellist sooner than this after the last cut (s).
+const LIFE_CUT_AFTER := 0.8
+## How long after a Totem breaks the picture goes wide again (s): its glass
+## has burst and fallen by then, and the shot was left on the empty snow.
+const KO_THEN_WIDE := 1.25
 
 ## A Totem broken: held close as it goes.
 func _beat_ko(t: DuelTotem) -> void:
 	var f := _dir_f
 	var k: Array = f.shot_ko(t.owner, t.slot)
 	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO], _behind_low(t, 0.8, 36.0), _side_on(t, 0.6, 28.0)]), 0.0, KO_HOLD)
+	if staged_strikes:
+		_wide_after_ko(_cut_at)
 	f.cam_shake(6.0)
 	Haptics.kind(Haptics.HEAVY)
 	# (14 November) it breaks in slow motion and the sky answers; one of
 	# Bram's, and the night closes in on him (_bram_loses_one)
-	_slow(0.32, 0.42, 0.3)
+	# (24 November: taking over from the blow's own freeze if that's still
+	# running; it was passed over then, and most knockouts broke at full speed)
+	if staged_strikes:
+		_slow_now(0.32, 0.42, 0.3)
+	else:
+		_slow(0.32, 0.42, 0.3)
 	_sky_flare(1.0 if t.owner == 0 else 0.6, 1)
 	if t.owner == 0:
 		_wash(Color(0.45, 0.55, 1.0), 0.24, 0.9)
@@ -4075,11 +4314,22 @@ func _beat_ko(t: DuelTotem) -> void:
 		_wash(Color(1.0, 0.94, 0.8), 0.2, 0.6)
 
 
+## Once the broken Totem's glass has fallen, if the film hasn't cut away
+## already: a wide shot (it sat on the empty snow until the next beat came).
+func _wide_after_ko(cut: float) -> void:
+	await get_tree().create_timer(KO_THEN_WIDE, false).timeout
+	# (by the game's clock: the knockout's slow motion stretches it)
+	var f := _dir_f
+	if f == null or not is_instance_valid(f) or _climax or _skipping or _asking != "" or not is_equal_approx(_cut_at, cut):
+		return
+	_wide_shot()
+
+
 ## Close on a Totem something has happened to (a Doom, a curse).
 func _beat_close(t: DuelTotem, hold: float) -> void:
 	var f := _dir_f
 	var k: Array = f.shot_ko(t.owner, t.slot)
-	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO + 4.0], _side_on(t, 0.7, 30.0), _behind_low(t, 0.9, 38.0)]), 0.35, hold)
+	_take(_pick([[k[0], k[1], DuelField3D.SHOT_FOV_KO + 4.0], _side_on(t, 0.7, 30.0), _behind_low(t, 0.9, 38.0)]), FILM_SWEEP, hold)
 
 
 ## A Rite cast: whoever casts it (Bram over his shoulder, his hand up with
@@ -4091,7 +4341,7 @@ func _beat_rite(pi: int, target) -> void:
 	if target is DuelTotem:
 		at = _body(target)
 	var c: Array = _pick([_over_bram(at, 36.0, 2.2, 0.9, 0.5), SHOTS[0]]) if pi == 0 else _pick([_on_hunter(21.0, 0.3), SHOTS[3]])
-	_take(c, 0.25, MIN_HOLD + 0.4)
+	_take(c, FILM_SWEEP, MIN_HOLD + 0.4)
 
 
 ## Nothing for a while: one of the wide shots, drifting into place.
@@ -4100,7 +4350,9 @@ func _wide_shot() -> void:
 		var s: Array = WIDES[_wide_i % WIDES.size()]
 		_wide_i += 1
 		if not _face_seen(s[0], s[1], float(s[2])):
-			_take([s[0], s[1], s[2]], 2.4, MIN_HOLD, true)
+			# (cut to, then its slow creep in: it drifted there over 2.4 s
+			# from wherever the last shot was, through whatever stood between)
+			_take([s[0], s[1], s[2]], FILM_SWEEP * 8.0, MIN_HOLD, true)
 			return
 	_cut_at = _t
 
@@ -4176,7 +4428,7 @@ static func duel_spec() -> Dictionary:
 		"puzzle": D.play_board(), "story_rules": D.story_rules(),
 		"names": ["Bram", "The hunter"], "profiles": [D.bram_profile(), D.hunter_profile()],
 		"ai": [true, true], "controllers": D.play_controllers(), "difficulty": D.SKILL, "seed": D.SEED, "speed": D.FILM_SPEED,
-		"film": true, "film_summon_clip": true, "film_summon_speed": PAGE_DOWN, "film_summon_stays": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
+		"film": true, "film_strikes": staged_strikes, "film_summon_clip": true, "film_summon_speed": PAGE_DOWN, "film_summon_stays": true, "arena": "ironstone", "spectral_side": 1, "life_floor": D.LIFE_FLOOR.duplicate(),
 		"music": ["white_sky_duel", "white_sky", "sigilfall"], "film_home": SHOTS[0], "field3d": true}
 
 
@@ -5385,6 +5637,34 @@ const TAKE_FINGERS := Vector3(1.0, -0.04, 0.16)
 const TAKE_ELBOW := Vector3(-0.44, 1.18, 0.2)
 ## How far the small hand brings the card in towards him and down as his
 ## hand comes for it (his own frame, m).
+## (24 November, Gary: "When Bram takes card from baby his hand motion is
+## still a little weird". Looked at still by still: the card was taken at
+## the height of his chin, so his hand came up in front of his beard; he then
+## turned his palm to the ground and carried the card down under a flat hand
+## held level in the air, the card out of sight beneath it; and his hand
+## left by way of a mark out at his side at chest height, his forearm stuck
+## out level. Now the small hand brings the card down to the top of his
+## chest (TINY_GIVE: 20 cm down, was 10.5); his hand keeps its palm to his
+## own chest all the way down, its fingers sloping down across him
+## (TAKE_CARRY_PALM, TAKE_CARRY_FINGERS), as a hand does putting something
+## inside a coat; the card rides out past his fingertips where it can be
+## seen (TAKE_FLAT: 7 cm along his fingers, was 1); and his hand leaves low,
+## down past the bundle's end (TUCK_OVER_WIDE). `old_take`: as it was.)
+static var old_take := false
+const TINY_GIVE_NEW := Vector3(-0.09, -0.2, 0.05)
+const TAKE_CARRY_PALM := Vector3(0.0, -0.3, -1.0)
+const TAKE_CARRY_FINGERS := Vector3(0.88, -0.42, 0.2)
+const TAKE_FLAT_NEW := Vector3(0.0, 0.014, 0.07)
+const TUCK_OVER_WIDE_NEW := Vector3(-0.36, -0.09, 0.0)
+## His elbow down by his ribs as he brings it down (tried, and not used: his
+## forearm then lay through the end of the bundle. The lifted camera,
+## TAKE_CAM, has his elbow out of the picture instead.)
+const TAKE_CARRY_ELBOW := Vector3(-0.4, 1.14, 0.14)
+## The camera while he takes it (HAND_CAM's way: to his left, up, behind):
+## the card is taken at the top of his chest now, which from HAND_CAM was
+## behind his own shoulder.
+const TAKE_CAM := Vector3(0.54, 1.98, 0.14)
+var _take_cam := 0.0
 const TINY_GIVE := Vector3(-0.07, -0.105, 0.03)
 var _tiny_give := 0.0
 ## The card under his palm on the bundle (the palm's own frame: its y the way
@@ -5424,6 +5704,7 @@ func _take_card() -> void:
 		fig._skel.skeleton_updated.connect(_on_take)
 	# (the small hand brings it in towards him as his comes)
 	create_tween().tween_property(self, "_tiny_give", 1.0, TAKE_UP * 0.85).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	create_tween().tween_property(self, "_take_cam", 1.0, TAKE_UP).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# up to it: out past the bundle's end and up first, then across to the card
 	fig.elbow("right", TAKE_ELBOW * fig.stature(), TAKE_UP)
 	fig.reach(_tuck_hand, t, TAKE_UP * TAKE_ROUND)
@@ -5458,7 +5739,14 @@ func _take_card() -> void:
 		if is_instance_valid(t):
 			# (out towards him a little on the way, not straight through the small hand)
 			t.position = up_at.lerp(on_at, u) + inv * Vector3(-0.03, 0.035, 0.0) * sin(u * PI), 0.0, 1.0, TAKE_DOWN).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	fig.palm("right", (own.call(Vector3(0.0, -1.0, 0.1)) as Vector3).normalized(), TAKE_DOWN, 0.3, false, (own.call(Vector3(0.75, -0.1, 0.65)) as Vector3).normalized())
+	if old_take:
+		fig.palm("right", (own.call(Vector3(0.0, -1.0, 0.1)) as Vector3).normalized(), TAKE_DOWN, 0.3, false, (own.call(Vector3(0.75, -0.1, 0.65)) as Vector3).normalized())
+	else:
+		# (his palm kept to his own chest as it comes down, his fingers sloping across him)
+		fig.palm("right", (own.call(TAKE_CARRY_PALM) as Vector3).normalized(), TAKE_DOWN, 0.15, false, (own.call(TAKE_CARRY_FINGERS) as Vector3).normalized())
+	# (his elbow kept up and out as it was, TUCK_OVER_ELBOW: brought down by
+	# his ribs, TAKE_CARRY_ELBOW, his forearm lay through the end of the
+	# bundle, 1.6 cm, and the bundle 4.8 cm into it: held_child_probe)
 	fig.elbow("right", TUCK_OVER_ELBOW * fig.stature(), TAKE_DOWN)
 	await _wait(TAKE_DOWN)
 	if is_instance_valid(_tiny):
@@ -5476,7 +5764,7 @@ func _take_card() -> void:
 	create_tween().tween_property(self, "_hand_k", 0.0, 1.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	# (up off it and out past the bundle's end, as it comes in to draw the
 	# blanket: straight back to his side it went through the bundle's end)
-	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + TUCK_OVER_WIDE), TUCK_OVER_BACK * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	create_tween().tween_property(t, "position", inv * (TUCK_OVER_AT + (TUCK_OVER_WIDE if old_take else TUCK_OVER_WIDE_NEW)), TUCK_OVER_BACK * 0.5).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	await _wait(TUCK_OVER_BACK * 0.5)
 	_take_done(fig, t)
 	await _wait(TUCK_OVER_BACK)
@@ -5498,6 +5786,7 @@ func _take_done(fig: Figure3D, t: Node3D) -> void:
 	_take_k = -1.0
 	_take_grab = false
 	tucking = false
+	create_tween().tween_property(self, "_take_cam", 0.0, 1.2).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	if is_instance_valid(_mote):
 		_mote.queue_free()
 	_mote = null
@@ -5542,7 +5831,7 @@ func _on_take() -> void:
 		return
 	var k := smoothstep(0.0, 1.0, _take_k)
 	# (flat under the palm: its face the palm's, its length along the fingers)
-	var flat := Transform3D(Basis(Vector3.RIGHT, Vector3.BACK, Vector3.DOWN), TAKE_FLAT)
+	var flat := Transform3D(Basis(Vector3.RIGHT, Vector3.BACK, Vector3.DOWN), TAKE_FLAT if old_take else TAKE_FLAT_NEW)
 	var rel := Transform3D(Basis(_take_rel.basis.orthonormalized().get_rotation_quaternion().slerp(flat.basis.get_rotation_quaternion(), k)), _take_rel.origin.lerp(flat.origin, k))
 	var xf := palm * rel
 	if _take_in > 0.0:
@@ -5651,7 +5940,7 @@ func _tiny_xf(k: float) -> Transform3D:
 	var own := fig.global_basis.orthonormalized() * Basis(Vector3.UP, fig._yaw)
 	var b := own * Basis.from_euler(TINY_TURN)
 	var wob := Vector3(sin(_t * 5.3) * 0.006, sin(_t * 3.1) * 0.004, sin(_t * 4.1) * 0.006) * k
-	var up_at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob + TINY_GIVE * _tiny_give)
+	var up_at := fig.bone_pos("LeftArm") + own * (TINY_AT + wob + (TINY_GIVE if old_take else TINY_GIVE_NEW) * _tiny_give)
 	if tiny_from_child and is_instance_valid(_baby):
 		# (19 November) its forearm from the child's own shoulder to the
 		# wrist: it comes up out of the blanket there, and as the hand moves
@@ -7315,9 +7604,7 @@ func _make_baby() -> Node3D:
 		m.scale = Vector3.ONE * k
 		m.position = -aabb.get_center() * k
 		var mark := MeshInstance3D.new()
-		var mq := QuadMesh.new()
-		mq.size = Vector2(0.06, 0.06)
-		mark.mesh = mq
+		mark.name = "Mark"
 		var mm := StandardMaterial3D.new()
 		mm.albedo_texture = SealMark.texture()
 		mm.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
@@ -7327,10 +7614,25 @@ func _make_baby() -> Node3D:
 		mm.emission_energy_multiplier = 0.8
 		mm.emission_texture = SealMark.texture()
 		mm.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		mm.cull_mode = BaseMaterial3D.CULL_DISABLED
 		mark.material_override = mm
-		mark.rotation_degrees = Vector3(-90, 0, 0)
+		mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		# on the top of the bundle, a little towards the head
-		mark.position = Vector3(0.0, aabb.size.y * k * 0.5 + 0.004, -0.09)
+		# (24 November, Gary: "the baby's sigil is floating above him rather
+		# then on him". It was a flat square set 4 mm over the bundle's highest
+		# point, wherever that was: the bundle is highest over its legs, and
+		# where the mark is, over the heart, the wool is 2.4 cm lower and
+		# falls away to either side, so it hung in the air over him. Now it's
+		# a patch laid on the wool itself, MARK_LIFT over it, following its
+		# folds: _mark_patch. `flat_mark`: the square, the tests' before.)
+		if flat_mark:
+			var mq := QuadMesh.new()
+			mq.size = Vector2(MARK_ON, MARK_ON)
+			mark.mesh = mq
+			mark.rotation_degrees = Vector3(-90, 0, 0)
+			mark.position = Vector3(0.0, aabb.size.y * k * 0.5 + 0.004, MARK_Z)
+		else:
+			mark.mesh = _mark_patch(m, root, Vector2(0.0, MARK_Z), MARK_ON, aabb.size.y * k * 0.5)
 		root.add_child(mark)
 		var glow := OmniLight3D.new()
 		glow.light_color = Color(0.85, 0.85, 0.9)
@@ -7422,6 +7724,159 @@ func _make_baby() -> Node3D:
 			tops.append(Vector3(x, sqrt(maxf(0.0, r2 - over * over)), z))
 	_lay_snow(root, tops)
 	return root
+
+
+## The mark on the child's blanket: how big (m), where along the bundle (its
+## own frame: towards the head), and how far over the wool it's laid.
+const MARK_ON := 0.06
+const MARK_Z := -0.09
+const MARK_LIFT := 0.0022
+static var flat_mark := false
+## How far over the wool the mark's highest and lowest points lie (m; the
+## tests read them: MARK_LIFT each when it's laid on it).
+static var mark_gap := Vector2.ZERO
+
+## A square patch `size` across laid on the top of the model `m` at `at`
+## (x and z, in `root`'s frame), following its shape: a grid of MARK_GRID
+## squares a side, each corner set on the highest of the model's own points
+## about it (and smoothed once with its neighbours, so a stray point doesn't
+## stand up as a spike), MARK_LIFT over it. The mark's picture is laid across
+## it as it was across the flat square (its top towards the head, -z).
+## `flat_y`: where a corner goes that has none of the model under it.
+const MARK_GRID := 12
+## How far from where it's asked for the flattest place is looked for (m),
+## and where the mark was laid (x and z in the bundle's frame; the tests').
+const MARK_SEEK := 0.08
+static var mark_at := Vector2.ZERO
+
+static func _mark_patch(m: Node3D, root: Node3D, at: Vector2, size: float, flat_y: float) -> Mesh:
+	var half := size * 0.5
+	var cell := size / MARK_GRID
+	var reach := half + cell * 2.0 + MARK_SEEK
+	# the model's points under and about the patch, in root's frame
+	var near := PackedVector3Array()
+	for n in m.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		if mi.mesh == null:
+			continue
+		var xf := Transform3D.IDENTITY
+		var q: Node = mi
+		while q != null and q != root:
+			if q is Node3D:
+				xf = (q as Node3D).transform * xf
+			q = q.get_parent()
+		for si in mi.mesh.get_surface_count():
+			var vs: PackedVector3Array = mi.mesh.surface_get_arrays(si)[Mesh.ARRAY_VERTEX]
+			for v in vs:
+				var p := xf * v
+				if absf(p.x - at.x) < reach and absf(p.z - at.y) < reach and p.y > 0.0:
+					near.append(p)
+	# the flattest place for it within MARK_SEEK of `at` (a little way towards
+	# the head, further towards the feet): where it was asked for, over the
+	# heart, the hood's edge crosses under it on Gary's bundle, a fold 1.5 cm
+	# deep, and a mark laid across that was bent in two. The wool's height is
+	# read off in centimetre squares, and each place is judged by how far its
+	# highest square stands over its lowest, a place nearer `at` preferred.
+	var sq := 0.01
+	var bins := {}
+	for p in near:
+		var key := Vector2i(floori(p.x / sq), floori(p.z / sq))
+		if not bins.has(key) or p.y > float(bins[key]):
+			bins[key] = p.y
+	var best := at
+	var best_cost := INF
+	var span := ceili(half / sq)
+	for cz in range(-3, 8):
+		for cx in range(-3, 4):
+			var c := at + Vector2(cx, cz) * sq
+			var lo_y := INF
+			var hi_y := -INF
+			var got := 0
+			for dz in range(-span, span + 1):
+				for dx in range(-span, span + 1):
+					var key := Vector2i(floori(c.x / sq) + dx, floori(c.y / sq) + dz)
+					if bins.has(key):
+						got += 1
+						lo_y = minf(lo_y, float(bins[key]))
+						hi_y = maxf(hi_y, float(bins[key]))
+			if got < (span * 2 + 1) * (span * 2 + 1):
+				continue   # (off the bundle's edge)
+			var cost := (hi_y - lo_y) + 0.12 * Vector2(cx, cz).length() * sq
+			if cost < best_cost:
+				best_cost = cost
+				best = c
+	at = best
+	mark_at = at
+	var n1 := MARK_GRID + 1
+	var hs := PackedFloat32Array()
+	hs.resize(n1 * n1)
+	var r2 := (cell * 1.25) * (cell * 1.25)
+	for iz in n1:
+		for ix in n1:
+			var x := at.x - half + cell * ix
+			var z := at.y - half + cell * iz
+			var top := -INF
+			for p in near:
+				var dx := p.x - x
+				var dz := p.z - z
+				if dx * dx + dz * dz < r2 and p.y > top:
+					top = p.y
+			hs[iz * n1 + ix] = top
+	# a corner with nothing under it takes its neighbours' (or the flat height)
+	for pass_i in 3:
+		for i in hs.size():
+			if hs[i] > -1000.0:
+				continue
+			var sum := 0.0
+			var cnt := 0
+			for d in [-1, 1, -n1, n1]:
+				var j: int = i + d
+				if j >= 0 and j < hs.size() and hs[j] > -1000.0 and (absi(d) != 1 or j / n1 == i / n1):
+					sum += hs[j]
+					cnt += 1
+			if cnt > 0:
+				hs[i] = sum / cnt
+	for i in hs.size():
+		if hs[i] <= -1000.0:
+			hs[i] = flat_y
+	# smoothed once: never under the wool it was measured on
+	var sm := hs.duplicate()
+	for iz in n1:
+		for ix in n1:
+			var sum := 0.0
+			var cnt := 0
+			for dz in [-1, 0, 1]:
+				for dx in [-1, 0, 1]:
+					var jx: int = ix + dx
+					var jz: int = iz + dz
+					if jx >= 0 and jx < n1 and jz >= 0 and jz < n1:
+						sum += hs[jz * n1 + jx]
+						cnt += 1
+			sm[iz * n1 + ix] = maxf(hs[iz * n1 + ix], sum / cnt)
+	var verts := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var idx := PackedInt32Array()
+	var lo := INF
+	var hi := -INF
+	for iz in n1:
+		for ix in n1:
+			verts.append(Vector3(at.x - half + cell * ix, sm[iz * n1 + ix] + MARK_LIFT, at.y - half + cell * iz))
+			uvs.append(Vector2(float(ix) / MARK_GRID, float(iz) / MARK_GRID))
+			lo = minf(lo, sm[iz * n1 + ix] - hs[iz * n1 + ix])
+			hi = maxf(hi, sm[iz * n1 + ix] - hs[iz * n1 + ix])
+	mark_gap = Vector2(lo + MARK_LIFT, hi + MARK_LIFT)
+	for iz in MARK_GRID:
+		for ix in MARK_GRID:
+			var a := iz * n1 + ix
+			idx.append_array([a, a + 1, a + n1, a + 1, a + n1 + 1, a + n1])
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = verts
+	arr[Mesh.ARRAY_TEX_UV] = uvs
+	arr[Mesh.ARRAY_INDEX] = idx
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	return mesh
 
 
 ## The snow that's settled on the child while it lay there (12 November,
@@ -8825,7 +9280,10 @@ func _process(delta: float) -> void:
 		if _hand_k > 0.001:
 			# in over his left shoulder for the small hand (_small_hand)
 			var hk := smoothstep(0.0, 1.0, _hand_k)
-			_cam_want = _cam_want.lerp(p - f * HAND_CAM.z - r * HAND_CAM.x + Vector3(0, HAND_CAM.y, 0), hk)
+			# (24 November: higher and further over him while he takes the
+			# card, TAKE_CAM, so the top of his chest is seen past his shoulder)
+			var hc := HAND_CAM if old_take else HAND_CAM.lerp(TAKE_CAM, smoothstep(0.0, 1.0, _take_cam))
+			_cam_want = _cam_want.lerp(p - f * hc.z - r * hc.x + Vector3(0, hc.y, 0), hk)
 			_look_want = _look_want.lerp(_hand_point(), hk)
 			_cam.fov = lerpf(_cam.fov, HAND_LENS, hk)
 		if _open_k > 0.0:
@@ -8975,7 +9433,7 @@ func _roam_step(delta: float) -> void:
 ## How fast his pace is worked up to and let go of (m/s a second: about a
 ## third of a second from standing to WALK_SPEED), how far short of a tapped
 ## spot he begins to slow (m), and his walking as it is now (m/s, flat).
-const WALK_ACCEL := 4.2
+const WALK_ACCEL := 6.5   # (24 November: was 4.2, a third of a second to his pace; now a fifth, so a key answers at once)
 const WALK_SLOW_IN := 0.7
 var _vel := Vector3.ZERO
 
@@ -9191,7 +9649,11 @@ func _say(line: Dictionary, always := false) -> void:
 	var nm: String = w._speaker(who) if w != null else who.capitalize()
 	var text: String = w._fmt(String(line.say)) if w != null else String(line.say)
 	_mouth(who, secs, text)
-	await _ov.say(nm, text, secs, secs > 0.0)
+	# (24 November, Gary: "running slow when Morrowen is talking. Taking a while
+	# to respond to movement": said while the walk is his, a line doesn't take
+	# the screen from it, CineOverlay.say's `catch`; his first tap or drag to
+	# walk was being spent on Morrowen's line)
+	await _ov.say(nm, text, secs, secs > 0.0, not _roam)
 	_mouth(who, 0.0, "")
 	if secs > 0.0:
 		VoiceLines.stop(host)

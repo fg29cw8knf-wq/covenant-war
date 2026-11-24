@@ -1454,6 +1454,7 @@ static func opening(w: World) -> void:
 	for k in range(i, STAGES.size()):
 		Game.set_flag("p1_stage", STAGES[k])
 		Game.save_game()
+		PerfLog.at("ashford morning: the " + String(STAGES[k]))   # (the speed log's)
 		match STAGES[k]:
 			"attic":
 				await _attic(w)
@@ -1506,6 +1507,7 @@ static func _attic(w: World) -> void:
 		ov.black(true)
 		vp.disable_3d = false
 		m.queue_free()
+		PerfLog.at("ashford morning: the attic")   # (the memory named its own parts: the attic's again)
 		await Cine.caption(w, "Ashford", "The last night of the Age.", 2.4)
 		if SealMark.held(w.get_tree()) != null:
 			# (15 November: the memory left the child's mark up on the black,
@@ -3369,20 +3371,41 @@ static func _take_crate(w: World, cr: Node3D, room: Dictionary = {}) -> void:
 			took_crate_from = rad_to_deg(dir.angle_to(pick))
 			dir = pick
 		var spot := Vector3(c.x, from.y, c.z) + dir * CRATE_STAND_OFF
-		if from.distance_to(spot) > 0.06:
-			await Cine.path(w, "player", [spot], 1.0)
-		Cine.look(w, "player", c)
-		await Cine.wait(w, 0.3)
 		# each hand to the side nearer it (they may come at it from the back)
 		var left_dir := Vector3.UP.cross(-dir)
 		var on_l := left_dir.dot(cr.global_basis.x) >= 0.0
 		var lh: Node3D = cr.get_node("L" if on_l else "R")
 		var rh: Node3D = cr.get_node("R" if on_l else "L")
+		# (24 November, Gary: "Player arm goes through crate before he picks it
+		# up". He walked right up to it, his front a hand's width from its
+		# side, with his arms swinging as a walk's do: on the last step the
+		# hand swinging forward went into the crate, and from his sides his
+		# hands then went straight to its ends, through its near corners. Now
+		# his hands come up as he takes the last steps, out wide of its two
+		# ends and above them (_crate_ready: CRATE_READY_OUT, _UP, _BACK), so
+		# no arm is swinging when he gets there, and from there they come in
+		# onto its ends from outside. `crate_ready` false: as it was.)
+		var pre_l: Node3D = _crate_ready(cr, lh, dir) if crate_ready else null
+		var pre_r: Node3D = _crate_ready(cr, rh, dir) if crate_ready else null
+		var readied := [false]
+		if from.distance_to(spot) > 0.06:
+			if crate_ready:
+				_ready_hands_on_the_way(w, me, spot, pre_l, pre_r, readied)
+			await Cine.path(w, "player", [spot], 1.0)
+		if crate_ready and not readied[0]:
+			readied[0] = true
+			me.reach(pre_l, pre_r, CRATE_READY_SECS)
+			await Cine.wait(w, CRATE_READY_SECS * 0.7)
+		Cine.look(w, "player", c)
+		await Cine.wait(w, 0.3)
 		me.pose("lift", CRATE_BEND, 0.45)
 		# (bent over it from the hips, so his hands get to its ends: Figure3D.bend_over)
 		me.bend_over(CRATE_OVER, 0.45)
 		me.reach(lh, rh, 0.45)
 		await Cine.wait(w, 0.6)
+		for pre in [pre_l, pre_r]:
+			if pre != null and is_instance_valid(pre):
+				(pre as Node3D).queue_free()
 		# a little up off the stand first, as the weight is taken
 		var y0 := cr.global_position.y
 		var take := w.create_tween()
@@ -3406,6 +3429,46 @@ static func _take_crate(w: World, cr: Node3D, room: Dictionary = {}) -> void:
 	cr.set_meta("p1_prop", true)
 	w.set_meta("p1_crate", cr)
 	await Cine.wait(w, 0.3)
+
+
+## Where a hand waits by the crate before it takes it (_take_crate): out
+## past the end its handle's on, above it, and back towards him (m); how
+## near the spot he's walking to his hands start up (m), and over how long.
+## (first tried 13, 10 and 17 cm: seen from in front his arms went out like a
+## scarecrow's. Just clear of its ends now, and barely over them.)
+const CRATE_READY_OUT := 0.05
+const CRATE_READY_UP := 0.03
+const CRATE_READY_BACK := 0.13
+const CRATE_READY_AT := 0.24
+const CRATE_READY_SECS := 0.3
+static var crate_ready := true
+
+## A mark by the crate for a hand to come to first: out past `hand`'s end
+## of it, above it and back towards whoever is taking it (`dir`: the way
+## from the crate to them). The crate's child, so it goes where the crate does.
+static func _crate_ready(cr: Node3D, hand: Node3D, dir: Vector3) -> Node3D:
+	var n := Node3D.new()
+	n.name = "Ready" + String(hand.name)
+	cr.add_child(n)
+	var out := hand.global_position - cr.global_position
+	out.y = 0.0
+	out = out.normalized() if out.length() > 0.01 else Vector3.ZERO
+	n.global_position = hand.global_position + out * CRATE_READY_OUT + dir * CRATE_READY_BACK + Vector3(0, CRATE_READY_UP, 0)
+	return n
+
+
+## On the walk up to the crate: once they're within CRATE_READY_AT of where
+## they'll stand, their hands start up to its ready marks (`readied`: done).
+static func _ready_hands_on_the_way(w: World, me: Figure3D, spot: Vector3, pre_l: Node3D, pre_r: Node3D, readied: Array) -> void:
+	while is_instance_valid(w) and w.is_inside_tree() and not readied[0]:
+		await w.get_tree().process_frame
+		if not is_instance_valid(me) or not is_instance_valid(pre_l) or not is_instance_valid(pre_r):
+			return
+		var d := w.player.global_position - spot
+		d.y = 0.0
+		if d.length() < CRATE_READY_AT:
+			readied[0] = true
+			me.reach(pre_l, pre_r, CRATE_READY_SECS)
 
 
 ## (18 November, Gary's yes: "steam on the porridge".) A few thin wisps off

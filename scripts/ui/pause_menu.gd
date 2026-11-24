@@ -1068,6 +1068,13 @@ func _options() -> Control:
 			if not SpeedTest.running:
 				SpeedTest.run(get_tree(), self, _area_name()))
 		v.add_child(st)
+		# (24 November) the game's own record of how fast each part ran this
+		# time and the time before (PerfLog), to paste to a session
+		var pl := UITheme.button("Copy the speed log (how fast each part of the game ran)", false, 640)
+		pl.pressed.connect(func() -> void:
+			DisplayServer.clipboard_set(PerfLog.everything())
+			toast("Speed log copied: paste it to Claude"))
+		v.add_child(pl)
 	v.add_child(_check("Show advert placeholders (this early build only)", bool(Game.settings.get("ad_previews", true)), func(on: bool) -> void:
 		Game.settings["ad_previews"] = on))
 	var row := HBoxContainer.new()

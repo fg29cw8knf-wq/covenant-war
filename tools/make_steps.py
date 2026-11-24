@@ -70,13 +70,23 @@ def snow(r):
 
 
 def grass(r):
-    """Grass brushed and pressed: a soft swish over a softer weight."""
-    secs = r.uniform(0.15, 0.2)
-    n = n_of(secs)
-    swish = band(r.standard_normal(n), 1700, 6500) * env(secs, 0.22, 0.2, 0.58, 1.4)
-    blades = band(grains(secs, r.uniform(240, 380), r, 0.8), 2500, 8000) * env(secs, 0.15, 0.3, 0.55)
-    under = thump(r, 140, 85, 0.06, 32.0)
-    return place([(0.0, norm(swish) * 0.75 + norm(blades) * 0.35), (0.012, under * 0.18)])
+    """A foot down on turf: the weight landing soft, the sod giving, and only
+    a breath of the blades.
+
+    (24 November, Gary: "When you step outside there is a shuffling sound
+    which sounds out of place". It was a swish: three quarters of it noise
+    between 1.7 and 6.5 kHz with a sixth of a thump under it, so a walk
+    across the green was a run of hisses, and the first steps out of the
+    inn's door, off its boards onto the grass, were the shuffle. Now it's a
+    footfall: the thump and a soft low body carry it, the blades a short
+    quiet brush after them, well under.)"""
+    under = thump(r, 150, 85, 0.08, 28.0)
+    b_secs = r.uniform(0.055, 0.075)
+    # (its body where a laptop's or a phone's small speaker can still say it)
+    body = band(r.standard_normal(n_of(b_secs)), 230, 1000) * env(b_secs, 0.08, 0.16, 0.76, 2.0)
+    s_secs = r.uniform(0.07, 0.1)
+    brush = band(grains(s_secs, r.uniform(300, 460), r, 0.86), 900, 3200) * env(s_secs, 0.12, 0.22, 0.66, 2.0)
+    return place([(0.0, under * 0.34), (0.0, norm(body) * 0.8), (0.008, norm(brush) * 0.5)])
 
 
 def dirt(r):

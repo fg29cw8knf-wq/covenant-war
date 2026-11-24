@@ -413,7 +413,17 @@ func fade(to_alpha: float, secs := 0.8) -> void:
 ## A subtitle. `who` "" is narration (italic, no name). Returns when it's
 ## been tapped on (or, `timed`, when `hold` seconds are up: a voiced line
 ## held for its recording, which a tap still skips).
-func say(who: String, text: String, hold := -1.0, timed := false) -> void:
+## (24 November, Gary: "Game is running slow when Morrowen is talking. Taking
+## a while to respond to movement": `catch` false leaves the screen to
+## whatever is being played under the line. A line takes every press on the
+## screen while it's up, so that a tap anywhere moves it on; said over a walk
+## that's the player's (the Night of the White Sky's opening), that meant no
+## tap or drag reached the walk until the line had been tapped away, and the
+## first tap to walk was spent on the line. With `catch` false a tap on the
+## line itself (line_rect) or the interact key still moves it on, and the
+## walk has the rest of the screen: whoever plays under it sends taps on the
+## line here (tap()).)
+func say(who: String, text: String, hold := -1.0, timed := false, catch := true) -> void:
 	if _pass_out != null:
 		_pass_out.kill()   # (a say_over's line going out as this one comes)
 		_pass_out = null
@@ -428,7 +438,7 @@ func say(who: String, text: String, hold := -1.0, timed := false) -> void:
 	tw.tween_property(_who, "modulate:a", 1.0, 0.25)
 	_waiting = true
 	_shown_at = Time.get_ticks_msec()
-	_catch.mouse_filter = Control.MOUSE_FILTER_STOP
+	_catch.mouse_filter = Control.MOUSE_FILTER_STOP if catch else Control.MOUSE_FILTER_IGNORE
 	var speed := maxf(0.4, float(Game.settings.get("text_speed", 1.0)))
 	var secs := hold if hold > 0.0 else (READ_BASE + text.length() * READ_PER_CHAR) / speed
 	var timer: SceneTreeTimer = null
@@ -701,6 +711,29 @@ func choose_deck(heading: String) -> String:
 func _tap() -> void:
 	if _waiting and Time.get_ticks_msec() - _shown_at > 250:
 		_next.emit()
+
+
+## A line is up and waiting for a tap.
+func waiting() -> bool:
+	return _waiting
+
+
+## Where the line that's up is on the screen (its name, its words and the
+## "TAP" under it, with a finger's room round them), for whoever has the rest
+## of the screen (say's `catch` false).
+func line_rect() -> Rect2:
+	var r := _line.get_global_rect()
+	if _who.visible:
+		r = r.merge(_who.get_global_rect())
+	# (the words are centred in a wide box: as wide as they're drawn, no wider)
+	var wd := minf(r.size.x, maxf(420.0, _line.get_content_width() + 120.0))
+	r = Rect2(r.get_center().x - wd * 0.5, r.position.y, wd, r.size.y)
+	return r.merge(_hint.get_global_rect()).grow(36.0)
+
+
+## A tap on the line from whoever has the rest of the screen: moves it on.
+func tap() -> void:
+	_tap()
 
 
 func _unhandled_input(e: InputEvent) -> void:
