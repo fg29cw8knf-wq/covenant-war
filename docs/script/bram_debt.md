@@ -36,7 +36,7 @@ on. Only the Prologue's lines are in the game so far.
 | The walk out | The hooded figure stands on its rim watching him go, then comes apart in the gust |
 | Over him with the child | Morrowen: "He walked out of the Shardlands with the child in his coat, and the child's death in his own name." |
 | On the black | Morrowen: "But a death that is moved is never paid in full. It gathers interest." |
-| Then | Morrowen: "Twenty years later, the Age came to its end... and every debt in my book came due." Then the title |
+| Then | Morrowen: "Twenty years later, the Age came to its end... and every borrowed death came due." Then the title |
 
 ## Where it goes next (to be written into the scripts, for Gary's yes)
 

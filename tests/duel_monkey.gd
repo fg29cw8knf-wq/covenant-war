@@ -3,6 +3,12 @@ extends Node
 ## in the screen's input flows (pickers, targets, dialogs). Watch the output
 ## for SCRIPT ERROR lines.
 ##   godot --headless res://tests/duel_monkey.tscn -- [duels]
+## (25 November) `--3d --speed=1` (or 2) plays them on the 3D field at a
+## speed a person watches at, where attacks are staged in three shots
+## (DuelScreen.staged_strikes): run it with --fixed-fps 30, which lets a
+## headless run go as fast as the machine will. It then also says how many
+## attacks were staged and seen to cross, and whether the clock, the camera
+## or a striker was left out of place at the end of a duel.
 
 var rng := RandomNumberGenerator.new()
 var screen: DuelScreen
@@ -14,6 +20,12 @@ func _ready() -> void:
 	var duels := int(args[0]) if args.size() > 0 else 3
 	get_tree().root.theme = UITheme.make()
 	rng.seed = 3
+	var spd := 50.0
+	for x in args:
+		if String(x).begins_with("--speed="):
+			spd = float(String(x).trim_prefix("--speed="))
+	var most_frames := 40000 if spd > 4.0 else 400000
+	DuelScreen.staged_strikes = not args.has("--oldstrikes")
 	var decks := DuelCards.DECKS.keys()
 	for d in duels:
 		var a: String = decks[d % decks.size()]
@@ -23,18 +35,34 @@ func _ready() -> void:
 		p0["fortune"] = 2
 		var p1 := Lore.new_profile("Rival", patrons[(d + 3) % 8], 4)
 		screen = DuelScreen.new().configure({"decks": [a, b], "names": ["You", "Rival"], "profiles": [p0, p1],
-			"ai": [false, true], "seed": 100 + d, "speed": 50.0, "field3d": OS.get_cmdline_user_args().has("--3d"),
+			"ai": [false, true], "seed": 100 + d, "speed": spd, "field3d": OS.get_cmdline_user_args().has("--3d"),
 			"law": "" if d % 3 == 0 else DuelLaws.ids()[d % DuelLaws.ids().size()]})
 		add_child(screen)
 		var done := [false]
 		screen.finished.connect(func(_r) -> void: done[0] = true)
 		var frames := 0
-		while not done[0] and frames < 40000:
+		var slowest := 1.0
+		var lunges := 0
+		var was_lunging := false
+		while not done[0] and frames < most_frames:
 			await get_tree().process_frame
 			frames += 1
 			if frames % 3 == 0:
 				_poke()
+			slowest = minf(slowest, Engine.time_scale)
+			if screen.field != null:
+				var now: bool = screen.field.lunging > 0
+				if now and not was_lunging:
+					lunges += 1
+				was_lunging = now
 		print("duel %d (%s vs %s): turn %d, winner %d, %s, taps %d" % [d, a, b, screen.game.turn, screen.game.winner, screen.game.win_reason, taps])
+		if spd <= 4.0 and screen.field != null:
+			print("  staged: %d attacks, %d crossings, %d lunges; %d frames (%.0f s of the duel's time); the clock's slowest %.2f, now %.2f; lunging now %d" % [
+				screen.staged_attacks, screen.staged_crossings, lunges, frames, frames / 30.0, slowest, Engine.time_scale, screen.field.lunging])
+			if spd <= DuelScreen.STAGE_MAX_SPEED and DuelScreen.staged_strikes and screen.staged_attacks == 0:
+				print("  PROBLEM: no attack was staged")
+			if absf(Engine.time_scale - 1.0) > 0.001:
+				print("  PROBLEM: the clock was left at %.2f" % Engine.time_scale)
 		if not done[0]:
 			# stalled: say where (the screen's mode, the turn's phase, what's on the overlay, the last lines)
 			var pops := []

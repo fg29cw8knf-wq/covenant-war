@@ -3377,6 +3377,112 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Gary's 25 November yeses (Morrowen's line, every attack in three shots, a model for the shield)
+
+Gary (24 November, 23:54 and 23:55, to the five suggestions after the build):
+"Models: - can tripo3d not do that for us?" and "1 yes 2 yes 5 yes".
+`docs/handover/2026-11-25.md` has the whole of it.
+
+- **1, Morrowen's line.** `WhiteSky.DEBT_DUE` is "Twenty years later, the Age
+  came to its end... and every borrowed death came due." (it was "...and
+  every debt in my book came due.": her first line says every soul in her
+  book starts with a debt, so every debt falling due was everyone dying). It
+  had no recording, so none is lost: it's line 0006 on the voice sheet, id
+  `b2e3e083` now (`docs/script/vo_lines.md`, rewritten by `tools/vo_sheet.py`).
+- **2, every attack in three shots, in every duel** (`DuelScreen.staged_strikes`,
+  `_staged`, `_gather_shot`, `_deliver_staged`, `_land_shot`). A played duel's
+  attack was a push in behind the striker, its back to the lens and what it
+  was going for hidden beyond it, then a whip to where the blow landed, and a
+  melee blow was a tenth of a second's nudge of the striker's picture, so
+  nothing was ever seen to cross the Circle. Now, on the 3D field with the
+  cinematic touches on, at Normal and Fast (`STAGE_MAX_SPEED`; Fastest keeps
+  the quick way, as does `DuelRules.cinematic` off):
+  1. **it gathers its power**: a cut to a close-up from its front quarter,
+     low, looking up at it, a slow push in, a key light on it from beside the
+     lens (`DuelField3D.key_light`; seen from the front your own Totems have
+     the arena's light behind them), held `STAGE_GATHER` (0.55 of the duel's
+     seconds) and through its Fate roll; further off through a wider lens the
+     bigger it stands, from its other front quarter every other attack;
+  2. **it crosses**: a cut to the two of them in one picture
+     (`DuelField3D.crossing_shot`), always from your half of the Circle, so
+     your Totems are the near ones and the rival's the far whoever strikes; a
+     melee striker really goes (`DuelField3D.lunge`, from the film: back on
+     its haunches, a leap across, `STAGE_LUNGE` 0.58), a cast blow leaves it as
+     it leans in and takes 1.6 times as long to cross (`STAGE_FLIGHT_K`). The
+     crossing of a blow that matters (50 or more, a weakness, a critical, one
+     that breaks its Totem) is slowed to half for a moment (`_cross_slow`),
+     back to speed before it lands so the freeze on the blow still comes;
+  3. **it lands**: the cut to the blow comes as it arrives. A melee blow is
+     seen from out to the side of the two (`LAND_MELEE_*`): from behind the
+     striker, where `shot_close` stands, its back hid what it struck now that
+     it's really there.
+  Then home as before (`_cam_home_soon`), or straight to the next attack's
+  close-up if one follows. A blow on every Totem across is one shot from
+  behind the striker with all of them in it, a leap at each in turn, not cut
+  to one by one; the later blows of a flurry keep the shot the first left; a
+  blow on Life leaps to the rival's line (`_lunge_end`: a stride past it if
+  nothing of theirs stands in the way) and is seen from further back; the
+  blow that ends the duel cuts home first and has its lean and slow motion
+  as it always did, the leap itself now in that slow motion (the clock is
+  held slow about a second longer than it was).
+  **Which place the crossing is filmed from** (`crossing_shot`,
+  `_cross_mark`): three Totems a side stand in each other's way, and the
+  film's "first clear place of four" left a neighbour's back across a third
+  of the picture. Every place is tried and marked now: over the near one's
+  shoulder from four places either hand, and from out to the side three
+  quarters on, each low and at three heights above (`CROSS_HEIGHTS`); marked
+  down for one of the two behind the lens, under the hand of cards, at the
+  picture's edge, too small or cropped, one standing over the other, another
+  Totem standing over either or across the foreground, the lens in anything,
+  or looking back down the Circle where nothing is painted; the lowest and
+  nearest clean one wins. The film (WhiteSky) keeps its own chooser; its
+  `_two_shot` and `_hidden` are the field's `two_shot` and `blocked` now.
+  **What it costs in time:** about 0.7 s more an attack at Normal (0.4 at
+  Fast); a duel between two computers has 37 attacks on average (120 duels,
+  most 79), so about 25 s on a duel.
+- **A glitch it showed up** (`DuelField3D._tint_model`): a slot's rim-light
+  material was given its colour once, by the first glowing Totem to stand
+  there, so whatever stood there after it struck in that one's colour: an
+  Ashen Drake called where an Elderbark fell gathered its fire in pale green.
+  The colour is set every time now. And `_end_charge` asked `is` of a charge
+  that had freed itself (a script error on an attack held past the charge's
+  whole time, which the longer gather made likely): valid first now.
+- **5, the shield.** The prompt is on Still to Make ("4. The taproom"),
+  Tripo3D text-to-3D, no rig. When the model comes: the taproom at dusk
+  ("eve") is a baked room (`BakedLight`, matched node for node), so the model
+  goes in as the shield's replacement and the room is baked again, not as an
+  extra node.
+- **Models, "can tripo3d not do that for us?"** Mostly, and it already does:
+  Hale, the Sun Guard and the hunter came rigged from Tripo with its library
+  clips and haven't had these troubles. Player A and Bram are the two that have: Player A's Tripo
+  skeleton came turned a quarter round to his mesh and Bram's model came with
+  no skin weights at all (26 October, above), so both were fitted by hand to
+  the game's skeleton, and their hands and arms have been patched ever since.
+  Remade in Tripo in a T-pose with open hands, rigged there and exported with
+  its animations, they'd move as the others do. What Tripo doesn't give:
+  faces (its rigs have no face bones or expressions), and the one-off moves
+  (taking the card, opening the box), which aren't in its library.
+
+**Checked:** `load_all` 0 failed; `duel_cine_shot -- <dir> attack ko call
+summon finish staged` problems none (and `staged moving`, the moving camera,
+which is the game's default); `duel_monkey -- 4 --3d --speed=1` and `-- 3 --3d
+--speed=2` (new: whole duels on the 3D field at a watched speed, headless with
+`--fixed-fps 30`) no script errors, no stall, the clock and every striker back
+in place, 8 to 38 attacks staged a duel; `duel_monkey -- 4` ok;
+`lantern_duel_test -- --checks --speed=1|2|4` (new: no stills, taps the
+banners and Continue itself) won at each; `white_sky_test` whole and `duel`
+PASS (4 blows gathered, 4 seen across); `white_sky_sounds_test`,
+`road_duel_test`, `solhaven_duels_test` ok. No rule, deck or rival was
+touched, so no duel's win rate has moved. **Not checked:** anything moving,
+or on a Mac or a phone: stills and headless runs only, on the Compatibility
+renderer here. The player's four looks don't come into it (nobody of the
+player's stands in a duel).
+
+    xvfb-run -a -s "-screen 0 1280x720x24" godot --rendering-driver opengl3 --resolution 1280x720 --fixed-fps 30 \
+        res://tests/duel_cine_shot.tscn -- <dir> staged [only=<case>] [moving] [oldstrikes]   # an attack's three shots; also crossings, gathers
+    godot --headless --fixed-fps 30 res://tests/duel_monkey.tscn -- 3 --3d --speed=2          # whole duels, staged
+    godot --headless --fixed-fps 30 res://tests/lantern_duel_test.tscn -- --checks --speed=1  # the Lantern Duel, staged
+
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 
 Gary (24 November, on his Mac): "Game taking a very long time to start /

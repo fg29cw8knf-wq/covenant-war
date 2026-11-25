@@ -1002,6 +1002,301 @@ func _film_strikes() -> bool:
 	return field != null and _filmed() and bool(spec.get("film_strikes", false))
 
 
+## (25 November, Gary's yes to "Stage attacks this three-shot way in every
+## duel, not just Bram's.") A played duel's attack was two moves of one
+## camera: a push in behind the striker, its back to the lens and what it was
+## going for hidden beyond it, then a whip to where the blow landed, arriving
+## with it; and a melee blow was a nudge of the striker's picture, over in a
+## tenth of a second. So the striker was never seen to cross the Circle, and
+## whose blow it was had to be read from the words. Now, on the 3D field with
+## the touches on, at Normal and Fast (STAGE_MAX_SPEED: Fastest keeps the
+## quick way), every attack on the other side is three shots, each a cut:
+##   1. it gathers its power: close on it from its front quarter, low,
+##      looking up at it, a slow push in, held STAGE_GATHER (and through its
+##      Fate roll, if it has one);
+##   2. it crosses: the two of them in one picture from beside the Circle
+##      (DuelField3D.crossing_shot, from your half of it, so your Totems are
+##      always the near ones and the rival's the far), and a melee striker
+##      really goes: back on its haunches, a leap across to what it's going
+##      for (DuelField3D.lunge, STAGE_LUNGE), a cast blow leaving it as it
+##      leans in and taking STAGE_FLIGHT_K times as long to cross;
+##   3. it lands: the cut to where it lands comes as it arrives (it was
+##      whipped to while the blow was still on its way).
+## The crossing of a blow that matters (HIT_STOP_DAMAGE or more, a weakness
+## struck, a critical, one that breaks its Totem) is slowed for a moment
+## (CROSS_SLOW), back to speed before it lands so the freeze on the blow
+## still comes. A blow on every Totem across is seen from behind the striker,
+## all of them in the picture, and isn't cut to one by one; the second blow
+## of a flurry keeps the shot the first left. `staged_strikes` false is the
+## attack as it was (the tests' before).
+static var staged_strikes := true
+const STAGE_MAX_SPEED := 2.0     # the battle speeds it's staged at (Normal 1.2 and Fast 2; not Fastest, 4)
+const STAGE_GATHER := 0.55       # shot one's hold, in the duel's seconds (the charge runs under it)
+const STAGE_LUNGE := 0.58        # a melee striker's way across: its gather on its haunches and its leap...
+const STAGE_LUNGE_BACK := 0.5    # ...and its way home, which nothing waits for
+const STAGE_LUNGE_AGAIN := 0.36  # ...and the later blows of a flurry, or of a blow on each Totem across
+const STAGE_FLIGHT_K := 1.6      # a cast blow takes this many times its usual flight
+const STAGE_PUSH := 0.14         # each shot creeps in this share of the way to what it looks at
+const STAGE_DROP := 0.5          # the crossing looks this far (m) under the two of them, so they stand clear of the hand
+const CROSS_SLOW := 0.5          # the crossing of a blow that matters (Engine.time_scale)...
+const CROSS_SLOW_MS := 170       # ...for this long, real time, at Normal...
+const CROSS_RAMP_MS := 150       # ...then back up to speed over this
+## How many attacks were staged, and how many blows were seen to cross (the tests').
+var staged_attacks := 0
+var staged_crossings := 0
+var _stage_n := 0
+var _cross_id := 0
+var _cross_slowing := false
+
+
+## Whether attacks are staged in three shots here: the touches on, a 3D
+## field, not a film (which stages its own, _film_strikes), a speed a person
+## watches at.
+func _staged() -> bool:
+	return staged_strikes and _cine() and speed <= STAGE_MAX_SPEED
+
+
+## Shot one: close on a Totem gathering its power, from its front quarter,
+## low, looking up at it (further off, through a wider lens, the bigger it
+## stands); from its other front quarter, or from out to its side, if another
+## Totem stands in the way or the lens would be in one. Every other attack
+## starts from the other quarter, so the same picture doesn't come up blow
+## after blow. [camera, looking at, lens]
+const GATHER_OUT := 0.85         # of the hero shot's distance, for a Totem GATHER_H tall...
+const GATHER_H := 1.9
+const GATHER_LENS := 36.0        # ...through this lens, 2 degrees wider for each step bigger
+const GATHER_KEY := 2.4          # the key light on it from beside the lens (a light's energy)
+
+func _gather_shot(t: DuelTotem) -> Array:
+	var f := field
+	var sl = f.slots[t.owner][t.slot]
+	var foot := f.foot_world(t.owner, t.slot)
+	var h: float = float(sl.creature_h) if String(sl.card_id) != "" else 2.0
+	var big := clampf(h / GATHER_H, 1.0, 1.45)
+	var lens := GATHER_LENS + (big - 1.0) * 12.0
+	var a: Array = f.shot_hero(t.owner, t.slot, 0.3, GATHER_OUT * big)
+	var one: Array = [a[0], a[1], lens]
+	var other_pos: Vector3 = a[0]
+	other_pos.x = foot.x - (other_pos.x - foot.x)
+	var two: Array = [other_pos, a[1], lens]
+	var out := Vector3(signf(foot.x) if absf(foot.x) > 0.5 else 1.0, 0, 0)
+	var side_on: Array = [foot + out * 5.0 * big + f.ahead_of(t.owner) * 1.2 + Vector3(0, lerpf(0.6, h * 0.8, 0.45), 0),
+		foot + Vector3(0, h * 0.55, 0), 30.0]
+	var cands: Array = [one, two, side_on] if _stage_n % 2 == 0 else [two, one, side_on]
+	for c in cands:
+		if not f.blocked(c[0], c[1], [sl]) and not _lens_in_a_totem(c[0], sl):
+			return c
+	return cands[0]
+
+
+## Would a lens at `pos` be inside a Totem, or all but? (`but`: its own.)
+func _lens_in_a_totem(pos: Vector3, but) -> bool:
+	for side in field.slots:
+		for i in field.slots[side]:
+			var sl = field.slots[side][i]
+			if sl == null or sl == but or String(sl.card_id) == "":
+				continue
+			if field.body_world(int(side), int(i)).distance_to(pos) < float(sl.creature_h) * DuelField3D.CROSS_BODY + 0.8:
+				return true
+	return false
+
+
+## The crossing of a blow that matters, slowed: CROSS_SLOW for CROSS_SLOW_MS
+## of real time and back up over CROSS_RAMP_MS (both shorter at Fast, as the
+## crossing is), the colour draining with it. It ends by itself, or at once
+## as the blow lands (_cross_slow_end), so the freeze on a big blow, which
+## wants the clock to itself, still comes.
+func _cross_slow() -> void:
+	if not _may_slow():
+		return
+	_cross_id += 1
+	var mine := _cross_id
+	var gen := _time_gen
+	_time_busy = true
+	_cross_slowing = true
+	if field != null:
+		field.slow_grade(true, 0.08)
+	Engine.time_scale = CROSS_SLOW
+	var hold := CROSS_SLOW_MS * NORMAL_RATE / speed
+	var ramp := CROSS_RAMP_MS * NORMAL_RATE / speed
+	var t0 := Time.get_ticks_msec()
+	while mine == _cross_id and gen == _time_gen and is_inside_tree():
+		var el := float(Time.get_ticks_msec() - t0)
+		if el >= hold + ramp:
+			break
+		if el > hold:
+			var k := (el - hold) / maxf(1.0, ramp)
+			Engine.time_scale = lerpf(CROSS_SLOW, 1.0, k * k)
+		await get_tree().process_frame
+	if mine != _cross_id or gen != _time_gen or not is_inside_tree():
+		return   # (ended as the blow landed, or the duel is over: the clock is theirs)
+	_cross_slow_end()
+
+
+func _cross_slow_end() -> void:
+	if not _cross_slowing:
+		return
+	_cross_id += 1
+	_cross_slowing = false
+	_time_busy = false
+	if mode != "over" and not _finished_slow:
+		Engine.time_scale = 1.0
+	if field != null and is_inside_tree() and not _finished_slow:
+		field.slow_grade(false, 0.2)
+
+
+## Where a melee striker's leap at a duellist's Life ends: at their row's
+## line, a stride beyond it if nothing of theirs stands in its way.
+func _lunge_end(att: DuelTotem, to3: Vector3) -> Vector3:
+	var from := _body3(att)
+	var row_z: float = DuelField3D.RIVAL_Z if att.owner == field.me else DuelField3D.MY_Z
+	var span := to3.z - from.z
+	if absf(span) < 0.5:
+		return to3
+	var k := clampf((row_z - from.z) / span, 0.0, 1.0)
+	var at_row := from.lerp(to3, k)
+	var clear := true
+	for i in 3:
+		var sl = field.slots[1 - att.owner][i]
+		if String(sl.card_id) != "" and absf(field.foot_world(1 - att.owner, i).x - at_row.x) < 1.7:
+			clear = false
+	var dir := Vector3(to3.x - from.x, 0.0, to3.z - from.z).normalized()
+	return at_row + dir * (2.4 if clear else 0.2)
+
+
+## Shot three: close on where the blow lands, from the striker's side
+## (DuelField3D.shot_close), from whichever side of its way there is clear:
+## the usual one towards the middle of the Circle, or the other if another
+## Totem stands between the lens and the blow, or right in front of it.
+## A melee striker has really crossed and stands at what it struck, so from
+## behind it on its way its back hid the blow: its blow is seen from out to
+## the side of the two of them (LAND_MELEE_*), the striker one side of the
+## picture and what it struck the other.
+const LAND_MELEE_BACK := 3.0     # short of where the blow lands, on the striker's side (shot_close stands 5.2 back)...
+const LAND_MELEE_SIDE := 4.4     # ...and this far out to the side (1.9)...
+const LAND_MELEE_UP := 2.2       # ...this high (2.5)
+const LAND_MELEE_LOOK := 0.7     # it looks this far back from the blow towards the striker, so both are in the picture
+
+func _land_shot(b3: Vector3, a3: Vector3, att: DuelTotem, on_life: bool, melee := false) -> Array:
+	var sh: Array = field.shot_close(b3, a3, att.owner, on_life)
+	var d: Vector3 = field._flat_dir(a3, b3, att.owner)
+	var back := DuelField3D.LIFE_BACK if on_life else DuelField3D.CLOSE_BACK
+	if melee and not on_life:
+		var right := d.cross(Vector3.UP).normalized()
+		var toward_mid := -signf(b3.x) if absf(b3.x) > 0.5 else 1.0
+		back = LAND_MELEE_BACK
+		var look := b3 - d * LAND_MELEE_LOOK
+		look.y = b3.y * 0.7
+		sh = [b3 - d * back + right * (LAND_MELEE_SIDE * toward_mid) + Vector3(0, LAND_MELEE_UP, 0), look]
+	var mid_line := b3 - d * back
+	var other: Vector3 = sh[0]
+	other.x = 2.0 * mid_line.x - other.x
+	other.z = 2.0 * mid_line.z - other.z
+	var own: Array = [field.slots[att.owner][att.slot], field.slot_at(b3)]
+	for pos in [sh[0], other]:
+		if not field.blocked(pos, sh[1], own) and not _crowds_the_lens(pos, sh[1], own):
+			return [pos, sh[1]]
+	return sh
+
+
+## Is a Totem (not one of `but`) standing right in front of a lens at `pos`
+## looking at `look`: within a couple of strides, and in the picture?
+func _crowds_the_lens(pos: Vector3, look: Vector3, but: Array) -> bool:
+	var f := (look - pos).normalized()
+	for side in field.slots:
+		for i in field.slots[side]:
+			var sl = field.slots[side][i]
+			if sl == null or String(sl.card_id) == "" or but.has(sl):
+				continue
+			var v: Vector3 = field.body_world(int(side), int(i)) - pos
+			var size := float(sl.creature_h) * DuelField3D.CROSS_BODY
+			if v.length() < size + 0.8:
+				return true
+			if v.length() < size + 2.6 and v.normalized().dot(f) > 0.72:
+				return true
+	return false
+
+
+## An attack's blow sent across the Circle in its second and third shots
+## (_staged; fx_attack took the first). Returns as it lands, the camera cut
+## to where.
+func _deliver_staged(att: DuelTotem) -> void:
+	var a3 := _body3(att)
+	var b3: Vector3 = _strike.get("to3", a3)
+	var n := int(_strike.get("blows", 0))
+	_strike["blows"] = n + 1
+	var all: bool = _strike.get("all", false)
+	var melee: bool = _strike.get("melee", false)
+	var tg = _strike.get("target")
+	var on_life: bool = tg is String and tg == DuelGame.LIFE
+	var col := DuelFX.light(att.element())
+	var st: Dictionary = _strike.get("style", {})
+	if st.is_empty():
+		st = DuelFXStyle.attack_style(att.id(), att.element(), {}, 0)
+	var matters: bool = _strike.get("big", false) and not all
+	var first := n == 0
+	var free := not _finished_slow   # (the blow that ends the duel has the camera and the clock already, _finishing_start)
+	# (a melee blow on Life: its leap ends at their row's line, _lunge_end)
+	var end3: Vector3 = _lunge_end(att, b3) if (on_life and melee) else b3
+	_end_charge()
+	if not first:
+		field.cam_moves += 1   # (the shot is kept for this blow too: the way home planned after the last one waits)
+	if first and free:
+		# shot two: the two of them, and the blow crossing between them
+		var c: Array
+		if all:
+			var sh: Array = field.shot_behind(a3, a3, att.owner)
+			c = [sh[0], sh[1], DuelField3D.SHOT_FOV_BEHIND]
+		elif att.owner == me:
+			c = field.crossing_shot(a3, end3, 44.0, STAGE_DROP)
+		else:
+			c = field.crossing_shot(end3, a3, 44.0, STAGE_DROP)
+		if not c.is_empty():
+			field.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+			# in with it, its eyes brought round towards where the blow will land
+			var land := Vector3(b3.x, (c[1] as Vector3).y, b3.z)
+			var cp: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, STAGE_PUSH)
+			var cl: Vector3 = (c[1] as Vector3).lerp(land, 0.0 if all else 0.3)
+			field.cam_shot(cp, cl, (STAGE_LUNGE + 0.3) / speed / (CROSS_SLOW if matters else 1.0), float(c[2]) - (0.0 if all else 2.0))
+			staged_crossings += 1
+	if melee:
+		var out_s := (STAGE_LUNGE if first else STAGE_LUNGE_AGAIN) / speed
+		var to3 := end3
+		field.lunge_trail(att.owner, att.slot, st, out_s + 0.25 / speed)
+		var spring := out_s * (1.0 - DuelField3D.LUNGE_FLIGHT)
+		# (the whoosh as it springs, not as it gathers; and the leap of a blow
+		# that matters slowed, its gather on its haunches at the clock's pace)
+		get_tree().create_timer(maxf(0.01, spring), false).timeout.connect(func() -> void:
+			sfx.play("melee_whoosh")
+			if matters and first and free:
+				_cross_slow())
+		await field.lunge(att.owner, att.slot, to3, out_s, STAGE_LUNGE_BACK / speed)
+	else:
+		field.lunge(att.owner, att.slot, b3, 0.3 / speed, 0.45 / speed, 0.14)
+		var el := att.element()
+		sfx.play("cast_mystic" if el == "spirit" or el == "mystic" else "cast_" + el)
+		if matters and first and free:
+			_cross_slow()
+		await field.strike_travel(st, a3, b3, speed / (STAGE_FLIGHT_K if first else 1.0), float(_strike.get("k", 1.0)))
+	_cross_slow_end()
+	if not is_inside_tree():
+		return
+	if first and free and not all:
+		# shot three: the blow, as it lands
+		var sh2: Array = _land_shot(b3, a3, att, on_life, melee)
+		field.cam_shot(sh2[0], sh2[1], 0.0, DuelField3D.SHOT_FOV_CLOSE, true)
+		field.cam_shot((sh2[0] as Vector3).lerp(sh2[1] as Vector3, STAGE_PUSH * 0.6), sh2[1], 0.5 / speed, DuelField3D.SHOT_FOV_CLOSE - 1.5)
+		field.snap_camera()   # (what follows is put where the blow is on the screen now)
+	if melee:
+		sfx.play("slash")
+		var at2 := field.world_to_stage(b3)
+		var ang := randf_range(-0.9, -0.4)
+		if at2.x < field.world_to_stage(a3).x:
+			ang = PI - ang
+		DuelFX.slash(fx_layer, at2, col, 160.0, ang, 0.28 / speed)
+		DuelFX.slash(fx_layer, at2 + Vector2(10, 14), (st.hot as Color).lerp(Color.WHITE, 0.5), 128.0, ang + 0.25, 0.24 / speed)
+
+
 ## The phone shaking in the hand (Haptics; 14 November, Gary's yes to "the
 ## phone shake in every duel, not just the opening"): a big blow on a Totem
 ## (one that stops time: HIT_STOP_DAMAGE or more, a weakness struck, a
@@ -3802,7 +4097,26 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 			field.face_at(t.owner, t.slot, aim, 1.8 / speed)
 			if target is DuelTotem and target.owner != t.owner:
 				field.face_at(target.owner, target.slot, _body3(t), 1.8 / speed)
-		if _cine() and hostile:
+		var staged := _staged() and hostile
+		if staged:
+			# (25 November) shot one of three: close on it as it gathers its
+			# power, cut to, a slow push in (_deliver_staged has the other two)
+			_stage_n += 1
+			staged_attacks += 1
+			var g: Array = _gather_shot(t)
+			field.cam_shot(g[0], g[1], 0.0, float(g[2]), true)
+			field.cam_shot((g[0] as Vector3).lerp(g[1] as Vector3, STAGE_PUSH), g[1], (STAGE_GATHER + 0.35) / speed, float(g[2]))
+			field.snap_camera()
+			# its key light, from beside the lens and above it, in its element's
+			# colour warmed towards white (seen from the front, your own Totems
+			# have the arena's light behind them)
+			var key_at: Vector3 = (g[0] as Vector3) + Vector3(0, 1.3, 0) + ((g[0] as Vector3) - (g[1] as Vector3)).normalized().cross(Vector3.UP) * 1.2
+			field.key_light(key_at, col.lerp(Color(1.0, 0.95, 0.88), 0.65), GATHER_KEY, (STAGE_GATHER + 0.5) / speed, 0.4 / speed)
+			src = _center(v)   # (where it is on the screen in this shot)
+			_strike["shot"] = true
+			_strike["staged"] = true
+			_cam_home_soon(CAM_HOME_FALLBACK)   # (an attack answered away never lands: home anyway)
+		elif _cine() and hostile:
 			# (4 November) the camera pushes in low behind the attacker, looking
 			# across at what it's about to hit; _deliver whips it to the blow
 			var sh: Array = field.shot_behind(_body3(t), aim, t.owner)
@@ -3817,7 +4131,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		if (_cine() or film_blow) and hostile:
 			# (5 November) it gathers its power: motes drawn in, a glow swelling,
 			# its sigil flaring under it (the blow ends the charge, _deliver3)
-			var gather := FILM_GATHER if film_blow else CHARGE_SECS / speed
+			var gather := FILM_GATHER if film_blow else (STAGE_GATHER if staged else CHARGE_SECS) / speed
 			field.act_pulse(_foot3(t), col)
 			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), gather)
 			# (it swells as it gathers, held while the die rolls, and snaps back
@@ -3849,6 +4163,10 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		# own, in the field's space, and its gathering is held to be seen)
 		tw.tween_interval(0.01)
 		await pause(FILM_GATHER * speed)
+	elif bool(_strike.get("staged", false)):
+		# (a played duel's staged blow: the same, held for shot one)
+		tw.tween_interval(0.01)
+		await pause(STAGE_GATHER)
 	else:
 		tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		if not _strike.melee:
@@ -3891,6 +4209,9 @@ func _deliver(att: DuelTotem, to: Vector2) -> void:
 	var from := _center(v) - v.offset
 	var col := DuelFX.light(att.element())
 	if field != null:
+		if bool(_strike.get("staged", false)) and _cine():
+			await _deliver_staged(att)   # (25 November: shots two and three)
+			return
 		if _strike.get("shot", false) and _cine():
 			# (4 November) the camera whips from behind the attacker to where
 			# the blow lands, arriving with it
@@ -4033,7 +4354,7 @@ func _blow_lands(at: Vector3, col: Color, big: bool, wash: float = -1.0) -> void
 ## nothing): the motes and glow go, and it snaps back to its size.
 func _end_charge() -> void:
 	var c = _strike.get("charge")
-	if c is DuelStrikeFX.Charge and is_instance_valid(c):
+	if is_instance_valid(c) and c is DuelStrikeFX.Charge:   # (25 November: valid first; a charge that had run its whole time and freed itself made `is` an error)
 		(c as DuelStrikeFX.Charge).end()
 		var sw = _strike.get("swell")
 		if sw is Tween and (sw as Tween).is_valid():
@@ -4122,6 +4443,7 @@ func _whiff(att: DuelTotem) -> void:
 		_strike["k"] = 0.8
 		to2 = field.world_to_stage(wide)
 		await _deliver(att, to2)
+		to2 = field.world_to_stage(wide)   # (25 November: where it is in the shot the blow ended in)
 		field.burst(wide, Color(0.85, 0.85, 0.9), 16, 3.0, 0.5, 0.1, 0.0)
 		field.floor_wave(wide * Vector3(1, 0, 1), Color(0.8, 0.8, 0.9), 1.8, 0.4 / speed)
 	else:
@@ -4151,6 +4473,9 @@ func fx_totem_hit(t: DuelTotem, amount: int, info: Dictionary) -> void:
 		_strike["k"] = 0.85 if amount <= 20 else (1.2 if amount >= 50 else 1.0)
 		_strike["to3"] = _impact3
 		(_strike["hit"] as Dictionary)[t] = true
+		# (25 November: a blow that matters has its crossing slowed, _deliver_staged)
+		_strike["big"] = amount >= HIT_STOP_DAMAGE or t.weak_to(att.element()) or int(_strike.get("roll", 0)) == 20 \
+			or (amount > 0 and t.is_knocked_out())
 		await _deliver(att, c)
 		strike_lands.emit(t, amount)   # (24 November: a film cuts to the blow as it lands)
 		c = _center(v)   # (where it is now: the camera may have whipped to it)
@@ -4366,6 +4691,7 @@ func fx_life_hit(pi: int, amount: int, info: Dictionary) -> void:
 			await b.arrived
 	elif att != null and not _strike.is_empty() and _strike.get("attacker") == att:
 		_strike["to3"] = land3
+		_strike["big"] = amount >= HIT_STOP_DAMAGE or int(_strike.get("roll", 0)) == 20
 		if field != null:
 			await _deliver(att, field.world_to_stage(land3))
 		else:
@@ -4483,6 +4809,8 @@ func _finishing_start(pi: int, land3: Vector3) -> void:
 	var tw := _slow_shade.create_tween()
 	tw.tween_property(_slow_shade, "color:a", 0.75, 0.25)
 	if field != null:
+		if bool(_strike.get("staged", false)):
+			field.cam_cut_home()   # (25 November: from the striker's close-up, a cut; the lean is from home)
 		field.cam_focus(land3, 1.0, 0.45)
 		if DuelRules.cinematic and not _filmed():
 			field.slow_grade(true, 0.4)   # (4 November: the colour drains with the clock)

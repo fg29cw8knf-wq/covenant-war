@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 571 lines, 22 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-19 (3fff09a); run it again after the words change.
+Every line the game speaks, in the order it's played: 571 lines, 22 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-24 (6d3c5ad); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -16,7 +16,7 @@ Every line the game speaks, in the order it's played: 571 lines, 22 of them reco
 | 0003 | Bram | Not this one. *(recorded already)* | `cb5440f1` |
 | 0004 | Morrowen | He walked out of the Shardlands with the child in his coat, and the child's death in his own name. | `93fb5096` |
 | 0005 | Morrowen | But a death that is moved is never paid in full. It gathers interest. | `29e79e14` |
-| 0006 | Morrowen | Twenty years later, the Age came to its end... and every debt in my book came due. | `adcbfafe` |
+| 0006 | Morrowen | Twenty years later, the Age came to its end... and every borrowed death came due. | `b2e3e083` |
 | 0007 | Morrowen | The child's death was already written in my book. The Last Page could save him... but only by writing another name in its place. | `e03ce2d4` |
 | 0008 | Bram | Come on then, Sprout. *(recorded already)* | `f11e5498` |
 | 0009 | Bram | Buy me some time. That's all I need. | `63aa6e27` |

@@ -98,7 +98,12 @@ const NOT_THIS := {"who": "bram", "say": "Not this one."}
 ## they never asked for").
 const OUT_DEBT := {"who": "morrowen", "say": "He walked out of the Shardlands with the child in his coat, and the child's death in his own name."}
 const DEBT_INTEREST := {"who": "morrowen", "say": "But a death that is moved is never paid in full. It gathers interest."}
-const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the Age came to its end... and every debt in my book came due."}
+## (25 November, Gary, of DEBT_DUE: "Every debt in my book came due - is that
+## possible?" As it stood, no: her first line says every soul in her book
+## starts with a debt, so every debt falling due is everyone dying at once.
+## His yes to "...and every borrowed death came due.": it's the moved deaths
+## that come due, Bram's the one this story is about. It had no recording.)
+const DEBT_DUE := {"who": "morrowen", "say": "Twenty years later, the Age came to its end... and every borrowed death came due."}
 ## (19 November, Gary: "he says write it in my name then for no reason") What
 ## the Last Page costs, said in the hush before it's played (_ask_move, the
 ## last gate), so that "Write it in my name, then." answers it.
@@ -4105,38 +4110,13 @@ func _beat_attack(t: DuelTotem, target) -> void:
 ## so what crosses between them crosses the picture. `h`: how tall `near`
 ## stands. [camera, looking at, lens]
 func _two_shot(near: Vector3, far: Vector3, hand: float, h: float, back := 1.0, aside := 3.6, lens := 44.0) -> Array:
-	var d := Vector3(far.x - near.x, 0.0, far.z - near.z)
-	if d.length() < 0.6:
-		return []
-	d = d.normalized()
-	var right := d.cross(Vector3.UP).normalized()
-	var pos := near - d * back + right * hand * aside
-	pos.y = clampf(h * 0.45, 0.8, 1.5)
-	var look := near.lerp(far, 0.44)
-	look.y = maxf(0.55, minf(near.y, far.y) * 0.9)
-	return [pos, look, lens]
+	return _dir_f.two_shot(near, far, hand, h, back, aside, lens)   # (25 November: the field's, every duel's now)
 
 
 ## Is another Totem standing between the camera at `pos` and `at`? (`but`:
 ## the Totems' own places, left out.)
 func _hidden(pos: Vector3, at: Vector3, but: Array) -> bool:
-	var f := _dir_f
-	var seg := at - pos
-	var len2 := seg.length_squared()
-	if len2 < 0.01:
-		return false
-	for side in f.slots:
-		for i in f.slots[side]:
-			var sl = f.slots[side][i]
-			if sl == null or String(sl.card_id) == "" or but.has(sl):
-				continue
-			var c := f.body_world(int(side), int(i))
-			var k := clampf((c - pos).dot(seg) / len2, 0.0, 1.0)
-			if k > 0.97:
-				continue
-			if (pos + seg * k).distance_to(c) < float(sl.creature_h) * 0.4:
-				return true
-	return false
+	return _dir_f.blocked(pos, at, but)
 
 
 ## The crossing's shot for a blow from `me` to `aim` (the Totems `t` and

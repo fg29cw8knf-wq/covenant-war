@@ -14,6 +14,13 @@ extends Node
 ##            motion and the bars apply (stills named flat_...)
 ##   arena    (5 November) the field at rest, dressed as a stage: both rows
 ##            full, the shafts of light, the embers, the rim light
+##   staged   (25 November) an attack in three shots (DuelScreen.staged_strikes,
+##            Gary's yes to it "in every duel"): the close-up as it gathers,
+##            the two of them as it crosses (a strip of stills through the
+##            leap or the flight), the cut to the blow as it lands; yours and
+##            the rival's, a melee blow and a cast one, a blow on Life, one on
+##            every Totem across, with both rows full. `oldstrikes` is the
+##            attack as it was.
 ## and two flags (5 November):
 ##   preview  the stage dressed as a Mac or a phone on Full would have it
 ##            (DuelField3D.preview_level 2: the impact punch shader, which
@@ -36,7 +43,10 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
 	parts = args.slice(1)
-	var flags := ["flat", "preview", "plain", "nolook", "nohaze"]
+	var flags := ["flat", "preview", "plain", "nolook", "nohaze", "oldstrikes", "trace", "moving"]
+	parts = parts.filter(func(p): return not String(p).begins_with("only=")) + parts.filter(func(p): return String(p).begins_with("only="))
+	flags += parts.filter(func(p): return String(p).begins_with("only="))
+	DuelScreen.staged_strikes = not "oldstrikes" in parts
 	var flat := "flat" in parts
 	if not flat and parts.filter(func(p): return not p in flags).is_empty():
 		parts += ["attack", "ko", "call", "summon", "finish", "pace", "arena"]   # (flat alone: just the flat field's own)
@@ -52,6 +62,10 @@ func _ready() -> void:
 	Game.new_game("Sprout", "tidegrove")
 	Game.settings["duel_3d"] = not flat
 	Game.settings["duel_camera"] = "locked"   # (8 November: these checks are the locked camera's; tests/duel_camera_shot has the moving one)
+	if "moving" in parts:
+		# (25 November: `staged` under the moving camera, which is the game's
+		# default; "came home" then means back on its path, not at one place)
+		Game.settings["duel_camera"] = "moving"
 	SummonVideo.set_mode("off")   # (the drawn Summon scene, not Gary's clip: the bars are what's looked at)
 	RenderingServer.render_loop_enabled = false
 	ds = DuelScreen.new().configure({"decks": ["emberstorm", "tidegrove"], "names": ["You", "Rival"],
@@ -70,10 +84,24 @@ func _ready() -> void:
 		_pace()
 	if "arena" in parts and not flat:
 		await _arena()
+	if "crossings" in parts:
+		await _crossings()
+	if "gathers" in parts:
+		await _gathers()
+	if "staged" in parts:
+		await _staged_all()
 	if "attack" in parts:
+		# (25 November: these three are the attack as it was, the push in and
+		# the whip, which Fastest still has and `oldstrikes` everywhere; `staged`
+		# has the three shots)
+		var staged_was := DuelScreen.staged_strikes
+		DuelScreen.staged_strikes = false
 		await _attack(false)
 		await _attack(true)
 		await _attack_all()
+		DuelScreen.staged_strikes = staged_was
+		if staged_was:
+			await _staged_everyone()
 	if "ko" in parts:
 		await _ko()
 	if "call" in parts:
@@ -275,6 +303,280 @@ func _attack(back: bool) -> void:
 	await _wait(0.5)
 
 
+## (25 November) The crossing's shot for every pair of slots, both rows
+## full and then thinner boards, the striker held in the middle of its leap:
+## what DuelField3D.crossing_shot picks, and its mark, printed with each.
+func _crossings() -> void:
+	var boards := [
+		["full", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"]],
+		["big", ["ashen_drake", "elderbark", "ironhide"], ["ashen_drake", "elderbark", "ironhide"]],
+		["two", ["cinderpup", null, "brookfin"], [null, "mossling", "pebblit"]],
+	]
+	var f := ds.field
+	for bd in boards:
+		var made: Array = await _board(bd[1], bd[2])
+		ds.mode = "busy"
+		ds._set_hint("")
+		for i in 3:
+			for j in [0, 1, 2, -1]:
+				if made[0][i] == null or (j >= 0 and made[1][j] == null):
+					continue
+				var a3: Vector3 = f.body_world(0, i)
+				var b3: Vector3 = f.body_world(1, j) if j >= 0 else ds._lunge_end(made[0][i], f.life_world(1))
+				var c: Array = f.crossing_shot(a3, b3, 44.0, DuelScreen.STAGE_DROP)
+				var sl = f.slots[0][i]
+				sl.lunge = (b3 - a3) * Vector3(1, 0, 1) * 0.45 + Vector3(0, 0.45, 0)
+				f.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+				await _wait(0.1)
+				await _shot("cross_%s_%d_to_%s" % [bd[0], i, ("life" if j < 0 else str(j))])
+				print("CINE SHOT: crossing %s %d to %d: %s" % [bd[0], i, j, f.cross_pick])
+				sl.lunge = Vector3.ZERO
+		# and the rival's on your Life
+		for j in 3:
+			if made[1][j] == null:
+				continue
+			var a3: Vector3 = f.body_world(1, j)
+			var b3: Vector3 = ds._lunge_end(made[1][j], f.life_world(0))
+			var c: Array = f.crossing_shot(b3, a3, 44.0, DuelScreen.STAGE_DROP)
+			var sl = f.slots[1][j]
+			sl.lunge = (b3 - a3) * Vector3(1, 0, 1) * 0.45 + Vector3(0, 0.45, 0)
+			f.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+			await _wait(0.1)
+			await _shot("cross_%s_rival_%d_to_life" % [bd[0], j])
+			print("CINE SHOT: crossing %s rival %d to your Life: %s" % [bd[0], j, f.cross_pick])
+			sl.lunge = Vector3.ZERO
+	f.cam_home(0.1)
+	await _wait(0.3)
+
+
+## (25 November) Shot one, the close-up as it gathers, for every slot of a
+## full board of big Totems and of small ones.
+func _gathers() -> void:
+	for bd in [["small", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "cinderpup"]],
+			["big", ["ashen_drake", "elderbark", "ironhide"], ["ashen_drake", "elderbark", "ironhide"]]]:
+		var made: Array = await _board(bd[1], bd[2])
+		ds.mode = "busy"
+		ds._set_hint("")
+		for side in 2:
+			for i in 3:
+				var att: DuelTotem = made[side][i]
+				ds.fx_attack(att, 0, made[1 - side][1])
+				await _wait(0.35)
+				await _shot("gather_%s_%s_%d" % [bd[0], "mine" if side == 0 else "rival", i])
+				await _wait(0.5)
+				ds._end_charge()
+				ds._strike = {}
+				ds.field.cam_home(0.05)
+				await _wait(0.3)
+
+
+## (25 November) An attack in three shots, on boards a duel really has.
+func _staged_all() -> void:
+	# yours, a melee blow that matters (60 on a weakness), the rows full
+	await _staged("mine_melee", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"], 0, 1, 1, 60)
+	# yours on the long slant, a small one, the rows full
+	await _staged("mine_slant", ["cinderpup", "brookfin", "pebblit"], ["ironhide", "elderbark", "mossling"], 0, 0, 2, 20)
+	# the rival's, a small one, on a slant
+	await _staged("rival_melee", ["brookfin", "mossling", "pebblit"], ["cinderpup", "ironhide", "elderbark"], 1, 0, 2, 20)
+	# a cast blow, yours, from the end of your row to the far end of theirs
+	await _staged("mine_cast", ["ashen_drake", "cinderpup", null], ["mossling", null, "pebblit"], 0, 0, 2, 30, false)
+	# and the rival's, big ones both rows
+	await _staged("rival_cast", ["elderbark", "ironhide", "brookfin"], ["elderbark", "ashen_drake", "ironhide"], 1, 1, 1, 60, false)
+	# on Life, nothing of theirs in the way
+	await _staged("mine_life", [null, "cinderpup", null], ["mossling", null, null], 0, 1, -1, 30)
+	# and the rival's on yours, past your row
+	await _staged("rival_life", ["brookfin", null, "pebblit"], [null, "cinderpup", null], 1, 1, -1, 30)
+	await _staged_ko()
+	await _staged_flurry()
+
+
+## Is the camera back where it rests: at home (locked), or on its path
+## round the Circle and up above it again (moving)?
+func _came_home(home: Vector3) -> bool:
+	var f := ds.field
+	if f.roam_on:
+		return f._following and f.cam_pos.y > 4.0
+	return f.cam_pos.distance_to(home) <= 0.5
+
+
+## `only=<tag>` on the command line runs just that staged case.
+func _only(tag: String) -> bool:
+	for p in parts:
+		if String(p).begins_with("only="):
+			return String(p).substr(5) == tag
+	return true
+
+
+## A staged blow that breaks its Totem: the leap, the blow, then the crystal's
+## close-up, the striker out of its way.
+func _staged_ko() -> void:
+	if not _only("ko"):
+		return
+	var made: Array = await _board(["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"])
+	var att: DuelTotem = made[0][1]
+	var tg: DuelTotem = made[1][1]
+	var f := ds.field
+	var home := f.cam_pos
+	ds.mode = "busy"
+	ds._set_hint("")
+	await ds.fx_attack(att, 0, tg)
+	tg.damage = tg.max_hp()
+	ds.game.players[1].slots[1] = null
+	await ds.fx_totem_hit(tg, 110, {"attacker": att, "element": att.element()})
+	await _shot("staged_ko_1_landed")
+	ds.fx_ko(tg)
+	for k in 6:
+		await _wait(0.2)
+		await _shot("staged_ko_2_crystal_%d" % k)
+		print("CINE SHOT: staged ko: the striker %.2f m from its place" % f.lunge_of(0, 1).length())
+	await _wait(2.2)
+	await _shot("staged_ko_3_home")
+	if not _came_home(home):
+		problems.append("staged ko: the camera didn't come home (%.1f m off)" % f.cam_pos.distance_to(home))
+	if absf(Engine.time_scale - 1.0) > 0.001:
+		problems.append("staged ko: the clock was left at %.2f" % Engine.time_scale)
+	ds._strike = {}
+	await _wait(0.4)
+
+
+## Two of the rival's attacks one after the other, as its turn has them: the
+## second's close-up cut to from the first's blow, the camera not gone home
+## between.
+func _staged_flurry() -> void:
+	if not _only("flurry"):
+		return
+	var made: Array = await _board(["brookfin", "mossling", "pebblit"], ["cinderpup", "ashen_drake", null])
+	var f := ds.field
+	var home := f.cam_pos
+	ds.mode = "busy"
+	ds._set_hint("")
+	var k := 0
+	for pair in [[made[1][0], made[0][0]], [made[1][1], made[0][1]]]:
+		var att: DuelTotem = pair[0]
+		var tg: DuelTotem = pair[1]
+		await ds.fx_attack(att, 0, tg)
+		await _shot("staged_flurry_%d_1_gathered" % k)
+		await ds.fx_totem_hit(tg, 30, {"attacker": att, "element": att.element()})
+		await _shot("staged_flurry_%d_2_landed" % k)
+		ds._strike = {}
+		await _wait(0.15)   # (the rival thinks DuelHuman.Paced.THINK_ACTION between its plays)
+		if k == 0 and f.cam_pos.distance_to(home) < 1.0:
+			problems.append("staged flurry: the camera went home between the two attacks")
+		k += 1
+	await _wait(1.8)
+	await _shot("staged_flurry_3_home")
+	if not _came_home(home):
+		problems.append("staged flurry: the camera didn't come home (%.1f m off)" % f.cam_pos.distance_to(home))
+	await _wait(0.4)
+
+
+## One attack: `side`'s Totem in `slot` on the other side's in `at` (-1:
+## their Life) for `amount`, stills through all three shots. `melee` false
+## looks for a move of its that isn't a melee blow.
+func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: int, amount: int, melee := true) -> void:
+	if not _only(tag):
+		return
+	var made: Array = await _board(mine, theirs)
+	var att: DuelTotem = made[side][slot]
+	var tg = made[1 - side][at] if at >= 0 else DuelGame.LIFE
+	var mi := 0
+	for i in 3:
+		if att.move(i).is_empty():
+			continue
+		var st := DuelFXStyle.attack_style(att.id(), att.element(), att.move(i), i)
+		if (String(st.kind) == "melee") == melee and String(att.move(i).get("target", "")) != "all_foes":
+			mi = i
+			break
+	ds.mode = "busy"
+	ds._set_hint("")
+	var f := ds.field
+	var home := f.cam_pos
+	var was := ds.staged_attacks
+	ds.fx_attack(att, mi, tg)
+	await _wait(0.3)
+	await _shot("staged_%s_1_gather" % tag)
+	var gsl = f.slots[side][slot]
+	var gv = ds.views[side][slot]
+	print("CINE SHOT: staged %s: gather: flash %.2f %s, glow_boost %.2f, fx_tint %s %.2f, rim %s %s, highlight %s" % [tag, gv.flash, gv.flash_color,
+		gsl.glow_boost, gsl.fx_tint, gsl.fx_tint_k, DuelField3D.has_rim(gsl.card_id), DuelField3D.rim_col(gsl.card_id), gv.highlight])
+	print("CINE SHOT: staged %s: %s (%s), gather shot %.1f m from home, move %d %s" % [tag, att.card_name(),
+		"melee" if ds._strike.get("melee", false) else "cast", f.cam_pos.distance_to(home), mi, String(att.move(mi).get("name", ""))])
+	if DuelScreen.staged_strikes and ds.staged_attacks != was + 1:
+		problems.append("staged %s: the attack wasn't staged" % tag)
+	await _wait(0.45)
+	var crossed := ds.staged_crossings
+	_slowest = 1.0
+	_watch_clock = true
+	if tg is DuelTotem:
+		ds.fx_totem_hit(tg, amount, {"attacker": att, "element": att.element()})
+	else:
+		ds.fx_life_hit(1 - side, amount, {"attacker": att})
+	var furthest := 0.0
+	for k in 9:
+		await _wait(0.085)
+		furthest = maxf(furthest, f.lunge_of(side, slot).length())
+		await _shot("staged_%s_2_cross_%d" % [tag, k])
+	await _wait(0.5)
+	_watch_clock = false
+	await _shot("staged_%s_3_after" % tag)
+	print("CINE SHOT: staged %s: the striker went %.1f m from its place; the clock's slowest %.2f; crossing %s" % [tag, furthest, _slowest, f.cross_pick])
+	if DuelScreen.staged_strikes:
+		if ds.staged_crossings != crossed + 1:
+			problems.append("staged %s: no crossing shot" % tag)
+		if ds._strike.get("melee", false) and furthest < 1.5:
+			problems.append("staged %s: the striker never crossed (%.1f m)" % [tag, furthest])
+	await _wait(1.6)
+	await _shot("staged_%s_4_home" % tag)
+	if not _came_home(home):
+		problems.append("staged %s: the camera didn't come home (%.1f m off)" % [tag, f.cam_pos.distance_to(home)])
+	if f.lunge_of(side, slot).length() > 0.05:
+		problems.append("staged %s: the striker didn't come back to its place (%.2f m off)" % [tag, f.lunge_of(side, slot).length()])
+	if absf(Engine.time_scale - 1.0) > 0.001:
+		problems.append("staged %s: the clock was left at %.2f" % [tag, Engine.time_scale])
+	ds._strike = {}
+	await _wait(0.4)
+
+
+## (25 November) A blow on every Totem across, staged: the close-up as it
+## gathers, then one shot from behind it with all of them in it, each blow
+## going out to its own, the camera not cut to them one by one.
+func _staged_everyone() -> void:
+	var made: Array = await _board([null, "ashen_drake", null], ["mossling", "brookfin", "pebblit"])
+	var att: DuelTotem = made[0][1]
+	var mi := -1
+	for i in 3:
+		if String(att.move(i).get("target", "")) == "all_foes":
+			mi = i
+	if mi < 0:
+		return
+	ds.mode = "busy"
+	ds._set_hint("")
+	var f := ds.field
+	var home := f.cam_pos
+	await ds.fx_attack(att, mi, DuelGame.NONE)
+	await _shot("staged_all_1_gathered")
+	var shot_at := Vector3.ZERO
+	for k in 3:
+		var tg: DuelTotem = made[1][k]
+		# (one after the other with nothing between, as the duel sends them)
+		await ds.fx_totem_hit(tg, 40, {"attacker": att, "element": att.element(), "spill": true})
+		await _shot("staged_all_2_blow_%d_landed" % k)
+		if k == 0:
+			shot_at = f.cam_pos
+		elif f.cam_pos.distance_to(shot_at) > 1.5:
+			problems.append("staged all: the camera left its shot between the blows (%.1f m by blow %d)" % [f.cam_pos.distance_to(shot_at), k])
+		if f.cam_pos.distance_to(home) < 2.0:
+			problems.append("staged all: the camera was home at blow %d" % k)
+	await _wait(1.6)
+	await _shot("staged_all_3_home")
+	if not _came_home(home):
+		problems.append("staged all: the camera didn't come home (%.1f m off)" % f.cam_pos.distance_to(home))
+	if absf(Engine.time_scale - 1.0) > 0.001:
+		problems.append("staged all: the clock was left at %.2f" % Engine.time_scale)
+	ds._strike = {}
+	await _wait(0.4)
+
+
 ## A blow on every Totem across (the Ashen Drake's Cinder Storm): the push
 ## in looks across the field, the whip goes to each as it lands.
 func _attack_all() -> void:
@@ -398,7 +700,24 @@ func _finish() -> void:
 		problems.append("finish: the bars didn't come up")
 	await _wait(1.2)
 	await _shot("finish_2_lands")
-	await _wait(2.0)
+	# (25 November: how long the clock is held slow before it starts back up,
+	# in the duel's own frames: the striker's leap is staged now, and the slow
+	# clock makes it a long one. The way back up is timed by the watch, which
+	# this test's frames outrun, so it's waited for and not measured.)
+	var held := 1.8
+	while Engine.time_scale < DuelScreen.FINISH_SLOW + 0.005 and held < 12.0:
+		await _wait(0.1)
+		held += 0.1
+		if "trace" in parts:
+			print("  finish trace %.1f s: clock %.2f, striker %.2f m out" % [held, Engine.time_scale, ds.field.lunge_of(0, 1).length() if ds.field != null else 0.0])
+	print("CINE SHOT: finish: the clock was held slow for %.1f s" % held)
+	if held > 4.5:
+		problems.append("finish: the clock was held slow for %.1f s" % held)
+	var back := 0.0
+	while Engine.time_scale < 0.999 and back < 20.0:
+		await _wait(0.1)
+		back += 0.1
+	await _wait(0.6)
 	await _shot("finish_3_after")
 	if absf(Engine.time_scale - 1.0) > 0.001:
 		problems.append("finish: the clock was left at %.2f" % Engine.time_scale)

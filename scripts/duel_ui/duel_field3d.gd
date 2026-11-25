@@ -1297,7 +1297,11 @@ func _tint_model(s: Slot, m: Color) -> void:
 				if s.rim_mat == null:
 					s.rim_mat = ShaderMaterial.new()
 					s.rim_mat.shader = _rim_shader()
-					s.rim_mat.set_shader_parameter("col", rim_col(s.card_id))
+				# (25 November: its own colour every time. The colour was set once,
+				# when the slot's first glowing Totem made the material, so whatever
+				# stood there after it had that one's rim: an Ashen Drake called
+				# where an Elderbark fell gathered its fire in a pale green light)
+				s.rim_mat.set_shader_parameter("col", rim_col(s.card_id))
 				s.rim_mat.set_shader_parameter("k", 0.18 + 0.08 * sin(_t * 1.7 + s.index * 2.1) + 1.5 * s.glow_boost)
 				ov.next_pass = s.rim_mat
 			elif ov.next_pass != null and ov.next_pass == s.rim_mat:
@@ -1984,6 +1988,255 @@ func shot_ko(side: int, slot: int) -> Array:
 	var pos := foot + d * KO_OUT + right * (KO_SIDE * toward_mid) + Vector3(0, h * KO_UP, 0)
 	var look := foot + Vector3(0, h * 0.5, 0)
 	return [pos, look]
+
+
+## (25 November, Gary's yes to an attack staged in three shots "in every duel,
+## not just Bram's": these two came from WhiteSky, which made them for the
+## film's.) The two of them in one picture, for a blow's crossing: from
+## beside and a little behind `near` (`hand`: 1 its right, -1 its left, as it
+## faces `far`; `back` and `aside` m), low, looking across at `far`. `near`
+## stands in the near side of the picture and `far` across the Circle in the
+## other, so what crosses between them crosses the picture. `h`: how tall
+## `near` stands. `drop` lowers what the camera looks at, which lifts the two
+## of them up the picture (a played duel's hand of cards lies over the bottom
+## of it). [camera, looking at, lens]
+func two_shot(near: Vector3, far: Vector3, hand: float, h: float, back := 1.0, aside := 3.6, lens := 44.0, drop := 0.0) -> Array:
+	var d := Vector3(far.x - near.x, 0.0, far.z - near.z)
+	if d.length() < 0.6:
+		return []
+	d = d.normalized()
+	var right := d.cross(Vector3.UP).normalized()
+	var pos := near - d * back + right * hand * aside
+	pos.y = clampf(h * 0.45, 0.8, 1.5)
+	var look := near.lerp(far, 0.44)
+	look.y = maxf(0.55, minf(near.y, far.y) * 0.9) - drop
+	return [pos, look, lens]
+
+
+## Is another Totem standing between a camera at `pos` and `at`? (`but`: the
+## slots of the Totems being looked at, left out.)
+func blocked(pos: Vector3, at: Vector3, but: Array = []) -> bool:
+	var seg := at - pos
+	var len2 := seg.length_squared()
+	if len2 < 0.01:
+		return false
+	for side in slots:
+		for i in slots[side]:
+			var sl = slots[side][i]
+			if sl == null or String(sl.card_id) == "" or but.has(sl):
+				continue
+			var c := body_world(int(side), int(i))
+			var k := clampf((c - pos).dot(seg) / len2, 0.0, 1.0)
+			if k > 0.97:
+				continue
+			if (pos + seg * k).distance_to(c) < float(sl.creature_h) * 0.4:
+				return true
+	return false
+
+
+## The slot of the Totem standing at `p` (within a stride of it), or null.
+func slot_at(p: Vector3):
+	for side in slots:
+		for i in slots[side]:
+			var sl = slots[side][i]
+			if sl == null or String(sl.card_id) == "":
+				continue
+			var c := foot_world(int(side), int(i))
+			if Vector2(c.x - p.x, c.z - p.z).length() < 0.9:
+				return sl
+	return null
+
+
+## How a camera at `pos` looking at `look` through `lens` sees the point `p`:
+## where it is in the stage's picture (x to the right and y up, in the
+## picture's half-heights from its middle, so the picture is 16/9 either way
+## by 1 up and down) and how far ahead of the lens (z; under 0 is behind it).
+func seen_from(pos: Vector3, look: Vector3, lens: float, p: Vector3) -> Vector3:
+	var f := (look - pos).normalized()
+	var r := f.cross(Vector3.UP)
+	if r.length() < 0.001:
+		return Vector3(0, 0, -1)
+	r = r.normalized()
+	var u := r.cross(f)
+	var v := p - pos
+	var depth := v.dot(f)
+	if depth < 0.05:
+		return Vector3(0, 0, depth)
+	var t := tan(deg_to_rad(lens) * 0.5) * maxf(0.2, _view)
+	return Vector3(v.dot(r) / (depth * t), v.dot(u) / (depth * t), depth)
+
+
+## The crossing's shot for a blow between `near` (on the camera's half of
+## the Circle: your Totem, or where a blow on your Life lands) and `far`
+## (the one across): the two of them in one picture, so what crosses between
+## them crosses the picture. [camera, looking at, lens]
+## (25 November, a played duel's: three Totems a side stand in each other's
+## way, and the first clear place of four, which was enough for the film's
+## two or three, left a neighbour's back filling a third of the picture or
+## standing between the two.) Every place it could be filmed from is tried
+## and marked (_cross_marks), and the best taken: from beside and behind
+## `near` over its shoulder (two_shot, CROSS_PLACES, either hand), and from
+## out to the side of the two, three quarters on (CROSS_SIDE), each low, and
+## higher (CROSS_HEIGHTS) where the low ones are crowded: the lower and the
+## nearer the better, but never with a Totem standing over either of the two,
+## a neighbour's back across the foreground, one of the two under the hand of
+## cards or out at the picture's edge, or the lens inside anything.
+## `drop` lowers what the low shots look at, which lifts the two of them up
+## the picture clear of the hand. `ok` (a Callable taking the shot, optional)
+## can turn a place down.
+const CROSS_PLACES := [[1.4, 4.2], [0.4, 4.6], [2.6, 3.4], [3.4, 2.4]]
+const CROSS_HEIGHTS := [0.0, 1.9, 2.9, 4.2]   # 0: low, by `near`'s own height
+const CROSS_HEIGHT_COST := [0.0, 0.35, 1.0, 1.9]   # what each height costs a place's mark: the lower the better, other things equal
+const CROSS_SIDE := 1.0                  # the side shot stands where the two are this share of the half-picture apart...
+const CROSS_SIDE_BACK := 0.32            # ...and this share of its distance round towards `near`'s end (so it looks up the Circle, at the arena's painting)
+const CROSS_BODY := 0.36                 # a Totem's body, as a ball this share of its height across
+## What crossing_shot last chose, for the tests: [which place, its mark].
+var cross_pick: Array = []
+
+func crossing_shot(near: Vector3, far: Vector3, lens := 44.0, drop := 0.0, ok := Callable()) -> Array:
+	var near_slot = slot_at(near)
+	var far_slot = slot_at(far)
+	if far_slot == near_slot:
+		far_slot = null
+	var h := float(near_slot.creature_h) if near_slot != null else 2.0
+	var way := Vector3(far.x - near.x, 0.0, far.z - near.z)
+	var span := way.length()
+	if span < 0.6:
+		return []
+	var d := way / span
+	var right := d.cross(Vector3.UP).normalized()
+	var outer := signf(near.x) if absf(near.x) > 0.5 else (signf(near.x - far.x) if absf(near.x - far.x) > 0.5 else 1.0)
+	var hand := 1.0 if right.x * outer >= 0.0 else -1.0
+	var t := tan(deg_to_rad(lens) * 0.5)
+	var best: Array = []
+	var best_mark := INF
+	var n := 0
+	for hi in CROSS_HEIGHTS.size():
+		var up := float(CROSS_HEIGHTS[hi])
+		# over `near`'s shoulder
+		for pi in CROSS_PLACES.size():
+			for hd in [hand, -hand]:
+				var c: Array = two_shot(near, far, float(hd), h, float(CROSS_PLACES[pi][0]), float(CROSS_PLACES[pi][1]), lens, drop if hi == 0 else 0.0)
+				if not c.is_empty() and hi > 0:
+					c[0] = Vector3((c[0] as Vector3).x, up, (c[0] as Vector3).z)
+					c[1] = Vector3((c[1] as Vector3).x, 0.35, (c[1] as Vector3).z)
+				n += 1
+				var m: float = _cross_mark(c, near, far, near_slot, far_slot, ok) + float(CROSS_HEIGHT_COST[hi]) + pi * 0.1 + (0.0 if float(hd) == hand else 0.06)
+				if m < best_mark:
+					best_mark = m
+					best = c
+					cross_pick = ["shoulder %d, hand %d, height %d" % [pi, int(hd), hi], m]
+		# from out to the side of the two, three quarters on
+		var dist := clampf(span * 0.5 / (CROSS_SIDE * t), 5.0, 12.0)
+		for hd in [hand, -hand]:
+			var mid := near.lerp(far, 0.5)
+			var pos: Vector3 = mid + right * float(hd) * dist - d * dist * CROSS_SIDE_BACK
+			pos.y = clampf(h * 0.5, 0.9, 1.5) if hi == 0 else up
+			var look := Vector3(mid.x, (0.6 - drop * 0.6) if hi == 0 else 0.35, mid.z)
+			var c2: Array = [pos, look, lens]
+			n += 1
+			var m2: float = _cross_mark(c2, near, far, near_slot, far_slot, ok) + float(CROSS_HEIGHT_COST[hi]) + 0.25 + (0.0 if float(hd) == hand else 0.06)
+			if m2 < best_mark:
+				best_mark = m2
+				best = c2
+				cross_pick = ["side, hand %d, height %d" % [int(hd), hi], m2]
+	return best
+
+
+## A crossing shot's mark (the lower the better; 0 is a clean picture of the
+## two). What costs it: one of the two behind the lens (not a shot at all),
+## out at the picture's edge, under the hand of cards, too small to make out
+## or cropped; one standing over the other, or the two too close together
+## across the picture for anything to be seen to cross; another Totem
+## standing over either of them, or across the foreground, or the lens in it;
+## and the lens off the mat's side of things or looking back at the player.
+func _cross_mark(c: Array, near: Vector3, far: Vector3, near_slot, far_slot, ok: Callable) -> float:
+	if c.is_empty() or (ok.is_valid() and not bool(ok.call(c))):
+		return INF
+	var pos: Vector3 = c[0]
+	var look: Vector3 = c[1]
+	var lens := float(c[2])
+	var t := tan(deg_to_rad(lens) * 0.5) * maxf(0.2, _view)
+	var mark := 0.0
+	if absf(pos.x) > 12.5 or absf(pos.z) > 12.5:
+		return INF
+	var seen: Array = []   # [where in the picture, how big]
+	for pair in [[near, near_slot], [far, far_slot]]:
+		var sl = pair[1]
+		var s := seen_from(pos, look, lens, pair[0])
+		if s.z < 0.6:
+			return INF
+		var r := (float(sl.creature_h) * CROSS_BODY if sl != null else 0.45) / (s.z * t)
+		seen.append([s, r])
+		if absf(s.x) > 1.2:
+			mark += 1.5 + (absf(s.x) - 1.2) * 5.0
+		if s.y - r * 0.5 < -0.42:
+			mark += 1.0 + (-0.42 - (s.y - r * 0.5)) * 5.0   # (under the hand of cards)
+		if s.y > 0.7:
+			mark += 1.5
+		if sl != null:
+			if r < 0.1:
+				mark += (0.1 - r) * 40.0
+			if r > 0.7:
+				mark += (r - 0.7) * 5.0
+	var a: Vector3 = seen[0][0]
+	var b: Vector3 = seen[1][0]
+	var gap := Vector2(a.x - b.x, a.y - b.y).length()
+	var need := float(seen[0][1]) + float(seen[1][1])
+	if gap < need:
+		mark += 5.0 * (need - gap) / need
+	var apart := absf(a.x - b.x)
+	if apart < 0.8:
+		mark += (0.8 - apart) * 3.0
+	for side in slots:
+		for i in slots[side]:
+			var sl = slots[side][i]
+			if sl == null or String(sl.card_id) == "" or sl == near_slot or sl == far_slot:
+				continue
+			var body := body_world(int(side), int(i))
+			var size := float(sl.creature_h) * CROSS_BODY
+			if body.distance_to(pos) < size + 1.0:
+				mark += 8.0
+			var o := seen_from(pos, look, lens, body)
+			if o.z < 0.3:
+				continue
+			var ro := size / (o.z * t)
+			if absf(o.x) > 16.0 / 9.0 + ro or absf(o.y) > 1.0 + ro:
+				continue
+			for sb in seen:
+				var ss: Vector3 = sb[0]
+				if o.z < ss.z:
+					var g := Vector2(o.x - ss.x, o.y - ss.y).length()
+					var nd := ro + float(sb[1])
+					if g < nd:
+						mark += 6.0 * (nd - g) / nd
+			if o.z < minf(a.z, b.z) and ro > 0.28:
+				mark += (ro - 0.28) * 6.0   # (a neighbour's back across the foreground)
+			# standing where the blow crosses, nearer the lens than its way
+			var lo := minf(a.x, b.x)
+			var hi := maxf(a.x, b.x)
+			if o.x > lo + 0.1 and o.x < hi - 0.1 and o.z < maxf(a.z, b.z) and absf(o.y - lerpf(a.y, b.y, (o.x - lo) / maxf(0.01, hi - lo))) < ro:
+				mark += 1.2
+	var f := (look - pos).normalized()
+	if f.z > 0.25:
+		mark += 0.6 + f.z   # (looking back down the Circle: nothing painted behind them there)
+	elif f.z > -0.2:
+		mark += 0.3
+	return mark
+
+
+## A cut to the home view (25 November: the blow that ends a duel leans in
+## from home; from an attack's first shot, in front of the striker, the lean
+## was a long pull back over its own row in slow motion).
+func cam_cut_home() -> void:
+	cam_shot(_home_pos, _home_look, 0.0, _home_fov, true)
+	_place_camera()
+
+
+## The camera put where cam_pos says now (after a cut: the screen reads where
+## things are on the stage straight after it, before _process has run).
+func snap_camera() -> void:
+	_place_camera()
 
 
 ## The way across the floor from a to b (a side's way forward when they're
@@ -3050,6 +3303,24 @@ func flash_light(at: Vector3, col: Color, energy: float = 6.0, dur: float = 0.4,
 	tw.tween_callback(l.queue_free)
 
 
+## A light held on something for `hold` s and faded out over `fade` (25
+## November: the key light of an attack's first shot, from beside the lens;
+## flash_light starts fading at once).
+func key_light(at: Vector3, col: Color, energy: float, hold: float, fade: float, range_m: float = 8.0) -> void:
+	var l := OmniLight3D.new()
+	l.position = at
+	l.light_color = col
+	l.light_energy = 0.0
+	l.omni_range = range_m
+	l.shadow_enabled = false
+	_fx_parent().add_child(l)
+	var tw := l.create_tween()
+	tw.tween_property(l, "light_energy", energy, 0.12)
+	tw.tween_interval(maxf(0.0, hold - 0.12))
+	tw.tween_property(l, "light_energy", 0.0, fade).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_callback(l.queue_free)
+
+
 ## A glowing billboard that blooms and fades (impact flash).
 func flash_sprite(at: Vector3, col: Color, size: float = 2.5, dur: float = 0.35) -> void:
 	var sp := Sprite3D.new()
@@ -4000,9 +4271,12 @@ func lunge(side: int, slot: int, to: Vector3, out_secs: float, back_secs: float,
 	var flight := out_secs * LUNGE_FLIGHT
 	var tw := create_tween()
 	s.lunge_tw = tw
-	# back and down, gathering itself
+	# back and down, gathering itself (25 November: from wherever it is, which
+	# is its place unless the blow before this one still has it on its way
+	# back: the second blow of a flurry, a blow on each Totem across in turn)
+	var was := Vector3(s.lunge.x, 0.0, s.lunge.z)
 	tw.tween_method(func(k: float) -> void:
-		s.lunge = -dir * pull * k
+		s.lunge = was.lerp(-dir * pull, k)
 		s.lunge_pose = Vector2(1.0 + 0.1 * k, 1.0 - 0.16 * k), 0.0, 1.0, gather).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	# and across, quickening, stretched along its leap
 	tw.tween_method(func(k: float) -> void:

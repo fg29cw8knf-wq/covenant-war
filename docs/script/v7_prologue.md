@@ -336,8 +336,10 @@ _(A breath.)_
 
 **[NARRATOR – MORROWEN] (V.O., changed 19 November; Gary: "20 years later the debt
 came due doesn't really make sense or blend well with the title then coming up";
-it was "Twenty years later, the debt came due."):** "Twenty years later, the Age
-came to its end... and every debt in my book came due."
+it was "Twenty years later, the debt came due."; changed again 25 November, Gary:
+"Every debt in my book came due - is that possible?", every soul in her book
+having a debt; it was "...and every debt in my book came due."):** "Twenty years
+later, the Age came to its end... and every borrowed death came due."
 
 _(The mark beats once, brighter, in the quiet; the main theme rises out of it.)_
 
@@ -1591,8 +1593,8 @@ While building v7 the game needed a few short lines the script doesn't have. The
 - **The ending:** Morrowen over Bram stopped with the child, "He walked out of the
   Shardlands with the child in his coat, and a debt in his own name."; then on
   black under the mark, "Twenty years later, the Age came to its end... and
-  every debt in my book came due." (it was "Twenty years later, the debt came
-  due."). It ends on the Age ending, which the title (Throne of Ages) and the
+  every borrowed death came due." (it was "Twenty years later, the debt came
+  due.", then "...and every debt in my book came due." until 25 November). It ends on the Age ending, which the title (Throne of Ages) and the
   attic's caption ("The last night of the Age.") go on from. A breath of quiet
   either side of it, the mark beats once, and the theme rises into the title.
 - **The hooded figure watches Bram walk away** again, standing whole on its own
