@@ -3545,6 +3545,73 @@ crossing shot, every leap, no script error; the same without it; `duel_monkey
 `white_sky_test -- duel` PASS; `menu_test` ok (the Options' new row);
 `load_all` 0 failed. **Not checked:** on a Mac or a phone, or moving.
 
+#### The afternoon: the Options in two columns, and the knocks
+
+Gary (25 November, 12:52, to the list after the switch): "3 yes 4 yes". (3:
+"Put the Options page in two columns so nothing needs scrolling." 4: "Use the
+wood and metal knocks in the Impact Sounds pack for the crate, the box lid
+and doors.")
+
+- **3, the Options in two columns** (`PauseMenu._options`, `OPT_TWO_ROOM`).
+  It was one column of some 25 rows, two screens tall: at 1600 x 900 it ended
+  half way down "Attack shots", with the reading time, the 3D field, both
+  speed buttons and the saving below the fold. Now, where the panel is at
+  least 1,760 of the menu's units wide (a Mac, or a phone held sideways, at
+  the Normal text size), it's two columns and ends on the screen: sound,
+  text, the picture and the speed buttons on the left, the duel's rows and
+  the saving on the right. What it took to fit:
+  - names 264 wide for 300, choices 176 for 200, sliders as wide as the
+    column leaves them and 56 high for 64, switches 60 for 72, the plain
+    buttons 64 for 96 (the height the choices always were);
+  - a row's note under its buttons and not beside them; a long switch as a
+    short name with its bracket as small words under it (`_check_noted`);
+    "Summon videos" on a line over its four buttons; "Text and buttons size"
+    is "Text size";
+  - the two speed buttons side by side ("Test speed (about a minute)",
+    "Copy the speed log"), which is the row that lets it end on the screen;
+  - the small print split to the columns' feet, and the last launch one
+    faint line the page's width.
+  It measures 836 of the menu's units tall, in 903 on a 16:9 Mac, 1,023 on a
+  16:10 one and 868 on an iPhone held sideways (the home bar takes the rest).
+  At Larger and Largest there isn't the width or the height for two, so it
+  stays one column that scrolls, the same rows in the same order. A phone's
+  rows are a little lower than they were at Normal for it; Larger gives the
+  roomier one-column page back.
+- **Found doing it, and put right:**
+  - *The menu ran off the right of the screen at Larger and Largest, on every
+    page*: Resume cut short, every switch's knob off the edge.
+    `SafeArea.fit` asked for the right width while the tabs were still full
+    size, so the panel was held wider by them; `_fit_tabs` then made the tabs
+    smaller, and nothing brought the panel back in (a Control doesn't shrink
+    by itself). `_refit_panel` does, at the end of `_fit_tabs` and after a
+    page is put up; `_clear` hides the page it frees, so a wide page (the
+    Deck's) can't hold the panel wide under the page after it for a frame.
+  - *Picking a text size left the page as it was laid out*: two columns at
+    Larger would have run off the side and the foot. The page watches the
+    screen (`SafeArea.watch`) and lays itself out again when the number of
+    columns changes, the same for a window pulled to another shape.
+  - *At Larger on a Mac the one-column page scrolled sideways* by the length
+    of "Keep the frame rate smooth (draws fewer ...)": under `OPT_LONG_ROOM`
+    the long switches take the short name and the note there too.
+- **Found, and not put right (they're pages of their own):** at Largest the
+  Deck and Codex pages are wider than the screen (the Deck 255 of the menu's
+  units over on a Mac, 130 on a phone; the Codex 216 and 91), the Deck 7 over
+  at Larger on a Mac. `screen_fit_test ... ui=1.3` says the same of the Codex
+  on the code as it was. Offered to Gary as a suggestion.
+- **4, the knocks: waiting on the two packs**, with the footsteps. The Mac
+  wasn't connected when looked for (twice), and nothing was in reach of this
+  workspace. Nothing built for it yet.
+
+Checked: `tests/options_page_test` (new: presses the page's own text size
+buttons Normal, Larger, Largest, Normal; every row there; in two columns
+nothing off the page or over anything else; never a sideways scroll; the
+panel on the screen on the Options and, bar the two above, every other page)
+at 1600 x 900, 1440 x 900 and 1278 x 590 with `--phone
+--safe-area=88,0,88,32`: ok. `menu_test` ok. `screen_fit_test only=world` on
+a phone's shape: ok at Normal; at `ui=1.3` the same two Codex lines as
+before the change, no others. `load_all` 0 failed. Stills are the
+Compatibility renderer's; not seen on a Mac or a phone.
+
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 
 Gary (24 November, on his Mac): "Game taking a very long time to start /

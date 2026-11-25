@@ -170,7 +170,23 @@ func _fit_tabs() -> void:
 			if b.visible:
 				need += b.get_combined_minimum_size().x + 8.0
 		if need - 8.0 <= room:
-			return
+			break
+	_refit_panel()
+
+
+## Brings the panel back in to the width SafeArea.fit() gave it, once the
+## tabs have been made to fit that. (25 November: at Larger and Largest the
+## menu ran off the right of the screen, Resume and every switch cut short.
+## fit() had asked for the right width while the tabs were still full size,
+## so the panel was held wider by them, and a Control doesn't come back in
+## by itself when what's inside it gets smaller.)
+func _refit_panel() -> void:
+	if _panel == null:
+		return
+	var m := SafeArea.insets()
+	var want := (SafeArea.screen().size.x - maxf(m.x, 28.0) - maxf(m.z, 28.0)) / SafeArea.ui_scale()
+	if _panel.size.x > want + 0.5:
+		_panel.size.x = want   # (no narrower than what's in it: Godot sees to that)
 
 
 ## Resume: commits a changed deck if it's legal, or asks what to do.
@@ -237,6 +253,11 @@ func _clear() -> void:
 		_overlay.queue_free()
 		_overlay = null
 	for c in _content.get_children():
+		# (hidden as well as freed: it's only gone at the frame's end, and until
+		# then a wide page, the Deck's at Largest, would still hold the panel
+		# as wide as itself under the page that follows it: _refit_panel)
+		if c is CanvasItem:
+			(c as CanvasItem).visible = false
 		c.queue_free()
 
 
@@ -260,6 +281,7 @@ func show_tab(key: String) -> void:
 		"controls": page = _controls()
 		_: page = _options()
 	_content.add_child(page)
+	_refit_panel()   # (back in, if the page before this one had held it wider)
 
 
 # ================================================================== hero ===
@@ -866,251 +888,199 @@ func _howto() -> Control:
 
 # =============================================================== options ===
 
+## The Options. (25 November, Gary's yes to "Put the Options page in two
+## columns so nothing needs scrolling.": it was one column of some 25 rows,
+## two screens tall, the duel's rows and both speed buttons below the fold.)
+## With room for it (OPT_TWO_ROOM: a Mac, or a phone held sideways, at the
+## Normal text size) it's two columns, each a screen tall and no taller:
+## sound and picture on the left, duels on the right, saving and the small
+## print under the duels. Narrower names, buttons and sliders than the one
+## column has, rows 64 high for its 72 and 96, and a row's note under it and
+## not beside it. At Larger and Largest, or on a narrow screen, it's one
+## column that scrolls, in the same order (left's rows, then right's).
+const OPT_TWO_ROOM := 1760.0     # the panel's width, in the menu's own units, from which there are two columns
+var _opt_two := false
+var _opt_name_w := 300           # a row's name...
+var _opt_btn_w := 200            # ...each of its choices...
+var _opt_gap := 24               # ...and the gap between them
+
+
+## How wide the panel is, in the menu's own units (as _fit_tabs works it out).
+func _options_room() -> float:
+	var m := SafeArea.insets()
+	return (SafeArea.screen().size.x - maxf(m.x, 28.0) - maxf(m.z, 28.0)) / SafeArea.ui_scale() - 44.0
+
+
 func _options() -> Control:
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 16)
-	v.add_child(_slider("Music", "music", 0.8, func() -> void: Music.apply_volume()))
-	v.add_child(_slider("Sound effects", "sfx", 0.9, func() -> void: pass))
+	_opt_two = _options_room() >= OPT_TWO_ROOM
+	_opt_name_w = 264 if _opt_two else 300   # (264: "Background sounds", the longest of them)
+	_opt_btn_w = 176 if _opt_two else 200
+	_opt_gap = 16 if _opt_two else 24
+	var sep := 6 if _opt_two else 16
+	var left := VBoxContainer.new()
+	left.add_theme_constant_override("separation", sep)
+	var right := left
+	if _opt_two:
+		right = VBoxContainer.new()
+		right.add_theme_constant_override("separation", sep)
+
+	# ---- sound and picture
+	left.add_child(_slider("Music", "music", 0.8, func() -> void: Music.apply_volume()))
+	left.add_child(_slider("Sound effects", "sfx", 0.9, func() -> void: pass))
 	# (12 November, Gary: "Yes re the slider") each place's own quiet sound,
 	# apart from the other effects: Ambience reads it as it plays
-	v.add_child(_slider("Background sounds", Ambience.SETTING, Ambience.SETTING_DEFAULT, func() -> void: pass))
-	v.add_child(_slider("Text speed", "text_speed", 1.0, func() -> void: pass, 0.5, 2.5))
+	left.add_child(_slider("Background sounds", Ambience.SETTING, Ambience.SETTING_DEFAULT, func() -> void: pass))
+	left.add_child(_slider("Text speed", "text_speed", 1.0, func() -> void: pass, 0.5, 2.5))
 	# the walking camera: left is further out, right closer in (World eases to it)
 	var zoom := _slider("Camera zoom", "cam_zoom", 1.0, func() -> void: pass, World.ZOOM_MIN, World.ZOOM_MAX)
 	var zs: HSlider = zoom.get_child(1)
-	var reset := UITheme.button("Reset", false, 170)
-	reset.custom_minimum_size = Vector2(170, 64)
+	var reset := UITheme.button("Reset", false, 150 if _opt_two else 170)
+	reset.custom_minimum_size = Vector2(150 if _opt_two else 170, 56 if _opt_two else 64)
 	reset.add_theme_font_size_override("font_size", 26)
 	reset.pressed.connect(func() -> void: zs.value = 1.0)
 	zoom.add_child(reset)
-	v.add_child(zoom)
+	left.add_child(zoom)
 	# bigger words and buttons in the world, its menus and films, for a small phone (SafeArea.ui_scale())
-	var sizes := HBoxContainer.new()
-	sizes.add_theme_constant_override("separation", 24)
-	var sl := UITheme.label("Text and buttons size", 30, UITheme.TEXT, "bold")
-	sl.custom_minimum_size = Vector2(300, 0)
-	sizes.add_child(sl)
-	var size_btns := []
+	var size_opts := []
 	for nm in SafeArea.UI_SCALES:
-		var val: float = SafeArea.UI_SCALES[nm]
-		var b := UITheme.button(nm, false, 200)
-		b.toggle_mode = true
-		b.button_pressed = is_equal_approx(SafeArea.ui_scale(), val)
-		b.custom_minimum_size = Vector2(200, 64)
-		b.add_theme_font_size_override("font_size", 26)
-		b.pressed.connect(func() -> void:
-			Game.settings["ui_scale"] = val
+		size_opts.append([float(SafeArea.UI_SCALES[nm]), String(nm)])
+	left.add_child(_choice_row("Text and buttons size" if not _opt_two else "Text size", size_opts,
+		func(val) -> bool: return is_equal_approx(SafeArea.ui_scale(), float(val)),
+		func(val) -> void:
+			Game.settings["ui_scale"] = float(val)
 			Game.save_settings()
-			for o in size_btns:
-				o.button_pressed = o == b
-			SafeArea.refresh())
-		size_btns.append(b)
-		sizes.add_child(b)
-	v.add_child(sizes)
-	# the response window in a duel (Phase A): ask whenever an answer is held,
-	# only when one can be paid for, or never (the action goes ahead)
-	var respond := HBoxContainer.new()
-	respond.add_theme_constant_override("separation", 24)
-	var rl := UITheme.label("Ask me to respond", 30, UITheme.TEXT, "bold")
-	rl.custom_minimum_size = Vector2(300, 0)
-	respond.add_child(rl)
-	var respond_btns := []
-	for m in [["always", "Always"], ["can", "Only when I can"], ["never", "Never"]]:
-		var rb := UITheme.button(String(m[1]), false, 200)
-		rb.toggle_mode = true
-		rb.button_pressed = String(Game.settings.get("respond", "can")) == String(m[0])
-		rb.custom_minimum_size = Vector2(200, 64)
-		rb.add_theme_font_size_override("font_size", 24)
-		rb.pressed.connect(func() -> void:
-			Game.settings["respond"] = String(m[0])
-			Game.save_settings()
-			for o in respond_btns:
-				(o as Button).button_pressed = o == rb)
-		respond_btns.append(rb)
-		respond.add_child(rb)
-	v.add_child(respond)
-	# Gary's Summon clips in a duel (SummonVideo; 12 November: "a button in
-	# the game setting for summons play full video or 3 second intro"): the
-	# whole film every time, the three-second cut every time, the whole film
-	# once and the cut after (as it was), or none; what the choice does in a
-	# line under the buttons
-	var videos := HBoxContainer.new()
-	videos.add_theme_constant_override("separation", 24)
-	var vl := UITheme.label("Summon videos", 30, UITheme.TEXT, "bold")
-	vl.custom_minimum_size = Vector2(300, 0)
-	videos.add_child(vl)
-	var video_words := UITheme.label(String(SummonVideo.MODE_WORDS[SummonVideo.mode()]), 24, UITheme.TEXT_DIM)
-	video_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var video_btns := []
-	for m in SummonVideo.MODES:
-		var vb := UITheme.button(String(SummonVideo.MODE_NAMES[m]), false, 200)
-		vb.toggle_mode = true
-		vb.button_pressed = SummonVideo.mode() == m
-		vb.custom_minimum_size = Vector2(200, 64)
-		vb.add_theme_font_size_override("font_size", 26)
-		vb.pressed.connect(func() -> void:
-			SummonVideo.set_mode(String(m))
-			video_words.text = String(SummonVideo.MODE_WORDS[m])
-			for o in video_btns:
-				o.button_pressed = o == vb)
-		video_btns.append(vb)
-		videos.add_child(vb)
-	v.add_child(videos)
-	var video_row := HBoxContainer.new()
-	var video_gap := Control.new()
-	video_gap.custom_minimum_size = Vector2(324, 0)
-	video_row.add_child(video_gap)
-	video_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	video_row.add_child(video_words)
-	v.add_child(video_row)
-	# how fast a duel plays out (27 October; the duel's own Speed button too)
-	var speeds := HBoxContainer.new()
-	speeds.add_theme_constant_override("separation", 24)
-	var spl := UITheme.label("Battle speed", 30, UITheme.TEXT, "bold")
-	spl.custom_minimum_size = Vector2(300, 0)
-	speeds.add_child(spl)
-	var speed_btns := []
-	for m in [[1.0, "Normal"], [2.0, "Fast"], [4.0, "Fastest"]]:
-		var sb := UITheme.button(String(m[1]), false, 200)
-		sb.toggle_mode = true
-		sb.button_pressed = is_equal_approx(float(Game.settings.get("duel_speed", 1.0)), float(m[0]))
-		sb.custom_minimum_size = Vector2(200, 64)
-		sb.add_theme_font_size_override("font_size", 26)
-		sb.pressed.connect(func() -> void:
-			Game.settings["duel_speed"] = float(m[0])
-			Game.save_settings()
-			for o in speed_btns:
-				(o as Button).button_pressed = o == sb)
-		speed_btns.append(sb)
-		speeds.add_child(sb)
-	v.add_child(speeds)
-	# the duel's camera (8 November; the duel's own Camera button too):
-	# travelling round the board, or locked where it always was
-	var cams := HBoxContainer.new()
-	cams.add_theme_constant_override("separation", 24)
-	var cml := UITheme.label("Duel camera", 30, UITheme.TEXT, "bold")
-	cml.custom_minimum_size = Vector2(300, 0)
-	cams.add_child(cml)
-	var cam_btns := []
-	for m in [["moving", "Moving"], ["locked", "Locked"]]:
-		var cb := UITheme.button(String(m[1]), false, 200)
-		cb.toggle_mode = true
-		cb.button_pressed = (DuelField3D.camera_moving() == (m[0] == "moving"))
-		cb.custom_minimum_size = Vector2(200, 64)
-		cb.add_theme_font_size_override("font_size", 26)
-		cb.pressed.connect(func() -> void:
-			Game.settings["duel_camera"] = String(m[0])
-			Game.save_settings()
-			for o in cam_btns:
-				(o as Button).button_pressed = o == cb)
-		cam_btns.append(cb)
-		cams.add_child(cb)
-	var cmn := UITheme.label("moving travels round the board between your choices", 22, UITheme.TEXT_DIM)
-	cmn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	cams.add_child(cmn)
-	v.add_child(cams)
-	# the camera cutting in when a Totem attacks (25 November, Gary's yes to "A
-	# switch in the duel's options to turn the attack shots off"; the duel's
-	# own Menu has it too): DuelScreen.attack_shots
-	var shots := HBoxContainer.new()
-	shots.add_theme_constant_override("separation", 24)
-	var shl := UITheme.label("Attack shots", 30, UITheme.TEXT, "bold")
-	shl.custom_minimum_size = Vector2(300, 0)
-	shots.add_child(shl)
-	var shot_btns := []
-	for m in [[true, "On"], [false, "Off"]]:
-		var hb := UITheme.button(String(m[1]), false, 200)
-		hb.toggle_mode = true
-		hb.button_pressed = DuelScreen.attack_shots() == bool(m[0])
-		hb.custom_minimum_size = Vector2(200, 64)
-		hb.add_theme_font_size_override("font_size", 26)
-		hb.pressed.connect(func() -> void:
-			DuelScreen.set_attack_shots(bool(m[0]))
-			for o in shot_btns:
-				(o as Button).button_pressed = o == hb)
-		shot_btns.append(hb)
-		shots.add_child(hb)
-	var shn := UITheme.label("off keeps the camera still when Totems attack", 22, UITheme.TEXT_DIM)
-	shn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	shots.add_child(shn)
-	v.add_child(shots)
-	# how long the words in a duel stay up (29 October, Gary: "The text in the
-	# battles goes by very quickly"; DuelReading): Normal is the new, longer default
-	var reading := HBoxContainer.new()
-	reading.add_theme_constant_override("separation", 24)
-	var rdl := UITheme.label("Reading time", 30, UITheme.TEXT, "bold")
-	rdl.custom_minimum_size = Vector2(300, 0)
-	reading.add_child(rdl)
-	var reading_btns := []
-	for k in DuelReading.ORDER:
-		var rb := UITheme.button(String(DuelReading.LEVELS[k].name), false, 200)
-		rb.toggle_mode = true
-		rb.button_pressed = DuelReading.key() == k
-		rb.custom_minimum_size = Vector2(200, 64)
-		rb.add_theme_font_size_override("font_size", 26)
-		rb.pressed.connect(func() -> void:
-			DuelReading.set_level(String(k))
-			for o in reading_btns:
-				(o as Button).button_pressed = o == rb)
-		reading_btns.append(rb)
-		reading.add_child(rb)
-	var rdn := UITheme.label("how long the words in a duel stay up", 22, UITheme.TEXT_DIM)
-	rdn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	reading.add_child(rdn)
-	v.add_child(reading)
-	v.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
-		Game.settings["duel_3d"] = on))
+			SafeArea.refresh()))
 	if Gfx.is_phone():
-		v.add_child(_check("Smooth graphics (recommended on a phone; off = the Mac's full settings)", not Gfx.full(), func(on: bool) -> void:
-			Game.settings["graphics"] = "smooth" if on else "full"
-			Gfx.setup(get_tree())
-			toast("Fully applies the next time a place loads")))
+		left.add_child(_check_noted("Smooth graphics", "recommended on a phone; off is the Mac's full settings",
+			"Smooth graphics (recommended on a phone; off = the Mac's full settings)", not Gfx.full(), func(on: bool) -> void:
+				Game.settings["graphics"] = "smooth" if on else "full"
+				Gfx.setup(get_tree())
+				toast("Fully applies the next time a place loads")))
 	else:
 		# (11 November) the frame-rate guard on a Mac or PC (Gfx.Guard)
-		v.add_child(_check("Keep the frame rate smooth (draws fewer of the 3D's pixels and rebuilds the rest, only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
-			Game.settings["smooth_auto"] = on
-			Gfx.setup(get_tree())))
+		left.add_child(_check_noted("Keep the frame rate smooth", "draws fewer of the 3D's pixels, only while this computer can't keep up",
+			"Keep the frame rate smooth (draws fewer of the 3D's pixels and rebuilds the rest, only while this computer can't keep up)", Gfx.Guard.on(), func(on: bool) -> void:
+				Game.settings["smooth_auto"] = on
+				Gfx.setup(get_tree())))
 		# (14 November) the sharpest picture a Mac or PC can be asked for (Gfx.Best)
-		v.add_child(_check("Best picture (sharper edges and finer shadows; all the light is kept whatever the frame rate)", Gfx.Best.on(), func(on: bool) -> void:
-			Game.settings["best_picture"] = on
-			Gfx.setup(get_tree())
-			toast("Best picture on" if on else "Best picture off")))
+		left.add_child(_check_noted("Best picture", "sharper edges and finer shadows; all the light is kept whatever the frame rate",
+			"Best picture (sharper edges and finer shadows; all the light is kept whatever the frame rate)", Gfx.Best.on(), func(on: bool) -> void:
+				Game.settings["best_picture"] = on
+				Gfx.setup(get_tree())
+				toast("Best picture on" if on else "Best picture off")))
 	# (14 November) the phone shaking in the hand on a big blow (Haptics); only
 	# where there's a motor to shake
 	if Haptics.can():
-		v.add_child(_check("Vibration (the phone shakes on the biggest blows)", Haptics.on(), func(on: bool) -> void:
-			Game.settings["vibration"] = on
-			if on:
-				Haptics.kind(Haptics.BLOW)))
-	v.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
+		left.add_child(_check_noted("Vibration", "the phone shakes on the biggest blows",
+			"Vibration (the phone shakes on the biggest blows)", Haptics.on(), func(on: bool) -> void:
+				Game.settings["vibration"] = on
+				if on:
+					Haptics.kind(Haptics.BLOW)))
+	left.add_child(_check("Show frame rate", bool(Game.settings.get("show_fps", false)), func(on: bool) -> void:
 		Game.settings["show_fps"] = on
 		Gfx.FpsMeter.show_on(get_tree(), on)))
 	if not OS.has_feature("web"):
 		# (18 November) what the picture costs this computer, timed where the
 		# player stands (SpeedTest): the menu steps aside while it runs
-		var st := UITheme.button("Test this computer's speed (about a minute)", false, 640)
+		var st := _opt_button("Test this computer's speed (about a minute)" if not _opt_two else "Test speed (about a minute)", 640)
 		st.pressed.connect(func() -> void:
 			if not SpeedTest.running:
 				SpeedTest.run(get_tree(), self, _area_name()))
-		v.add_child(st)
 		# (24 November) the game's own record of how fast each part ran this
 		# time and the time before (PerfLog), to paste to a session
-		var pl := UITheme.button("Copy the speed log (how fast each part of the game ran)", false, 640)
+		var pl := _opt_button("Copy the speed log (how fast each part of the game ran)" if not _opt_two else "Copy the speed log", 640)
 		pl.pressed.connect(func() -> void:
 			DisplayServer.clipboard_set(PerfLog.everything())
 			toast("Speed log copied: paste it to Claude"))
-		v.add_child(pl)
-	v.add_child(_check("Show advert placeholders (this early build only)", bool(Game.settings.get("ad_previews", true)), func(on: bool) -> void:
+		if _opt_two:
+			# (side by side in a column: a row saved, which is what lets the page end on the screen)
+			var speed := HBoxContainer.new()
+			speed.add_theme_constant_override("separation", 12)
+			speed.add_child(st)
+			speed.add_child(pl)
+			left.add_child(speed)
+		else:
+			left.add_child(st)
+			left.add_child(pl)
+	left.add_child(_check("Show advert placeholders (this early build only)", bool(Game.settings.get("ad_previews", true)), func(on: bool) -> void:
 		Game.settings["ad_previews"] = on))
+
+	# ---- duels
+	# how fast a duel plays out (27 October; the duel's own Speed button too)
+	right.add_child(_choice_row("Battle speed", [[1.0, "Normal"], [2.0, "Fast"], [4.0, "Fastest"]],
+		func(val) -> bool: return is_equal_approx(float(Game.settings.get("duel_speed", 1.0)), float(val)),
+		func(val) -> void:
+			Game.settings["duel_speed"] = float(val)
+			Game.save_settings()))
+	# the duel's camera (8 November; the duel's own Camera button too):
+	# travelling round the board, or locked where it always was
+	right.add_child(_choice_row("Duel camera", [["moving", "Moving"], ["locked", "Locked"]],
+		func(val) -> bool: return DuelField3D.camera_moving() == (String(val) == "moving"),
+		func(val) -> void:
+			Game.settings["duel_camera"] = String(val)
+			Game.save_settings(),
+		"moving travels round the board between your choices"))
+	# the camera cutting in when a Totem attacks (25 November, Gary's yes to "A
+	# switch in the duel's options to turn the attack shots off"; the duel's
+	# own Menu has it too): DuelScreen.attack_shots
+	right.add_child(_choice_row("Attack shots", [[true, "On"], [false, "Off"]],
+		func(val) -> bool: return DuelScreen.attack_shots() == bool(val),
+		func(val) -> void: DuelScreen.set_attack_shots(bool(val)),
+		"off keeps the camera still when Totems attack"))
+	# how long the words in a duel stay up (29 October, Gary: "The text in the
+	# battles goes by very quickly"; DuelReading): Normal is the new, longer default
+	var read_opts := []
+	for k in DuelReading.ORDER:
+		read_opts.append([String(k), String(DuelReading.LEVELS[k].name)])
+	right.add_child(_choice_row("Reading time", read_opts,
+		func(val) -> bool: return DuelReading.key() == String(val),
+		func(val) -> void: DuelReading.set_level(String(val)),
+		"how long the words in a duel stay up"))
+	# the response window in a duel (Phase A): ask whenever an answer is held,
+	# only when one can be paid for, or never (the action goes ahead)
+	right.add_child(_choice_row("Ask me to respond", [["always", "Always"], ["can", "Only when I can"], ["never", "Never"]],
+		func(val) -> bool: return String(Game.settings.get("respond", "can")) == String(val),
+		func(val) -> void:
+			Game.settings["respond"] = String(val)
+			Game.save_settings(),
+		"", 24, [150, 240, 150] if _opt_two else []))
+	# Gary's Summon clips in a duel (SummonVideo; 12 November: "a button in
+	# the game setting for summons play full video or 3 second intro"): the
+	# whole film every time, the three-second cut every time, the whole film
+	# once and the cut after (as it was), or none; what the choice does in a
+	# line under the buttons
+	var video_words := UITheme.label(String(SummonVideo.MODE_WORDS[SummonVideo.mode()]), 22 if _opt_two else 24, UITheme.TEXT_DIM)
+	video_words.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var video_opts := []
+	for m in SummonVideo.MODES:
+		video_opts.append([String(m), String(SummonVideo.MODE_NAMES[m])])
+	var videos := _choice_row("Summon videos", video_opts,
+		func(val) -> bool: return SummonVideo.mode() == String(val),
+		func(val) -> void:
+			SummonVideo.set_mode(String(val))
+			video_words.text = String(SummonVideo.MODE_WORDS[String(val)]),
+		"", 26, [], _opt_two)
+	right.add_child(videos)
+	var video_row := HBoxContainer.new()
+	var video_gap := Control.new()
+	video_gap.custom_minimum_size = Vector2(0 if _opt_two else 324, 0)
+	video_row.add_child(video_gap)
+	video_words.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	video_row.add_child(video_words)
+	right.add_child(video_row)
+	right.add_child(_check("3D duel field", bool(Game.settings.get("duel_3d", true)), func(on: bool) -> void:
+		Game.settings["duel_3d"] = on))
+
+	# ---- saving, and the small print
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 20)
-	v.add_child(row)
-	var save := UITheme.button("Save game", false, 360)
+	row.add_theme_constant_override("separation", 20 if not _opt_two else 12)
+	right.add_child(row)
+	var save := _opt_button("Save game", 360 if not _opt_two else 300)
 	save.pressed.connect(func() -> void:
 		if Game.save_game():
 			toast("Game saved"))
 	row.add_child(save)
-	var title := UITheme.button("Save and quit to title", false, 460)
+	var title := _opt_button("Save and quit to title", 460 if not _opt_two else 420)
 	title.pressed.connect(func() -> void:
 		_confirm("Quit to the title screen?", "Your game is saved first.", "Stay", "Quit to title", func(yes: bool) -> void:
 			if yes:
@@ -1118,24 +1088,139 @@ func _options() -> Control:
 				_clear()
 				action.emit("title")))
 	row.add_child(title)
-	v.add_child(_gap(10))
-	v.add_child(UITheme.label("The Covenant War: Throne of Ages  ·  made by Gary Mannion  ·  early build %s" % Packs.build_label(), 22, UITheme.TEXT_DIM))
-	v.add_child(UITheme.label(NoticeScreen.COPYRIGHT, 22, UITheme.TEXT_DIM))
-	# where to send what's wrong (the notice's second page says the same)
-	v.add_child(UITheme.label("Found something that doesn't work or look right? Tell Gary: %s" % NoticeScreen.CONTACT, 22, UITheme.TEXT_DIM))
+	if not _opt_two:
+		right.add_child(_gap(10))
+	var small := 20 if _opt_two else 22
+	var prints := [
+		"The Covenant War: Throne of Ages  ·  made by Gary Mannion  ·  early build %s" % Packs.build_label(),
+		NoticeScreen.COPYRIGHT,
+		# where to send what's wrong (the notice's second page says the same)
+		"Found something that doesn't work or look right? Tell Gary: %s" % NoticeScreen.CONTACT]
+	for i in prints.size():
+		var pl2 := UITheme.label(String(prints[i]), small, UITheme.TEXT_DIM)
+		if _opt_two:
+			pl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# (in two columns the last of them is the left's foot: the left is the shorter)
+		(left if _opt_two and i == 2 else right).add_child(pl2)
+	# where the last launch got to, for a phone that stuck (LaunchLog)
+	var ll: Label = null
 	if LaunchLog.last() != "":
-		# where the last launch got to, for a phone that stuck (LaunchLog)
-		var ll := UITheme.label("Last launch: %s" % LaunchLog.last(), 20, UITheme.TEXT_DIM)
+		ll = UITheme.label("Last launch: %s" % LaunchLog.last(), 18 if _opt_two else 20, UITheme.TEXT_DIM)
 		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(ll)
-	return _scroll(v)
+	var page: Control = left
+	if not _opt_two:
+		if ll != null:
+			right.add_child(ll)
+	else:
+		var cols := HBoxContainer.new()
+		cols.add_theme_constant_override("separation", 40)
+		left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cols.add_child(left)
+		cols.add_child(right)
+		page = cols
+		if ll != null:
+			# (the last launch: one faint line the page's whole width, under both columns)
+			page = VBoxContainer.new()
+			page.add_theme_constant_override("separation", sep)
+			page.add_child(cols)
+			page.add_child(ll)
+	var sc := _scroll(page)
+	# a new text size, or the window pulled to another shape, while the page
+	# is up: laid out again if it's now the other number of columns (two
+	# columns left up at Larger ran off the panel's side and its foot)
+	SafeArea.watch(sc, func() -> void:
+		if tab == "options" and visible and (_options_room() >= OPT_TWO_ROOM) != _opt_two:
+			show_tab.call_deferred("options"))
+	return sc
+
+
+## One of the Options' rows of choices: its name, a button for each of `opts`
+## ([value, words]), the one `is_on` says is the setting lit, `pick` called
+## with the value of the one pressed. `note`: small words after the buttons
+## (one column) or under them (two). `widths`: the buttons' own, if not the
+## page's. `above`: the name on a line of its own over the buttons (a row of
+## four in a column).
+func _choice_row(title: String, opts: Array, is_on: Callable, pick: Callable, note := "", font := 26, widths: Array = [], above := false) -> Control:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", _opt_gap)
+	var l := UITheme.label(title, 30, UITheme.TEXT, "bold")
+	if not above:
+		l.custom_minimum_size = Vector2(_opt_name_w, 0)
+		row.add_child(l)
+	var btns := []
+	for i in opts.size():
+		var o: Array = opts[i]
+		var w := int(widths[i]) if i < widths.size() else _opt_btn_w
+		var b := UITheme.button(String(o[1]), false, w)
+		b.toggle_mode = true
+		b.button_pressed = bool(is_on.call(o[0]))
+		b.custom_minimum_size = Vector2(w, 64)
+		b.add_theme_font_size_override("font_size", font)
+		b.pressed.connect(func() -> void:
+			pick.call(o[0])
+			for x in btns:
+				(x as Button).button_pressed = x == b)
+		btns.append(b)
+		row.add_child(b)
+	if above:
+		var over := VBoxContainer.new()
+		over.add_theme_constant_override("separation", 2)
+		over.add_child(l)
+		over.add_child(row)
+		return over
+	if note == "":
+		return row
+	var n := UITheme.label(note, 22 if not _opt_two else 20, UITheme.TEXT_DIM)
+	if not _opt_two:
+		n.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		row.add_child(n)
+		return row
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.add_child(row)
+	var under := HBoxContainer.new()
+	var g := Control.new()
+	g.custom_minimum_size = Vector2(_opt_name_w + _opt_gap, 0)
+	under.add_child(g)
+	under.add_child(n)
+	box.add_child(under)
+	return box
+
+
+## A switch whose words are too long for a column: `short` with `note` under
+## it in small words there, `long` on one line where the page is one column
+## and wide enough for it (OPT_LONG_ROOM: narrower than that, at Larger on a
+## Mac, the longest of them made the whole page scroll sideways).
+const OPT_LONG_ROOM := 1640.0
+func _check_noted(short: String, note: String, long: String, on: bool, f: Callable) -> Control:
+	if not _opt_two and _options_room() >= OPT_LONG_ROOM:
+		return _check(long, on, f)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 0)
+	box.add_child(_check(short, on, f))
+	var n := UITheme.label(note, 20 if _opt_two else 22, UITheme.TEXT_DIM)
+	n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(n)
+	return box
+
+
+## One of the Options' plain buttons: as tall as a thumb wants in one column
+## (UITheme.TOUCH), a row's height in two, and no wider than its words.
+func _opt_button(text: String, min_w: int) -> Button:
+	var b := UITheme.button(text, false, min_w)
+	if _opt_two:
+		b.custom_minimum_size = Vector2(0, 64)
+		b.add_theme_font_size_override("font_size", 26)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	return b
 
 
 func _slider(label: String, key: String, def: float, after: Callable, lo := 0.0, hi := 1.0) -> Control:
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", _opt_gap)
 	var l := UITheme.label(label, 30, UITheme.TEXT, "bold")
-	l.custom_minimum_size = Vector2(300, 0)
+	l.custom_minimum_size = Vector2(_opt_name_w, 0)
 	row.add_child(l)
 	var s := HSlider.new()
 	s.min_value = lo
@@ -1143,6 +1228,10 @@ func _slider(label: String, key: String, def: float, after: Callable, lo := 0.0,
 	s.step = 0.05
 	s.value = float(Game.settings.get(key, def))
 	s.custom_minimum_size = Vector2(700, 64)
+	if _opt_two:
+		# (25 November: in a column it's as wide as the column leaves it, and a little lower)
+		s.custom_minimum_size = Vector2(380, 56)
+		s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	s.add_theme_icon_override("grabber", _grabber())
 	s.add_theme_icon_override("grabber_highlight", _grabber())
 	s.add_theme_stylebox_override("slider", UITheme.sb(Color(1, 1, 1, 0.12), Color(0, 0, 0, 0), 8, 0, 4))
@@ -1206,6 +1295,17 @@ func _check(label: String, on: bool, f: Callable) -> Control:
 	c.button_pressed = on
 	c.add_theme_font_size_override("font_size", 28)
 	c.custom_minimum_size = Vector2(0, 72)
+	if _opt_two:
+		# (in a column it's as low as its switch lets it be: 60 for 72)
+		# (its box is the theme's, which it only has once it's in the tree)
+		c.custom_minimum_size = Vector2(0, 60)
+		c.ready.connect(func() -> void:
+			for st in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
+				if c.has_theme_stylebox(st):
+					var box := c.get_theme_stylebox(st).duplicate() as StyleBox
+					box.content_margin_top = 4
+					box.content_margin_bottom = 4
+					c.add_theme_stylebox_override(st, box))
 	c.add_theme_icon_override("checked", _switch(true))
 	c.add_theme_icon_override("unchecked", _switch(false))
 	c.add_theme_icon_override("checked_disabled", _switch(true))
