@@ -436,6 +436,11 @@ func _deck() -> Control:
 	var comp := UITheme.label(_deck_makeup(_deck_work) + ("  ·  Way: %s" % DuelArchetypes.arch_name(way) if way != "" else ""), 26, UITheme.TEXT_DIM)
 	comp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	comp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# (it wraps where the row is short of room, at Larger and Largest: unwrapped,
+	# the row was as wide as its words whatever the panel was, and the Deck
+	# page ran off the right of the screen. Two lines fit the row's height.)
+	comp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	comp.custom_minimum_size = Vector2(260, 0)
 	top.add_child(comp)
 	var add := UITheme.button("Add cards from the Codex", false, 0)
 	add.custom_minimum_size = Vector2(0, 76)
@@ -528,6 +533,11 @@ func _first_deck() -> Control:
 	var comp := UITheme.label(_deck_makeup(_deck_work), 26, UITheme.TEXT_DIM)
 	comp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	comp.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	# (it wraps where the row is short of room, at Larger and Largest: unwrapped,
+	# the row was as wide as its words whatever the panel was, and the Deck
+	# page ran off the right of the screen. Two lines fit the row's height.)
+	comp.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	comp.custom_minimum_size = Vector2(260, 0)
 	top.add_child(comp)
 	v.add_child(_wrap("A first deck. A full deck is %d cards, and you'll build your own later from the cards you collect. Tap a card to read it." % DuelRules.deck_size,
 		26, UITheme.TEXT))

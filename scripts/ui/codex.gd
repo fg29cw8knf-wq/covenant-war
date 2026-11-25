@@ -270,8 +270,13 @@ class Grid:
 	func _ready() -> void:
 		add_theme_constant_override("separation", 14)
 		if show_filters:
-			var row := HBoxContainer.new()
-			row.add_theme_constant_override("separation", 10)
+			# (a row that wraps: at Larger and Largest, or with every filter
+			# showing, the buttons and the count don't fit on one line, and a
+			# plain row held the whole menu wider than the screen. The count
+			# takes what's left of the last line, as it took the row's.)
+			var row := HFlowContainer.new()
+			row.add_theme_constant_override("h_separation", 10)
+			row.add_theme_constant_override("v_separation", 8)
 			add_child(row)
 			for f in Codex.FILTERS:
 				var b := UITheme.button(f[1], false, 0)
@@ -291,7 +296,13 @@ class Grid:
 			row.add_child(_summary)
 		_scroll = ScrollContainer.new()
 		_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		# (never a bar, and never DISABLED: a ScrollContainer with its sideways
+		# scroll disabled is as wide as what's in it at the least, so the grid's
+		# columns, once counted for a wide panel, held the panel that wide for
+		# good; at Larger and Largest the Deck and Codex pages ran off the right
+		# of the screen. 25 November, Gary's yes to "Make the Deck and Codex
+		# pages fit at the Largest text size.")
+		_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 		add_child(_scroll)
 		_grid = GridContainer.new()
 		_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL   # so a one-column list fills the width

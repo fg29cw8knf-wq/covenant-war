@@ -157,7 +157,33 @@ const UI_SCALES := {"Normal": 1.0, "Larger": 1.15, "Largest": 1.3}
 
 
 static func ui_scale() -> float:
-	return clampf(float(Game.settings.get("ui_scale", 1.0)), 1.0, 1.3)
+	return clampf(float(Game.settings.get("ui_scale", default_ui_scale())), 1.0, 1.3)
+
+
+## The text size a player who has never picked one starts with: Larger on a
+## phone, Normal on a Mac, a PC and a tablet. (25 November, Gary's yes to
+## "Start iPhones on the Larger text size, since Normal is small for thumbs":
+## at Normal a choice's button is some 23 points high on an iPhone, and Apple
+## asks for 44.) Only a pick from the Options writes the setting, so a phone
+## that has never picked takes this from its next launch, and one that picked
+## Normal keeps it. A tablet is told from a phone by its screen in inches; a
+## test's pretend phone (`--phone`) is a phone.
+const PHONE_UI_SCALE := 1.15
+const TABLET_INCHES := 7.5
+static var _default_scale := -1.0
+
+static func default_ui_scale() -> float:
+	if _default_scale > 0.0:
+		return _default_scale
+	_default_scale = 1.0
+	if Gfx.is_phone():
+		_default_scale = PHONE_UI_SCALE
+		if OS.has_feature("mobile"):
+			var dpi := DisplayServer.screen_get_dpi()
+			var px := DisplayServer.screen_get_size()
+			if dpi > 0 and px.x > 0 and Vector2(px).length() / float(dpi) >= TABLET_INCHES:
+				_default_scale = 1.0
+	return _default_scale
 
 
 ## Lays every screen out again (after the text size changes).

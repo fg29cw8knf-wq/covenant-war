@@ -9,6 +9,12 @@ const STATUS_SHORT := {"burn": "BURN", "poison": "POISON", "stun": "STUN", "slee
 
 
 static func ellipse(ci: CanvasItem, c: Vector2, rad: Vector2, col: Color, n: int = 48) -> void:
+	# (nothing to draw, or nowhere to draw it: a shield's bubble round a Totem
+	# that's behind the camera for a frame is asked for millions of pixels off
+	# the screen, where its points run together and the engine can't fill
+	# them, "triangulation failed"; seen in the random duels, 25 November)
+	if absf(rad.x) < 0.5 or absf(rad.y) < 0.5 or not c.is_finite() or absf(c.x) > 100000.0 or absf(c.y) > 100000.0:
+		return
 	var pts := PackedVector2Array()
 	for i in n:
 		var a := TAU * i / n

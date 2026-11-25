@@ -1,4 +1,6 @@
 extends Node
+## The pack's menu at every text size, and its Options page most of all (the
+## Deck and the Codex too, which ran off the right at Larger and Largest).
 ## The Options page at every screen shape and text size: in two columns
 ## where there's room, with nothing off the bottom or the side (25 November,
 ## Gary's yes to "Put the Options page in two columns so nothing needs
@@ -13,14 +15,11 @@ const ROWS := ["Music", "Sound effects", "Background sounds", "Text speed", "Cam
 	"Duel camera", "Attack shots", "Reading time", "Ask me to respond", "Summon videos", "3D duel field",
 	"Show frame rate", "Save game", "Save and quit to title"]
 
-## Pages still too wide for the panel at Larger and Largest (25 November:
-## found here, not yet put right; they're theirs to fix, not the Options').
-const WIDE_PAGES := ["deck", "codex"]
-
 var out_dir := "user://"
 var size := Vector2i(1600, 900)
 var problems := []
 var shots := 0
+var once := {}
 
 
 func _ready() -> void:
@@ -36,6 +35,9 @@ func _ready() -> void:
 	Game.new_game("Ash", "emberstorm")
 	Game.flags["arrived_solhaven"] = true
 	Game.flags["bram_deck"] = true   # (every tab open)
+	for id in DuelCards.card_list("dask_hounds"):   # (a Codex with more in it than the deck)
+		Game.v2.collection[id] = int(Game.v2.collection.get(id, 0)) + 1
+		Game.v2.codex[id] = "seen"
 	var world := World.new().setup("solhaven", "gate")
 	add_child(world)
 	await _frames(40)
@@ -67,11 +69,22 @@ func _ready() -> void:
 			await _frames(6)
 			var pr: Rect2 = menu._panel.get_global_rect()
 			if not SafeArea.rect().grow(1.0).encloses(pr):
-				var said := "%s: the %s page's panel is %d wide of the screen's safe area" % [tag, t[1], int(pr.end.x - SafeArea.rect().end.x)]
-				if WIDE_PAGES.has(String(t[0])) and nm != "Normal":
-					print("OPTIONS (known, not this test's) ", said)
+				problems.append("%s: the %s page's panel is %d wide of the screen's safe area" % [tag, t[1], int(pr.end.x - SafeArea.rect().end.x)])
+			# the Deck and the Codex were the two that ran off at Larger and
+			# Largest (25 November): a still of each, and every card on the page
+			if String(t[0]) in ["deck", "codex"]:
+				var g := menu._page_grid()
+				if g == null:
+					problems.append("%s: no card grid on the %s page" % [tag, t[1]])
 				else:
-					problems.append(said)
+					var view: Rect2 = g._scroll.get_global_rect().grow(1.0)
+					for cell in g._grid.get_children():
+						var cr: Rect2 = (cell as Control).get_global_rect()
+						if cr.position.x < view.position.x or cr.end.x > view.end.x:
+							problems.append("%s: a card on the %s page runs off its side (%d to %d in %d to %d)" % [tag, t[1], int(cr.position.x), int(cr.end.x), int(view.position.x), int(view.end.x)])
+							break
+				if once.get(nm, true):
+					await _shot("%s_%dx%d_%s" % [t[0], size.x, size.y, String(nm).to_lower()])
 		menu.show_tab("options")
 		await _frames(8)
 		var sc := menu._content.get_child(0) as ScrollContainer
@@ -113,6 +126,7 @@ func _ready() -> void:
 		var panel: Rect2 = menu._panel.get_global_rect()
 		if not SafeArea.rect().grow(1.0).encloses(panel):
 			problems.append("%s: the menu's panel %s runs off the screen's safe area %s" % [tag, panel, SafeArea.rect()])
+		once[nm] = false
 		shots += 1
 		await _shot("options_%dx%d_%d_%s" % [size.x, size.y, shots, String(nm).to_lower()])
 	Game.settings["ui_scale"] = 1.0

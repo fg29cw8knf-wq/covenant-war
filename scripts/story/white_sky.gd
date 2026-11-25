@@ -5841,7 +5841,9 @@ func _hand_point() -> Vector3:
 ## its palm (_mote_k), turning over as it comes, then held upright against
 ## it, and turning white in it for a moment (_mote_white).
 func _tiny_step() -> void:
-	if not (_bram is Figure3D):
+	# (valid first: once the memory is skipped to its end he's freed, and `is`
+	# on a freed thing is an error, every frame until the scene goes)
+	if not is_instance_valid(_bram) or not (_bram is Figure3D):
 		return
 	var fig := _bram as Figure3D
 	if _tiny != null and is_instance_valid(_tiny) and _tiny.visible:
@@ -8606,7 +8608,7 @@ var _tuck_fingers := Vector3.ZERO
 ## His left palm under the bundle, turned as the bundle is turned (each frame
 ## once it's tucked: _process).
 func _hold_palm() -> void:
-	if _tuck_palm == Vector3.ZERO or not (_bram is Figure3D) or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
+	if _tuck_palm == Vector3.ZERO or not is_instance_valid(_bram) or not (_bram is Figure3D) or not is_instance_valid(_baby) or not is_instance_valid(_tuck_hand):
 		return
 	var b := _baby.global_basis.orthonormalized()
 	(_bram as Figure3D).palm_to("left", b * _tuck_palm, b * _tuck_fingers)

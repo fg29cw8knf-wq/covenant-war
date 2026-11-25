@@ -1099,8 +1099,20 @@ const STAGE_DROP := 0.5          # the crossing looks this far (m) under the two
 const CROSS_SLOW := 0.5          # the crossing of a blow that matters (Engine.time_scale)...
 const CROSS_SLOW_MS := 170       # ...for this long, real time, at Normal...
 const CROSS_RAMP_MS := 150       # ...then back up to speed over this
-## How many attacks were staged, and how many blows were seen to cross (the tests').
+## (25 November, Gary's yes to "Show small hits in two shots and keep the
+## close-up for big ones.") Shot one, the close-up of the striker gathering,
+## is kept for an attack that could matter (_big_coming). A small hit is two
+## shots: the two of them, cut to as it begins, the striker gathering in the
+## picture with what it's going for (STAGE_SMALL_GATHER, shorter than the
+## close-up's hold) and leaping across it; then the cut to where it lands.
+## One cut fewer, and about a fifth of a second sooner. `small_two_shots`
+## false gives every staged attack its close-up, as it was (the tests' before).
+static var small_two_shots := true
+const STAGE_SMALL_GATHER := 0.3  # a small hit's gather in the two-shot, in the duel's seconds
+## How many attacks were staged, how many of them had the close-up, and how
+## many blows were seen to cross (the tests').
 var staged_attacks := 0
+var staged_closeups := 0
 var staged_crossings := 0
 var _stage_n := 0
 var _cross_id := 0
@@ -1293,6 +1305,60 @@ func _crowds_the_lens(pos: Vector3, look: Vector3, but: Array) -> bool:
 	return false
 
 
+## Whether an attack about to begin could be a blow that matters, which is
+## what earns the close-up of its striker gathering: it rolls the die (the
+## roll is watched under the close-up, and a natural 20 could come), it
+## strikes a weakness, it could do HIT_STOP_DAMAGE or more, it could break
+## its Totem or end the duel (DuelGame.preview_attack: what it does if
+## nothing answers it), or it falls on every Totem across. What the blow
+## turns out to be is only known as it lands (fx_totem_hit, "big"); this is
+## the same test, asked beforehand.
+func _big_coming(t: DuelTotem, i: int, target) -> bool:
+	if bool(_strike.get("all", false)) or game == null:
+		return true
+	if t.move(i).has("fate"):
+		return true
+	if target is DuelTotem and (target as DuelTotem).weak_to(t.element()):
+		return true
+	var pv: Dictionary = game.preview_attack(t.owner, t, i, target)
+	return int(pv.get("hi", 0)) >= HIT_STOP_DAMAGE or float(pv.get("ko_chance", 0.0)) > 0.0 \
+		or float(pv.get("lethal_chance", 0.0)) > 0.0
+
+
+## Where the camera stands for the two of them, the blow about to cross
+## between them (shot two of three; shot one of a small hit's two):
+## [camera, looking at, lens], or empty if no place for it was found.
+## `end3`: where the striker's leap ends.
+func _cross_place(att: DuelTotem, a3: Vector3, end3: Vector3, all: bool) -> Array:
+	if all:
+		var sh: Array = field.shot_behind(a3, a3, att.owner)
+		return [sh[0], sh[1], DuelField3D.SHOT_FOV_BEHIND]
+	if att.owner == me:
+		return field.crossing_shot(a3, end3, 44.0, STAGE_DROP)
+	return field.crossing_shot(end3, a3, 44.0, STAGE_DROP)
+
+
+## The slow push in on that shot as the blow crosses, its eyes brought round
+## towards where the blow will land (`b3`).
+func _cross_push(c: Array, b3: Vector3, all: bool, matters: bool) -> void:
+	var land := Vector3(b3.x, (c[1] as Vector3).y, b3.z)
+	var cp: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, STAGE_PUSH)
+	var cl: Vector3 = (c[1] as Vector3).lerp(land, 0.0 if all else 0.3)
+	field.cam_shot(cp, cl, (STAGE_LUNGE + 0.3) / speed / (CROSS_SLOW if matters else 1.0), float(c[2]) - (0.0 if all else 2.0))
+
+
+## The cut to the two of them, and the push in after it. False if no place
+## for the camera was found.
+func _cross_cut(att: DuelTotem, a3: Vector3, end3: Vector3, b3: Vector3, all: bool, matters: bool) -> bool:
+	var c := _cross_place(att, a3, end3, all)
+	if c.is_empty():
+		return false
+	field.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+	_cross_push(c, b3, all, matters)
+	staged_crossings += 1
+	return true
+
+
 ## An attack's blow sent across the Circle in its second and third shots
 ## (_staged; fx_attack took the first). Returns as it lands, the camera cut
 ## to where.
@@ -1319,23 +1385,18 @@ func _deliver_staged(att: DuelTotem) -> void:
 	if not first:
 		field.cam_moves += 1   # (the shot is kept for this blow too: the way home planned after the last one waits)
 	if first and shots:
-		# shot two: the two of them, and the blow crossing between them
-		var c: Array
-		if all:
-			var sh: Array = field.shot_behind(a3, a3, att.owner)
-			c = [sh[0], sh[1], DuelField3D.SHOT_FOV_BEHIND]
-		elif att.owner == me:
-			c = field.crossing_shot(a3, end3, 44.0, STAGE_DROP)
+		# shot two: the two of them, and the blow crossing between them. A
+		# small hit's was cut to as it began (fx_attack) and is kept, unless
+		# the blow goes somewhere it wasn't aimed (a Guardian stepped in) or
+		# something has had the camera since (an answer's own shot)
+		var kept := false
+		if _strike.has("crossed3"):
+			kept = (_strike.crossed3 as Vector3).distance_to(end3) < 0.6 and field.cam_moves == int(_strike.get("cross_moves", -1))
+			_strike.erase("crossed3")
+		if kept:
+			_cross_push(_strike.cross_c, b3, all, matters)   # (the push in and the look round come with the leap, as in three shots)
 		else:
-			c = field.crossing_shot(end3, a3, 44.0, STAGE_DROP)
-		if not c.is_empty():
-			field.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
-			# in with it, its eyes brought round towards where the blow will land
-			var land := Vector3(b3.x, (c[1] as Vector3).y, b3.z)
-			var cp: Vector3 = (c[0] as Vector3).lerp(c[1] as Vector3, STAGE_PUSH)
-			var cl: Vector3 = (c[1] as Vector3).lerp(land, 0.0 if all else 0.3)
-			field.cam_shot(cp, cl, (STAGE_LUNGE + 0.3) / speed / (CROSS_SLOW if matters else 1.0), float(c[2]) - (0.0 if all else 2.0))
-			staged_crossings += 1
+			_cross_cut(att, a3, end3, b3, all, matters)
 	if melee:
 		var out_s := (STAGE_LUNGE if first else STAGE_LUNGE_AGAIN) / speed
 		var to3 := end3
@@ -4176,12 +4237,16 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 				field.face_at(target.owner, target.slot, _body3(t), 1.8 / speed)
 		var staged := _staged() and hostile
 		var shots := staged and attack_shots()
+		# (the close-up is a big blow's: _big_coming; a small hit is two shots)
+		var close := shots and (not small_two_shots or _big_coming(t, i, target))
 		if staged:
 			_stage_n += 1
 			staged_attacks += 1
 			_strike["staged"] = true
 			_strike["shots"] = shots
-		if shots:
+			_strike["close"] = close
+		if close:
+			staged_closeups += 1
 			# (25 November) shot one of three: close on it as it gathers its
 			# power, cut to, a slow push in (_deliver_staged has the other two)
 			var g: Array = _gather_shot(t)
@@ -4194,6 +4259,26 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 			var key_at: Vector3 = (g[0] as Vector3) + Vector3(0, 1.3, 0) + ((g[0] as Vector3) - (g[1] as Vector3)).normalized().cross(Vector3.UP) * 1.2
 			field.key_light(key_at, col.lerp(Color(1.0, 0.95, 0.88), 0.65), GATHER_KEY, (STAGE_GATHER + 0.5) / speed, 0.4 / speed)
 			src = _center(v)   # (where it is on the screen in this shot)
+			_strike["shot"] = true
+			_cam_home_soon(CAM_HOME_FALLBACK)   # (an attack answered away never lands: home anyway)
+		elif shots:
+			# a small hit, shot one of two: the two of them, cut to now. It
+			# gathers in the picture with what it's going for, then leaps
+			# (_deliver_staged, which keeps this shot for the crossing)
+			var on_life: bool = target is String and target == DuelGame.LIFE
+			var end3: Vector3 = _lunge_end(t, aim) if (on_life and bool(_strike.melee)) else aim
+			var c := _cross_place(t, _body3(t), end3, false)
+			if not c.is_empty():
+				# (held on the two of them as it gathers, creeping in a little;
+				# the push in and the look round wait for the leap)
+				field.cam_shot(c[0], c[1], 0.0, float(c[2]), true)
+				field.cam_shot((c[0] as Vector3).lerp(c[1] as Vector3, STAGE_PUSH * 0.25), c[1], (STAGE_SMALL_GATHER + 0.15) / speed, float(c[2]))
+				staged_crossings += 1
+				_strike["crossed3"] = end3
+				_strike["cross_c"] = c
+				_strike["cross_moves"] = field.cam_moves
+				field.snap_camera()
+				src = _center(v)   # (where it is on the screen in this shot)
 			_strike["shot"] = true
 			_cam_home_soon(CAM_HOME_FALLBACK)   # (an attack answered away never lands: home anyway)
 		elif staged:
@@ -4213,7 +4298,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		if (_cine() or film_blow) and hostile:
 			# (5 November) it gathers its power: motes drawn in, a glow swelling,
 			# its sigil flaring under it (the blow ends the charge, _deliver3)
-			var gather := FILM_GATHER if film_blow else (STAGE_GATHER if shots else CHARGE_SECS) / speed
+			var gather := FILM_GATHER if film_blow else (STAGE_GATHER if close else (STAGE_SMALL_GATHER if shots else CHARGE_SECS)) / speed
 			field.act_pulse(_foot3(t), col)
 			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), gather)
 			# (it swells as it gathers, held while the die rolls, and snaps back
@@ -4246,10 +4331,11 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		tw.tween_interval(0.01)
 		await pause(FILM_GATHER * speed)
 	elif bool(_strike.get("staged", false)):
-		# (a played duel's staged blow: the same, held for shot one; with the
-		# shots off there's no close-up to hold, so the old short wait)
+		# (a played duel's staged blow: the same, held for shot one; a small
+		# hit's gather in its two-shot is shorter; with the shots off there's
+		# no shot to hold, so the old short wait)
 		tw.tween_interval(0.01)
-		await pause(STAGE_GATHER if bool(_strike.get("shots", true)) else WINDUP_PAUSE)
+		await pause(STAGE_GATHER if bool(_strike.get("close", true)) else (STAGE_SMALL_GATHER if bool(_strike.get("shots", true)) else WINDUP_PAUSE))
 	else:
 		tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		if not _strike.melee:
@@ -6267,11 +6353,34 @@ class MoveLabel:
 			t = v
 			queue_redraw()
 
+	var _half := -1.0
+
+	func _ready() -> void:
+		_keep_on()
+
 	func _process(_delta: float) -> void:
 		if follow.is_valid():
 			var p = follow.call()
 			if p is Vector2 and (p as Vector2).is_finite():
 				position = p
+		_keep_on()
+
+	## Kept wholly on the screen. (25 November: beside one of your own Totems
+	## it's set 330 out to its side, and in a shot that has that Totem at the
+	## picture's edge, the two of them as a blow crosses, half its name was
+	## off the side of the screen.)
+	func _keep_on() -> void:
+		if not is_inside_tree():
+			return
+		if _half < 0.0:
+			_half = (CardFace.font("display_bold").get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, 34).x + 64.0) * 0.5 * 1.35
+		var half := _half * get_global_transform().get_scale().x
+		var r := SafeArea.rect()
+		var g := global_position
+		g.x = clampf(g.x, r.position.x + half + 12.0, maxf(r.position.x + half + 12.0, r.end.x - half - 12.0))
+		g.y = clampf(g.y, r.position.y + 70.0, maxf(r.position.y + 70.0, r.end.y - 40.0))
+		if not g.is_equal_approx(global_position):
+			global_position = g
 
 	func _draw() -> void:
 		var fnt := CardFace.font("display_bold")

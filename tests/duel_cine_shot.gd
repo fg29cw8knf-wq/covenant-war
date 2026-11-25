@@ -20,7 +20,9 @@ extends Node
 ##            leap or the flight), the cut to the blow as it lands; yours and
 ##            the rival's, a melee blow and a cast one, a blow on Life, one on
 ##            every Totem across, with both rows full. `oldstrikes` is the
-##            attack as it was.
+##            attack as it was. (25 November, later: a small hit has no
+##            close-up, its two shots are the two of them and the landing;
+##            `oldsmall` gives every attack its close-up, as it was.)
 ## and two flags (5 November):
 ##   preview  the stage dressed as a Mac or a phone on Full would have it
 ##            (DuelField3D.preview_level 2: the impact punch shader, which
@@ -43,10 +45,11 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	out = args[0] if args.size() > 0 else "user://"
 	parts = args.slice(1)
-	var flags := ["flat", "preview", "plain", "nolook", "nohaze", "oldstrikes", "trace", "moving"]
+	var flags := ["flat", "preview", "plain", "nolook", "nohaze", "oldstrikes", "oldsmall", "trace", "moving"]
 	parts = parts.filter(func(p): return not String(p).begins_with("only=")) + parts.filter(func(p): return String(p).begins_with("only="))
 	flags += parts.filter(func(p): return String(p).begins_with("only="))
 	DuelScreen.staged_strikes = not "oldstrikes" in parts
+	DuelScreen.small_two_shots = not "oldsmall" in parts   # (`oldsmall`: every staged attack with its close-up, as it was before 25 November's two shots)
 	var flat := "flat" in parts
 	if not flat and parts.filter(func(p): return not p in flags).is_empty():
 		parts += ["attack", "ko", "call", "summon", "finish", "pace", "arena"]   # (flat alone: just the flat field's own)
@@ -352,6 +355,8 @@ func _crossings() -> void:
 ## (25 November) Shot one, the close-up as it gathers, for every slot of a
 ## full board of big Totems and of small ones.
 func _gathers() -> void:
+	var two := DuelScreen.small_two_shots
+	DuelScreen.small_two_shots = false   # (a still of every slot's close-up, small hit or not)
 	for bd in [["small", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "cinderpup"]],
 			["big", ["ashen_drake", "elderbark", "ironhide"], ["ashen_drake", "elderbark", "ironhide"]]]:
 		var made: Array = await _board(bd[1], bd[2])
@@ -368,24 +373,28 @@ func _gathers() -> void:
 				ds._strike = {}
 				ds.field.cam_home(0.05)
 				await _wait(0.3)
+	DuelScreen.small_two_shots = two
 
 
 ## (25 November) An attack in three shots, on boards a duel really has.
 func _staged_all() -> void:
 	# yours, a melee blow that matters (60 on a weakness), the rows full
-	await _staged("mine_melee", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"], 0, 1, 1, 60)
+	# (the last argument, 25 November: 1 if it must have the close-up, 0 if it
+	# must be a small hit's two shots; it follows the cards, so a change to a
+	# Totem's move or a weakness can move it)
+	await _staged("mine_melee", ["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"], 0, 1, 1, 60, true, 1)
 	# yours on the long slant, a small one, the rows full
 	await _staged("mine_slant", ["cinderpup", "brookfin", "pebblit"], ["ironhide", "elderbark", "mossling"], 0, 0, 2, 20)
 	# the rival's, a small one, on a slant
-	await _staged("rival_melee", ["brookfin", "mossling", "pebblit"], ["cinderpup", "ironhide", "elderbark"], 1, 0, 2, 20)
+	await _staged("rival_melee", ["brookfin", "mossling", "pebblit"], ["cinderpup", "ironhide", "elderbark"], 1, 0, 2, 20, true, 0)
 	# a cast blow, yours, from the end of your row to the far end of theirs
 	await _staged("mine_cast", ["ashen_drake", "cinderpup", null], ["mossling", null, "pebblit"], 0, 0, 2, 30, false)
 	# and the rival's, big ones both rows
 	await _staged("rival_cast", ["elderbark", "ironhide", "brookfin"], ["elderbark", "ashen_drake", "ironhide"], 1, 1, 1, 60, false)
 	# on Life, nothing of theirs in the way
-	await _staged("mine_life", [null, "cinderpup", null], ["mossling", null, null], 0, 1, -1, 30)
+	await _staged("mine_life", [null, "cinderpup", null], ["mossling", null, null], 0, 1, -1, 30, true, 0)
 	# and the rival's on yours, past your row
-	await _staged("rival_life", ["brookfin", null, "pebblit"], [null, "cinderpup", null], 1, 1, -1, 30)
+	await _staged("rival_life", ["brookfin", null, "pebblit"], [null, "cinderpup", null], 1, 1, -1, 30, true, 0)
 	await _staged_ko()
 	await _staged_flurry()
 	await _staged_noshots()
@@ -560,7 +569,7 @@ func _staged_flurry() -> void:
 ## One attack: `side`'s Totem in `slot` on the other side's in `at` (-1:
 ## their Life) for `amount`, stills through all three shots. `melee` false
 ## looks for a move of its that isn't a melee blow.
-func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: int, amount: int, melee := true) -> void:
+func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: int, amount: int, melee := true, want_close := -1) -> void:
 	if not _only(tag):
 		return
 	var made: Array = await _board(mine, theirs)
@@ -579,9 +588,18 @@ func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: 
 	var f := ds.field
 	var home := f.cam_pos
 	var was := ds.staged_attacks
+	var crossed0 := ds.staged_crossings
+	var closeups := ds.staged_closeups
 	ds.fx_attack(att, mi, tg)
 	await _wait(0.3)
-	await _shot("staged_%s_1_gather" % tag)
+	# (25 November: a small hit has no close-up; its first shot is the two of them)
+	var close: bool = ds.staged_closeups == closeups + 1
+	await _shot("staged_%s_1_%s" % [tag, "gather" if close else "two_shot"])
+	print("CINE SHOT: staged %s: %s" % [tag, "three shots (the close-up first)" if close else "two shots (no close-up)"])
+	if DuelScreen.staged_strikes and want_close >= 0 and close != (want_close == 1):
+		problems.append("staged %s: %s, and it should have been %s" % [tag, "the close-up" if close else "no close-up", "the close-up" if want_close == 1 else "two shots"])
+	if DuelScreen.staged_strikes and not close and ds.staged_crossings != crossed0 + 1:
+		problems.append("staged %s: a small hit, and the two of them weren't cut to as it began" % tag)
 	var gsl = f.slots[side][slot]
 	var gv = ds.views[side][slot]
 	print("CINE SHOT: staged %s: gather: flash %.2f %s, glow_boost %.2f, fx_tint %s %.2f, rim %s %s, highlight %s" % [tag, gv.flash, gv.flash_color,
@@ -590,7 +608,7 @@ func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: 
 		"melee" if ds._strike.get("melee", false) else "cast", f.cam_pos.distance_to(home), mi, String(att.move(mi).get("name", ""))])
 	if DuelScreen.staged_strikes and ds.staged_attacks != was + 1:
 		problems.append("staged %s: the attack wasn't staged" % tag)
-	await _wait(0.45)
+	await _wait(0.45 if close else 0.03)   # (a small hit's gather is 0.3 s: its blow goes about now)
 	var crossed := ds.staged_crossings
 	_slowest = 1.0
 	_watch_clock = true
@@ -608,8 +626,10 @@ func _staged(tag: String, mine: Array, theirs: Array, side: int, slot: int, at: 
 	await _shot("staged_%s_3_after" % tag)
 	print("CINE SHOT: staged %s: the striker went %.1f m from its place; the clock's slowest %.2f; crossing %s" % [tag, furthest, _slowest, f.cross_pick])
 	if DuelScreen.staged_strikes:
-		if ds.staged_crossings != crossed + 1:
-			problems.append("staged %s: no crossing shot" % tag)
+		if ds.staged_crossings != crossed0 + 1:
+			problems.append("staged %s: %d crossing shots, not one" % [tag, ds.staged_crossings - crossed0])
+		if not close and ds.staged_crossings != crossed:
+			problems.append("staged %s: a small hit's two-shot was cut to again as the blow went" % tag)
 		if ds._strike.get("melee", false) and furthest < 1.5:
 			problems.append("staged %s: the striker never crossed (%.1f m)" % [tag, furthest])
 	await _wait(1.6)

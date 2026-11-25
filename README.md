@@ -31,8 +31,12 @@ figures, with the phone's frame rate and the first-launch time kept. Ashford
 first, as the showcase, then wherever the player goes next. **Flow**: nobody
 floats, sinks, pops or waits on nothing; every cut and camera move is
 deliberate; the gated steps always say what to do. After each update: the
-play-through as every look (`tests/ashford_test.tscn -- <dir> opening
-look=<a|b|c|d> keys`, and the rest of the game as each) with its stills looked
+play-through as Player A (`tools/play_all_looks.sh <dir>`, which is
+`tests/p1_v7_test.tscn -- <dir> keys look=a` and `tests/solhaven_test.tscn`;
+Gary, 25 November: "you only need to worry about player a dont add anything
+for b,c or d well add the later once the game is done", so looks B, C and D
+are neither tested nor worked on until he says; it was every look from 22
+October) with its stills looked
 at, and the body sweep over the parts it touched (12 November, below:
 `tools/body_sweep.sh`, then `tools/body_report.py`, every finding looked at
 in its stills; Gary: the model glitches he kept finding himself). And with
@@ -3611,6 +3615,148 @@ at 1600 x 900, 1440 x 900 and 1278 x 590 with `--phone
 a phone's shape: ok at Normal; at `ui=1.3` the same two Codex lines as
 before the change, no others. `load_all` 0 failed. Stills are the
 Compatibility renderer's; not seen on a Mac or a phone.
+
+#### Mid-afternoon: the Deck and Codex at the big text sizes, small hits in two shots, a phone starts on Larger
+
+Gary (25 November, 14:26, to the list after the Options): "1 yes 3 yes 4 yes
+- also is the still to make list upto date?" (1: "Make the Deck and Codex
+pages fit at the Largest text size. They run off the right edge now." 3:
+"Show small hits in two shots and keep the close-up for big ones." 4: "Start
+iPhones on the Larger text size, since Normal is small for thumbs.")
+
+- **1, the Deck and the Codex at Larger and Largest.** Three things held the
+  menu's panel wider than the screen there:
+  - *The card grid's columns were a ratchet* (`Codex.Grid`). Its
+    ScrollContainer had the sideways scroll DISABLED, and a ScrollContainer
+    like that is at least as wide as what's in it; the grid's columns are
+    counted from the scroller's width (`_fit_columns`), so once it had been
+    eight columns wide it held the panel eight columns wide for good,
+    whatever the text size became. It's `SCROLL_MODE_SHOW_NEVER` now (no bar,
+    and no minimum handed up), and the columns follow the panel down.
+  - *The Deck's top row* (title, the deck's make-up, "Add cards from the
+    Codex") was 1,592 wide whatever the panel was: the make-up line wraps
+    (two lines fit the row's height), in `_deck` and `_first_deck`.
+  - *The Codex's filter row* (the filters and the count) is an
+    HFlowContainer: at Larger the count drops to a line of its own, and with
+    every filter showing the buttons wrap too.
+  Measured after: every page's panel is the width `SafeArea.fit` asks for at
+  Normal, Larger and Largest, on a 16:9 Mac, a 16:10 one and an iPhone held
+  sideways (`tests/options_page_test`, which now walks every page at every
+  size, shoots the Deck and the Codex, and checks no card runs off the
+  grid's side; its `WIDE_PAGES` list of known faults is gone).
+- **3, small hits in two shots** (`DuelScreen.small_two_shots`,
+  `_big_coming`, `STAGE_SMALL_GATHER`). The close-up of the striker gathering
+  (shot one of three) is kept for an attack that could matter: it rolls the
+  die, strikes a weakness, could do `HIT_STOP_DAMAGE` (50) or more, could
+  break its Totem or end the duel (`DuelGame.preview_attack`, what it does if
+  nothing answers it), or falls on every Totem across. That's the test
+  `fx_totem_hit` makes as the blow lands ("big"), asked beforehand, since
+  the close-up comes before the blow is known. Anything else is a small hit,
+  in two shots: the cut to the two of them as it begins (`_cross_place`,
+  the camera held on them, creeping in, while it gathers for 0.3 s of the
+  duel's time in place of the close-up's 0.55), the leap across the same
+  shot with the push in and the look round (`_cross_push`), then the cut to
+  where it lands. One cut fewer and about a fifth of a second sooner.
+  `_deliver_staged` keeps the early shot unless the blow goes somewhere it
+  wasn't aimed (a Guardian stepped in: `crossed3`) or something has had the
+  camera since (an answer's own shot: `cross_moves`), when it cuts again as
+  it always did. "Attack shots" off is unchanged (no cuts at all); Fastest
+  is unchanged (not staged); the films and the Night of the White Sky stage
+  their own. `small_two_shots` false, the tests' `oldsmall`, is every staged
+  attack with its close-up, as it was.
+  - *Found doing it:* **a move's name ran off the side of the screen** in
+    any shot that has your own Totem at the picture's edge (the two of
+    them, from your side): it's set 330 out to your Totem's side.
+    `MoveLabel._keep_on` keeps it wholly on the screen, in the three-shot
+    crossing as well.
+- **4, a phone starts on Larger** (`SafeArea.default_ui_scale`,
+  `PHONE_UI_SCALE` 1.15). Only a pick from the Options writes
+  `Game.settings.ui_scale`, so the default is what a phone that has never
+  picked gets: Larger, from its next launch (one that picked Normal keeps
+  it). A tablet keeps Normal (a screen of 7.5 inches or more, by
+  `DisplayServer.screen_get_dpi`; not checked on a real iPad, and the game
+  isn't built for one); a test's `--phone` is a phone. At Larger on a phone
+  the Options are the one column that scrolls, with the taller rows. Every
+  screen at Larger on an iPhone's shape: `screen_fit_test ... --phone
+  --safe-area=93,0,93,32 ui=1.15`, ok, 34 stills.
+- **The Still to Make list, checked against the game** (his question). Not
+  up to date in these, all put right in the doc the same hour:
+  - *every voice job's line numbers from the attic on were three behind the
+    voice sheet*: three lines went in at the Night of the White Sky on 19
+    November and the sheet renumbers. Shifted by three, every job's count and
+    speakers match the sheet exactly (549 to record, 22 in; the list said
+    550 and 18);
+  - *Heart Lure and Dread Howl were still down as cards to paint*: their
+    paintings came on 18 November;
+  - *the map of Veyl was ticked by him and still on the list*: it came on 8
+    November (1,672 x 941, so a 3,840 x 2,160 one is on the 4K list now);
+  - *the frame-rate question* asked for what he answered on the 24th (a Mac,
+    60 to 120 fps, 64 GB): it asks for the speed log now;
+  - *the second merchant cart* was "when you make it" and has been in since
+    October; five models at 2K weren't on the 4K list (Tobin, the baby's
+    bundle, the shelter's door, Dask's crossbow, Tamsin's stall);
+  - *eight scenes said "Nothing left to do"* lower down while the list at
+    the top has voices and 4K remakes for them; the White Sky's section said
+    nothing was left to record.
+  The Done tab had nothing after 18 November: 19, 24 and 25 November are in.
+  What was checked: every model, card painting, voice line, film, music
+  track and arena piece the list names against the files in the game (the
+  cards by `DuelCards.CARDS` and each deck's list; the voices by
+  `docs/script/vo_lines.csv`; the 4K lists by each model's own texture
+  size). What wasn't: whether a painting he was asked to repaint has been
+  (Rook, Maelis, Eiran), and his answers still owed.
+- **Found, and for the next session:** `tools/play_all_looks.sh` (his
+  standing rule, every update played as looks A to D) ran `ashford_test
+  ... opening` for its first half, which has timed out waiting for the
+  mirror since the walk to the washbasin became the player's in
+  mid-November (the README of the 15th says so and nobody mended it): four
+  of its eight runs failed every time. It runs `tests/p1_v7_test` now, the
+  Prologue from New Game as a player plays it, `STOP=` to end it early.
+  And two per-frame checks in the White Sky (`_tiny_step`, `_hold_palm`)
+  asked `_bram is Figure3D` of a freed figure once the memory was skipped
+  to its end, an error a frame until the scene went (a test's skip only:
+  the game's can't be skipped): `is_instance_valid` first.
+- **Also found, older than today:** a shield's bubble round a Totem that's
+  behind the camera for a frame (a cut close in on another) was drawn
+  millions of pixels off the screen, where the engine can't fill it
+  ("Invalid polygon data, triangulation failed", a few times a duel, with
+  the old staging as well): `DuelViews.ellipse` skips it.
+- **Checked** (the final code unless said): `load_all` 0 failed.
+  `options_page_test` at 1600 x 900, 1440 x 900 and an iPhone's shape: ok
+  (every page's panel on the screen at Normal, Larger and Largest; the Deck's
+  and the Codex's stills looked at). `screen_fit_test only=world ui=1.3` on a
+  phone's shape: ok, where it had two Codex faults this morning; the whole
+  of it at `ui=1.15 --phone`: ok, 34 stills (before the Deck and Codex
+  change). `menu_test` ok. `duel_cine_shot attack ko call summon finish
+  staged`, `staged moving` and `staged` again at the end: problems none
+  (which attacks are two shots and which keep the close-up is pinned in
+  `_staged_all`). `duel_monkey -- 2 --3d --speed=1` headless: two whole
+  duels, 13 and 38 attacks, 7 and 25 with the close-up, 6 and 13 in two
+  shots, no script error, the clock and every striker back in place; the
+  first of them drawn at Fast, the same counts; `--noshots`: no shot taken.
+  The first duel is 38 frames shorter than with `--oldsmall` (1.3 s over six
+  small hits). `lantern_duel_test --checks --speed=1`: won. `road_duel_test`,
+  `solhaven_duels_test`: PASS. `white_sky_test ... duel` headless: PASS (the
+  drawn run didn't finish in its 25 minutes here; 28 s of the duel with no
+  error). `white_sky_sounds_test` ok. The Prologue to the street as Player
+  A (and, before he said not to, as B, C and D): ok, the stills looked at;
+  Chapter 1 as A (before the two guards in the White Sky and the bubble's)
+  and as B: PASS. Not checked: a real Mac or iPhone; anything moving (the
+  two-shot hit is judged from stills and timings); a drawn duel at Normal
+  from end to end (one frame a second here).
+- **Player A only from now on.** Gary, 17:37, seeing the game being played
+  as looks B, C and D: "you only need to worry about player a dont add
+  anything for b,c or d well add the later once the game is done". His
+  22 October rule (every update played as all four looks) is Player A's
+  alone now: `tools/play_all_looks.sh` plays look A unless looks are named,
+  and nothing is to be built, fitted or listed for B, C or D. (Dask, Wren
+  and Ironvault's hunters wear those three models as people in the story;
+  they aren't the player's looks, and their jobs on Still to Make stand.)
+  The runs as C and D were stopped when he said it.
+- **Still waiting on him:** the two Kenney packs (footsteps, and the wood
+  and metal knocks). His Mac answered this afternoon but no folder of it is
+  shared with this chat, and the ask to see Downloads was refused by the
+  session's own permission check; not retried.
 
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 

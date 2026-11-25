@@ -27,6 +27,7 @@ func _ready() -> void:
 			spd = float(String(x).trim_prefix("--speed="))
 	var most_frames := 40000 if spd > 4.0 else 400000
 	DuelScreen.staged_strikes = not args.has("--oldstrikes")
+	DuelScreen.small_two_shots = not args.has("--oldsmall")   # (every staged attack with its close-up, as before 25 November's two shots)
 	if args.has("--noshots"):
 		Game.settings["duel_attack_shots"] = "off"   # (25 November: the "Attack shots" switch off: the leap, no cuts)
 	var decks := DuelCards.DECKS.keys()
@@ -60,8 +61,10 @@ func _ready() -> void:
 				was_lunging = now
 		print("duel %d (%s vs %s): turn %d, winner %d, %s, taps %d" % [d, a, b, screen.game.turn, screen.game.winner, screen.game.win_reason, taps])
 		if spd <= 4.0 and screen.field != null:
-			print("  staged: %d attacks, %d crossings, %d lunges; %d frames (%.0f s of the duel's time); the clock's slowest %.2f, now %.2f; lunging now %d" % [
-				screen.staged_attacks, screen.staged_crossings, lunges, frames, frames / 30.0, slowest, Engine.time_scale, screen.field.lunging])
+			print("  staged: %d attacks (%d with the close-up, %d small hits in two shots), %d crossings, %d lunges; %d frames (%.0f s of the duel's time); the clock's slowest %.2f, now %.2f; lunging now %d" % [
+				screen.staged_attacks, screen.staged_closeups, (screen.staged_attacks - screen.staged_closeups) if DuelScreen.attack_shots() else 0, screen.staged_crossings, lunges, frames, frames / 30.0, slowest, Engine.time_scale, screen.field.lunging])
+			if DuelScreen.attack_shots() and DuelScreen.small_two_shots and screen.staged_attacks >= 12 and screen.staged_closeups == screen.staged_attacks:
+				print("  PROBLEM: every one of %d attacks had the close-up (no small hit in two shots)" % screen.staged_attacks)
 			if spd <= DuelScreen.STAGE_MAX_SPEED and DuelScreen.staged_strikes and screen.staged_attacks == 0:
 				print("  PROBLEM: no attack was staged")
 			if not DuelScreen.attack_shots() and screen.staged_crossings > 0:
