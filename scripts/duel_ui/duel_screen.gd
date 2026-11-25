@@ -470,6 +470,8 @@ func _build() -> void:
 	menu.pressed.connect(func() -> void:
 		sfx.play("ui_menu")
 		lab_panel.visible = not lab_panel.visible
+		if lab_panel.visible:
+			_fit_lab()
 		if not lab_panel.visible:
 			log_panel.visible = false)
 	stage.add_child(menu)
@@ -569,11 +571,21 @@ func _build_lab() -> void:
 	_pin(lab_panel, Vector2(1330, 96), true)
 	lab_panel.size = Vector2(570, 640)
 	lab_panel.visible = false
+	lab_panel.z_index = 45   # (25 November: drawn over the hand, whose cards are 0 to 40; under the effects, 50)
 	stage.add_child(lab_panel)
+	# (25 November: the Menu scrolls if it's taller than the stage, _fit_lab.
+	# It had grown to some 1,150 px from 96 down an 1,080 px stage: "Restart
+	# this duel" and "Leave the duel", its last two rows, were below the
+	# bottom of the screen, and a story duel's rule and Law put them lower.)
+	var lab_scroll := ScrollContainer.new()
+	lab_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	lab_panel.add_child(lab_scroll)
 	var box := VBoxContainer.new()
-	box.add_theme_constant_override("separation", 14)
-	lab_panel.add_child(box)
-	box.add_child(UITheme.label("Menu", 34, UITheme.GOLD, "display_bold"))
+	box.add_theme_constant_override("separation", 10)   # (14 until 25 November: with this and the rows paired, an ordinary duel's Menu fits without scrolling)
+	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	lab_scroll.add_child(box)
+	_lab_box = box
+	box.add_child(UITheme.label("Menu", 30, UITheme.GOLD, "display_bold"))
 	# the duel's own rule, and the Law it's under, to read again any time
 	var rule: Array = spec.get("rule", [])
 	if rule.size() >= 2:
@@ -587,10 +599,16 @@ func _build_lab() -> void:
 		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		ll.custom_minimum_size = Vector2(500, 0)
 		box.add_child(ll)
-	var lg := UITheme.button("Duel log", false, 500)
+	# (25 November: these two side by side, and the last two, so the Menu fits)
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 10)
+	box.add_child(top_row)
+	var lg := UITheme.button("Duel log", false, 245)
+	lg.add_theme_font_size_override("font_size", 26)
 	lg.pressed.connect(func() -> void: log_panel.visible = not log_panel.visible)
-	box.add_child(lg)
-	var oath_b := UITheme.button("Swear an Oath", false, 500)
+	top_row.add_child(lg)
+	var oath_b := UITheme.button("Swear an Oath", false, 245)
+	oath_b.add_theme_font_size_override("font_size", 26)
 	oath_b.pressed.connect(func() -> void:
 		lab_panel.visible = false
 		log_panel.visible = false
@@ -600,7 +618,7 @@ func _build_lab() -> void:
 			_toast("No Oath can be sworn now." if _oaths_open() else "Not in this duel.")
 		else:
 			_offer_oaths())
-	box.add_child(oath_b)
+	top_row.add_child(oath_b)
 	box.add_child(UITheme.label("Animation speed", 24, UITheme.TEXT_DIM))
 	var sp := HBoxContainer.new()
 	sp.add_theme_constant_override("separation", 10)
@@ -647,6 +665,14 @@ func _build_lab() -> void:
 				o.button_pressed = o == sb)
 		sv_btns.append(sb)
 		svb.add_child(sb)
+	# (25 November) the camera cutting in for attacks, or staying where it is
+	var ash := CheckButton.new()
+	ash.text = "Attack shots (the camera cuts in)"
+	ash.button_pressed = attack_shots()
+	ash.add_theme_font_size_override("font_size", 24)
+	ash.toggled.connect(func(on: bool) -> void: set_attack_shots(on))
+	box.add_child(ash)
+	_shots_check = ash
 	var d3 := CheckButton.new()
 	d3.text = "3D field (restart the duel to apply)"
 	d3.button_pressed = Game.settings.get("duel_3d", true)
@@ -664,12 +690,44 @@ func _build_lab() -> void:
 		ward_zones[rival].reveal = on
 		_refresh())
 	box.add_child(rv)
-	var again := UITheme.button("Restart this duel", false, 500)
+	var end_row := HBoxContainer.new()
+	end_row.add_theme_constant_override("separation", 10)
+	box.add_child(end_row)
+	var again := UITheme.button("Restart duel", false, 245)
+	again.add_theme_font_size_override("font_size", 26)
 	again.pressed.connect(func() -> void: _leave("again"))
-	box.add_child(again)
-	var quit := UITheme.button("Leave the duel", false, 500)
+	end_row.add_child(again)
+	var quit := UITheme.button("Leave duel", false, 245)
+	quit.add_theme_font_size_override("font_size", 26)
 	quit.pressed.connect(func() -> void: _leave("quit"))
-	box.add_child(quit)
+	end_row.add_child(quit)
+	_fit_lab.call_deferred()
+
+
+## The Menu as tall as what's in it, or as the stage has room for below its
+## top (it scrolls then); and its switches showing what the settings are now
+## (the Options in the pack change them too). Called as it opens.
+const LAB_PAD := 52.0
+var _lab_box: VBoxContainer
+var _shots_check: CheckButton
+
+func _fit_lab() -> void:
+	if lab_panel == null or _lab_box == null:
+		return
+	if _shots_check != null:
+		_shots_check.set_pressed_no_signal(attack_shots())
+	lab_panel.move_to_front()   # (over the hand of cards, whose last card lay across its bottom rows)
+	_size_lab()
+	# (and once it has been laid out: a row that wraps only knows its height then)
+	await get_tree().process_frame
+	if is_instance_valid(lab_panel):
+		_size_lab()
+
+
+func _size_lab() -> void:
+	var want := _lab_box.get_combined_minimum_size().y + LAB_PAD
+	var room := stage.size.y - 96.0 - 12.0
+	lab_panel.size = Vector2(570, minf(want, room))
 
 
 func _leave(result: String) -> void:
@@ -1049,11 +1107,29 @@ var _cross_id := 0
 var _cross_slowing := false
 
 
-## Whether attacks are staged in three shots here: the touches on, a 3D
-## field, not a film (which stages its own, _film_strikes), a speed a person
-## watches at.
+## Whether attacks are staged here (the striker's gather and its leap or its
+## blow's slower flight; and, unless the player has turned them off,
+## attack_shots, the three shots): the touches on, a 3D field, not a film
+## (which stages its own, _film_strikes), a speed a person watches at.
 func _staged() -> bool:
 	return staged_strikes and _cine() and speed <= STAGE_MAX_SPEED
+
+
+## (25 November, Gary's yes to "A switch in the duel's options to turn the
+## attack shots off.") Whether the camera cuts in for attacks: "Attack shots"
+## in the Options and in the duel's own Menu, kept in Game.settings
+## ("duel_attack_shots": "on", the default, or "off"). Off, the camera stays
+## where it is through an attack, at any battle speed (no three shots, and
+## none of the older push in and whip either); the striker still gathers and
+## leaps across, which from the usual view is all there is to see of whose
+## blow it is, and a Totem breaking, a call and a Summon keep their own shots.
+static func attack_shots() -> bool:
+	return String(Game.settings.get("duel_attack_shots", "on")) != "off"
+
+
+static func set_attack_shots(on: bool) -> void:
+	Game.settings["duel_attack_shots"] = "on" if on else "off"
+	Game.save_settings()
 
 
 ## Shot one: close on a Totem gathering its power, from its front quarter,
@@ -1236,12 +1312,13 @@ func _deliver_staged(att: DuelTotem) -> void:
 	var matters: bool = _strike.get("big", false) and not all
 	var first := n == 0
 	var free := not _finished_slow   # (the blow that ends the duel has the camera and the clock already, _finishing_start)
+	var shots: bool = free and bool(_strike.get("shots", true))   # ("Attack shots" off: no cuts, the leap alone)
 	# (a melee blow on Life: its leap ends at their row's line, _lunge_end)
 	var end3: Vector3 = _lunge_end(att, b3) if (on_life and melee) else b3
 	_end_charge()
 	if not first:
 		field.cam_moves += 1   # (the shot is kept for this blow too: the way home planned after the last one waits)
-	if first and free:
+	if first and shots:
 		# shot two: the two of them, and the blow crossing between them
 		var c: Array
 		if all:
@@ -1281,7 +1358,7 @@ func _deliver_staged(att: DuelTotem) -> void:
 	_cross_slow_end()
 	if not is_inside_tree():
 		return
-	if first and free and not all:
+	if first and shots and not all:
 		# shot three: the blow, as it lands
 		var sh2: Array = _land_shot(b3, a3, att, on_life, melee)
 		field.cam_shot(sh2[0], sh2[1], 0.0, DuelField3D.SHOT_FOV_CLOSE, true)
@@ -4098,11 +4175,15 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 			if target is DuelTotem and target.owner != t.owner:
 				field.face_at(target.owner, target.slot, _body3(t), 1.8 / speed)
 		var staged := _staged() and hostile
+		var shots := staged and attack_shots()
 		if staged:
-			# (25 November) shot one of three: close on it as it gathers its
-			# power, cut to, a slow push in (_deliver_staged has the other two)
 			_stage_n += 1
 			staged_attacks += 1
+			_strike["staged"] = true
+			_strike["shots"] = shots
+		if shots:
+			# (25 November) shot one of three: close on it as it gathers its
+			# power, cut to, a slow push in (_deliver_staged has the other two)
 			var g: Array = _gather_shot(t)
 			field.cam_shot(g[0], g[1], 0.0, float(g[2]), true)
 			field.cam_shot((g[0] as Vector3).lerp(g[1] as Vector3, STAGE_PUSH), g[1], (STAGE_GATHER + 0.35) / speed, float(g[2]))
@@ -4114,9 +4195,10 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 			field.key_light(key_at, col.lerp(Color(1.0, 0.95, 0.88), 0.65), GATHER_KEY, (STAGE_GATHER + 0.5) / speed, 0.4 / speed)
 			src = _center(v)   # (where it is on the screen in this shot)
 			_strike["shot"] = true
-			_strike["staged"] = true
 			_cam_home_soon(CAM_HOME_FALLBACK)   # (an attack answered away never lands: home anyway)
-		elif _cine() and hostile:
+		elif staged:
+			pass   # ("Attack shots" off: the camera stays where it is; the striker still leaps, _deliver_staged)
+		elif _cine() and hostile and attack_shots():
 			# (4 November) the camera pushes in low behind the attacker, looking
 			# across at what it's about to hit; _deliver whips it to the blow
 			var sh: Array = field.shot_behind(_body3(t), aim, t.owner)
@@ -4131,7 +4213,7 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		if (_cine() or film_blow) and hostile:
 			# (5 November) it gathers its power: motes drawn in, a glow swelling,
 			# its sigil flaring under it (the blow ends the charge, _deliver3)
-			var gather := FILM_GATHER if film_blow else (STAGE_GATHER if staged else CHARGE_SECS) / speed
+			var gather := FILM_GATHER if film_blow else (STAGE_GATHER if shots else CHARGE_SECS) / speed
 			field.act_pulse(_foot3(t), col)
 			_strike["charge"] = DuelStrikeFX.charge(field, st, _body3(t), _foot3(t), gather)
 			# (it swells as it gathers, held while the die rolls, and snaps back
@@ -4164,9 +4246,10 @@ func fx_attack(t: DuelTotem, i: int, target) -> void:
 		tw.tween_interval(0.01)
 		await pause(FILM_GATHER * speed)
 	elif bool(_strike.get("staged", false)):
-		# (a played duel's staged blow: the same, held for shot one)
+		# (a played duel's staged blow: the same, held for shot one; with the
+		# shots off there's no close-up to hold, so the old short wait)
 		tw.tween_interval(0.01)
-		await pause(STAGE_GATHER)
+		await pause(STAGE_GATHER if bool(_strike.get("shots", true)) else WINDUP_PAUSE)
 	else:
 		tw.tween_property(v, "offset", back, 0.14 / speed).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_QUAD)
 		if not _strike.melee:
@@ -4809,7 +4892,7 @@ func _finishing_start(pi: int, land3: Vector3) -> void:
 	var tw := _slow_shade.create_tween()
 	tw.tween_property(_slow_shade, "color:a", 0.75, 0.25)
 	if field != null:
-		if bool(_strike.get("staged", false)):
+		if bool(_strike.get("staged", false)) and bool(_strike.get("shots", true)):
 			field.cam_cut_home()   # (25 November: from the striker's close-up, a cut; the lean is from home)
 		field.cam_focus(land3, 1.0, 0.45)
 		if DuelRules.cinematic and not _filmed():

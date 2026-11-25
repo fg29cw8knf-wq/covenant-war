@@ -1009,6 +1009,31 @@ func _options() -> Control:
 	cmn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	cams.add_child(cmn)
 	v.add_child(cams)
+	# the camera cutting in when a Totem attacks (25 November, Gary's yes to "A
+	# switch in the duel's options to turn the attack shots off"; the duel's
+	# own Menu has it too): DuelScreen.attack_shots
+	var shots := HBoxContainer.new()
+	shots.add_theme_constant_override("separation", 24)
+	var shl := UITheme.label("Attack shots", 30, UITheme.TEXT, "bold")
+	shl.custom_minimum_size = Vector2(300, 0)
+	shots.add_child(shl)
+	var shot_btns := []
+	for m in [[true, "On"], [false, "Off"]]:
+		var hb := UITheme.button(String(m[1]), false, 200)
+		hb.toggle_mode = true
+		hb.button_pressed = DuelScreen.attack_shots() == bool(m[0])
+		hb.custom_minimum_size = Vector2(200, 64)
+		hb.add_theme_font_size_override("font_size", 26)
+		hb.pressed.connect(func() -> void:
+			DuelScreen.set_attack_shots(bool(m[0]))
+			for o in shot_btns:
+				(o as Button).button_pressed = o == hb)
+		shot_btns.append(hb)
+		shots.add_child(hb)
+	var shn := UITheme.label("off keeps the camera still when Totems attack", 22, UITheme.TEXT_DIM)
+	shn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	shots.add_child(shn)
+	v.add_child(shots)
 	# how long the words in a duel stay up (29 October, Gary: "The text in the
 	# battles goes by very quickly"; DuelReading): Normal is the new, longer default
 	var reading := HBoxContainer.new()

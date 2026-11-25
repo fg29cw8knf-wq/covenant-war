@@ -3483,6 +3483,68 @@ player's stands in a duel).
     godot --headless --fixed-fps 30 res://tests/duel_monkey.tscn -- 3 --3d --speed=2          # whole duels, staged
     godot --headless --fixed-fps 30 res://tests/lantern_duel_test.tscn -- --checks --speed=1  # the Lantern Duel, staged
 
+#### Later that day: the switch for the attack shots, the Tripo remake, real footsteps
+
+Gary (25 November, 11:15, to the next five suggestions): "3 yes 4 can you find
+them online and use them 5 yes". (3: remake Player A and Bram in Tripo, Claude
+writing the prompts and steps; 4: real footsteps; 5: a switch in the duel's
+options to turn the attack shots off.)
+
+- **5, "Attack shots"** (`DuelScreen.attack_shots`, `set_attack_shots`,
+  `Game.settings["duel_attack_shots"]`: "on", the default, or "off"). In the
+  pack's Options (a row under "Duel camera") and in the duel's own Menu. Off,
+  the camera stays where it is through an attack at any battle speed: no
+  three shots, and none of the older push in and whip either. The striker
+  still gathers and leaps across (`_strike.shots` false: `_deliver_staged`
+  runs the leap and cuts nothing), which from the usual view is all there is
+  to see of whose blow it is; a Totem breaking, a call and a Summon keep
+  their own shots.
+- **The duel's Menu fits the screen now** (`_build_lab`, `_fit_lab`). It had
+  grown to some 1,150 px from 96 down a 1,080 px stage, so its last two rows,
+  "Restart this duel" and "Leave the duel", were below the bottom of the
+  screen, and the hand's last card was drawn across its lower rows. Now:
+  "Duel log" and "Swear an Oath" share a row, as do "Restart duel" and "Leave
+  duel"; it is sized to what's in it as it opens and scrolls if a story
+  duel's rule and Law make it taller than the stage; and it is drawn and
+  tapped over the hand (`z_index` 45, moved to the front).
+- **3, the remake.** The steps and prompts are at the bottom of Still to
+  Make's Cast tab, and on its list under "3. The attic": a T-pose picture with
+  open, separate fingers and open eyes (Tripo's T Pose template on the same
+  front picture, or the re-pose prompt in ChatGPT), image to 3D, rigged in
+  Tripo's Animate panel and tried there with a walk and a wave before
+  exporting, GLB with the skeleton and its animations. When a file comes:
+  `tools/rig_villager.sh`, as Hale's and the hunter's were; `reskin.py` and
+  `reweight.py` are for a rig that's no good, which is what this is to get
+  away from. Then every hand move is fitted again to the new hands
+  (`held_child_probe`, `crate_take_probe`, `box_open_probe`, `box_hold_probe`).
+- **4, real footsteps: found, not fetched.** The set to use is Kenney's two
+  public-domain (CC0) packs, Impact Sounds (single footfalls on grass, snow,
+  wood, concrete and carpet) and RPG Audio (ten more): one maker, made for
+  games, no credit or fee owed. But kenney.nl refuses this workspace outright
+  (403 on every address, its robots.txt included), OpenGameArt's robots.txt
+  turns AI agents away by name, and other people's GitHub repositories can't
+  be attached to this session; fetching a mirror instead would be going round
+  a site that said no. So Gary downloads the two zips himself (on Still to
+  Make, "3. The attic") and Claude fits them: `step_<ground>.wav` and `_2` to
+  `_4`, 44.1 kHz mono 16-bit, levelled as `tools/make_steps.py` levels its
+  own (`LOUD`, `PEAK`), a recording under the same name being used in place
+  of the made one. Until then the made ones stand. Looked at and left: the
+  npm package `@netforge/asset-library-files` (CC0, but one footstep in it,
+  and Kenney's), `com.mavrodiev.asset-library` (four long walks, mixed
+  licences), Mixkit (its own licence, long walks to be cut up unheard, no
+  wood), the Internet Archive (no Kenney sound packs) and Wikimedia Commons
+  (its API refused the workspace: 429).
+
+**Checked:** `duel_cine_shot -- <dir> attack ko call summon finish staged`
+problems none (`staged` now ends with `noshots`: the camera 0.00 m from home
+through yours and the rival's attack, the striker 3.2 m across, the Menu's
+switch, its bottom at 1,064 of 1,080 and in front of the hand);
+`duel_monkey -- 2 --3d --speed=2 --noshots` (new flag): 13 and 38 attacks, no
+crossing shot, every leap, no script error; the same without it; `duel_monkey
+-- 3 --3d --noshots` ok; `lantern_duel_test -- --checks --speed=1` won;
+`white_sky_test -- duel` PASS; `menu_test` ok (the Options' new row);
+`load_all` 0 failed. **Not checked:** on a Mac or a phone, or moving.
+
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 
 Gary (24 November, on his Mac): "Game taking a very long time to start /

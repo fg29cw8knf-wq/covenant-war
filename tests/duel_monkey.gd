@@ -8,7 +8,8 @@ extends Node
 ## (DuelScreen.staged_strikes): run it with --fixed-fps 30, which lets a
 ## headless run go as fast as the machine will. It then also says how many
 ## attacks were staged and seen to cross, and whether the clock, the camera
-## or a striker was left out of place at the end of a duel.
+## or a striker was left out of place at the end of a duel. `--noshots` plays
+## them with the "Attack shots" switch off (the leap, and no cut of the camera).
 
 var rng := RandomNumberGenerator.new()
 var screen: DuelScreen
@@ -26,6 +27,8 @@ func _ready() -> void:
 			spd = float(String(x).trim_prefix("--speed="))
 	var most_frames := 40000 if spd > 4.0 else 400000
 	DuelScreen.staged_strikes = not args.has("--oldstrikes")
+	if args.has("--noshots"):
+		Game.settings["duel_attack_shots"] = "off"   # (25 November: the "Attack shots" switch off: the leap, no cuts)
 	var decks := DuelCards.DECKS.keys()
 	for d in duels:
 		var a: String = decks[d % decks.size()]
@@ -61,6 +64,8 @@ func _ready() -> void:
 				screen.staged_attacks, screen.staged_crossings, lunges, frames, frames / 30.0, slowest, Engine.time_scale, screen.field.lunging])
 			if spd <= DuelScreen.STAGE_MAX_SPEED and DuelScreen.staged_strikes and screen.staged_attacks == 0:
 				print("  PROBLEM: no attack was staged")
+			if not DuelScreen.attack_shots() and screen.staged_crossings > 0:
+				print("  PROBLEM: %d crossing shots were taken with the attack shots off" % screen.staged_crossings)
 			if absf(Engine.time_scale - 1.0) > 0.001:
 				print("  PROBLEM: the clock was left at %.2f" % Engine.time_scale)
 		if not done[0]:

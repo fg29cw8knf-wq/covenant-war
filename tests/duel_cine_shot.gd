@@ -388,6 +388,7 @@ func _staged_all() -> void:
 	await _staged("rival_life", ["brookfin", null, "pebblit"], [null, "cinderpup", null], 1, 1, -1, 30)
 	await _staged_ko()
 	await _staged_flurry()
+	await _staged_noshots()
 
 
 ## Is the camera back where it rests: at home (locked), or on its path
@@ -437,6 +438,92 @@ func _staged_ko() -> void:
 		problems.append("staged ko: the clock was left at %.2f" % Engine.time_scale)
 	ds._strike = {}
 	await _wait(0.4)
+
+
+## (25 November, Gary's yes to a switch for it) "Attack shots" off: the
+## camera stays where it is through an attack, yours and the rival's, and the
+## striker still leaps across. Then the duel's own Menu, where the switch is.
+func _staged_noshots() -> void:
+	if not _only("noshots"):
+		return
+	var was := DuelScreen.attack_shots()
+	Game.settings["duel_attack_shots"] = "off"
+	if DuelScreen.attack_shots():
+		problems.append("noshots: the setting didn't turn the shots off")
+	for side in 2:
+		# (a melee striker in the middle of its row, whichever side's)
+		var rows := [["brookfin", "cinderpup", "pebblit"], ["ironhide", "mossling", "elderbark"]]
+		var made: Array = await _board(rows[side], rows[1 - side])
+		var att: DuelTotem = made[side][1]
+		var tg: DuelTotem = made[1 - side][1]
+		var f := ds.field
+		var home := f.cam_pos
+		ds.mode = "busy"
+		ds._set_hint("")
+		var crossed := ds.staged_crossings
+		ds.fx_attack(att, 0, tg)
+		var off := 0.0
+		for k in 4:
+			await _wait(0.1)
+			off = maxf(off, f.cam_pos.distance_to(home))
+		ds.fx_totem_hit(tg, 60, {"attacker": att, "element": att.element()})
+		var furthest := 0.0
+		for k in 12:
+			await _wait(0.07)
+			off = maxf(off, f.cam_pos.distance_to(home))
+			furthest = maxf(furthest, f.lunge_of(side, 1).length())
+			if k == 5:
+				await _shot("staged_noshots_%s_leap" % ("mine" if side == 0 else "rival"))
+		var waited := 0.0
+		while (Engine.time_scale < 0.999 or f.lunge_of(side, 1).length() > 0.05) and waited < 8.0:
+			await _wait(0.1)
+			waited += 0.1
+		print("CINE SHOT: staged noshots (%s): the camera moved %.2f m, the striker went %.1f m" % ["mine" if side == 0 else "rival", off, furthest])
+		if off > 0.6:
+			problems.append("noshots: the camera moved %.1f m with the attack shots off" % off)
+		if furthest < 1.5:
+			problems.append("noshots: the striker never crossed (%.1f m)" % furthest)
+		if ds.staged_crossings != crossed:
+			problems.append("noshots: a crossing shot was taken")
+		if absf(Engine.time_scale - 1.0) > 0.001:
+			problems.append("noshots: the clock was left at %.2f" % Engine.time_scale)
+		ds._strike = {}
+		await _wait(0.4)
+	# the duel's Menu, with the switch in it, opened as its button opens it
+	ds.lab_panel.visible = true
+	ds._fit_lab()
+	await _wait(0.2)
+	await _shot("staged_noshots_menu")
+	var found := false
+	for c in ds.lab_panel.find_children("*", "CheckButton", true, false):
+		if String((c as CheckButton).text).begins_with("Attack shots"):
+			found = true
+			if (c as CheckButton).button_pressed:
+				problems.append("noshots: the Menu's switch shows on with the setting off")
+			(c as CheckButton).button_pressed = true
+			if not DuelScreen.attack_shots():
+				problems.append("noshots: the Menu's switch didn't turn the shots back on")
+	if not found:
+		problems.append("noshots: no Attack shots switch in the duel's Menu")
+	var screen_h: float = ds.stage.size.y
+	var bottom: float = ds.lab_panel.position.y + ds.lab_panel.size.y
+	var content: float = ds._lab_box.get_combined_minimum_size().y + DuelScreen.LAB_PAD
+	print("CINE SHOT: the duel's Menu: %d px of things in it, its bottom at %d of %d" % [int(content), int(bottom), int(screen_h)])
+	if bottom > screen_h + 1.0:
+		problems.append("noshots: the duel's Menu runs off the bottom of the stage (%d of %d)" % [int(bottom), int(screen_h)])
+	var last: Control = null
+	for c in ds.lab_panel.find_children("*", "Button", true, false):
+		if String((c as Button).text) == "Leave duel":
+			last = c
+	if last == null:
+		problems.append("noshots: no Leave duel button in the Menu")
+	elif last.get_global_rect().end.y > ds.stage.get_global_rect().end.y + 1.0:
+		problems.append("noshots: Leave duel is below the bottom of the screen (an ordinary duel's Menu should fit without scrolling)")
+	if ds.lab_panel.get_index() != ds.stage.get_child_count() - 1:
+		problems.append("noshots: the Menu isn't in front of the hand")
+	ds.lab_panel.visible = false
+	Game.settings["duel_attack_shots"] = "on" if was else "off"
+	await _wait(0.3)
 
 
 ## Two of the rival's attacks one after the other, as its turn has them: the
