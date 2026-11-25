@@ -9,6 +9,12 @@ shallows. Built from nothing, as the creature voices are
 (tools/make_cries.py, whose tools these use): shaped noise, a thump, a
 knock. A recording saved under the same name is used instead.
 
+(25 November: six of the seven are recordings now, Kenney's, fitted by
+tools/fit_recorded_sounds.py over these files: RECORDED. This makes only
+what's left, the river's shallows, unless a ground is named: naming one
+makes the stand-in again, so do it with --out unless the recording is meant
+to go.)
+
     python3 tools/make_steps.py            every ground
     python3 tools/make_steps.py snow       only that
     python3 tools/make_steps.py --out /tmp/steps
@@ -26,6 +32,7 @@ import make_cries as mc  # noqa: E402
 from make_cries import SR, band, lowpass, highpass, env, n_of, norm, place, formants  # noqa: E402
 
 TAKES = 4
+RECORDED = ("snow", "grass", "dirt", "wood", "stone", "stairs")   # real recordings now (tools/fit_recorded_sounds.py)
 LOUD_WIN = 0.08      # a step is short: its loudest twelfth of a second is what's levelled
 LOUD = 0.2
 PEAK = 0.8
@@ -207,7 +214,7 @@ def main():
         out_dir = args[i + 1]
         del args[i:i + 2]
     os.makedirs(out_dir, exist_ok=True)
-    for name in (args or list(GROUNDS)):
+    for name in (args or [g for g in GROUNDS if g not in RECORDED]):
         for take in range(TAKES):
             r = np.random.default_rng(1112 + 97 * take + sum(ord(c) for c in name))
             mc.rng = r   # (the shared tools' own dice: the room's tail)

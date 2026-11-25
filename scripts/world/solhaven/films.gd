@@ -584,9 +584,7 @@ static func _gate_after(w: World) -> void:
 			Cine.shot(w, Vector3(6.0, 3.2, 38.0), Vector3(0, 3.0, 25.0), 44.0)
 			for i in GUARDS.size():
 				_aside(w, "guard_%d" % i, GUARDS_ASIDE[i])
-			if Sfx.has_file("gate_open"):
-				_sfx(w, "gate_open")
-			await v.open_gate(true, 3.0)
+			await v.open_gate(true, 3.0)   # (it makes its own sound now: SolhavenSet.open_gate)
 			Cine.look(w, "hale_gate", w.player.global_position)
 			_front(w, "hale_gate", w.player.global_position, 28.0)
 			await Cine.say(w, "hale_gate", "Get them off the road before His Grace is up.")

@@ -1643,6 +1643,12 @@ static func open_box_lid(w: World, box: Node3D, open := true, secs := 0.45) -> v
 		return
 	var tw := w.create_tween()
 	tw.tween_property(lid, "rotation:x", deg_to_rad(-105.0) if open else 0.0, secs).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	# its sounds (25 November): the clasp as it's freed, and a small wooden
+	# knock as the lid reaches its stop, or meets the box again (it's there
+	# a little over half way through the swing, which runs on past and back)
+	if open:
+		Sfx.prop("box_latch", -4.0)
+	tw.parallel().tween_callback(func() -> void: Sfx.prop("box_open" if open else "box_close", -2.0)).set_delay(secs * (0.6 if open else 0.55))
 	await tw.finished
 
 

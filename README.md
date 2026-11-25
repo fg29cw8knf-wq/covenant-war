@@ -15,7 +15,7 @@ Built with **Godot 4.7** for iPhone, iPad, Mac, PC and the web.
 | `scripts/ai/` | The computer opponent. |
 | `tests/` | Headless tests. `sim.gd` plays thousands of AI-vs-AI duels and checks the rules never break. |
 | `assets/art/` | The painted art, sized for the game: `cards/` (card paintings, 640 wide), `creatures/` (transparent battlefield cut-outs), `summons/` (Summon cut-outs and their sky scenes), `arenas/`, `gods/`, `card_back.jpg`, `icon.png`. Files are named by card id (see `scripts/duel_ui/duel_art.gd`); anything missing falls back to drawn placeholders. Prompts: `docs/card-prompts.md`. |
-| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, `tools/make_steps.py`; `amb_<name>.ogg`: each place's bed of sound, `tools/make_ambience.py`; Gary's own recordings, levelled by `tools/sfx_master.py`). |
+| `assets/sfx/` | Sound effects (`cry_<kind>.wav`, `cry_<summon>.wav`: the creatures' stand-in voices, `tools/make_cries.py`; `step_<ground>.wav`: footsteps, recordings fitted by `tools/fit_recorded_sounds.py` (water: `tools/make_steps.py`); `crate_*`, `box_*`, `door_open`, `gate_open`: knocks and doors, the same tool; `SOURCES.md`: where each recording came from; `amb_<name>.ogg`: each place's bed of sound, `tools/make_ambience.py`; Gary's own recordings, levelled by `tools/sfx_master.py`). |
 | `docs/` | Art prompts and design notes. The full story and world guide lives in the project's Claude doc. |
 
 ## Gary's standing rule (22 October): every update is built to the best look and flow
@@ -3753,10 +3753,62 @@ iPhones on the Larger text size, since Normal is small for thumbs.")
   and Ironvault's hunters wear those three models as people in the story;
   they aren't the player's looks, and their jobs on Still to Make stand.)
   The runs as C and D were stopped when he said it.
-- **Still waiting on him:** the two Kenney packs (footsteps, and the wood
-  and metal knocks). His Mac answered this afternoon but no folder of it is
-  shared with this chat, and the ask to see Downloads was refused by the
-  session's own permission check; not retried.
+- **The two Kenney packs came that evening** (he shared the two folders
+  with the chat): the next section.
+
+#### The evening: real footsteps, and the knocks (Kenney's Impact Sounds and RPG Audio)
+
+Gary's two yeses from earlier in the day ("4 can you find them online and
+use them": real footsteps; "4 yes": wood and metal knocks for the crate, the
+box's lid and the doors) waited on two free packs this machine couldn't
+fetch (kenney.nl turns AI agents away, and that isn't gone round). He
+downloaded them and shared the two folders; both are public domain (CC0:
+free in a game that's sold, no credit owed). `assets/sfx/SOURCES.md` lists
+every file that is now a recording and the recording it came from.
+
+- **`tools/fit_recorded_sounds.py <Impact Sounds folder> <RPG Audio folder>`**
+  fits them: one recording per file, summed to mono, trimmed, its tail cut
+  where it falls 46 dB under its peak, the rumble under 50 Hz taken off,
+  levelled to the loudness of the made sound it replaces (so the mix is as
+  it was), saved as 44.1 kHz mono 16-bit WAV. `--list` says what would be
+  written; its `FIT` table is which recording is which sound. Nothing is
+  mixed or layered. (The packs are Ogg; ffmpeg here can't write Ogg, so they
+  are saved as WAV over the made ones, which `Sfx` plays the same.)
+- **Footsteps: six grounds are recordings now**, four takes each: grass,
+  snow, wood, stone (the pack's "concrete"), the dirt road (RPG Audio's
+  footsteps, the only ones on loose ground) and the stairs (the wood steps
+  played a tenth faster, so a stair doesn't sound like the floor). Water is
+  still the made one: neither pack has a splash. `tools/make_steps.py` now
+  makes only the grounds that aren't recorded (`RECORDED`), so running it
+  can't write over a recording.
+- **The knocks** (`Sfx.prop(sound, gain_db, pitch)`: one of the sound's
+  takes, a little quieter than a footstep is loud, pitched a hair up or down
+  each time; false, and silent, when the game has no such sound):
+  - the crate in the street: `crate_lift` as the hands take it (a wooden
+    knock), `crate_set` as it settles on the cart (`ashford_p1.gd`);
+  - the card box Bram hands over: `box_latch` (a light metal tick) as the
+    lid starts up, `box_open` (light wood) as it comes back on its hinge,
+    `box_close` as it shuts (`ashford.gd`, `open_box_lid`);
+  - the inn's door as you step out: `door_open` (RPG Audio's own door, a
+    real latch and creak, not a knock);
+  - Solhaven's Golden Gate: `gate_open`, that door slowed to 0.62 (deeper,
+    longer: a bigger door), from `SolSet.open_gate` itself, so every scene
+    that swings the gate is heard (it was one made sound in one film).
+- **Left silent, on purpose:** doors closing (the pack's "close" is a short
+  click that read as a tick here), the attic's trapdoor, the chest's lid,
+  the shelter's stone door. Each wants a sound of its own; offered to Gary.
+- **Chosen by measurement, not by ear.** Nothing here can listen: each
+  recording was picked by its length, where its energy sits and how hard it
+  starts, against the made sound it replaces. Gary was sent two clips to
+  judge (`footsteps_before_after.m4a`: each ground's old steps, then its
+  new; `new_knocks_and_doors.m4a`).
+- **Checked:** `steps_test` ("STEPS: ok"), `sfx_test` ("SFX: ok": the seven
+  new sounds load and play through `Sfx.prop`, the six recorded grounds have
+  four takes of 0.45 s or less); `p1_v7_test` now listens (`Sfx.listen`,
+  `_heard`) and fails if the crate is lifted or set down, the inn's door
+  opens or the box's lid comes up without its sound; the Prologue to "Tam at
+  the mill" and all of Chapter 1 as Player A (`tools/play_all_looks.sh`):
+  ok and PASS. Not checked: how any of it sounds.
 
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 

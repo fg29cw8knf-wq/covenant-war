@@ -241,6 +241,20 @@ static func step(surface: String, at: Node3D = null, running: bool = false, gain
 	return true
 
 
+## A thing in the world making its own sound: the lantern crate lifted and
+## set down, the card box's clasp and lid, a door (25 November, Gary's yes to
+## "Use the wood and metal knocks in the Impact Sounds pack for the crate,
+## the box lid and doors."; the recordings are Kenney's, assets/sfx/SOURCES.md).
+## PROP_DB under an effect's level, its pitch moved a little each time.
+## Silent, and false, until its file is in assets/sfx: these have no stand-in.
+const PROP_DB := -4.0
+static func prop(sound: String, gain_db := 0.0, pitch := 1.0) -> bool:
+	if not has_file(sound):
+		return false
+	steps().play(sound, pitch * randf_range(0.96, 1.04), PROP_DB + gain_db)
+	return true
+
+
 ## Every button in the game clicks (12 November). A screen that plays its own
 ## sound for a press (the duel's buttons, a card lifted) keeps it: the click
 ## comes after the press's own handlers, and stays silent if anything was

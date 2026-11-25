@@ -484,6 +484,11 @@ func _build_gate() -> void:
 
 ## Swings the Golden Gate's doors open (or shut) over `secs`.
 func open_gate(open := true, secs := 2.5) -> void:
+	# (its sound, where it's seen to swing: a door's own, slowed to a gate's
+	# size; 25 November. Solhaven's film used to ask for it itself, and only
+	# on one of the gate's three ways of opening.)
+	if open and secs > 0.5:
+		Sfx.prop("gate_open", 2.0)
 	var tw := create_tween().set_parallel(true)
 	for i in gate_doors.size():
 		var side := -1.0 if i == 0 else 1.0

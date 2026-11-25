@@ -5,6 +5,8 @@ extends Node
 ## cries higher than a big one of its kind; and every button clicks, unless
 ## its own press already played a sound, or it's marked "quiet"; and a card
 ## opened in the Codex turns over with a sound, a creature of yours heard.
+## And (25 November) the crate, the card box's lid and the doors have their
+## recordings, and the six recorded grounds their four short takes.
 ## Run: godot --headless --path . res://tests/sfx_test.tscn [-- list]
 ## Ends "SFX: ok" or the problems.
 
@@ -46,6 +48,34 @@ func _ready() -> void:
 		bad.append("a Hound that falls doesn't whine: %s" % [Sfx.cry_of("blazehound", "ko")])
 	if Sfx.size_pitch("cinderpup") <= Sfx.size_pitch("infernal_warg"):
 		bad.append("a Cinderpup doesn't cry higher than a Warg")
+
+	# --- the things in the world that make a sound (25 November: the crate,
+	# the card box's lid, a door; recordings, assets/sfx/SOURCES.md): each has
+	# its file, it loads, Sfx.prop plays it on the steps' player, and one
+	# with no file is silent and says so
+	await get_tree().process_frame
+	await get_tree().process_frame
+	Sfx.steps().listen = true
+	for snd: String in ["crate_lift", "crate_set", "box_latch", "box_open", "box_close", "door_open", "gate_open"]:
+		if not Sfx.has_file(snd):
+			bad.append("no file for '%s' (tools/fit_recorded_sounds.py)" % snd)
+			continue
+		if Sfx.get_stream(snd) == null:
+			bad.append("'%s' doesn't load" % snd)
+		var was := Sfx.steps().heard.size()
+		if not Sfx.prop(snd) or Sfx.steps().heard.size() != was + 1 or String(Sfx.steps().heard[-1][1]) != snd:
+			bad.append("Sfx.prop didn't play '%s'" % snd)
+	if Sfx.prop("no_such_sound"):
+		bad.append("Sfx.prop says it played a sound that has no file")
+	# and the six grounds with a recording have four takes each, none of them long
+	for ground: String in ["grass", "snow", "wood", "stone", "dirt", "stairs"]:
+		for take in ["", "_2", "_3", "_4"]:
+			var st := Sfx.get_stream("step_%s%s" % [ground, take])
+			if st == null:
+				bad.append("no step_%s%s" % [ground, take])
+			elif st.get_length() > 0.45:
+				bad.append("step_%s%s is %.2f s long" % [ground, take, st.get_length()])
+	Sfx.steps().listen = false
 
 	# --- the buttons
 	await get_tree().process_frame

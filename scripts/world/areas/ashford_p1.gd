@@ -2684,6 +2684,7 @@ static func _taproom(w: World) -> void:
 	var door: Node3D = e.door
 	var sw := w.create_tween()
 	sw.tween_property(door, "rotation:y", deg_to_rad(100.0), DOOR_SWING).set_trans(Tween.TRANS_SINE)
+	Sfx.prop("door_open", -2.0)   # (its latch and hinges: 25 November)
 	await Cine.wait(w, DOOR_STEP_OFF)
 	Cine.path(w, "player", [e.door_out], 1.4)
 	await Cine.wait(w, 0.9)
@@ -3409,6 +3410,7 @@ static func _take_crate(w: World, cr: Node3D, room: Dictionary = {}) -> void:
 		# a little up off the stand first, as the weight is taken
 		var y0 := cr.global_position.y
 		var take := w.create_tween()
+		Sfx.prop("crate_lift")   # (wood on wood as it leaves the bar: 25 November)
 		take.tween_property(cr, "global_position:y", y0 + 0.05, 0.25).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		await take.finished
 		# then up and in, as they straighten
@@ -3881,6 +3883,7 @@ static func _green(w: World) -> void:
 	var settle := w.create_tween()
 	settle.tween_property(cr, "global_position", crate_at, 0.16).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	await settle.finished
+	Sfx.prop("crate_set")   # (a wooden thump as it meets the ground: 25 November)
 	village(w).dust_puff(crate_at)
 	w.remove_meta("p1_crate")
 	await Cine.wait(w, 0.25)

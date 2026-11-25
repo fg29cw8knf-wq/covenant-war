@@ -85,6 +85,7 @@ func _ready() -> void:
 		DrawHold.start_keys()
 	Game.new_game("Sprout", "")
 	Game.settings["first_steps"] = 0
+	Sfx.listen = true   # (25 November: the crate, the door and the box's lid are heard: _heard)
 	world = World.new().setup("ashford", "green")
 	world.duel_handler = _duel
 	add_child(world)
@@ -115,6 +116,7 @@ func _run() -> void:
 	var e: Dictionary = InnRooms.eve(v)
 	_goal = func() -> Vector3: return (e.crate as Node3D).global_position
 	await _until(func() -> bool: return _objective() == "green_crate", 120.0, "carrying the crate")
+	_expect(_heard("crate_lift"), "the crate was lifted without a sound")
 	_goal = func() -> Vector3: return e.door_in
 	await _until(func() -> bool: return hud.dialogue.visible and "menu" in hud.dialogue._text.text, 120.0, "the menu at the door")
 	await _secs(1.0)
@@ -122,16 +124,19 @@ func _run() -> void:
 	_expect(hud._menu_btn.visible, "the menu button isn't there at the door")
 	# ---- the street, to the green
 	await _until(func() -> bool: return world.player.global_position.y > -10.0 and not world.busy, 200.0, "the street")
+	_expect(_heard("door_open"), "the inn's door opened without a sound")
 	# (round the south side of the well: a player walks round it, the taps
 	# here go straight)
 	_goal = func() -> Vector3:
 		return Vector3(-6.4, 0, 8.6) if world.player.global_position.x < -7.2 else Vector3(0.9, 0, 4.2)
 	await _until(func() -> bool: return Game.flag("ash_started"), 300.0, "the crate down at the Lantern")
 	_goal = Callable()
+	_expect(_heard("crate_set"), "the crate was set down without a sound")
 	# ---- Corin, Bram's deck, the Lantern Duel
 	await _until(func() -> bool: return Game.flag("corin_met"), 40.0, "Corin calling")
 	await _until(func() -> bool: return Game.flag("ash_won_lantern") and not world.busy, 600.0, "the Lantern Duel and Bram's lines")
 	await _shot("afternoon")
+	_expect(_heard("box_latch") and _heard("box_open"), "the card box's lid came up without a sound")
 	_expect(Game.flag("first_deck"), "no first deck")
 	_expect("corin_lantern" in duels, "no Lantern Duel")
 	# (29 October: it names Tam's mill until he's been seen, and the way is marked)
@@ -447,6 +452,14 @@ func _teleport(p: Vector3) -> void:
 	world.player.global_position = Vector3(p.x, world.get_meta("village").height(p.x, p.z), p.z)
 	world._focus = world._cam_focus_target()
 	world._move_target = null
+
+
+## Whether a sound of that name has been played since the game began (Sfx.listen).
+func _heard(sound: String) -> bool:
+	for h in Sfx.heard:
+		if String(h[1]) == sound:
+			return true
+	return false
 
 
 func _expect(ok: bool, what: String) -> void:
