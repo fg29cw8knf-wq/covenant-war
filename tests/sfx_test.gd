@@ -57,7 +57,7 @@ func _ready() -> void:
 	await get_tree().process_frame
 	Sfx.steps().listen = true
 	for snd: String in ["crate_lift", "crate_set", "box_latch", "box_open", "box_close", "door_open", "gate_open",
-			"door_close", "door_latch"]:
+			"door_close", "door_latch", "wagon_roll", "hooves"]:
 		if not Sfx.has_file(snd):
 			bad.append("no file for '%s' (tools/fit_recorded_sounds.py)" % snd)
 			continue

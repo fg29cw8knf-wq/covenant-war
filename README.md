@@ -3918,10 +3918,8 @@ banner on the map.)") is in the game.
   Solhaven", the square by day after (wagon home and level, everyone on
   their feet, the light over the wagon), Bram's list, and that a second
   opening goes straight to the square.
-- **Not done.** No wheels or hooves are heard (neither Kenney pack has
-  them; 26 November: he said yes to them, the film asks for `wagon_roll`,
-  and it waits on a recording he's to download); no dust; Turnip isn't
-  seen. No kingdom can be set out for.
+- **Not done.** No dust; Turnip isn't seen. (Wheels and hooves came on
+  26 November: `wagon_roll`, below.) No kingdom can be set out for.
   Player A only, as he asked.
 
 #### 26 November, just after midnight: doors shutting, the shelter's door, and what the wagon waits for
@@ -3963,33 +3961,48 @@ download)".
   for was checked against the files, the stand-ins and the made sounds:
   this was the only one with nothing behind it. `crowd_roar` and `lash`
   have no file either, and each already checks and plays something else.)
-- **2 waits on two recordings** neither pack has. Both are public domain
-  (CC0), from the old USC film-sound library on Freesound, which needs a
-  free account to download from (this machine can't fetch from it, and a
-  login isn't gone round):
-  - the dawn's wheels and hooves, `wagon_roll`: "G52-07-Horse Drawn
-    Carriage.wav", https://freesound.org/s/437076 (42 s: steady wheels and
-    horses on a hard surface);
-  - the riders over the cellar, `hooves`: "R13-27-Horse Gallops and Stops
-    on Stone.wav", https://freesound.org/people/craigsmith/sounds/479699/
-    (16 s: a horse gallops in on stone and stops).
-  `Films.dawn` already asks for `wagon_roll` and the Reckoning for
-  `hooves`; each is silent until its file is in `assets/sfx`. To do when
-  they come: cut the dawn's to the shot (8 s of roll, the fades baked in:
-  up over the first second, down over the last two), cut the riders' to
-  the arrival and the stop, level both as the props are, add them to the
-  tool's table and to `SOURCES.md`, and take the "silent till then" note
-  out of `veyl_dawn_test` (it checks the wagon is heard once the file is
-  there). They're 1930s to 1960s optical recordings: expect some hiss, and
-  judge whether it sits in the game's mix before keeping them.
+- **2 waited on two recordings** neither pack has, and **he sent them that
+  morning** (10:05, attached in the chat). Both are public domain (CC0),
+  Craig Smith's transfers of the USC film school's old optical sound-effect
+  library, on Freesound (a free account to download; this machine can't
+  fetch from it, and a login isn't gone round). `SOURCES.md` has them.
+  - **`wagon_roll`**, the dawn's wheels and hooves: "G52-07-Horse Drawn
+    Carriage.wav", https://freesound.org/s/437076. Measured: one
+    four-second stretch of wheels and horses on a hard road, repeated (its
+    loudness repeats every 3.99 s), nothing over 2 kHz, its first 7 s a
+    bump and leader. Cut to the shot: 13.0 to 21.6 s, up over the first
+    0.9 s as the picture comes up, 4 dB quieter by 6.6 s as the wagon draws
+    away, gone by the black. `Films.dawn` plays it as the roll starts, about
+    as loud as a place's own sound.
+  - **`hooves`**, the riders over the cellar before "She's early.":
+    "R13-27-Horse Gallops and Stops on Stone.wav",
+    https://freesound.org/people/craigsmith/sounds/479699/. Measured: one
+    horse at a gallop on stone that slows and stops, quiet behind it (30 dB
+    under the hooves), its last beats at 7.5, 8.0 and 8.1 s. Cut 3.0 to
+    8.6 s: in over half a second (the film shakes the cellar as it starts),
+    two and a half seconds of gallop, three of slowing, the stop. **Its top
+    is taken off above 1.2 kHz**, as through the taproom's floor: the one
+    sound in the game's recordings with any tone-shaping, because as
+    recorded it's a horse in the room. Gary has both versions to compare.
+  - `tools/fit_recorded_sounds.py ... --extra <the folder they're in>` fits
+    them (its `LONG` table: the stretch, the fades, the level, the top cut);
+    without `--extra` it leaves them as they are. They're saved as Ogg, a
+    tenth of a WAV's size at their length (ffmpeg here writes Ogg now; the
+    short ones stay WAV).
+  - Not known: how they sound. They're 1930s to 1960s optical recordings;
+    the wagon's has nothing above 2 kHz, so it may sound boxy beside the
+    game's cleaner sounds. If Gary says so, his sound maker's prompts for
+    both are on the Sounds tab.
 - **Checked:** `sfx_test` ("SFX: ok": `door_close` and `door_latch` load and
   play); `film_test` now lists the props' and doors' sounds a part played
   ("FILM: heard ..."): `camp only` heard `door_open, door_close,
-  door_latch`, `morning only` `door_latch, door_open`, `reckoning only` no
-  `hooves`; `p1_v7_test` fails if the inn's door doesn't shut behind you;
-  `veyl_dawn_test` PASS; the Prologue to "Tam at the mill" as Player A.
-  Not checked: how any of it sounds (Gary has a clip:
-  `doors_shutting_and_the_shelter_door.m4a`).
+  door_latch`, `morning only` `door_latch, door_open`, `reckoning only`
+  `hooves` once the recording was in (nothing before); `p1_v7_test` fails
+  if the inn's door doesn't shut behind you; `veyl_dawn_test` PASS, and it
+  fails if the wagon isn't heard; `sfx_test` loads and plays both long
+  sounds; the Prologue to "Tam at the mill" as Player A. Not checked: how
+  any of it sounds (Gary has two clips:
+  `doors_shutting_and_the_shelter_door.m4a` and `wagon_and_riders.m4a`).
 
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 

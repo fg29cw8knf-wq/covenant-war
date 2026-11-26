@@ -14,6 +14,7 @@ downloaded himself (kenney.nl turns AI tools away):
     python3 -I tools/fit_recorded_sounds.py <Impact Sounds folder> <RPG Audio folder>
     python3 -I tools/fit_recorded_sounds.py <...> <...> --out /tmp/fitted   # somewhere else
     python3 -I tools/fit_recorded_sounds.py <...> <...> --list              # what goes where
+    python3 -I tools/fit_recorded_sounds.py <...> <...> --extra <folder>    # and the two long recordings (LONG), from the folder they were downloaded to
 
 (each folder is the one with "Audio" and "License.txt" in it). It writes
 assets/sfx/<name>.wav and its takes (<name>_2 ...), mono, 44.1 kHz, 16-bit,
@@ -31,6 +32,7 @@ clicky or a boomy recording ends up a little quieter than its stand-in
 sooner than it is squashed. No reverb, no EQ, no
 mixing of one sound with another. Needs ffmpeg, numpy and scipy.
 """
+import glob
 import os
 import subprocess
 import sys
@@ -88,6 +90,42 @@ FIT = {
 }
 PACKS = {"impact": ("Impact Sounds 1.0", "https://kenney.nl/assets/impact-sounds"),
     "rpg": ("RPG Audio", "https://kenney.nl/assets/rpg-audio")}
+
+# ---- two long recordings, each a single download (26 November: Gary's yes
+# to wheels and hooves for the dawn, and the hooves the Reckoning had always
+# asked for and never had). Neither Kenney pack has a horse. Both are Craig
+# Smith's transfers of the USC film school's old optical sound-effect
+# library (1930s to 1960s), on Freesound, public domain (CC0). They're in
+# the folder given as --extra, found by the number in their file names.
+#   name: (the file's number, its page, its title, from s, to s, how)
+# how: "rms" its body's level in dB (a steady bed) or "loud" its loudest
+# twelfth of a second (hits); "in" and "out" the fades in seconds, in the
+# file itself (a film sound is played once and left); "away_db" how much
+# quieter it has grown by the time it starts to fade (it's leaving);
+# "lowpass" a top cut in Hz (heard through a floor).
+LONG = {
+    # The dawn: the wagon rolling out of the Golden Gate. The recording is
+    # one four-second stretch of wheels and horses on a hard road, repeated
+    # (its loudness repeats every 3.99 s); nothing in it is over 2 kHz. Cut
+    # to the shot: 8.6 s from where the transfer has settled (its first 7 s
+    # are a bump and the leader), up over the first second as the picture
+    # comes up, 4 dB quieter by the time the picture starts to go, as the
+    # wagon draws away, and gone by the black.
+    "wagon_roll": ("437076", "https://freesound.org/s/437076", "G52-07-Horse Drawn Carriage.wav", 13.0, 21.6,
+        {"rms": -20.0, "in": 0.9, "out": 2.0, "away_db": -4.0}),
+    # The Reckoning: riders pulling up on the green, heard from the cellar.
+    # The recording is one horse at a gallop on stone that slows and stops
+    # (its last three beats are at 7.5, 8.0 and 8.1 s). Cut to the arrival:
+    # in fast (half a second: the film shakes the cellar as it starts, and
+    # Bram's "She's early." comes a second later), two and a half seconds of
+    # gallop, three of slowing, the stop. The top is
+    # taken off above 1.2 kHz: it's heard through the taproom's floor, and
+    # as recorded it's a horse in the room. (The one sound here with any
+    # tone-shaping; say so if it's ever played anywhere it's seen.)
+    "hooves": ("479699", "https://freesound.org/people/craigsmith/sounds/479699/",
+        "R13-27-Horse Gallops and Stops on Stone.wav", 3.0, 8.6,
+        {"loud": 0.2, "in": 0.5, "out": 0.4, "lowpass": 1200.0}),
+}
 
 
 def decode(path, speed=1.0):
@@ -168,6 +206,51 @@ def fit(x, level, longest):
     return limit(x * gain), gain
 
 
+def body_rms(x):
+    """A steady sound's level: the RMS of what's above HEARD_FROM."""
+    heard = highpass(x, HEARD_FROM)
+    return float(np.sqrt(np.mean(heard * heard)))
+
+
+def fit_long(x, start, end, how):
+    """A stretch of a long recording as a film sound: cut, its rumble and
+    (if asked) its top taken off, levelled, and its fades written in."""
+    x = x[int(start * SR):int(end * SR)].copy()
+    x = highpass(x, 50.0)
+    if "lowpass" in how:
+        b, a = signal.butter(2, how["lowpass"] / (SR / 2), "low")
+        x = signal.lfilter(b, a, x)
+    x = x - np.mean(x)
+    if "rms" in how:
+        gain = 10 ** (how["rms"] / 20.0) / (body_rms(x) + 1e-9)
+    else:
+        gain = how["loud"] / (loudest(x) + 1e-9)
+    gain = min(gain, PEAK * 10 ** (LIMIT_DB / 20.0) / (float(np.max(np.abs(x))) + 1e-9))
+    x = limit(x * gain)
+    n = len(x)
+    shape = np.ones(n)
+    fin = min(n, int(how.get("in", 0.0) * SR))
+    fout = min(n - fin, int(how.get("out", 0.0) * SR))
+    if "away_db" in how and n - fout - fin > 0:
+        shape[fin:n - fout] = 10 ** (np.linspace(0.0, how["away_db"], n - fout - fin) / 20.0)
+        shape[n - fout:] = 10 ** (how["away_db"] / 20.0)
+    if fin > 0:
+        shape[:fin] *= np.linspace(0.0, 1.0, fin) ** 2
+    if fout > 0:
+        shape[n - fout:] *= np.linspace(1.0, 0.0, fout) ** 2
+    return x * shape, gain
+
+
+def long_note(how):
+    bits = []
+    if "lowpass" in how:
+        bits.append("top cut above %.1f kHz (heard through a floor)" % (how["lowpass"] / 1000.0))
+    if "away_db" in how:
+        bits.append("%d dB quieter by its end (it's leaving)" % abs(how["away_db"]))
+    bits.append("fades in over %.1f s, out over %.1f s" % (how.get("in", 0.0), how.get("out", 0.0)))
+    return "; ".join(bits)
+
+
 def save(path, x):
     data = (np.clip(x, -1.0, 1.0) * 32767.0).astype("<i2")
     with wave.open(path, "wb") as w:
@@ -177,6 +260,28 @@ def save(path, x):
         w.writeframes(data.tobytes())
 
 
+def save_long(out_dir, name, x):
+    """A long sound as Ogg (a tenth of a WAV's size; the short ones are
+    WAV, which costs nothing at their length), or as WAV where this
+    machine's ffmpeg has no Ogg encoder. The file's name, as saved."""
+    for ext in ("ogg", "wav"):
+        old = os.path.join(out_dir, "%s.%s" % (name, ext))
+        if os.path.exists(old):
+            os.remove(old)
+    with tempfile.TemporaryDirectory() as tmp:
+        wav = os.path.join(tmp, "x.wav")
+        save(wav, x)
+        ogg = os.path.join(out_dir, name + ".ogg")
+        done = subprocess.run(["ffmpeg", "-nostdin", "-loglevel", "error", "-y", "-i", wav, "-c:a", "libvorbis",
+            "-q:a", "5", ogg])
+        if done.returncode == 0 and os.path.exists(ogg) and os.path.getsize(ogg) > 0:
+            return name + ".ogg"
+        if os.path.exists(ogg):
+            os.remove(ogg)
+    save(os.path.join(out_dir, name + ".wav"), x)
+    return name + ".wav"
+
+
 def main():
     args = sys.argv[1:]
     out_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "sfx")
@@ -184,11 +289,18 @@ def main():
         i = args.index("--out")
         out_dir = args[i + 1]
         del args[i:i + 2]
+    extra = ""
+    if "--extra" in args:
+        i = args.index("--extra")
+        extra = args[i + 1]
+        del args[i:i + 2]
     listing = "--list" in args
     args = [a for a in args if a != "--list"]
     if listing:
         for name, (pack, takes, level, longest, speed) in FIT.items():
             print("%-12s %-18s %s%s" % (name, PACKS[pack][0], ", ".join(takes), "" if speed == 1.0 else "  (at %.2f speed)" % speed))
+        for name, (num, page, title, start, end, how) in LONG.items():
+            print("%-12s %-18s %s, %.1f to %.1f s" % (name, "Freesound " + num, title, start, end))
         return
     if len(args) != 2:
         sys.exit(__doc__)
@@ -216,6 +328,27 @@ def main():
                 fname, take, len(x) / SR, 20 * np.log10(gain), got, level, float(np.max(np.abs(x)))))
             notes.append("| `%s` | [%s](%s) | `Audio/%s.ogg` | %s |" % (fname, PACKS[pack][0], PACKS[pack][1], take,
                 "played at %.2f speed (lower, longer)" % speed if speed < 1.0 else ("played at %.2f speed (a little higher)" % speed if speed > 1.0 else "")))
+    notes += ["", "## The two long recordings", "",
+        "Each is a single download, not from a pack: Craig Smith's transfers of the",
+        "USC film school's optical sound-effect library (Hollywood effects of the",
+        "1930s to 1960s), on Freesound, public domain under Creative Commons Zero",
+        "(CC0): free to use in a game that's sold, with no credit owed. Gary",
+        "downloaded them on 26 November 2026. Each is one stretch of one recording,",
+        "levelled, with its fades written into the file, saved as Ogg.", "",
+        "| File | Recording | Stretch | Notes |", "| --- | --- | --- | --- |"]
+    for name, (num, page, title, start, end, how) in LONG.items():
+        notes.append("| `%s.ogg` | [%s](%s), by craigsmith | %.1f to %.1f s | %s |" % (name, title, page, start, end, long_note(how)))
+        if extra == "":
+            print("%-18s skipped: no --extra folder given (the file in assets/sfx is left as it is)" % name)
+            continue
+        found = sorted(f for f in glob.glob(os.path.join(extra, "*%s*" % num)) if os.path.isfile(f))
+        if not found:
+            sys.exit("missing: a file with %s in its name in %s (%s)" % (num, extra, page))
+        x, gain = fit_long(decode(found[0]), start, end, how)
+        fname = save_long(out_dir, name, x)
+        print("%-18s %-24s %.2f s  gain %+5.1f dB  loud %.3f  body %.1f dB  peak %.2f" % (
+            fname, "Freesound " + num, len(x) / SR, 20 * np.log10(gain), loudest(x),
+            20 * np.log10(body_rms(x) + 1e-9), float(np.max(np.abs(x)))))
     if os.path.abspath(out_dir).endswith(os.path.join("assets", "sfx")):
         with open(os.path.join(out_dir, "SOURCES.md"), "w") as f:
             f.write("\n".join(notes) + "\n")

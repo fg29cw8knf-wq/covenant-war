@@ -52,3 +52,17 @@ tools in `tools/` (make_cries.py, make_steps.py and the rest) or is Gary's own.
 | `door_close_2.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorClose_3.ogg` |  |
 | `door_latch.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/metalLatch.ogg` |  |
 | `gate_open.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorOpen_2.ogg` | played at 0.62 speed (lower, longer) |
+
+## The two long recordings
+
+Each is a single download, not from a pack: Craig Smith's transfers of the
+USC film school's optical sound-effect library (Hollywood effects of the
+1930s to 1960s), on Freesound, public domain under Creative Commons Zero
+(CC0): free to use in a game that's sold, with no credit owed. Gary
+downloaded them on 26 November 2026. Each is one stretch of one recording,
+levelled, with its fades written into the file, saved as Ogg.
+
+| File | Recording | Stretch | Notes |
+| --- | --- | --- | --- |
+| `wagon_roll.ogg` | [G52-07-Horse Drawn Carriage.wav](https://freesound.org/s/437076), by craigsmith | 13.0 to 21.6 s | 4 dB quieter by its end (it's leaving); fades in over 0.9 s, out over 2.0 s |
+| `hooves.ogg` | [R13-27-Horse Gallops and Stops on Stone.wav](https://freesound.org/people/craigsmith/sounds/479699/), by craigsmith | 3.0 to 8.6 s | top cut above 1.2 kHz (heard through a floor); fades in over 0.5 s, out over 0.4 s |

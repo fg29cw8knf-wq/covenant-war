@@ -2126,9 +2126,10 @@ static func dawn(w: World) -> void:
 	Cine.fade(w, 0.0, 1.6)
 	# it rolls: a walking mule's pace, the bed rocking a little on the stones
 	# (its wheels and Turnip's hooves on the flags: "wagon_roll", one
-	# recording the length of the shot with its fades in it, which waits on
-	# Gary's download, 26 November; silent, and no harm, until it's in)
-	Sfx.prop("wagon_roll", 2.0)
+	# recording the length of the shot with its fades and its drawing away
+	# written into it, 26 November. About as loud as a place's own sound:
+	# under the music, over nothing else.)
+	Sfx.prop("wagon_roll", 6.0)
 	var secs := 8.0
 	var tw := w.create_tween()
 	tw.tween_method(func(u: float) -> void:
