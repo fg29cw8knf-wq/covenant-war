@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/veyl_dawn_test.gd" id="1"]
+
+[node name="VeylDawnTest" type="Node"]
+script = ExtResource("1")

@@ -937,7 +937,7 @@ Gary: "top tier totems that will be under his own god"; he said yes to Kaethis o
 
 The Totem plate's HP figure is fitted to its box since the same day (`DuelViews`: 220 was cut to "22").
 
-**8 November (Gary's files for Round 9):** the Scrivener, Loomwarden, the Unspent Hour and the Weft Serpent are his own now: each has its card painting (`assets/art/cards/<id>.jpg`, at the size he painted it), a battlefield cut-out (`assets/art/creatures/<id>.webp`, cut from the painting with rembg's isnet, 560 px like the others) and his Tripo3D model (`assets/models/creatures/<id>.glb`, readied by `tools/glb_bake_turn.py`, the new `tools/glb_flatten_rig.py` and `tools/split_creature.py`, with its 4096 colour picture beside it, VRAM-compressed), so their `stand_in`s are gone from `duel_cards.gd`; the Glyph Warden is still the indigo Quarry Golem. Tripo's clips came under its own names, so `tools/glb_rename_clips.py` renames them to what `DuelField3D.CLIP_ALIASES` reads before the split: the Loomwarden's `thread_shield`, the Unspent Hour's `time_shield` and the Weft Serpent's `thread_shield` are their `guard`, the Serpent's `attack_strike` its `attack` and its `slither` its `run`; the Scrivener came on the humanoid library (idle, walk, run, punch, sword_swing, fight_stance, hit_react, death, cheer...), so its `sword_swing` is its `attack` (the quill stroke of Strike the Name) and `fight_stance` its `guard`; `death` and `cheer` are read as its ko and victory by the aliases, and it has no spawn clip (the call's light covers it). The Unspent Hour floats (`DuelArt.FLYERS`): a winged hourglass spirit with no feet. **Why the flatten step:** these Tripo exports keep the mesh centred on the origin and lift it onto its feet through the bones, under two quarter-turned nodes (node_0, Armature); Godot draws it where the bones put it but `DuelField3D._merged_aabb` measures the mesh's own bounds through those nodes, so on the field each Totem was lifted half its height into the air (the first render had the Unspent Hour in the sky and the Weft Serpent's head off the top). `glb_bake_turn.py` puts the rest pose into the mesh and `glb_flatten_rig.py` folds the nodes' turns into the root joint (its clip keys turned with it), so measure and picture agree; `tests/creature_peek.tscn -- <dir> creatures/<id> [clips]` renders a model alone (front, three-quarter, back, each clip) and prints its floor and which duel clip each alias finds, and `tests/tree_peek.gd` prints the scene Godot built. Orlanthe's stinger is in (`summon_orlanthe`, his 19.7 s piece as `assets/audio/music/summon_orlanthe.ogg`, the original in `audio/source/`): the duel's music dips under it when the Last Page is called, and in the Night of the White Sky it rings on through the white (`Music.stop` leaves a stinger playing). Kaethis's own painting is `assets/art/gods/kaethis.jpg`, the back view from his set of four Tripo reference pictures (the god is only ever seen from behind; the hooded head sits in the upper third for the seal), so its seal (the medallion `DuelArt.god_medallion` cuts from the hood, on a Totem plate's patron mark and the Favour meter) is cut from the painting now instead of drawn; and his Tripo3D model of the god is rigged as a story character like Warden Hale (`assets/models/characters/kaethis.glb`, `tools/glb_bake_turn.py` then `tools/rig_character.py` with the shared clips, 2.30 m tall, `Figure3D.OWN_GAIT` kaethis), ready for the scenes that will show it; no scene calls it yet. His map of Veyl came too: `assets/art/map/veyl.jpg`, with where each place sits on it noted in `docs/veyl-map-prompt.md` for the "Choose a kingdom" code (not drawn by the game yet). Details and what was checked: `docs/handover/2026-11-08-files.md`. Still to come for Round 9: the Glyph Warden's painting, cut-out and model; Orlanthe's painting, Summon cut-out, sky scene and model; the five small card paintings (Cut Thread, Foreordained, Already Written, Hourglass With No Sand, Knotted Cord).
+**8 November (Gary's files for Round 9):** the Scrivener, Loomwarden, the Unspent Hour and the Weft Serpent are his own now: each has its card painting (`assets/art/cards/<id>.jpg`, at the size he painted it), a battlefield cut-out (`assets/art/creatures/<id>.webp`, cut from the painting with rembg's isnet, 560 px like the others) and his Tripo3D model (`assets/models/creatures/<id>.glb`, readied by `tools/glb_bake_turn.py`, the new `tools/glb_flatten_rig.py` and `tools/split_creature.py`, with its 4096 colour picture beside it, VRAM-compressed), so their `stand_in`s are gone from `duel_cards.gd`; the Glyph Warden is still the indigo Quarry Golem. Tripo's clips came under its own names, so `tools/glb_rename_clips.py` renames them to what `DuelField3D.CLIP_ALIASES` reads before the split: the Loomwarden's `thread_shield`, the Unspent Hour's `time_shield` and the Weft Serpent's `thread_shield` are their `guard`, the Serpent's `attack_strike` its `attack` and its `slither` its `run`; the Scrivener came on the humanoid library (idle, walk, run, punch, sword_swing, fight_stance, hit_react, death, cheer...), so its `sword_swing` is its `attack` (the quill stroke of Strike the Name) and `fight_stance` its `guard`; `death` and `cheer` are read as its ko and victory by the aliases, and it has no spawn clip (the call's light covers it). The Unspent Hour floats (`DuelArt.FLYERS`): a winged hourglass spirit with no feet. **Why the flatten step:** these Tripo exports keep the mesh centred on the origin and lift it onto its feet through the bones, under two quarter-turned nodes (node_0, Armature); Godot draws it where the bones put it but `DuelField3D._merged_aabb` measures the mesh's own bounds through those nodes, so on the field each Totem was lifted half its height into the air (the first render had the Unspent Hour in the sky and the Weft Serpent's head off the top). `glb_bake_turn.py` puts the rest pose into the mesh and `glb_flatten_rig.py` folds the nodes' turns into the root joint (its clip keys turned with it), so measure and picture agree; `tests/creature_peek.tscn -- <dir> creatures/<id> [clips]` renders a model alone (front, three-quarter, back, each clip) and prints its floor and which duel clip each alias finds, and `tests/tree_peek.gd` prints the scene Godot built. Orlanthe's stinger is in (`summon_orlanthe`, his 19.7 s piece as `assets/audio/music/summon_orlanthe.ogg`, the original in `audio/source/`): the duel's music dips under it when the Last Page is called, and in the Night of the White Sky it rings on through the white (`Music.stop` leaves a stinger playing). Kaethis's own painting is `assets/art/gods/kaethis.jpg`, the back view from his set of four Tripo reference pictures (the god is only ever seen from behind; the hooded head sits in the upper third for the seal), so its seal (the medallion `DuelArt.god_medallion` cuts from the hood, on a Totem plate's patron mark and the Favour meter) is cut from the painting now instead of drawn; and his Tripo3D model of the god is rigged as a story character like Warden Hale (`assets/models/characters/kaethis.glb`, `tools/glb_bake_turn.py` then `tools/rig_character.py` with the shared clips, 2.30 m tall, `Figure3D.OWN_GAIT` kaethis), ready for the scenes that will show it; no scene calls it yet. His map of Veyl came too: `assets/art/map/veyl.jpg`, with where each place sits on it noted in `docs/veyl-map-prompt.md` for the "Choose a kingdom" code (drawn by the game since 25 November: `VeylMap`). Details and what was checked: `docs/handover/2026-11-08-files.md`. Still to come for Round 9: the Glyph Warden's painting, cut-out and model; Orlanthe's painting, Summon cut-out, sky scene and model; the five small card paintings (Cut Thread, Foreordained, Already Written, Hourglass With No Sand, Knotted Cord).
 
 **12 November (more of Round 9):** the Glyph Warden is his own now: its card painting (`assets/art/cards/glyph_warden.jpg`, 1254 square as painted), its battlefield cut-out (`assets/art/creatures/glyph_warden.webp`, 560 high, framed as the others; rembg's isnet alone read the inlays' glow as see-through and took a door hinge from behind it, so its outline is isnet's and its inside u2net's solid figure, filled) and his Tripo3D model (`assets/models/creatures/glyph_warden.glb` + `_atlas.png` at 4096; its `ward_hold` renamed `guard`, its `dash` is read as run; bake, flatten, split as the others), so its `stand_in` is gone. Orlanthe has its card painting (`cards/orlanthe.jpg`, 1060 × 1484, the 5:7 of a Summon card) and his Tripo3D model (`assets/models/summons/orlanthe.glb` + `_atlas.png`, the same three steps, `ward_hold` as guard): `DuelField3D.summon_descend` brings it down the beam onto the field on its `spawn` clip, as the four Demigods'. Foreordained and Already Written have their paintings (`cards/foreordained.jpg`, `cards/already_written.jpg`). He sent Orlanthe's summon clip too (10 s, 1280 × 720 at 24 fps, with its own choir and sound): the first Summon clip in the game, as `assets/movies/summons/orlanthe_full.ogv` (all of it) and `orlanthe_short.ogv` (4.6 to 7.4 s of it: the book opening, the column of light, the figure in the Circle among the pages; a quarter-second fade at the end), Theora at 24 fps as made (his master and the short cut as .mp4 on the "films" release, for the apps). Since then a Summon whose clip plays doesn't start its stinger under it (`DuelScreen.fx_summon`): the clip's own sound and the stinger were two pieces of music at once; with Summon videos Off, or a Summon with no clip, the stinger plays as before. A filmed duel (`spec.film`, the Night of the White Sky) plays no clips at all (`fx_summon`, `fx_call`): its overlay is hidden, so before this Orlanthe's clip would have played unseen, its sound over the film for ten seconds and the card marked as seen; the memory keeps its own Summon and the stinger ringing into the white. Orlanthe's Summon cut-out and sky scene are still to come (both are needed for the drawn Summon scene, `SummonCine.has_art`, seen only with Summon videos Off; until both come that falls back to the drawn card). Still to come for Round 9: those two, and the paintings of Cut Thread, the Hourglass With No Sand (`hourglass_no_sand`) and the Knotted Cord. Details: `docs/handover/2026-11-12.md`.
 
@@ -3809,6 +3809,116 @@ every file that is now a recording and the recording it came from.
   opens or the box's lid comes up without its sound; the Prologue to "Tam at
   the mill" and all of Chapter 1 as Player A (`tools/play_all_looks.sh`):
   ok and PASS. Not checked: how any of it sounds.
+
+#### Late evening: the end of Chapter 1 on the map of Veyl
+
+Gary, 22:57: "3 yes" to "Build the end of Chapter 1 on your map of Veyl:
+Bram's "Pyreholt's nearest", then choose a kingdom." The script's last beat
+of the chapter (v3: "Next time the game opens: dawn. The wagon rolls out of
+Solhaven, Turnip in front, Bram at the reins, you beside him, Wren on the
+roof. The map of Veyl opens on six kingdoms, a Champion's banner flying over
+each." / Bram: "Pyreholt's nearest." / Objective: "Choose a kingdom. (Tap a
+banner on the map.)") is in the game.
+
+- **When it plays** (`Solhaven.resume`, `Films.dawn_due`): the first time
+  Solhaven is opened from a save once "End of Chapter One" has been seen
+  (flag `ch1_done`, and `veyl_dawn` not yet). That is "next time the game
+  opens": Continue on the title. After the caption the game still goes back
+  to the square, as before. `veyl_dawn` is set, and the game saved, as Bram
+  finishes his line, so the dawn is seen once; closed before that, it plays
+  again. It starts on black with no place-name card (`starts_black`).
+- **The dawn** (`Films.dawn`, `SolSet.set_scene("dawn")`): one shot from
+  inside the Golden Gate, the doors open, the wagon already through and
+  rolling away south into the sunrise at a mule's walk, the bed rocking a
+  little. Wren sits on the canvas's top by its back hoop with her legs over
+  the tail, facing the city; Bram and the player sit on the seat at the bed's
+  front, two backs seen through the canvas's open ends. All three are
+  carried (the spot they sat on moves with the wagon, `Figure3D._seat_at`,
+  or the first metre of road stands them up). The warden at the gate turns
+  to watch. **It's from behind on purpose:** the wagon is one mesh (its
+  wheels can't turn) and Turnip is still grey boxes, and from here the wagon
+  hides its wheels' faces and the mule. The Lantern's lamp is out for the
+  shot (lit, its glow is a flat white ball against the sunrise). The camera
+  starts tilted up a little: level, the strip of bare ground under the
+  gate's threshold shows at the foot of the frame.
+- **The map** (`scripts/ui/veyl_map.gd`, `VeylMap`): Gary's painting
+  (`assets/art/map/veyl.jpg`), always whole on the screen; on a screen that
+  isn't its shape (a phone, a 16:10 Mac) the gap is the painting again,
+  blurred and dark (made once when the map opens, by shrinking it and
+  growing it: a blur drawn every frame was the slowest thing on the screen),
+  and the painting's edge fades into it. Over it, drawn by the game:
+  - **six banners**, one beside each kingdom whose Seat is still to win
+    (Pyreholt, Hrimmark, Glyphmere, Somnara, Stormreach, Umbravel): a pole,
+    a swallow-tailed cloth that moves in the wind, the kingdom's name and
+    its Champion's on a dark plate under the pole. `KINGDOMS` says where
+    each pole stands and which way its cloth flies (read off the painting,
+    each on clear ground beside its city, none over another at any text
+    size);
+  - **the names** of Solhaven (a ring of gold light: the wagon is here),
+    Ashford, the Thornwood and the Shardlands (`PLACES`);
+  - **the objective**, top left where the world shows it, and **"Back to
+    Solhaven"**, bottom middle.
+  Until `offer()` it's the painting and the banners alone, so a film's line
+  is read over it; `stir(id)` lifts one banner in the wind (Pyreholt's, as
+  Bram names it). A banner is a button (a tap, or the arrows and Enter, or a
+  pad; the keys start on Pyreholt) and is pressed only where something of it
+  is drawn (`_has_point`: its plate, its pole and cloth), since the box
+  round one banner can lie over a neighbour's name.
+- **A banner opens the kingdom's card**: the Champion's portrait (Gary's,
+  `assets/art/champions`), "For <god>, <title>", the kingdom, "Champion ·
+  <name>", its Kingdom Law in the duel rules' own words, and, as no
+  kingdom's road is built (`VeylMap.BUILT` is empty), "The road to <kingdom>
+  isn't in the game yet." and "Back to the map". A built kingdom gets "Set
+  out for <kingdom>" there, and the map closes with its id. Esc (a pad's B)
+  closes the card, then the map.
+- **Decided here, for Gary to change** (the script doesn't say):
+  1. *The five other banners.* Only Pyreholt's is in a script ("the red
+     banner with a crown of flame": red cloth, `Glyphs` `flame_crown`, new).
+     The other five carry the sign of their Seat's god on that sign's colour
+     (snowflake on ice blue, the rune circle on indigo, the eye on rose, the
+     bolt on gold, the moon on violet), as the Herald's lantern does for a
+     Champion with no portrait.
+  2. *"Somnara".* The map brief says Oriel's kingdom's name is still to
+     decide; the Seat roll on the square's notice board and the Kingdom Laws
+     already call it Somnara, so the map does.
+  3. *The way back in.* With no kingdom to go to, "Back to Solhaven" hands
+     back the square by day (the wagon in the stable yard again), the story
+     light stands over the wagon, the objective stays up, and "The map of
+     Veyl" heads Bram's list there (`_bram_menu_with_map`; a list item, not
+     a line: nothing is said). It opens the map with no dawn and no line
+     (`Films.map`).
+  4. *Umbravel is last* (the map brief) isn't enforced yet: nothing can be
+     set out for. It comes with the first kingdom.
+- **The line is on the voice sheet**: row 0431, Bram, "Pyreholt's nearest."
+  (`tools/vo_sheet.py`: 572 lines, 550 to record). Every row from the old
+  0431 on is one higher.
+- **All seven** (his 18 November rule). Lighting: a dawn of its own for
+  Solhaven (the sun 6.5° up over the road, rose and gold at the sky's foot,
+  mist on the plain, the city in its own shadow). Materials: none new; the
+  banners' cloth is shaded fold by fold. Animation: the wagon's rock, the
+  three riders carried, the cloths' wave, Pyreholt's lifting as it's named.
+  Camera: one slow push toward the gate as the wagon leaves. Effects: the
+  blurred surround, the ring of light on Solhaven, the glow behind a banner
+  under the pointer. Colour grade: the dawn's (a little more saturation and
+  contrast than the plain day). Consistency: the map's words use the game's
+  own (the Seat roll's kingdoms, the Convocation's Champions, the duel
+  rules' Laws; `veyl_map_test` fails if they drift), the objective is drawn
+  where and how the world draws it, the card is the menus' panel.
+- **Tests.** `veyl_map_test` ("VEYL MAP TEST: ok"; run once a screen shape):
+  the names match the game's, nothing off the screen or over anything else
+  at the three text sizes, no banner pressed before the offer, the keys on
+  Pyreholt, every banner opening its own card and the card closing two ways,
+  Esc. `veyl_dawn_test` ("VEYL DAWN TEST: PASS"; headless for the checks,
+  `keys` for stills): opens Solhaven from a save at the chapter's end and
+  checks the dawn plays by itself, the riders are carried, no place-name
+  card, the map opens, Bram says the script's line and only that, the
+  objective, real mouse clicks on a banner, "Back to the map" and "Back to
+  Solhaven", the square by day after (wagon home and level, everyone on
+  their feet, the light over the wagon), Bram's list, and that a second
+  opening goes straight to the square.
+- **Not done.** No wheels or hooves are heard (neither Kenney pack has
+  them); no dust; Turnip isn't seen. No kingdom can be set out for.
+  Player A only, as he asked.
 
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 
@@ -6719,6 +6829,8 @@ godot --headless res://tests/white_sky_sounds_test.tscn [-- list]   # Gary's lin
 godot --headless res://tests/hillside_shot.tscn -- <dir> nostills   # the look back's bank and bushes, measured (under xvfb without nostills: its stills)
 # ... res://tests/prop_peek.tscn -- <out prefix> <model> [yaws] [pitch] [flat]   (under xvfb) a prop from four sides: Gary's file as it came, or the game's
 godot --headless --fixed-fps 30 res://tests/steps_test.tscn [-- list]   # footsteps: the rates, the grounds, a run across the green
+godot --headless --fixed-fps 10 res://tests/veyl_dawn_test.tscn -- <dir>   # Chapter 1's last beat: the dawn, the map of Veyl, Bram's line, choosing, the way back (under xvfb with `keys`: its stills)
+# ... res://tests/veyl_map_test.tscn -- <dir> [WxH] [--phone --safe-area=L,T,R,B]   (under xvfb) the map at the three text sizes on that screen: nothing off it or over anything, every banner's card
 godot --headless --fixed-fps 30 res://tests/ambience_test.tscn [-- list] # each place's bed of sound, the easing, every kind of silence, the weather
 godot --headless res://tests/summon_video_test.tscn             # which Summon clip plays under each choice
 # ... res://tests/crack_shot.tscn -- <dir>      (under xvfb) the stone cracking under hurt Totems, a critical, a knockout's split, checked, with stills

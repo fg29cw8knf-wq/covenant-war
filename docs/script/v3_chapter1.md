@@ -32,10 +32,20 @@ after the Trial the player has the afternoon in the square (everyone's "after
 the Trial" lines) until they go back to Bram at the wagon: his line "once,
 after the Trial" ends the day, and Gold in the Dark follows.
 
-Not in the game yet: the chapter's last beat, "Next time the game opens"
-(dawn, the wagon rolling out, Bram's "Pyreholt's nearest." and the objective
-"Choose a kingdom."). It needs the map of Veyl, which doesn't exist yet; until
-then the game goes back to the square after the "End of Chapter One" caption.
+The chapter's last beat, "Next time the game opens", is in the game since
+25 November (`Films.dawn`, `VeylMap`): the first time the game is opened
+after the "End of Chapter One" caption it's dawn, the wagon rolls out of the
+Golden Gate (seen from inside the gate, from behind: Wren on the roof, Bram
+and you on the seat), the map of Veyl opens on Gary's painting with the six
+banners, Bram says "Pyreholt's nearest." and the objective is "Choose a
+kingdom. (Tap a banner on the map.)". Three things the script leaves open
+and the game decides, until Gary says otherwise: only Pyreholt's banner is
+described ("the red banner with a crown of flame"), so the other five carry
+the sign of their Seat's god; Oriel's kingdom is "Somnara" on the map, as on
+the Seat roll in the square; and since no kingdom's road is built yet, a
+banner opens that kingdom's card (its Champion, its Kingdom Law, "The road to
+... isn't in the game yet.") and the map's way on is "Back to Solhaven": the
+square by day, where "The map of Veyl" heads Bram's list at the wagon.
 
 ### C1 · The Golden Gate
 

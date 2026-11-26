@@ -2038,3 +2038,167 @@ static func _morne(w: World) -> void:
 	await Cine.fade(w, 1.0, 1.4)
 	_drop(w, "morne")
 	_drop(w, "krell")
+
+
+# =============================================================== the dawn ===
+
+## Whether the last beat of Chapter 1 is still to play (v3: "Next time the
+## game opens": the first time Solhaven is opened from a save once "End of
+## Chapter One" has been seen).
+static func dawn_due() -> bool:
+	return bool(Game.flag("ch1_done")) and not bool(Game.flag("veyl_dawn"))
+
+
+## "Next time the game opens: dawn. The wagon rolls out of Solhaven, Turnip in
+## front, Bram at the reins, you beside him, Wren on the roof. The map of Veyl
+## opens on six kingdoms, a Champion's banner flying over each." Bram:
+## "Pyreholt's nearest." Objective: "Choose a kingdom. (Tap a banner on the
+## map.)" (25 November: Gary's yes to building it on his map.)
+##
+## One shot, from inside the Golden Gate: the wagon already through it and
+## rolling away down the road into the sunrise, Wren up
+## on the canvas with her legs over the tail, looking back at the city, and
+## through the canvas's open ends Bram and you on the seat, two backs against
+## the light. It's seen from behind on purpose: the wagon is one piece (its
+## wheels can't turn) and Turnip has no model yet, and from here the wagon
+## itself hides its wheels' faces and the mule. When Turnip has a model and
+## the wheels turn, a second shot from the road ahead can show their faces.
+## The warden at the gate watches it go.
+## Then the map (VeylMap) under the film's bars, Bram's line over it, the
+## bars away and the banners to choose from.
+##
+## No kingdom's road is built yet, so the only way on from the map is back to
+## Solhaven: the square by day as the chapter's end left it, where the light
+## stands over the wagon and Bram's "The map of Veyl" opens the map again
+## (map(), below). Flag "veyl_dawn" once Bram has said his line.
+static func dawn(w: World) -> void:
+	var v := _v(w)
+	await Cine.begin(w)
+	Cine.overlay(w).black(true)
+	v.set_scene("dawn")
+	v.mark("")
+	v.open_gate(true, 0.01)
+	# (the Lantern's lamp is out: against the sunrise its glow is a flat
+	# white ball at Bram's shoulder)
+	v.light_wagon_lamp(false)
+	Music.play(["solhaven_dawn", "menu_theme"], 2.0, true)
+	var gate := SolSet.SPOTS.gate as Vector3
+	var from := gate + Vector3(0.4, 0, 6.0)
+	var to := gate + Vector3(0.4, 0, 22.5)
+	v.wagon.position = from
+	v.wagon.rotation.y = PI   # (Turnip's head to the south)
+	# who rides where (the wagon's own measure: x across, y the seat's height,
+	# z along it, its tail at +z): Bram at the reins and you beside him on the
+	# seat at the bed's front, facing the road; Wren on the canvas's top by its
+	# back hoop, her legs over the tail, facing the city. Each is carried: the
+	# spot they sat down on moves with the wagon (`_seat_at`), or the first
+	# metre of road would stand them up.
+	var riders: Array = []   # [body, figure, seat, faces the road]
+	for r in [["bram", Vector3(0.44, 1.32, -1.42), true], ["player", Vector3(-0.44, 1.32, -1.42), true],
+			["wren", Vector3(0.1, 2.62, 1.72), false]]:
+		var rb := Cine.body(w, String(r[0]))
+		var rf = Cine.fig(w, String(r[0]))
+		if rb == null:
+			continue
+		if not (rf is Figure3D):
+			rb.visible = false   # (a cut-out can't sit on a wagon)
+			continue
+		var seat: Vector3 = r[1]
+		var foot: Vector3 = v.wagon.to_global(Vector3(seat.x, 0, seat.z))
+		Cine.place(w, String(r[0]), foot, foot + Vector3(0, 0, 4.0 if r[2] else -4.0))
+		(rf as Figure3D).sit(seat.y, 0.01)
+		riders.append([rb, rf, seat])
+	# the warden at the gate watches it go
+	for id in ["hale", "gate_warden"]:
+		var gb := Cine.body(w, id)
+		if gb != null and gb.visible:   # (whichever of them the gate was left to)
+			Cine.look(w, id, to)
+	# (no nearer the square than this: on a phone's wide screen the warden at
+	# his post by the gate is half in the frame's edge from further back)
+	var cam_a := gate + Vector3(-1.0, 2.1, -8.8)
+	var cam_b := gate + Vector3(-0.8, 2.9, -5.8)
+	# (it starts tilted up a little: level, the strip of bare ground under
+	# the gate's threshold is in the foot of the frame)
+	var look_a := gate + Vector3(0.4, 3.1, 16.0)
+	var look_b := gate + Vector3(0.4, 2.7, 26.0)
+	Cine.shot(w, cam_a, look_a, 34.0)
+	await Cine.wait(w, 0.3)
+	Cine.fade(w, 0.0, 1.6)
+	# it rolls: a walking mule's pace, the bed rocking a little on the stones
+	var secs := 8.0
+	var tw := w.create_tween()
+	tw.tween_method(func(u: float) -> void:
+		if not is_instance_valid(v) or not is_instance_valid(v.wagon):
+			return
+		var t := u * secs
+		v.wagon.position = from.lerp(to, u) + Vector3(0, 0.012 * sin(t * 7.3) + 0.008 * sin(t * 11.9), 0)
+		v.wagon.rotation.z = 0.007 * sin(t * 4.1) + 0.004 * sin(t * 9.7)
+		for r in riders:
+			if not is_instance_valid(r[0]) or not is_instance_valid(r[1]):
+				continue
+			var foot: Vector3 = v.wagon.to_global(Vector3((r[2] as Vector3).x, 0, (r[2] as Vector3).z))
+			(r[0] as Node3D).global_position = Vector3(foot.x, v.wagon.position.y, foot.z)
+			(r[1] as Figure3D)._seat_at = (r[1] as Figure3D).global_position, 0.0, 1.0, secs)
+	Cine.drift(w, cam_a, cam_b, look_a, look_b, secs, 34.0)
+	await Cine.wait(w, secs - 1.4)
+	await Cine.fade(w, 1.0, 1.4)
+	if tw.is_valid():
+		tw.kill()
+	# the map of Veyl opens on six kingdoms, a Champion's banner over each
+	var map := VeylMap.open_on(w)
+	await Cine.wait(w, 0.5)
+	await Cine.fade(w, 0.0, 1.2)
+	map.stir("pyreholt")
+	await Cine.say(w, "bram", "Pyreholt's nearest.")
+	Game.set_flag("veyl_dawn")
+	Game.set_flag("objective", VeylMap.OBJECTIVE)
+	w.hud.set_objective(VeylMap.OBJECTIVE)
+	Game.save_game()
+	await Cine.overlay(w).bars(false)
+	map.offer("pyreholt")
+	var chosen: String = await map.closed
+	# (no kingdom's road is built: "" is the only answer there is. A built
+	# kingdom's id will leave for it from here.)
+	await Cine.fade(w, 1.0, 0.7)
+	await map.shut(0.0)
+	_back_to_square(w)
+	await Cine.fade(w, 0.0, 1.0)
+	await Cine.end(w, false)
+	if chosen != "":
+		push_warning("VeylMap chose \"%s\", and no kingdom's road is built" % chosen)
+
+
+## The square by day again after the dawn (the wagon back in the stable
+## yard, Wren down off its roof), behind a fade.
+static func _back_to_square(w: World) -> void:
+	var v := _v(w)
+	_clear(w)
+	for id in ["bram", "player", "wren"]:
+		var f = Cine.fig(w, id)
+		if f is Figure3D:
+			(f as Figure3D).stand(0.01)
+		var b := Cine.body(w, id)
+		if b != null:
+			b.visible = true
+	v.wagon.rotation = Vector3.ZERO
+	v.set_scene("day")
+	v.wagon_to("wagon")
+	v.open_gate(String(Game.flag("gate_choice", "")) == "all", 0.01)
+	Cine.place(w, "player", Vector3(9.2, 0, 0.4), Vector3(0, 0, -6))
+	Cine.place(w, "bram", Vector3(10.6, 0, -1.6))
+	Music.play(TOWN, 2.0, true)
+	w.cine_home(0.01)
+
+
+## The map of Veyl opened again from the square (Bram's "The map of Veyl",
+## once the dawn has been seen): the banners at once, no line, and back to
+## the square when it's closed.
+static func map(w: World) -> void:
+	if w.hud != null:
+		w.hud.set_controls_visible(false)
+	var m := VeylMap.open_on(w)
+	m.offer("pyreholt")
+	var chosen: String = await m.closed
+	await m.shut(0.4)
+	if chosen != "":
+		push_warning("VeylMap chose \"%s\", and no kingdom's road is built" % chosen)

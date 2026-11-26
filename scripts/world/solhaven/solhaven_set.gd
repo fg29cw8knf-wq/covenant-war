@@ -290,6 +290,28 @@ func set_scene(kind: String) -> void:
 			sun.rotation_degrees = Vector3(-40, 140, 0)
 			sun.light_color = Color(0.55, 0.65, 0.95)
 			sun.light_energy = 0.22
+		"dawn":
+			# the morning the wagon leaves (the last beat of Chapter 1): the
+			# sun just up over the road south, low enough to look into, the
+			# sky rose and gold at its foot and still blue overhead, mist on
+			# the plain. The city behind is in its own shadow.
+			env.background_mode = Environment.BG_SKY
+			env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+			sky_mat.sky_top_color = Color("35508f")
+			sky_mat.sky_horizon_color = Color("ffbf8f")
+			sky_mat.ground_horizon_color = Color("e7ab84")
+			sky_mat.ground_bottom_color = Color("6b5a52")
+			sky_mat.sky_energy_multiplier = 1.0
+			env.ambient_light_energy = 0.34
+			env.fog_enabled = true
+			env.fog_light_color = Color("f6c49c")
+			env.fog_density = 0.0075
+			env.adjustment_saturation = 1.12
+			env.adjustment_contrast = 1.06
+			sun.visible = true
+			sun.rotation_degrees = Vector3(-6.5, 16, 0)
+			sun.light_color = Color("ffb877")
+			sun.light_energy = 1.25
 		_:
 			env.background_mode = Environment.BG_SKY
 			env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY

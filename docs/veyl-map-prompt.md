@@ -1,7 +1,10 @@
 # The map of Veyl: the painting's prompt
 
 **Gary's painting came on 8 November:** `assets/art/map/veyl.jpg` (1672 × 941,
-a 16:9 image with no writing on it; nothing in the game draws it yet). It
+a 16:9 image with no writing on it). **The game draws it since 25 November**
+(`scripts/ui/veyl_map.gd`, `VeylMap`: its `KINGDOMS` and `PLACES` tables are
+where each banner's pole and each name go, as fractions of the painting; the
+table at the end of this page is where each place itself is). It
 puts every place where the prompt asked, give or take: the table at the end
 now gives each label's position as painted, read off his picture, in place
 of the proposed ones.

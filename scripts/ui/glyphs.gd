@@ -38,6 +38,10 @@ const SHAPES := {
 	# ---------------------------------------------------------------- UI
 	"heart": "<path fill='#fff' d='M50 90 C20 68 6 52 6 34 C6 20 17 10 30 10 C39 10 46 15 50 22 C54 15 61 10 70 10 C83 10 94 20 94 34 C94 52 80 68 50 90 Z'/>",
 	"retreat": "<path fill='#fff' d='M40 14 L8 50 L40 86 V64 H92 V36 H40 Z'/>",
+	# Pyrrhane's crown of flame (v1 Pyreholt: "the red banner with a crown of
+	# flame"; the Cold Waystone's rim): a band with three tongues of fire for
+	# its points. On Pyreholt's banner on the map of Veyl (VeylMap).
+	"flame_crown": "<path fill='#fff' d='M16 77 C11 60 17 45 24 29 C26 43 31 53 37 58 C37 40 43 22 50 5 C57 22 63 40 63 58 C69 53 74 43 76 29 C83 45 89 60 84 77 Z'/><path fill='#fff' d='M17 82 L83 82 L83 90 Q83 93 80 93 L20 93 Q17 93 17 90 Z'/><path fill='#000' fill-opacity='0.22' d='M50 30 C54 42 57 52 56 66 C55 72 45 72 44 66 C43 52 46 42 50 30 Z'/>",
 	"crown_sigil": "<path fill='#fff' fill-rule='evenodd' d='M50 2 L98 50 L50 98 L2 50 Z M50 18 L82 50 L50 82 L18 50 Z'/><path fill='#fff' d='M30 58 L36 40 L44 50 L50 34 L56 50 L64 40 L70 58 Z'/>",
 	"prize": "<path fill='#fff' d='M50 4 L63 36 L97 38 L70 60 L80 94 L50 74 L20 94 L30 60 L3 38 L37 36 Z'/>",
 	"deck": "<path fill='#fff' d='M24 10 H76 C80 10 82 12 82 16 V84 C82 88 80 90 76 90 H24 C20 90 18 88 18 84 V16 C18 12 20 10 24 10 Z'/><path fill='#000' fill-opacity='0.3' fill-rule='evenodd' d='M50 28 L66 50 L50 72 L34 50 Z M50 38 L58 50 L50 62 L42 50 Z'/>",

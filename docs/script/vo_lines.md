@@ -1,6 +1,6 @@
 # The lines, for recording
 
-Every line the game speaks, in the order it's played: 571 lines, 22 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-24 (6d3c5ad); run it again after the words change.
+Every line the game speaks, in the order it's played: 572 lines, 22 of them recorded already. A line marked "to record, as <name>.wav" is looked for by that name. Written by `tools/vo_sheet.py` from the scripts as of 2026-11-25 (3424007); run it again after the words change.
 
 **How to record.** One file a line, named by its number here (`0042.wav`) or its id (`c5ab712b.wav`): any format. Then `python3 tools/vo_master.py --lines <folder>` levels them and puts each in its place (`assets/audio/vo/<area>/<speaker>/<id>.ogg`). A line with a recording plays it and moves on by itself when it ends; a tap skips it. A line without one waits for a tap, as now. Narrator lines are the words in italics on screen with nobody speaking. `{name}` is whatever the player called themselves: say "you", or leave that line out. Who to voice is Gary's call: everyone, or the cutscenes first (the films' lines are marked by scene).
 
@@ -727,116 +727,122 @@ Every line the game speaks, in the order it's played: 571 lines, 22 of them reco
 | 0429 | Morne | Take the price off the Unsworn. Let them win. *(to record, as morne_07.wav)* | `morne_07` |
 | 0430 | Morne | Put it on Holloway. Alive. *(to record, as morne_08.wav)* | `morne_08` |
 
+### Dawn
+
+| No. | Who | Line | Id |
+|---|---|---|---|
+| 0431 | Bram | Pyreholt's nearest. | `bfe60403` |
+
 ## Solhaven: the Sun Square
 
 ### Talking to Bram
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0431 | Bram | You beat their champion in front of the whole city. By nightfall half of Veyl will know your name. | `9e26827c` |
-| 0432 | Bram | I liked it better when nobody did. | `3b2cceac` |
-| 0433 | Bram | Sun Court's up the hill. It's the gold one. *(said in 2 places: one recording)* | `6ba1f7d6` |
+| 0432 | Bram | You beat their champion in front of the whole city. By nightfall half of Veyl will know your name. | `9e26827c` |
+| 0433 | Bram | I liked it better when nobody did. | `3b2cceac` |
+| 0434 | Bram | Sun Court's up the hill. It's the gold one. *(said in 2 places: one recording)* | `6ba1f7d6` |
 
 ### Bram menu
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0434 | Bram | What do you need? | `2ef875b9` |
-| 0435 | Bram | Read the sign on a Totem's card before anything else. That's its element, and what it fears. | `e409e23e` |
-| 0436 | Bram | Then read yourself. Some cards want a strong arm, some a cool head. Give a card what it wants and it'll wake for you properly. | `eabdfd80` |
-| 0437 | Bram | Get some sleep. I'll keep the lamp lit. (Game saved.) | `5f9827c8` |
-| 0438 | Bram | Tailboard's yours. Turnip's been told. | `859e0561` |
-| 0439 | Bram | Hundreds of them up there, and seven with a real claim on the Throne. Every one of them will want you in their colours before the year's out. | `ff101411` |
-| 0440 | Bram | Swear to one and you get a blessing for it, and a leash. Stay Unsworn and you get a bit of everything and nobody's hand on your collar. | `9f1d5cb2` |
-| 0441 | Bram | Your choice, when it comes. Don't let anyone hurry it. Least of all a god. | `4c272b4d` |
-| 0442 | Bram | Caldus Morne. Owns Ironvault, and the note on half of everything that isn't Ironvault. | `a4be5ef5` |
-| 0443 | Bram | Men like that don't want a thing. They want it owed to them. | `0b7f6fbf` |
-| 0444 | Bram | I don't. I knew his father. Get some sleep. | `127cd75d` |
+| 0435 | Bram | What do you need? | `2ef875b9` |
+| 0436 | Bram | Read the sign on a Totem's card before anything else. That's its element, and what it fears. | `e409e23e` |
+| 0437 | Bram | Then read yourself. Some cards want a strong arm, some a cool head. Give a card what it wants and it'll wake for you properly. | `eabdfd80` |
+| 0438 | Bram | Get some sleep. I'll keep the lamp lit. (Game saved.) | `5f9827c8` |
+| 0439 | Bram | Tailboard's yours. Turnip's been told. | `859e0561` |
+| 0440 | Bram | Hundreds of them up there, and seven with a real claim on the Throne. Every one of them will want you in their colours before the year's out. | `ff101411` |
+| 0441 | Bram | Swear to one and you get a blessing for it, and a leash. Stay Unsworn and you get a bit of everything and nobody's hand on your collar. | `9f1d5cb2` |
+| 0442 | Bram | Your choice, when it comes. Don't let anyone hurry it. Least of all a god. | `4c272b4d` |
+| 0443 | Bram | Caldus Morne. Owns Ironvault, and the note on half of everything that isn't Ironvault. | `a4be5ef5` |
+| 0444 | Bram | Men like that don't want a thing. They want it owed to them. | `0b7f6fbf` |
+| 0445 | Bram | I don't. I knew his father. Get some sleep. | `127cd75d` |
 
 ### Tamsin
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0445 | Tamsin | The Unsworn, at my stall. Everything's dearer today, love. Fame has a price, and I've just set it. | `917672b3` |
-| 0446 | Tamsin | Sigil caches! Fresh out of the Shardlands, sealed and certified! Sealed, anyway. | `a98da889` |
-| 0447 | Tamsin | Crowns for caches. Win duels, earn crowns, come back. That's the whole of it. | `9898853c` |
-| 0448 | Tamsin | Hrimmark caravan's a week late. Snow, at harvest. They say the boy-king's goddess has stopped minding the calendar. | `b3ee61ab` |
-| 0449 | Narrator | (Tamsin's stall sells sealed caches for crowns.) | `8c682896` |
-| 0450 | Tamsin | There's a crier pays me to let him talk at my customers. Stand and hear him out, and there's a cache in it for you. | `bfbf0792` |
+| 0446 | Tamsin | The Unsworn, at my stall. Everything's dearer today, love. Fame has a price, and I've just set it. | `917672b3` |
+| 0447 | Tamsin | Sigil caches! Fresh out of the Shardlands, sealed and certified! Sealed, anyway. | `a98da889` |
+| 0448 | Tamsin | Crowns for caches. Win duels, earn crowns, come back. That's the whole of it. | `9898853c` |
+| 0449 | Tamsin | Hrimmark caravan's a week late. Snow, at harvest. They say the boy-king's goddess has stopped minding the calendar. | `b3ee61ab` |
+| 0450 | Narrator | (Tamsin's stall sells sealed caches for crowns.) | `8c682896` |
+| 0451 | Tamsin | There's a crier pays me to let him talk at my customers. Stand and hear him out, and there's a cache in it for you. | `bfbf0792` |
 
 ### Pip
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0451 | Pip | You beat him. | `e95628ab` |
-| 0452 | Pip | He's still the best. You just beat him, that's all. | `56921c6e` |
-| 0453 | Pip | You're the Unsworn. Everyone says. | `26132c3a` |
-| 0454 | Pip | Doesn't look like much. | `af7f5477` |
-| 0455 | Pip | Ser Aldric's never lost a Trial. His Sentinel won't let anything past. You'd have to go round it. | `49fd3434` |
-| 0456 | Pip | You can't go round it. | `ac491aa8` |
-| 0457 | Pip | I'm going to carry his shield one day. He doesn't know yet. | `78e9b5cb` |
-| 0458 | Pip | Got to go. Work. | `6f3a2cd8` |
+| 0452 | Pip | You beat him. | `e95628ab` |
+| 0453 | Pip | He's still the best. You just beat him, that's all. | `56921c6e` |
+| 0454 | Pip | You're the Unsworn. Everyone says. | `26132c3a` |
+| 0455 | Pip | Doesn't look like much. | `af7f5477` |
+| 0456 | Pip | Ser Aldric's never lost a Trial. His Sentinel won't let anything past. You'd have to go round it. | `49fd3434` |
+| 0457 | Pip | You can't go round it. | `ac491aa8` |
+| 0458 | Pip | I'm going to carry his shield one day. He doesn't know yet. | `78e9b5cb` |
+| 0459 | Pip | Got to go. Work. | `6f3a2cd8` |
 
 ### Maren
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0459 | Old Maren | The Sun's own knight, beaten in the Sun's own city. The priests will be smiling at you now. Count their teeth. | `8365b2cd` |
-| 0460 | Old Maren | Sit, sit. You've the look of someone who's walked a long way to be lied to. | `7af9d394` |
-| 0461 | Old Maren | Two thousand years of sun on these stones. Not one bad harvest in Solhaven. Lovely weather. | `39a1c69f` |
-| 0462 | Old Maren | I was a scribe in that Temple thirty years. I copied the Great Sundial's reading every noon. | `3846b0a2` |
-| 0463 | Old Maren | Every single noon. | `5df23c5c` |
-| 0464 | Old Maren | Then I found the old books. The readings from the last Turning. | `52106a84` |
-| 0465 | Old Maren | The shadows are nine days wrong. | `db83d6d3` |
-| 0466 | Old Maren | Somebody slowed the sun, child. Nine days of it. Long enough for the right Champion to catch up. | `b68aa0b5` |
-| 0467 | Old Maren | They threw me out for asking which one. | `f476280f` |
-| 0468 | Old Maren | Because you're the first person in two thousand years the priests can't tell to hush. They'll try, mind. | `5944882d` |
-| 0469 | Old Maren | Go and look at the Sundial at dawn. The oldest stone, under the steps. Then come and tell me I'm mad. | `73e5094e` |
+| 0460 | Old Maren | The Sun's own knight, beaten in the Sun's own city. The priests will be smiling at you now. Count their teeth. | `8365b2cd` |
+| 0461 | Old Maren | Sit, sit. You've the look of someone who's walked a long way to be lied to. | `7af9d394` |
+| 0462 | Old Maren | Two thousand years of sun on these stones. Not one bad harvest in Solhaven. Lovely weather. | `39a1c69f` |
+| 0463 | Old Maren | I was a scribe in that Temple thirty years. I copied the Great Sundial's reading every noon. | `3846b0a2` |
+| 0464 | Old Maren | Every single noon. | `5df23c5c` |
+| 0465 | Old Maren | Then I found the old books. The readings from the last Turning. | `52106a84` |
+| 0466 | Old Maren | The shadows are nine days wrong. | `db83d6d3` |
+| 0467 | Old Maren | Somebody slowed the sun, child. Nine days of it. Long enough for the right Champion to catch up. | `b68aa0b5` |
+| 0468 | Old Maren | They threw me out for asking which one. | `f476280f` |
+| 0469 | Old Maren | Because you're the first person in two thousand years the priests can't tell to hush. They'll try, mind. | `5944882d` |
+| 0470 | Old Maren | Go and look at the Sundial at dawn. The oldest stone, under the steps. Then come and tell me I'm mad. | `73e5094e` |
 
 ### The notice board
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0470 | Narrator | The Seat roll, in gold leaf: seven kingdoms, and the Champion who holds each. | `d2321325` |
-| 0471 | Narrator | Underneath, in fresh black ink: {name}, the Unsworn, challenger. Someone has scratched a small coin beside it, crossed with a key. *({name} is the player's name)* | `79ac041e` |
+| 0471 | Narrator | The Seat roll, in gold leaf: seven kingdoms, and the Champion who holds each. | `d2321325` |
+| 0472 | Narrator | Underneath, in fresh black ink: {name}, the Unsworn, challenger. Someone has scratched a small coin beside it, crossed with a key. *({name} is the player's name)* | `79ac041e` |
 
 ### Wren
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0472 | Wren | Half the city's seen your face now. Mind your pocket. *(said in 2 places: one recording)* | `1c1ef1cd` |
-| 0473 | Wren | You check that pocket every time someone passes. Stop it. It tells people where to look. | `d794760b` |
-| 0474 | Wren | One for free, and I don't do free. Aldric's deck has a Legend in it: Sunlance Seraph. | `3caed72a` |
-| 0475 | Wren | And he keeps something bigger back for when he's losing. Everyone in Solhaven knows its name. | `f97d1e14` |
-| 0476 | Wren | Nobody's seen it, because nobody's ever had him losing. | `6559e0bb` |
+| 0473 | Wren | Half the city's seen your face now. Mind your pocket. *(said in 2 places: one recording)* | `1c1ef1cd` |
+| 0474 | Wren | You check that pocket every time someone passes. Stop it. It tells people where to look. | `d794760b` |
+| 0475 | Wren | One for free, and I don't do free. Aldric's deck has a Legend in it: Sunlance Seraph. | `3caed72a` |
+| 0476 | Wren | And he keeps something bigger back for when he's losing. Everyone in Solhaven knows its name. | `f97d1e14` |
+| 0477 | Wren | Nobody's seen it, because nobody's ever had him losing. | `6559e0bb` |
 
 ### Liora
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0477 | Liora | I haven't told anyone about the mirrors. I've been praying about it. | `5bd3c165` |
-| 0478 | Liora | She doesn't answer me either. | `c45e5935` |
+| 0478 | Liora | I haven't told anyone about the mirrors. I've been praying about it. | `5bd3c165` |
+| 0479 | Liora | She doesn't answer me either. | `c45e5935` |
 
 ### Aldric
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0479 | Ser Aldric Vane | Go carefully. The Hierarch won't forgive this as easily as I do. | `bd528ed2` |
+| 0480 | Ser Aldric Vane | Go carefully. The Hierarch won't forgive this as easily as I do. | `bd528ed2` |
 
 ### Hale
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0480 | Warden Hale | Half a day's pay docked for every child. Cheapest thing I've bought in years. | `547c5270` |
-| 0481 | Warden Hale | {name}. The people outside the walls. *({name} is the player's name)* | `965afb02` |
-| 0482 | Warden Hale | If you ever have the ear of somebody who matters, remember them. I can't. | `5ac9c20b` |
+| 0481 | Warden Hale | Half a day's pay docked for every child. Cheapest thing I've bought in years. | `547c5270` |
+| 0482 | Warden Hale | {name}. The people outside the walls. *({name} is the player's name)* | `965afb02` |
+| 0483 | Warden Hale | If you ever have the ear of somebody who matters, remember them. I can't. | `5ac9c20b` |
 
 ### Gate warden
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0483 | The gate warden | Hale? Stripped of his command this morning, Hierarch's orders. | `c98a10c2` |
-| 0484 | The gate warden | He's in the barracks yard, if you want him. | `225af250` |
+| 0484 | The gate warden | Hale? Stripped of his command this morning, Hierarch's orders. | `c98a10c2` |
+| 0485 | The gate warden | He's in the barracks yard, if you want him. | `225af250` |
 
 ## Solhaven: the side stories
 
@@ -844,165 +850,165 @@ Every line the game speaks, in the order it's played: 571 lines, 22 of them reco
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0485 | The healer | Forty crowns, or swear to the Goddess and it's a copper. I don't set the price. | `c34d4741` |
-| 0486 | Ysa | You're the Unsworn. You don't kneel to anyone. So tell me. Should I? | `00f7d395` |
-| 0487 | Ysa | Yes. Course. | `8cba3a0b` |
-| 0488 | Ysa | That's what I thought you'd say. | `08c4654f` |
-| 0489 | Ysa | Then I've decided. | `5a82e175` |
-| 0490 | Ysa | I can't pay you back. | `2818dad4` |
-| 0491 | Ysa | I'll not forget it. | `64d1e3fe` |
-| 0492 | Ysa | There isn't one. | `5e89eeea` |
-| 0493 | Ysa | Is there? | `874fec2c` |
+| 0486 | The healer | Forty crowns, or swear to the Goddess and it's a copper. I don't set the price. | `c34d4741` |
+| 0487 | Ysa | You're the Unsworn. You don't kneel to anyone. So tell me. Should I? | `00f7d395` |
+| 0488 | Ysa | Yes. Course. | `8cba3a0b` |
+| 0489 | Ysa | That's what I thought you'd say. | `08c4654f` |
+| 0490 | Ysa | Then I've decided. | `5a82e175` |
+| 0491 | Ysa | I can't pay you back. | `2818dad4` |
+| 0492 | Ysa | I'll not forget it. | `64d1e3fe` |
+| 0493 | Ysa | There isn't one. | `5e89eeea` |
+| 0494 | Ysa | Is there? | `874fec2c` |
 
 ### Anselm
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0494 | Anselm | If you're the Guard, I'm nearly done. If you're not, sit down, you're in my light. | `f04c4147` |
-| 0495 | Anselm | I keep Ilvane. You won't have heard of her. She was the god of people on the road at night. Carters, travellers, the lost. Four hundred years ago she had a shrine in every town. | `727b9e61` |
-| 0496 | Anselm | Now she has me, and about three hundred people who still say her name. When nobody says it, she's gone. | `e6653022` |
-| 0497 | Anselm | So I heal for free, and all I ask is that they say her name once. It keeps her alive another day. | `17d299d9` |
-| 0498 | Anselm | Everyone in this city is buying faith. The Temple charges forty crowns for it. I charge one word. | `106fea18` |
-| 0499 | Anselm | Bring him. Quickly; the Guard come at dusk. | `89adbc26` |
-| 0500 | Ysa | One name. | `09b4f0b7` |
-| 0501 | Ysa | The Rootmother won't mind. She's not here. | `972efd11` |
-| 0502 | Ysa | So she knows who's asking. | `088f29e3` |
+| 0495 | Anselm | If you're the Guard, I'm nearly done. If you're not, sit down, you're in my light. | `f04c4147` |
+| 0496 | Anselm | I keep Ilvane. You won't have heard of her. She was the god of people on the road at night. Carters, travellers, the lost. Four hundred years ago she had a shrine in every town. | `727b9e61` |
+| 0497 | Anselm | Now she has me, and about three hundred people who still say her name. When nobody says it, she's gone. | `e6653022` |
+| 0498 | Anselm | So I heal for free, and all I ask is that they say her name once. It keeps her alive another day. | `17d299d9` |
+| 0499 | Anselm | Everyone in this city is buying faith. The Temple charges forty crowns for it. I charge one word. | `106fea18` |
+| 0500 | Anselm | Bring him. Quickly; the Guard come at dusk. | `89adbc26` |
+| 0501 | Ysa | One name. | `09b4f0b7` |
+| 0502 | Ysa | The Rootmother won't mind. She's not here. | `972efd11` |
+| 0503 | Ysa | So she knows who's asking. | `088f29e3` |
 
 ### Sergeant arrives
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0503 | The sergeant | Unlicensed healing during the Turning. In the Goddess's own city. You know what that is, Brother. | `df2a1ebb` |
-| 0504 | Anselm | A boy who'll live. | `9e5828a0` |
-| 0505 | The sergeant | It's heresy. | `af696885` |
-| 0506 | The sergeant | And you'll be the Unsworn. Step aside. *(said in 2 places: one recording)* | `a103ce69` |
+| 0504 | The sergeant | Unlicensed healing during the Turning. In the Goddess's own city. You know what that is, Brother. | `df2a1ebb` |
+| 0505 | Anselm | A boy who'll live. | `9e5828a0` |
+| 0506 | The sergeant | It's heresy. | `af696885` |
+| 0507 | The sergeant | And you'll be the Unsworn. Step aside. *(said in 2 places: one recording)* | `a103ce69` |
 
 ### Sergeant choice
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0507 | The sergeant | Forty crowns. | `f7c4ebd1` |
-| 0508 | The sergeant | That's what it costs, then. | `d0e9af1b` |
+| 0508 | The sergeant | Forty crowns. | `f7c4ebd1` |
+| 0509 | The sergeant | That's what it costs, then. | `d0e9af1b` |
 
 ### Mercy after
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0509 | The sergeant | I didn't see a shrine. I didn't see a boy. | `100a17ba` |
-| 0510 | The sergeant | That's the Covenant, Unsworn. | `85b49710` |
-| 0511 | The sergeant | The boy can stay. | `e7d5ed26` |
+| 0510 | The sergeant | I didn't see a shrine. I didn't see a boy. | `100a17ba` |
+| 0511 | The sergeant | That's the Covenant, Unsworn. | `85b49710` |
+| 0512 | The sergeant | The boy can stay. | `e7d5ed26` |
 
 ### Anselm last
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0512 | Anselm | She's a little brighter. Can you see? | `d947329e` |
-| 0513 | Anselm | You don't owe her anything for it. That's rather the point of her. | `1dadcc49` |
+| 0513 | Anselm | She's a little brighter. Can you see? | `d947329e` |
+| 0514 | Anselm | You don't owe her anything for it. That's rather the point of her. | `1dadcc49` |
 
 ### Talk fen
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0514 | Fen | In the Circle, then. If you win, I wash my hand. If I win, I keep the name. *(said in 2 places: one recording)* | `5bef7804` |
-| 0515 | Fen | Owe nothing! Kneel to nobody! The Unsworn's blessing, a copper a time, and nobody's hand on your collar after! | `d8c67725` |
-| 0516 | Fen | Ah. | `cab61f9a` |
-| 0517 | Fen | My apprentice! | `6699b133` |
-| 0518 | Fen | All right, all right. | `869b9ce4` |
-| 0519 | Fen | Before you finish me off, come and see where the coppers go. | `265babb4` |
-| 0520 | Fen | Thank you. Come and see where the coppers go. | `15890bc5` |
-| 0521 | Fen | Soup's dear. | `b5ea1fdd` |
-| 0522 | The debtor | When he touched my forehead, I felt like nobody owned me. Just for a minute. | `483f53e8` |
-| 0523 | The debtor | I'd pay a copper for that again. | `d28e2e55` |
-| 0524 | Fen | Owe nobody. | `d2158ec6` |
-| 0525 | Fen | Owe nobody. No copper. | `370034bf` |
-| 0526 | Fen | It's a worse business. It's a better sermon. | `19bfab52` |
-| 0527 | Fen | Bless you. | `12ceeaff` |
-| 0528 | Fen | See? It comes naturally. | `87f040e6` |
+| 0515 | Fen | In the Circle, then. If you win, I wash my hand. If I win, I keep the name. *(said in 2 places: one recording)* | `5bef7804` |
+| 0516 | Fen | Owe nothing! Kneel to nobody! The Unsworn's blessing, a copper a time, and nobody's hand on your collar after! | `d8c67725` |
+| 0517 | Fen | Ah. | `cab61f9a` |
+| 0518 | Fen | My apprentice! | `6699b133` |
+| 0519 | Fen | All right, all right. | `869b9ce4` |
+| 0520 | Fen | Before you finish me off, come and see where the coppers go. | `265babb4` |
+| 0521 | Fen | Thank you. Come and see where the coppers go. | `15890bc5` |
+| 0522 | Fen | Soup's dear. | `b5ea1fdd` |
+| 0523 | The debtor | When he touched my forehead, I felt like nobody owned me. Just for a minute. | `483f53e8` |
+| 0524 | The debtor | I'd pay a copper for that again. | `d28e2e55` |
+| 0525 | Fen | Owe nobody. | `d2158ec6` |
+| 0526 | Fen | Owe nobody. No copper. | `370034bf` |
+| 0527 | Fen | It's a worse business. It's a better sermon. | `19bfab52` |
+| 0528 | Fen | Bless you. | `12ceeaff` |
+| 0529 | Fen | See? It comes naturally. | `87f040e6` |
 
 ### Fen after
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0529 | Fen | There. Just a hand. | `f5e1f0f7` |
-| 0530 | Fen | You'll find there are others. There's always others. | `0b62f056` |
-| 0531 | Fen | The Unsworn's own blessing! Witnessed! | `1b605473` |
+| 0530 | Fen | There. Just a hand. | `f5e1f0f7` |
+| 0531 | Fen | You'll find there are others. There's always others. | `0b62f056` |
+| 0532 | Fen | The Unsworn's own blessing! Witnessed! | `1b605473` |
 
 ### Pip errand
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0532 | Pip | You following me? | `0052981f` |
-| 0533 | Pip | Two crowns a run. Most I've ever earned. You're not spoiling it. | `ba588503` |
-| 0534 | Pip | And I don't open them. Open one and you don't get paid. Everyone knows that. | `612d8c2b` |
-| 0535 | Pip | Mr Pell. From the counting house. He's all right. Pays on time. | `045aaedb` |
-| 0536 | Pip | You're on. | `af542eb1` |
-| 0537 | Pip | Bet you didn't think I had one. | `2905e5d3` |
+| 0533 | Pip | You following me? | `0052981f` |
+| 0534 | Pip | Two crowns a run. Most I've ever earned. You're not spoiling it. | `ba588503` |
+| 0535 | Pip | And I don't open them. Open one and you don't get paid. Everyone knows that. | `612d8c2b` |
+| 0536 | Pip | Mr Pell. From the counting house. He's all right. Pays on time. | `045aaedb` |
+| 0537 | Pip | You're on. | `af542eb1` |
+| 0538 | Pip | Bet you didn't think I had one. | `2905e5d3` |
 
 ### Pip after
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0538 | Pip | Two crowns. | `f4ed65ab` |
-| 0539 | Pip | Told you. | `2551f0f9` |
+| 0539 | Pip | Two crowns. | `f4ed65ab` |
+| 0540 | Pip | Told you. | `2551f0f9` |
 
 ### Pip note
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0540 | Wren | The Bread of Dawn. That's the loaf they give out at dawn prayers. | `6bdbab1a` |
-| 0541 | Pip | What's that mean? | `a9dc2496` |
-| 0542 | Pip | Thanks. Don't follow me again. | `1ab45b25` |
-| 0543 | Pip | That's two crowns! And Mr Pell'll know! | `0934e2bc` |
-| 0544 | Ser Aldric Vane | The Bread of Dawn feeds three thousand people a morning. His Grace would never put the Temple in that man's debt. | `4b74e2c5` |
-| 0545 | Ser Aldric Vane | I'll ask him. | `830a1a1d` |
+| 0541 | Wren | The Bread of Dawn. That's the loaf they give out at dawn prayers. | `6bdbab1a` |
+| 0542 | Pip | What's that mean? | `a9dc2496` |
+| 0543 | Pip | Thanks. Don't follow me again. | `1ab45b25` |
+| 0544 | Pip | That's two crowns! And Mr Pell'll know! | `0934e2bc` |
+| 0545 | Ser Aldric Vane | The Bread of Dawn feeds three thousand people a morning. His Grace would never put the Temple in that man's debt. | `4b74e2c5` |
+| 0546 | Ser Aldric Vane | I'll ask him. | `830a1a1d` |
 
 ### Pip place
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0546 | Pip | What's the pay? | `697bfd36` |
-| 0547 | Pip | ...Does Ser Aldric go past the stables? | `4a0b300d` |
+| 0547 | Pip | What's the pay? | `697bfd36` |
+| 0548 | Pip | ...Does Ser Aldric go past the stables? | `4a0b300d` |
 
 ### Talk sundial
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0548 | Corvin | Up early for a pilgrim. The Sundial's beautiful at dawn, isn't it? People come from all over. | `4afb2427` |
-| 0549 | Corvin | Old Maren sent you, I expect. She's had a hard life. It would be such a shame to make it harder. | `8a4b4206` |
-| 0550 | Corvin | Good. | `bdc919c5` |
-| 0551 | Corvin | Two thousand years of pilgrims' feet. Stone wears. | `20c264a3` |
-| 0552 | Corvin | Go and tell Maren that. | `222af945` |
-| 0553 | Old Maren | He came, didn't he. Smiling. | `3e88f288` |
-| 0554 | Old Maren | Well. You've got sense. More than I had. | `cd356ae9` |
-| 0555 | Old Maren | He came, didn't he. And you said it to his face. | `07f3e155` |
-| 0556 | Old Maren | Wait there. | `4633aa2a` |
-| 0557 | Old Maren | The old readings. I copied them the week before they threw me out. Thirty years they've been in my bread tin. | `88d893b3` |
-| 0558 | Old Maren | I'm too old to be brave on my own. Take them, and send for me when it's time. | `1a32db33` |
+| 0549 | Corvin | Up early for a pilgrim. The Sundial's beautiful at dawn, isn't it? People come from all over. | `4afb2427` |
+| 0550 | Corvin | Old Maren sent you, I expect. She's had a hard life. It would be such a shame to make it harder. | `8a4b4206` |
+| 0551 | Corvin | Good. | `bdc919c5` |
+| 0552 | Corvin | Two thousand years of pilgrims' feet. Stone wears. | `20c264a3` |
+| 0553 | Corvin | Go and tell Maren that. | `222af945` |
+| 0554 | Old Maren | He came, didn't he. Smiling. | `3e88f288` |
+| 0555 | Old Maren | Well. You've got sense. More than I had. | `cd356ae9` |
+| 0556 | Old Maren | He came, didn't he. And you said it to his face. | `07f3e155` |
+| 0557 | Old Maren | Wait there. | `4633aa2a` |
+| 0558 | Old Maren | The old readings. I copied them the week before they threw me out. Thirty years they've been in my bread tin. | `88d893b3` |
+| 0559 | Old Maren | I'm too old to be brave on my own. Take them, and send for me when it's time. | `1a32db33` |
 
 ### Talk barracks
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0559 | The captain | Ten lashes, for opening the Goddess's gate against the Hierarch's order. At noon. | `31f58d80` |
-| 0560 | Warden Hale | Don't. | `46f9d37c` |
-| 0561 | Warden Hale | I opened it. Nobody made me. It's mine to pay. | `90c43a65` |
-| 0562 | The captain | A sworn duel over a Sun Guard sentence? | `0af772e0` |
-| 0563 | The captain | If you win, it's his rank and no lash. If you lose, he takes twenty. Still want it? | `c30995e2` |
-| 0564 | The captain | Still want it? | `7794de3c` |
+| 0560 | The captain | Ten lashes, for opening the Goddess's gate against the Hierarch's order. At noon. | `31f58d80` |
+| 0561 | Warden Hale | Don't. | `46f9d37c` |
+| 0562 | Warden Hale | I opened it. Nobody made me. It's mine to pay. | `90c43a65` |
+| 0563 | The captain | A sworn duel over a Sun Guard sentence? | `0af772e0` |
+| 0564 | The captain | If you win, it's his rank and no lash. If you lose, he takes twenty. Still want it? | `c30995e2` |
+| 0565 | The captain | Still want it? | `7794de3c` |
 
 ### Hale stand
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0565 | Warden Hale | Suit yourself. | `cc094582` |
-| 0566 | Warden Hale | You stood there. | `a5c371c8` |
-| 0567 | Warden Hale | Most don't. | `429a68dd` |
+| 0566 | Warden Hale | Suit yourself. | `cc094582` |
+| 0567 | Warden Hale | You stood there. | `a5c371c8` |
+| 0568 | Warden Hale | Most don't. | `429a68dd` |
 
 ### Hale after
 
 | No. | Who | Line | Id |
 |---|---|---|---|
-| 0568 | Warden Hale | You don't let a man pay his own way, do you. | `48d110bd` |
-| 0569 | Warden Hale | Thank you. | `174534c6` |
-| 0570 | Warden Hale | Twenty, then. | `80216cf0` |
-| 0571 | Warden Hale | Stand where I can see you. | `508fd66a` |
+| 0569 | Warden Hale | You don't let a man pay his own way, do you. | `48d110bd` |
+| 0570 | Warden Hale | Thank you. | `174534c6` |
+| 0571 | Warden Hale | Twenty, then. | `80216cf0` |
+| 0572 | Warden Hale | Stand where I can see you. | `508fd66a` |

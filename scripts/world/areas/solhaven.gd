@@ -137,9 +137,10 @@ static func intro(_w: World) -> void:
 	pass
 
 
-## A film to pick up, or the very first arrival: start on black.
+## A film to pick up, the very first arrival, or the dawn after the chapter's
+## end ("Next time the game opens"): start on black, with no place-name card.
 static func starts_black() -> bool:
-	return not Game.flag("arrived_solhaven") or String(Game.flag("sol_film", "")) != ""
+	return not Game.flag("arrived_solhaven") or String(Game.flag("sol_film", "")) != "" or Films.dawn_due()
 
 
 static func arrival() -> Array:
@@ -154,6 +155,12 @@ static func resume(w: World) -> void:
 	if f != "":
 		people(w)   # (nobody in the square who isn't there yet)
 		await Films.run(w, f)
+	elif Films.dawn_due():
+		# "Next time the game opens" after the chapter's end: dawn, the wagon
+		# rolling out, the map of Veyl, Bram's "Pyreholt's nearest." (the last
+		# beat of Chapter 1; it hands back the square by day)
+		people(w)
+		await Films.dawn(w)
 	if not w.is_inside_tree():
 		return
 	await hub(w)
@@ -222,7 +229,9 @@ static func _mine(id: String) -> bool:
 ## The light over where the story goes next.
 static func _mark(w: World) -> void:
 	var v := set_of(w)
-	if not Game.flag("c2_done") or Game.flag("ch1_done"):
+	if Game.flag("veyl_dawn"):
+		v.mark("wagon")   # "Choose a kingdom.": the map is Bram's, at the wagon
+	elif not Game.flag("c2_done") or Game.flag("ch1_done"):
 		v.mark("")
 	elif not Game.flag("c3_done"):
 		v.mark("")   # Wren finds you on the way
@@ -246,6 +255,8 @@ static func scene(name: String, w: World) -> void:
 		"stall":
 			w.hud.dialogue.close()
 			await StallSheet.open(w)
+		"map":
+			await Films.map(w)
 		"pip_grey_coat":
 			await _grey_coat(w)
 		"night":
@@ -329,7 +340,7 @@ static func _bram() -> Array:
 				{"say": "You beat their champion in front of the whole city. By nightfall half of Veyl will know your name.", "who": "bram"},
 				{"say": "I liked it better when nobody did.", "who": "bram"},
 				{"scene": "night"},
-			], "else": _bram_menu()},
+			], "else": _bram_list()},
 		], "else": [
 			{"if": "!c3_done", "then": [
 				{"if": "met_bram_square", "then": [
@@ -341,7 +352,7 @@ static func _bram() -> Array:
 				]},
 			]},
 			{"set": "met_bram_square"},
-		] + _bram_menu()},
+		] + _bram_list()},
 	]
 
 
@@ -379,6 +390,24 @@ static func _bram_menu() -> Array:
 			],
 		]},
 	]
+
+
+## Bram's list once the dawn after Chapter 1 has been seen: "The map of
+## Veyl" at its head, the way back to the map and to "Choose a kingdom." (it
+## ends the talk: closing the map leaves you in the square). A list item,
+## not a line of his: nothing's said.
+static func _bram_menu_with_map() -> Array:
+	var m: Array = _bram_menu().duplicate(true)
+	var asks: Dictionary = m[m.size() - 1]
+	asks["ask"] = ["The map of Veyl"] + (asks["ask"] as Array)
+	asks["then"] = [[{"scene": "map"}]] + (asks["then"] as Array)
+	asks["ends"] = [0]
+	return m
+
+
+## What Bram's asked at the wagon: his list, with the map once there's one.
+static func _bram_list() -> Array:
+	return [{"if": "veyl_dawn", "then": _bram_menu_with_map(), "else": _bram_menu()}]
 
 
 static func _tamsin() -> Array:
