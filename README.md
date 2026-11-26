@@ -3413,7 +3413,9 @@ this session's own, a plain z-buffer over both files):
   (where the arm had hung against him in the picture); its own clips were
   stiffer than the ones he had (the arms hardly swing in its walk, its wave
   stops at the chest: the hand 16 cm under the head's joint against 5); no
-  freckles and no card case on his hip; no normal or roughness map.
+  freckles and no card case on his hip (the freckles and his scar painted
+  back the same evening, below; the card case to come as a prop of Gary's);
+  no normal or roughness map.
 
 **How he's built** (`tools/rig_player_a.sh <PlayerA.glb>`, one command;
 built twice here, the second from the first, to the same vertex in nine
@@ -3442,6 +3444,21 @@ clips):
   under half as bright; each takes the paint of the sleeve's outer side
   straight across the bone, toned and feathered in. 29 and 37 square
   centimetres, 10 to 18 cm down from each shoulder.
+- `tools/paint_face_marks.py` (new, the evening of the 26th: Gary's "2 yes"
+  to painting them back): the light freckles over his nose and cheeks and
+  the old scar through his left eyebrow that his sheet gives him. Placed
+  from the eyes (found on Tripo's untouched picture, `--eyes-from`, kept
+  aside by the build before the eyes are painted) and worked on the face in
+  metres. 170 freckles and 130 smaller, fainter ones, thickest over the
+  bridge of the nose and the tops of the cheeks, none on the lids or under
+  the nose, each darkening and warming the skin's own paint; a texel's
+  chance goes by the skin it covers, or the ridge of the nose, which the
+  atlas gives few texels, comes out bare. The scar is found from the brow's
+  own dark paint (46 mm long, 4.4 thick where it crosses, six tenths of the
+  way out): 9 mm, slanting out at the top, pale, bowed a quarter of a
+  millimetre. A face texel covers 0.65 mm, so this is as fine as his
+  picture can carry: a freckle is two to four texels. Seeded (`--seed 7`),
+  so a rebuild paints the same face.
 - **No normal or roughness map.** The 26 October model's maker's maps
   (`player_a_normal.png`, `player_a_mr.png`) were laid out for that mesh and
   are gone, and his new file came without any. One made from his colour

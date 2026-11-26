@@ -22,6 +22,10 @@
 #   paint_eyeballs.py    whites, pale silver-grey irises and pupils (his paint
 #                        had the whole eyeball one glassy blue)
 #   clean_under_arms.py  the waistcoat's paint off the underside of his sleeves
+#   paint_face_marks.py  the light freckles over his nose and cheeks and the
+#                        old scar through his left eyebrow that his sheet
+#                        gives him and Tripo's paint left off (Gary's yes,
+#                        26 November)
 # He has no normal or roughness map: his file came without them, and one
 # made from his colour picture (tools/derive_creature_maps.py --person) is no
 # use on a Smart Mesh atlas, which is cut into thousands of islands a few
@@ -46,9 +50,13 @@ python3 tools/rig_character.py "$tmp/welded.glb" "$out" --name "Player A" --heig
     --borrow "$tmp/donor.glb:$CLIPS"
 cp "$tmp/atlas.import" "${out%.glb}_atlas.png.import"
 atlas="${out%.glb}_atlas.png"
+# (the maker's picture kept aside: the face's marks are placed from the eyes,
+# which are found by Tripo's paint, not by the eyes painted over it)
+cp "$atlas" "$tmp/tripo.png"
 python3 tools/paint_eyeballs.py "$out" "$atlas" "$tmp/eyes.png" --iris 0.57,0.61,0.65 --ring 0.55 --iris-share 0.60 --pupil 0.42
 python3 tools/clean_under_arms.py "$out" "$tmp/eyes.png" "$tmp/clean.png"
 # (nothing found, nothing written: the eyes' picture stands)
 test -f "$tmp/clean.png" || cp "$tmp/eyes.png" "$tmp/clean.png"
-cp "$tmp/clean.png" "$atlas"
+python3 tools/paint_face_marks.py "$out" "$tmp/clean.png" "$tmp/marks.png" --eyes-from "$tmp/tripo.png"
+cp "$tmp/marks.png" "$atlas"
 rm -rf "$tmp"
