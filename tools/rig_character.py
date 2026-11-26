@@ -941,7 +941,7 @@ def build(args):
         img = image_of(info)
         if img is None or (key == "normalTexture" and not args.normal_map):
             continue
-        lim = args.texture_size if suffix != "mr" else min(args.texture_size, 1024)
+        lim = args.texture_size if suffix != "mr" else min(args.texture_size, args.mr_size)
         if img.width > lim:
             img = img.resize((lim, lim), Image.LANCZOS)
         fn = save_png(img, os.path.join(odir, "%s_%s.png" % (stem, suffix)))
@@ -1110,6 +1110,11 @@ def main():
     # (2 November: 4096, so a Tripo3D model's picture keeps its full size;
     # AssetFurnace's come at 2048 and stay so)
     ap.add_argument("--texture-size", type=int, default=4096)
+    # (26 November: a Smart Mesh atlas is thousands of islands a few texels
+    # across, and at 1024 its roughness runs from one island into the next,
+    # so Player A's keeps the atlas's size; over 2048 a picture is
+    # VRAM-compressed, which holds a 4096 in about what a 2048 takes)
+    ap.add_argument("--mr-size", type=int, default=1024, help="the roughness-metal map's largest size")
     ap.add_argument("--head-up", action="append", default=[], help="DEG:clip,clip,... lift the head in these clips")
     ap.add_argument("--hold-arm", action="append", default=[],
                     help="SIDE:FROM:clip,clip,... keep the Left/Right arm as it is in clip FROM, or in the rest pose (FROM = rest), in these clips (a walking stick's hand)")

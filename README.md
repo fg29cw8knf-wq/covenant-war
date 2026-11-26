@@ -3415,7 +3415,7 @@ this session's own, a plain z-buffer over both files):
   stops at the chest: the hand 16 cm under the head's joint against 5); no
   freckles and no card case on his hip (the freckles and his scar painted
   back the same evening, below; the card case to come as a prop of Gary's);
-  no normal or roughness map.
+  no normal or roughness map (Tripo's, from Gary that evening, below).
 
 **How he's built** (`tools/rig_player_a.sh <PlayerA.glb>`, one command;
 built twice here, the second from the first, to the same vertex in nine
@@ -3466,9 +3466,26 @@ clips):
   out: a Smart Mesh atlas is 5,796 islands a few texels across (a High
   Detail Model's is about a hundred), the slopes worked out inside one
   don't agree with the next, and his face came out in blocks in his
-  portrait. Don't derive one for a Smart Mesh model. The same file exported
-  from Tripo with PBR on would bring its own (`tools/add_normal_map.py`):
-  asked of Gary.
+  portrait. Don't derive one for a Smart Mesh model.
+- **His maps, Tripo's own (the evening of the 26th).** Gary put the same
+  model through Tripo's PBR (`new_player_a_model-2.glb`: the same vertices,
+  UVs and colour picture, plus a 4096 normal map and roughness-metal map).
+  `tools/rig_player_a.sh` builds from it: `rig_character.py --normal-map
+  --mr-size 4096` (the roughness kept at the atlas's size: at the usual 1024
+  one tiny island's runs into the next; VRAM-compressed, a 4096 takes what a
+  2048 does), then `tools/maps_follow_paint.py` (new) after the paint:
+  - where Claude repainted, the maps follow: the sleeves' patches had the
+    waistcoat's roughness (0.96 and 0.87 against the sleeve's 0.64) and get
+    the sleeve's, their bump eased flat; the eyeballs flat and wet (0.22);
+  - Tripo's PBR makes its maps from the colour, which on skin was wrong two
+    ways. His skin came glossy (0.50 in the middle; Bram's is 0.80, Hale's
+    0.69) and in the portrait he looked oiled: lifted to 0.76, which parts
+    are shinier kept, and nothing on the front of the face under 0.70 (the
+    dark tail of his left brow, not taken for skin, was a wet spot). And
+    every hard edge in the paint stood up as a ridge (brows, hairline,
+    painted strands, the collar), white slashes in a low light: each
+    texel's tilt eased under 0.10 on his head and on skin, 0.40 elsewhere.
+  Seen in his portrait and the attic mirror before and after.
 
 **What changed in the game for him:**
 - `Figure3D.FROZEN`: he's off it. His fingers move with his clips.
