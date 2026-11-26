@@ -3139,8 +3139,10 @@ class SpoonHold:
 ## tip at 6 to 7, 19 cm ahead; checked against a still of his face with
 ## the point marked). The default is Player A's, which every look plays in
 ## the game (DollArt.player_look).
-const MOUTH := {"player_a": Vector3(0.0, 0.045, 0.17)}
-const MOUTH_DEFAULT := Vector3(0.0, 0.045, 0.17)
+## (26 November: Player A's Smart Mesh head has its Head bone 6.6 cm higher,
+## at the base of the skull: his lips meet 3.4 cm under it, 12 cm ahead.)
+const MOUTH := {"player_a": Vector3(0.0, -0.026, 0.121)}
+const MOUTH_DEFAULT := Vector3(0.0, -0.026, 0.121)
 
 
 ## The mouth, in the world, on the pose as it stands now: the Head bone's

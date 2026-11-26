@@ -38,7 +38,10 @@ const CLOSER := {"tilly": 0.88, "tam": 1.08, "gate_warden": 1.08, "hale": 1.04}
 ## Whose head bone sits low in the skull (AssetFurnace's rigs: the player's,
 ## Corin's, Tam's, Tilly's, Nell's): the camera aims this much higher (m) so
 ## the face sits like the others'.
-const RAISE := {"player": 0.05, "player_a": 0.05, "player_b": 0.05, "player_c": 0.05, "player_d": 0.05, "corin": 0.05,
+## (26 November: Player A's Smart Mesh body has Tripo's rig, whose Head bone
+## is at the base of the skull, 6.6 cm higher than the fitted one he had: his
+## camera comes down 1.6 cm where it went up 5, so his face sits where it did.)
+const RAISE := {"player": -0.016, "player_a": -0.016, "player_b": 0.05, "player_c": 0.05, "player_d": 0.05, "corin": 0.05,
 	"tam": 0.08, "tilly": 0.06, "nell": 0.05, "bram": 0.05, "hob": 0.05, "ned": 0.05,
 	"hale": 0.045, "gate_warden": 0.06, "wren": 0.05, "dask": 0.05}
 const OUT := "res://assets/art/characters/"

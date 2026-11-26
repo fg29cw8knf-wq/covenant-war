@@ -68,7 +68,9 @@ const GAIT_SPEED := {"walk": 1.45, "run": 4.2}
 ## October; looks B, C and D, Gary's Player B, C and D models, since 20
 ## October, built by tools/rig_player.sh.)
 const OWN_GAIT := {
-	"player_a": {"walk": 1.71, "run": 4.33, "sneak": 0.87},
+	# (26 November: his Smart Mesh body plays the same clips on hips 1.4 %
+	# lower, so each stride is that much shorter)
+	"player_a": {"walk": 1.69, "run": 4.27, "sneak": 0.86},
 	"player_b": {"walk": 1.66, "run": 4.22, "sneak": 0.85},
 	"player_c": {"walk": 1.62, "run": 4.10, "sneak": 0.83},
 	"player_d": {"walk": 1.75, "run": 4.44, "sneak": 0.90},
@@ -634,12 +636,12 @@ const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 
 ## finger worst, the left hand with its wristband too). At rest the hands
 ## are as he modelled them; so his fingers stay as modelled, straight and
 ## still, and the hands move whole from the wrist.
-const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb3",
-	"LeftHandIndex1", "LeftHandIndex2", "LeftHandIndex3", "LeftHandMiddle1", "LeftHandMiddle2", "LeftHandMiddle3",
-	"LeftHandRing1", "LeftHandRing2", "LeftHandRing3", "LeftHandPinky1", "LeftHandPinky2", "LeftHandPinky3",
-	"RightHandThumb1", "RightHandThumb2", "RightHandThumb3",
-	"RightHandIndex1", "RightHandIndex2", "RightHandIndex3", "RightHandMiddle1", "RightHandMiddle2", "RightHandMiddle3",
-	"RightHandRing1", "RightHandRing2", "RightHandRing3", "RightHandPinky1", "RightHandPinky2", "RightHandPinky3"],
+## (26 November: Player A is off this list. His Smart Mesh body's rig is
+## Tripo's own and fits him: each finger's three joints lie along the finger,
+## 3.5, 2.5 and 2.3 cm apart, and the skin follows them, so his fingers curl
+## and open with the clips like anyone's, tests/hand_freeze_peek.gd. Until
+## then every finger bone of his was held at rest here.)
+const FROZEN := {
 	# (11 November, Gary: "In the opening bit of the game brams left hand is
 	# deformed" and the hunter "before brams battle has deformed right hand".
 	# The same fault on two more rigs: Bram in his coat and the Shard hunter
@@ -677,7 +679,14 @@ const FROZEN := {"player_a": ["LeftHandThumb1", "LeftHandThumb2", "LeftHandThumb
 ## twisted and the wristband's charm tore. His hands stay as he modelled
 ## them; the card box sits on his right hand, which is near flat
 ## (Ashford.BOX_FIT `carry`), and tools/hand_weights.py has what was tried.
-const OPEN_FLAT := {"bram": {"fingers": 0.0, "thumb": -60.0}}
+## And back (26 November): his Smart Mesh hands hang in a loose curl, the
+## fingertips 3.5 cm up off the palm, and his rig opens them cleanly, each
+## finger about its own knuckle. 15 degrees brings the fingers up to the card
+## box's bottom as the heel of the thumb does, the thumb turned 30 down
+## beside them; opened 25 and 40 degrees the box floated over them
+## (tests/box_hold_probe.gd -- <dir> a open=<deg> thumb=<deg>; "BOX HOLD: ok"
+## at 15 and -30 with Ashford.BOX_FIT's bottom 0.023).
+const OPEN_FLAT := {"bram": {"fingers": 0.0, "thumb": -60.0}, "player_a": {"fingers": 15.0, "thumb": -30.0}}
 
 
 class Posture:
@@ -1600,7 +1609,17 @@ var _smile := 0.0
 ## And how big the face is against the hero's (a child's is four fifths of
 ## his): the shader's distances are his.
 const MOUTHS := {
-	"player_a": [Vector3(0.0, 0.037, 0.17), 0.024, 1.0],
+	# (26 November: his Smart Mesh head. Tripo's rig has the Head bone at the
+	# base of the skull, 6.6 cm higher in him than the AssetFurnace-fitted one
+	# it replaced, so his lips are under it now, as Hale's are: off his skin's
+	# profile, the nose's tip level with the bone 13.8 cm ahead, the lips
+	# meeting 3.4 cm under it, the chin's front 5.8 under. His face is
+	# shorter than the one the shader's distances were measured on, 4.1 cm
+	# from the lips to under the chin where that was 4.9: at 1.0 the jaw's
+	# drop reached the skin under his chin and drew it down through the front
+	# of his neck, a grey scribble under the jaw as he spoke; at 0.75 the
+	# neck is still, open and wide: tests/face_sheet.tscn -- <dir> open player_a)
+	"player_a": [Vector3(0.0, -0.034, 0.121), 0.025, 0.75],
 	"bram": [Vector3(0.0, 0.052, 0.202), 0.025, 1.0],
 	# (Bram in his coat, the snow: his own head on another rig. Off his skin
 	# as drawn (tests/mouth_profile: the nose's tip 13.9 cm ahead of the
@@ -1641,8 +1660,12 @@ const MOUTHS := {
 ## side as palm_frame() has it.
 const HANDS := {
 	"player_a": {
-		"left": [Vector3(-0.0191, -0.0918, 0.0457), Vector3(-0.249, -0.887, 0.389), Vector3(-0.951, 0.147, -0.272), 0.092, 0.057],
-		"right": [Vector3(0.0001, -0.1033, 0.0239), Vector3(0.147, -0.954, 0.262), Vector3(0.957, 0.07, -0.282), 0.093, 0.064],
+		# (26 November, his Smart Mesh hands, whose finger bones lie along the
+		# fingers: the middle of the four knuckle joints, the way the first two
+		# finger bones run, the palm's side as palm_frame() has it, and the
+		# fingers' length and spread off the skin those bones hold)
+		"left": [Vector3(0.0169, -0.0881, 0.0172), Vector3(-0.397, -0.918, -0.020), Vector3(-0.904, 0.394, -0.167), 0.090, 0.055],
+		"right": [Vector3(-0.0181, -0.0990, 0.0301), Vector3(0.280, -0.960, -0.002), Vector3(0.929, 0.272, -0.251), 0.089, 0.054],
 	},
 }
 var _hand_close := {"left": 0.0, "right": 0.0}

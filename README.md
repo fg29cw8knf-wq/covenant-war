@@ -3381,6 +3381,113 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Player A's Smart Mesh body (26 November)
+
+Gary, 25 November, after asking what Tripo's "Model" and "Mesh" are: "ill
+create player a again with mesh and add animations through chatgpt like i
+did before and you let me know which is better", then his `PlayerA.glb`, and
+to the comparison: "yes then pop him in the game and give me the updated to
+do list for the other characters".
+
+**What his file is.** Tripo3D's Smart Mesh (not its High Detail Model, which
+every person in the game was made with until now): quads, 27,393 places on
+the body (54,386 triangles; the model he replaces had 19,225), a Mixamo rig
+of Tripo's own, 65 joints, the library's 22 clips, one 4096 colour picture
+and no other maps. Made from the same front picture, standing arms down.
+
+**Which was better** (measured before anything was changed; the renders are
+this session's own, a plain z-buffer over both files):
+- The body: a real nose, mouth and ears, hair in locks, five separate
+  fingers. The old one's face and hands were a lump under their paint.
+- The bend: with both bodies playing the same sixteen clips, the share of
+  the surface stretched to half again its length or crushed to half was
+  0.21 % on the new against 0.84 % on the old in the walk, 1.66 against 2.57
+  in the cheer, 0.52 against 0.95 in the wave, and so through the list. Arms
+  up, the old one's sleeves tore open at the armpits; the new one's stay
+  whole.
+- The rig: it fits him (every joint's rest skin matrix the same turn and
+  lift, the finger joints 3.5, 2.5 and 2.3 cm apart along each finger). The
+  26 October file's stood a quarter turn off its mesh and was thrown away.
+- Against it: its eyes were one glassy pale blue, no white and no pupil; a
+  dark patch of the waistcoat's paint lay on the underside of each sleeve
+  (where the arm had hung against him in the picture); its own clips were
+  stiffer than the ones he had (the arms hardly swing in its walk, its wave
+  stops at the chest: the hand 16 cm under the head's joint against 5); no
+  freckles and no card case on his hip; no normal or roughness map.
+
+**How he's built** (`tools/rig_player_a.sh <PlayerA.glb>`, one command;
+built twice here, the second from the first, to the same vertex in nine
+clips):
+- `tools/glb_bake_turn.py`, as for Hale: Tripo's quarter turn on the nodes.
+- `tools/glb_weld.py` (new): every quad came with its own four corners,
+  113,956 vertices; the ones alike in every way are made one, 60,303.
+  `--drop-clips` leaves the library's clips out.
+- `tools/rig_character.py --borrow <the Player A in the game>:<all 30>`:
+  he keeps the clips he had (the motion-captured 21, the game's, Bram's lift,
+  get_out_of_bed), fitted to the new skeleton. Other models borrow his by
+  name at run time (`Figure3D.DONORS`), so the set had to stay whole.
+- `tools/paint_eyeballs.py` (new; `tools/atlas_paint.py` under it): each
+  eyeball found by its paint (cool where skin is warm), the opening between
+  the lids measured (17.7 mm of paint wide, 7.7 open), and a white, an iris
+  and a pupil drawn front-on in the model's own metres: pale silver-grey
+  with a dark rim, as his sheet on the Cast tab says ("unusually pale
+  silver-grey eyes"), six tenths of the paint's width so the upper lid
+  covers 2 mm of its top and the lower lid its foot, the pupil 42 % of the
+  iris (at half the width and a small pupil he stared out of his portrait).
+  The lids are the model's own and aren't touched. (`paint_eyes.py` is for
+  the other case, Bram's: no eyeball and the lids painted shut.)
+- `tools/clean_under_arms.py` (new): each arm read as a sleeve round its
+  bones; a texel on the half facing the body is a stain when it's far from
+  the arm's own colour at that length and nearer the torso's beside it, or
+  under half as bright; each takes the paint of the sleeve's outer side
+  straight across the bone, toned and feathered in. 29 and 37 square
+  centimetres, 10 to 18 cm down from each shoulder.
+- **No normal or roughness map.** The 26 October model's maker's maps
+  (`player_a_normal.png`, `player_a_mr.png`) were laid out for that mesh and
+  are gone, and his new file came without any. One made from his colour
+  picture (`tools/derive_creature_maps.py --person`) was tried and taken
+  out: a Smart Mesh atlas is 5,796 islands a few texels across (a High
+  Detail Model's is about a hundred), the slopes worked out inside one
+  don't agree with the next, and his face came out in blocks in his
+  portrait. Don't derive one for a Smart Mesh model. The same file exported
+  from Tripo with PBR on would bring its own (`tools/add_normal_map.py`):
+  asked of Gary.
+
+**What changed in the game for him:**
+- `Figure3D.FROZEN`: he's off it. His fingers move with his clips.
+- `Figure3D.HANDS` (the shader's finger curl): measured again off his finger
+  joints and skin.
+- `Figure3D.OPEN_FLAT`: `{"fingers": 15, "thumb": -30}`. His hands hang in a
+  loose curl; opened 15 degrees the fingers come up to the card box's
+  bottom as the heel of the thumb does.
+- `Ashford.BOX_FIT`: `{"bottom": 0.023, "carry": "right", "one_hand": true}`.
+  The tilt, the level, `lid_over` and `lid_back` were for the old hands
+  (a fist and a claw) and are gone.
+- `Figure3D.MOUTHS` and `AshfordP1.MOUTH`: Tripo's Head bone is at the base
+  of the skull, 6.6 cm higher than the fitted one it replaces, so his lips
+  are 3.4 cm under it. The face scale is 0.75: his face is shorter, and at
+  1.0 the jaw's drop drew the skin under his chin down through his neck (a
+  grey scribble under the jaw in `tests/face_sheet.tscn -- <dir> open
+  player_a`).
+- `Figure3D.OWN_GAIT`: 1.69, 4.27, 0.86 (his hips are 1.4 % lower).
+- `Figure3D.POSTURE` is kept as it was: without it his head rides forward
+  of his shoulders in the same clips, as the old body's did.
+- `tools/render_portraits.gd` `RAISE`: -0.016 for him (the same 6.6 cm), and
+  his portrait re-rendered.
+
+**Checked:** `tests/clips_check.gd` (0 missing or wrong, 69 models);
+`tests/model_sheet.gd` (him among the cast, and eight clips);
+`tests/hand_freeze_peek.gd` (idle and walk: fingers whole);
+`tests/face_sheet.tscn` (shut, open, gasp, wide, smile);
+`tests/hand_close_shot.tscn`; `tests/box_hold_probe.gd -- <dir> a` ("BOX
+HOLD: ok"); `tests/box_open_probe.tscn` (Bram's hand-over, the lid lifted,
+the deck); `tests/crate_take_probe.tscn` (a hand at most 8.2 and 9.7 cm from
+its mark as it's taken up, nothing through anything in 281 frames). Then
+the play-through as Player A, `tools/play_all_looks.sh <dir>`: the Prologue
+to midnight "P1 V7 TEST: ok" (166 stills, no problem lines) and Chapter 1
+"SOLHAVEN TEST: PASS" (232 stills, no problem lines), the stills looked
+through.
+
 ### Gary's 25 November yeses (Morrowen's line, every attack in three shots, a model for the shield)
 
 Gary (24 November, 23:54 and 23:55, to the five suggestions after the build):
@@ -6416,6 +6523,11 @@ hers, the player beside her): hips on the seat, thighs along it, feet on
 the ground (Tilly's swing); whatever they do sitting (talking, a wave, a
 held pose) stays sitting until `stand()` or they walk off.
 
+(Since 26 November the player's model is Gary's Tripo3D Smart Mesh file of 25
+November, with a rig of Tripo's own that fits him: "Player A's Smart Mesh
+body" above says how it's built and what changed. What follows is how he and
+Bram were built until then; it still holds for Bram.)
+
 The player (look A) is Gary's young man: since 26 October his new look from
 the Cast tab (about 20, lean, freckles, a scar through his left eyebrow,
 wavy dark brown hair, cream shirt and moss-green waistcoat), a Tripo3D model
@@ -6465,8 +6577,9 @@ splits the face into a light and a dark half, so it's left out. To rebuild
 him from Gary's master file:
 
 ```sh
-tools/rig_player_a.sh <Player_B_Master_21_Animations.glb>        # an AssetFurnace master with its clips
-python3 tools/reskin.py <tripo_model.glb> assets/models/characters/player_a.glb /tmp/pa.glb --height 1.76   # a model whose rig is no good: the mesh onto the game's skeleton
+tools/rig_player_a.sh <PlayerA.glb>        # since 26 November: Gary's Tripo3D Smart Mesh file, rigged by Tripo; it keeps the clips of the Player A in the game
+# (until then, for a model whose rig is no good: the mesh onto the game's skeleton, then the clips)
+python3 tools/reskin.py <tripo_model.glb> assets/models/characters/player_a.glb /tmp/pa.glb --height 1.76
 python3 tools/rig_character.py /tmp/pa.glb assets/models/characters/player_a.glb --name "Player A" --height 1.76 \
     --borrow "assets/models/characters/player_a.glb:<every clip of the old model>" --borrow <hob_new.glb>:get_out_of_bed
 godot --headless --import

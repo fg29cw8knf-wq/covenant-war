@@ -1315,7 +1315,7 @@ const BOX_RISE := 0.006
 ## 1 to 3 cm clear of the palm and looked to float: tipped 6 degrees, front
 ## up, it rests along the thumb's ridge and the curl of the fingers, the
 ## fingertips up in front of it (tests/box_hold_probe.gd prints the profile).
-const BOX_FIT := {"player_a": {"bottom": 0.027, "tilt": -6.0, "level": 0.034, "carry": "right", "one_hand": true, "lid_over": 0.13, "lid_back": 0.06}, "player_b": {"bottom": 0.032, "thumb": 0.05},
+const BOX_FIT := {"player_a": {"bottom": 0.023, "carry": "right", "one_hand": true}, "player_b": {"bottom": 0.032, "thumb": 0.05},
 	"player_c": {"bottom": 0.025, "thumb": 0.06}, "player_d": {"bottom": 0.022, "thumb": 0.03},
 	# (Bram's, holding it out on his palm: where the drawn box's half-height
 	# had it, which looked right on 6 November's stills)
