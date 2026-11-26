@@ -346,6 +346,9 @@ static func night(w: World) -> void:
 		var leaf: Node3D = dn.get_meta("leaf")
 		leaf.rotation.y = 0.0
 		rt.tween_property(leaf, "rotation:y", DOOR_OPEN, 1.2).set_trans(Tween.TRANS_SINE).set_delay(0.35)
+		# (its hinges as it starts to give: the inn door's recording, lower,
+		# for oak bound in iron; 26 November)
+		w.get_tree().create_timer(0.35, false).timeout.connect(func() -> void: Sfx.prop("door_open", 0.0, 0.85))
 	else:
 		var roots: Node3D = dn.get_node("Roots")
 		rt.tween_property(roots, "rotation:z", 0.9, 0.8).set_trans(Tween.TRANS_SINE)
@@ -376,6 +379,10 @@ static func night(w: World) -> void:
 	Cine.place(w, "bram", r.door_in + Vector3(0.4, 0, -0.4), r.table.mid)
 	Cine.place(w, "player", r.door_in, r.shelf)
 	Cine.shot(w, root.to_global(Vector3(1.6, 1.7, 1.2)), root.to_global(Vector3(-1.0, 0.9, -0.4)), 50.0)
+	# (the door shut behind them and the latch tried, as the dark comes up
+	# and the line says so; 26 November)
+	Sfx.prop("door_close", 0.0, 0.85)
+	w.get_tree().create_timer(0.75, false).timeout.connect(func() -> void: Sfx.prop("door_latch"))
 	await Cine.fade(w, 0.0, 0.8)
 	await Cine.say(w, "", "[i]Bram shuts the door behind them and tests the latch. There is no fire, no lantern, and no window for an enemy to watch.[/i]")
 	# the provisions: walk to the shelves and lay out the food
@@ -669,7 +676,10 @@ static func morning(w: World) -> void:
 	await Cine.wait(w, 0.8)
 	var door: Node3D = r.door
 	var dt := w.create_tween()
-	dt.tween_property(door, "rotation:y", -1.6, 0.9).set_trans(Tween.TRANS_SINE)
+	# (he lifts its hook, and it swings; 26 November)
+	Sfx.prop("door_latch")
+	dt.tween_property(door, "rotation:y", -1.6, 0.9).set_trans(Tween.TRANS_SINE).set_delay(0.25)
+	w.get_tree().create_timer(0.25, false).timeout.connect(func() -> void: Sfx.prop("door_open", 0.0, 0.85))
 	await Cine.wait(w, 0.6)
 	Cine.look(w, "bram", w.player.global_position)
 	Cine.over_shoulder(w, "player", "bram", 1.0, 32.0)

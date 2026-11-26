@@ -131,10 +131,12 @@ func _ready() -> void:
 			# video recorded with Movie Maker: scale3d=0.5
 			get_viewport().scaling_3d_mode = Viewport.SCALING_3D_MODE_BILINEAR
 			get_viewport().scaling_3d_scale = float(String(a).substr(8))
+	Sfx.listen = true   # (26 November: the props' and doors' sounds played are listed at the end)
 	world = World.new().setup("thornwood" if thorn else "ashford", "river" if thorn else "green")
 	world.story_next.connect(func(what: String) -> void:
 		print("FILM: story_next ", what, " after ", _frame, " frames, flags thorn_part=", Game.flag("thorn_part"), " pro_part=", Game.flag("pro_part"), " deck=", Game.unlocked("deck"), " codex=", Game.unlocked("codex"), " collection=", Game.v2.get("collection", {}), " lessons=", Game.lessons().size())
 		await _shot("end")
+		_say_heard()
 		print("FILM: done")
 		if _qa != null:
 			print(_qa.summary())
@@ -284,6 +286,7 @@ func _process(_d: float) -> void:
 		var now := str(Game.flag("pro_part")) + str(Game.flag("thorn_part"))
 		if now != _start_part:
 			_ending = true
+			_say_heard()
 			print("FILM: part over after ", _frame, " frames (", now, ")")
 			await _shot("end")
 			get_tree().quit()
@@ -475,3 +478,16 @@ func _drive_tour(t: PackTour) -> void:
 			elif d.begins_with("card:"):
 				menu._open_card(d.substr(5))
 
+
+## The props' and doors' sounds played in this run, in order, each once
+## (Sfx.listen): "FILM: heard chest_open, chest_stop, ...". Footsteps, cards,
+## voices and the interface aren't listed.
+func _say_heard() -> void:
+	var names: Array = []
+	for h in Sfx.heard:
+		var n := String(h[1])
+		if n.begins_with("step_") or n.begins_with("ui_") or n.begins_with("cry_") or n.begins_with("card_"):
+			continue
+		if not names.has(n):
+			names.append(n)
+	print("FILM: heard ", ", ".join(names))

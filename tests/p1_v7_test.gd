@@ -125,6 +125,7 @@ func _run() -> void:
 	# ---- the street, to the green
 	await _until(func() -> bool: return world.player.global_position.y > -10.0 and not world.busy, 200.0, "the street")
 	_expect(_heard("door_open"), "the inn's door opened without a sound")
+	_expect(_heard("door_close"), "the inn's door didn't shut behind you (26 November)")
 	# (round the south side of the well: a player walks round it, the taps
 	# here go straight)
 	_goal = func() -> Vector3:

@@ -1,6 +1,6 @@
 # Where the recorded sounds came from
 
-Written by `tools/fit_recorded_sounds.py` (25 November 2026). Both packs are
+Written by `tools/fit_recorded_sounds.py` (25 and 26 November 2026). Both packs are
 Kenney's (www.kenney.nl), public domain under Creative Commons Zero (CC0):
 free to use in a game that's sold, with no credit owed. Gary downloaded them.
 Each file here is one recording, trimmed, levelled and saved as mono 16-bit
@@ -48,4 +48,7 @@ tools in `tools/` (make_cries.py, make_steps.py and the rest) or is Gary's own.
 | `box_close_3.wav` | [Impact Sounds 1.0](https://kenney.nl/assets/impact-sounds) | `Audio/impactWood_light_004.ogg` |  |
 | `door_open.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorOpen_1.ogg` |  |
 | `door_open_2.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorOpen_2.ogg` |  |
+| `door_close.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorClose_4.ogg` |  |
+| `door_close_2.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorClose_3.ogg` |  |
+| `door_latch.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/metalLatch.ogg` |  |
 | `gate_open.wav` | [RPG Audio](https://kenney.nl/assets/rpg-audio) | `Audio/doorOpen_2.ogg` | played at 0.62 speed (lower, longer) |

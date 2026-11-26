@@ -47,6 +47,7 @@ func _ready() -> void:
 	_keys = "keys" in args
 	if _keys:
 		RenderingServer.render_loop_enabled = false
+	Sfx.listen = true
 	Game.new_game("Rowan", "tidegrove")
 	for f in ["ash_marked", "first_deck", "bram_deck", "hob_gift", "beat_hunter", "thornwood_done", "arrived_solhaven",
 			"beat_hale", "beat_wren", "wren_joined", "trial_light_passed", "beat_aldric", "ch1_done", "met_bram_square"]:
@@ -79,6 +80,11 @@ func _play() -> void:
 		t += 1
 	_check(world.cine and v.wagon.position.z > 31.5, "the dawn plays by itself: the wagon is out on the road (z %.1f)" % v.wagon.position.z)
 	_check(v.gate_is_open(), "the Golden Gate stands open")
+	# (its wheels and hooves, once the recording is in the game: silent till then)
+	if Sfx.has_file("wagon_roll"):
+		_check(Sfx.heard.map(func(h): return String(h[1])).has("wagon_roll"), "the wagon's wheels and hooves are heard")
+	else:
+		print("VEYL DAWN note: no wagon_roll recording in the game yet; the roll is silent")
 	_check(absf(wrapf(v.wagon.rotation.y - PI, -PI, PI)) < 0.01, "the wagon faces south")
 	var z0: float = v.wagon.position.z
 	await _shot("dawn_roll_1")

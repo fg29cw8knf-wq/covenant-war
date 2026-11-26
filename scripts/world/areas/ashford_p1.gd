@@ -2689,6 +2689,7 @@ static func _taproom(w: World) -> void:
 	Cine.path(w, "player", [e.door_out], 1.4)
 	await Cine.wait(w, 0.9)
 	await Cine.fade(w, 1.0, 0.7)
+	Sfx.prop("door_close", -3.0)   # (shut behind you, in the black: it's shut when the street comes up; 26 November)
 	door.rotation.y = 0.0
 
 

@@ -1116,7 +1116,11 @@ static func reckoning(w: World) -> void:
 	Cine.place(w, "player", r.stairs + RK_PLAYER_1, r.stairs + Vector3(-0.55, 0, 0))
 	Cine.shot(w, r.stairs + Vector3(-3.05, 1.5, 1.2), r.stairs + Vector3(-0.95, 1.55, -0.6), 40.0)
 	await Cine.fade(w, 0.0, 0.8)
-	_sfx(w, "hooves")
+	# (riders pulling up on the green overhead. The game has never had this
+	# sound: with no file and no stand-in of its name, Sfx played its "no
+	# such sound" tone, a twentieth of a second of 880 Hz, here. Found 26
+	# November. Silent until Gary's recording is in: assets/sfx/hooves.)
+	Sfx.prop("hooves", 2.0)
 	w.shake(0.05)
 	# up at the boards overhead, towards the camera (towards the stairs he
 	# turned his back on it, and from the stairs' side they hid his face)

@@ -3797,6 +3797,8 @@ every file that is now a recording and the recording it came from.
 - **Left silent, on purpose:** doors closing (the pack's "close" is a short
   click that read as a tick here), the attic's trapdoor, the chest's lid,
   the shelter's stone door. Each wants a sound of its own; offered to Gary.
+  (26 November: he said yes. Doors shutting and the shelter's door are in;
+  the trapdoor and the chest turned out not to be in the game. See below.)
 - **Chosen by measurement, not by ear.** Nothing here can listen: each
   recording was picked by its length, where its energy sits and how hard it
   starts, against the made sound it replaces. Gary was sent two clips to
@@ -3917,8 +3919,77 @@ banner on the map.)") is in the game.
   their feet, the light over the wagon), Bram's list, and that a second
   opening goes straight to the square.
 - **Not done.** No wheels or hooves are heard (neither Kenney pack has
-  them); no dust; Turnip isn't seen. No kingdom can be set out for.
+  them; 26 November: he said yes to them, the film asks for `wagon_roll`,
+  and it waits on a recording he's to download); no dust; Turnip isn't
+  seen. No kingdom can be set out for.
   Player A only, as he asked.
+
+#### 26 November, just after midnight: doors shutting, the shelter's door, and what the wagon waits for
+
+Gary, 00:42: "2 yes 3 yes" to "Add wheels and hooves to the dawn (needs one
+more free download from you)" and "Give sounds to doors closing, the attic
+trapdoor, the chest lid and the shelter's stone door (also needs a
+download)".
+
+- **3 needed no download** for the parts of it that are in the game: the
+  two Kenney packs he gave already hold them (`tools/fit_recorded_sounds.py`,
+  `assets/sfx/SOURCES.md`).
+  - **`door_close`** (two takes: RPG Audio's `doorClose_4`, the deepest of
+    its four, and `_3`, the longest; `_1` is a handle's rattle and `_2` a
+    latch's click, which is what made "the pack's close" read as a tick on
+    25 November) and **`door_latch`** (`metalLatch`).
+  - **The shelter's door in the Thornwood** (`thornwood_shelter.gd`): its
+    hinges as Bram pushes it in (`door_open` a little lower: oak bound in
+    iron); the door shut and the latch tried as the dark inside comes up
+    (the line there says "Bram shuts the door behind them and tests the
+    latch."); in the morning the hook lifted, then the door.
+  - **The inn's door** shuts behind you in the black as you step out to the
+    street (`ashford_p1.gd`): it's shut when the street comes up.
+- **The chest's lid and the trapdoor aren't in the game.** They were on the
+  list of silent things by mistake: both move only in `Ashford._cellar`
+  (v3's P4: Bram's chest, the rug, the trapdoor), and nothing has called
+  that since the v7 Prologue (the old part name "cellar" plays the
+  Reckoning: `OLD_PARTS`). Their recordings were fitted and wired, then
+  taken out again when the film test showed the scene never plays; the
+  picks are noted in the tool for the day a lid or a hatch is seen to move.
+  The door is oak, too, not stone: the script calls it "a low stone door"
+  and Gary's model is an oak door in a stone doorway.
+- **A beep where hooves were meant, found and silenced.** The Reckoning
+  opens in the cellar with riders pulling up overhead (`_sfx(w, "hooves")`,
+  then Bram's "She's early."). The game has never had a sound of that name,
+  and no stand-in for it, so `Sfx` played its "no such sound" tone there:
+  a twentieth of a second of 880 Hz. It's `Sfx.prop("hooves")` now: silent
+  until the recording is in, then heard. (Every sound name the scripts ask
+  for was checked against the files, the stand-ins and the made sounds:
+  this was the only one with nothing behind it. `crowd_roar` and `lash`
+  have no file either, and each already checks and plays something else.)
+- **2 waits on two recordings** neither pack has. Both are public domain
+  (CC0), from the old USC film-sound library on Freesound, which needs a
+  free account to download from (this machine can't fetch from it, and a
+  login isn't gone round):
+  - the dawn's wheels and hooves, `wagon_roll`: "G52-07-Horse Drawn
+    Carriage.wav", https://freesound.org/s/437076 (42 s: steady wheels and
+    horses on a hard surface);
+  - the riders over the cellar, `hooves`: "R13-27-Horse Gallops and Stops
+    on Stone.wav", https://freesound.org/people/craigsmith/sounds/479699/
+    (16 s: a horse gallops in on stone and stops).
+  `Films.dawn` already asks for `wagon_roll` and the Reckoning for
+  `hooves`; each is silent until its file is in `assets/sfx`. To do when
+  they come: cut the dawn's to the shot (8 s of roll, the fades baked in:
+  up over the first second, down over the last two), cut the riders' to
+  the arrival and the stop, level both as the props are, add them to the
+  tool's table and to `SOURCES.md`, and take the "silent till then" note
+  out of `veyl_dawn_test` (it checks the wagon is heard once the file is
+  there). They're 1930s to 1960s optical recordings: expect some hiss, and
+  judge whether it sits in the game's mix before keeping them.
+- **Checked:** `sfx_test` ("SFX: ok": `door_close` and `door_latch` load and
+  play); `film_test` now lists the props' and doors' sounds a part played
+  ("FILM: heard ..."): `camp only` heard `door_open, door_close,
+  door_latch`, `morning only` `door_latch, door_open`, `reckoning only` no
+  `hooves`; `p1_v7_test` fails if the inn's door doesn't shut behind you;
+  `veyl_dawn_test` PASS; the Prologue to "Tam at the mill" as Player A.
+  Not checked: how any of it sounds (Gary has a clip:
+  `doors_shutting_and_the_shelter_door.m4a`).
 
 ### Gary's 24 November play-through notes (the slow spells, Bram's duel, the mark, the card, the crate, the box, the grass)
 

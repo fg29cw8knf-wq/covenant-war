@@ -2,7 +2,8 @@
 """Real recordings for the footsteps, the crate, the card box's lid and doors
 (25 November: Gary's "4 can you find them online and use them" for the
 footsteps, and his yes to "Use the wood and metal knocks in the Impact Sounds
-pack for the crate, the box lid and doors").
+pack for the crate, the box lid and doors"; 26 November: his yes to sounds
+for a door shutting and the shelter's door).
 
 They come from two of Kenney's packs, both public domain (CC0), which Gary
 downloaded himself (kenney.nl turns AI tools away):
@@ -68,7 +69,20 @@ FIT = {
     "box_close": ("impact", ["impactWood_light_000", "impactWood_light_002", "impactWood_light_004"], 0.2, 0.28, 1.0),
     # ---- doors
     "door_open": ("rpg", ["doorOpen_1", "doorOpen_2"], 0.2, 1.5, 1.0),
-    # (no door shuts where it's seen yet; RPG Audio has doorClose_1 to _4 for when one does)
+    # a door shut (26 November: the shelter's, behind them). Of the pack's
+    # four, the two with a door's weight in them: _4 is the deepest (a third
+    # of it under 200 Hz), _3 the longest; _1 is a handle's rattle and _2 a
+    # latch's click, which is what made "the pack's close" read as a tick.
+    "door_close": ("rpg", ["doorClose_4", "doorClose_3"], 0.2, 0.9, 1.0),
+    # a door's latch tried, its hook lifted
+    "door_latch": ("rpg", ["metalLatch"], 0.16, 0.30, 1.0),
+    # (26 November: a chest's lid and a trapdoor were asked for too, and
+    # fitted: creak1 and creak2 at 0.8 speed for the hinges, impactPlank_
+    # medium_001 and _003 for the lid on its stop and the door on the floor,
+    # the two planks with most of themselves above 180 Hz. Then it turned out
+    # the game never plays them: the cellar scene with Bram's chest and the
+    # trapdoor (Ashford._cellar, v3's P4) hasn't been reached since the v7
+    # Prologue. They are the picks if a lid or a hatch is ever seen to move.)
     # the Golden Gate's two great leaves: the longer door, slower and lower
     "gate_open": ("rpg", ["doorOpen_2"], 0.2, 2.6, 0.62),
 }
@@ -181,7 +195,7 @@ def main():
     folders = {"impact": args[0], "rpg": args[1]}
     os.makedirs(out_dir, exist_ok=True)
     notes = ["# Where the recorded sounds came from", "",
-        "Written by `tools/fit_recorded_sounds.py` (25 November 2026). Both packs are",
+        "Written by `tools/fit_recorded_sounds.py` (25 and 26 November 2026). Both packs are",
         "Kenney's (www.kenney.nl), public domain under Creative Commons Zero (CC0):",
         "free to use in a game that's sold, with no credit owed. Gary downloaded them.",
         "Each file here is one recording, trimmed, levelled and saved as mono 16-bit",
