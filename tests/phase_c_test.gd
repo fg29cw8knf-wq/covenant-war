@@ -169,7 +169,9 @@ func _ascension() -> void:
 	_check(g.ascend_problem(0, warg) == "", "the next turn, it can: %s" % g.ascend_problem(0, warg))
 	await g.perform(0, {"type": "ascend", "card": warg, "target": hound})
 	_check(hound.id() == "infernal_warg" and hound.stage() == 2, "the second stage: Infernal Warg")
-	_check(DuelCards.CARDS.infernal_warg.has("stand_in"), "the Warg has a stand-in to show until its model comes")
+	# (27 November: Gary's model came, so it stands as itself, not a bigger Blazehound)
+	_check(not DuelCards.CARDS.infernal_warg.has("stand_in") and ResourceLoader.exists("res://assets/models/creatures/infernal_warg.glb"),
+		"the Warg stands as its own model now")
 
 
 func _temper() -> void:

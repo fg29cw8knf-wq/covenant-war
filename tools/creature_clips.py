@@ -2,7 +2,7 @@
 clips, made by hand from its own bones: idle, attack, hit, defeat, spawn,
 run, victory and guard (DuelField3D.CLIP_ALIASES reads them).
 
-  python3 tools/creature_clips.py <rigged.glb> <out.glb> --kind turtle
+  python3 tools/creature_clips.py <rigged.glb> <out.glb> --kind turtle|warg
 
 Run tools/glb_bake_turn.py on Tripo's export first (its joints are placed by
 matrices and the figure is turned a quarter round above them), and
@@ -39,6 +39,27 @@ KINDS = {
         "back_r": ["tripo::1_Left_Limb_0", "tripo::1_Left_Limb_1"],
         "back_l": ["tripo::Spine_2"],
         "tail": "tripo::Spine_3",
+    },
+    # The Infernal Warg (Gary's, 27 November: Tripo Smart Mesh, rigged as a
+    # four-legged animal, no clips). Facing +Z after glb_bake_turn.py, 1.0 m
+    # nose to tail and 0.68 m high. Its bones by the flesh they carry: Root
+    # (at the ground under its middle) the hindquarters and the tail, which
+    # has no bones of its own; Spine_0 the middle of the back; Head_0 the
+    # chest and shoulders, and both front legs hang from it; Head_1 the neck
+    # (no flesh of its own), Head_2 the head and mane, Head_3 the lower jaw.
+    # 0_Right_Limb is the front leg on its right (-X), 0_Left_Limb on its
+    # left; 1_Right_Limb and 1_Left_Limb the hind legs; the bone_* at their
+    # ends are toes.
+    "warg": {
+        "clips": "hound",
+        "root": "tripo::Root", "spine": "tripo::Spine_0", "chest": "tripo::Head_0",
+        "neck": "tripo::Head_1", "head": "tripo::Head_2", "jaw": "tripo::Head_3",
+        "front_r": ["tripo::0_Right_Limb_0", "tripo::0_Right_Limb_1", "tripo::0_Right_Limb_2"],
+        "front_l": ["tripo::0_Left_Limb_0", "tripo::0_Left_Limb_1", "tripo::0_Left_Limb_2"],
+        "back_r": ["tripo::1_Right_Limb_0", "tripo::1_Right_Limb_1", "tripo::1_Right_Limb_2"],
+        "back_l": ["tripo::1_Left_Limb_0", "tripo::1_Left_Limb_1", "tripo::1_Left_Limb_2"],
+        "hind_z": -0.24,   # the hind feet, for rearing about
+        "plant": True,
     },
 }
 
@@ -193,6 +214,239 @@ def turtle_clips(k):
     }
 
 
+def hound_clips(k):
+    """A big four-legged hunter: low and menacing at rest, a crouch and a
+    lunge with the jaws, a gallop. Turns are about world axes at each bone's
+    joint, and a bone's turn carries its children: +X pitches a head down or
+    swings a hanging leg back, -X the other way; +Y turns to its left; +Z
+    rolls its left side up."""
+    R, S, C, N, H, J = k["root"], k["spine"], k["chest"], k["neck"], k["head"], k["jaw"]
+    fr, fl, br, bl = k["front_r"], k["front_l"], k["back_r"], k["back_l"]
+
+    def merge(*parts):
+        out = {}
+        for p in parts:
+            for bone, m in p.items():
+                o = out.setdefault(bone, {})
+                if "rot" in m:
+                    o["rot"] = o.get("rot", []) + list(m["rot"])
+                if "move" in m:
+                    a = np.array(o.get("move", (0, 0, 0)), np.float64) + np.array(m["move"], np.float64)
+                    o["move"] = tuple(a)
+                for key in ("pivot", "scale"):
+                    if key in m:
+                        o[key] = m[key]
+        return out
+
+    def leg(chain, swing, bend):
+        """swing: the whole leg from the shoulder or hip (+ back); bend: the
+        joint below folds, lifting the paw (measured on the Warg: its
+        forelegs stand angled forward, so a foreleg's lower bone turned
+        forward lifts the paw and turned back drops it; a hind leg's the
+        other way round)."""
+        front = chain in (fr, fl)
+        out = {chain[0]: {"rot": [(X, swing)]}}
+        if bend:
+            out[chain[1]] = {"rot": [(X, -bend if front else bend)]}
+        return out
+
+    def idle(t):
+        # low and watchful: slow deep breaths through the chest, the head
+        # weaving a little, the jaw hanging open and panting heat; once a
+        # cycle the head snaps round toward something and back
+        T = 3.6
+        a = 2 * math.pi * t / T
+        breath = math.sin(a)
+        look = keys(t, [(0, 0), (1.3, 0), (1.7, 1), (2.6, 1), (3.1, 0), (3.6, 0)])
+        return {
+            S: {"rot": [(X, -0.8 * breath)]},
+            C: {"rot": [(X, 0.6 * breath), (Y, 1.0 * look)]},
+            N: {"rot": [(X, 2.0 * math.sin(a + 0.7)), (Y, 9.0 * look + 3.0 * math.sin(0.5 * a))]},
+            H: {"rot": [(X, -1.5 * math.sin(2 * a)), (Y, 5.0 * look), (Z, 2.0 * math.sin(0.5 * a + 1.0))]},
+            J: {"rot": [(X, 6.0 + 4.0 * (0.5 + 0.5 * math.sin(2 * a + 0.4)) + 6.0 * look)]},
+        }
+
+    def attack(t):
+        # gathers, crouching back on its haunches with the head down; drives
+        # forward off the hind legs, forelegs reaching, the jaws wide; they
+        # snap shut at the end of the lunge, and it draws back to stand
+        gather = keys(t, [(0, 0), (0.32, 1), (0.42, 0), (1.25, 0)])
+        lunge = keys(t, [(0, 0), (0.32, -0.15), (0.52, 1), (0.74, 1), (1.25, 0)])
+        jaw = keys(t, [(0, 0.2), (0.3, 0.3), (0.5, 1.0), (0.62, 1.0), (0.7, -0.1), (0.85, 0.2), (1.25, 0.2)])
+        L = max(0.0, lunge)
+        return merge(
+            {R: {"move": (0, -0.035 * gather + 0.03 * L, -0.05 * gather + 0.20 * L)},
+             S: {"rot": [(X, 3.0 * gather - 4.0 * L)]},
+             C: {"rot": [(X, 5.0 * gather - 6.0 * L)]},
+             N: {"rot": [(X, 10.0 * gather - 12.0 * L)]},
+             H: {"rot": [(X, 8.0 * gather - 10.0 * L)]},
+             J: {"rot": [(X, 4.0 + 34.0 * jaw)]}},
+            leg(fr, -6.0 * gather - 34.0 * L, 10.0 * gather + 16.0 * L),
+            leg(fl, -6.0 * gather - 30.0 * L, 10.0 * gather + 14.0 * L),
+            leg(br, -14.0 * gather + 30.0 * L, 18.0 * gather),
+            leg(bl, -14.0 * gather + 26.0 * L, 18.0 * gather),
+        )
+
+    def hit(t):
+        # knocked back: the front of it thrown up and away, the head wrenched
+        # aside, and it gathers itself
+        r = keys(t, [(0, 0), (0.09, 1), (0.3, 0.75), (0.75, 0)])
+        return merge(
+            {R: {"move": (0, 0, -0.07 * r)},
+             S: {"rot": [(X, -3.0 * r), (Z, 3.0 * r)]},
+             C: {"rot": [(X, -6.0 * r), (Z, 5.0 * r)]},
+             N: {"rot": [(X, -14.0 * r), (Y, 16.0 * r)]},
+             H: {"rot": [(X, -8.0 * r), (Y, 10.0 * r)]},
+             J: {"rot": [(X, 6.0 + 22.0 * r)]}},
+            leg(fr, 10.0 * r, 8.0 * r), leg(fl, 10.0 * r, 8.0 * r),
+        )
+
+    def defeat(t):
+        # staggers, the forelegs going first, and goes down on its right
+        # side; the head falls last and the jaw hangs
+        stag = keys(t, [(0, 0), (0.25, 1), (0.5, 0.6), (0.7, 0)])
+        roll = keys(t, [(0.35, 0), (1.25, 1.0), (1.4, 0.94), (1.55, 1.0), (2.0, 1.0)])
+        sink = keys(t, [(0.25, 0), (0.75, 1.0), (2.0, 1.0)])
+        head = keys(t, [(0.6, 0), (1.5, 1.0), (1.62, 0.9), (1.75, 1.0), (2.0, 1.0)])
+        return merge(
+            {R: {"rot": [(Z, 78.0 * roll)], "pivot": (-0.17, 0.0, 0.0), "move": (0, -0.03 * sink, -0.05 * stag)},
+             C: {"rot": [(X, 6.0 * sink - 5.0 * stag)]},
+             N: {"rot": [(X, 22.0 * head - 10.0 * stag), (Z, 12.0 * head)]},
+             H: {"rot": [(X, 10.0 * head), (Z, 10.0 * head)]},
+             J: {"rot": [(X, 4.0 + 16.0 * head)]}},
+            leg(fr, 14.0 * sink, 26.0 * sink), leg(fl, 20.0 * sink, 30.0 * sink),
+            leg(br, -8.0 * sink, 20.0 * sink), leg(bl, -14.0 * sink, 26.0 * sink),
+        )
+
+    def spawn(t):
+        # rises out of a crouch, gives itself a shake, and throws its head up
+        # in a roar
+        up = keys(t, [(0, 0), (0.6, 1.0)])
+        crouch = 1.0 - up
+        s = keys(t, [(0, 0.86), (0.5, 1.03), (0.7, 1.0)])
+        shake = math.sin((t - 0.55) * 2 * math.pi * 3.2) * keys(t, [(0.5, 0), (0.62, 1), (0.95, 0)])
+        roar = keys(t, [(0.9, 0), (1.15, 1.0), (1.5, 1.0), (1.8, 0)])
+        return merge(
+            {R: {"move": (0, -0.05 * crouch, 0), "scale": s},
+             S: {"rot": [(Z, 4.0 * shake)]},
+             C: {"rot": [(X, 6.0 * crouch), (Z, 6.0 * shake)]},
+             N: {"rot": [(X, 16.0 * crouch - 24.0 * roar), (Z, 9.0 * shake)]},
+             H: {"rot": [(X, 6.0 * crouch - 10.0 * roar), (Z, 10.0 * shake)]},
+             J: {"rot": [(X, 4.0 + 36.0 * roar)]}},
+            leg(fr, -4.0 * crouch, 22.0 * crouch), leg(fl, -4.0 * crouch, 22.0 * crouch),
+            leg(br, -10.0 * crouch, 24.0 * crouch), leg(bl, -10.0 * crouch, 24.0 * crouch),
+        )
+
+    def run(t):
+        # a gallop: the forelegs land one after the other, then the hind
+        # pair; the back flexes with the stride, the head holds steady
+        T = 0.56
+        ph = t / T
+        parts = []
+        for chain, off, amp in ((fr, 0.0, 30.0), (fl, 0.12, 30.0), (br, 0.5, 28.0), (bl, 0.62, 28.0)):
+            a = 2 * math.pi * (ph + off)
+            # forward on the swing (-X), back on the stance; the joint below
+            # folds while it swings forward
+            parts.append(leg(chain, amp * math.sin(a), 34.0 * max(0.0, math.cos(a))))
+        a = 2 * math.pi * ph
+        parts.append({
+            R: {"move": (0, 0.022 * abs(math.sin(a + 0.4)), 0)},
+            S: {"rot": [(X, 5.0 * math.sin(a))]},
+            C: {"rot": [(X, -4.0 * math.sin(a + 0.6))]},
+            N: {"rot": [(X, 4.0 * math.sin(a + 1.2) + 4.0)]},
+            H: {"rot": [(X, -2.0 * math.sin(a + 1.2))]},
+            J: {"rot": [(X, 10.0 + 3.0 * math.sin(2 * a))]},
+        })
+        return merge(*parts)
+
+    def victory(t):
+        # rears up off its forelegs, paws the air and howls, comes down
+        rear = keys(t, [(0, 0), (0.4, 1), (1.3, 1), (1.8, 0)])
+        paw = math.sin((t - 0.4) * 2 * math.pi * 1.6) * keys(t, [(0.35, 0), (0.5, 1), (1.2, 1), (1.35, 0)])
+        howl = keys(t, [(0.3, 0), (0.6, 1), (1.3, 1), (1.6, 0)])
+        return merge(
+            {R: {"rot": [(X, -16.0 * rear)], "pivot": (0, 0, k["hind_z"])},
+             C: {"rot": [(X, -4.0 * rear)]},
+             N: {"rot": [(X, -26.0 * howl)]},
+             H: {"rot": [(X, -14.0 * howl), (Y, 3.0 * paw)]},
+             J: {"rot": [(X, 4.0 + 30.0 * howl)]}},
+            leg(fr, -26.0 * rear - 14.0 * paw, 30.0 * rear + 10.0 * paw),
+            leg(fl, -26.0 * rear + 14.0 * paw, 30.0 * rear - 10.0 * paw),
+            leg(br, 18.0 * rear, 6.0 * rear), leg(bl, 18.0 * rear, 6.0 * rear),
+        )
+
+    def guard(t):
+        # crouched to spring, head low, a growl trembling in the jaw
+        T = 2.4
+        a = 2 * math.pi * t / T
+        return merge(
+            {R: {"move": (0, -0.035, -0.02)},
+             S: {"rot": [(X, 3.0 + 0.6 * math.sin(a))]},
+             C: {"rot": [(X, 3.0)]},
+             N: {"rot": [(X, 7.0 + 1.5 * math.sin(a))]},
+             H: {"rot": [(X, 3.0), (Y, 2.0 * math.sin(7 * a))]},
+             J: {"rot": [(X, 14.0 + 2.0 * math.sin(9 * a))]}},
+            leg(fr, -8.0, 14.0), leg(fl, -8.0, 14.0), leg(br, -14.0, 20.0), leg(bl, -14.0, 20.0),
+        )
+
+    return {
+        "idle": (3.6, True, idle), "attack": (1.25, False, attack), "hit": (0.75, False, hit),
+        "defeat": (2.0, False, defeat), "spawn": (1.8, False, spawn), "run": (0.56, True, run),
+        "victory": (1.8, False, victory), "guard": (2.4, True, guard),
+    }
+
+
+CLIPS = {"turtle": turtle_clips, "hound": hound_clips}
+
+
+def ground_lifts(j, binc, rig, tracks, n):
+    """For each frame, how far the whole creature must rise so that no part
+    of it is below the ground (y 0): a crouch or a fall worked out as turns
+    can push a foot or a flank through the floor, and this keeps it on top.
+    Worked on every vertex a foot could be (low at rest) and one in six of
+    the rest, through the skin as the game draws it (scale left out)."""
+    from rig_character import acc
+    mesh_node = next(i for i, nd in enumerate(j["nodes"]) if "skin" in nd and "mesh" in nd)
+    prim = j["meshes"][j["nodes"][mesh_node]["mesh"]]["primitives"][0]
+    at = prim["attributes"]
+    P = acc(j, binc, at["POSITION"]).astype(np.float64)
+    JN = acc(j, binc, at["JOINTS_0"]).astype(np.int64)
+    WT = acc(j, binc, at["WEIGHTS_0"]).astype(np.float64)
+    keep = (P[:, 1] < 0.08) | (np.arange(len(P)) % 6 == 0)
+    P, JN, WT = P[keep], JN[keep], WT[keep]
+    WT /= np.maximum(WT.sum(1, keepdims=True), 1e-9)
+    skin = j["skins"][0]
+    ibm = acc(j, binc, skin["inverseBindMatrices"]).astype(np.float64).reshape(-1, 4, 4).transpose(0, 2, 1)
+    joints = skin["joints"]
+
+    def qm(q):
+        x, y, z, w = q
+        return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                         [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                         [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+    lifts = np.zeros(n)
+    for fi in range(n):
+        t = dict(rig.t)
+        r = dict(rig.r)
+        for i, tr in tracks.items():
+            if len(tr["r"]) == n:
+                r[i] = np.array(tr["r"][fi])
+                t[i] = np.array(tr["t"][fi])
+        wp, wq = rig.world(t, r)
+        a = np.zeros((len(joints), 3))
+        c = np.zeros(len(joints))
+        for k, ji in enumerate(joints):
+            R = qm(wq[ji])
+            A = R @ ibm[k][:3, :3]
+            a[k] = A[1]
+            c[k] = (R @ ibm[k][:3, 3])[1] + wp[ji][1]
+        y = np.zeros(len(P))
+        for q in range(4):
+            y += WT[:, q] * (np.einsum("ij,ij->i", a[JN[:, q]], P) + c[JN[:, q]])
+        lifts[fi] = max(0.0, -float(y.min()))
+    return lifts
+
+
 def build(src, dst, kind):
     b = open(src, "rb").read()
     off, chunks = 12, []
@@ -207,7 +461,7 @@ def build(src, dst, kind):
     idx = {j["nodes"][i].get("name"): i for i in range(len(j["nodes"]))}
     parent = rig.parent
     k = KINDS[kind]
-    clips = turtle_clips(k)
+    clips = CLIPS[k.get("clips", "turtle")](k)
     j.setdefault("animations", [])
     j["animations"] = [a for a in j["animations"] if a.get("name") not in clips]
 
@@ -251,6 +505,17 @@ def build(src, dst, kind):
                 tr["used"] |= {"r"} if m.get("rot") else set()
                 tr["used"] |= {"t"} if ("move" in m or "pivot" in m) else set()
                 tr["used"] |= {"s"} if "scale" in m else set()
+        if k.get("plant"):
+            lifts = ground_lifts(j, binc, rig, tracks, n)
+            if lifts.max() > 1e-4:
+                ri = idx[k["root"]]
+                if ri not in tracks or len(tracks[ri]["t"]) != n:
+                    tracks[ri] = {"r": [rig.r[ri]] * n, "t": [rig.t[ri]] * n, "s": [rig.s[ri]] * n, "used": set()}
+                pq = rig.wq[parent[ri]] if ri in parent else np.array([0, 0, 0, 1.0])
+                up = qrot(qinv(pq), np.array([0.0, 1.0, 0.0]))
+                tracks[ri]["t"] = [np.array(tv) + up * lf for tv, lf in zip(tracks[ri]["t"], lifts)]
+                tracks[ri]["used"].add("t")
+                print("  %s: lifted up to %.1f cm to keep it on the ground" % (name, lifts.max() * 100))
         # a bone a clip moves in some frames is keyed in all of them (rest where it's still)
         anim = {"name": name, "samplers": [], "channels": []}
         tin = add(times.astype(np.float32), "SCALAR")

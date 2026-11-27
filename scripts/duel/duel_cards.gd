@@ -458,7 +458,7 @@ const CARDS := {
 	# ====================================== SECOND-STAGE ASCENSIONS (Phase C)
 	"infernal_warg": {
 		"kind": "totem", "name": "Infernal Warg", "element": "fire", "tier": 3, "stage": 2,
-		"ascends_from": "blazehound", "cost": 3, "hp": 200, "affinity": "might", "stand_in": "blazehound",
+		"ascends_from": "blazehound", "cost": 3, "hp": 200, "affinity": "might",
 		"attuned": {"min": 6, "damage": 20}, "keywords": ["harvest"],
 		"moves": [
 			{"name": "Searing Maw", "cost": 0, "damage": 40},

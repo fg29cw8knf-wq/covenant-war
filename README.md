@@ -3381,6 +3381,54 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### The Infernal Warg's model (27 November)
+
+Gary's `infernal_warg_Model.glb`, the job on Still to Make since 18
+November (its painting and cut-out were in; a bigger Blazehound stood in for
+it): Tripo Smart Mesh, 53,740 triangles, a 4096 colour picture with its
+roughness-metal and normal maps, and Tripo's four-legged rig of 33 bones,
+but **no clips**. A creature of brown stone with a mane and a tail of white-hot
+flame, molten drool, its right forefoot raised mid-stalk; 1.0 m nose to tail
+and 0.68 m high as made (the duel sizes it by that: `creature_h` 2.6, a
+second stage).
+
+**Built:** `tools/glb_bake_turn.py` (facing +Z), `tools/creature_clips.py
+--kind warg` (new kind; its eight clips, below), `tools/glb_weld.py` (115,727
+vertices to 62,501), `tools/split_creature.py --glow` (the atlas at 4096,
+the maker's normal map at 2048 and roughness at 1024, and the flames as the
+glow map: 17% of the atlas). `infernal_warg` loses its `stand_in` in
+`DuelCards`, so it stands as itself everywhere: the duel field, its 2D
+art, the White Sky's first flash (`WhiteSky._flash_model`, where it gallops
+at Bram, spectral).
+
+**Its clips, made by hand from its bones** (`creature_clips.hound_clips`,
+the `"hound"` set, any four-legged creature with the bones named in
+`KINDS`): idle (deep slow breaths, the head weaving, the jaw panting open,
+once a cycle a snap of the head toward something), attack (gathers on its
+haunches, then a pounce off the hind legs with the forelegs reaching and the
+jaws wide, snapping shut at the end of it), hit, defeat (staggers, goes down
+on its right side, the head last), spawn (rises out of a crouch, a shake, a
+roar), run (a gallop, forelegs one after the other, then the hind pair),
+victory (rears, paws the air and howls) and guard (crouched, a growl in the
+jaw). Which way a joint lifts or drops a paw was measured on the model (its
+forelegs stand angled forward, so a foreleg's lower bone turned forward lifts
+the paw). **`plant`** (new, on for the warg): after each frame's turns, the
+whole creature is lifted by however far any part of it went under the
+ground (the skin worked through, on every low vertex and one in six of the
+rest), so a crouch or a fall never puts a foot or a flank through the floor.
+
+**Its tail has no bones** (Tripo's rig put none there), so it moves with the
+body only. The Root bone carries the hindquarters and tail; Head_0 the chest
+and both forelegs; Head_2 the head and mane; Head_3 the lower jaw.
+
+**Checked:** close stills in the game's light (`tests/creature_peek.tscn`,
+each clip); the White Sky's flashes (`tests/white_sky_look.tscn ... fight`:
+it charges at Bram in the first, galloping, as smoke); the played duel
+headless ("WHITE SKY PLAY: ok"); the card test ("PHASE C TEST: PASS", now
+checking the Warg has its own model); a duel built to call it
+(`tests/creature_shot.tscn ... infernal_warg`, which now reaches a
+second-stage Ascension by putting its whole line in the deck).
+
 ### Player A's Smart Mesh body (26 November)
 
 Gary, 25 November, after asking what Tripo's "Model" and "Mesh" are: "ill

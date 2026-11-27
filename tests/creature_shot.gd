@@ -19,7 +19,14 @@ func _ready() -> void:
 	var d: Dictionary = DuelCards.CARDS[id]
 	var mine: Array = []
 	if d.has("ascends_from"):
-		mine = [String(d.ascends_from), id, id]
+		# (27 November) the whole line, so a second-stage Ascension (the
+		# Infernal Warg: Cinderpup, then Blazehound, then it) can be reached
+		var line: Array = [id, id]
+		var from := String(d.ascends_from)
+		while from != "":
+			line.push_front(from)
+			from = String(DuelCards.CARDS[from].get("ascends_from", ""))
+		mine = line
 	else:
 		mine = [id, id]
 	mine += ["essence_flask", "essence_flask", "healing_draught", "essence_flask", "essence_flask", "healing_draught", "essence_flask", "essence_flask"]
