@@ -5450,7 +5450,9 @@ var _grasp_t := -1.0
 ## his side. `tucking`: the tests'.
 const TUCK_OVER_AT := Vector3(0.07, 0.15, 0.03)
 const TUCK_OVER_DRAW := Vector3(0.06, 0.0, 0.02)
-const TUCK_OVER_ELBOW := Vector3(-0.5, 1.3, 0.05)
+## (27 November: up from 1.3, so the forearm comes down to the blanket
+## from above rather than lying along it: the wide sleeve was 3.1 cm in)
+const TUCK_OVER_ELBOW := Vector3(-0.5, 1.38, 0.05)
 const TUCK_OVER_WIDE := Vector3(-0.38, 0.06, -0.06)
 const TUCK_OVER_AFTER := 0.35
 const TUCK_OVER_IN := 0.55
@@ -5614,7 +5616,10 @@ const TAKE_IN := 0.5
 const TAKE_AT := Vector3(-0.08, 0.045, 0.023)
 const TAKE_PALM := Vector3(0.0, -0.12, -1.0)
 const TAKE_FINGERS := Vector3(1.0, -0.04, 0.16)
-const TAKE_ELBOW := Vector3(-0.44, 1.18, 0.2)
+## (27 November: the elbow higher, 1.18 to 1.32: his Smart Mesh coat's
+## sleeve hangs wide, and with the forearm level as he reached for the
+## card its underside went 4.2 cm into the top of the bundle)
+const TAKE_ELBOW := Vector3(-0.44, 1.32, 0.2)
 ## How far the small hand brings the card in towards him and down as his
 ## hand comes for it (his own frame, m).
 ## (24 November, Gary: "When Bram takes card from baby his hand motion is
@@ -8178,8 +8183,11 @@ const PROMPT_BEAT := 0.3
 ## the chest bone (level with it and ahead of it, out in front of his coat,
 ## where the left arm will cradle it: the place it's tucked, TUCK_AT, stood
 ## up. 16 November: it was 16 cm lower and 6 nearer, a third of it inside
-## him as he said "Hush, now. I've got you.").
-const CRADLE := Vector3(0.022, 0.0, 0.265)
+## him as he said "Hush, now. I've got you."; 27 November, his Smart Mesh
+## body: its chest bone sits 2 cm further back in him and his coat stands
+## out further from it, so 2.8 cm further out, as his coat's front is:
+## tests/held_child_probe.gd).
+const CRADLE := Vector3(0.022, 0.0, 0.293)
 ## Hands this near their marks (m, the hand bone to the mark: the palm is a
 ## few centimetres on) are on it.
 const HANDS_ON := 0.13
@@ -8208,7 +8216,11 @@ const LIFT_FLAT := 0.2
 ## reaches for is set off from the palm's place by MARK_OFF (his way ahead,
 ## down, out along the bundle), where the forearm's line ends once the palm
 ## is on it.
-const PALM_AT := Vector3(0.0, -0.1, 0.15)
+## (27 November: 18 cm out, from 15: his Smart Mesh hand's wrist sits
+## further back from the palm, and as the hands went under the ends the
+## left wrist was 2.6 cm into the end of the bundle, the body check said;
+## the palms are still 7 cm in from its ends, it being 50 cm long.)
+const PALM_AT := Vector3(0.0, -0.1, 0.18)
 ## Held up at his chest (16 November): the left palm up and in under its end,
 ## the fingers level and in towards its middle (the right's the mirror).
 const HOLD_PALM := Vector3(-0.35, 0.94, 0.0)
@@ -8597,7 +8609,9 @@ const TUCK_AT := Vector3(0.03, 1.33, 0.26)
 ## forearm's line ends here: Figure3D._reach; the wrist is a little short of
 ## it, at its underside), its palm and fingers (his own frame), and where its
 ## elbow bends towards (out at his side and a little forward, low).
-const TUCK_HAND := Vector3(0.06, -0.14, 0.0)
+## (27 November: a centimetre lower, under his Smart Mesh body's thicker
+## sleeve, which lay 3.2 cm into the wool)
+const TUCK_HAND := Vector3(0.06, -0.15, 0.0)
 const TUCK_PALM := Vector3(0.0, 1.0, -0.12)
 const TUCK_FINGERS := Vector3(-0.92, -0.06, 0.38)
 const TUCK_ELBOW := Vector3(0.45, 0.1, 0.05)

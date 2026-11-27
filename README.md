@@ -3381,6 +3381,58 @@ yes 6 yes 7 no 8 yes" (7, frost left on Bram's sleeve, is his no).
   and both hands to her mouth; then down a little onto her heels with her
   hands together under her chin while she watches it go round her head.
 
+### Young Bram's Smart Mesh body (27 November)
+
+Gary's `younger_bram.glb`, "heres the younger bram made with smartmesh and
+with animations": Bram in his heavy coat for the Night of the White Sky,
+remade in Tripo's Smart Mesh (Quad), 50,044 triangles, a Mixamo rig of
+Tripo's own (65 joints), a 4096 colour picture with Tripo's normal and
+roughness-metal maps at 4096. Standing in an A-pose with open hands; grey
+hair tied back, a grey beard, snow on his shoulders. It has **no clips in
+it** (Tripo's moves never reach the file Gary downloads), which for a person
+doesn't matter: he keeps the 30 moves the game's Bram-in-his-coat had.
+
+**Built** with `tools/rig_person.sh` (new: Player A's build, for anyone):
+
+    tools/rig_person.sh bram_coat younger_bram.glb --name Bram --height 1.84 \
+        --maps "--eye=-0.0646,1.7143 --eye=0.0020,1.7112"
+
+the turn baked, the vertices welded, the standard skeleton at 1.84 m with
+every clip of the model it replaces carried across, the maps kept at full
+size, the paint of his coat on the underside of his sleeves taken off
+(`clean_under_arms.py`: a dark smear about 400 cm² on each), and the maps
+put right (`maps_follow_paint.py`, which gained three things here):
+- `--eye X,Y` for eyes the finder can't tell from grey hair, and an eye the
+  maker painted (not repainted by us) is made wet over its open almond;
+- hair: Tripo gave his hair and beard roughness 0.08 (wet glass), every
+  strand's edge a white glint; on the head what isn't skin or an eye is
+  brought up to 0.65 (`--hair-roughness`), and anywhere what isn't metal or
+  an eye to 0.35 (`--floor`: the snow on his shoulders was 0.06);
+- hands: his are painted darker than his face, so they weren't taken for
+  skin and kept their gloss (0.35, wet clay); on the hands the skin's hue is
+  enough. Player A's maps are unchanged by these (his hair was 0.83, his
+  hands 0.74).
+
+**Fitted to him** (`Figure3D`): his fingers move with the clips now (off
+`FROZEN`: Tripo's own rig fits the hands, `tests/hand_freeze_peek.gd`); his
+mouth (`MOUTHS`) found by its paint, the beard hiding his lips from the
+profile, 2 cm over the Head bone and 1.1 cm to his right; his arms
+(`POSTURE`): the idle hung his right hand into the flare of his coat, now
+both hang 16 degrees out. In the White Sky (`WhiteSky`): the child held
+2.8 cm further out (`CRADLE`, his coat stands further from his chest bone),
+his left hand a centimetre lower under it (`TUCK_HAND`), his palms 3 cm
+further out along it as he picks it up (`PALM_AT`: the body check found his
+left wrist 2.6 cm into its end), and his right
+elbow higher as he takes the card and draws the blanket over it
+(`TAKE_ELBOW`, `TUCK_OVER_ELBOW`): his wide sleeve went 4 cm into the bundle.
+
+**Checked:** `tests/held_child_probe.tscn -- carry knee hand arms` PASS;
+"WHITE SKY PLAY: ok"; "STEPS: ok"; "CLIPS CHECK: 0 missing or wrong";
+`tests/gait_probe.gd`, `tests/stance_peek.gd`, `tests/face_sheet.tscn open`,
+`tests/white_sky_look.tscn`, and the whole night played through with the
+body check (`tests/white_sky_test.tscn -- <dir> 4 body`, headless: PASS,
+nothing through anything).
+
 ### The Infernal Warg's model (27 November)
 
 Gary's `infernal_warg_Model.glb`, the job on Still to Make since 18

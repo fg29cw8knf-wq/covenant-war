@@ -42,6 +42,11 @@ have (seen in his portrait, the evening of 26 November):
     ceiling, gently (the fine grain under it is kept): --skin-tilt (0.10, about
     six degrees) on his head and neck and on skin anywhere, --tilt (0.40)
     everywhere else.
+  - Gloss everywhere else (27 November, young Bram's Smart Mesh file): his
+    grey hair and beard came at roughness 0.08 and the snow on his
+    shoulders at 0.06, mirrors, so each strand's edge flashed white. On the
+    head, what isn't skin or an eye is lifted to --hair-roughness (0.65);
+    anywhere, what isn't metal or an eye to --floor (0.35).
 Then the maps' gutters are filled again, as the picture's were.
 """
 import argparse, os, sys
@@ -63,9 +68,18 @@ def main():
     ap.add_argument("normal")
     ap.add_argument("mr")
     ap.add_argument("--eye-roughness", type=float, default=0.22)
+    ap.add_argument("--eye", action="append", default=[], metavar="X,Y",
+                    help="an eye's middle as seen from the front (metres), when the finder can't tell them from "
+                         "grey hair; give both. An eye that wasn't repainted is taken as an almond --eye-size round it")
+    ap.add_argument("--eye-size", default="0.0105,0.0042", metavar="HALF_W,HALF_H",
+                    help="the almond of an eye not repainted: its half-width and half-height (metres)")
     ap.add_argument("--skin-roughness", type=float, default=0.76, help="the skin's middle roughness after (0: left as made)")
     ap.add_argument("--skin-tilt", type=float, default=0.10)
     ap.add_argument("--face-floor", type=float, default=0.70)
+    ap.add_argument("--hair-roughness", type=float, default=0.65,
+                    help="nothing on the head but skin and the eyes left shinier than this (hair, beard, brows)")
+    ap.add_argument("--floor", type=float, default=0.35,
+                    help="nothing anywhere left shinier than this but metal and the eyes")
     ap.add_argument("--tilt", type=float, default=0.40)
     ap.add_argument("--report", default="")
     args = ap.parse_args()
@@ -89,8 +103,10 @@ def main():
     cen = body.pos[body.idx].mean(1)
 
     # ---- the eyeballs
-    eyes = [e[:2] for e in find_eyes(body, old, W, H)]
-    assert len(eyes) == 2, "expected two eyes, found %d" % len(eyes)
+    eyes = [tuple(float(v) for v in e.split(",")) for e in args.eye] or [e[:2] for e in find_eyes(body, old, W, H)]
+    if len(eyes) != 2:
+        sys.exit("expected two eyes, found %d: give them with --eye X,Y --eye X,Y" % len(eyes))
+    ew, eh = (float(v) for v in args.eye_size.split(","))
     head = body.share("Head", "Neck")
     n_eye = 0
     eye_px = []
@@ -100,8 +116,13 @@ def main():
         pix, tri, bary = texels(body, np.where(near)[0], W, H)
         p = at_texels(body, body.pos, tri, bary)
         inside = (np.abs(p[:, 0] - ex) < 0.011) & (np.abs(p[:, 1] - ey) < 0.0062)
-        pix = pix[inside]
+        pix, p = pix[inside], p[inside]
         a = how[pix][:, None]
+        if a.sum() < 50:
+            # the maker painted this eye and it was left as it was: its open
+            # almond, from its middle, the edge feathered over a millimetre
+            r = np.sqrt(((p[:, 0] - ex) / ew) ** 2 + ((p[:, 1] - ey) / eh) ** 2)
+            a = (1.0 - smooth(0.85, 1.15, r))[:, None]
         flat_nm[pix] = flat_nm[pix] * (1 - a) + np.array([0.5, 0.5, 1.0]) * a
         flat_mr[pix, 1] = flat_mr[pix, 1] * (1 - a[:, 0]) + args.eye_roughness * a[:, 0]
         flat_mr[pix, 2] = flat_mr[pix, 2] * (1 - a[:, 0])
@@ -148,6 +169,19 @@ def main():
     lum = new.reshape(-1, 3) @ np.array([0.30, 0.59, 0.11])
     c = new.reshape(-1, 3)
     skin = smooth(0.10, 0.18, c[:, 0] - c[:, 1]) * smooth(0.40, 0.50, lum) * smooth(0.50, 0.60, c[:, 0])
+    # (the hands are painted darker than the face, in the shade of the body:
+    # young Bram's, 27 November, at a quarter of white, so they weren't taken
+    # for skin and kept Tripo's gloss, and cupped for the child they shone
+    # like wet clay. On the hands, the skin's hue is enough)
+    hands = [n for n in body.joint_at if n.startswith(("LeftHand", "RightHand"))]
+    if hands:
+        on_hand = np.zeros(W * H, bool)
+        ht = np.where(body.share(*hands)[body.idx].min(1) > 0.5)[0]
+        for s0 in range(0, len(ht), 20000):
+            pix, _, _ = texels(body, ht[s0:s0 + 20000], W, H)
+            on_hand[pix] = True
+        warm = smooth(0.05, 0.11, c[:, 0] - c[:, 1]) * smooth(0.10, 0.20, lum) * (c[:, 0] > c[:, 2])
+        skin = np.where(on_hand, np.maximum(skin, warm), skin)
     on_head = np.zeros(W * H)
     face = np.zeros(W * H, bool)
     head_tris = np.where(head[body.idx].min(1) > 0.5)[0]
@@ -176,6 +210,18 @@ def main():
     fl = face & ~eyeball & (flat_mr[:, 1] < args.face_floor)
     flat_mr[fl, 1] = args.face_floor
     print("face: %d texels under %.2f brought up to it" % (fl.sum(), args.face_floor))
+    # hair: Tripo gives it the gloss of wet glass (young Bram's grey hair and
+    # beard 0.08 in the middle, 27 November), and every strand's edge caught
+    # the light as a white glint; hair has a soft sheen, not a mirror's
+    hr = cv & (on_head > 0) & ~eyeball & (flat_mr[:, 1] < args.hair_roughness)
+    a = 1.0 - skin[hr]
+    flat_mr[hr, 1] = flat_mr[hr, 1] * (1 - a) + args.hair_roughness * a
+    print("hair: %d texels under %.2f brought up to it" % (int((a > 0.5).sum()), args.hair_roughness))
+    # and anything else as glossy, but metal: snow on his shoulders, wet-look
+    # wool. Leather and polish keep what they have over the floor
+    lo = cv & ~eyeball & (flat_mr[:, 1] < args.floor) & (flat_mr[:, 2] < 0.3)
+    flat_mr[lo, 1] = args.floor
+    print("the rest: %d texels under %.2f brought up to it" % (lo.sum(), args.floor))
     v = flat_nm * 2 - 1
     t = np.hypot(v[:, 0], v[:, 1])
     lim = args.tilt + (args.skin_tilt - args.tilt) * np.maximum(skin, on_head)

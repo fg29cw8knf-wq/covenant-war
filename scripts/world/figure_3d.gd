@@ -622,10 +622,16 @@ func play_rooted(clip: String, mirror := false, speed := 1.0, extra := Callable(
 ## coat model holds them out from his sides, the left most) brought in to
 ## hang: walking he leans 3 degrees forward, the face 5 down, the arms 17 to
 ## 19 degrees out as the taproom Bram's are. tests/gait_probe.gd measures it.)
+## (27 November: his Smart Mesh body, Tripo's own rig. The back and head
+## stand as they were, upright over his feet (tests/stance_peek.gd); the
+## arms are his own: the idle's hung his right hand 7 degrees off his side,
+## into the flare of his coat at the hip, so it went in through the wool.
+## Both now hang 16 degrees out standing, 15 and 21 walking, and come a
+## little forward.)
 const POSTURE := {"player_a": {"Spine2": Vector3(-2, 0, 0), "Neck": Vector3(-7, 0, 0), "Head": Vector3(6, 0, 0),
 	"LeftShoulder": Vector3(0, 6, 5), "RightShoulder": Vector3(0, -6, -5)},
 	"bram_coat": {"Spine": Vector3(6, 0, 0), "Spine1": Vector3(2, 0, 0), "Neck": Vector3(-8, 0, 0), "Head": Vector3(10, 0, 0),
-		"LeftArm": Vector3(-10, 0, -14), "RightArm": Vector3(-10, 0, 4)}}
+		"LeftArm": Vector3(-10, 0, -12), "RightArm": Vector3(-12, 0, -4)}}
 
 ## Bones kept at rest whatever a clip does to them (4 November, Gary:
 ## "Players right hand the baby finger looks deformed"): Player A's finger
@@ -651,7 +657,10 @@ const FROZEN := {
 	# as a stub with the fingers fused and bent beside it, the hunter's long
 	# fingers pulled into splinters. "*fingers" keeps every bone below both
 	# hands as the model has it, whatever the bones are called.)
-	"bram_coat": ["*fingers"], "shard_hunter": ["*fingers"]}
+	# (27 November: Bram in his coat is off it. His Smart Mesh body's rig is
+	# Tripo's own, its finger joints along the fingers, and the hands curl
+	# and open with the clips cleanly: tests/hand_freeze_peek.gd)
+	"shard_hunter": ["*fingers"]}
 
 
 ## How a hand modelled closed opens when a flat hand is asked for
@@ -1621,12 +1630,14 @@ const MOUTHS := {
 	# neck is still, open and wide: tests/face_sheet.tscn -- <dir> open player_a)
 	"player_a": [Vector3(0.0, -0.034, 0.121), 0.025, 0.75],
 	"bram": [Vector3(0.0, 0.052, 0.202), 0.025, 1.0],
-	# (Bram in his coat, the snow: his own head on another rig. Off his skin
-	# as drawn (tests/mouth_profile: the nose's tip 13.9 cm ahead of the
-	# bone, his lips 3.5 cm under it and half a centimetre back, as Bram's
-	# are); face_sheet's ruled stills read 5 cm further out on this rig, and
-	# put there the jaw hardly moved: tried both, shut against open)
-	"bram_coat": [Vector3(0.0, 0.015, 0.134), 0.026, 1.0],
+	# (Bram in his coat, the snow. 27 November: his Smart Mesh head, on
+	# Tripo's own rig, the Head bone at the base of the skull as Player A's
+	# is. His moustache and beard stand out past his lips, so the profile
+	# can't find them: they're found by their paint, the red of the lower
+	# lip and the dark line over it, 2 cm over the bone and 12.6 cm ahead of
+	# it, the nose's tip 5.6 cm over it; and his face is 1.1 cm to his right
+	# of the bone's line, so the mouth is too. tests/face_sheet.tscn open)
+	"bram_coat": [Vector3(-0.011, 0.020, 0.126), 0.026, 1.0],
 	"corin": [Vector3(0.0, 0.027, 0.154), 0.03, 0.95],
 	"tilly": [Vector3(0.0, -0.003, 0.13), 0.019, 0.8],
 	"nell": [Vector3(0.0, -0.02, 0.157), 0.024, 0.95],
